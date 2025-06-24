@@ -26,8 +26,8 @@ var output = TaskOutput{
 	TestResults: TestResultOutput{
 		Version: 1,
 		BucketConfig: evergreen.BucketConfig{
-			Type:                    evergreen.BucketTypeLocal,
-			PrestoTestResultsPrefix: "presto-test-results",
+			Type:              evergreen.BucketTypeLocal,
+			TestResultsPrefix: "test-results",
 		},
 	},
 }
@@ -50,8 +50,8 @@ func TestLocalService(t *testing.T) {
 		assert.NoError(t, db.Clear(Collection))
 	}()
 
-	output.TestResults.BucketConfig.PrestoBucket = t.TempDir()
-	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.PrestoBucket})
+	output.TestResults.BucketConfig.Name = t.TempDir()
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
 
 	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
@@ -605,13 +605,13 @@ func getTestResult() testresult.TestResult {
 
 func getTestResults() *testresult.DbTaskTestResults {
 	info := testresult.TestResultsInfo{
-		Project:     utility.RandomString(),
-		Version:     utility.RandomString(),
-		Variant:     utility.RandomString(),
-		TaskName:    utility.RandomString(),
-		TaskID:      utility.RandomString(),
-		Execution:   rand.Intn(5),
-		RequestType: utility.RandomString(),
+		Project:   utility.RandomString(),
+		Version:   utility.RandomString(),
+		Variant:   utility.RandomString(),
+		TaskName:  utility.RandomString(),
+		TaskID:    utility.RandomString(),
+		Execution: rand.Intn(5),
+		Requester: utility.RandomString(),
 	}
 	// Optional fields, we should test that we handle them properly when
 	// they are populated and when they do not.
@@ -635,14 +635,14 @@ func saveAndWrite(t *testing.T, ctx context.Context, testBucket pail.Bucket, svc
 	savedResults := make([]testresult.TestResult, 10)
 
 	savedParquet := testresult.ParquetTestResults{
-		Version:     tr.Info.Version,
-		Variant:     tr.Info.Variant,
-		TaskName:    tr.Info.TaskName,
-		TaskID:      tr.Info.TaskID,
-		Execution:   int32(tr.Info.Execution),
-		RequestType: tr.Info.RequestType,
-		CreatedAt:   tr.CreatedAt.UTC(),
-		Results:     make([]testresult.ParquetTestResult, 10),
+		Version:   tr.Info.Version,
+		Variant:   tr.Info.Variant,
+		TaskName:  tr.Info.TaskName,
+		TaskID:    tr.Info.TaskID,
+		Execution: int32(tr.Info.Execution),
+		Requester: tr.Info.Requester,
+		CreatedAt: tr.CreatedAt.UTC(),
+		Results:   make([]testresult.ParquetTestResult, 10),
 	}
 
 	for i := 0; i < len(savedResults); i++ {
@@ -672,7 +672,7 @@ func saveAndWrite(t *testing.T, ctx context.Context, testBucket pail.Bucket, svc
 		}
 	}
 
-	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.PrestoTestResultsPrefix, tr.PrestoPartitionKey()))
+	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, tr.PartitionKey()))
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
 

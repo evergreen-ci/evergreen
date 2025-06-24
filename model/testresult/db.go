@@ -23,8 +23,8 @@ type DbTaskTestResults struct {
 	// FailedTestsSample is the first X failing tests of the test Results.
 	// This is an optimization for Evergreen's UI features that display a
 	// limited number of failing tests for a task.
-	FailedTestsSample []string `bson:"failed_tests_sample"`
-	Results           []TestResult
+	FailedTestsSample []string     `bson:"failed_tests_sample"`
+	Results           []TestResult `bson:"-"`
 }
 
 // ID creates a unique hash for a TestResultsInfo.
@@ -38,13 +38,13 @@ func (t *TestResultsInfo) ID() string {
 	_, _ = io.WriteString(hash, t.TaskID)
 	_, _ = io.WriteString(hash, t.DisplayTaskID)
 	_, _ = io.WriteString(hash, fmt.Sprint(t.Execution))
-	_, _ = io.WriteString(hash, t.RequestType)
+	_, _ = io.WriteString(hash, t.Requester)
 
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-// PrestoPartitionKey returns the partition key for the S3 bucket in Presto.
-func (t *DbTaskTestResults) PrestoPartitionKey() string {
+// PartitionKey returns the partition key for the S3 bucket.
+func (t *DbTaskTestResults) PartitionKey() string {
 	return fmt.Sprintf("task_create_iso=%s/project=%s/%s", t.CreatedAt.UTC().Format(parquetDateFormat), t.Info.Project, t.ID)
 }
 

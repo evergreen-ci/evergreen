@@ -6,14 +6,13 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -61,8 +60,8 @@ func (s *localService) appendResults(ctx context.Context, results []testresult.T
 		ID:   info.ID(),
 		Info: info,
 	}
-	err := s.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, createFindQuery(info.TaskID, info.Execution)).Decode(&record)
-	if err != nil && !adb.ResultsNotFound(err) {
+	err := s.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, byTaskIDAndExecution(info.TaskID, info.Execution)).Decode(&record)
+	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
 		return errors.Wrapf(err, "finding test result '%s' execution '%d'", info.TaskID, info.Execution)
 	}
 
@@ -121,19 +120,19 @@ func (s *localService) GetFailedTestSamples(ctx context.Context, taskOpts []Task
 func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
 	var filter bson.M
 	if len(taskOpts) == 1 {
-		filter = createFindQuery(taskOpts[0].Id, taskOpts[0].Execution)
+		filter = byTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)
 	} else {
 		findQueries := make([]bson.M, len(taskOpts))
 		for i, taskOpt := range taskOpts {
-			findQueries[i] = createFindQuery(taskOpt.Id, taskOpt.Execution)
+			findQueries[i] = byTaskIDAndExecution(taskOpt.Id, taskOpt.Execution)
 		}
 		filter = bson.M{"$or": findQueries}
 	}
 	opts := options.Find()
-	opts.SetSort(mgobson.D{
-		{Name: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey), Value: 1},
-		{Name: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey), Value: 1}},
-	)
+	opts.SetSort(bson.M{
+		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey):    1,
+		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey): 1,
+	})
 	if len(fields) > 0 {
 		projection := bson.M{}
 		for _, field := range fields {
@@ -152,6 +151,9 @@ func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...strin
 	}
 	allTaskResults := make([]testresult.TaskTestResults, len(allDBTaskResults))
 
+	// The fields param will have a non-zero length if this request is coming from GetTaskTestResultsStats,
+	// in which case we only need to retrieve stats metadata from the cedar DB and do not need
+	// to download anything from s3.
 	if len(fields) == 0 {
 		toDownload := make(chan *testresult.DbTaskTestResults, len(allDBTaskResults))
 		for i := range allDBTaskResults {
@@ -168,26 +170,7 @@ func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...strin
 		catcher := grip.NewBasicCatcher()
 		for i := 0; i < runtime.NumCPU(); i++ {
 			wg.Add(1)
-			go func() {
-				defer func() {
-					catcher.Add(recovery.HandlePanicWithError(recover(), nil, "test results download producer"))
-					wg.Done()
-				}()
-
-				for trs := range toDownload {
-					results, err := download(ctx, config.Buckets.Credentials, trs)
-					if err != nil {
-						catcher.Add(err)
-						return
-					}
-					trs.Results = results
-
-					if err = ctx.Err(); err != nil {
-						catcher.Add(err)
-						return
-					}
-				}
-			}()
+			go workerDownload(ctx, toDownload, config.Buckets.Credentials, catcher, &wg)
 		}
 		wg.Wait()
 		if catcher.HasErrors() {
@@ -202,9 +185,29 @@ func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...strin
 	return allTaskResults, nil
 }
 
+func workerDownload(ctx context.Context, toDownload <-chan *testresult.DbTaskTestResults, credentials evergreen.S3Credentials, catcher grip.Catcher, wg *sync.WaitGroup) {
+	defer func() {
+		catcher.Add(recovery.HandlePanicWithError(recover(), nil, "test results download producer"))
+		wg.Done()
+	}()
+
+	for trs := range toDownload {
+		results, err := download(ctx, credentials, trs)
+		if err != nil {
+			catcher.Add(err)
+			return
+		}
+		trs.Results = results
+
+		if err = ctx.Err(); err != nil {
+			catcher.Add(err)
+			return
+		}
+	}
+}
+
 // download returns a TestResult slice with the corresponding Results stored in
-// the offline blob storage. The TestResults record should be populated and the
-// environment should not be nil.
+// the offline blob storage.
 func download(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
 	dbTask, err := FindOneIdAndExecution(ctx, t.Info.TaskID, t.Info.Execution)
 	if err != nil {
@@ -220,7 +223,7 @@ func download(ctx context.Context, credentials evergreen.S3Credentials, t *testr
 	return outputInfo.TestResults.downloadParquet(ctx, credentials, t)
 }
 
-func createFindQuery(id string, execution int) bson.M {
+func byTaskIDAndExecution(id string, execution int) bson.M {
 	return bson.M{
 		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey):    id,
 		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey): execution,

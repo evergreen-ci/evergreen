@@ -3,7 +3,7 @@ package task
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"regexp"
 	"sort"
 
@@ -367,22 +367,26 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 }
 
 func (o TestResultOutput) downloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
-	prestoBucket, err := o.GetPrestoBucket(ctx, credentials)
+	bucket, err := o.getBucket(ctx, credentials)
 	if err != nil {
 		return nil, err
 	}
 
-	r, err := prestoBucket.Get(ctx, t.PrestoPartitionKey())
+	r, err := bucket.Get(ctx, t.PartitionKey())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting Parquet test results")
 	}
 	defer func() {
 		err = r.Close()
-		grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
-			"message": "closing Presto test results bucket reader",
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":        "closing test results bucket reader",
+			"test_result_id": t.ID,
+			"task_id":        t.Info.TaskID,
+			"execution":      t.Info.Execution,
+			"project":        t.Info.Project,
 		}))
 	}()
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading Parquet test results")
 	}
@@ -394,8 +398,12 @@ func (o TestResultOutput) downloadParquet(ctx context.Context, credentials everg
 	pr := floor.NewReader(fr)
 	defer func() {
 		err = pr.Close()
-		grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
-			"message": "closing Parquet test results reader",
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":        "closing Parquet test results reader",
+			"test_result_id": t.ID,
+			"task_id":        t.Info.TaskID,
+			"execution":      t.Info.Execution,
+			"project":        t.Info.Project,
 		}))
 	}()
 
@@ -420,8 +428,8 @@ func (o TestResultOutput) downloadParquet(ctx context.Context, credentials everg
 	return results, nil
 }
 
-func (o TestResultOutput) GetPrestoBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
-	bucket, err := o.createPresto(ctx, credentials, o.BucketConfig.PrestoTestResultsPrefix, false)
+func (o TestResultOutput) getBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
+	bucket, err := o.createBucket(ctx, credentials, o.BucketConfig.TestResultsPrefix, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating bucket")
 	}
@@ -429,9 +437,8 @@ func (o TestResultOutput) GetPrestoBucket(ctx context.Context, credentials everg
 	return bucket, nil
 }
 
-// createPresto returns a Pail Bucket backed by PailType specifically for
-// buckets in our Presto ecosystem
-func (o TestResultOutput) createPresto(ctx context.Context, credentials evergreen.S3Credentials, prefix string, compress bool) (pail.Bucket, error) {
+// createBucket returns a Pail Bucket backed by PailType
+func (o TestResultOutput) createBucket(ctx context.Context, credentials evergreen.S3Credentials, prefix string, compress bool) (pail.Bucket, error) {
 	var b pail.Bucket
 	var stsConfig aws.Config
 	var err error
@@ -447,14 +454,13 @@ func (o TestResultOutput) createPresto(ctx context.Context, credentials evergree
 		stsConfig.Credentials = pail.CreateAWSStaticCredentials(credentials.Key, credentials.Secret, "")
 		stsClient := sts.NewFromConfig(stsConfig)
 		opts := pail.S3Options{
-			Name:        o.BucketConfig.PrestoBucket,
+			Name:        o.BucketConfig.Name,
 			Prefix:      prefix,
 			Region:      evergreen.DefaultS3Region,
 			Permissions: pail.S3PermissionsPrivate,
-			Credentials: stscreds.NewAssumeRoleProvider(stsClient, o.BucketConfig.PrestoRoleARN),
+			Credentials: stscreds.NewAssumeRoleProvider(stsClient, o.BucketConfig.RoleARN),
 			MaxRetries:  utility.ToIntPtr(evergreen.DefaultS3MaxRetries),
 			Compress:    compress,
-			Verbose:     true,
 		}
 		b, err = pail.NewS3Bucket(ctx, opts)
 		if err != nil {
@@ -462,7 +468,7 @@ func (o TestResultOutput) createPresto(ctx context.Context, credentials evergree
 		}
 	case evergreen.BucketTypeLocal:
 		opts := pail.LocalOptions{
-			Path:   o.BucketConfig.PrestoBucket,
+			Path:   o.BucketConfig.Name,
 			Prefix: prefix,
 		}
 		b, err = pail.NewLocalBucket(opts)

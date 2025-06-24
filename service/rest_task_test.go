@@ -66,9 +66,9 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 			TestResults: task.TestResultOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
-					Type:                    evergreen.BucketTypeLocal,
-					PrestoTestResultsPrefix: "presto-test-results",
-					PrestoBucket:            path,
+					Type:              evergreen.BucketTypeLocal,
+					TestResultsPrefix: "test-results",
+					Name:              path,
 				},
 			},
 		},
@@ -83,11 +83,11 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 			CompletedAt: time.Now().UTC().Round(time.Millisecond),
 		}
 
-		testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: tsk.TaskOutputInfo.TestResults.BucketConfig.PrestoBucket})
+		testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: tsk.TaskOutputInfo.TestResults.BucketConfig.Name})
 		if err != nil {
 			return nil, err
 		}
-		w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", tsk.TaskOutputInfo.TestResults.BucketConfig.PrestoTestResultsPrefix, tr.PrestoPartitionKey()))
+		w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", tsk.TaskOutputInfo.TestResults.BucketConfig.TestResultsPrefix, tr.PartitionKey()))
 		if err != nil {
 			return nil, err
 		}
@@ -95,14 +95,14 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 
 		pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
 		savedParquet := testresult.ParquetTestResults{
-			Version:     tr.Info.Version,
-			Variant:     tr.Info.Variant,
-			TaskName:    tr.Info.TaskName,
-			TaskID:      tr.Info.TaskID,
-			Execution:   int32(tr.Info.Execution),
-			RequestType: tr.Info.RequestType,
-			CreatedAt:   tr.CreatedAt.UTC(),
-			Results:     make([]testresult.ParquetTestResult, len(testResults)),
+			Version:   tr.Info.Version,
+			Variant:   tr.Info.Variant,
+			TaskName:  tr.Info.TaskName,
+			TaskID:    tr.Info.TaskID,
+			Execution: int32(tr.Info.Execution),
+			Requester: tr.Info.Requester,
+			CreatedAt: tr.CreatedAt.UTC(),
+			Results:   make([]testresult.ParquetTestResult, len(testResults)),
 		}
 		for i := 0; i < len(testResults); i++ {
 			savedParquet.Results[i] = testresult.ParquetTestResult{
@@ -366,9 +366,9 @@ func TestGetTaskStatus(t *testing.T) {
 				TestResults: task.TestResultOutput{
 					Version: 1,
 					BucketConfig: evergreen.BucketConfig{
-						Type:                    evergreen.BucketTypeLocal,
-						PrestoTestResultsPrefix: "presto-test-results",
-						PrestoBucket:            t.TempDir(),
+						Type:              evergreen.BucketTypeLocal,
+						TestResultsPrefix: "test-results",
+						Name:              t.TempDir(),
 					},
 				},
 			},
