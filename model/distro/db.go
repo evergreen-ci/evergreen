@@ -47,6 +47,7 @@ var (
 	ImageIDKey          = bsonutil.MustHaveTag(Distro{}, "ImageID")
 	SingleTaskDistroKey = bsonutil.MustHaveTag(Distro{}, "SingleTaskDistro")
 
+	hostAllocatorMaxHostsKey         = bsonutil.MustHaveTag(HostAllocatorSettings{}, "MaximumHosts")
 	hostAllocatorAutoTuneMaxHostsKey = bsonutil.MustHaveTag(HostAllocatorSettings{}, "AutoTuneMaximumHosts")
 )
 
@@ -219,8 +220,9 @@ func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error
 	return d, nil
 }
 
-// FindByNeedsAutoTune finds all distros that can auto-tune their maximum hosts.
-func FindByNeedsAutoTune(ctx context.Context) ([]Distro, error) {
+// FindByCanAutoTune finds all dynamically-allocated distros that can auto-tune
+// their maximum hosts.
+func FindByCanAutoTune(ctx context.Context) ([]Distro, error) {
 	autoTuneMaxHostsKey := bsonutil.GetDottedKeyName(HostAllocatorSettingsKey, hostAllocatorAutoTuneMaxHostsKey)
 	q := bson.M{
 		DisabledKey:         bson.M{"$ne": true},

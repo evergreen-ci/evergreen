@@ -17,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -941,4 +943,30 @@ func GetImageIDFromDistro(ctx context.Context, distro string) (string, error) {
 		return "", nil
 	}
 	return d.ImageID, nil
+}
+
+func (d *Distro) SetMaxHosts(ctx context.Context, newMaxHosts int) error {
+	if newMaxHosts == d.HostAllocatorSettings.MaximumHosts {
+		return nil
+	}
+
+	distroMaxHostsKey := bsonutil.GetDottedKeyName(HostAllocatorSettingsKey, hostAllocatorMaxHostsKey)
+	res, err := distroDB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:             d.Id,
+		distroMaxHostsKey: d.HostAllocatorSettings.MaximumHosts,
+	}, bson.M{
+		"$set": bson.M{
+			distroMaxHostsKey: newMaxHosts,
+		},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "updating maximum hosts for distro '%s'", d.Id)
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	d.HostAllocatorSettings.MaximumHosts = newMaxHosts
+
+	return nil
 }

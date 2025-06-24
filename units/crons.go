@@ -1206,9 +1206,9 @@ func populateIPAddressAllocatorJobs(env evergreen.Environment) amboy.QueueOperat
 
 func PopulateDistroAutoTuneJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		distrosToAutoTune, err := distro.FindByNeedsAutoTune(ctx)
+		distrosToAutoTune, err := distro.FindByCanAutoTune(ctx)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "finding distros that can be auto-tuned")
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, d := range distrosToAutoTune {

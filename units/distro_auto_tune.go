@@ -32,6 +32,7 @@ func init() {
 type distroAutoTuneJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	DistroID string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
+
 	settings *evergreen.Settings
 	distro   *distro.Distro
 }
@@ -68,6 +69,8 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	}
 
 	if !evergreen.IsEc2Provider(j.distro.Provider) || !j.distro.HostAllocatorSettings.AutoTuneMaximumHosts {
+		// Only auto-tune maximum hosts for dynamically-allocated distros that
+		// have auto-tuning enabled.
 		return
 	}
 
@@ -140,9 +143,7 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.updateMaxHosts(ctx, newMaxHosts); err != nil {
-		j.AddError(err)
-	}
+	j.AddError(j.updateMaxHosts(ctx, newMaxHosts))
 }
 
 func (j *distroAutoTuneJob) populate(ctx context.Context) error {
@@ -204,9 +205,7 @@ func (j *distroAutoTuneJob) summarizeStatsUsage(stats []hoststat.HostStat) hostS
 
 func (j *distroAutoTuneJob) updateMaxHosts(ctx context.Context, newMaxHosts int) error {
 	updatedDistro := *j.distro
-	updatedDistro.HostAllocatorSettings.MaximumHosts = newMaxHosts
-
-	if err := updatedDistro.ReplaceOne(ctx); err != nil {
+	if err := updatedDistro.SetMaxHosts(ctx, newMaxHosts); err != nil {
 		return errors.Wrapf(err, "updating maximum hosts for distro '%s' from %d to %d", j.DistroID, j.distro.HostAllocatorSettings.MaximumHosts, newMaxHosts)
 	}
 

@@ -38,7 +38,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts}, 10)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts}, 10)...)
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{0}, 20)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -77,7 +77,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{1}, 10)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts}, 10)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			originalMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts}, 10)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -123,7 +123,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			require.NoError(t, j.distro.Insert(t.Context()))
 
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -137,7 +137,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{0}, 200)...)
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{1}, 1)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{1}, 10)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts / 2}, 100)...)
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts}, 1)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
@@ -184,7 +184,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts / 2}, 100)...)
 			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts - 1}, 1)...)
 			j.Run(t.Context())
-			assert.NoError(t, j.Error())
+			require.NoError(t, j.Error())
 
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
