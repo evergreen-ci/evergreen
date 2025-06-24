@@ -34,6 +34,6 @@ Please see [here](https://kanopy.corp.mongodb.com/docs/corpsecure/auth_flow/#ref
 
 We implemented it this way so that it is compatible with spawn hosts. 
 
-
 ## Why did I have to wait a while for the CLI command to load after authenticating?
+
 Due to a polling interval backoff, the longer it takes for a user to click on the link to authenticate, the longer it will take to load. Luckily, this doesn't apply to refreshes which are almost instant. 
