@@ -314,8 +314,7 @@ type Task struct {
 	// EstimatedNumActivatedGeneratedTasks is the estimated number of tasks that this task will generate and activate.
 	EstimatedNumActivatedGeneratedTasks *int `bson:"estimated_num_activated_generated_tasks,omitempty" json:"estimated_num_activated_generated_tasks,omitempty"`
 
-	// Fields set if triggered by an upstream build. More information can be found on
-	// the Version struct.
+	// Fields set if triggered by an upstream build.
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
