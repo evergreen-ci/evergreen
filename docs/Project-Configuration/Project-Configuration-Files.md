@@ -833,10 +833,12 @@ The following expansions are available unless a task was from an
 The following expansions are available if a task was triggered by an
 inter-project dependency:
 
--   `${trigger_event_identifier}` is the ID of the task or build that
+-   `${trigger_id}` is the event ID corresponding to the 'trigger' event.
+    This is not the task, build, or project ID that initiated the trigger.
+-   `${trigger_event_identifier}` is the ID of the task, build, or project that
     initiated this trigger
--   `${trigger_event_type}` will be "task" or "build," identifying
-    what type of ID `${trigger_event_identifier}` is
+-   `${trigger_event_type}` is either "task", "build", or "push" (i.e. project) 
+    identifying what type of ID `${trigger_event_identifier}` is
 -   `${trigger_version}` is the version ID for the task or build that 
     initiated this trigger
 -   `${trigger_status}` is the task or build status of whatever
