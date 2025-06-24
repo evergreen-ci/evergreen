@@ -483,6 +483,7 @@ type ComplexityRoot struct {
 
 	HostAllocatorSettings struct {
 		AcceptableHostIdleTime func(childComplexity int) int
+		AutoTuneMaximumHosts   func(childComplexity int) int
 		FeedbackRule           func(childComplexity int) int
 		FutureHostFraction     func(childComplexity int) int
 		HostsOverallocatedRule func(childComplexity int) int
@@ -2163,6 +2164,7 @@ type FinderSettingsInputResolver interface {
 }
 type HostAllocatorSettingsInputResolver interface {
 	AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error
+
 	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data FeedbackRule) error
 
 	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocatedRule) error
@@ -3764,6 +3766,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.HostAllocatorSettings.AcceptableHostIdleTime(childComplexity), true
+
+	case "HostAllocatorSettings.autoTuneMaximumHosts":
+		if e.complexity.HostAllocatorSettings.AutoTuneMaximumHosts == nil {
+			break
+		}
+
+		return e.complexity.HostAllocatorSettings.AutoTuneMaximumHosts(childComplexity), true
 
 	case "HostAllocatorSettings.feedbackRule":
 		if e.complexity.HostAllocatorSettings.FeedbackRule == nil {
@@ -20669,6 +20678,8 @@ func (ec *executionContext) fieldContext_Distro_hostAllocatorSettings(_ context.
 			switch field.Name {
 			case "acceptableHostIdleTime":
 				return ec.fieldContext_HostAllocatorSettings_acceptableHostIdleTime(ctx, field)
+			case "autoTuneMaximumHosts":
+				return ec.fieldContext_HostAllocatorSettings_autoTuneMaximumHosts(ctx, field)
 			case "feedbackRule":
 				return ec.fieldContext_HostAllocatorSettings_feedbackRule(ctx, field)
 			case "futureHostFraction":
@@ -26815,6 +26826,50 @@ func (ec *executionContext) fieldContext_HostAllocatorSettings_acceptableHostIdl
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Duration does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HostAllocatorSettings_autoTuneMaximumHosts(ctx context.Context, field graphql.CollectedField, obj *model.APIHostAllocatorSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostAllocatorSettings_autoTuneMaximumHosts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AutoTuneMaximumHosts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_HostAllocatorSettings_autoTuneMaximumHosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HostAllocatorSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -78517,7 +78572,7 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"acceptableHostIdleTime", "feedbackRule", "futureHostFraction", "hostsOverallocatedRule", "maximumHosts", "minimumHosts", "roundingRule", "version"}
+	fieldsInOrder := [...]string{"acceptableHostIdleTime", "autoTuneMaximumHosts", "feedbackRule", "futureHostFraction", "hostsOverallocatedRule", "maximumHosts", "minimumHosts", "roundingRule", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -78533,6 +78588,13 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			if err = ec.resolvers.HostAllocatorSettingsInput().AcceptableHostIdleTime(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "autoTuneMaximumHosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoTuneMaximumHosts"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoTuneMaximumHosts = data
 		case "feedbackRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("feedbackRule"))
 			data, err := ec.unmarshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx, v)
@@ -86014,6 +86076,11 @@ func (ec *executionContext) _HostAllocatorSettings(ctx context.Context, sel ast.
 			out.Values[i] = graphql.MarshalString("HostAllocatorSettings")
 		case "acceptableHostIdleTime":
 			out.Values[i] = ec._HostAllocatorSettings_acceptableHostIdleTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "autoTuneMaximumHosts":
+			out.Values[i] = ec._HostAllocatorSettings_autoTuneMaximumHosts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
