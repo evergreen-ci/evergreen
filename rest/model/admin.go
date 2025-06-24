@@ -1049,13 +1049,6 @@ func (a *APIJiraConfig) ToService() (any, error) {
 	return c, nil
 }
 
-type APIJiraOAuth1 struct {
-	PrivateKey  *string `json:"private_key"`
-	AccessToken *string `json:"access_token"`
-	TokenSecret *string `json:"token_secret"`
-	ConsumerKey *string `json:"consumer_key"`
-}
-
 type APILoggerConfig struct {
 	Buffer         *APILogBuffering `json:"buffer"`
 	DefaultLevel   *string          `json:"default_level"`
