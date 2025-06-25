@@ -59,7 +59,6 @@ func runKanopyOIDCLogin(reason string) (string, error) {
 			tokenBuf.WriteString(line)
 		} else {
 			printedURL = true
-			// We likely need to re-auth
 			// only print the header once
 			if !printedHeader {
 				printKanopyAuthHeader(true)
