@@ -842,6 +842,23 @@ func NewSpawnHostIdleWarningSubscription(hostId string, sub Subscriber) Subscrip
 	return subscription
 }
 
+// NewAlertableInstanceTypeWarningSubscription returns a subscription for the spawn host using an alertable instance type.
+func NewAlertableInstanceTypeWarningSubscription(hostId string, sub Subscriber) Subscription {
+	var notificationIDFormat string
+	switch sub.Type {
+	case EmailSubscriberType:
+		notificationIDFormat = "alertable-instance-type-email-%s"
+	case SlackSubscriberType:
+		notificationIDFormat = "alertable-instance-type-slack-%s"
+	default:
+		notificationIDFormat = "alertable-instance-type-%s"
+	}
+	subscription := NewSubscriptionByID(ResourceTypeHost, TriggerAlertableInstanceType, hostId, sub)
+	// Use hostID and subscriber type in the ID to allow both email and slack subscriptions for the same host.
+	subscription.ID = fmt.Sprintf(notificationIDFormat, hostId)
+	return subscription
+}
+
 func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
 		ID:           mgobson.NewObjectId().Hex(),

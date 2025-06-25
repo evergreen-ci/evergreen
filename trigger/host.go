@@ -41,9 +41,9 @@ const (
 In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs),
 please consider terminating from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
 
-	alertableInstanceTypeEmailSubject         = `{{.Distro}} large instance type reminder`
-	alertableInstanceTypeEmailBody            = `Your {{.Distro}} host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development. Visit the <a href={{.URL}}>spawnhost page</a> to modify your host.`
-	alertableInstanceTypeSlackBody            = `Your {{.Distro}} host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development. Visit the <{{.URL}}|spawnhost page> to modify your host.`
+	alertableInstanceTypeEmailSubject         = `Large instance type reminder`
+	alertableInstanceTypeEmailBody            = `Your host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development to reduce costs. Visit the <a href={{.URL}}>spawnhost page</a> to modify your host.`
+	alertableInstanceTypeSlackBody            = `Your host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development to reduce costs. Visit the <{{.URL}}|spawnhost page> to modify your host.`
 	alertableInstanceTypeSlackAttachmentTitle = "Spawn Host Page"
 )
 

@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -42,7 +44,7 @@ func (s *alertableInstanceTypeSuite) TearDownSuite() {
 func (s *alertableInstanceTypeSuite) SetupTest() {
 	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
 
-	s.NoError(db.ClearCollections(event.EventCollection, host.Collection, alertrecord.Collection))
+	s.NoError(db.ClearCollections(event.EventCollection, event.SubscriptionsCollection, host.Collection, alertrecord.Collection, user.Collection))
 
 	// Set up test configuration with alertable instance types
 	s.NoError(evergreen.UpdateConfig(s.ctx, &evergreen.Settings{
@@ -109,6 +111,45 @@ func (s *alertableInstanceTypeSuite) SetupTest() {
 	for _, h := range hosts {
 		s.NoError(h.Insert(s.ctx))
 	}
+
+	// Create users that the hosts reference
+	users := []user.DBUser{
+		{
+			Id:           "user1",
+			EmailAddress: "user1@example.com",
+			Settings: user.UserSettings{
+				SlackUsername: "user1_slack",
+				SlackMemberId: "U1234567890",
+			},
+		},
+		{
+			Id:           "user2",
+			EmailAddress: "user2@example.com",
+			Settings: user.UserSettings{
+				SlackUsername: "user2_slack",
+				SlackMemberId: "U2345678901",
+			},
+		},
+		{
+			Id:           "user3",
+			EmailAddress: "user3@example.com",
+			Settings: user.UserSettings{
+				SlackUsername: "user3_slack",
+				SlackMemberId: "U3456789012",
+			},
+		},
+		{
+			Id:           "user4",
+			EmailAddress: "user4@example.com",
+			Settings: user.UserSettings{
+				SlackUsername: "user4_slack",
+				SlackMemberId: "U4567890123",
+			},
+		},
+	}
+	for _, u := range users {
+		s.NoError(u.Insert(s.ctx))
+	}
 }
 
 func (s *alertableInstanceTypeSuite) TestEventsAreLogged() {
@@ -153,6 +194,71 @@ func (s *alertableInstanceTypeSuite) TestAlertRecordsAreCreated() {
 		rec, err := alertrecord.FindByMostRecentAlertableInstanceTypeWithHours(s.ctx, hostID, 0)
 		s.NoError(err)
 		s.Nil(rec, "Should not have alert record for host %s", hostID)
+	}
+}
+
+func (s *alertableInstanceTypeSuite) TestSubscriptionsAreCreated() {
+	s.j.Run(s.ctx)
+
+	// Check that both email and slack subscriptions were created for the hosts that should be notified
+	for _, hostID := range []string{"h1", "h4"} {
+		// Check email subscription
+		emailSubscription, err := event.FindSubscriptionByID(s.ctx, fmt.Sprintf("alertable-instance-type-email-%s", hostID))
+		s.NoError(err)
+		s.Require().NotNil(emailSubscription, "Expected email subscription for host %s", hostID)
+		s.Equal(fmt.Sprintf("alertable-instance-type-email-%s", hostID), emailSubscription.ID)
+		s.Equal(event.ResourceTypeHost, emailSubscription.ResourceType)
+		s.Equal(event.TriggerAlertableInstanceType, emailSubscription.Trigger)
+		s.Equal(hostID, emailSubscription.Filter.ID)
+		s.Equal(event.EmailSubscriberType, emailSubscription.Subscriber.Type)
+
+		// Verify the email target matches the user's email
+		expectedEmail := fmt.Sprintf("user%s@example.com", hostID[1:]) // Extract number from hostID
+		switch target := emailSubscription.Subscriber.Target.(type) {
+		case string:
+			s.Equal(expectedEmail, target)
+		case *string:
+			s.Equal(expectedEmail, *target)
+		default:
+			s.Fail("Unexpected target type for email subscription", "got %T", target)
+		}
+
+		// Check slack subscription
+		slackSubscription, err := event.FindSubscriptionByID(s.ctx, fmt.Sprintf("alertable-instance-type-slack-%s", hostID))
+		s.NoError(err)
+		s.Require().NotNil(slackSubscription, "Expected slack subscription for host %s", hostID)
+		s.Equal(fmt.Sprintf("alertable-instance-type-slack-%s", hostID), slackSubscription.ID)
+		s.Equal(event.ResourceTypeHost, slackSubscription.ResourceType)
+		s.Equal(event.TriggerAlertableInstanceType, slackSubscription.Trigger)
+		s.Equal(hostID, slackSubscription.Filter.ID)
+		s.Equal(event.SlackSubscriberType, slackSubscription.Subscriber.Type)
+
+		// Verify the slack target matches the user's slack member ID
+		var expectedSlackTarget string
+		if hostID == "h1" {
+			expectedSlackTarget = "U1234567890"
+		} else if hostID == "h4" {
+			expectedSlackTarget = "U4567890123"
+		}
+		switch target := slackSubscription.Subscriber.Target.(type) {
+		case string:
+			s.Equal(expectedSlackTarget, target)
+		case *string:
+			s.Equal(expectedSlackTarget, *target)
+		default:
+			s.Fail("Unexpected target type for slack subscription", "got %T", target)
+		}
+	}
+
+	// Check that no subscriptions were created for hosts that shouldn't be notified
+	for _, hostID := range []string{"h2", "h3", "h5"} {
+		emailSubscription, err := event.FindSubscriptionByID(s.ctx, fmt.Sprintf("alertable-instance-type-email-%s", hostID))
+		s.NoError(err)
+		s.Nil(emailSubscription, "Should not have email subscription for host %s", hostID)
+
+		slackSubscription, err := event.FindSubscriptionByID(s.ctx, fmt.Sprintf("alertable-instance-type-slack-%s", hostID))
+		s.NoError(err)
+		s.Nil(slackSubscription, "Should not have slack subscription for host %s", hostID)
 	}
 }
 

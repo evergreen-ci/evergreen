@@ -823,7 +823,7 @@ func periodicNotificationJobs(ctx context.Context, _ evergreen.Environment, ts t
 	return []amboy.Job{
 		NewSpawnhostExpirationWarningsJob(ts.Format(TSFormat)),
 		NewVolumeExpirationWarningsJob(ts.Format(TSFormat)),
-		NewAlertableInstanceTypeNotifyJob(utility.RoundPartOfDay(0).Format(TSFormat)),
+		NewAlertableInstanceTypeNotifyJob(ts.Format(TSFormat)),
 	}, nil
 }
 
