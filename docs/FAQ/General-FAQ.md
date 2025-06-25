@@ -2,7 +2,12 @@
 
 ##### What is the difference between cron, batchtime, and periodic build?
 
-The main difference is that cron and batchtime are tied to activating builds for existing commits and periodic builds creates new builds on a schedule regardless of commit activity. For more on their differences and examples, see [controlling when tasks run](Project-Configuration/Controlling-when-tasks-run).
+- **Batchtime**: Delays activating a task on an existing mainline version until a specified time has passed since it's last run.
+- **Cron**: Activates a task on an existing mainline version at a specified time or interval.
+- **Periodic Builds**: Creates a new version that runs at a specified time or interval, regardless if the project has had any commits.
+
+For more on their differences and examples, see [controlling when tasks run](Project-Configuration/Controlling-when-tasks-run).
+
 
 ##### Why am I seeing a 'fatal: ...no merge base' error?
 

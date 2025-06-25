@@ -238,10 +238,6 @@ func MockConfig() *evergreen.Settings {
 		Jira: evergreen.JiraConfig{
 			Host:                "host",
 			PersonalAccessToken: "personal_access_token",
-			BasicAuthConfig: evergreen.JiraBasicAuthConfig{
-				Username: "username",
-				Password: "password",
-			},
 		},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,

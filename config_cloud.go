@@ -48,8 +48,8 @@ func (c *CloudProviders) ValidateAndDefault() error {
 type EC2Key struct {
 	Name   string `bson:"name" json:"name" yaml:"name"`
 	Region string `bson:"region" json:"region" yaml:"region"` // this can be removed after EVG-8284 is merged
-	Key    string `bson:"key" json:"key" yaml:"key"`
-	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+	Key    string `bson:"key" json:"key" yaml:"key" secret:"true"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret" secret:"true"`
 }
 
 type Subnet struct {
@@ -106,8 +106,8 @@ func (m *AWSAccountRoleMapping) Validate() error {
 }
 
 type S3Credentials struct {
-	Key    string `bson:"key" json:"key" yaml:"key"`
-	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+	Key    string `bson:"key" json:"key" yaml:"key" secret:"true"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret" secret:"true"`
 	Bucket string `bson:"bucket" json:"bucket" yaml:"bucket"`
 }
 

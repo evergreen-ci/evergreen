@@ -63,7 +63,7 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 	}
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
-	trh.username = u.DisplayName()
+	trh.username = u.Username()
 
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
