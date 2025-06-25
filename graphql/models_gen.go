@@ -40,10 +40,11 @@ type BuildBaron struct {
 // BuildVariantOptions is an input to the mainlineCommits query.
 // It stores values for statuses, tasks, and variants which are used to filter for matching versions.
 type BuildVariantOptions struct {
-	IncludeBaseTasks *bool    `json:"includeBaseTasks,omitempty"`
-	Statuses         []string `json:"statuses,omitempty"`
-	Tasks            []string `json:"tasks,omitempty"`
-	Variants         []string `json:"variants,omitempty"`
+	IncludeBaseTasks           *bool    `json:"includeBaseTasks,omitempty"`
+	IncludeNeverActivatedTasks *bool    `json:"includeNeverActivatedTasks,omitempty"`
+	Statuses                   []string `json:"statuses,omitempty"`
+	Tasks                      []string `json:"tasks,omitempty"`
+	Variants                   []string `json:"variants,omitempty"`
 }
 
 // CreateDistroInput is the input to the createDistro mutation.

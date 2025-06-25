@@ -67,7 +67,7 @@ type Version {
   revision: String!
   startTime: Time
   status: String!
-  taskCount: Int
+  taskCount(includeNeverActivatedTasks: Boolean): Int
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats
