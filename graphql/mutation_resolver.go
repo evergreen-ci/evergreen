@@ -1047,39 +1047,20 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, 
 
 // SetTaskPriority is the resolver for the setTaskPriority field.
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
-	t, err := task.FindOneId(ctx, taskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
-	}
-	authUser := gimlet.GetUser(ctx)
-	if priority > evergreen.MaxTaskPriority {
-		requiredPermission := gimlet.PermissionOpts{
-			Resource:      t.Project,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionTasks,
-			RequiredLevel: evergreen.TasksAdmin.Value,
-		}
-		isTaskAdmin := authUser.HasPermission(requiredPermission)
-		if !isTaskAdmin {
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
-		}
-	}
-	if err = model.SetTaskPriority(ctx, *t, int64(priority), authUser.Username()); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting task priority for '%s': %s", taskID, err.Error()))
-	}
+	return setSingleTaskPriority(ctx, r.sc.GetURL(), taskID, priority)
+}
 
-	t, err = task.FindOneId(ctx, taskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+// SetTaskPriorities is the resolver for the setTaskPriorities field.
+func (r *mutationResolver) SetTaskPriorities(ctx context.Context, taskPriorities []*TaskPriority) ([]*restModel.APITask, error) {
+	tasks := []*restModel.APITask{}
+	for _, t := range taskPriorities {
+		tsk, err := setSingleTaskPriority(ctx, r.sc.GetURL(), t.TaskID, t.Priority)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, tsk)
 	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
-	}
-	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
-	return apiTask, err
+	return tasks, nil
 }
 
 // UnscheduleTask is the resolver for the unscheduleTask field.

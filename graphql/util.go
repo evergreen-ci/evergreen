@@ -1327,3 +1327,39 @@ func flattenOtelVariables(vars map[string]any) map[string]any {
 	}
 	return flattenedVars
 }
+
+func setSingleTaskPriority(ctx context.Context, url string, taskID string, priority int) (*restModel.APITask, error) {
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	authUser := gimlet.GetUser(ctx)
+	if priority > evergreen.MaxTaskPriority {
+		requiredPermission := gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksAdmin.Value,
+		}
+		isTaskAdmin := authUser.HasPermission(requiredPermission)
+		if !isTaskAdmin {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
+		}
+	}
+	if err = model.SetTaskPriority(ctx, *t, int64(priority), authUser.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting task priority for '%s': %s", taskID, err.Error()))
+	}
+
+	t, err = task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	apiTask, err := getAPITaskFromTask(ctx, url, *t)
+	return apiTask, err
+}
