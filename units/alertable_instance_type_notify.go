@@ -107,8 +107,7 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 }
 
 func shouldNotifyForAlertableInstanceType(ctx context.Context, h *host.Host) (bool, error) {
-	// Use a fixed "daily" alert type since we want daily reminders, not hour-based thresholds
-	rec, err := alertrecord.FindByMostRecentAlertableInstanceTypeWithHours(ctx, h.Id, 0)
+	rec, err := alertrecord.FindByMostRecentAlertableInstanceType(ctx, h.Id)
 	if err != nil {
 		return false, err
 	}

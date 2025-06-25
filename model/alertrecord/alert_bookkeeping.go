@@ -204,12 +204,11 @@ func FindByVolumeExpirationWithHours(ctx context.Context, volumeID string, hours
 	return FindOne(ctx, db.Query(q).Limit(1))
 }
 
-// FindByMostRecentAlertableInstanceTypeWithHours finds the most recent alert
+// FindByMostRecentAlertableInstanceType finds the most recent alert
 // record for a host using alertable instance types.
-func FindByMostRecentAlertableInstanceTypeWithHours(ctx context.Context, hostID string, hours int) (*AlertRecord, error) {
-	alertType := fmt.Sprintf(alertableInstanceTypeWarningTemplate, hours)
+func FindByMostRecentAlertableInstanceType(ctx context.Context, hostID string) (*AlertRecord, error) {
 	q := subscriptionIDQuery(legacyAlertsSubscription)
-	q[TypeKey] = alertType
+	q[TypeKey] = alertableInstanceTypeWarningTemplate
 	q[HostIdKey] = hostID
 	return FindOne(ctx, db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
 }

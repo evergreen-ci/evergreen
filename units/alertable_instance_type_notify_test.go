@@ -182,16 +182,16 @@ func (s *alertableInstanceTypeSuite) TestAlertRecordsAreCreated() {
 
 	// Check that alert records were created for the hosts that should be notified
 	for _, hostID := range []string{"h1", "h4"} {
-		rec, err := alertrecord.FindByMostRecentAlertableInstanceTypeWithHours(s.ctx, hostID, 0)
+		rec, err := alertrecord.FindByMostRecentAlertableInstanceType(s.ctx, hostID)
 		s.NoError(err)
 		s.Require().NotNil(rec, "Expected alert record for host %s", hostID)
 		s.Equal(hostID, rec.HostId)
-		s.Equal("alertable_instance_type_0hour", rec.Type)
+		s.Equal("alertable_instance_type", rec.Type)
 	}
 
 	// Check that no alert records were created for hosts that shouldn't be notified
 	for _, hostID := range []string{"h2", "h3", "h5"} {
-		rec, err := alertrecord.FindByMostRecentAlertableInstanceTypeWithHours(s.ctx, hostID, 0)
+		rec, err := alertrecord.FindByMostRecentAlertableInstanceType(s.ctx, hostID)
 		s.NoError(err)
 		s.Nil(rec, "Should not have alert record for host %s", hostID)
 	}
@@ -286,7 +286,7 @@ func (s *alertableInstanceTypeSuite) TestDuplicateEventsAreLoggedAfterRenotifica
 	// Update alert records to simulate they were created more than 24 hours ago
 	oldTime := time.Now().Add(-25 * time.Hour)
 	filter := bson.M{
-		"type": "alertable_instance_type_0hour",
+		"type": "alertable_instance_type",
 	}
 	update := bson.M{
 		"$set": bson.M{
