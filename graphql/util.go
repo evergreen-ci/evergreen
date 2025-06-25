@@ -1336,7 +1336,7 @@ func setSingleTaskPriority(ctx context.Context, url string, taskID string, prior
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
-	authUser := gimlet.GetUser(ctx)
+	authUser := mustHaveUser(ctx)
 	if priority > evergreen.MaxTaskPriority {
 		requiredPermission := gimlet.PermissionOpts{
 			Resource:      t.Project,
