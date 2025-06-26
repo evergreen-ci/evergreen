@@ -14,7 +14,7 @@
       "results_failed": true,
       "task_output_info": {
         "test_results": {
-          "version": 1
+          "version": 2
         }
       }
     },
@@ -31,12 +31,12 @@
       "branch": "spruce",
       "task_output_info": {
         "test_results": {
-          "version": 1
+          "version": 2
         }
       }
     }
   ],
-  "testresults": [
+  "test_results": [
     {
       "_id": {
         "task_id": "1",

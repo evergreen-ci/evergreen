@@ -1,17 +1,38 @@
 package task
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"regexp"
 	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	goparquet "github.com/fraugster/parquet-go"
+	"github.com/fraugster/parquet-go/floor"
+	"github.com/fraugster/parquet-go/parquetschema"
+	"github.com/fraugster/parquet-go/parquetschema/autoschema"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+var ParquetTestResultsSchemaDef *parquetschema.SchemaDefinition
+
+func init() {
+	var err error
+	ParquetTestResultsSchemaDef, err = autoschema.GenerateSchema(new(testresult.ParquetTestResults))
+	if err != nil {
+		panic(errors.Wrap(err, "generating Parquet test results schema definition"))
+	}
+}
 
 // TestResultOutput is the versioned entry point for coordinating persistent
 // storage of a task run's test result data.
@@ -73,7 +94,6 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 	mergedTaskResults.Results = filteredResults
 	mergedTaskResults.Stats.FilteredCount = &filteredCount
 
-	// TODO: DEVPROD-16200 Download test results from s3 based on the bucket config of each individual task.
 	return mergedTaskResults, nil
 }
 
@@ -169,8 +189,11 @@ func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilt
 func getTestResultService(env evergreen.Environment, version int) (TestResultsService, error) {
 	if version == 0 {
 		return NewCedarService(env), nil
+	} else if version == 1 {
+		return NewEvergreenService(env), nil
+	} else {
+		return NewLocalService(env), nil
 	}
-	return NewLocalService(env), nil
 }
 
 func groupTasksByService(tasks []Task) map[string][]Task {
@@ -344,4 +367,123 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 
 		return false
 	})
+}
+
+func (o TestResultOutput) downloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
+	bucket, err := o.getBucket(ctx, credentials)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := bucket.Get(ctx, t.PartitionKey())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting Parquet test results")
+	}
+	defer func() {
+		err = r.Close()
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":        "closing test results bucket reader",
+			"test_result_id": t.ID,
+			"task_id":        t.Info.TaskID,
+			"execution":      t.Info.Execution,
+			"project":        t.Info.Project,
+		}))
+	}()
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading Parquet test results")
+	}
+
+	fr, err := goparquet.NewFileReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, errors.Wrap(err, "creating Parquet reader")
+	}
+	pr := floor.NewReader(fr)
+	defer func() {
+		err = pr.Close()
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":        "closing Parquet test results reader",
+			"test_result_id": t.ID,
+			"task_id":        t.Info.TaskID,
+			"execution":      t.Info.Execution,
+			"project":        t.Info.Project,
+		}))
+	}()
+
+	var parquetResults []testresult.ParquetTestResults
+	for pr.Next() {
+		row := testresult.ParquetTestResults{}
+		if err := pr.Scan(&row); err != nil {
+			return nil, errors.Wrap(err, "reading Parquet test results row")
+		}
+
+		parquetResults = append(parquetResults, row)
+	}
+
+	if err := pr.Err(); err != nil {
+		return nil, errors.Wrap(err, "reading Parquet test results rows")
+	}
+
+	var results []testresult.TestResult
+	for _, result := range parquetResults {
+		results = append(results, result.ConvertToTestResultSlice()...)
+	}
+	return results, nil
+}
+
+func (o TestResultOutput) getBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
+	bucket, err := o.createBucket(ctx, credentials, o.BucketConfig.TestResultsPrefix, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating bucket")
+	}
+
+	return bucket, nil
+}
+
+// createBucket returns a Pail Bucket backed by PailType
+func (o TestResultOutput) createBucket(ctx context.Context, credentials evergreen.S3Credentials, prefix string, compress bool) (pail.Bucket, error) {
+	var b pail.Bucket
+	var stsConfig aws.Config
+	var err error
+
+	switch o.BucketConfig.Type {
+	case evergreen.BucketTypeS3:
+		stsConfig, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(evergreen.DefaultS3Region),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "loading config")
+		}
+		stsConfig.Credentials = pail.CreateAWSStaticCredentials(credentials.Key, credentials.Secret, "")
+		stsClient := sts.NewFromConfig(stsConfig)
+		opts := pail.S3Options{
+			Name:        o.BucketConfig.Name,
+			Prefix:      prefix,
+			Region:      evergreen.DefaultS3Region,
+			Permissions: pail.S3PermissionsPrivate,
+			Credentials: stscreds.NewAssumeRoleProvider(stsClient, o.BucketConfig.RoleARN),
+			MaxRetries:  utility.ToIntPtr(evergreen.DefaultS3MaxRetries),
+			Compress:    compress,
+		}
+		b, err = pail.NewS3Bucket(ctx, opts)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	case evergreen.BucketTypeLocal:
+		opts := pail.LocalOptions{
+			Path:   o.BucketConfig.Name,
+			Prefix: prefix,
+		}
+		b, err = pail.NewLocalBucket(opts)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	default:
+		return nil, errors.Errorf("unsupported bucket type: %s", o.BucketConfig.Type)
+	}
+
+	if err = b.Check(ctx); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return b, nil
 }

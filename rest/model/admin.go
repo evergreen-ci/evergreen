@@ -629,9 +629,11 @@ type APIBucketsConfig struct {
 }
 
 type APIBucketConfig struct {
-	Name   *string `json:"name"`
-	Type   *string `json:"type"`
-	DBName *string `json:"db_name"`
+	Name              *string `json:"name"`
+	Type              *string `json:"type"`
+	DBName            *string `json:"db_name"`
+	TestResultsPrefix *string `json:"test_results_prefix"`
+	RoleARN           *string `json:"role_arn"`
 }
 
 type APIProjectToPrefixMapping struct {
@@ -655,6 +657,8 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
 		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
 		a.TestResultsBucket.DBName = utility.ToStringPtr(v.TestResultsBucket.DBName)
+		a.TestResultsBucket.TestResultsPrefix = utility.ToStringPtr(v.TestResultsBucket.TestResultsPrefix)
+		a.TestResultsBucket.RoleARN = utility.ToStringPtr(v.TestResultsBucket.RoleARN)
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -684,9 +688,11 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
 		TestResultsBucket: evergreen.BucketConfig{
-			Name:   utility.FromStringPtr(a.TestResultsBucket.Name),
-			Type:   evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
-			DBName: utility.FromStringPtr(a.TestResultsBucket.DBName),
+			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
+			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
+			DBName:            utility.FromStringPtr(a.TestResultsBucket.DBName),
+			RoleARN:           utility.FromStringPtr(a.TestResultsBucket.RoleARN),
+			TestResultsPrefix: utility.FromStringPtr(a.TestResultsBucket.TestResultsPrefix),
 		},
 		Credentials: creds,
 	}, nil

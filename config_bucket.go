@@ -12,9 +12,11 @@ import (
 type BucketType string
 
 const (
-	BucketTypeGridFS BucketType = "gridfs"
-	BucketTypeLocal  BucketType = "local"
-	BucketTypeS3     BucketType = "s3"
+	BucketTypeGridFS    BucketType = "gridfs"
+	BucketTypeLocal     BucketType = "local"
+	BucketTypeS3        BucketType = "s3"
+	DefaultS3Region                = "us-east-1"
+	DefaultS3MaxRetries            = 10
 )
 
 func (b BucketType) validate() error {
@@ -45,9 +47,11 @@ var (
 
 // BucketConfig represents the admin config for an individual bucket.
 type BucketConfig struct {
-	Name   string     `bson:"name" json:"name" yaml:"name"`
-	Type   BucketType `bson:"type" json:"type" yaml:"type"`
-	DBName string     `bson:"db_name" json:"db_name" yaml:"db_name"`
+	Name              string     `bson:"name" json:"name" yaml:"name"`
+	Type              BucketType `bson:"type" json:"type" yaml:"type"`
+	DBName            string     `bson:"db_name" json:"db_name" yaml:"db_name"`
+	TestResultsPrefix string     `bson:"test_results_prefix" json:"test_results_prefix" yaml:"test_results_prefix"`
+	RoleARN           string     `bson:"role_arn" json:"role_arn" yaml:"role_arn"`
 }
 
 func (c *BucketConfig) validate() error {
