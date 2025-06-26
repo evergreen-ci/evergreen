@@ -1,0 +1,10 @@
+{
+  taskCountIncludeNeverActivatedTasksTrueMainlineCommit: version(
+    versionId: "mainline_commit"
+  ) {
+    taskCount(includeNeverActivatedTasks: true)
+  }
+  taskCountIncludeNeverActivatedTasksTruePatch: version(versionId: "patch") {
+    taskCount(includeNeverActivatedTasks: true)
+  }
+}
