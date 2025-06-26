@@ -92,6 +92,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
   ExternalLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
+  ServiceFlags:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
+  ServiceFlagsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:

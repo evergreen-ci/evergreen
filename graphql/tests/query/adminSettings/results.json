@@ -26,7 +26,8 @@
         "data": {
           "adminSettings": {
             "banner": "This is an important notification",
-            "bannerTheme": "ANNOUNCEMENT"
+            "bannerTheme": "ANNOUNCEMENT",
+            "serviceFlags": null
           }
         }
       }

@@ -2,6 +2,11 @@ mutation{
     saveAdminSettings(adminSettings:  {
          banner: "New Banner"
          bannerTheme: ANNOUNCEMENT
+         serviceFlags: {
+            taskDispatchDisabled: true
+            hostInitDisabled: true
+            podInitDisabled: true
+         }
     }) {
         banner
         bannerTheme

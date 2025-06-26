@@ -11,6 +11,7 @@ input SaveAdminSettingsInput {
 input AdminSettingsInput {
   banner: String
   bannerTheme: BannerTheme
+  serviceFlags: ServiceFlagsInput
 }
 
 type SpruceConfig {
@@ -27,9 +28,93 @@ type SpruceConfig {
   ui: UIConfig!
 }
 
+input ServiceFlagsInput {
+  taskDispatchDisabled: Boolean
+  hostInitDisabled: Boolean
+  podInitDisabled: Boolean
+  largeParserProjectsDisabled: Boolean
+  monitorDisabled: Boolean
+  alertsDisabled: Boolean
+  agentStartDisabled: Boolean
+  repotrackerDisabled: Boolean
+  schedulerDisabled: Boolean
+  checkBlockedTasksDisabled: Boolean
+  githubPRTestingDisabled: Boolean
+  cliUpdatesDisabled: Boolean
+  backgroundStatsDisabled: Boolean
+  taskLoggingDisabled: Boolean
+  cacheStatsJobDisabled: Boolean
+  evergreenTestResultsDisabled: Boolean
+  cacheStatsEndpointDisabled: Boolean
+  taskReliabilityDisabled: Boolean
+  hostAllocatorDisabled: Boolean
+  podAllocatorDisabled: Boolean
+  unrecognizedPodCleanupDisabled: Boolean
+  backgroundReauthDisabled: Boolean
+  backgroundCleanupDisabled: Boolean
+  cloudCleanupDisabled: Boolean
+  sleepScheduleDisabled: Boolean
+  staticAPIKeysDisabled: Boolean
+  jwtTokenForCLIDisabled: Boolean
+  systemFailedTaskRestartDisabled: Boolean
+  degradedModeDisabled: Boolean
+  elasticIPsDisabled: Boolean
+  releaseModeDisabled: Boolean
+  adminParameterStoreDisabled: Boolean
+  eventProcessingDisabled: Boolean
+  jiraNotificationsDisabled: Boolean
+  slackNotificationsDisabled: Boolean
+  emailNotificationsDisabled: Boolean
+  webhookNotificationsDisabled: Boolean
+  githubStatusAPIDisabled: Boolean
+}
+
+type ServiceFlags {
+  taskDispatchDisabled: Boolean
+  hostInitDisabled: Boolean
+  podInitDisabled: Boolean
+  largeParserProjectsDisabled: Boolean
+  monitorDisabled: Boolean
+  alertsDisabled: Boolean
+  agentStartDisabled: Boolean
+  repotrackerDisabled: Boolean
+  schedulerDisabled: Boolean
+  checkBlockedTasksDisabled: Boolean
+  githubPRTestingDisabled: Boolean
+  cliUpdatesDisabled: Boolean
+  backgroundStatsDisabled: Boolean
+  taskLoggingDisabled: Boolean
+  cacheStatsJobDisabled: Boolean
+  evergreenTestResultsDisabled: Boolean
+  cacheStatsEndpointDisabled: Boolean
+  taskReliabilityDisabled: Boolean
+  hostAllocatorDisabled: Boolean
+  podAllocatorDisabled: Boolean
+  unrecognizedPodCleanupDisabled: Boolean
+  backgroundReauthDisabled: Boolean
+  backgroundCleanupDisabled: Boolean
+  cloudCleanupDisabled: Boolean
+  sleepScheduleDisabled: Boolean
+  staticAPIKeysDisabled: Boolean
+  jwtTokenForCLIDisabled: Boolean
+  systemFailedTaskRestartDisabled: Boolean
+  degradedModeDisabled: Boolean
+  elasticIPsDisabled: Boolean
+  releaseModeDisabled: Boolean
+  adminParameterStoreDisabled: Boolean
+  eventProcessingDisabled: Boolean
+  jiraNotificationsDisabled: Boolean
+  slackNotificationsDisabled: Boolean
+  emailNotificationsDisabled: Boolean
+  webhookNotificationsDisabled: Boolean
+  githubStatusAPIDisabled: Boolean
+
+}
+
 type AdminSettings {
   banner: String
   bannerTheme: BannerTheme
+  serviceFlags: ServiceFlags
 }
 
 type ContainerPoolsConfig {

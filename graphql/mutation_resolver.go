@@ -160,7 +160,6 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 	}
 
 	updatedSettingsAPI := restModel.APIAdminSettings{}
-
 	if err := updatedSettingsAPI.BuildFromService(newSettings); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
 	}
