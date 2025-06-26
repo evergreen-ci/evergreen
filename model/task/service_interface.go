@@ -10,6 +10,7 @@ import (
 // Valid test results services.
 const (
 	TestResultsServiceEvergreen = "evergreen"
+	TestResultsServiceLocal     = "local"
 	TestResultsServiceCedar     = "cedar"
 )
 

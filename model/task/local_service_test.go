@@ -13,6 +13,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var localOutput = TaskOutput{
+	TestResults: TestResultOutput{
+		Version: 2,
+		BucketConfig: evergreen.BucketConfig{
+			Type:              evergreen.BucketTypeLocal,
+			TestResultsPrefix: "test-results",
+		},
+	},
+}
+
 const MaxSampleSize = 10
 
 func TestLocalService(t *testing.T) {
@@ -25,7 +35,7 @@ func TestLocalService(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 	}()
 
-	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
+	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
 		result := getTestResult()
@@ -38,7 +48,7 @@ func TestLocalService(t *testing.T) {
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
-	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
+	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
 		result := getTestResult()
@@ -47,7 +57,7 @@ func TestLocalService(t *testing.T) {
 		savedResults1[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
-	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
+	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults2 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
 		result := getTestResult()
@@ -56,7 +66,7 @@ func TestLocalService(t *testing.T) {
 		savedResults2[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
-	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
+	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults3 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
@@ -68,7 +78,7 @@ func TestLocalService(t *testing.T) {
 		savedResults3[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults3))
-	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
+	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults4 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
@@ -78,7 +88,7 @@ func TestLocalService(t *testing.T) {
 		savedResults4[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults4))
-	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
+	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
 		t.Run("WithoutFilterAndSortOpts", func(t *testing.T) {
@@ -501,7 +511,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			name: "SortByBaseStatusASC",
 			opts: &FilterOptions{
 				Sort:      []testresult.SortBy{{Key: testresult.SortByBaseStatusKey}},
-				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}},
+				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &localOutput}},
 			},
 			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[1],
@@ -520,7 +530,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 						OrderDSC: true,
 					},
 				},
-				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}},
+				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &localOutput}},
 			},
 			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[0],
@@ -553,7 +563,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name: "BaseStatus",
-			opts: &FilterOptions{BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}}},
+			opts: &FilterOptions{BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &localOutput}}},
 			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[0],
 				resultsWithBaseStatus[1],

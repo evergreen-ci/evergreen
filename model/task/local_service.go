@@ -16,6 +16,7 @@ import (
 var (
 	TestResultTaskIDKey    = bsonutil.MustHaveTag(dbTaskTestResultsID{}, "TaskID")
 	TestResultExecutionKey = bsonutil.MustHaveTag(dbTaskTestResultsID{}, "Execution")
+	ResultsKey             = bsonutil.MustHaveTag(localDbTaskTestResults{}, "Results")
 )
 
 // localService implements the local test results service.
@@ -59,7 +60,7 @@ func (s *localService) appendResults(ctx context.Context, results []testresult.T
 	}
 
 	update := bson.M{
-		"$push": bson.M{testresult.ResultsKey: bson.M{"$each": results}},
+		"$push": bson.M{ResultsKey: bson.M{"$each": results}},
 		"$inc": bson.M{
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  len(results),
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,

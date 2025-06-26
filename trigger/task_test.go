@@ -1466,6 +1466,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	}
 	svc := task.NewEvergreenService(env)
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
+	require.NoError(t, err)
 	saveTestResults(t, ctx, testBucket, svc, &tasks[1], 1, []testresult.TestResult{{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}})
 	saveTestResults(t, ctx, testBucket, svc, &tasks[2], 1, []testresult.TestResult{{TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus}})
 	saveTestResults(t, ctx, testBucket, svc, &tasks[5], 1, []testresult.TestResult{{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus}})

@@ -57,5 +57,4 @@ var (
 	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
 	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
 	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
-	ResultsKey                      = bsonutil.MustHaveTag(DbTaskTestResults{}, "Results")
 )
