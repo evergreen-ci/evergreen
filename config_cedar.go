@@ -15,7 +15,7 @@ type CedarConfig struct {
 	GRPCBaseURL string `bson:"grpc_base_url" json:"grpc_base_url" yaml:"grpc_base_url"`
 	RPCPort     string `bson:"rpc_port" json:"rpc_port" yaml:"rpc_port"`
 	User        string `bson:"user" json:"user" yaml:"user"`
-	APIKey      string `bson:"api_key" json:"api_key" yaml:"api_key"`
+	APIKey      string `bson:"api_key" json:"api_key" yaml:"api_key" secret:"true"`
 	// Insecure disables TLS, this should only be used for testing.
 	Insecure bool `bson:"insecure" json:"insecure" yaml:"insecure"`
 	// SPSURL tells Evergreen where the SPS vanity service is. This is only for Evergreen hosts.

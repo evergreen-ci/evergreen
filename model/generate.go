@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"slices"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -764,8 +765,13 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 						for j, intermediateProjectDT := range intermediateProjectBV.DisplayTasks {
 							if intermediateProjectDT.Name == dt.Name {
 								foundExisting = true
-								// avoid adding duplicates
-								_, execTasksToAdd := utility.StringSliceSymmetricDifference(intermediateProjectDT.ExecutionTasks, dt.ExecutionTasks)
+								execTasksToAdd := []string{}
+								for _, generatedExecTask := range dt.ExecutionTasks {
+									// Avoid adding duplicate execution tasks to the display task.
+									if !slices.Contains(intermediateProjectDT.ExecutionTasks, generatedExecTask) {
+										execTasksToAdd = append(execTasksToAdd, generatedExecTask)
+									}
+								}
 								intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks = append(
 									intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks, execTasksToAdd...)
 								break

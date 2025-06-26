@@ -775,41 +775,12 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
-	if t.ResultsFailed && detailsCopy.Status != evergreen.TaskFailed {
-		// TODO (DEVPROD-12889): remove this log and this logic once it's
-		// confirmed that all agents are on the newer version and the test
-		// results check has been moved.
-		grip.Debug(message.Fields{
-			"message": "overwriting task status to failed in app server due to test results containing failure",
-			"ticket":  "DEVPROD-12889",
-			"task_id": t.Id,
-			"host_id": t.HostId,
-		})
-		detailsCopy.Type = evergreen.CommandTypeTest
-		detailsCopy.Status = evergreen.TaskFailed
-		detailsCopy.Description = evergreen.TaskDescriptionResultsFailed
-	}
-
 	if t.Status == detailsCopy.Status {
 		grip.Warning(message.Fields{
 			"message": "tried to mark task as finished twice",
 			"task":    t.Id,
 		})
 		return nil
-	}
-	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults(ctx) {
-		// TODO (DEVPROD-12889): remove this log and this logic once it's
-		// confirmed that all agents are on the newer version and the test
-		// results check has been moved.
-		grip.Debug(message.Fields{
-			"message": "overwriting task status to failed in app server due to missing test results",
-			"ticket":  "DEVPROD-12889",
-			"task_id": t.Id,
-			"host_id": t.HostId,
-		})
-		detailsCopy.Type = evergreen.CommandTypeTest
-		detailsCopy.Status = evergreen.TaskFailed
-		detailsCopy.Description = evergreen.TaskDescriptionNoResults
 	}
 
 	t.Details = detailsCopy

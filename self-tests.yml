@@ -270,10 +270,7 @@ functions:
           CROWD_SERVER: ${crowdserver}
           PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
           GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
-          JIRA_PRIVATE_KEY: ${jira_private_key}
-          JIRA_ACCESS_TOKEN: ${jira_access_token}
-          JIRA_TOKEN_SECRET: ${jira_token_secret}
-          JIRA_CONSUMER_KEY: ${jira_consumer_key}
+          JIRA_PERSONAL_ACCESS_TOKEN: ${jira_personal_access_token}
           PAPERTRAIL_KEY_ID: ${papertrail_key_id}
           PAPERTRAIL_SECRET_KEY: ${papertrail_secret_key}
           RUNTIME_ENVIRONMENTS_BASE_URL: ${staging_runtime_environments_base_url}

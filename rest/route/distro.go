@@ -240,7 +240,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HTTP status code to %d", http.StatusCreated))
 	}
-	if err = newDistro.Insert(ctx); err != nil {
+	if err = newDistro.Add(ctx, user); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting new distro"))
 	}
 

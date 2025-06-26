@@ -27,6 +27,7 @@ func MergeExistingParsleySettings(oldSettings Settings, newSettings Settings) Se
 // Filter represents a filter for the Parsley log viewer. Parsley filters can be defined at
 // the project-level and at the user-level.
 type Filter struct {
+	Description   string `bson:"description,omitempty" json:"description,omitempty"`
 	Expression    string `bson:"expression" json:"expression"`
 	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
 	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`

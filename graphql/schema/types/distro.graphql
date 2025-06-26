@@ -189,6 +189,7 @@ input HomeVolumeSettingsInput {
 
 input HostAllocatorSettingsInput {
   acceptableHostIdleTime: Int!
+  autoTuneMaximumHosts: Boolean # Allow null for backwards compatibility
   feedbackRule: FeedbackRule!
   futureHostFraction: Float!
   hostsOverallocatedRule: OverallocatedRule!
@@ -343,6 +344,7 @@ type HomeVolumeSettings {
 
 type HostAllocatorSettings {
   acceptableHostIdleTime: Duration!
+  autoTuneMaximumHosts: Boolean!
   feedbackRule: FeedbackRule!
   futureHostFraction: Float!
   hostsOverallocatedRule: OverallocatedRule!

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -171,8 +172,8 @@ func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /users/{user_id}/hosts
 // Documentation on two different functions for swagger documentation
 
-func makeFetchHosts(url string) gimlet.RouteHandler {
-	return &hostGetHandler{url: url}
+func makeFetchHosts() gimlet.RouteHandler {
+	return &hostGetHandler{}
 }
 
 type hostGetHandler struct {
@@ -195,7 +196,7 @@ type hostGetHandler struct {
 //	@Param			status		query		string	false	"A status of host to limit the results to"
 //	@Success		200			{object}	model.APIHost
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
-	return &hostGetHandler{url: hgh.url}
+	return &hostGetHandler{}
 }
 
 // Parse reads the parameter for the route.
@@ -212,6 +213,7 @@ func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 //	@Success		200			{object}	model.APIHost
 func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
+	hgh.url = util.HttpsUrl(r.Host)
 	hgh.status = vals.Get("status")
 	hgh.key = vals.Get("host_id")
 	var err error

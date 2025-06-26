@@ -17,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -241,9 +243,12 @@ func (d *Distro) ShellBinary() string {
 }
 
 type HostAllocatorSettings struct {
-	Version                string `bson:"version" json:"version" mapstructure:"version"`
-	MinimumHosts           int    `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
-	MaximumHosts           int    `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	Version      string `bson:"version" json:"version" mapstructure:"version"`
+	MinimumHosts int    `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
+	MaximumHosts int    `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	// AutoTuneMaximumHosts determines if Evergreen is allowed to automatically
+	// tune the distro's maximum hosts.
+	AutoTuneMaximumHosts   bool   `bson:"auto_tune_maximum_hosts" json:"auto_tune_maximum_hosts" mapstructure:"auto_tune_maximum_hosts"`
 	RoundingRule           string `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
 	FeedbackRule           string `bson:"feedback_rule" json:"feedback_rule" mapstructure:"feedback_rule"`
 	HostsOverallocatedRule string `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
@@ -648,6 +653,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		Version:                has.Version,
 		MinimumHosts:           has.MinimumHosts,
 		MaximumHosts:           has.MaximumHosts,
+		AutoTuneMaximumHosts:   has.AutoTuneMaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
 		RoundingRule:           has.RoundingRule,
 		FeedbackRule:           has.FeedbackRule,
@@ -937,4 +943,30 @@ func GetImageIDFromDistro(ctx context.Context, distro string) (string, error) {
 		return "", nil
 	}
 	return d.ImageID, nil
+}
+
+func (d *Distro) SetMaxHosts(ctx context.Context, newMaxHosts int) error {
+	if newMaxHosts == d.HostAllocatorSettings.MaximumHosts {
+		return nil
+	}
+
+	distroMaxHostsKey := bsonutil.GetDottedKeyName(HostAllocatorSettingsKey, hostAllocatorMaxHostsKey)
+	res, err := distroDB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:             d.Id,
+		distroMaxHostsKey: d.HostAllocatorSettings.MaximumHosts,
+	}, bson.M{
+		"$set": bson.M{
+			distroMaxHostsKey: newMaxHosts,
+		},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "updating maximum hosts for distro '%s'", d.Id)
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	d.HostAllocatorSettings.MaximumHosts = newMaxHosts
+
+	return nil
 }
