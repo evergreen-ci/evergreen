@@ -154,6 +154,5 @@ func tryAlertableInstanceTypeNotification(ctx context.Context, h *host.Host) (bo
 	}
 
 	event.LogAlertableInstanceTypeWarningSent(ctx, h.Id)
-	// Use 0 as a fixed identifier for daily alertable instance type notifications
-	return true, alertrecord.InsertNewAlertableInstanceTypeRecord(ctx, h.Id, 0)
+	return true, alertrecord.InsertNewAlertableInstanceTypeRecord(ctx, h.Id)
 }

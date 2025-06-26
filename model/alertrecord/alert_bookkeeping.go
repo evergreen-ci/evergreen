@@ -32,7 +32,7 @@ const (
 	spawnHostWarningTemplate              = "spawn_%dhour"
 	hostTemporaryExemptionWarningTemplate = "temporary_exemption_%dhour"
 	volumeWarningTemplate                 = "volume_%dhour"
-	alertableInstanceTypeWarningTemplate  = "alertable_instance_type_%dhour"
+	alertableInstanceTypeWarning          = "alertable_instance_type"
 )
 
 const legacyAlertsSubscription = "legacy-alerts"
@@ -208,7 +208,7 @@ func FindByVolumeExpirationWithHours(ctx context.Context, volumeID string, hours
 // record for a host using alertable instance types.
 func FindByMostRecentAlertableInstanceType(ctx context.Context, hostID string) (*AlertRecord, error) {
 	q := subscriptionIDQuery(legacyAlertsSubscription)
-	q[TypeKey] = alertableInstanceTypeWarningTemplate
+	q[TypeKey] = alertableInstanceTypeWarning
 	q[HostIdKey] = hostID
 	return FindOne(ctx, db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
 }
@@ -272,15 +272,14 @@ func InsertNewVolumeExpirationRecord(ctx context.Context, volumeID string, hours
 }
 
 // InsertNewAlertableInstanceTypeRecord inserts a new alert record for a host that's using an alertable instance type.
-func InsertNewAlertableInstanceTypeRecord(ctx context.Context, hostID string, hours int) error {
-	alertType := fmt.Sprintf(alertableInstanceTypeWarningTemplate, hours)
+func InsertNewAlertableInstanceTypeRecord(ctx context.Context, hostID string) error {
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
 		SubscriptionID: legacyAlertsSubscription,
-		Type:           alertType,
+		Type:           alertableInstanceTypeWarning,
 		HostId:         hostID,
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertableInstanceTypeWarning)
 }
