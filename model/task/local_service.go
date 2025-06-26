@@ -66,7 +66,7 @@ func (s *localService) appendResults(ctx context.Context, results []testresult.T
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
 		},
 	}
-	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, update, options.Update().SetUpsert(true))
+	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
 }
 
@@ -118,7 +118,7 @@ func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...strin
 	}
 
 	var allDBTaskResults []localDbTaskTestResults
-	cur, err := s.env.CedarDB().Collection(testresult.Collection).Find(ctx, filter, opts)
+	cur, err := s.env.DB().Collection(testresult.Collection).Find(ctx, filter, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding DB test results")
 	}
