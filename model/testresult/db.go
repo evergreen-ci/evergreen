@@ -43,29 +43,8 @@ func (t *TestResultsInfo) ID() string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-// PartitionKey returns the partition key for the S3 bucket.
-func (t *DbTaskTestResults) PartitionKey() string {
-	return fmt.Sprintf("task_create_iso=%s/project=%s/%s", t.CreatedAt.UTC().Format(parquetDateFormat), t.Info.Project, t.ID)
-}
-
-// ID creates a unique hash for a TestResultsInfo.
-func (t *TestResultsInfo) ID() string {
-	hash := sha1.New()
-	_, _ = io.WriteString(hash, t.Project)
-	_, _ = io.WriteString(hash, t.Version)
-	_, _ = io.WriteString(hash, t.Variant)
-	_, _ = io.WriteString(hash, t.TaskName)
-	_, _ = io.WriteString(hash, t.DisplayTaskName)
-	_, _ = io.WriteString(hash, t.TaskID)
-	_, _ = io.WriteString(hash, t.DisplayTaskID)
-	_, _ = io.WriteString(hash, fmt.Sprint(t.Execution))
-	_, _ = io.WriteString(hash, t.RequestType)
-
-	return fmt.Sprintf("%x", hash.Sum(nil))
-}
-
-// GetPrestoPartitionKey returns the partition key for the S3 bucket in Presto.
-func GetPrestoPartitionKey(createdAt time.Time, project string, id string) string {
+// PartitionKey returns the partition key for the S3 bucket in Presto.
+func PartitionKey(createdAt time.Time, project string, id string) string {
 	return fmt.Sprintf("task_create_iso=%s/project=%s/%s", createdAt.UTC().Format(parquetDateFormat), project, id)
 }
 
@@ -78,12 +57,4 @@ var (
 	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
 	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
 	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
-
-	TaskIDKey    = bsonutil.MustHaveTag(DbTaskTestResultsID{}, "TaskID")
-	ExecutionKey = bsonutil.MustHaveTag(DbTaskTestResultsID{}, "Execution")
-	
-	TestResultsCreatedAtKey         = bsonutil.MustHaveTag(DbTaskTestResults{}, "CreatedAt")
-	TestResultsCompletedAtKey       = bsonutil.MustHaveTag(DbTaskTestResults{}, "CompletedAt")
-
-	TestResultsInfoDisplayTaskIDKey = bsonutil.MustHaveTag(TestResultsInfo{}, "DisplayTaskID")
 )

@@ -37174,8 +37174,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":

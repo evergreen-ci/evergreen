@@ -848,13 +848,12 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting test result record"))
 		}
 	} else {
-		err = h.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.CreateFindQuery(h.body.Info.TaskID, h.body.Info.Execution)).Decode(&record)
+		err = h.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(h.body.Info.TaskID, h.body.Info.Execution)).Decode(&record)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding test result record"))
 		}
 	}
-	record.Results = h.body.TestResults
-	err = task.AppendTestResults(ctx, t, h.env, record)
+	err = task.AppendTestResultMetadata(ctx, t, h.env, h.body.FailedSample, h.body.Stats.FailedCount, h.body.Stats.TotalCount, record)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	modelTestutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/pail"
@@ -87,7 +88,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		if err != nil {
 			return nil, err
 		}
-		w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", tsk.TaskOutputInfo.TestResults.BucketConfig.TestResultsPrefix, tr.PartitionKey()))
+		w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", tsk.TaskOutputInfo.TestResults.BucketConfig.TestResultsPrefix, testresult.PartitionKey(tr.CreatedAt, tr.Info.Project, tr.ID)))
 		if err != nil {
 			return nil, err
 		}
@@ -125,13 +126,13 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 			return nil, err
 		}
 
-		if err := db.Insert(ctx, testresult.Collection, testresult.DbTaskTestResults{
+		if err = db.Insert(ctx, testresult.Collection, testresult.DbTaskTestResults{
 			ID:   info.ID(),
 			Info: info,
 		}); err != nil {
 			return nil, err
 		}
-		if err := svc.AppendTestResults(ctx, testResults); err != nil {
+		if err = svc.AppendTestResultMetadata(modelTestutil.MakeAppendTestResultMetadataReq(ctx, testResults, tr.ID)); err != nil {
 			return nil, err
 		}
 	}

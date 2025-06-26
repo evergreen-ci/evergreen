@@ -53,9 +53,10 @@ type TaskTestResultsInfo struct {
 // AttachTestResultsRequest contains information necessary to send in
 // the request by the agent to attach test results.
 type AttachTestResultsRequest struct {
-	TestResults []testresult.TestResult    `json:"test_results"`
-	Info        testresult.TestResultsInfo `json:"info"`
-	CreatedAt   time.Time                  `json:"created_at"`
+	Info         testresult.TestResultsInfo      `json:"info"`
+	Stats        testresult.TaskTestResultsStats `json:"stats"`
+	FailedSample []string                        `json:"failed_sample"`
+	CreatedAt    time.Time                       `json:"created_at"`
 }
 
 // TaskEndDetail contains data sent from the agent to the API server after each task run.

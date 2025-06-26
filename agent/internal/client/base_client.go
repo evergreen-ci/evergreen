@@ -568,19 +568,16 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 }
 
 // SendTestResults sends test result metadata to the app servers for persistent DB storage.
-func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult, resultInfo testresult.TestResultsInfo, createdAt time.Time) error {
-	if len(testResults) == 0 {
-		return nil
-	}
-
+func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, tr *testresult.DbTaskTestResults) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
 	body := apimodels.AttachTestResultsRequest{
-		TestResults: testResults,
-		Info:        resultInfo,
-		CreatedAt:   createdAt,
+		Info:         tr.Info,
+		CreatedAt:    tr.CreatedAt,
+		Stats:        tr.Stats,
+		FailedSample: tr.FailedTestsSample,
 	}
 	info.setTaskPathSuffix("test_results")
 	resp, err := c.retryRequest(ctx, info, &body)

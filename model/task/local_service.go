@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -29,44 +28,17 @@ func NewLocalService(env evergreen.Environment) *localService {
 	return &localService{env: env}
 }
 
-// AppendTestResults appends test results to the local test results collection.
-func (s *localService) AppendTestResults(ctx context.Context, results []testresult.TestResult) error {
-	ids := map[dbTaskTestResultsID][]testresult.TestResult{}
-	for _, result := range results {
-		id := dbTaskTestResultsID{
-			TaskID:    result.TaskID,
-			Execution: result.Execution,
-		}
-		ids[id] = append(ids[id], result)
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for id, results := range ids {
-		catcher.Add(s.appendResults(ctx, results, id))
-	}
-	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "appending test results")
-	}
-
-	return nil
-}
-
-func (s *localService) appendResults(ctx context.Context, results []testresult.TestResult, id dbTaskTestResultsID) error {
-	var failedCount int
-	for _, result := range results {
-		if result.Status == evergreen.TestFailedStatus {
-			failedCount++
-		}
-	}
-
+// AppendTestResultMetadata appends test results to the local test results collection.
+func (s *localService) AppendTestResultMetadata(ctx context.Context, _ []string, failedCount int, totalResults int, tr testresult.DbTaskTestResults) error {
 	update := bson.M{
-		"$push": bson.M{ResultsKey: bson.M{"$each": results}},
+		// TODO fix!!
+		//"$push": bson.M{ResultsKey: bson.M{"$each": results}},
 		"$inc": bson.M{
-			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  len(results),
+			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
 		},
 	}
-	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, update, options.Update().SetUpsert(true))
+	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: tr.ID}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
 }
 

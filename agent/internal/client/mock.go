@@ -486,8 +486,8 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *testlog.TestLo
 }
 
 // SendTestResults appends test results to the local list of test results.
-func (c *Mock) SendTestResults(ctx context.Context, td TaskData, testResults []testresult.TestResult, info testresult.TestResultsInfo, createdAt time.Time) error {
-	c.LocalTestResults = append(c.LocalTestResults, testResults...)
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, tr *testresult.DbTaskTestResults) error {
+	c.ResultsFailed = tr != nil && tr.Stats.FailedCount > 0
 	return nil
 }
 
