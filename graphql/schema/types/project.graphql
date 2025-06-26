@@ -88,9 +88,10 @@ input ExternalLinkInput {
 }
 
 input ParsleyFilterInput {
-  expression: String!
   caseSensitive: Boolean!
+  description: String
   exactMatch: Boolean!
+  expression: String!
 }
 
 input ProjectBannerInput {
@@ -326,9 +327,10 @@ type ProjectBanner {
 }
 
 type ParsleyFilter {
-  expression: String!
   caseSensitive: Boolean!
+  description: String!
   exactMatch: Boolean!
+  expression: String!
 }
 
 type GithubAppAuth {

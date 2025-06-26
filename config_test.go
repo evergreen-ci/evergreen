@@ -316,15 +316,7 @@ func (s *AdminSuite) TestJiraConfig() {
 	defer cancel()
 
 	config := JiraConfig{
-		Host: "host",
-		BasicAuthConfig: JiraBasicAuthConfig{
-			Username: "username",
-			Password: "password",
-		},
-		OAuth1Config: JiraOAuth1Config{
-			PrivateKey:  "asdf",
-			AccessToken: "fdsa",
-		},
+		Host:                "host",
 		PersonalAccessToken: "personal_access_token",
 		Email:               "a@mail.com",
 	}

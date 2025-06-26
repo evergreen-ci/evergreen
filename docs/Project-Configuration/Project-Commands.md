@@ -560,12 +560,29 @@ Notes:
 -   generate.tasks is idempotent across task restarts. In other words, once
     generate.tasks succeeds once, later task restarts will cause generate.tasks
     to no-op rather than generate duplicate configuration.
+-   The command does not give any feedback (via logs or the UI) what
+    tasks were generated so using [s3.put](#s3put) after the command to upload
+    the JSON file used is recommended for debuggability.
 
 ``` yaml
 - command: generate.tasks
   params:
     files:
       - example.json
+
+# Example s3.put command to upload the JSON file used to generate tasks
+- command: s3.put
+  params:
+    role_arn: ${role_arn}
+    local_file: example.json
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/generate_tasks/example.json
+    bucket: mciuploads
+    region: us-east-1
+    permissions: private
+    visibility: signed
+    content_type: application/json
+    display_name: Generate Tasks example.json JSON
+
 ```
 
 Parameters:

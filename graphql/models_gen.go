@@ -529,6 +529,11 @@ type TaskOwnerTeam struct {
 	JiraProject    string `json:"jiraProject"`
 }
 
+type TaskPriority struct {
+	TaskID   string `json:"taskId"`
+	Priority int    `json:"priority"`
+}
+
 // TaskQueueDistro[] is the return value for the taskQueueDistros query.
 // It contains information about how many tasks and hosts are running on on a particular distro.
 type TaskQueueDistro struct {

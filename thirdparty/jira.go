@@ -10,10 +10,7 @@ import (
 	"net/url"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -305,19 +302,6 @@ func NewJiraHandler(opts send.JiraOptions) JiraHandler {
 			Transport: httpClient.Transport,
 		}
 		httpClient = transport.Client()
-	} else if opts.Oauth1Opts.AccessToken != "" {
-		var err error
-		credentials := send.JiraOauthCredentials{
-			PrivateKey:  opts.Oauth1Opts.PrivateKey,
-			AccessToken: opts.Oauth1Opts.AccessToken,
-			TokenSecret: opts.Oauth1Opts.TokenSecret,
-			ConsumerKey: opts.Oauth1Opts.ConsumerKey,
-		}
-		ctx, _ := evergreen.GetEnvironment().Context()
-		httpClient, err = send.Oauth1Client(ctx, credentials)
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "unable to setup jira oauth client",
-		}))
 	}
 	return JiraHandler{
 		opts:   opts,

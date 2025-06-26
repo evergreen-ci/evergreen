@@ -84,11 +84,13 @@ type Version struct {
 	Warnings []string `bson:"warnings,omitempty" json:"warnings,omitempty"`
 
 	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
+
 	// Fields set if triggered by an upstream build
-	// TriggerID is the ID of the entity that triggered the downstream version. Depending on the trigger type, this
-	// could be a build ID, a task ID, or a project ID, for build, task, and push triggers respectively.
-	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
-	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	// TriggerID is the ID of the entity that triggered the downstream version.
+	TriggerID string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
+	// TriggerType is the type of entity that triggered the downstream version.
+	TriggerType string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	// TriggerEvent is the event ID that triggered the downstream version.
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 	// TriggerSHA is the SHA of the untracked commit that triggered the downstream version,
 	// this field is only populated for push level triggers.
