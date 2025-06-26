@@ -49,18 +49,13 @@ func (t *DbTaskTestResults) PartitionKey() string {
 }
 
 var (
-	IdKey    = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
-	StatsKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
-
-	TotalCountKey  = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
-	FailedCountKey = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
-
+	IdKey                           = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
+	StatsKey                        = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
+	TotalCountKey                   = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
+	FailedCountKey                  = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
 	TestResultsInfoKey              = bsonutil.MustHaveTag(DbTaskTestResults{}, "Info")
-	TestResultsCreatedAtKey         = bsonutil.MustHaveTag(DbTaskTestResults{}, "CreatedAt")
-	TestResultsCompletedAtKey       = bsonutil.MustHaveTag(DbTaskTestResults{}, "CompletedAt")
 	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
-
 	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
-	TestResultsInfoDisplayTaskIDKey = bsonutil.MustHaveTag(TestResultsInfo{}, "DisplayTaskID")
 	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
+	ResultsKey                      = bsonutil.MustHaveTag(DbTaskTestResults{}, "Results")
 )

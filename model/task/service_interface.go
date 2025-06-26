@@ -5,13 +5,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/pkg/errors"
 )
 
 // Valid test results services.
 const (
-	TestResultsServiceLocal = "local"
-	TestResultsServiceCedar = "cedar"
+	TestResultsServiceEvergreen = "evergreen"
+	TestResultsServiceCedar     = "cedar"
 )
 
 const defaultService = TestResultsServiceCedar
@@ -35,10 +34,10 @@ func GetServiceImpl(env evergreen.Environment, service string) (TestResultsServi
 	switch service {
 	case TestResultsServiceCedar:
 		return NewCedarService(env), nil
-	case TestResultsServiceLocal:
-		return NewLocalService(env), nil
+	case TestResultsServiceEvergreen:
+		return NewEvergreenService(env), nil
 	default:
-		return nil, errors.Errorf("unsupported test results service '%s'", service)
+		return NewLocalService(env), nil
 	}
 }
 

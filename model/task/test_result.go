@@ -189,8 +189,11 @@ func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilt
 func getTestResultService(env evergreen.Environment, version int) (TestResultsService, error) {
 	if version == 0 {
 		return NewCedarService(env), nil
+	} else if version == 1 {
+		return NewEvergreenService(env), nil
+	} else {
+		return NewLocalService(env), nil
 	}
-	return NewLocalService(env), nil
 }
 
 func groupTasksByService(tasks []Task) map[string][]Task {

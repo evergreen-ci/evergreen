@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,60 +24,43 @@ func TestGetTaskTestResults(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, ClearLocal(ctx, env))
+	require.NoError(t, ClearTestResults(ctx, env))
+	require.NoError(t, db.Clear(Collection))
 	defer func() {
-		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, ClearTestResults(ctx, env))
+		require.NoError(t, db.Clear(Collection))
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := NewLocalService(env)
+	svc := NewEvergreenService(env)
+
+	output.TestResults.BucketConfig.Name = t.TempDir()
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
+	require.NoError(t, err)
+
 	task0 := Task{
 		Id:             "task0",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
 		TaskOutputInfo: &output,
 	}
-	savedResults0 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults0); i++ {
-		result := getTestResult()
-		result.TaskID = task0.Id
-		result.Execution = task0.Execution
-		if i%2 != 0 {
-			result.Status = evergreen.TestFailedStatus
-		}
-		savedResults0[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
-
 	task1 := Task{
 		Id:             "task1",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
 		TaskOutputInfo: &output,
 	}
-	savedResults1 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults1); i++ {
-		result := getTestResult()
-		result.TaskID = task1.Id
-		result.Execution = task1.Execution
-		savedResults1[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
-
 	task2 := Task{
 		Id:             "task2",
 		Execution:      1,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
 		TaskOutputInfo: &output,
 	}
-	savedResults2 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults2); i++ {
-		result := getTestResult()
-		result.TaskID = task2.Id
-		result.Execution = task2.Execution
-		savedResults2[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
+	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2))
+
+	savedResults0 := saveTestResults(t, ctx, testBucket, svc, &task0, 10)
+	savedResults1 := saveTestResults(t, ctx, testBucket, svc, &task1, 10)
+	savedResults2 := saveTestResults(t, ctx, testBucket, svc, &task2, 10)
 
 	externalServiceTask := Task{
 		Id:             "external_service_task",
@@ -184,17 +166,19 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, ClearLocal(ctx, env))
+	require.NoError(t, ClearTestResults(ctx, env))
+	require.NoError(t, db.Clear(Collection))
 	defer func() {
-		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, ClearTestResults(ctx, env))
+		require.NoError(t, db.Clear(Collection))
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := NewLocalService(env)
+	svc := NewEvergreenService(env)
 	task0 := Task{
 		Id:             "task0",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
 		TaskOutputInfo: &output,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
@@ -207,12 +191,23 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
+	info := testresult.TestResultsInfo{
+		TaskID:    task0.Id,
+		Execution: task0.Execution,
+	}
+	tr := testresult.DbTaskTestResults{
+		ID:          info.ID(),
+		Info:        info,
+		CreatedAt:   time.Now().Add(-time.Hour).UTC().Round(time.Millisecond),
+		CompletedAt: time.Now().UTC().Round(time.Millisecond),
+	}
+	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
 	task1 := Task{
 		Id:             "task1",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
 		TaskOutputInfo: &output,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
@@ -222,6 +217,17 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
+	info = testresult.TestResultsInfo{
+		TaskID:    task1.Id,
+		Execution: task1.Execution,
+	}
+	tr = testresult.DbTaskTestResults{
+		ID:          info.ID(),
+		Info:        info,
+		CreatedAt:   time.Now().Add(-time.Hour).UTC().Round(time.Millisecond),
+		CompletedAt: time.Now().UTC().Round(time.Millisecond),
+	}
+	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 
 	externalServiceTask := Task{
@@ -301,10 +307,8 @@ func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func newMockCedarServer(env evergreen.Environment) (*httptest.Server, *mockHandler) {
 	handler := &mockHandler{}
 	srv := httptest.NewServer(handler)
-	env.Settings().Cedar = evergreen.CedarConfig{
-		BaseURL:  strings.TrimPrefix(srv.URL, "http://"),
-		Insecure: true,
-	}
+	env.Settings().Cedar.BaseURL = strings.TrimPrefix(srv.URL, "http://")
+	env.Settings().Cedar.Insecure = true
 
 	return srv, handler
 }
@@ -314,41 +318,44 @@ func TestGetFailedTestSamples(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, ClearLocal(ctx, env))
+	require.NoError(t, ClearTestResults(ctx, env))
+	require.NoError(t, db.Clear(Collection))
 	defer func() {
-		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, ClearTestResults(ctx, env))
+		require.NoError(t, db.Clear(Collection))
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := NewLocalService(env)
-	task0 := Task{
-		Id:             "task0",
+	svc := NewEvergreenService(env)
+	task5 := Task{
+		Id:             "task5",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
+		TaskOutputInfo: &output,
 	}
-	sample0 := make([]string, 2)
-	for i := 0; i < len(sample0); i++ {
-		result := getTestResult()
-		result.TaskID = task0.Id
-		result.Execution = task0.Execution
-		result.Status = evergreen.TestFailedStatus
-		sample0[i] = result.GetDisplayTestName()
-		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{result}))
+	task4 := Task{
+		Id:             "task4",
+		Execution:      1,
+		ResultsService: TestResultsServiceEvergreen,
+		TaskOutputInfo: &output,
 	}
 
-	task1 := Task{
-		Id:             "task1",
-		Execution:      1,
-		ResultsService: TestResultsServiceLocal,
-	}
+	output.TestResults.BucketConfig.Name = t.TempDir()
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
+	require.NoError(t, err)
+
+	require.NoError(t, db.InsertMany(t.Context(), Collection, task5, task4))
+
+	sample0 := make([]string, 2)
 	sample1 := make([]string, 2)
-	for i := 0; i < len(sample1); i++ {
-		result := getTestResult()
-		result.TaskID = task1.Id
-		result.Execution = task1.Execution
-		result.Status = evergreen.TestFailedStatus
-		sample1[i] = result.GetDisplayTestName()
-		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{result}))
+
+	savedResults0 := saveTestResults(t, ctx, testBucket, svc, &task5, 2)
+	for i := 0; i < len(savedResults0); i++ {
+		sample0[i] = savedResults0[i].GetDisplayTestName()
+	}
+	savedResults1 := saveTestResults(t, ctx, testBucket, svc, &task4, 2)
+	for i := 0; i < len(savedResults1); i++ {
+		sample1[i] = savedResults1[i].GetDisplayTestName()
 	}
 
 	externalServiceTask := Task{
@@ -386,17 +393,17 @@ func TestGetFailedTestSamples(t *testing.T) {
 		},
 		{
 			name:     "SameService",
-			taskOpts: []Task{task0, task1},
+			taskOpts: []Task{task5, task4},
 			expectedSamples: []testresult.TaskTestResultsFailedSample{
 				{
-					TaskID:                  task0.Id,
-					Execution:               task0.Execution,
+					TaskID:                  task5.Id,
+					Execution:               task5.Execution,
 					MatchingFailedTestNames: sample0,
 					TotalFailedNames:        len(sample0),
 				},
 				{
-					TaskID:                  task1.Id,
-					Execution:               task1.Execution,
+					TaskID:                  task4.Id,
+					Execution:               task4.Execution,
 					MatchingFailedTestNames: sample1,
 					TotalFailedNames:        len(sample1),
 				},
@@ -404,12 +411,12 @@ func TestGetFailedTestSamples(t *testing.T) {
 		},
 		{
 			name:         "WithRegexFilter",
-			taskOpts:     []Task{task0},
+			taskOpts:     []Task{task5},
 			regexFilters: []string{"test"},
 			expectedSamples: []testresult.TaskTestResultsFailedSample{
 				{
-					TaskID:           task0.Id,
-					Execution:        task0.Execution,
+					TaskID:           task5.Id,
+					Execution:        task5.Execution,
 					TotalFailedNames: len(sample0),
 				},
 			},
@@ -440,55 +447,41 @@ func TestAppendResults(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, ClearLocal(ctx, env))
+	require.NoError(t, ClearTestResults(ctx, env))
+	require.NoError(t, db.Clear(Collection))
 	defer func() {
-		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, ClearTestResults(ctx, env))
+		require.NoError(t, db.Clear(Collection))
 	}()
-	svc := NewLocalService(env)
+	svc := NewEvergreenService(env)
+
+	output.TestResults.BucketConfig.Name = t.TempDir()
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
+	require.NoError(t, err)
+
 	task0 := Task{
 		Id:             "task0",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
+		TaskOutputInfo: &output,
 	}
-	savedResults0 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults0); i++ {
-		result := generateTestResult()
-		result.TaskID = task0.Id
-		result.Execution = task0.Execution
-		if i%2 != 0 {
-			result.Status = evergreen.TestFailedStatus
-		}
-		savedResults0[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
-
 	task1 := Task{
 		Id:             "task1",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
+		TaskOutputInfo: &output,
 	}
-	savedResults1 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults1); i++ {
-		result := generateTestResult()
-		result.TaskID = task1.Id
-		result.Execution = task1.Execution
-		savedResults1[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
-
 	task2 := Task{
 		Id:             "task2",
 		Execution:      1,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: TestResultsServiceEvergreen,
+		TaskOutputInfo: &output,
 	}
-	savedResults2 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults2); i++ {
-		result := generateTestResult()
-		result.TaskID = task2.Id
-		result.Execution = task2.Execution
-		savedResults2[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
+	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2))
+
+	_ = saveTestResults(t, ctx, testBucket, svc, &task0, 10)
+	_ = saveTestResults(t, ctx, testBucket, svc, &task1, 10)
+	_ = saveTestResults(t, ctx, testBucket, svc, &task2, 10)
 
 	dbResults, err := svc.Get(ctx, []Task{task0, task1, task2})
 	require.NoError(t, err)
@@ -508,22 +501,4 @@ func TestAppendResults(t *testing.T) {
 		}
 	}
 
-}
-
-func generateTestResult() testresult.TestResult {
-	result := testresult.TestResult{
-		TestName:      utility.RandomString(),
-		Status:        evergreen.TestSucceededStatus,
-		TestStartTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
-		TestEndTime:   time.Now().UTC().Round(time.Millisecond),
-	}
-	if sometimes.Half() {
-		result.DisplayTestName = utility.RandomString()
-		result.GroupID = utility.RandomString()
-		result.LogTestName = utility.RandomString()
-		result.LogURL = utility.RandomString()
-		result.RawLogURL = utility.RandomString()
-		result.LineNum = rand.Intn(1000)
-	}
-	return result
 }

@@ -30,7 +30,7 @@ import (
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult, path string) (*task.Task, error) {
-	svc := task.NewLocalService(env)
+	svc := task.NewEvergreenService(env)
 	tsk := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -75,7 +75,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 	}
 
 	if len(testResults) > 0 {
-		tsk.ResultsService = task.TestResultsServiceLocal
+		tsk.ResultsService = task.TestResultsServiceEvergreen
 		info := testresult.TestResultsInfo{TaskID: taskId, Execution: 0}
 		tr := &testresult.DbTaskTestResults{
 			ID:          info.ID(),
@@ -152,12 +152,12 @@ func TestGetTaskInfo(t *testing.T) {
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection))
-		assert.NoError(t, task.ClearLocal(ctx, env))
+		assert.NoError(t, task.ClearTestResults(ctx, env))
 	}()
 
 	Convey("When finding info on a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection))
-		require.NoError(t, task.ClearLocal(ctx, env))
+		require.NoError(t, task.ClearTestResults(ctx, env))
 
 		taskId := "my-task"
 		versionId := "my-version"
@@ -347,7 +347,7 @@ func TestGetTaskStatus(t *testing.T) {
 	Convey("When finding the status of a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
-		require.NoError(t, task.ClearLocal(ctx, env))
+		require.NoError(t, task.ClearTestResults(ctx, env))
 
 		taskId := "my-task"
 
@@ -361,7 +361,7 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
-			ResultsService: task.TestResultsServiceLocal,
+			ResultsService: task.TestResultsServiceEvergreen,
 			TaskOutputInfo: &task.TaskOutput{
 				TestResults: task.TestResultOutput{
 					Version: 1,
@@ -482,7 +482,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	require.NoError(evergreen.SetServiceFlags(ctx, flags))
 	defer func() {
 		assert.NoError(db.ClearCollections(task.Collection))
-		assert.NoError(task.ClearLocal(ctx, env))
+		assert.NoError(task.ClearTestResults(ctx, env))
 	}()
 
 	executionTaskId := "execution-task"
