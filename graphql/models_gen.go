@@ -471,6 +471,11 @@ type Subscriber struct {
 	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber,omitempty"`
 }
 
+// TaskCountOptions defines the parameters that are used when counting tasks from a Version.
+type TaskCountOptions struct {
+	IncludeNeverActivatedTasks *bool `json:"includeNeverActivatedTasks,omitempty"`
+}
+
 // TaskFiles is the return value for the taskFiles query.
 // Some tasks generate files which are represented by this type.
 type TaskFiles struct {

@@ -2,9 +2,9 @@
   taskCountIncludeNeverActivatedTasksFalseMainlineCommit: version(
     versionId: "mainline_commit"
   ) {
-    taskCount(includeNeverActivatedTasks: false)
+    taskCount(options: { includeNeverActivatedTasks: false })
   }
   taskCountIncludeNeverActivatedTasksFalsePatch: version(versionId: "patch") {
-    taskCount(includeNeverActivatedTasks: false)
+    taskCount(options: { includeNeverActivatedTasks: false })
   }
 }

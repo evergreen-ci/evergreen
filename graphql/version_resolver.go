@@ -277,11 +277,12 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 }
 
 // TaskCount is the resolver for the taskCount field.
-func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion, includeNeverActivatedTasks *bool) (*int, error) {
+func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion, options *TaskCountOptions) (*int, error) {
 	versionID := utility.FromStringPtr(obj.Id)
 	// if includeNeverActivatedTasks is nil, we default to using the value of the requester
-	if includeNeverActivatedTasks == nil {
-		includeNeverActivatedTasks = utility.ToBoolPtr(!obj.IsPatchRequester())
+	includeNeverActivatedTasks := utility.ToBoolPtr(!obj.IsPatchRequester())
+	if options != nil && options.IncludeNeverActivatedTasks != nil {
+		includeNeverActivatedTasks = options.IncludeNeverActivatedTasks
 	}
 	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(versionID, utility.FromBoolPtr(includeNeverActivatedTasks))))
 	if err != nil {
