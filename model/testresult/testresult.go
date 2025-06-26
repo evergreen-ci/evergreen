@@ -36,7 +36,7 @@ type TestResultsInfo struct {
 	TaskID          string `bson:"task_id" json:"task_id" yaml:"task_id"`
 	DisplayTaskID   string `bson:"display_task_id,omitempty" json:"display_task_id" yaml:"display_task_id"`
 	Execution       int    `bson:"execution" json:"execution" yaml:"execution"`
-	RequestType     string `bson:"request_type" json:"request_type" yaml:"request_type"`
+	Requester     string `bson:"request_type" json:"request_type" yaml:"request_type"`
 	Mainline        bool   `bson:"mainline" json:"mainline" yaml:"mainline"`
 	Schema          int    `bson:"schema" json:"schema" yaml:"schema"`
 }
@@ -82,7 +82,7 @@ type ParquetTestResults struct {
 	TaskID          string              `parquet:"name=task_id"`
 	DisplayTaskID   *string             `parquet:"name=display_task_id"`
 	Execution       int32               `parquet:"name=execution"`
-	RequestType     string              `parquet:"name=request_type"`
+	Requester       string              `parquet:"name=request_type"`
 	CreatedAt       time.Time           `parquet:"name=created_at, timeunit=MILLIS"`
 	Results         []ParquetTestResult `parquet:"name=results"`
 }

@@ -47,12 +47,11 @@ var (
 
 // BucketConfig represents the admin config for an individual bucket.
 type BucketConfig struct {
-	Name                    string     `bson:"name" json:"name" yaml:"name"`
-	Type                    BucketType `bson:"type" json:"type" yaml:"type"`
-	DBName                  string     `bson:"db_name" json:"db_name" yaml:"db_name"`
-	PrestoTestResultsPrefix string     `bson:"presto_test_results_prefix" json:"presto_test_results_prefix" yaml:"presto_test_results_prefix"`
-	PrestoRoleARN           string     `bson:"presto_role_arn" json:"presto_role_arn" yaml:"presto_role_arn"`
-	PrestoBucket            string     `bson:"presto_bucket" json:"presto_bucket" yaml:"presto_bucket"`
+	Name              string     `bson:"name" json:"name" yaml:"name"`
+	Type              BucketType `bson:"type" json:"type" yaml:"type"`
+	DBName            string     `bson:"db_name" json:"db_name" yaml:"db_name"`
+	TestResultsPrefix string     `bson:"test_results_prefix" json:"test_results_prefix" yaml:"test_results_prefix"`
+	RoleARN           string     `bson:"role_arn" json:"role_arn" yaml:"role_arn"`
 }
 
 func (c *BucketConfig) validate() error {

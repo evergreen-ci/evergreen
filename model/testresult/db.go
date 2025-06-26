@@ -27,9 +27,25 @@ type DbTaskTestResults struct {
 	Results           []TestResult `bson:"-"`
 }
 
-type DbTaskTestResultsID struct {
-	TaskID    string `bson:"task_id"`
-	Execution int    `bson:"execution"`
+// ID creates a unique hash for a TestResultsInfo.
+func (t *TestResultsInfo) ID() string {
+	hash := sha1.New()
+	_, _ = io.WriteString(hash, t.Project)
+	_, _ = io.WriteString(hash, t.Version)
+	_, _ = io.WriteString(hash, t.Variant)
+	_, _ = io.WriteString(hash, t.TaskName)
+	_, _ = io.WriteString(hash, t.DisplayTaskName)
+	_, _ = io.WriteString(hash, t.TaskID)
+	_, _ = io.WriteString(hash, t.DisplayTaskID)
+	_, _ = io.WriteString(hash, fmt.Sprint(t.Execution))
+	_, _ = io.WriteString(hash, t.Requester)
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+// PartitionKey returns the partition key for the S3 bucket.
+func (t *DbTaskTestResults) PartitionKey() string {
+	return fmt.Sprintf("task_create_iso=%s/project=%s/%s", t.CreatedAt.UTC().Format(parquetDateFormat), t.Info.Project, t.ID)
 }
 
 // ID creates a unique hash for a TestResultsInfo.
@@ -54,21 +70,20 @@ func GetPrestoPartitionKey(createdAt time.Time, project string, id string) strin
 }
 
 var (
-	IdKey    = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
-	StatsKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
+	IdKey                           = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
+	StatsKey                        = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
+	TotalCountKey                   = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
+	FailedCountKey                  = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
+	TestResultsInfoKey              = bsonutil.MustHaveTag(DbTaskTestResults{}, "Info")
+	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
+	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
+	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
 
 	TaskIDKey    = bsonutil.MustHaveTag(DbTaskTestResultsID{}, "TaskID")
 	ExecutionKey = bsonutil.MustHaveTag(DbTaskTestResultsID{}, "Execution")
-
-	TotalCountKey  = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
-	FailedCountKey = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
-
-	TestResultsInfoKey              = bsonutil.MustHaveTag(DbTaskTestResults{}, "Info")
+	
 	TestResultsCreatedAtKey         = bsonutil.MustHaveTag(DbTaskTestResults{}, "CreatedAt")
 	TestResultsCompletedAtKey       = bsonutil.MustHaveTag(DbTaskTestResults{}, "CompletedAt")
-	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
 
-	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
 	TestResultsInfoDisplayTaskIDKey = bsonutil.MustHaveTag(TestResultsInfo{}, "DisplayTaskID")
-	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
 )

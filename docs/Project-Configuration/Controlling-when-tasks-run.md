@@ -53,7 +53,9 @@ Similarly, the `second_test` task will be scheduled at 0:00 on the latest mainli
 
 ### Batchtime
 
-Batchtime sets an interval of time in minutes that Evergreen should wait before activating a version/task/variant for a mainline commit. This is ideal for delaying activation of versions/tasks/variants to batch them together, reducing the frequency of activations and managing resource usage.
+Batchtime delays a mainline task/variant activation until a specified time has passed since its last run. This is useful for projects with high commit activity, as it will prevent Evergreen from activating tasks/variants too frequently which can lead to resource contention and inefficiencies. 
+
+E.g.: Task 'A' has a batchtime of 60 minutes. The first commit of the day is at 10:00AM and the task activates immediately. A new mainline commit is made at 10:30AM. Evergreen will not activate task 'A' on the new mainline commit until 11:00AM, which is 60 minutes after the last run. If a new mainline commit is made at 10:45AM, Evergreen will still wait until 11:00AM to activate task 'A' on this newest mainline commit.
 
 A default batch time can be set on the project page [under general settings](../Project-Configuration/Project-and-Distro-Settings/#general-project-settings) for the interval of time (in minutes) that Evergreen should wait in between activating the latest version.
 

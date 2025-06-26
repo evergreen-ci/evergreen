@@ -13,6 +13,7 @@
   ],
   "tasks": [
     { "_id": "task_id", "branch": "happyAbyssinian" },
-    { "_id": "no_permissions", "branch": "evergreen" }
+    { "_id": "no_permissions", "branch": "evergreen" },
+    { "_id": "task_id_2", "branch": "evergreen" }
   ]
 }
