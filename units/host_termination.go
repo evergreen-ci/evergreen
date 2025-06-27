@@ -344,6 +344,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		attribute.Float64(fmt.Sprintf("%s.running_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.StartTime).Seconds()),
 		attribute.String(fmt.Sprintf("%s.ip_allocation_id", hostTerminationAttributePrefix), j.host.IPAllocationID),
 		attribute.String(fmt.Sprintf("%s.ip_association_id", hostTerminationAttributePrefix), j.host.IPAssociationID),
+		attribute.String(fmt.Sprintf("%s.started_by", hostTerminationAttributePrefix), j.host.StartedBy),
 		attribute.Bool(fmt.Sprintf("%s.user_host", hostTerminationAttributePrefix), j.host.UserHost),
 		attribute.Int(fmt.Sprintf("%s.task_count", hostTerminationAttributePrefix), j.host.TaskCount),
 	)
