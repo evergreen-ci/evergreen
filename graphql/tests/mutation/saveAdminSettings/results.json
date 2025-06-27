@@ -1,12 +1,22 @@
 {
   "tests": [
     {
-        "query_file": "save.graphql",
+        "query_file": "save_announcements.graphql",
         "result": {
           "data": {
             "saveAdminSettings": {
                 "banner": "New Banner",
-                "bannerTheme": "ANNOUNCEMENT",
+                "bannerTheme": "ANNOUNCEMENT"
+            }
+            
+          }
+        }
+    },
+    {
+        "query_file": "save_service_flags.graphql",
+        "result": {
+          "data": {
+            "saveAdminSettings": {
                 "serviceFlags": {
                     "adminParameterStoreDisabled": true,
                     "agentStartDisabled": true,

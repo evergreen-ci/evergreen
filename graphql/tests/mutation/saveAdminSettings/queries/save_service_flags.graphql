@@ -1,8 +1,6 @@
 mutation {
   saveAdminSettings(
     adminSettings: {
-      banner: "New Banner"
-      bannerTheme: ANNOUNCEMENT
       serviceFlags: {
         adminParameterStoreDisabled: true
         agentStartDisabled: true
@@ -45,8 +43,6 @@ mutation {
       }
     }
   ) {
-    banner
-    bannerTheme
     serviceFlags {
       adminParameterStoreDisabled
       agentStartDisabled
