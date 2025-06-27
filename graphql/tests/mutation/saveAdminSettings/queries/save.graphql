@@ -1,9 +1,0 @@
-mutation{
-    saveAdminSettings(adminSettings:  {
-         banner: "New Banner"
-         bannerTheme: ANNOUNCEMENT
-    }) {
-        banner
-        bannerTheme
-    }
-}

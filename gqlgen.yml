@@ -408,6 +408,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  ServiceFlags:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
+  ServiceFlagsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
   SingleTaskDistroConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SiteBanner:

@@ -1,13 +1,64 @@
 {
   "tests": [
     {
-        "query_file": "save.graphql",
+        "query_file": "save_announcements.graphql",
         "result": {
           "data": {
             "saveAdminSettings": {
                 "banner": "New Banner",
                 "bannerTheme": "ANNOUNCEMENT"
             }
+            
+          }
+        }
+    },
+    {
+        "query_file": "save_service_flags.graphql",
+        "result": {
+          "data": {
+            "saveAdminSettings": {
+                "serviceFlags": {
+                    "adminParameterStoreDisabled": true,
+                    "agentStartDisabled": true,
+                    "alertsDisabled": true,
+                    "backgroundCleanupDisabled": true,
+                    "backgroundReauthDisabled": true,
+                    "backgroundStatsDisabled": true,
+                    "cacheStatsEndpointDisabled": true,
+                    "cacheStatsJobDisabled": true,
+                    "checkBlockedTasksDisabled": true,
+                    "cliUpdatesDisabled": true,
+                    "cloudCleanupDisabled": true,
+                    "degradedModeDisabled": true,
+                    "elasticIPsDisabled": true,
+                    "emailNotificationsDisabled": true,
+                    "eventProcessingDisabled": true,
+                    "evergreenTestResultsDisabled": true,
+                    "githubPRTestingDisabled": true,
+                    "githubStatusAPIDisabled": true,
+                    "hostAllocatorDisabled": true,
+                    "hostInitDisabled": true,
+                    "jiraNotificationsDisabled": true,
+                    "jwtTokenForCLIDisabled": true,
+                    "largeParserProjectsDisabled": true,
+                    "monitorDisabled": true,
+                    "podAllocatorDisabled": true,
+                    "podInitDisabled": true,
+                    "releaseModeDisabled": true,
+                    "repotrackerDisabled": true,
+                    "schedulerDisabled": true,
+                    "slackNotificationsDisabled": true,
+                    "sleepScheduleDisabled": true,
+                    "staticAPIKeysDisabled": true,
+                    "systemFailedTaskRestartDisabled": true,
+                    "taskDispatchDisabled": true,
+                    "taskLoggingDisabled": true,
+                    "taskReliabilityDisabled": true,
+                    "unrecognizedPodCleanupDisabled": true,
+                    "webhookNotificationsDisabled": true
+                }
+            }
+            
           }
         }
     },

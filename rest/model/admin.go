@@ -177,6 +177,11 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		}
 		as.Providers = &cloudProviders
 		as.ShutdownWaitSeconds = &v.ShutdownWaitSeconds
+		apiServiceFlags := APIServiceFlags{}
+		if err := apiServiceFlags.BuildFromService(v.ServiceFlags); err != nil {
+			return errors.Wrap(err, "converting service flags to API model")
+		}
+		as.ServiceFlags = &apiServiceFlags
 		spawnHostConfig := APISpawnHostConfig{}
 		err = spawnHostConfig.BuildFromService(v.Spawnhost)
 		if err != nil {
