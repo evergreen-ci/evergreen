@@ -197,6 +197,8 @@ models:
         value: github.com/evergreen-ci/evergreen/model/event.EventSpawnHostCreatedError
       HOST_IDLE_NOTIFICATION:
         value: github.com/evergreen-ci/evergreen/model/event.EventSpawnHostIdleNotification
+      HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT:
+        value: github.com/evergreen-ci/evergreen/model/event.EventAlertableInstanceTypeWarningSent
       HOST_SCRIPT_EXECUTED:
         value: github.com/evergreen-ci/evergreen/model/event.EventHostScriptExecuted
       HOST_SCRIPT_EXECUTE_FAILED:
