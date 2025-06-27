@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -61,13 +62,16 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 	var failed bool
 	var err error
 	output, ok := conf.Task.GetTaskOutputSafe()
+	// Version 0 denotes that the task will use cedar's test result service,
+	// whereas other version numbers indicate that the task uses evergreen's
+	// test result service.
 	if !ok || output.TestResults.Version == 0 {
-		failed, err = attachCedar(ctx, comm, conf, results)
+		failed, err = uploadTestResultsCedar(ctx, comm, conf, results)
 		if err != nil {
 			return errors.Wrap(err, "attaching test results to Cedar")
 		}
 	} else {
-		failed, err = attach(ctx, comm, conf, results, td, output)
+		failed, err = uploadTestResults(ctx, comm, conf, results, td, output)
 		if err != nil {
 			return errors.Wrap(err, "attaching test results")
 		}
@@ -82,7 +86,7 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 	return nil
 }
 
-func attachCedar(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult) (bool, error) {
+func uploadTestResultsCedar(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult) (bool, error) {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting Cedar connection")
@@ -110,8 +114,11 @@ func attachCedar(ctx context.Context, comm client.Communicator, conf *internal.T
 	return failed, nil
 }
 
-func attach(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {
+func uploadTestResults(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {
 	tr, err := task.UploadTestResults(ctx, conf.TaskOutput, results, output, conf.Task, conf.DisplayTaskInfo)
+	if err != nil {
+		return false, errors.Wrap(err, "uploading test results")
+	}
 	if err = comm.SendTestResults(ctx, td, tr); err != nil {
 		return false, errors.Wrap(err, "sending test results")
 	}

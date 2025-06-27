@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	modelTestutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -320,7 +319,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 	require.NoError(t, pw.Write(savedParquet))
 	require.NoError(t, pw.Close())
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResultMetadata(modelTestutil.MakeAppendTestResultMetadataReq(ctx, baseResults, tr.ID)))
+	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, baseResults, tr.ID)))
 
 	resultsWithBaseStatus := getResults()
 	require.Len(t, resultsWithBaseStatus, len(baseResults))
@@ -751,6 +750,6 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, pw.Write(savedParquet))
 	require.NoError(t, pw.Close())
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResultMetadata(modelTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
+	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
 }

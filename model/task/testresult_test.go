@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	modelTestutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
@@ -203,7 +202,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		CompletedAt: time.Now().UTC().Round(time.Millisecond),
 	}
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResultMetadata(modelTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults0, tr.ID)))
+	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, savedResults0, tr.ID)))
 
 	task1 := Task{
 		Id:             "task1",
@@ -229,7 +228,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		CompletedAt: time.Now().UTC().Round(time.Millisecond),
 	}
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResultMetadata(modelTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults1, tr.ID)))
+	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, savedResults1, tr.ID)))
 
 	externalServiceTask := Task{
 		Id:             "external_service_task",

@@ -3,6 +3,7 @@ package trigger
 import (
 	"context"
 	"fmt"
+	modelTestutil "github.com/evergreen-ci/evergreen/testutil"
 	"math/rand"
 	"testing"
 	"time"
@@ -16,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	modelTestutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/pail"

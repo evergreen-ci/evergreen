@@ -371,9 +371,9 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 	})
 }
 
-// DownloadParquet downloads test results in parquet format from s3.
-func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
-	bucket, err := o.GetBucket(ctx, credentials)
+// downloadParquet downloads test results in parquet format from s3.
+func (o TestResultOutput) downloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
+	bucket, err := o.getBucket(ctx, credentials)
 	if err != nil {
 		return nil, err
 	}
@@ -434,8 +434,8 @@ func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials everg
 	return results, nil
 }
 
-// GetBucket constructs an s3 bucket to retrieve test results from.
-func (o TestResultOutput) GetBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
+// getBucket constructs an s3 bucket to retrieve test results from.
+func (o TestResultOutput) getBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
 	bucket, err := o.createBucket(ctx, credentials, o.BucketConfig.TestResultsPrefix, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating bucket")
@@ -505,14 +505,13 @@ func UploadTestResults(ctx context.Context, credentials evergreen.S3Credentials,
 		CreatedAt: createdAt,
 		Info:      info,
 	}
-	allResults, err := output.TestResults.DownloadParquet(ctx, credentials, tr)
+	allResults, err := output.TestResults.downloadParquet(ctx, credentials, tr)
 	if err != nil && !pail.IsKeyNotFoundError(err) {
 		return nil, errors.Wrap(err, "getting uploaded test results")
 	}
 	allResults = append(allResults, newResults...)
 
-	err = uploadParquet(ctx, credentials, *output, convertToParquet(allResults, info, createdAt), key)
-	if err != nil {
+	if err = uploadParquet(ctx, credentials, *output, convertToParquet(allResults, info, createdAt), key); err != nil {
 		return nil, errors.Wrap(err, "uploading parquet test results")
 	}
 
@@ -533,7 +532,7 @@ func UploadTestResults(ctx context.Context, credentials evergreen.S3Credentials,
 }
 
 func uploadParquet(ctx context.Context, credentials evergreen.S3Credentials, output TaskOutput, results *testresult.ParquetTestResults, key string) error {
-	bucket, err := output.TestResults.GetBucket(ctx, credentials)
+	bucket, err := output.TestResults.getBucket(ctx, credentials)
 	if err != nil {
 		return err
 	}
@@ -541,20 +540,10 @@ func uploadParquet(ctx context.Context, credentials evergreen.S3Credentials, out
 	if err != nil {
 		return errors.Wrap(err, "creating Presto bucket writer")
 	}
-	defer func() {
-		err = w.Close()
-		grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
-			"message": "closing test results bucket writer",
-		}))
-	}()
+	defer w.Close()
 
 	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(ParquetTestResultsSchemaDef)))
-	defer func() {
-		err = pw.Close()
-		grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
-			"message": "closing Parquet test results writer",
-		}))
-	}()
+	defer pw.Close()
 
 	return errors.Wrap(pw.Write(results), "writing Parquet test results")
 }

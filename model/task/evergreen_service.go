@@ -185,7 +185,7 @@ func download(ctx context.Context, credentials evergreen.S3Credentials, t *testr
 	if !ok {
 		return nil, nil
 	}
-	return outputInfo.TestResults.DownloadParquet(ctx, credentials, t)
+	return outputInfo.TestResults.downloadParquet(ctx, credentials, t)
 }
 
 // ByTaskIDAndExecution constructs a query to find a test result for a specific task id and execution pair.
