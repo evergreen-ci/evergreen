@@ -1015,6 +1015,7 @@ func setAgentFirstContactTime(ctx context.Context, h *host.Host) {
 		"host_id":                             h.Id,
 		"distro":                              h.Distro.Id,
 		"provisioning":                        h.Distro.BootstrapSettings.Method,
+		"ip_allocation_id":                    h.IPAllocationID,
 		"ip_association_id":                   h.IPAssociationID,
 		"agent_start_duration_secs":           time.Since(h.CreationTime).Seconds(),
 		"agent_start_from_billing_start_secs": time.Since(h.BillingStartTime).Seconds(),
