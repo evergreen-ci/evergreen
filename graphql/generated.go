@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -50,20 +51,15 @@ type Config struct {
 type ResolverRoot interface {
 	AdminSettings() AdminSettingsResolver
 	Annotation() AnnotationResolver
-	BootstrapSettings() BootstrapSettingsResolver
 	ContainerPool() ContainerPoolResolver
-	DispatcherSettings() DispatcherSettingsResolver
 	Distro() DistroResolver
-	FinderSettings() FinderSettingsResolver
 	Host() HostResolver
-	HostAllocatorSettings() HostAllocatorSettingsResolver
 	Image() ImageResolver
 	IssueLink() IssueLinkResolver
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
 	Permissions() PermissionsResolver
-	PlannerSettings() PlannerSettingsResolver
 	Pod() PodResolver
 	PodEventLogData() PodEventLogDataResolver
 	Project() ProjectResolver
@@ -83,10 +79,7 @@ type ResolverRoot interface {
 	Version() VersionResolver
 	Volume() VolumeResolver
 	AdminSettingsInput() AdminSettingsInputResolver
-	BootstrapSettingsInput() BootstrapSettingsInputResolver
-	DispatcherSettingsInput() DispatcherSettingsInputResolver
 	DistroInput() DistroInputResolver
-	FinderSettingsInput() FinderSettingsInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
@@ -1779,26 +1772,11 @@ type AdminSettingsResolver interface {
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
-type BootstrapSettingsResolver interface {
-	Communication(ctx context.Context, obj *model.APIBootstrapSettings) (CommunicationMethod, error)
-
-	Method(ctx context.Context, obj *model.APIBootstrapSettings) (BootstrapMethod, error)
-}
 type ContainerPoolResolver interface {
 	Port(ctx context.Context, obj *model.APIContainerPool) (int, error)
 }
-type DispatcherSettingsResolver interface {
-	Version(ctx context.Context, obj *model.APIDispatcherSettings) (DispatcherVersion, error)
-}
 type DistroResolver interface {
-	Arch(ctx context.Context, obj *model.APIDistro) (Arch, error)
-
-	Provider(ctx context.Context, obj *model.APIDistro) (Provider, error)
-
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error)
-}
-type FinderSettingsResolver interface {
-	Version(ctx context.Context, obj *model.APIFinderSettings) (FinderVersion, error)
 }
 type HostResolver interface {
 	Ami(ctx context.Context, obj *model.APIHost) (*string, error)
@@ -1815,14 +1793,6 @@ type HostResolver interface {
 	Uptime(ctx context.Context, obj *model.APIHost) (*time.Time, error)
 
 	Volumes(ctx context.Context, obj *model.APIHost) ([]*model.APIVolume, error)
-}
-type HostAllocatorSettingsResolver interface {
-	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (FeedbackRule, error)
-
-	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (OverallocatedRule, error)
-
-	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (RoundingRule, error)
-	Version(ctx context.Context, obj *model.APIHostAllocatorSettings) (HostAllocatorVersion, error)
 }
 type ImageResolver interface {
 	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
@@ -1930,9 +1900,6 @@ type PermissionsResolver interface {
 	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
 	ProjectPermissions(ctx context.Context, obj *Permissions, options ProjectPermissionsOptions) (*ProjectPermissions, error)
 	RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error)
-}
-type PlannerSettingsResolver interface {
-	Version(ctx context.Context, obj *model.APIPlannerSettings) (PlannerVersion, error)
 }
 type PodResolver interface {
 	Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error)
@@ -2147,37 +2114,14 @@ type VolumeResolver interface {
 type AdminSettingsInputResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error
 }
-type BootstrapSettingsInputResolver interface {
-	Communication(ctx context.Context, obj *model.APIBootstrapSettings, data CommunicationMethod) error
-
-	Method(ctx context.Context, obj *model.APIBootstrapSettings, data BootstrapMethod) error
-}
-type DispatcherSettingsInputResolver interface {
-	Version(ctx context.Context, obj *model.APIDispatcherSettings, data DispatcherVersion) error
-}
 type DistroInputResolver interface {
-	Arch(ctx context.Context, obj *model.APIDistro, data Arch) error
-
-	Provider(ctx context.Context, obj *model.APIDistro, data Provider) error
-
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]any) error
-}
-type FinderSettingsInputResolver interface {
-	Version(ctx context.Context, obj *model.APIFinderSettings, data FinderVersion) error
 }
 type HostAllocatorSettingsInputResolver interface {
 	AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error
-
-	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data FeedbackRule) error
-
-	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocatedRule) error
-
-	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data RoundingRule) error
-	Version(ctx context.Context, obj *model.APIHostAllocatorSettings, data HostAllocatorVersion) error
 }
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
-	Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error
 }
 type ProjectSettingsInputResolver interface {
 	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data string) error
@@ -17609,7 +17553,7 @@ func (ec *executionContext) _BootstrapSettings_communication(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.BootstrapSettings().Communication(rctx, obj)
+		return obj.Communication, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17621,17 +17565,17 @@ func (ec *executionContext) _BootstrapSettings_communication(ctx context.Context
 		}
 		return graphql.Null
 	}
-	res := resTmp.(CommunicationMethod)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx, field.Selections, res)
+	return ec.marshalNCommunicationMethod2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_BootstrapSettings_communication(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BootstrapSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type CommunicationMethod does not have child fields")
 		},
@@ -17791,7 +17735,7 @@ func (ec *executionContext) _BootstrapSettings_method(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.BootstrapSettings().Method(rctx, obj)
+		return obj.Method, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17803,17 +17747,17 @@ func (ec *executionContext) _BootstrapSettings_method(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(BootstrapMethod)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx, field.Selections, res)
+	return ec.marshalNBootstrapMethod2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_BootstrapSettings_method(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BootstrapSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type BootstrapMethod does not have child fields")
 		},
@@ -20044,7 +19988,7 @@ func (ec *executionContext) _DispatcherSettings_version(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.DispatcherSettings().Version(rctx, obj)
+		return obj.Version, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -20056,17 +20000,17 @@ func (ec *executionContext) _DispatcherSettings_version(ctx context.Context, fie
 		}
 		return graphql.Null
 	}
-	res := resTmp.(DispatcherVersion)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx, field.Selections, res)
+	return ec.marshalNDispatcherVersion2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_DispatcherSettings_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DispatcherSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DispatcherVersion does not have child fields")
 		},
@@ -20176,7 +20120,7 @@ func (ec *executionContext) _Distro_arch(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Distro().Arch(rctx, obj)
+		return obj.Arch, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -20188,17 +20132,17 @@ func (ec *executionContext) _Distro_arch(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(Arch)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx, field.Selections, res)
+	return ec.marshalNArch2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Distro_arch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Arch does not have child fields")
 		},
@@ -21146,7 +21090,7 @@ func (ec *executionContext) _Distro_provider(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Distro().Provider(rctx, obj)
+		return obj.Provider, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21158,17 +21102,17 @@ func (ec *executionContext) _Distro_provider(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(Provider)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx, field.Selections, res)
+	return ec.marshalNProvider2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Distro_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Provider does not have child fields")
 		},
@@ -23240,7 +23184,7 @@ func (ec *executionContext) _FinderSettings_version(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinderSettings().Version(rctx, obj)
+		return obj.Version, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23252,17 +23196,17 @@ func (ec *executionContext) _FinderSettings_version(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(FinderVersion)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx, field.Selections, res)
+	return ec.marshalNFinderVersion2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_FinderSettings_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "FinderSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type FinderVersion does not have child fields")
 		},
@@ -26940,7 +26884,7 @@ func (ec *executionContext) _HostAllocatorSettings_feedbackRule(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.HostAllocatorSettings().FeedbackRule(rctx, obj)
+		return obj.FeedbackRule, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26952,17 +26896,17 @@ func (ec *executionContext) _HostAllocatorSettings_feedbackRule(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(FeedbackRule)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx, field.Selections, res)
+	return ec.marshalNFeedbackRule2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_feedbackRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type FeedbackRule does not have child fields")
 		},
@@ -27028,7 +26972,7 @@ func (ec *executionContext) _HostAllocatorSettings_hostsOverallocatedRule(ctx co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.HostAllocatorSettings().HostsOverallocatedRule(rctx, obj)
+		return obj.HostsOverallocatedRule, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27040,17 +26984,17 @@ func (ec *executionContext) _HostAllocatorSettings_hostsOverallocatedRule(ctx co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(OverallocatedRule)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx, field.Selections, res)
+	return ec.marshalNOverallocatedRule2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_hostsOverallocatedRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type OverallocatedRule does not have child fields")
 		},
@@ -27160,7 +27104,7 @@ func (ec *executionContext) _HostAllocatorSettings_roundingRule(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.HostAllocatorSettings().RoundingRule(rctx, obj)
+		return obj.RoundingRule, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27172,17 +27116,17 @@ func (ec *executionContext) _HostAllocatorSettings_roundingRule(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(RoundingRule)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx, field.Selections, res)
+	return ec.marshalNRoundingRule2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_roundingRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type RoundingRule does not have child fields")
 		},
@@ -27204,7 +27148,7 @@ func (ec *executionContext) _HostAllocatorSettings_version(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.HostAllocatorSettings().Version(rctx, obj)
+		return obj.Version, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27216,17 +27160,17 @@ func (ec *executionContext) _HostAllocatorSettings_version(ctx context.Context, 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(HostAllocatorVersion)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx, field.Selections, res)
+	return ec.marshalNHostAllocatorVersion2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostAllocatorSettings_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostAllocatorSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type HostAllocatorVersion does not have child fields")
 		},
@@ -43497,7 +43441,7 @@ func (ec *executionContext) _PlannerSettings_version(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PlannerSettings().Version(rctx, obj)
+		return obj.Version, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -43509,17 +43453,17 @@ func (ec *executionContext) _PlannerSettings_version(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(PlannerVersion)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx, field.Selections, res)
+	return ec.marshalNPlannerVersion2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PlannerSettings_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PlannerSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type PlannerVersion does not have child fields")
 		},
@@ -77305,13 +77249,11 @@ func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Con
 			it.ClientDir = data
 		case "communication":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communication"))
-			data, err := ec.unmarshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx, v)
+			data, err := ec.unmarshalNCommunicationMethod2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.BootstrapSettingsInput().Communication(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Communication = data
 		case "env":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("env"))
 			data, err := ec.unmarshalNEnvVarInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVarᚄ(ctx, v)
@@ -77335,13 +77277,11 @@ func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Con
 			it.JasperCredentialsPath = data
 		case "method":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
-			data, err := ec.unmarshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx, v)
+			data, err := ec.unmarshalNBootstrapMethod2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.BootstrapSettingsInput().Method(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Method = data
 		case "preconditionScripts":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("preconditionScripts"))
 			data, err := ec.unmarshalNPreconditionScriptInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPreconditionScriptᚄ(ctx, v)
@@ -78034,13 +77974,11 @@ func (ec *executionContext) unmarshalInputDispatcherSettingsInput(ctx context.Co
 		switch k {
 		case "version":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx, v)
+			data, err := ec.unmarshalNDispatcherVersion2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.DispatcherSettingsInput().Version(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Version = data
 		}
 	}
 
@@ -78172,13 +78110,11 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			it.Aliases = data
 		case "arch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("arch"))
-			data, err := ec.unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx, v)
+			data, err := ec.unmarshalNArch2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.DistroInput().Arch(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Arch = data
 		case "authorizedKeysFile":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("authorizedKeysFile"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -78336,13 +78272,11 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			it.PlannerSettings = data
 		case "provider":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
-			data, err := ec.unmarshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx, v)
+			data, err := ec.unmarshalNProvider2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.DistroInput().Provider(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Provider = data
 		case "providerAccount":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerAccount"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -78740,13 +78674,11 @@ func (ec *executionContext) unmarshalInputFinderSettingsInput(ctx context.Contex
 		switch k {
 		case "version":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx, v)
+			data, err := ec.unmarshalNFinderVersion2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.FinderSettingsInput().Version(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Version = data
 		}
 	}
 
@@ -78907,13 +78839,11 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			it.AutoTuneMaximumHosts = data
 		case "feedbackRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("feedbackRule"))
-			data, err := ec.unmarshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx, v)
+			data, err := ec.unmarshalNFeedbackRule2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.HostAllocatorSettingsInput().FeedbackRule(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.FeedbackRule = data
 		case "futureHostFraction":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("futureHostFraction"))
 			data, err := ec.unmarshalNFloat2float64(ctx, v)
@@ -78923,13 +78853,11 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			it.FutureHostFraction = data
 		case "hostsOverallocatedRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostsOverallocatedRule"))
-			data, err := ec.unmarshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx, v)
+			data, err := ec.unmarshalNOverallocatedRule2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.HostAllocatorSettingsInput().HostsOverallocatedRule(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.HostsOverallocatedRule = data
 		case "maximumHosts":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maximumHosts"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -78946,22 +78874,18 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			it.MinimumHosts = data
 		case "roundingRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roundingRule"))
-			data, err := ec.unmarshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx, v)
+			data, err := ec.unmarshalNRoundingRule2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.HostAllocatorSettingsInput().RoundingRule(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.RoundingRule = data
 		case "version":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx, v)
+			data, err := ec.unmarshalNHostAllocatorVersion2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.HostAllocatorSettingsInput().Version(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Version = data
 		}
 	}
 
@@ -79968,13 +79892,11 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 			}
 		case "version":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx, v)
+			data, err := ec.unmarshalNPlannerVersion2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.PlannerSettingsInput().Version(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Version = data
 		}
 	}
 
@@ -83570,119 +83492,57 @@ func (ec *executionContext) _BootstrapSettings(ctx context.Context, sel ast.Sele
 		case "clientDir":
 			out.Values[i] = ec._BootstrapSettings_clientDir(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "communication":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._BootstrapSettings_communication(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._BootstrapSettings_communication(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "env":
 			out.Values[i] = ec._BootstrapSettings_env(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "jasperBinaryDir":
 			out.Values[i] = ec._BootstrapSettings_jasperBinaryDir(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "jasperCredentialsPath":
 			out.Values[i] = ec._BootstrapSettings_jasperCredentialsPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "method":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._BootstrapSettings_method(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._BootstrapSettings_method(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "preconditionScripts":
 			out.Values[i] = ec._BootstrapSettings_preconditionScripts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "resourceLimits":
 			out.Values[i] = ec._BootstrapSettings_resourceLimits(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "rootDir":
 			out.Values[i] = ec._BootstrapSettings_rootDir(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "serviceUser":
 			out.Values[i] = ec._BootstrapSettings_serviceUser(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "shellPath":
 			out.Values[i] = ec._BootstrapSettings_shellPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -84440,41 +84300,10 @@ func (ec *executionContext) _DispatcherSettings(ctx context.Context, sel ast.Sel
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("DispatcherSettings")
 		case "version":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._DispatcherSettings_version(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._DispatcherSettings_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -84520,41 +84349,10 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "arch":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Distro_arch(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._Distro_arch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "authorizedKeysFile":
 			out.Values[i] = ec._Distro_authorizedKeysFile(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -84651,41 +84449,10 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "provider":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Distro_provider(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._Distro_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "providerAccount":
 			out.Values[i] = ec._Distro_providerAccount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -85331,41 +85098,10 @@ func (ec *executionContext) _FinderSettings(ctx context.Context, sel ast.Selecti
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("FinderSettings")
 		case "version":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinderSettings_version(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._FinderSettings_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -86453,172 +86189,48 @@ func (ec *executionContext) _HostAllocatorSettings(ctx context.Context, sel ast.
 		case "acceptableHostIdleTime":
 			out.Values[i] = ec._HostAllocatorSettings_acceptableHostIdleTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "autoTuneMaximumHosts":
 			out.Values[i] = ec._HostAllocatorSettings_autoTuneMaximumHosts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "feedbackRule":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._HostAllocatorSettings_feedbackRule(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._HostAllocatorSettings_feedbackRule(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "futureHostFraction":
 			out.Values[i] = ec._HostAllocatorSettings_futureHostFraction(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "hostsOverallocatedRule":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._HostAllocatorSettings_hostsOverallocatedRule(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._HostAllocatorSettings_hostsOverallocatedRule(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "maximumHosts":
 			out.Values[i] = ec._HostAllocatorSettings_maximumHosts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "minimumHosts":
 			out.Values[i] = ec._HostAllocatorSettings_minimumHosts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "roundingRule":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._HostAllocatorSettings_roundingRule(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._HostAllocatorSettings_roundingRule(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "version":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._HostAllocatorSettings_version(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._HostAllocatorSettings_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -90250,81 +89862,50 @@ func (ec *executionContext) _PlannerSettings(ctx context.Context, sel ast.Select
 		case "commitQueueFactor":
 			out.Values[i] = ec._PlannerSettings_commitQueueFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "expectedRuntimeFactor":
 			out.Values[i] = ec._PlannerSettings_expectedRuntimeFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "generateTaskFactor":
 			out.Values[i] = ec._PlannerSettings_generateTaskFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "numDependentsFactor":
 			out.Values[i] = ec._PlannerSettings_numDependentsFactor(ctx, field, obj)
 		case "groupVersions":
 			out.Values[i] = ec._PlannerSettings_groupVersions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "mainlineTimeInQueueFactor":
 			out.Values[i] = ec._PlannerSettings_mainlineTimeInQueueFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "patchFactor":
 			out.Values[i] = ec._PlannerSettings_patchFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "patchTimeInQueueFactor":
 			out.Values[i] = ec._PlannerSettings_patchTimeInQueueFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "targetTime":
 			out.Values[i] = ec._PlannerSettings_targetTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "version":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PlannerSettings_version(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._PlannerSettings_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99712,15 +99293,49 @@ func (ec *executionContext) unmarshalNAdminSettingsInput2ᚖgithubᚗcomᚋeverg
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, v any) (Arch, error) {
-	var res Arch
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNArch2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNArch2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, sel ast.SelectionSet, v Arch) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNArch2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNArch2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNArch2ᚖstring = map[string]string{
+		"LINUX_64_BIT":     evergreen.ArchLinuxAmd64,
+		"LINUX_ARM_64_BIT": evergreen.ArchLinuxArm64,
+		"LINUX_PPC_64_BIT": evergreen.ArchLinuxPpc64le,
+		"LINUX_ZSERIES":    evergreen.ArchLinuxS390x,
+		"OSX_64_BIT":       evergreen.ArchDarwinAmd64,
+		"OSX_ARM_64_BIT":   evergreen.ArchDarwinArm64,
+		"WINDOWS_64_BIT":   evergreen.ArchWindowsAmd64,
+	}
+	marshalNArch2ᚖstring = map[string]string{
+		evergreen.ArchLinuxAmd64:   "LINUX_64_BIT",
+		evergreen.ArchLinuxArm64:   "LINUX_ARM_64_BIT",
+		evergreen.ArchLinuxPpc64le: "LINUX_PPC_64_BIT",
+		evergreen.ArchLinuxS390x:   "LINUX_ZSERIES",
+		evergreen.ArchDarwinAmd64:  "OSX_64_BIT",
+		evergreen.ArchDarwinArm64:  "OSX_ARM_64_BIT",
+		evergreen.ArchWindowsAmd64: "WINDOWS_64_BIT",
+	}
+)
 
 func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v any) (evergreen.BannerTheme, error) {
 	tmp, err := graphql.UnmarshalString(v)
@@ -99786,15 +99401,41 @@ func (ec *executionContext) marshalNBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) unmarshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx context.Context, v any) (BootstrapMethod, error) {
-	var res BootstrapMethod
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNBootstrapMethod2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNBootstrapMethod2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNBootstrapMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐBootstrapMethod(ctx context.Context, sel ast.SelectionSet, v BootstrapMethod) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNBootstrapMethod2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNBootstrapMethod2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNBootstrapMethod2ᚖstring = map[string]string{
+		"LEGACY_SSH": distro.BootstrapMethodLegacySSH,
+		"SSH":        distro.BootstrapMethodSSH,
+		"USER_DATA":  distro.BootstrapMethodUserData,
+	}
+	marshalNBootstrapMethod2ᚖstring = map[string]string{
+		distro.BootstrapMethodLegacySSH: "LEGACY_SSH",
+		distro.BootstrapMethodSSH:       "SSH",
+		distro.BootstrapMethodUserData:  "USER_DATA",
+	}
+)
 
 func (ec *executionContext) marshalNBootstrapSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBootstrapSettings(ctx context.Context, sel ast.SelectionSet, v model.APIBootstrapSettings) graphql.Marshaler {
 	return ec._BootstrapSettings(ctx, sel, &v)
@@ -99904,15 +99545,41 @@ func (ec *executionContext) marshalNCommitQueueParams2githubᚗcomᚋevergreen�
 	return ec._CommitQueueParams(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx context.Context, v any) (CommunicationMethod, error) {
-	var res CommunicationMethod
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNCommunicationMethod2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNCommunicationMethod2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCommunicationMethod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCommunicationMethod(ctx context.Context, sel ast.SelectionSet, v CommunicationMethod) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNCommunicationMethod2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNCommunicationMethod2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNCommunicationMethod2ᚖstring = map[string]string{
+		"LEGACY_SSH": distro.CommunicationMethodLegacySSH,
+		"SSH":        distro.CommunicationMethodSSH,
+		"RPC":        distro.CommunicationMethodRPC,
+	}
+	marshalNCommunicationMethod2ᚖstring = map[string]string{
+		distro.CommunicationMethodLegacySSH: "LEGACY_SSH",
+		distro.CommunicationMethodSSH:       "SSH",
+		distro.CommunicationMethodRPC:       "RPC",
+	}
+)
 
 func (ec *executionContext) marshalNContainerPool2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx context.Context, sel ast.SelectionSet, v model.APIContainerPool) graphql.Marshaler {
 	return ec._ContainerPool(ctx, sel, &v)
@@ -100049,15 +99716,37 @@ func (ec *executionContext) unmarshalNDispatcherSettingsInput2githubᚗcomᚋeve
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx context.Context, v any) (DispatcherVersion, error) {
-	var res DispatcherVersion
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNDispatcherVersion2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNDispatcherVersion2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNDispatcherVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDispatcherVersion(ctx context.Context, sel ast.SelectionSet, v DispatcherVersion) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNDispatcherVersion2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNDispatcherVersion2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNDispatcherVersion2ᚖstring = map[string]string{
+		"REVISED_WITH_DEPENDENCIES": evergreen.DispatcherVersionRevisedWithDependencies,
+	}
+	marshalNDispatcherVersion2ᚖstring = map[string]string{
+		evergreen.DispatcherVersionRevisedWithDependencies: "REVISED_WITH_DEPENDENCIES",
+	}
+)
 
 func (ec *executionContext) unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx context.Context, v any) ([]*DisplayTask, error) {
 	var vSlice []any
@@ -100465,15 +100154,41 @@ func (ec *executionContext) unmarshalNExternalLinkInput2githubᚗcomᚋevergreen
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx context.Context, v any) (FeedbackRule, error) {
-	var res FeedbackRule
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNFeedbackRule2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNFeedbackRule2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx context.Context, sel ast.SelectionSet, v FeedbackRule) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNFeedbackRule2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNFeedbackRule2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNFeedbackRule2ᚖstring = map[string]string{
+		"WAITS_OVER_THRESH": evergreen.HostAllocatorWaitsOverThreshFeedback,
+		"NO_FEEDBACK":       evergreen.HostAllocatorNoFeedback,
+		"DEFAULT":           evergreen.HostAllocatorUseDefaultFeedback,
+	}
+	marshalNFeedbackRule2ᚖstring = map[string]string{
+		evergreen.HostAllocatorWaitsOverThreshFeedback: "WAITS_OVER_THRESH",
+		evergreen.HostAllocatorNoFeedback:              "NO_FEEDBACK",
+		evergreen.HostAllocatorUseDefaultFeedback:      "DEFAULT",
+	}
+)
 
 func (ec *executionContext) marshalNFile2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFile(ctx context.Context, sel ast.SelectionSet, v *model.APIFile) graphql.Marshaler {
 	if v == nil {
@@ -100542,15 +100257,43 @@ func (ec *executionContext) unmarshalNFinderSettingsInput2githubᚗcomᚋevergre
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx context.Context, v any) (FinderVersion, error) {
-	var res FinderVersion
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNFinderVersion2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNFinderVersion2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNFinderVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFinderVersion(ctx context.Context, sel ast.SelectionSet, v FinderVersion) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNFinderVersion2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNFinderVersion2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNFinderVersion2ᚖstring = map[string]string{
+		"LEGACY":    evergreen.FinderVersionLegacy,
+		"PARALLEL":  evergreen.FinderVersionParallel,
+		"PIPELINE":  evergreen.FinderVersionPipeline,
+		"ALTERNATE": evergreen.FinderVersionAlternate,
+	}
+	marshalNFinderVersion2ᚖstring = map[string]string{
+		evergreen.FinderVersionLegacy:    "LEGACY",
+		evergreen.FinderVersionParallel:  "PARALLEL",
+		evergreen.FinderVersionPipeline:  "PIPELINE",
+		evergreen.FinderVersionAlternate: "ALTERNATE",
+	}
+)
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
@@ -100921,15 +100664,37 @@ func (ec *executionContext) unmarshalNHostAllocatorSettingsInput2githubᚗcomᚋ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx context.Context, v any) (HostAllocatorVersion, error) {
-	var res HostAllocatorVersion
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNHostAllocatorVersion2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNHostAllocatorVersion2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHostAllocatorVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAllocatorVersion(ctx context.Context, sel ast.SelectionSet, v HostAllocatorVersion) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNHostAllocatorVersion2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNHostAllocatorVersion2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNHostAllocatorVersion2ᚖstring = map[string]string{
+		"UTILIZATION": evergreen.HostAllocatorUtilization,
+	}
+	marshalNHostAllocatorVersion2ᚖstring = map[string]string{
+		evergreen.HostAllocatorUtilization: "UTILIZATION",
+	}
+)
 
 func (ec *executionContext) marshalNHostEventLogData2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐHostAPIEventData(ctx context.Context, sel ast.SelectionSet, v *model.HostAPIEventData) graphql.Marshaler {
 	if v == nil {
@@ -102138,15 +101903,41 @@ func (ec *executionContext) unmarshalNOperatingSystemOpts2githubᚗcomᚋevergre
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx context.Context, v any) (OverallocatedRule, error) {
-	var res OverallocatedRule
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNOverallocatedRule2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNOverallocatedRule2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx context.Context, sel ast.SelectionSet, v OverallocatedRule) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNOverallocatedRule2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNOverallocatedRule2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNOverallocatedRule2ᚖstring = map[string]string{
+		"TERMINATE": evergreen.HostsOverallocatedTerminate,
+		"IGNORE":    evergreen.HostsOverallocatedIgnore,
+		"DEFAULT":   evergreen.HostsOverallocatedUseDefault,
+	}
+	marshalNOverallocatedRule2ᚖstring = map[string]string{
+		evergreen.HostsOverallocatedTerminate:  "TERMINATE",
+		evergreen.HostsOverallocatedIgnore:     "IGNORE",
+		evergreen.HostsOverallocatedUseDefault: "DEFAULT",
+	}
+)
 
 func (ec *executionContext) marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPackage) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
@@ -102553,15 +102344,37 @@ func (ec *executionContext) unmarshalNPlannerSettingsInput2githubᚗcomᚋevergr
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx context.Context, v any) (PlannerVersion, error) {
-	var res PlannerVersion
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNPlannerVersion2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNPlannerVersion2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNPlannerVersion2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPlannerVersion(ctx context.Context, sel ast.SelectionSet, v PlannerVersion) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNPlannerVersion2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNPlannerVersion2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNPlannerVersion2ᚖstring = map[string]string{
+		"TUNABLE": evergreen.PlannerVersionTunable,
+	}
+	marshalNPlannerVersion2ᚖstring = map[string]string{
+		evergreen.PlannerVersionTunable: "TUNABLE",
+	}
+)
 
 func (ec *executionContext) marshalNPod2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPod(ctx context.Context, sel ast.SelectionSet, v model.APIPod) graphql.Marshaler {
 	return ec._Pod(ctx, sel, &v)
@@ -103045,15 +102858,43 @@ func (ec *executionContext) unmarshalNPromoteVarsToRepoInput2githubᚗcomᚋever
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx context.Context, v any) (Provider, error) {
-	var res Provider
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNProvider2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNProvider2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx context.Context, sel ast.SelectionSet, v Provider) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNProvider2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNProvider2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNProvider2ᚖstring = map[string]string{
+		"DOCKER":        evergreen.ProviderNameDocker,
+		"EC2_FLEET":     evergreen.ProviderNameEc2Fleet,
+		"EC2_ON_DEMAND": evergreen.ProviderNameEc2OnDemand,
+		"STATIC":        evergreen.ProviderNameStatic,
+	}
+	marshalNProvider2ᚖstring = map[string]string{
+		evergreen.ProviderNameDocker:      "DOCKER",
+		evergreen.ProviderNameEc2Fleet:    "EC2_FLEET",
+		evergreen.ProviderNameEc2OnDemand: "EC2_ON_DEMAND",
+		evergreen.ProviderNameStatic:      "STATIC",
+	}
+)
 
 func (ec *executionContext) marshalNPublicKey2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPubKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPubKey) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
@@ -103184,15 +103025,41 @@ func (ec *executionContext) unmarshalNResourceLimitsInput2githubᚗcomᚋevergre
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx context.Context, v any) (RoundingRule, error) {
-	var res RoundingRule
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) unmarshalNRoundingRule2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNRoundingRule2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRoundingRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRoundingRule(ctx context.Context, sel ast.SelectionSet, v RoundingRule) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNRoundingRule2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNRoundingRule2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
+
+var (
+	unmarshalNRoundingRule2ᚖstring = map[string]string{
+		"DOWN":    evergreen.HostAllocatorRoundDown,
+		"UP":      evergreen.HostAllocatorRoundUp,
+		"DEFAULT": evergreen.HostAllocatorRoundDefault,
+	}
+	marshalNRoundingRule2ᚖstring = map[string]string{
+		evergreen.HostAllocatorRoundDown:    "DOWN",
+		evergreen.HostAllocatorRoundUp:      "UP",
+		evergreen.HostAllocatorRoundDefault: "DEFAULT",
+	}
+)
 
 func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v any) (SaveDistroInput, error) {
 	res, err := ec.unmarshalInputSaveDistroInput(ctx, v)
