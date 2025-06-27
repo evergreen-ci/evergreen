@@ -77,11 +77,15 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 
 // BuildVariantStats is the resolver for the buildVariantStats field.
 func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.APIVersion, options BuildVariantOptions) ([]*task.GroupedTaskStatusCount, error) {
+	includeNeverActivatedTasks := options.IncludeNeverActivatedTasks
+	if includeNeverActivatedTasks == nil {
+		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	}
 	opts := task.GetTasksByVersionOptions{
 		TaskNames:                  options.Tasks,
 		Variants:                   options.Variants,
 		Statuses:                   options.Statuses,
-		IncludeNeverActivatedTasks: !obj.IsPatchRequester(),
+		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !obj.IsPatchRequester(),
 	}
 	versionID := utility.FromStringPtr(obj.Id)
 	stats, err := task.GetGroupedTaskStatsByVersion(ctx, versionID, opts)
@@ -273,9 +277,14 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 }
 
 // TaskCount is the resolver for the taskCount field.
-func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
+func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion, options *TaskCountOptions) (*int, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(versionID, !obj.IsPatchRequester())))
+	// if includeNeverActivatedTasks is nil, we default to using the value of the requester
+	includeNeverActivatedTasks := utility.ToBoolPtr(!obj.IsPatchRequester())
+	if options != nil && options.IncludeNeverActivatedTasks != nil {
+		includeNeverActivatedTasks = options.IncludeNeverActivatedTasks
+	}
+	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(versionID, utility.FromBoolPtr(includeNeverActivatedTasks))))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", versionID, err.Error()))
 	}
@@ -285,6 +294,10 @@ func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersi
 // Tasks is the resolver for the tasks field.
 func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, options TaskFilterOptions) (*VersionTasks, error) {
 	versionID := utility.FromStringPtr(obj.Id)
+	includeNeverActivatedTasks := options.IncludeNeverActivatedTasks
+	if includeNeverActivatedTasks == nil {
+		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	}
 	pageParam := 0
 	if options.Page != nil {
 		pageParam = *options.Page
@@ -345,7 +358,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Limit:        limitParam,
 		Sorts:        taskSorts,
 		// If the version is a patch, we want to exclude inactive tasks by default.
-		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
+		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)),
 		BaseVersionID:              baseVersionID,
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionID, opts)
@@ -381,13 +394,17 @@ func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVe
 
 // TaskStatusStats is the resolver for the taskStatusStats field.
 func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.APIVersion, options BuildVariantOptions) (*task.TaskStats, error) {
+	includeNeverActivatedTasks := options.IncludeNeverActivatedTasks
+	if includeNeverActivatedTasks == nil {
+		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	}
 	opts := task.GetTasksByVersionOptions{
 		IncludeExecutionTasks: false,
 		TaskNames:             options.Tasks,
 		Variants:              options.Variants,
 		Statuses:              getValidTaskStatusesFilter(options.Statuses),
 		// If the version is a patch, we don't want to include its never activated tasks.
-		IncludeNeverActivatedTasks: !obj.IsPatchRequester(),
+		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !obj.IsPatchRequester(),
 	}
 
 	versionID := utility.FromStringPtr(obj.Id)

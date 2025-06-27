@@ -1663,7 +1663,7 @@ type ComplexityRoot struct {
 		Revision                 func(childComplexity int) int
 		StartTime                func(childComplexity int) int
 		Status                   func(childComplexity int) int
-		TaskCount                func(childComplexity int) int
+		TaskCount                func(childComplexity int, options *TaskCountOptions) int
 		TaskStatusStats          func(childComplexity int, options BuildVariantOptions) int
 		TaskStatuses             func(childComplexity int) int
 		Tasks                    func(childComplexity int, options TaskFilterOptions) int
@@ -2131,7 +2131,7 @@ type VersionResolver interface {
 	ProjectMetadata(ctx context.Context, obj *model.APIVersion) (*model.APIProjectRef, error)
 
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
-	TaskCount(ctx context.Context, obj *model.APIVersion) (*int, error)
+	TaskCount(ctx context.Context, obj *model.APIVersion, options *TaskCountOptions) (*int, error)
 	Tasks(ctx context.Context, obj *model.APIVersion, options TaskFilterOptions) (*VersionTasks, error)
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
@@ -10077,7 +10077,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Version.TaskCount(childComplexity), true
+		args, err := ec.field_Version_taskCount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.TaskCount(childComplexity, args["options"].(*TaskCountOptions)), true
 
 	case "Version.taskStatusStats":
 		if e.complexity.Version.TaskStatusStats == nil {
@@ -10621,6 +10626,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSubscriberInput,
 		ec.unmarshalInputSubscriptionInput,
 		ec.unmarshalInputTaskAnnotationSettingsInput,
+		ec.unmarshalInputTaskCountOptions,
 		ec.unmarshalInputTaskFilterOptions,
 		ec.unmarshalInputTaskHistoryOpts,
 		ec.unmarshalInputTaskPriority,
@@ -16418,6 +16424,34 @@ func (ec *executionContext) field_Version_buildVariants_argsOptions(
 	}
 
 	var zeroVal BuildVariantOptions
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Version_taskCount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Version_taskCount_argsOptions(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["options"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Version_taskCount_argsOptions(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*TaskCountOptions, error) {
+	if _, ok := rawArgs["options"]; !ok {
+		var zeroVal *TaskCountOptions
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+	if tmp, ok := rawArgs["options"]; ok {
+		return ec.unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskCountOptions(ctx, tmp)
+	}
+
+	var zeroVal *TaskCountOptions
 	return zeroVal, nil
 }
 
@@ -71856,7 +71890,7 @@ func (ec *executionContext) _Version_taskCount(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().TaskCount(rctx, obj)
+		return ec.resolvers.Version().TaskCount(rctx, obj, fc.Args["options"].(*TaskCountOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -71870,7 +71904,7 @@ func (ec *executionContext) _Version_taskCount(ctx context.Context, field graphq
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Version_taskCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Version_taskCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
@@ -71879,6 +71913,17 @@ func (ec *executionContext) fieldContext_Version_taskCount(_ context.Context, fi
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Version_taskCount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -77466,7 +77511,7 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"includeBaseTasks", "statuses", "tasks", "variants"}
+	fieldsInOrder := [...]string{"includeBaseTasks", "includeNeverActivatedTasks", "statuses", "tasks", "variants"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77480,6 +77525,13 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 				return it, err
 			}
 			it.IncludeBaseTasks = data
+		case "includeNeverActivatedTasks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeNeverActivatedTasks"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeNeverActivatedTasks = data
 		case "statuses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -81893,6 +81945,33 @@ func (ec *executionContext) unmarshalInputTaskAnnotationSettingsInput(ctx contex
 				return it, err
 			}
 			it.FileTicketWebhook = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTaskCountOptions(ctx context.Context, obj any) (TaskCountOptions, error) {
+	var it TaskCountOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"includeNeverActivatedTasks"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "includeNeverActivatedTasks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeNeverActivatedTasks"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeNeverActivatedTasks = data
 		}
 	}
 
@@ -107258,6 +107337,14 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 func (ec *executionContext) unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, v any) (model.APITaskAnnotationSettings, error) {
 	res, err := ec.unmarshalInputTaskAnnotationSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskCountOptions(ctx context.Context, v any) (*TaskCountOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTaskCountOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
