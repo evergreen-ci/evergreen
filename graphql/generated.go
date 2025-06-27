@@ -56832,11 +56832,14 @@ func (ec *executionContext) _ServiceFlags_taskDispatchDisabled(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_taskDispatchDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -56873,11 +56876,14 @@ func (ec *executionContext) _ServiceFlags_hostInitDisabled(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_hostInitDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -56914,11 +56920,14 @@ func (ec *executionContext) _ServiceFlags_podInitDisabled(ctx context.Context, f
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_podInitDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -56955,11 +56964,14 @@ func (ec *executionContext) _ServiceFlags_largeParserProjectsDisabled(ctx contex
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_largeParserProjectsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -56996,11 +57008,14 @@ func (ec *executionContext) _ServiceFlags_monitorDisabled(ctx context.Context, f
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_monitorDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57037,11 +57052,14 @@ func (ec *executionContext) _ServiceFlags_alertsDisabled(ctx context.Context, fi
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_alertsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57078,11 +57096,14 @@ func (ec *executionContext) _ServiceFlags_agentStartDisabled(ctx context.Context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_agentStartDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57119,11 +57140,14 @@ func (ec *executionContext) _ServiceFlags_repotrackerDisabled(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_repotrackerDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57160,11 +57184,14 @@ func (ec *executionContext) _ServiceFlags_schedulerDisabled(ctx context.Context,
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_schedulerDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57201,11 +57228,14 @@ func (ec *executionContext) _ServiceFlags_checkBlockedTasksDisabled(ctx context.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_checkBlockedTasksDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57242,11 +57272,14 @@ func (ec *executionContext) _ServiceFlags_githubPRTestingDisabled(ctx context.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_githubPRTestingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57283,11 +57316,14 @@ func (ec *executionContext) _ServiceFlags_cliUpdatesDisabled(ctx context.Context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_cliUpdatesDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57324,11 +57360,14 @@ func (ec *executionContext) _ServiceFlags_backgroundStatsDisabled(ctx context.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_backgroundStatsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57365,11 +57404,14 @@ func (ec *executionContext) _ServiceFlags_taskLoggingDisabled(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_taskLoggingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57406,11 +57448,14 @@ func (ec *executionContext) _ServiceFlags_cacheStatsJobDisabled(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_cacheStatsJobDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57447,11 +57492,14 @@ func (ec *executionContext) _ServiceFlags_evergreenTestResultsDisabled(ctx conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_evergreenTestResultsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57488,11 +57536,14 @@ func (ec *executionContext) _ServiceFlags_cacheStatsEndpointDisabled(ctx context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_cacheStatsEndpointDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57529,11 +57580,14 @@ func (ec *executionContext) _ServiceFlags_taskReliabilityDisabled(ctx context.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_taskReliabilityDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57570,11 +57624,14 @@ func (ec *executionContext) _ServiceFlags_hostAllocatorDisabled(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_hostAllocatorDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57611,11 +57668,14 @@ func (ec *executionContext) _ServiceFlags_podAllocatorDisabled(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_podAllocatorDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57652,11 +57712,14 @@ func (ec *executionContext) _ServiceFlags_unrecognizedPodCleanupDisabled(ctx con
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_unrecognizedPodCleanupDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57693,11 +57756,14 @@ func (ec *executionContext) _ServiceFlags_backgroundReauthDisabled(ctx context.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_backgroundReauthDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57734,11 +57800,14 @@ func (ec *executionContext) _ServiceFlags_backgroundCleanupDisabled(ctx context.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_backgroundCleanupDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57775,11 +57844,14 @@ func (ec *executionContext) _ServiceFlags_cloudCleanupDisabled(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_cloudCleanupDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57816,11 +57888,14 @@ func (ec *executionContext) _ServiceFlags_sleepScheduleDisabled(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_sleepScheduleDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57857,11 +57932,14 @@ func (ec *executionContext) _ServiceFlags_staticAPIKeysDisabled(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_staticAPIKeysDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57898,11 +57976,14 @@ func (ec *executionContext) _ServiceFlags_jwtTokenForCLIDisabled(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57939,11 +58020,14 @@ func (ec *executionContext) _ServiceFlags_systemFailedTaskRestartDisabled(ctx co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_systemFailedTaskRestartDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57980,11 +58064,14 @@ func (ec *executionContext) _ServiceFlags_degradedModeDisabled(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_degradedModeDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58021,11 +58108,14 @@ func (ec *executionContext) _ServiceFlags_elasticIPsDisabled(ctx context.Context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_elasticIPsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58062,11 +58152,14 @@ func (ec *executionContext) _ServiceFlags_releaseModeDisabled(ctx context.Contex
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_releaseModeDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58103,11 +58196,14 @@ func (ec *executionContext) _ServiceFlags_adminParameterStoreDisabled(ctx contex
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_adminParameterStoreDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58144,11 +58240,14 @@ func (ec *executionContext) _ServiceFlags_eventProcessingDisabled(ctx context.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_eventProcessingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58185,11 +58284,14 @@ func (ec *executionContext) _ServiceFlags_jiraNotificationsDisabled(ctx context.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_jiraNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58226,11 +58328,14 @@ func (ec *executionContext) _ServiceFlags_slackNotificationsDisabled(ctx context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_slackNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58267,11 +58372,14 @@ func (ec *executionContext) _ServiceFlags_emailNotificationsDisabled(ctx context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_emailNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58308,11 +58416,14 @@ func (ec *executionContext) _ServiceFlags_webhookNotificationsDisabled(ctx conte
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_webhookNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58349,11 +58460,14 @@ func (ec *executionContext) _ServiceFlags_githubStatusAPIDisabled(ctx context.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_githubStatusAPIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -83426,266 +83540,266 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		switch k {
 		case "taskDispatchDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskDispatchDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TaskDispatchDisabled = data
 		case "hostInitDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostInitDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.HostInitDisabled = data
 		case "podInitDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("podInitDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PodInitDisabled = data
 		case "largeParserProjectsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("largeParserProjectsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.LargeParserProjectsDisabled = data
 		case "monitorDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("monitorDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MonitorDisabled = data
 		case "alertsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alertsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AlertsDisabled = data
 		case "agentStartDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentStartDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AgentStartDisabled = data
 		case "repotrackerDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repotrackerDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.RepotrackerDisabled = data
 		case "schedulerDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("schedulerDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.SchedulerDisabled = data
 		case "checkBlockedTasksDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("checkBlockedTasksDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CheckBlockedTasksDisabled = data
 		case "githubPRTestingDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPRTestingDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.GithubPRTestingDisabled = data
 		case "cliUpdatesDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cliUpdatesDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CLIUpdatesDisabled = data
 		case "backgroundStatsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backgroundStatsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.BackgroundStatsDisabled = data
 		case "taskLoggingDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskLoggingDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TaskLoggingDisabled = data
 		case "cacheStatsJobDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheStatsJobDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CacheStatsJobDisabled = data
 		case "evergreenTestResultsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("evergreenTestResultsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.EvergreenTestResultsDisabled = data
 		case "cacheStatsEndpointDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheStatsEndpointDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CacheStatsEndpointDisabled = data
 		case "taskReliabilityDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskReliabilityDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TaskReliabilityDisabled = data
 		case "hostAllocatorDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostAllocatorDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.HostAllocatorDisabled = data
 		case "podAllocatorDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("podAllocatorDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PodAllocatorDisabled = data
 		case "unrecognizedPodCleanupDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unrecognizedPodCleanupDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.UnrecognizedPodCleanupDisabled = data
 		case "backgroundReauthDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backgroundReauthDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.BackgroundReauthDisabled = data
 		case "backgroundCleanupDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backgroundCleanupDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.BackgroundCleanupDisabled = data
 		case "cloudCleanupDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloudCleanupDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CloudCleanupDisabled = data
 		case "sleepScheduleDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sleepScheduleDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.SleepScheduleDisabled = data
 		case "staticAPIKeysDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("staticAPIKeysDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StaticAPIKeysDisabled = data
 		case "jwtTokenForCLIDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jwtTokenForCLIDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.JWTTokenForCLIDisabled = data
 		case "systemFailedTaskRestartDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("systemFailedTaskRestartDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.SystemFailedTaskRestartDisabled = data
 		case "degradedModeDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("degradedModeDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.DegradedModeDisabled = data
 		case "elasticIPsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("elasticIPsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ElasticIPsDisabled = data
 		case "releaseModeDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("releaseModeDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ReleaseModeDisabled = data
 		case "adminParameterStoreDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("adminParameterStoreDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AdminParameterStoreDisabled = data
 		case "eventProcessingDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventProcessingDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.EventProcessingDisabled = data
 		case "jiraNotificationsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jiraNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.JIRANotificationsDisabled = data
 		case "slackNotificationsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slackNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.SlackNotificationsDisabled = data
 		case "emailNotificationsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emailNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.EmailNotificationsDisabled = data
 		case "webhookNotificationsDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webhookNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.WebhookNotificationsDisabled = data
 		case "githubStatusAPIDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubStatusAPIDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -95880,80 +95994,194 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("ServiceFlags")
 		case "taskDispatchDisabled":
 			out.Values[i] = ec._ServiceFlags_taskDispatchDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "hostInitDisabled":
 			out.Values[i] = ec._ServiceFlags_hostInitDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "podInitDisabled":
 			out.Values[i] = ec._ServiceFlags_podInitDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "largeParserProjectsDisabled":
 			out.Values[i] = ec._ServiceFlags_largeParserProjectsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "monitorDisabled":
 			out.Values[i] = ec._ServiceFlags_monitorDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "alertsDisabled":
 			out.Values[i] = ec._ServiceFlags_alertsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "agentStartDisabled":
 			out.Values[i] = ec._ServiceFlags_agentStartDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "repotrackerDisabled":
 			out.Values[i] = ec._ServiceFlags_repotrackerDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "schedulerDisabled":
 			out.Values[i] = ec._ServiceFlags_schedulerDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "checkBlockedTasksDisabled":
 			out.Values[i] = ec._ServiceFlags_checkBlockedTasksDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "githubPRTestingDisabled":
 			out.Values[i] = ec._ServiceFlags_githubPRTestingDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "cliUpdatesDisabled":
 			out.Values[i] = ec._ServiceFlags_cliUpdatesDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "backgroundStatsDisabled":
 			out.Values[i] = ec._ServiceFlags_backgroundStatsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "taskLoggingDisabled":
 			out.Values[i] = ec._ServiceFlags_taskLoggingDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "cacheStatsJobDisabled":
 			out.Values[i] = ec._ServiceFlags_cacheStatsJobDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "evergreenTestResultsDisabled":
 			out.Values[i] = ec._ServiceFlags_evergreenTestResultsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "cacheStatsEndpointDisabled":
 			out.Values[i] = ec._ServiceFlags_cacheStatsEndpointDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "taskReliabilityDisabled":
 			out.Values[i] = ec._ServiceFlags_taskReliabilityDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "hostAllocatorDisabled":
 			out.Values[i] = ec._ServiceFlags_hostAllocatorDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "podAllocatorDisabled":
 			out.Values[i] = ec._ServiceFlags_podAllocatorDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "unrecognizedPodCleanupDisabled":
 			out.Values[i] = ec._ServiceFlags_unrecognizedPodCleanupDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "backgroundReauthDisabled":
 			out.Values[i] = ec._ServiceFlags_backgroundReauthDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "backgroundCleanupDisabled":
 			out.Values[i] = ec._ServiceFlags_backgroundCleanupDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "cloudCleanupDisabled":
 			out.Values[i] = ec._ServiceFlags_cloudCleanupDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "sleepScheduleDisabled":
 			out.Values[i] = ec._ServiceFlags_sleepScheduleDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "staticAPIKeysDisabled":
 			out.Values[i] = ec._ServiceFlags_staticAPIKeysDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "jwtTokenForCLIDisabled":
 			out.Values[i] = ec._ServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "systemFailedTaskRestartDisabled":
 			out.Values[i] = ec._ServiceFlags_systemFailedTaskRestartDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "degradedModeDisabled":
 			out.Values[i] = ec._ServiceFlags_degradedModeDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "elasticIPsDisabled":
 			out.Values[i] = ec._ServiceFlags_elasticIPsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "releaseModeDisabled":
 			out.Values[i] = ec._ServiceFlags_releaseModeDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "adminParameterStoreDisabled":
 			out.Values[i] = ec._ServiceFlags_adminParameterStoreDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "eventProcessingDisabled":
 			out.Values[i] = ec._ServiceFlags_eventProcessingDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "jiraNotificationsDisabled":
 			out.Values[i] = ec._ServiceFlags_jiraNotificationsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "slackNotificationsDisabled":
 			out.Values[i] = ec._ServiceFlags_slackNotificationsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "emailNotificationsDisabled":
 			out.Values[i] = ec._ServiceFlags_emailNotificationsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "webhookNotificationsDisabled":
 			out.Values[i] = ec._ServiceFlags_webhookNotificationsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "githubStatusAPIDisabled":
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
