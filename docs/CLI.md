@@ -22,7 +22,7 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
 
 ### Install kanopy-oidc
   
-  *Note: This will already be configured for you when using a spawn host on all spawn hosts except for Windows. Please see [DEVPROD-18592](https://jira.mongodb.org/browse/DEVPROD-18592) for updates. If you are using a Windows spawn host, please opt out by setting 'do_not_run_kanopy_oidc' to true in your evergreen config file (~/.evergreen.yml) until further notice.*
+  *Note: This will already be configured for you on all spawn hosts except Windows hosts. Please see [DEVPROD-18592](https://jira.mongodb.org/browse/DEVPROD-18592) for updates. If you are using a Windows spawn host, please opt out by setting 'do_not_run_kanopy_oidc' to true in your evergreen config file (~/.evergreen.yml) until further notice.*
   
   - [Download](https://github.com/kanopy-platform/kanopy-oidc/releases/) the latest release for your laptop’s OS/architecture. If you already have Kanopy-OIDC installed, make sure you’re running version 0.5.0 or later.
   - untar the release tarball
