@@ -17,6 +17,9 @@ Authentication
 
 API Keys will soon be deprecated for human users. The following will need to be done to authenticate when using the CLI. 
 
+### Ensure that your Evergreen CLI is not out of date 
+Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't have automatic updates enabled. 
+
 ### Install kanopy-oidc
   
   *Note: This will already be configured for you when using a spawn host.*
