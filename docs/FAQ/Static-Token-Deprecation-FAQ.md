@@ -26,6 +26,7 @@ For updates on this migration, please see [DEVPROD-4160](https://jira.mongodb.or
 
 ## I own a script that is used by manual users and uses the Evergreen api, what should I do to prepare for the deprecation? 
 - Switch your script to use evergreen.mongodb.com for service users along with the headers specified [here](../API/REST-V1-Usage#static-api-keys), and evergreen.corp.mongodb.com for non service users with the headers specified [here](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/384992097/Kanopy+Auth+On+Evergreen#KanopyAuthOnEvergreen-RESTAPI(V1andV2)). 
+- If you use [evergreen.py](https://github.com/evergreen-ci/evergreen.py) in your script, it will attempt to generate a personal access token and use that to authenticate when no api key is saved in the .evergreen.yml config file. Please comment out the api key in your config file and make sure it works as expected. 
 - We are working on providing a CLI command that will make it easier for scripts that rely on the .evergreen.yml config file. Please follow [DEVPROD-17996](https://jira.mongodb.org/browse/DEVPROD-17996) for updates. 
 
 ## I am using a static Evergreen API key in an Evergreen task, will this continue to work?
