@@ -311,6 +311,8 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"host_id":            j.host.Id,
 		"distro":             j.host.Distro.Id,
 		"single_task_distro": j.host.Distro.SingleTaskDistro,
+		"ip_allocation_id":   j.host.IPAllocationID,
+		"ip_association_id":  j.host.IPAssociationID,
 		"job":                j.ID(),
 		"reason":             j.TerminationReason,
 		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),
@@ -324,6 +326,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
 	}
+	var instanceType string
+	if evergreen.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
+		var ok bool
+		instanceType, ok = j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+		if ok {
+			terminationMessage["instance_type"] = instanceType
+		}
+	}
 	grip.Info(terminationMessage)
 
 	span := trace.SpanFromContext(ctx)
@@ -332,11 +342,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
 		attribute.Float64(fmt.Sprintf("%s.idle_secs", hostTerminationAttributePrefix), j.host.TotalIdleTime.Seconds()),
 		attribute.Float64(fmt.Sprintf("%s.running_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.StartTime).Seconds()),
+		attribute.String(fmt.Sprintf("%s.ip_allocation_id", hostTerminationAttributePrefix), j.host.IPAllocationID),
+		attribute.String(fmt.Sprintf("%s.ip_association_id", hostTerminationAttributePrefix), j.host.IPAssociationID),
+		attribute.String(fmt.Sprintf("%s.started_by", hostTerminationAttributePrefix), j.host.StartedBy),
 		attribute.Bool(fmt.Sprintf("%s.user_host", hostTerminationAttributePrefix), j.host.UserHost),
 		attribute.Int(fmt.Sprintf("%s.task_count", hostTerminationAttributePrefix), j.host.TaskCount),
 	)
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		span.SetAttributes(attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()))
+	}
+	if instanceType != "" {
+		span.SetAttributes(attribute.String(fmt.Sprintf("%s.instance_type", hostTerminationAttributePrefix), instanceType))
 	}
 
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
