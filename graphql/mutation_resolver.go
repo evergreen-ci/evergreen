@@ -149,7 +149,6 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 // SaveAdminSettings is the resolver for the saveAdminSettings field.
 func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings restModel.APIAdminSettings) (*restModel.APIAdminSettings, error) {
 	oldSettings, err := evergreen.GetConfig(ctx)
-
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
@@ -160,7 +159,6 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 	}
 
 	updatedSettingsAPI := restModel.APIAdminSettings{}
-
 	if err := updatedSettingsAPI.BuildFromService(newSettings); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
 	}
