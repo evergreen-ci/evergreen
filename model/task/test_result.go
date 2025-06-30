@@ -3,11 +3,9 @@ package task
 import (
 	"bytes"
 	"context"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"io"
 	"regexp"
 	"sort"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -371,9 +369,9 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 	})
 }
 
-// downloadParquet downloads test results in parquet format from s3.
-func (o TestResultOutput) downloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
-	bucket, err := o.getBucket(ctx, credentials)
+// DownloadParquet downloads test results in parquet format from s3.
+func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
+	bucket, err := o.GetBucket(ctx, credentials)
 	if err != nil {
 		return nil, err
 	}
@@ -434,8 +432,8 @@ func (o TestResultOutput) downloadParquet(ctx context.Context, credentials everg
 	return results, nil
 }
 
-// getBucket constructs an s3 bucket to retrieve test results from.
-func (o TestResultOutput) getBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
+// GetBucket constructs an s3 bucket to retrieve test results from.
+func (o TestResultOutput) GetBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
 	bucket, err := o.createBucket(ctx, credentials, o.BucketConfig.TestResultsPrefix, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating bucket")
@@ -490,165 +488,4 @@ func (o TestResultOutput) createBucket(ctx context.Context, credentials evergree
 		return nil, errors.WithStack(err)
 	}
 	return b, nil
-}
-
-// UploadTestResults downloads existing test results from s3, appends new results to the response, and re-writes the appended results
-// to the same s3 bucket in parquet format.
-func UploadTestResults(ctx context.Context, credentials evergreen.S3Credentials, results []testresult.TestResult, output *TaskOutput,
-	t Task, displayTaskInfo *apimodels.DisplayTaskInfo) (*testresult.DbTaskTestResults, error) {
-	createdAt := time.Now()
-	info := makeTestResultsInfo(t, displayTaskInfo)
-	newResults := makeTestResults(&t, results)
-	key := testresult.PartitionKey(createdAt, info.Project, info.ID())
-
-	tr := &testresult.DbTaskTestResults{
-		CreatedAt: createdAt,
-		Info:      info,
-	}
-	allResults, err := output.TestResults.downloadParquet(ctx, credentials, tr)
-	if err != nil && !pail.IsKeyNotFoundError(err) {
-		return nil, errors.Wrap(err, "getting uploaded test results")
-	}
-	allResults = append(allResults, newResults...)
-
-	if err = uploadParquet(ctx, credentials, *output, convertToParquet(allResults, info, createdAt), key); err != nil {
-		return nil, errors.Wrap(err, "uploading parquet test results")
-	}
-
-	var failedCount int
-	var failedTests []string
-	for _, result := range results {
-		if result.Status == evergreen.TestFailedStatus {
-			failedTests = append(failedTests, result.GetDisplayTestName())
-			failedCount++
-		}
-	}
-	tr.Stats = testresult.TaskTestResultsStats{
-		FailedCount: failedCount,
-		TotalCount:  len(allResults),
-	}
-	tr.FailedTestsSample = failedTests
-	return tr, nil
-}
-
-func uploadParquet(ctx context.Context, credentials evergreen.S3Credentials, output TaskOutput, results *testresult.ParquetTestResults, key string) error {
-	bucket, err := output.TestResults.getBucket(ctx, credentials)
-	if err != nil {
-		return err
-	}
-	w, err := bucket.Writer(ctx, key)
-	if err != nil {
-		return errors.Wrap(err, "creating Presto bucket writer")
-	}
-	defer w.Close()
-
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(ParquetTestResultsSchemaDef)))
-	defer pw.Close()
-
-	return errors.Wrap(pw.Write(results), "writing Parquet test results")
-}
-
-func makeTestResultsInfo(t Task, displayTaskInfo *apimodels.DisplayTaskInfo) testresult.TestResultsInfo {
-	return testresult.TestResultsInfo{
-		Project:         t.Project,
-		Version:         t.Version,
-		Variant:         t.BuildVariant,
-		TaskID:          t.Id,
-		TaskName:        t.DisplayName,
-		DisplayTaskID:   displayTaskInfo.ID,
-		DisplayTaskName: displayTaskInfo.Name,
-		Execution:       t.Execution,
-		Requester:       t.Requester,
-		Mainline:        !t.IsPatchRequest(),
-	}
-}
-
-func convertToParquet(results []testresult.TestResult, info testresult.TestResultsInfo, createdAt time.Time) *testresult.ParquetTestResults {
-	convertedResults := make([]testresult.ParquetTestResult, len(results))
-	for i, result := range results {
-		convertedResults[i] = createParquetTestResult(result)
-	}
-
-	parquetResults := &testresult.ParquetTestResults{
-		Version:   info.Version,
-		Variant:   info.Variant,
-		TaskName:  info.TaskName,
-		TaskID:    info.TaskID,
-		Execution: int32(info.Execution),
-		Requester: info.Requester,
-		CreatedAt: createdAt.UTC(),
-		Results:   convertedResults,
-	}
-	if info.DisplayTaskName != "" {
-		parquetResults.DisplayTaskName = utility.ToStringPtr(info.DisplayTaskName)
-	}
-	if info.DisplayTaskID != "" {
-		parquetResults.DisplayTaskID = utility.ToStringPtr(info.DisplayTaskID)
-	}
-	return parquetResults
-}
-
-func createParquetTestResult(t testresult.TestResult) testresult.ParquetTestResult {
-	result := testresult.ParquetTestResult{
-		TestName:       t.TestName,
-		Status:         t.Status,
-		LogInfo:        t.LogInfo,
-		TaskCreateTime: t.TaskCreateTime.UTC(),
-		TestStartTime:  t.TestStartTime.UTC(),
-		TestEndTime:    t.TestEndTime.UTC(),
-	}
-	if t.DisplayTestName != "" {
-		result.DisplayTestName = utility.ToStringPtr(t.DisplayTestName)
-	}
-	if t.GroupID != "" {
-		result.GroupID = utility.ToStringPtr(t.GroupID)
-	}
-	if t.LogTestName != "" {
-		result.LogTestName = utility.ToStringPtr(t.LogTestName)
-	}
-	if t.LogURL != "" {
-		result.LogURL = utility.ToStringPtr(t.LogURL)
-	}
-	if t.RawLogURL != "" {
-		result.RawLogURL = utility.ToStringPtr(t.RawLogURL)
-	}
-	if t.LogTestName != "" || t.LogURL != "" || t.RawLogURL != "" {
-		result.LineNum = utility.ToInt32Ptr(int32(t.LineNum))
-	}
-	return result
-}
-
-func makeTestResults(t *Task, results []testresult.TestResult) []testresult.TestResult {
-	var newResults []testresult.TestResult
-	for _, r := range results {
-		if r.DisplayTestName == "" {
-			r.DisplayTestName = r.TestName
-		}
-		var logInfo *testresult.TestLogInfo
-		if r.LogInfo != nil {
-			logInfo = &testresult.TestLogInfo{
-				LogName:       r.LogInfo.LogName,
-				LineNum:       r.LogInfo.LineNum,
-				RenderingType: r.LogInfo.RenderingType,
-				Version:       r.LogInfo.Version,
-			}
-			logInfo.LogsToMerge = append(logInfo.LogsToMerge, r.LogInfo.LogsToMerge...)
-		}
-
-		newResults = append(newResults, testresult.TestResult{
-			TestName:        utility.RandomString(),
-			DisplayTestName: r.DisplayTestName,
-			Status:          r.Status,
-			LogInfo:         logInfo,
-			GroupID:         r.GroupID,
-			LogURL:          r.LogURL,
-			RawLogURL:       r.RawLogURL,
-			LineNum:         r.LineNum,
-			TaskCreateTime:  t.CreateTime,
-			TestStartTime:   r.TestStartTime,
-			TestEndTime:     r.TestEndTime,
-		})
-	}
-
-	return newResults
 }

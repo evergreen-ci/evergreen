@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	modelTestutil "github.com/evergreen-ci/evergreen/testutil"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/pail"
@@ -132,7 +132,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		}); err != nil {
 			return nil, err
 		}
-		if err = svc.AppendTestResultMetadata(modelTestutil.MakeAppendTestResultMetadataReq(ctx, testResults, tr.ID)); err != nil {
+		if err = svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, testResults, tr.ID)); err != nil {
 			return nil, err
 		}
 	}

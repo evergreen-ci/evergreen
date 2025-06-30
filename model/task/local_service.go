@@ -37,7 +37,11 @@ func (s *localService) AppendTestResultMetadata(ctx context.Context, _ []string,
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
 		},
 	}
-	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: tr.ID}, update, options.Update().SetUpsert(true))
+	id := dbTaskTestResultsID{
+		TaskID:    tr.Info.TaskID,
+		Execution: tr.Info.Execution,
+	}
+	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
 }
 

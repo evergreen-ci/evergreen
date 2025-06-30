@@ -16,5 +16,13 @@ func MakeAppendTestResultMetadataReq(ctx context.Context, results []testresult.T
 			failedTests = append(failedTests, result.GetDisplayTestName())
 		}
 	}
-	return ctx, failedTests, failedCount, len(results), testresult.DbTaskTestResults{ID: id}
+	tr := testresult.DbTaskTestResults{
+		ID: id,
+		Info: testresult.TestResultsInfo{
+			TaskID:    results[0].TaskID,
+			Execution: results[0].Execution,
+		},
+		Results: results,
+	}
+	return ctx, failedTests, failedCount, len(results), tr
 }

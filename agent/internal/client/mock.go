@@ -78,7 +78,6 @@ type Mock struct {
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults []testresult.TestResult
-	ResultsService   string
 	HasTestResults   bool
 	ResultsFailed    bool
 	TestLogs         []*testlog.TestLog

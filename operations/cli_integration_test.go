@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -353,7 +354,7 @@ func TestCLITestHistory(t *testing.T) {
 					TestStartTime: startTime,
 					TestEndTime:   endTime,
 				}
-				require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, []testresult.TestResult{passingResult, failedResult}, "")))
+				require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, []testresult.TestResult{passingResult, failedResult}, "")))
 			}
 		})
 	})

@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 	"fmt"
-	modelTestutil "github.com/evergreen-ci/evergreen/testutil"
 	"math/rand"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/pail"
@@ -1575,6 +1575,6 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, pw.Write(savedParquet))
 	require.NoError(t, pw.Close())
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResultMetadata(modelTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
+	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
 }
