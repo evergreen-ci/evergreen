@@ -205,8 +205,16 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 	c.SetAPIServerHost(s.getApiServerHost(false))
 
 	isServiceUser, err := c.IsServiceUser(ctx, s.User)
+
 	if err != nil {
-		return false, fmt.Sprintf("Failed to check if user is a service user: %s", err)
+		errorMsg := "Failed to check if user is a service user"
+		isUnauthorizedErr := strings.Contains(err.Error(), "401")
+		if isUnauthorizedErr {
+			// if we get a 401, the api key is likely invalid, so we should try to generate a token
+			// because otherwise subsequent api requests will likely fail too.
+			return true, fmt.Sprintf("%s, will try to generate a token: %s", errorMsg, err)
+		}
+		return false, fmt.Sprintf("%s: %s", errorMsg, err)
 	}
 	if isServiceUser {
 		return false, ""
