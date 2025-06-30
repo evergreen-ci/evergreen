@@ -163,20 +163,20 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	}
 
 	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
-	if reason != "" {
-		grip.Info(reason)
-	}
 	if shouldGenerate {
-		printKanopyAuthHeader(true)
-		grip.Info("Evergreen CLI will attempt to retrieve or generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
-		if s.JWT, err = runKanopyOIDCLogin(); err != nil {
+		if s.JWT, err = runKanopyOIDCLogin(reason); err != nil {
 			grip.Warningf("Failed to get JWT token: %s", err)
 			return c, err
 		}
+
 		c.SetJWT(s.JWT)
 		// in order to use the JWT token, we need to set the API server host to the corp api server host
 		c.SetAPIServerHost(s.getApiServerHost(true))
-		printKanopyAuthHeader(false)
+
+	} else {
+		if reason != "" {
+			grip.Info(reason)
+		}
 	}
 
 	return c, nil
@@ -205,8 +205,16 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 	c.SetAPIServerHost(s.getApiServerHost(false))
 
 	isServiceUser, err := c.IsServiceUser(ctx, s.User)
+
 	if err != nil {
-		return false, fmt.Sprintf("Failed to check if user is a service user: %s", err)
+		errorMsg := "Failed to check if user is a service user"
+		isUnauthorizedErr := strings.Contains(err.Error(), "401")
+		if isUnauthorizedErr {
+			// if we get a 401, the api key is likely invalid, so we should try to generate a token
+			// because otherwise subsequent api requests will likely fail too.
+			return true, fmt.Sprintf("%s, will try to generate a token: %s", errorMsg, err)
+		}
+		return false, fmt.Sprintf("%s: %s", errorMsg, err)
 	}
 	if isServiceUser {
 		return false, ""
