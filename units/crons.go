@@ -823,6 +823,7 @@ func periodicNotificationJobs(ctx context.Context, _ evergreen.Environment, ts t
 	return []amboy.Job{
 		NewSpawnhostExpirationWarningsJob(ts.Format(TSFormat)),
 		NewVolumeExpirationWarningsJob(ts.Format(TSFormat)),
+		NewAlertableInstanceTypeNotifyJob(ts.Format(TSFormat)),
 	}, nil
 }
 
@@ -1201,6 +1202,23 @@ func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.
 func populateIPAddressAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		return amboy.EnqueueUniqueJob(ctx, queue, NewIPAddressAllocatorJob(env, utility.RoundPartOfMinute(0).Format(TSFormat)))
+	}
+}
+
+func PopulateDistroAutoTuneJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		distrosToAutoTune, err := distro.FindByCanAutoTune(ctx)
+		if err != nil {
+			return errors.Wrap(err, "finding distros that can be auto-tuned")
+		}
+		catcher := grip.NewBasicCatcher()
+		for _, d := range distrosToAutoTune {
+			ts := utility.RoundPartOfDay(0).Format(TSFormat)
+			if err := amboy.EnqueueUniqueJob(ctx, queue, NewDistroAutoTuneJob(d.Id, ts)); err != nil {
+				catcher.Wrapf(err, "enqueueing auto-tune job for distro '%s'", d.Id)
+			}
+		}
+		return catcher.Resolve()
 	}
 }
 

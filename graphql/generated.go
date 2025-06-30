@@ -483,6 +483,7 @@ type ComplexityRoot struct {
 
 	HostAllocatorSettings struct {
 		AcceptableHostIdleTime func(childComplexity int) int
+		AutoTuneMaximumHosts   func(childComplexity int) int
 		FeedbackRule           func(childComplexity int) int
 		FutureHostFraction     func(childComplexity int) int
 		HostsOverallocatedRule func(childComplexity int) int
@@ -731,6 +732,7 @@ type ComplexityRoot struct {
 		SetAnnotationMetadataLinks    func(childComplexity int, taskID string, execution int, metadataLinks []*model.APIMetadataLink) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
 		SetPatchVisibility            func(childComplexity int, patchIds []string, hidden bool) int
+		SetTaskPriorities             func(childComplexity int, taskPriorities []*TaskPriority) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SetVersionPriority            func(childComplexity int, versionID string, priority int) int
 		SpawnHost                     func(childComplexity int, spawnHostInput *SpawnHostInput) int
@@ -791,6 +793,7 @@ type ComplexityRoot struct {
 
 	ParsleyFilter struct {
 		CaseSensitive func(childComplexity int) int
+		Description   func(childComplexity int) int
 		ExactMatch    func(childComplexity int) int
 		Expression    func(childComplexity int) int
 	}
@@ -1660,7 +1663,7 @@ type ComplexityRoot struct {
 		Revision                 func(childComplexity int) int
 		StartTime                func(childComplexity int) int
 		Status                   func(childComplexity int) int
-		TaskCount                func(childComplexity int) int
+		TaskCount                func(childComplexity int, options *TaskCountOptions) int
 		TaskStatusStats          func(childComplexity int, options BuildVariantOptions) int
 		TaskStatuses             func(childComplexity int) int
 		Tasks                    func(childComplexity int, options TaskFilterOptions) int
@@ -1881,6 +1884,7 @@ type MutationResolver interface {
 	RestartTask(ctx context.Context, taskID string, failedOnly bool) (*model.APITask, error)
 	ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
+	SetTaskPriorities(ctx context.Context, taskPriorities []*TaskPriority) ([]*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
 	AddFavoriteProject(ctx context.Context, opts AddFavoriteProjectInput) (*model.APIProjectRef, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
@@ -2127,7 +2131,7 @@ type VersionResolver interface {
 	ProjectMetadata(ctx context.Context, obj *model.APIVersion) (*model.APIProjectRef, error)
 
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
-	TaskCount(ctx context.Context, obj *model.APIVersion) (*int, error)
+	TaskCount(ctx context.Context, obj *model.APIVersion, options *TaskCountOptions) (*int, error)
 	Tasks(ctx context.Context, obj *model.APIVersion, options TaskFilterOptions) (*VersionTasks, error)
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
@@ -2163,6 +2167,7 @@ type FinderSettingsInputResolver interface {
 }
 type HostAllocatorSettingsInputResolver interface {
 	AcceptableHostIdleTime(ctx context.Context, obj *model.APIHostAllocatorSettings, data int) error
+
 	FeedbackRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data FeedbackRule) error
 
 	HostsOverallocatedRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data OverallocatedRule) error
@@ -3765,6 +3770,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HostAllocatorSettings.AcceptableHostIdleTime(childComplexity), true
 
+	case "HostAllocatorSettings.autoTuneMaximumHosts":
+		if e.complexity.HostAllocatorSettings.AutoTuneMaximumHosts == nil {
+			break
+		}
+
+		return e.complexity.HostAllocatorSettings.AutoTuneMaximumHosts(childComplexity), true
+
 	case "HostAllocatorSettings.feedbackRule":
 		if e.complexity.HostAllocatorSettings.FeedbackRule == nil {
 			break
@@ -5184,6 +5196,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetPatchVisibility(childComplexity, args["patchIds"].([]string), args["hidden"].(bool)), true
 
+	case "Mutation.setTaskPriorities":
+		if e.complexity.Mutation.SetTaskPriorities == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setTaskPriorities_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetTaskPriorities(childComplexity, args["taskPriorities"].([]*TaskPriority)), true
+
 	case "Mutation.setTaskPriority":
 		if e.complexity.Mutation.SetTaskPriority == nil {
 			break
@@ -5500,6 +5524,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ParsleyFilter.CaseSensitive(childComplexity), true
+
+	case "ParsleyFilter.description":
+		if e.complexity.ParsleyFilter.Description == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.Description(childComplexity), true
 
 	case "ParsleyFilter.exactMatch":
 		if e.complexity.ParsleyFilter.ExactMatch == nil {
@@ -10046,7 +10077,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Version.TaskCount(childComplexity), true
+		args, err := ec.field_Version_taskCount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Version.TaskCount(childComplexity, args["options"].(*TaskCountOptions)), true
 
 	case "Version.taskStatusStats":
 		if e.complexity.Version.TaskStatusStats == nil {
@@ -10590,8 +10626,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSubscriberInput,
 		ec.unmarshalInputSubscriptionInput,
 		ec.unmarshalInputTaskAnnotationSettingsInput,
+		ec.unmarshalInputTaskCountOptions,
 		ec.unmarshalInputTaskFilterOptions,
 		ec.unmarshalInputTaskHistoryOpts,
+		ec.unmarshalInputTaskPriority,
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTestFilter,
 		ec.unmarshalInputTestFilterOptions,
@@ -13460,6 +13498,34 @@ func (ec *executionContext) field_Mutation_setPatchVisibility_argsHidden(
 	}
 
 	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setTaskPriorities_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setTaskPriorities_argsTaskPriorities(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["taskPriorities"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setTaskPriorities_argsTaskPriorities(
+	ctx context.Context,
+	rawArgs map[string]any,
+) ([]*TaskPriority, error) {
+	if _, ok := rawArgs["taskPriorities"]; !ok {
+		var zeroVal []*TaskPriority
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("taskPriorities"))
+	if tmp, ok := rawArgs["taskPriorities"]; ok {
+		return ec.unmarshalNTaskPriority2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskPriorityᚄ(ctx, tmp)
+	}
+
+	var zeroVal []*TaskPriority
 	return zeroVal, nil
 }
 
@@ -16358,6 +16424,34 @@ func (ec *executionContext) field_Version_buildVariants_argsOptions(
 	}
 
 	var zeroVal BuildVariantOptions
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Version_taskCount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Version_taskCount_argsOptions(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["options"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Version_taskCount_argsOptions(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*TaskCountOptions, error) {
+	if _, ok := rawArgs["options"]; !ok {
+		var zeroVal *TaskCountOptions
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+	if tmp, ok := rawArgs["options"]; ok {
+		return ec.unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskCountOptions(ctx, tmp)
+	}
+
+	var zeroVal *TaskCountOptions
 	return zeroVal, nil
 }
 
@@ -20669,6 +20763,8 @@ func (ec *executionContext) fieldContext_Distro_hostAllocatorSettings(_ context.
 			switch field.Name {
 			case "acceptableHostIdleTime":
 				return ec.fieldContext_HostAllocatorSettings_acceptableHostIdleTime(ctx, field)
+			case "autoTuneMaximumHosts":
+				return ec.fieldContext_HostAllocatorSettings_autoTuneMaximumHosts(ctx, field)
 			case "feedbackRule":
 				return ec.fieldContext_HostAllocatorSettings_feedbackRule(ctx, field)
 			case "futureHostFraction":
@@ -26815,6 +26911,50 @@ func (ec *executionContext) fieldContext_HostAllocatorSettings_acceptableHostIdl
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Duration does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HostAllocatorSettings_autoTuneMaximumHosts(ctx context.Context, field graphql.CollectedField, obj *model.APIHostAllocatorSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostAllocatorSettings_autoTuneMaximumHosts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AutoTuneMaximumHosts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_HostAllocatorSettings_autoTuneMaximumHosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HostAllocatorSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -36943,6 +37083,215 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setTaskPriorities(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setTaskPriorities(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetTaskPriorities(rctx, fc.Args["taskPriorities"].([]*TaskPriority))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "containerAllocatedTime":
+				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "hasCedarResults":
+				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setTaskPriorities_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_unscheduleTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_unscheduleTask(ctx, field)
 	if err != nil {
@@ -39357,50 +39706,6 @@ func (ec *executionContext) fieldContext_Parameter_value(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ParsleyFilter_expression(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Expression, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ParsleyFilter_expression(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ParsleyFilter",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ParsleyFilter_caseSensitive(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
 	if err != nil {
@@ -39445,6 +39750,50 @@ func (ec *executionContext) fieldContext_ParsleyFilter_caseSensitive(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _ParsleyFilter_description(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ParsleyFilter_exactMatch(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
 	if err != nil {
@@ -39484,6 +39833,50 @@ func (ec *executionContext) fieldContext_ParsleyFilter_exactMatch(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_expression(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Expression, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_expression(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -45833,12 +46226,14 @@ func (ec *executionContext) fieldContext_Project_parsleyFilters(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "expression":
-				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			case "caseSensitive":
 				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "description":
+				return ec.fieldContext_ParsleyFilter_description(ctx, field)
 			case "exactMatch":
 				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
 		},
@@ -53864,12 +54259,14 @@ func (ec *executionContext) fieldContext_RepoRef_parsleyFilters(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "expression":
-				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			case "caseSensitive":
 				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "description":
+				return ec.fieldContext_ParsleyFilter_description(ctx, field)
 			case "exactMatch":
 				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
 		},
@@ -68595,12 +68992,14 @@ func (ec *executionContext) fieldContext_User_parsleyFilters(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "expression":
-				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			case "caseSensitive":
 				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "description":
+				return ec.fieldContext_ParsleyFilter_description(ctx, field)
 			case "exactMatch":
 				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
 		},
@@ -71491,7 +71890,7 @@ func (ec *executionContext) _Version_taskCount(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Version().TaskCount(rctx, obj)
+		return ec.resolvers.Version().TaskCount(rctx, obj, fc.Args["options"].(*TaskCountOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -71505,7 +71904,7 @@ func (ec *executionContext) _Version_taskCount(ctx context.Context, field graphq
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Version_taskCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Version_taskCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
@@ -71514,6 +71913,17 @@ func (ec *executionContext) fieldContext_Version_taskCount(_ context.Context, fi
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Version_taskCount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -77101,7 +77511,7 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"includeBaseTasks", "statuses", "tasks", "variants"}
+	fieldsInOrder := [...]string{"includeBaseTasks", "includeNeverActivatedTasks", "statuses", "tasks", "variants"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77115,6 +77525,13 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 				return it, err
 			}
 			it.IncludeBaseTasks = data
+		case "includeNeverActivatedTasks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeNeverActivatedTasks"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeNeverActivatedTasks = data
 		case "statuses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statuses"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -78517,7 +78934,7 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"acceptableHostIdleTime", "feedbackRule", "futureHostFraction", "hostsOverallocatedRule", "maximumHosts", "minimumHosts", "roundingRule", "version"}
+	fieldsInOrder := [...]string{"acceptableHostIdleTime", "autoTuneMaximumHosts", "feedbackRule", "futureHostFraction", "hostsOverallocatedRule", "maximumHosts", "minimumHosts", "roundingRule", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -78533,6 +78950,13 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			if err = ec.resolvers.HostAllocatorSettingsInput().AcceptableHostIdleTime(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "autoTuneMaximumHosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoTuneMaximumHosts"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoTuneMaximumHosts = data
 		case "feedbackRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("feedbackRule"))
 			data, err := ec.unmarshalNFeedbackRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐFeedbackRule(ctx, v)
@@ -79176,20 +79600,13 @@ func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"expression", "caseSensitive", "exactMatch"}
+	fieldsInOrder := [...]string{"caseSensitive", "description", "exactMatch", "expression"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "expression":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expression"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Expression = data
 		case "caseSensitive":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("caseSensitive"))
 			data, err := ec.unmarshalNBoolean2ᚖbool(ctx, v)
@@ -79197,6 +79614,13 @@ func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context
 				return it, err
 			}
 			it.CaseSensitive = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
 		case "exactMatch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exactMatch"))
 			data, err := ec.unmarshalNBoolean2ᚖbool(ctx, v)
@@ -79204,6 +79628,13 @@ func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context
 				return it, err
 			}
 			it.ExactMatch = data
+		case "expression":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expression"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Expression = data
 		}
 	}
 
@@ -81520,6 +81951,33 @@ func (ec *executionContext) unmarshalInputTaskAnnotationSettingsInput(ctx contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTaskCountOptions(ctx context.Context, obj any) (TaskCountOptions, error) {
+	var it TaskCountOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"includeNeverActivatedTasks"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "includeNeverActivatedTasks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeNeverActivatedTasks"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeNeverActivatedTasks = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTaskFilterOptions(ctx context.Context, obj any) (TaskFilterOptions, error) {
 	var it TaskFilterOptions
 	asMap := map[string]any{}
@@ -81697,6 +82155,65 @@ func (ec *executionContext) unmarshalInputTaskHistoryOpts(ctx context.Context, o
 				return it, err
 			}
 			it.Date = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTaskPriority(ctx context.Context, obj any) (TaskPriority, error) {
+	var it TaskPriority
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"taskId", "priority"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "taskId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskId"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.TaskID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "priority":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("priority"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Priority = data
 		}
 	}
 
@@ -86017,6 +86534,11 @@ func (ec *executionContext) _HostAllocatorSettings(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "autoTuneMaximumHosts":
+			out.Values[i] = ec._HostAllocatorSettings_autoTuneMaximumHosts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "feedbackRule":
 			field := field
 
@@ -88142,6 +88664,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setTaskPriorities":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setTaskPriorities(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "unscheduleTask":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_unscheduleTask(ctx, field)
@@ -88585,18 +89114,23 @@ func (ec *executionContext) _ParsleyFilter(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ParsleyFilter")
-		case "expression":
-			out.Values[i] = ec._ParsleyFilter_expression(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "caseSensitive":
 			out.Values[i] = ec._ParsleyFilter_caseSensitive(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "description":
+			out.Values[i] = ec._ParsleyFilter_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "exactMatch":
 			out.Values[i] = ec._ParsleyFilter_exactMatch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expression":
+			out.Values[i] = ec._ParsleyFilter_expression(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -100586,6 +101120,7 @@ var (
 		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
 		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT":        event.EventAlertableInstanceTypeWarningSent,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
 		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
@@ -100620,6 +101155,7 @@ var (
 		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
 		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventAlertableInstanceTypeWarningSent:            "HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
 		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
@@ -100716,6 +101252,7 @@ var (
 		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
 		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT":        event.EventAlertableInstanceTypeWarningSent,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
 		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
@@ -100750,6 +101287,7 @@ var (
 		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
 		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventAlertableInstanceTypeWarningSent:            "HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
 		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
@@ -103299,6 +103837,26 @@ func (ec *executionContext) marshalNTaskLogs2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	return ec._TaskLogs(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNTaskPriority2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskPriorityᚄ(ctx context.Context, v any) ([]*TaskPriority, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*TaskPriority, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTaskPriority2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskPriority(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNTaskPriority2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskPriority(ctx context.Context, v any) (*TaskPriority, error) {
+	res, err := ec.unmarshalInputTaskPriority(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNTaskQueueDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskQueueDistroᚄ(ctx context.Context, sel ast.SelectionSet, v []*TaskQueueDistro) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -105453,6 +106011,7 @@ var (
 		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
 		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT":        event.EventAlertableInstanceTypeWarningSent,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
 		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
@@ -105487,6 +106046,7 @@ var (
 		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
 		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventAlertableInstanceTypeWarningSent:            "HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
 		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
@@ -105543,6 +106103,7 @@ var (
 		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
 		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT":        event.EventAlertableInstanceTypeWarningSent,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
 		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
@@ -105577,6 +106138,7 @@ var (
 		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
 		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventAlertableInstanceTypeWarningSent:            "HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
 		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
@@ -106775,6 +107337,14 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 func (ec *executionContext) unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, v any) (model.APITaskAnnotationSettings, error) {
 	res, err := ec.unmarshalInputTaskAnnotationSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskCountOptions(ctx context.Context, v any) (*TaskCountOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTaskCountOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {

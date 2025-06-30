@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"math/rand"
 	"testing"
 	"time"
 
@@ -10,36 +9,33 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var localOutput = TaskOutput{
+	TestResults: TestResultOutput{
+		Version: 2,
+		BucketConfig: evergreen.BucketConfig{
+			Type:              evergreen.BucketTypeLocal,
+			TestResultsPrefix: "test-results",
+		},
+	},
+}
+
 const MaxSampleSize = 10
-
-var output = TaskOutput{
-	TestResults: TestResultOutput{
-		Version: 1,
-	},
-}
-
-var outputCedar = TaskOutput{
-	TestResults: TestResultOutput{
-		Version: 0,
-	},
-}
 
 func TestLocalService(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewLocalService(env)
-	require.NoError(t, ClearLocal(ctx, env))
+	require.NoError(t, ClearTestResults(ctx, env))
 	defer func() {
-		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, ClearTestResults(ctx, env))
 	}()
 
-	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
 		result := getTestResult()
@@ -52,7 +48,7 @@ func TestLocalService(t *testing.T) {
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
-	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
 		result := getTestResult()
@@ -61,7 +57,7 @@ func TestLocalService(t *testing.T) {
 		savedResults1[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
-	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults2 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
 		result := getTestResult()
@@ -70,7 +66,7 @@ func TestLocalService(t *testing.T) {
 		savedResults2[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
-	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults3 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
@@ -82,7 +78,7 @@ func TestLocalService(t *testing.T) {
 		savedResults3[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults3))
-	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 	savedResults4 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
@@ -92,7 +88,7 @@ func TestLocalService(t *testing.T) {
 		savedResults4[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults4))
-	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &localOutput}
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
 		t.Run("WithoutFilterAndSortOpts", func(t *testing.T) {
@@ -219,7 +215,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewLocalService(env)
 	defer func() {
-		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, ClearTestResults(ctx, env))
 	}()
 
 	getResults := func() []testresult.TestResult {
@@ -515,7 +511,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			name: "SortByBaseStatusASC",
 			opts: &FilterOptions{
 				Sort:      []testresult.SortBy{{Key: testresult.SortByBaseStatusKey}},
-				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}},
+				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &localOutput}},
 			},
 			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[1],
@@ -534,7 +530,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 						OrderDSC: true,
 					},
 				},
-				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}},
+				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &localOutput}},
 			},
 			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[0],
@@ -567,7 +563,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name: "BaseStatus",
-			opts: &FilterOptions{BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}}},
+			opts: &FilterOptions{BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &localOutput}}},
 			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[0],
 				resultsWithBaseStatus[1],
@@ -605,25 +601,4 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			}
 		})
 	}
-}
-
-func getTestResult() testresult.TestResult {
-	result := testresult.TestResult{
-		TestName:      utility.RandomString(),
-		Status:        evergreen.TestSucceededStatus,
-		TestStartTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
-		TestEndTime:   time.Now().UTC().Round(time.Millisecond),
-	}
-	// Optional fields, we should test that we handle them properly when
-	// they are populated and when they do not.
-	if sometimes.Half() {
-		result.DisplayTestName = utility.RandomString()
-		result.GroupID = utility.RandomString()
-		result.LogTestName = utility.RandomString()
-		result.LogURL = utility.RandomString()
-		result.RawLogURL = utility.RandomString()
-		result.LineNum = rand.Intn(1000)
-	}
-
-	return result
 }

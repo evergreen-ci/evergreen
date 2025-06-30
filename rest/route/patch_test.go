@@ -144,7 +144,8 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 }
 
 func (s *PatchesByProjectSuite) SetupTest() {
-	s.route = makePatchesByProjectRoute("https://evergreen.example.net").(*patchesByProjectHandler)
+	s.route = makePatchesByProjectRoute().(*patchesByProjectHandler)
+	s.route.url = "https://evergreen.example.net"
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldSucceedIfNoResults() {

@@ -336,7 +336,7 @@ func (s *DistroPutSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(db.ClearCollections(distro.Collection))
+	s.NoError(db.ClearCollections(distro.Collection, evergreen.RoleCollection, user.Collection))
 	distros := []*distro.Distro{
 		{
 			Id: "distro1",
@@ -355,6 +355,13 @@ func (s *DistroPutSuite) SetupTest() {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
+
+	u := &user.DBUser{
+		Id: "user",
+	}
+	err := u.Insert(ctx)
+	s.NoError(err)
+
 	s.rm = makePutDistro()
 }
 
@@ -397,6 +404,12 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusCreated, resp.Status())
+
+	dbUser, err := user.FindOneById("user")
+	s.NoError(err)
+	s.Require().NotNil(dbUser)
+	s.Require().Len(dbUser.Roles(), 1)
+	s.Equal("admin_distro_distro5", dbUser.Roles()[0])
 }
 
 func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {

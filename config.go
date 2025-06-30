@@ -31,7 +31,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
+<<<<<<< HEAD
 	ClientVersion = "2025-06-30"
+=======
+	ClientVersion = "2025-06-27"
+>>>>>>> main
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
@@ -73,7 +77,7 @@ type Settings struct {
 	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
-	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
+	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions" secret:"true"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	FWS                 FWSConfig               `yaml:"fws" bson:"fws" json:"fws" id:"fws"`
 	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`

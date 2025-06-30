@@ -40,10 +40,11 @@ type BuildBaron struct {
 // BuildVariantOptions is an input to the mainlineCommits query.
 // It stores values for statuses, tasks, and variants which are used to filter for matching versions.
 type BuildVariantOptions struct {
-	IncludeBaseTasks *bool    `json:"includeBaseTasks,omitempty"`
-	Statuses         []string `json:"statuses,omitempty"`
-	Tasks            []string `json:"tasks,omitempty"`
-	Variants         []string `json:"variants,omitempty"`
+	IncludeBaseTasks           *bool    `json:"includeBaseTasks,omitempty"`
+	IncludeNeverActivatedTasks *bool    `json:"includeNeverActivatedTasks,omitempty"`
+	Statuses                   []string `json:"statuses,omitempty"`
+	Tasks                      []string `json:"tasks,omitempty"`
+	Variants                   []string `json:"variants,omitempty"`
 }
 
 // CreateDistroInput is the input to the createDistro mutation.
@@ -470,6 +471,11 @@ type Subscriber struct {
 	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber,omitempty"`
 }
 
+// TaskCountOptions defines the parameters that are used when counting tasks from a Version.
+type TaskCountOptions struct {
+	IncludeNeverActivatedTasks *bool `json:"includeNeverActivatedTasks,omitempty"`
+}
+
 // TaskFiles is the return value for the taskFiles query.
 // Some tasks generate files which are represented by this type.
 type TaskFiles struct {
@@ -527,6 +533,11 @@ type TaskOwnerTeam struct {
 	Messages       string `json:"messages"`
 	TeamName       string `json:"teamName"`
 	JiraProject    string `json:"jiraProject"`
+}
+
+type TaskPriority struct {
+	TaskID   string `json:"taskId"`
+	Priority int    `json:"priority"`
 }
 
 // TaskQueueDistro[] is the return value for the taskQueueDistros query.

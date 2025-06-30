@@ -21,7 +21,7 @@ type SSHKeyPair struct {
 	// Public keys in EC2 are referred to by names: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
 	Name string `yaml:"name" bson:"name" json:"name"`
 	// SecretARN corresponds to a secret in AWS Secrets Manager that contains the private key for this key pair.
-	SecretARN string `yaml:"secret_arn" bson:"secret_arn" json:"secret_arn"`
+	SecretARN string `yaml:"secret_arn" bson:"secret_arn" json:"secret_arn" secret:"true"`
 }
 
 func (c *SSHConfig) SectionId() string { return "ssh" }

@@ -11,7 +11,7 @@ import (
 // HostStat records statistics about host usage by distro.
 type HostStat struct {
 	ID        string    `bson:"_id"`
-	DistroID  string    `bson:"distro"`
+	Distro    string    `bson:"distro"`
 	Timestamp time.Time `bson:"timestamp"`
 	NumHosts  int       `bson:"num_hosts"`
 }
@@ -20,7 +20,7 @@ func NewHostStat(distroID string, numHosts int) *HostStat {
 	return &HostStat{
 		ID:        primitive.NewObjectID().Hex(),
 		Timestamp: time.Now().Round(time.Minute),
-		DistroID:  distroID,
+		Distro:    distroID,
 		NumHosts:  numHosts,
 	}
 }

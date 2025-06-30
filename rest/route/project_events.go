@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
-func makeFetchProjectEvents(url string) gimlet.RouteHandler {
-	return &projectEventsGet{Url: url}
+func makeFetchProjectEvents() gimlet.RouteHandler {
+	return &projectEventsGet{}
 }
 
 type projectEventsGet struct {
@@ -27,7 +28,6 @@ func (h *projectEventsGet) Factory() gimlet.RouteHandler {
 		Timestamp: time.Now(),
 		Limit:     10,
 		Id:        "",
-		Url:       h.Url,
 	}
 }
 
@@ -37,6 +37,8 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 	h.Id = gimlet.GetVars(r)["project_id"]
 
 	vals := r.URL.Query()
+	h.Url = util.HttpsUrl(r.Host)
+
 	k, ok := vals["ts"]
 	if ok && len(k) > 0 {
 		h.Timestamp, err = time.Parse(time.RFC3339, k[0])

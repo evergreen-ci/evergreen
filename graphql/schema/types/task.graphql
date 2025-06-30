@@ -39,6 +39,11 @@ input TestFilter {
   testStatus: String!
 }
 
+input TaskPriority {
+  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  priority: Int!
+}
+
 ###### TYPES ######
 """
 Task models a task, the simplest unit of execution for Evergreen.
