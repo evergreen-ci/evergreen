@@ -12,7 +12,6 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -33,58 +32,24 @@ func NewEvergreenService(env evergreen.Environment) *evergreenService {
 	return &evergreenService{env: env}
 }
 
-// AppendTestResults appends test results to the local test results collection.
-func (s *evergreenService) AppendTestResults(ctx context.Context, results []testresult.TestResult) error {
-	infos := map[testresult.TestResultsInfo][]testresult.TestResult{}
-	for _, result := range results {
-		info := testresult.TestResultsInfo{
-			TaskID:    result.TaskID,
-			Execution: result.Execution,
-		}
-		infos[info] = append(infos[info], result)
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for info := range infos {
-		catcher.Add(s.appendResults(ctx, results, info))
-	}
-	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "appending test results")
-	}
-
-	return nil
-}
-
-func (s *evergreenService) appendResults(ctx context.Context, results []testresult.TestResult, info testresult.TestResultsInfo) error {
-	record := testresult.DbTaskTestResults{
-		ID:   info.ID(),
-		Info: info,
-	}
-	err := s.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, byTaskIDAndExecution(info.TaskID, info.Execution)).Decode(&record)
-	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-		return errors.Wrapf(err, "finding test result '%s' execution '%d'", info.TaskID, info.Execution)
-	}
-
-	var failedCount int
-	for _, result := range results {
-		if result.Status == evergreen.TestFailedStatus {
-			if len(record.FailedTestsSample) < failedTestsSampleSize {
-				record.FailedTestsSample = append(record.FailedTestsSample, result.GetDisplayTestName())
-			}
-			failedCount++
+// AppendTestResultMetadata appends test results to the local test results collection.
+func (s *evergreenService) AppendTestResultMetadata(ctx context.Context, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
+	updatedFailedSample := record.FailedTestsSample
+	for _, sample := range failedTestSample {
+		if len(updatedFailedSample) < failedTestsSampleSize {
+			updatedFailedSample = append(updatedFailedSample, sample)
 		}
 	}
-
 	update := bson.M{
 		"$inc": bson.M{
-			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  len(results),
+			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
 		},
 		"$set": bson.M{
-			testresult.TestResultsFailedTestsSampleKey: record.FailedTestsSample,
+			testresult.TestResultsFailedTestsSampleKey: updatedFailedSample,
 		},
 	}
-	_, err = s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
+	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
 }
 
@@ -120,11 +85,11 @@ func (s *evergreenService) GetFailedTestSamples(ctx context.Context, taskOpts []
 func (s *evergreenService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
 	var filter bson.M
 	if len(taskOpts) == 1 {
-		filter = byTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)
+		filter = ByTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)
 	} else {
 		findQueries := make([]bson.M, len(taskOpts))
 		for i, taskOpt := range taskOpts {
-			findQueries[i] = byTaskIDAndExecution(taskOpt.Id, taskOpt.Execution)
+			findQueries[i] = ByTaskIDAndExecution(taskOpt.Id, taskOpt.Execution)
 		}
 		filter = bson.M{"$or": findQueries}
 	}
@@ -220,10 +185,11 @@ func download(ctx context.Context, credentials evergreen.S3Credentials, t *testr
 	if !ok {
 		return nil, nil
 	}
-	return outputInfo.TestResults.downloadParquet(ctx, credentials, t)
+	return outputInfo.TestResults.DownloadParquet(ctx, credentials, t)
 }
 
-func byTaskIDAndExecution(id string, execution int) bson.M {
+// ByTaskIDAndExecution constructs a query to find a test result for a specific task id and execution pair.
+func ByTaskIDAndExecution(id string, execution int) bson.M {
 	return bson.M{
 		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey):    id,
 		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey): execution,

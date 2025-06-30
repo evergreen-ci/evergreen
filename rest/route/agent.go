@@ -707,7 +707,7 @@ func (h *setTaskResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = t.SetResultsInfo(ctx, h.info.Service, h.info.Failed); err != nil {
+	if err = t.SetResultsInfo(ctx, h.info.Failed); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting results info for task '%s'", h.taskID))
 	}
 
@@ -790,9 +790,9 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /task/{task_id}/test_results
 type attachTestResultsHandler struct {
-	env     evergreen.Environment
-	results []testresult.TestResult
-	taskID  string
+	env    evergreen.Environment
+	body   apimodels.AttachTestResultsRequest
+	taskID string
 }
 
 func makeAttachTestResults(env evergreen.Environment) gimlet.RouteHandler {
@@ -811,7 +811,7 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
-	err := utility.ReadJSON(r.Body, &h.results)
+	err := utility.ReadJSON(r.Body, &h.body)
 	if err != nil {
 		return errors.Wrap(err, "reading test results from JSON request body")
 	}
@@ -826,7 +826,6 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	if flags.EvergreenTestResultsDisabled {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
-	// TODO: DEVPROD-16201 Ensure this accurately appends test result info as expected
 	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
@@ -837,7 +836,24 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	err = task.AppendTestResults(ctx, t, h.env, h.results)
+	var record testresult.DbTaskTestResults
+	if !t.HasTestResults {
+		record = testresult.DbTaskTestResults{
+			ID:        h.body.Info.ID(),
+			Info:      h.body.Info,
+			CreatedAt: h.body.CreatedAt,
+		}
+		_, err = h.env.CedarDB().Collection(testresult.Collection).InsertOne(ctx, record)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting test result record"))
+		}
+	} else {
+		err = h.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(h.body.Info.TaskID, h.body.Info.Execution)).Decode(&record)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding test result record"))
+		}
+	}
+	err = task.AppendTestResultMetadata(ctx, t, h.env, h.body.FailedSample, h.body.Stats.FailedCount, h.body.Stats.TotalCount, record)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
 	}

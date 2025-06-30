@@ -79,7 +79,7 @@ type SharedCommunicator interface {
 	// creates it if it doesn't exist.
 	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
 	// SetResultsInfo sets the test results information in the task.
-	SetResultsInfo(context.Context, TaskData, string, bool) error
+	SetResultsInfo(context.Context, TaskData, bool) error
 
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(ctx context.Context, hostID string, info apimodels.DisableInfo) error
@@ -89,7 +89,7 @@ type SharedCommunicator interface {
 
 	// The following operations are used by task commands.
 	SendTestLog(context.Context, TaskData, *testlog.TestLog) (string, error)
-	SendTestResults(context.Context, TaskData, []testresult.TestResult) error
+	SendTestResults(context.Context, TaskData, *testresult.DbTaskTestResults) error
 	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
 	GetTaskVersion(context.Context, TaskData) (*model.Version, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)

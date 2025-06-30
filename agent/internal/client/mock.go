@@ -78,7 +78,7 @@ type Mock struct {
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults []testresult.TestResult
-	ResultsService   string
+	HasTestResults   bool
 	ResultsFailed    bool
 	TestLogs         []*testlog.TestLog
 	TestLogCount     int
@@ -438,8 +438,8 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, service string, failed bool) error {
-	c.ResultsService = service
+func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, failed bool) error {
+	c.HasTestResults = true
 	if failed {
 		c.ResultsFailed = true
 	}
@@ -485,8 +485,8 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *testlog.TestLo
 }
 
 // SendTestResults appends test results to the local list of test results.
-func (c *Mock) SendTestResults(ctx context.Context, td TaskData, testResults []testresult.TestResult) error {
-	c.LocalTestResults = append(c.LocalTestResults, testResults...)
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, tr *testresult.DbTaskTestResults) error {
+	c.ResultsFailed = tr != nil && tr.Stats.FailedCount > 0
 	return nil
 }
 

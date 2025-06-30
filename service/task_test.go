@@ -22,9 +22,9 @@ func TestGetTestResults(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection))
 
 	newTask := task.Task{
-		HasCedarResults: true,
-		Id:              "test_task_id",
-		Status:          evergreen.TaskSucceeded,
+		HasTestResults: true,
+		Id:             "test_task_id",
+		Status:         evergreen.TaskSucceeded,
 	}
 	err := newTask.Insert(t.Context())
 	require.NoError(t, err)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -46,8 +47,16 @@ type CheckMergeRequest struct {
 // TaskTestResultsInfo contains metadata related to test results persisted for
 // a given task.
 type TaskTestResultsInfo struct {
-	Service string `json:"service"`
-	Failed  bool   `json:"failed"`
+	Failed bool `json:"failed"`
+}
+
+// AttachTestResultsRequest contains information necessary to send in
+// the request by the agent to attach test results.
+type AttachTestResultsRequest struct {
+	Info         testresult.TestResultsInfo      `json:"info"`
+	Stats        testresult.TaskTestResultsStats `json:"stats"`
+	FailedSample []string                        `json:"failed_sample"`
+	CreatedAt    time.Time                       `json:"created_at"`
 }
 
 // TaskEndDetail contains data sent from the agent to the API server after each task run.

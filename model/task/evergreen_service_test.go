@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -255,7 +256,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
-	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, tr.PartitionKey()))
+	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, testresult.PartitionKey(tr.CreatedAt, tr.Info.Project, tr.ID)))
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
 	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(ParquetTestResultsSchemaDef)))
@@ -319,7 +320,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 	require.NoError(t, pw.Write(savedParquet))
 	require.NoError(t, pw.Close())
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResults(ctx, baseResults))
+	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, baseResults, tr.ID)))
 
 	resultsWithBaseStatus := getResults()
 	require.Len(t, resultsWithBaseStatus, len(baseResults))
@@ -742,7 +743,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 		}
 	}
 
-	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, tr.PartitionKey()))
+	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, testresult.PartitionKey(tr.CreatedAt, tr.Info.Project, tr.ID)))
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
 
@@ -750,6 +751,6 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, pw.Write(savedParquet))
 	require.NoError(t, pw.Close())
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults))
+	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
 }

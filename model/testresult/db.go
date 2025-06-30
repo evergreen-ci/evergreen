@@ -43,9 +43,9 @@ func (t *TestResultsInfo) ID() string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-// PartitionKey returns the partition key for the S3 bucket.
-func (t *DbTaskTestResults) PartitionKey() string {
-	return fmt.Sprintf("task_create_iso=%s/project=%s/%s", t.CreatedAt.UTC().Format(parquetDateFormat), t.Info.Project, t.ID)
+// PartitionKey returns the partition key for the S3 bucket in Presto.
+func PartitionKey(createdAt time.Time, project string, id string) string {
+	return fmt.Sprintf("task_create_iso=%s/project=%s/%s", createdAt.UTC().Format(parquetDateFormat), project, id)
 }
 
 var (

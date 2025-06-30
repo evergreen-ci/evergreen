@@ -130,7 +130,7 @@ type APITask struct {
 	OverrideDependencies bool   `json:"-"`
 	Archived             bool   `json:"archived"`
 	ResultsService       string `json:"-"`
-	HasCedarResults      bool   `json:"-"`
+	HasTestResults       bool   `json:"-"`
 	ResultsFailed        bool   `json:"-"`
 }
 
@@ -349,7 +349,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Requester:                   utility.ToStringPtr(t.Requester),
 		Aborted:                     t.Aborted,
 		ResultsService:              t.ResultsService,
-		HasCedarResults:             t.HasCedarResults,
+		HasTestResults:              t.HasTestResults,
 		ResultsFailed:               t.ResultsFailed,
 		MustHaveResults:             t.MustHaveResults,
 		ResetWhenFinished:           t.ResetWhenFinished,
@@ -544,7 +544,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 		DisplayOnly:                 at.DisplayOnly,
 		Requester:                   utility.FromStringPtr(at.Requester),
 		ResultsService:              at.ResultsService,
-		HasCedarResults:             at.HasCedarResults,
+		HasTestResults:              at.HasTestResults,
 		ResultsFailed:               at.ResultsFailed,
 		MustHaveResults:             at.MustHaveResults,
 		BaseTask: task.BaseTaskInfo{
