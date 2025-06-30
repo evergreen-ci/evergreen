@@ -26,7 +26,7 @@ func InitializeTaskOutput(env evergreen.Environment) *TaskOutput {
 			BucketConfig: settings.Buckets.LogBucket,
 		},
 		TestResults: TestResultOutput{
-			Version:      0,
+			Version:      1,
 			BucketConfig: settings.Buckets.TestResultsBucket,
 		},
 	}
