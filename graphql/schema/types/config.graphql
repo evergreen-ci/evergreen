@@ -3,15 +3,158 @@
 SpruceConfig defines settings that apply to all users of Evergreen.
 For example, if the banner field is populated, then a sitewide banner will be shown to all users.
 """
-
 input SaveAdminSettingsInput {
   adminSettings: AdminSettingsInput!
+}
+
+input SESConfigInput {
+  senderAddress: String
+}
+
+type SESConfig {
+  senderAddress: String! @requireAdmin
+}
+
+input NotifyConfigInput {
+  ses: SESConfigInput
+}
+
+type NotifyConfig {
+  ses: SESConfig! @requireAdmin
+}
+
+input TaskLimitsConfigInput {
+  maxTasksPerVersion: Int
+  maxIncludesPerVersion: Int
+  maxHourlyPatchTasks: Int
+  maxPendingGeneratedTasks: Int
+  maxGenerateTaskJSONSize: Int
+  maxConcurrentLargeParserProjectTasks: Int
+  maxDegradedModeConcurrentLargeParserProjectTasks: Int
+  maxDegradedModeParserProjectSize: Int
+  maxParserProjectSize: Int
+  maxExecTimeoutSecs: Int
+  maxTaskExecution: Int
+  maxDailyAutomaticRestarts: Int
+}
+
+type TaskLimitsConfig {
+  maxTasksPerVersion: Int!
+  maxIncludesPerVersion: Int!
+  maxHourlyPatchTasks: Int!
+  maxPendingGeneratedTasks: Int!
+  maxGenerateTaskJSONSize: Int!
+  maxConcurrentLargeParserProjectTasks: Int!
+  maxDegradedModeConcurrentLargeParserProjectTasks: Int!
+  maxDegradedModeParserProjectSize: Int!
+  maxParserProjectSize: Int!
+  maxExecTimeoutSecs: Int!
+  maxTaskExecution: Int!
+  maxDailyAutomaticRestarts: Int!
+}
+
+input HostInitConfigInput {
+  hostThrottle: Int
+  provisioningThrottle: Int
+  cloudStatusBatchSize: Int
+  maxTotalDynamicHosts: Int
+}
+
+type HostInitConfig {
+  hostThrottle: Int!
+  provisioningThrottle: Int!
+  cloudStatusBatchSize: Int!
+  maxTotalDynamicHosts: Int!
+}
+
+input PodLifecycleConfigInput {
+  maxParallelPodRequests: Int
+  maxPodDefinitionCleanupRate: Int
+  maxSecretCleanupRate: Int
+}
+
+type PodLifecycleConfig {
+  maxParallelPodRequests: Int!
+  maxPodDefinitionCleanupRate: Int!
+  maxSecretCleanupRate: Int!
+}
+
+input SchedulerConfigInput {
+  taskFinder: FinderVersion
+  hostAllocator: HostAllocatorVersion
+  hostAllocatorRoundingRule: RoundingRule
+  hostAllocatorFeedbackRule: FeedbackRule
+  hostsOverallocatedRule: OverallocatedRule
+  futureHostFraction: Float
+  cacheDurationSeconds: Int
+  targetTimeSeconds: Int
+  acceptableHostIdleTimeSeconds: Int
+  groupVersions: Boolean
+  patchFactor: Int
+  patchTimeInQueueFactor: Int
+  commitQueueFactor: Int
+  mainlineTimeInQueueFactor: Int
+  expectedRuntimeFactor: Int
+  generateTaskFactor: Int
+  numDependentsFactor: Float
+  stepbackTaskFactor: Int
+}
+
+type SchedulerConfig {
+  taskFinder: FinderVersion!
+  hostAllocator: HostAllocatorVersion!
+  hostAllocatorRoundingRule: RoundingRule!
+  hostAllocatorFeedbackRule: FeedbackRule!
+  hostsOverallocatedRule: OverallocatedRule!
+  futureHostFraction: Float!
+  cacheDurationSeconds: Int!
+  targetTimeSeconds: Int!
+  acceptableHostIdleTimeSeconds: Int!
+  groupVersions: Boolean!
+  patchFactor: Int!
+  patchTimeInQueueFactor: Int!
+  commitQueueFactor: Int!
+  mainlineTimeInQueueFactor: Int!
+  expectedRuntimeFactor: Int!
+  generateTaskFactor: Int!
+  numDependentsFactor: Float!
+  stepbackTaskFactor: Int!
+}
+
+input RepotrackerConfigInput {
+  numNewRepoRevisionsToFetch: Int
+  maxRepoRevisionsToSearch: Int
+  maxConcurrentRequests: Int
+}
+
+type RepotrackerConfig {
+  numNewRepoRevisionsToFetch: Int!
+  maxRepoRevisionsToSearch: Int!
+  maxConcurrentRequests: Int!
 }
 
 input AdminSettingsInput {
   banner: String
   bannerTheme: BannerTheme
   serviceFlags: ServiceFlagsInput
+  notify: NotifyConfigInput
+  taskLimits: TaskLimitsConfigInput
+  hostInit: HostInitConfigInput
+  podLifecycle: PodLifecycleConfigInput
+  scheduler: SchedulerConfigInput
+  repotracker: RepotrackerConfigInput
+}
+
+type AdminSettings {
+  banner: String
+  bannerTheme: BannerTheme
+  serviceFlags: ServiceFlags
+  notify: NotifyConfig
+  taskLimits: TaskLimitsConfig
+  hostInit: HostInitConfig
+  podLifecycle: PodLifecycleConfig
+  scheduler: SchedulerConfig
+  repotracker: RepotrackerConfig
 }
 
 type SpruceConfig {
@@ -108,13 +251,6 @@ type ServiceFlags {
   emailNotificationsDisabled: Boolean!
   webhookNotificationsDisabled: Boolean!
   githubStatusAPIDisabled: Boolean!
-
-}
-
-type AdminSettings {
-  banner: String
-  bannerTheme: BannerTheme
-  serviceFlags: ServiceFlags
 }
 
 type ContainerPoolsConfig {

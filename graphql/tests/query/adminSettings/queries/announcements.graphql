@@ -1,4 +1,4 @@
-query AdminSettingsPermissionGranted {
+query Announcements {
   adminSettings {
     banner
     bannerTheme

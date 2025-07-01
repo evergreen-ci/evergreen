@@ -1,0 +1,59 @@
+query Runners {
+  adminSettings {
+    notify {
+      ses {
+        senderAddress
+      }
+    }
+    hostInit {
+      hostThrottle
+      provisioningThrottle
+      cloudStatusBatchSize
+      maxTotalDynamicHosts
+    }
+    taskLimits {
+      maxTasksPerVersion
+      maxTaskExecution
+      maxDailyAutomaticRestarts
+      maxIncludesPerVersion
+      maxHourlyPatchTasks
+      maxPendingGeneratedTasks
+      maxGenerateTaskJSONSize
+      maxConcurrentLargeParserProjectTasks
+      maxDegradedModeConcurrentLargeParserProjectTasks
+      maxDegradedModeParserProjectSize
+      maxParserProjectSize
+      maxExecTimeoutSecs
+    }
+    scheduler {
+      taskFinder
+      patchFactor
+      patchTimeInQueueFactor
+      commitQueueFactor
+      mainlineTimeInQueueFactor
+      expectedRuntimeFactor
+      generateTaskFactor
+      numDependentsFactor
+      stepbackTaskFactor
+      hostAllocator
+      hostAllocatorRoundingRule
+      hostAllocatorFeedbackRule
+      hostsOverallocatedRule
+      futureHostFraction
+      cacheDurationSeconds
+      targetTimeSeconds
+      acceptableHostIdleTimeSeconds
+      groupVersions
+    }
+    repotracker {
+      numNewRepoRevisionsToFetch
+      maxRepoRevisionsToSearch
+      maxConcurrentRequests
+    }
+    podLifecycle {
+      maxParallelPodRequests
+      maxPodDefinitionCleanupRate
+      maxSecretCleanupRate
+    }
+  }
+}
