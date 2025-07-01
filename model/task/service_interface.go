@@ -14,7 +14,7 @@ const (
 	TestResultsServiceCedar     = "cedar"
 )
 
-const defaultService = TestResultsServiceCedar
+const defaultService = TestResultsServiceEvergreen
 
 // TestResultsService is an interface for fetching test results data from an
 // underlying test results store.

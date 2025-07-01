@@ -149,7 +149,7 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 	}
 	tr.Stats = testresult.TaskTestResultsStats{
 		FailedCount: failedCount,
-		TotalCount:  len(allResults),
+		TotalCount:  len(newResults),
 	}
 	tr.FailedTestsSample = failedTests
 
