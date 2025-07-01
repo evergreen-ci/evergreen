@@ -33,6 +33,7 @@ const (
 	githubActionOpened          = "opened"
 	githubActionSynchronize     = "synchronize"
 	githubActionReopened        = "reopened"
+	githubActionAutoBaseChange  = "automatic_base_change_succeeded"
 	githubActionChecksRequested = "checks_requested"
 	githubActionRerequested     = "rerequested"
 
@@ -176,7 +177,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 
 		action := utility.FromStringPtr(event.Action)
 		if action == githubActionOpened || action == githubActionSynchronize ||
-			action == githubActionReopened {
+			action == githubActionReopened || action == githubActionAutoBaseChange {
 			grip.Info(message.Fields{
 				"source":    "GitHub hook",
 				"msg_id":    gh.msgID,
