@@ -43,8 +43,8 @@ type TestResultOutput struct {
 	AWSCredentials aws.CredentialsProvider `bson:"-" json:"-"`
 }
 
-// AppendTestResults appends test results for the given task run.
-func AppendTestResults(ctx context.Context, t *Task, env evergreen.Environment, testResults []testresult.TestResult) error {
+// AppendTestResultMetadata appends test result metadata for the given task run.
+func AppendTestResultMetadata(ctx context.Context, t *Task, env evergreen.Environment, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
 	output, ok := t.GetTaskOutputSafe()
 	if !ok {
 		return nil
@@ -54,7 +54,7 @@ func AppendTestResults(ctx context.Context, t *Task, env evergreen.Environment, 
 		return errors.Wrap(err, "getting test result service")
 	}
 
-	return svc.AppendTestResults(ctx, testResults)
+	return svc.AppendTestResultMetadata(ctx, failedTestSample, failedCount, totalResults, record)
 }
 
 // getMergedTaskTestResults returns test results belonging to the specified task run.
@@ -369,13 +369,14 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 	})
 }
 
-func (o TestResultOutput) downloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
-	bucket, err := o.getBucket(ctx, credentials)
+// DownloadParquet downloads test results in parquet format from s3.
+func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
+	bucket, err := o.GetBucket(ctx, credentials)
 	if err != nil {
 		return nil, err
 	}
 
-	r, err := bucket.Get(ctx, t.PartitionKey())
+	r, err := bucket.Get(ctx, testresult.PartitionKey(t.CreatedAt, t.Info.Project, t.ID))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting Parquet test results")
 	}
@@ -431,7 +432,8 @@ func (o TestResultOutput) downloadParquet(ctx context.Context, credentials everg
 	return results, nil
 }
 
-func (o TestResultOutput) getBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
+// GetBucket constructs an s3 bucket to retrieve test results from.
+func (o TestResultOutput) GetBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
 	bucket, err := o.createBucket(ctx, credentials, o.BucketConfig.TestResultsPrefix, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating bucket")

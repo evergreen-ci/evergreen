@@ -166,6 +166,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 		WorkDir:         filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit"),
 		NewExpansions:   &util.DynamicExpansions{},
 	}
+	conf.Task.TaskOutputInfo.TestResults.Version = 0
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer){
 		"GlobMatchesAsteriskAndSendsToCedar": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {

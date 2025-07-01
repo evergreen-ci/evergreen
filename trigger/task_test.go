@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/pail"
@@ -860,7 +861,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	s.Require().NoError(err)
 	saveTestResults(s.T(), ctx, testBucket, svc, &s.task, 1, results)
-	s.Require().NoError(s.task.SetResultsInfo(ctx, task.TestResultsServiceEvergreen, testStatus == evergreen.TestFailedStatus))
+	s.Require().NoError(s.task.SetResultsInfo(ctx, testStatus == evergreen.TestFailedStatus))
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
@@ -1494,7 +1495,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		TestName: "f1",
 		Status:   evergreen.TestFailedStatus,
 	}})
-	require.NoError(t, tasks[4].SetResultsInfo(ctx, task.TestResultsServiceEvergreen, true))
+	require.NoError(t, tasks[4].SetResultsInfo(ctx, true))
 	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)
@@ -1566,7 +1567,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 		}
 	}
 
-	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, tr.PartitionKey()))
+	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, testresult.PartitionKey(tr.CreatedAt, tr.Info.Project, tr.ID)))
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
 
@@ -1574,6 +1575,6 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, pw.Write(savedParquet))
 	require.NoError(t, pw.Close())
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults))
+	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
 }

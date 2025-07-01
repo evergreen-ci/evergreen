@@ -98,7 +98,7 @@ type Task {
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
-  hasCedarResults: Boolean!
+  hasTestResults: Boolean!
   hostId: String
   imageId: String!
   ingestTime: Time

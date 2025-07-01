@@ -1003,7 +1003,7 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]ta
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task '%s': %s", dbTask.Id, err.Error()))
 	}
 
-	if baseTask != nil && baseTask.ResultsService == dbTask.ResultsService {
+	if baseTask != nil {
 		tasks, err = baseTask.GetTestResultsTasks(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for base task '%s': %s", baseTask.Id, err.Error()))

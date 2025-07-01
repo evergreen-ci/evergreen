@@ -99,7 +99,7 @@ type Task struct {
 	TaskGroupMaxHosts     int                   `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder        int                   `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	ResultsService        string                `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasCedarResults       bool                  `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	HasTestResults        bool                  `bson:"has_test_results,omitempty" json:"has_test_results,omitempty"`
 	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
 	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
@@ -1818,21 +1818,15 @@ func (t *Task) GetTestLogs(ctx context.Context, getOpts TestLogGetOptions) (log.
 // because in cases where multiple calls to attach test results are made for a
 // task, only one call needs to have a test failure for the ResultsFailed field
 // to be set to true.
-func (t *Task) SetResultsInfo(ctx context.Context, service string, failedResults bool) error {
+func (t *Task) SetResultsInfo(ctx context.Context, failedResults bool) error {
 	if t.DisplayOnly {
 		return errors.New("cannot set results info on a display task")
 	}
-	if t.ResultsService != "" {
-		if t.ResultsService != service {
-			return errors.New("cannot use more than one test results service for a task")
-		}
-		if !failedResults {
-			return nil
-		}
+	if t.HasTestResults && !failedResults {
+		return nil
 	}
-
-	t.ResultsService = service
-	set := bson.M{ResultsServiceKey: service}
+	t.HasTestResults = true
+	set := bson.M{HasTestResultsKey: true}
 	if failedResults {
 		t.ResultsFailed = true
 		set[ResultsFailedKey] = true
@@ -1844,7 +1838,7 @@ func (t *Task) SetResultsInfo(ctx context.Context, service string, failedResults
 // HasResults returns whether the task has test results or not.
 func (t *Task) HasResults(ctx context.Context) bool {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
+		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasTestResultsKey: true}}
 		if t.Archived {
 			execTasks, err := FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 			if err != nil {
@@ -1868,7 +1862,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		}
 	}
 
-	return t.ResultsService != "" || t.HasCedarResults
+	return t.ResultsService != "" || t.HasTestResults
 }
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and
@@ -2480,7 +2474,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.TaskOutputInfo = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
-		t.HasCedarResults = false
+		t.HasTestResults = false
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -2518,7 +2512,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				TaskOutputInfoKey,
 				ResultsServiceKey,
 				ResultsFailedKey,
-				HasCedarResultsKey,
+				HasTestResultsKey,
 				ResetWhenFinishedKey,
 				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,
@@ -3231,13 +3225,13 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 			execTasksWithResults []Task
 			err                  error
 		)
-		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
+		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasTestResultsKey: true}}
 		if t.Archived {
 			execTasksWithResults, err = FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey, TaskOutputInfoKey)
+			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasTestResultsKey, TaskOutputInfoKey)
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")

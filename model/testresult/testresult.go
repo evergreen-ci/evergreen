@@ -28,17 +28,17 @@ type TaskTestResultsStats struct {
 
 // TestResultsInfo describes information unique to a single task execution.
 type TestResultsInfo struct {
-	Project         string `bson:"project"`
-	Version         string `bson:"version"`
-	Variant         string `bson:"variant"`
-	TaskName        string `bson:"task_name"`
-	DisplayTaskName string `bson:"display_task_name,omitempty"`
-	TaskID          string `bson:"task_id"`
-	DisplayTaskID   string `bson:"display_task_id,omitempty"`
-	Execution       int    `bson:"execution"`
-	Requester       string `bson:"request_type"`
-	Mainline        bool   `bson:"mainline"`
-	Schema          int    `bson:"schema"`
+	Project         string `bson:"project" json:"project" yaml:"project"`
+	Version         string `bson:"version" json:"version" yaml:"version"`
+	Variant         string `bson:"variant" json:"variant" yaml:"variant"`
+	TaskName        string `bson:"task_name" json:"task_name" yaml:"task_name"`
+	DisplayTaskName string `bson:"display_task_name,omitempty" json:"display_task_name" yaml:"display_task_name"`
+	TaskID          string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	DisplayTaskID   string `bson:"display_task_id,omitempty" json:"display_task_id" yaml:"display_task_id"`
+	Execution       int    `bson:"execution" json:"execution" yaml:"execution"`
+	Requester       string `bson:"request_type" json:"request_type" yaml:"request_type"`
+	Mainline        bool   `bson:"mainline" json:"mainline" yaml:"mainline"`
+	Schema          int    `bson:"schema" json:"schema" yaml:"schema"`
 }
 
 // TestResult represents a single test result from an Evergreen task run.

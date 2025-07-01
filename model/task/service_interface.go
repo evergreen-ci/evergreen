@@ -14,14 +14,14 @@ const (
 	TestResultsServiceCedar     = "cedar"
 )
 
-const defaultService = TestResultsServiceCedar
+const defaultService = TestResultsServiceEvergreen
 
 // TestResultsService is an interface for fetching test results data from an
 // underlying test results store.
 type TestResultsService interface {
 	// TODO: DEVPROD-17978 Remove this function
 	GetFailedTestSamples(context.Context, []Task, []string) ([]testresult.TaskTestResultsFailedSample, error)
-	AppendTestResults(context.Context, []testresult.TestResult) error
+	AppendTestResultMetadata(context.Context, []string, int, int, testresult.DbTaskTestResults) error
 	GetTaskTestResults(context.Context, []Task, []Task) ([]testresult.TaskTestResults, error)
 	GetTaskTestResultsStats(context.Context, []Task) (testresult.TaskTestResultsStats, error)
 }

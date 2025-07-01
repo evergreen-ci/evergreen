@@ -1373,7 +1373,7 @@ type ComplexityRoot struct {
 		GenerateTask            func(childComplexity int) int
 		GeneratedBy             func(childComplexity int) int
 		GeneratedByName         func(childComplexity int) int
-		HasCedarResults         func(childComplexity int) int
+		HasTestResults          func(childComplexity int) int
 		HostId                  func(childComplexity int) int
 		Id                      func(childComplexity int) int
 		ImageID                 func(childComplexity int) int
@@ -8729,12 +8729,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Task.GeneratedByName(childComplexity), true
 
-	case "Task.hasCedarResults":
-		if e.complexity.Task.HasCedarResults == nil {
+	case "Task.hasTestResults":
+		if e.complexity.Task.HasTestResults == nil {
 			break
 		}
 
-		return e.complexity.Task.HasCedarResults(childComplexity), true
+		return e.complexity.Task.HasTestResults(childComplexity), true
 
 	case "Task.hostId":
 		if e.complexity.Task.HostId == nil {
@@ -25148,8 +25148,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -29492,8 +29492,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -31998,8 +31998,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -36544,8 +36544,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -36753,8 +36753,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -36962,8 +36962,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -37171,8 +37171,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -37380,8 +37380,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -37589,8 +37589,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -37798,8 +37798,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -38956,8 +38956,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -44213,8 +44213,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -44756,8 +44756,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -52129,8 +52129,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -52338,8 +52338,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -60965,8 +60965,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -62053,8 +62053,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -62418,8 +62418,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -62790,8 +62790,8 @@ func (ec *executionContext) fieldContext_Task_generateTask(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_hasCedarResults(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Task_hasCedarResults(ctx, field)
+func (ec *executionContext) _Task_hasTestResults(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_hasTestResults(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -62804,7 +62804,7 @@ func (ec *executionContext) _Task_hasCedarResults(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.HasCedarResults, nil
+		return obj.HasTestResults, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -62821,7 +62821,7 @@ func (ec *executionContext) _Task_hasCedarResults(ctx context.Context, field gra
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Task_hasCedarResults(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Task_hasTestResults(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -66176,8 +66176,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -70547,8 +70547,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -74522,8 +74522,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
-			case "hasCedarResults":
-				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
 			case "imageId":
@@ -97294,8 +97294,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "generateTask":
 			out.Values[i] = ec._Task_generateTask(ctx, field, obj)
-		case "hasCedarResults":
-			out.Values[i] = ec._Task_hasCedarResults(ctx, field, obj)
+		case "hasTestResults":
+			out.Values[i] = ec._Task_hasTestResults(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
