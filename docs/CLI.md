@@ -27,7 +27,8 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
   - [Download](https://github.com/kanopy-platform/kanopy-oidc/releases/) the latest release for your laptop’s OS/architecture. If you already have Kanopy-OIDC installed, make sure you’re running version 0.5.0 or later.
   - untar the release tarball
   - put the kanopy-oidc binary on your PATH
-  - `sudo mv ~/Downloads/kanopy-oidc-*/bin/kanopy-oidc-* /usr/local/bin/kanopy-oidc`
+      -  `sudo mv ~/Downloads/kanopy-oidc-*/bin/kanopy-oidc-* /usr/local/bin/kanopy-oidc`
+      - Alternatively, If you are doing it for a virtual workstation, create a /home/ubuntu/.local/bin on your workstation and then use `scp ~/Downloads/kanopy-oidc-*/bin/kanopy-oidc-* ubuntu@<your_workstation>:/home/ubuntu/.local/bin`
   - Create the kanopy-oidc configuration file by Copy/Pasting from [here](https://kanopy.corp.mongodb.com/docs/configuration/kubeconfig/#configure-kanopy-oidc) to ~/.kanopy/config.yaml.
   - run `kanopy-oidc version` to verify installation
 
