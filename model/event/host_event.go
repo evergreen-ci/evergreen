@@ -17,6 +17,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventHostTemporaryExemptionExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventSpawnHostIdleNotification)
+	registry.AllowSubscription(ResourceTypeHost, EventAlertableInstanceTypeWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
 	registry.AllowSubscription(ResourceTypeHost, EventSpawnHostCreatedError)
@@ -60,6 +61,7 @@ const (
 	EventHostExpirationWarningSent                   = "HOST_EXPIRATION_WARNING_SENT"
 	EventHostTemporaryExemptionExpirationWarningSent = "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT"
 	EventSpawnHostIdleNotification                   = "HOST_IDLE_NOTIFICATION"
+	EventAlertableInstanceTypeWarningSent            = "HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT"
 	EventHostScriptExecuted                          = "HOST_SCRIPT_EXECUTED"
 	EventHostScriptExecuteFailed                     = "HOST_SCRIPT_EXECUTE_FAILED"
 	EventVolumeExpirationWarningSent                 = "VOLUME_EXPIRATION_WARNING_SENT"
@@ -304,6 +306,12 @@ func LogVolumeExpirationWarningSent(ctx context.Context, volumeID string) {
 // LogSpawnHostIdleNotification logs an event for the spawn host being idle.
 func LogSpawnHostIdleNotification(ctx context.Context, hostID string) {
 	LogHostEvent(ctx, hostID, EventSpawnHostIdleNotification, HostEventData{})
+}
+
+// LogAlertableInstanceTypeWarningSent logs an event warning about
+// the host using an alertable instance type.
+func LogAlertableInstanceTypeWarningSent(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventAlertableInstanceTypeWarningSent, HostEventData{})
 }
 
 func LogHostScriptExecuted(ctx context.Context, hostID string, logs string) {

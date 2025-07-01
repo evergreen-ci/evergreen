@@ -20,6 +20,23 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
+  Arch:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      LINUX_64_BIT: 
+        value: github.com/evergreen-ci/evergreen.ArchLinuxAmd64
+      LINUX_ARM_64_BIT:
+        value: github.com/evergreen-ci/evergreen.ArchLinuxArm64
+      LINUX_PPC_64_BIT:
+        value: github.com/evergreen-ci/evergreen.ArchLinuxPpc64le
+      LINUX_ZSERIES:
+        value: github.com/evergreen-ci/evergreen.ArchLinuxS390x
+      OSX_64_BIT:
+        value: github.com/evergreen-ci/evergreen.ArchDarwinAmd64
+      OSX_ARM_64_BIT:
+        value: github.com/evergreen-ci/evergreen.ArchDarwinArm64
+      WINDOWS_64_BIT:
+        value: github.com/evergreen-ci/evergreen.ArchWindowsAmd64
   AWSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   AWSPodConfig:
@@ -30,6 +47,15 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
   BetaFeaturesInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
+  BootstrapMethod:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      LEGACY_SSH: 
+        value: github.com/evergreen-ci/evergreen/model/distro.BootstrapMethodLegacySSH
+      SSH:
+        value: github.com/evergreen-ci/evergreen/model/distro.BootstrapMethodSSH
+      USER_DATA:
+        value: github.com/evergreen-ci/evergreen/model/distro.BootstrapMethodUserData
   BootstrapSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBootstrapSettings
   BootstrapSettingsInput:
@@ -56,6 +82,15 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   CommitQueueParamsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
+  CommunicationMethod:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      LEGACY_SSH: 
+        value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodLegacySSH
+      SSH:
+        value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodSSH
+      RPC:
+        value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodRPC
   ContainerPool:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolsConfig:
@@ -70,6 +105,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
   DispatcherSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
+  DispatcherVersion:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      REVISED_WITH_DEPENDENCIES: 
+        value: github.com/evergreen-ci/evergreen.DispatcherVersionRevisedWithDependencies
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   DistroInput:
@@ -92,6 +132,15 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
   ExternalLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
+  FeedbackRule:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      WAITS_OVER_THRESH: 
+        value: github.com/evergreen-ci/evergreen.HostAllocatorWaitsOverThreshFeedback
+      NO_FEEDBACK:
+        value: github.com/evergreen-ci/evergreen.HostAllocatorNoFeedback
+      DEFAULT:
+        value: github.com/evergreen-ci/evergreen.HostAllocatorUseDefaultFeedback
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
@@ -100,6 +149,17 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   FinderSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
+  FinderVersion:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      LEGACY: 
+        value: github.com/evergreen-ci/evergreen.FinderVersionLegacy
+      PARALLEL: 
+        value: github.com/evergreen-ci/evergreen.FinderVersionParallel
+      PIPELINE: 
+        value: github.com/evergreen-ci/evergreen.FinderVersionPipeline
+      ALTERNATE: 
+        value: github.com/evergreen-ci/evergreen.FinderVersionAlternate
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubAppAuth:
@@ -134,6 +194,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
   HostAllocatorSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostAllocatorSettings
+  HostAllocatorVersion:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      UTILIZATION: 
+        value: github.com/evergreen-ci/evergreen.HostAllocatorUtilization
   HostEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
   HostEventLogEntry:
@@ -197,6 +262,8 @@ models:
         value: github.com/evergreen-ci/evergreen/model/event.EventSpawnHostCreatedError
       HOST_IDLE_NOTIFICATION:
         value: github.com/evergreen-ci/evergreen/model/event.EventSpawnHostIdleNotification
+      HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT:
+        value: github.com/evergreen-ci/evergreen/model/event.EventAlertableInstanceTypeWarningSent
       HOST_SCRIPT_EXECUTED:
         value: github.com/evergreen-ci/evergreen/model/event.EventHostScriptExecuted
       HOST_SCRIPT_EXECUTE_FAILED:
@@ -261,6 +328,15 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOSInfo
   OperatingSystemOpts:
     model: github.com/evergreen-ci/evergreen/thirdparty.OSInfoFilterOptions
+  OverallocatedRule:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      TERMINATE: 
+        value: github.com/evergreen-ci/evergreen.HostsOverallocatedTerminate
+      IGNORE:
+        value: github.com/evergreen-ci/evergreen.HostsOverallocatedIgnore
+      DEFAULT:
+        value: github.com/evergreen-ci/evergreen.HostsOverallocatedUseDefault
   Package:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPackage
   PackageOpts:
@@ -308,6 +384,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
   PlannerSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
+  PlannerVersion:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      TUNABLE: 
+        value: github.com/evergreen-ci/evergreen.PlannerVersionTunable
   Pod:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPod
   PodEventLogEntry:
@@ -365,6 +446,17 @@ models:
         resolver: true
   ProjectVarsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
+  Provider:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      DOCKER: 
+        value: github.com/evergreen-ci/evergreen.ProviderNameDocker
+      EC2_FLEET:
+        value: github.com/evergreen-ci/evergreen.ProviderNameEc2Fleet
+      EC2_ON_DEMAND:
+        value: github.com/evergreen-ci/evergreen.ProviderNameEc2OnDemand
+      STATIC:
+        value: github.com/evergreen-ci/evergreen.ProviderNameStatic
   PublicKey:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPubKey
   RepoCommitQueueParams:
@@ -400,12 +492,25 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
   ResourceLimitsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
+  RoundingRule:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      UP: 
+        value: github.com/evergreen-ci/evergreen.HostAllocatorRoundUp
+      DOWN:
+        value: github.com/evergreen-ci/evergreen.HostAllocatorRoundDown
+      DEFAULT:
+        value: github.com/evergreen-ci/evergreen.HostAllocatorRoundDefault
   SearchReturnInfo:
     model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
   Selector:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  ServiceFlags:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
+  ServiceFlagsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
   SingleTaskDistroConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SiteBanner:
