@@ -182,6 +182,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 				"source":    "GitHub hook",
 				"msg_id":    gh.msgID,
 				"event":     gh.eventType,
+				"action":    action,
 				"repo":      *event.PullRequest.Base.Repo.FullName,
 				"ref":       *event.PullRequest.Base.Ref,
 				"pr_number": *event.PullRequest.Number,
