@@ -830,7 +830,6 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 	s.task.BuildId = fmt.Sprintf("build_id_%d", n)
 	s.task.RevisionOrderNumber = n
 	s.task.Status = taskStatus
-	s.task.ResultsService = ""
 	s.task.ResultsFailed = false
 	s.data.Status = taskStatus
 	s.event.ResourceId = s.task.Id
@@ -1100,7 +1099,6 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Version:        "v1",
 		BuildId:        "test_build_id",
 		Project:        "myproj",
-		ResultsService: "local",
 		ResultsFailed:  true,
 		TaskOutputInfo: &output,
 	}
@@ -1113,7 +1111,6 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Version:        "v1",
 		BuildId:        "test_build_id",
 		Project:        "myproj",
-		ResultsService: "local",
 		ResultsFailed:  true,
 		TaskOutputInfo: &output,
 	}
@@ -1425,14 +1422,12 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		{
 			Id:             "et0_0",
 			DisplayName:    "et0",
-			ResultsService: task.TestResultsServiceEvergreen,
 			ResultsFailed:  true,
 			TaskOutputInfo: &output,
 		},
 		{
 			Id:             "et1_0",
 			DisplayName:    "et1",
-			ResultsService: task.TestResultsServiceEvergreen,
 			TaskOutputInfo: &output,
 		},
 		{
@@ -1451,13 +1446,11 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		{
 			Id:             "et0_1",
 			DisplayName:    "et0",
-			ResultsService: task.TestResultsServiceEvergreen,
 			TaskOutputInfo: &output,
 		},
 		{
 			Id:             "et1_1",
 			DisplayName:    "et1",
-			ResultsService: task.TestResultsServiceEvergreen,
 			ResultsFailed:  true,
 			TaskOutputInfo: &output,
 		},

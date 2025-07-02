@@ -327,14 +327,13 @@ func TestCLITestHistory(t *testing.T) {
 			// create tasks with three different display names that start and finish at various times
 			for i := 0; i < 10; i++ {
 				tsk := task.Task{
-					Id:             fmt.Sprintf("task_%v", i),
-					Project:        project,
-					DisplayName:    fmt.Sprintf("testTask_%v", i%3),
-					Revision:       fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
-					Version:        fmt.Sprintf("version%v", i%3),
-					BuildVariant:   "osx",
-					Status:         evergreen.TaskFailed,
-					ResultsService: task.TestResultsServiceEvergreen,
+					Id:           fmt.Sprintf("task_%v", i),
+					Project:      project,
+					DisplayName:  fmt.Sprintf("testTask_%v", i%3),
+					Revision:     fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
+					Version:      fmt.Sprintf("version%v", i%3),
+					BuildVariant: "osx",
+					Status:       evergreen.TaskFailed,
 				}
 				So(tsk.Insert(ctx), ShouldBeNil)
 

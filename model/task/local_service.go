@@ -68,10 +68,6 @@ func (s *localService) GetTaskTestResultsStats(ctx context.Context, taskOpts []T
 	return mergedStats, nil
 }
 
-func (s *localService) GetFailedTestSamples(ctx context.Context, taskOpts []Task, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
-	return nil, errors.New("not implemented")
-}
-
 // Get fetches the unmerged test results for the given tasks from the local
 // store.
 func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {

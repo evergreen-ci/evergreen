@@ -76,10 +76,6 @@ func (s *evergreenService) GetTaskTestResultsStats(ctx context.Context, taskOpts
 	return mergedStats, nil
 }
 
-func (s *evergreenService) GetFailedTestSamples(ctx context.Context, taskOpts []Task, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
-	return nil, errors.New("not implemented")
-}
-
 // Get fetches the unmerged test results for the given tasks from the local
 // store.
 func (s *evergreenService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {

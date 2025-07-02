@@ -98,7 +98,6 @@ type Task struct {
 	TaskGroup             string                `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts     int                   `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder        int                   `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	ResultsService        string                `bson:"results_service,omitempty" json:"results_service,omitempty"`
 	HasTestResults        bool                  `bson:"has_test_results,omitempty" json:"has_test_results,omitempty"`
 	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
 	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
@@ -1838,7 +1837,7 @@ func (t *Task) SetResultsInfo(ctx context.Context, failedResults bool) error {
 // HasResults returns whether the task has test results or not.
 func (t *Task) HasResults(ctx context.Context) bool {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasTestResultsKey: true}}
+		hasResults := []bson.M{{HasTestResultsKey: true}}
 		if t.Archived {
 			execTasks, err := FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 			if err != nil {
@@ -1862,7 +1861,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		}
 	}
 
-	return t.ResultsService != "" || t.HasTestResults
+	return t.HasTestResults
 }
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and
@@ -2472,7 +2471,6 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.LastHeartbeat = utility.ZeroTime
 		t.Details = apimodels.TaskEndDetail{}
 		t.TaskOutputInfo = nil
-		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasTestResults = false
 		t.ResetWhenFinished = false
@@ -2510,7 +2508,6 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 			"$unset": []string{
 				DetailsKey,
 				TaskOutputInfoKey,
-				ResultsServiceKey,
 				ResultsFailedKey,
 				HasTestResultsKey,
 				ResetWhenFinishedKey,
@@ -3225,13 +3222,13 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 			execTasksWithResults []Task
 			err                  error
 		)
-		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasTestResultsKey: true}}
+		hasResults := []bson.M{{HasTestResultsKey: true}}
 		if t.Archived {
 			execTasksWithResults, err = FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasTestResultsKey, TaskOutputInfoKey)
+			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, HasTestResultsKey, TaskOutputInfoKey)
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")

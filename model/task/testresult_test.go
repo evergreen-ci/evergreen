@@ -40,21 +40,21 @@ func TestGetTaskTestResults(t *testing.T) {
 	require.NoError(t, err)
 
 	task0 := Task{
-		Id:             "task0",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task0",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task1 := Task{
-		Id:             "task1",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task1",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task2 := Task{
-		Id:             "task2",
-		Execution:      1,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task2",
+		Execution: 1,
+
 		TaskOutputInfo: &output,
 	}
 	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2))
@@ -66,7 +66,6 @@ func TestGetTaskTestResults(t *testing.T) {
 	externalServiceTask := Task{
 		Id:             "external_service_task",
 		Execution:      1,
-		ResultsService: TestResultsServiceCedar,
 		TaskOutputInfo: &outputCedar,
 	}
 	externalServiceResults := make([]testresult.TestResult, 10)
@@ -177,9 +176,9 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	defer srv.Close()
 	svc := NewEvergreenService(env)
 	task0 := Task{
-		Id:             "task0",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task0",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
@@ -206,9 +205,9 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults0, tr.ID)))
 
 	task1 := Task{
-		Id:             "task1",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task1",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
@@ -234,7 +233,6 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	externalServiceTask := Task{
 		Id:             "external_service_task",
 		Execution:      0,
-		ResultsService: TestResultsServiceCedar,
 		TaskOutputInfo: &outputCedar,
 	}
 
@@ -329,15 +327,15 @@ func TestGetFailedTestSamples(t *testing.T) {
 	defer srv.Close()
 	svc := NewEvergreenService(env)
 	task5 := Task{
-		Id:             "task5",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task5",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task4 := Task{
-		Id:             "task4",
-		Execution:      1,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task4",
+		Execution: 1,
+
 		TaskOutputInfo: &output,
 	}
 
@@ -362,7 +360,6 @@ func TestGetFailedTestSamples(t *testing.T) {
 	externalServiceTask := Task{
 		Id:             "external_service_task",
 		Execution:      0,
-		ResultsService: TestResultsServiceCedar,
 		TaskOutputInfo: &outputCedar,
 	}
 
@@ -461,21 +458,21 @@ func TestAppendResults(t *testing.T) {
 	require.NoError(t, err)
 
 	task0 := Task{
-		Id:             "task0",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task0",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task1 := Task{
-		Id:             "task1",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task1",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task2 := Task{
-		Id:             "task2",
-		Execution:      1,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task2",
+		Execution: 1,
+
 		TaskOutputInfo: &output,
 	}
 	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2))
