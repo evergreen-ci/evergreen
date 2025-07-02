@@ -69,7 +69,6 @@ type TaskConfig struct {
 	// HasFailingTestResult is true if the task has sent at least one test
 	// result and at least one of those tests failed.
 	HasFailingTestResult bool
-	CedarTestResultsID   string
 	TaskGroup            *model.TaskGroup
 	CommandCleanups      []CommandCleanup
 	MaxExecTimeoutSecs   int

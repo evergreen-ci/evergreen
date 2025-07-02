@@ -198,12 +198,6 @@ func MockConfig() *evergreen.Settings {
 				Secret: "aws_secret",
 			},
 		},
-		Cedar: evergreen.CedarConfig{
-			BaseURL: "url.com",
-			RPCPort: "7070",
-			User:    "cedar-user",
-			APIKey:  "cedar-key",
-		},
 		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
