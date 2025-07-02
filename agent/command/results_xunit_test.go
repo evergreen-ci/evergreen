@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	timberutil "github.com/evergreen-ci/timber/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -166,70 +165,72 @@ func TestXUnitParseAndUpload(t *testing.T) {
 		WorkDir:         filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit"),
 		NewExpansions:   &util.DynamicExpansions{},
 	}
-	conf.Task.TaskOutputInfo.TestResults.Version = 0
+	conf.Task.TaskOutputInfo.TestResults.Version = 2
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer){
-		"GlobMatchesAsteriskAndSendsToCedar": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer){
+		"GlobMatchesAsteriskAndSendsToCedar": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{"*"},
 			}
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 
-			assert.Len(t, cedarSrv.TestResults.Results, 1)
-			for id, results := range cedarSrv.TestResults.Results {
-				assert.NotEmpty(t, id)
-				assert.NotEmpty(t, results)
-				for _, res := range results {
-					assert.NotEmpty(t, res.Results)
-					for _, r := range res.Results {
-						assert.NotEmpty(t, r.TestName)
-						assert.NotEmpty(t, r.DisplayTestName)
-						assert.NotEmpty(t, r.Status)
+			dbResults, err := conf.Task.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
+			require.NoError(t, err)
 
-						if r.Status == evergreen.TestFailedStatus {
-							require.NotEmpty(t, r.LogInfo)
-							assert.NotEqual(t, r.DisplayTestName, r.LogInfo.LogName)
-						}
-					}
+			assert.Len(t, dbResults.Results, 1)
+			for _, res := range dbResults.Results {
+				assert.NotEmpty(t, res)
+				assert.NotEmpty(t, res.TestName)
+				assert.NotEmpty(t, res.DisplayTestName)
+				assert.NotEmpty(t, res.Status)
+				if res.Status == evergreen.TestFailedStatus {
+					require.NotEmpty(t, res.LogInfo)
+					assert.NotEqual(t, res.DisplayTestName, res.LogInfo.LogName)
 				}
 			}
 		},
-		"GlobMatchesAbsolutePathContainingWorkDirPrefixAndSendsToCedar": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"GlobMatchesAbsolutePathContainingWorkDirPrefixAndSendsToCedar": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "junit*.xml")},
 			}
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 
-			assert.Len(t, cedarSrv.TestResults.Results, 1)
+			dbResults, err := conf.Task.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
+			require.NoError(t, err)
+			assert.Len(t, dbResults.Results, 1)
 		},
-		"GlobMatchesRelativePathAndSendsToCedar": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"GlobMatchesRelativePathAndSendsToCedar": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "*")},
 			}
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 
-			assert.Len(t, cedarSrv.TestResults.Results, 1)
+			dbResults, err := conf.Task.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
+			require.NoError(t, err)
+			assert.Len(t, dbResults.Results, 1)
 		},
-		"EmptyTestsForValidPathCauseNoError": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"EmptyTestsForValidPathCauseNoError": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "empty.xml")},
 			}
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 
-			assert.Empty(t, cedarSrv.TestResults.Results)
+			dbResults, err := conf.Task.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
+			require.NoError(t, err)
+			assert.Empty(t, dbResults.Results)
 		},
-		"EmptyTestsForInvalidPathErrors": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"EmptyTestsForInvalidPathErrors": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "nonexistent.xml")},
 			}
 			assert.Error(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 		},
-		"DirectoryErrors": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"DirectoryErrors": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{conf.WorkDir},
 			}
@@ -241,11 +242,10 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
 			defer tcancel()
 
-			cedarSrv := setupCedarServer(tctx, t, comm)
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 
-			tCase(tctx, t, cedarSrv, conf, logger)
+			tCase(tctx, t, conf, logger)
 		})
 	}
 }
