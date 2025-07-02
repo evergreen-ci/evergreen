@@ -63,21 +63,26 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 
 func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client.TaskData, comm client.Communicator, results []testresult.TestResult) error {
 	output, ok := conf.Task.GetTaskOutputSafe()
-	if !ok {
+	if !ok || output == nil {
 		return errors.New("cannot attach test results without a task output")
 	}
-	failed, err := uploadTestResults(ctx, comm, conf, results, td, output)
-	if err != nil {
-		return errors.Wrap(err, "attaching test results")
+	switch output.TestResults.Version {
+	case task.TestResultServiceCedar, task.TestResultServiceEvergreen:
+		failed, err := uploadTestResults(ctx, comm, conf, results, td, output)
+		if err != nil {
+			return errors.Wrap(err, "attaching test results")
+		}
+		conf.HasTestResults = true
+		if err := comm.SetResultsInfo(ctx, td, failed); err != nil {
+			return errors.Wrap(err, "setting results info in the task")
+		}
+		if failed {
+			conf.HasFailingTestResult = true
+		}
+		return nil
+	default:
+		return errors.New("invalid test results version")
 	}
-	conf.HasTestResults = true
-	if err := comm.SetResultsInfo(ctx, td, failed); err != nil {
-		return errors.Wrap(err, "setting results info in the task")
-	}
-	if failed {
-		conf.HasFailingTestResult = true
-	}
-	return nil
 }
 
 func uploadTestResults(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {

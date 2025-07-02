@@ -16,7 +16,7 @@ import (
 
 var localOutput = TaskOutput{
 	TestResults: TestResultOutput{
-		Version: 2,
+		Version: TestResultServiceLocal,
 		BucketConfig: evergreen.BucketConfig{
 			Type:              evergreen.BucketTypeLocal,
 			TestResultsPrefix: "test-results",

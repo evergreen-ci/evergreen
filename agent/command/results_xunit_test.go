@@ -165,10 +165,10 @@ func TestXUnitParseAndUpload(t *testing.T) {
 		WorkDir:         filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit"),
 		NewExpansions:   &util.DynamicExpansions{},
 	}
-	conf.Task.TaskOutputInfo.TestResults.Version = 2
+	conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceLocal
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer){
-		"GlobMatchesAsteriskAndSendsToCedar": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"GlobMatchesAsteriskAndSendsTestResults": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{"*"},
 			}
@@ -190,7 +190,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 				}
 			}
 		},
-		"GlobMatchesAbsolutePathContainingWorkDirPrefixAndSendsToCedar": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"GlobMatchesAbsolutePathContainingWorkDirPrefixAndSendsTestResults": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "junit*.xml")},
 			}
@@ -201,7 +201,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, dbResults.Results, 1)
 		},
-		"GlobMatchesRelativePathAndSendsToCedar": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+		"GlobMatchesRelativePathAndSendsTestResults": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "*")},
 			}

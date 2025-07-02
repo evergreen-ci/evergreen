@@ -87,7 +87,7 @@ func TestSendTestResults(t *testing.T) {
 
 	conf.Task.TaskOutputInfo = &task.TaskOutput{
 		TestResults: task.TestResultOutput{
-			Version: 1,
+			Version: task.TestResultServiceEvergreen,
 			BucketConfig: evergreen.BucketConfig{
 				Type:              evergreen.BucketTypeLocal,
 				TestResultsPrefix: "test-results",
