@@ -87,10 +87,11 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 
 	summary := j.summarizeStatsUsage(stats)
 	grip.Debug(message.Fields{
-		"message": "distro host usage stats",
-		"distro":  j.DistroID,
-		"summary": summary,
-		"job":     j.ID(),
+		"message":          "distro host usage stats",
+		"distro":           j.DistroID,
+		"distro_max_hosts": j.distro.HostAllocatorSettings.MaximumHosts,
+		"summary":          summary,
+		"job":              j.ID(),
 	})
 
 	// Avoid tuning rarely-used distros because they may not have enough data to
