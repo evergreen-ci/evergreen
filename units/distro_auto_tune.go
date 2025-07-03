@@ -87,10 +87,11 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 
 	summary := j.summarizeStatsUsage(stats)
 	grip.Debug(message.Fields{
-		"message": "distro host usage stats",
-		"distro":  j.DistroID,
-		"summary": summary,
-		"job":     j.ID(),
+		"message":          "distro host usage stats",
+		"distro":           j.DistroID,
+		"distro_max_hosts": j.distro.HostAllocatorSettings.MaximumHosts,
+		"summary":          summary,
+		"job":              j.ID(),
 	})
 
 	// Avoid tuning rarely-used distros because they may not have enough data to
@@ -107,16 +108,16 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	}
 
 	const (
-		thresholdFractionToDecreaseHosts = 0.5
-		maxFractionalHostDecrease        = 0.1
+		thresholdFractionToDecreaseHosts = 0.1
+		maxFractionalHostDecrease        = 0.05
 
 		thresholdFractionToIncreaseHosts = 0.02
 		maxFractionalHostIncrease        = 0.25
 	)
 	newMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
 	if summary.FractionOfMaxHostsUsed < thresholdFractionToDecreaseHosts {
-		// Decrease max hosts due to low usage based on percentage of distro
-		// max hosts utilized.
+		// Decrease max hosts due to extremely low usage based on percentage of
+		// distro max hosts utilized.
 		fractionToDecrease := min(thresholdFractionToDecreaseHosts-summary.FractionOfMaxHostsUsed, maxFractionalHostDecrease)
 		newMaxHosts = int(float64(j.distro.HostAllocatorSettings.MaximumHosts) * (1 - fractionToDecrease))
 	} else if summary.FractionOfTimeAtMaxHosts >= thresholdFractionToIncreaseHosts {
