@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GET rest/v2/admin/settings
+
 func makeFetchAdminSettings() gimlet.RouteHandler {
 	return &adminGetHandler{}
 }
@@ -72,6 +74,8 @@ func (h *uiV2URLGetHandler) Run(ctx context.Context) gimlet.Responder {
 		UIv2Url: utility.ToStringPtr(settings.Ui.UIv2Url),
 	})
 }
+
+// POST rest/v2/admin/settings
 
 func makeSetAdminSettings() gimlet.RouteHandler {
 	return &adminPostHandler{}
