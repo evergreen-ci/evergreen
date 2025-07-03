@@ -64,6 +64,29 @@ func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 	})
 }
 
+// GET /rest/v2/agent/perf_monitoring_url
+type agentPerfURL struct {
+	perfURL string
+}
+
+func makeGetPerfURL(perfURL string) *agentPerfURL {
+	return &agentPerfURL{
+		perfURL: perfURL,
+	}
+}
+
+func (h *agentPerfURL) Factory() gimlet.RouteHandler {
+	return &agentPerfURL{
+		perfURL: h.perfURL,
+	}
+}
+
+func (*agentPerfURL) Parse(_ context.Context, _ *http.Request) error { return nil }
+
+func (h *agentPerfURL) Run(ctx context.Context) gimlet.Responder {
+	return gimlet.NewTextResponse(h.perfURL)
+}
+
 // GET /rest/v2/agent/setup
 type agentSetup struct {
 	settings *evergreen.Settings

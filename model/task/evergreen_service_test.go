@@ -25,7 +25,7 @@ func init() { testutil.Setup() }
 
 var output = TaskOutput{
 	TestResults: TestResultOutput{
-		Version: 1,
+		Version: TestResultServiceEvergreen,
 		BucketConfig: evergreen.BucketConfig{
 			Type:              evergreen.BucketTypeLocal,
 			TestResultsPrefix: "test-results",
@@ -35,7 +35,7 @@ var output = TaskOutput{
 
 var outputCedar = TaskOutput{
 	TestResults: TestResultOutput{
-		Version: 0,
+		Version: TestResultServiceCedar,
 	},
 }
 

@@ -24,6 +24,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	TestResultServiceCedar     = 0
+	TestResultServiceEvergreen = 1
+	TestResultServiceLocal     = 2
+)
+
 var ParquetTestResultsSchemaDef *parquetschema.SchemaDefinition
 
 func init() {

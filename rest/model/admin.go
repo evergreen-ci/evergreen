@@ -85,6 +85,7 @@ type APIAdminSettings struct {
 	Notify              *APINotifyConfig              `json:"notify,omitempty"`
 	Overrides           *APIOverridesConfig           `json:"overrides,omitempty"`
 	ParameterStore      *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
+	PerfMonitoringURL   *string                       `json:"perf_monitoring_url"`
 	Plugins             map[string]map[string]any     `json:"plugins,omitempty"`
 	PodLifecycle        *APIPodLifecycleConfig        `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                       `json:"pprof_port,omitempty"`
@@ -145,6 +146,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.DomainName = utility.ToStringPtr(v.DomainName)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
+		as.PerfMonitoringURL = &v.PerfMonitoringURL
 		as.Plugins = v.Plugins
 		as.PprofPort = &v.PprofPort
 		as.Expansions = v.Expansions
@@ -241,6 +243,9 @@ func (as *APIAdminSettings) ToService() (any, error) {
 	}
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
+	}
+	if as.PerfMonitoringURL != nil {
+		settings.PerfMonitoringURL = *as.PerfMonitoringURL
 	}
 
 	apiModelReflect := reflect.ValueOf(*as)
