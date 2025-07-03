@@ -107,7 +107,7 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	}
 
 	const (
-		thresholdFractionToDecreaseHosts = 0.5
+		thresholdFractionToDecreaseHosts = 0.1
 		maxFractionalHostDecrease        = 0.1
 
 		thresholdFractionToIncreaseHosts = 0.02
@@ -115,8 +115,8 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	)
 	newMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
 	if summary.FractionOfMaxHostsUsed < thresholdFractionToDecreaseHosts {
-		// Decrease max hosts due to low usage based on percentage of distro
-		// max hosts utilized.
+		// Decrease max hosts due to extremely low usage based on percentage of
+		// distro max hosts utilized.
 		fractionToDecrease := min(thresholdFractionToDecreaseHosts-summary.FractionOfMaxHostsUsed, maxFractionalHostDecrease)
 		newMaxHosts = int(float64(j.distro.HostAllocatorSettings.MaximumHosts) * (1 - fractionToDecrease))
 	} else if summary.FractionOfTimeAtMaxHosts >= thresholdFractionToIncreaseHosts {
