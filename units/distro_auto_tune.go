@@ -108,7 +108,7 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 
 	const (
 		thresholdFractionToDecreaseHosts = 0.1
-		maxFractionalHostDecrease        = 0.1
+		maxFractionalHostDecrease        = 0.05
 
 		thresholdFractionToIncreaseHosts = 0.02
 		maxFractionalHostIncrease        = 0.25
