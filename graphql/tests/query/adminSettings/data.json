@@ -1,15 +1,71 @@
 {
   "admin": [
     {
-        "_id": "global",
-        "uiv2_url": "http://localhost:3000",
-        "configdir": "../config",
-        "domain_name": "localhost",
-        "banner": "This is an important notification",
-        "banner_theme": "announcement",
-        "github_orgs": [
-            "evergreen-ci"
-        ]
+      "_id": "global",
+      "uiv2_url": "http://localhost:3000",
+      "configdir": "../config",
+      "domain_name": "localhost",
+      "banner": "This is an important notification",
+      "banner_theme": "announcement",
+      "github_orgs": ["evergreen-ci"]
+    },
+    { "_id": "notify", "ses": { "sender_address": "evg-sender@email.com" } },
+    {
+      "_id": "pod_lifecycle",
+      "max_parallel_pod_requests": 100,
+      "max_pod_definition_cleanup_rate": 0,
+      "max_secret_cleanup_rate": 0
+    },
+    {
+      "_id": "hostinit",
+      "cloud_batch_size": 100,
+      "host_throttle": 32,
+      "max_total_dynamic_hosts": 1000,
+      "provisioning_throttle": 100
+    },
+    {
+      "_id": "repotracker",
+      "revs_to_fetch": 2,
+      "max_revs_to_search": 20,
+      "max_con_requests": 0
+    },
+    {
+      "_id": "scheduler",
+      "task_finder": "legacy",
+      "host_allocator": "utilization",
+      "acceptable_host_idle_time_seconds": 30,
+      "group_versions": true,
+      "patch_zipper_factor": 50,
+      "planner": "tunable",
+      "target_time_seconds": 60,
+      "cache_duration_seconds": 60,
+      "expected_runtime_factor": 10,
+      "time_in_queue_factor": 10,
+      "mainline_time_in_queue_factor": 0,
+      "patch_time_in_queue_factor": 20,
+      "commit_queue_factor": 0,
+      "generate_task_factor": 50,
+      "free_host_fraction": 0.5,
+      "host_allocator_rounding_rule": "round-down",
+      "host_allocator_feedback_rule": "no-feedback",
+      "hosts_overallocated_rule": "no-terminations-when-overallocated",
+      "stepback_task_factor": 10,
+      "num_dependents_factor": 5
+    },
+    {
+      "_id": "task_limits",
+      "max_tasks_per_version": 500,
+      "max_includes_per_version": 10,
+      "max_hourly_patch_tasks": 500,
+      "max_pending_generated_tasks": 0,
+      "max_generate_task_json_size": 5,
+      "max_concurrent_large_parser_project_tasks": 1,
+      "max_degraded_mode_parser_project_size": 10,
+      "max_parser_project_size": 0,
+      "max_degraded_mode_concurrent_large_parser_project_tasks": 1,
+      "max_exec_timeout_secs": 10000,
+      "max_task_execution": 5,
+      "max_daily_automatic_restarts": 0
     }
   ]
 }

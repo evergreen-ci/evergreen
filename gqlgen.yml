@@ -272,6 +272,10 @@ models:
         value: github.com/evergreen-ci/evergreen/model/event.EventVolumeExpirationWarningSent
       VOLUME_MIGRATION_FAILED:
         value: github.com/evergreen-ci/evergreen/model/event.EventVolumeMigrationFailed
+  HostInitConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHostInitConfig
+  HostInitConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHostInitConfig
   IceCreamSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   IceCreamSettingsInput:
@@ -322,6 +326,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   NotificationsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
+  NotifyConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINotifyConfig
+  NotifyConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINotifyConfig
   OomTrackerInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
   OSInfo:
@@ -395,6 +403,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventLogEntry
   PodEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventData
+  PodLifecycleConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPodLifecycleConfig
+  PodLifecycleConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPodLifecycleConfig
   PreconditionScript:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   PreconditionScriptInput:
@@ -484,6 +496,10 @@ models:
         resolver: true
   RepoSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  RepotrackerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRepoTrackerConfig
+  RepotrackerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRepoTrackerConfig
   RepotrackerError:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRepositoryErrorDetails
   RepoWorkstationConfig:
@@ -501,6 +517,14 @@ models:
         value: github.com/evergreen-ci/evergreen.HostAllocatorRoundDown
       DEFAULT:
         value: github.com/evergreen-ci/evergreen.HostAllocatorRoundDefault
+  SchedulerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
+  SchedulerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
+  SESConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISESConfig
+  SESConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISESConfig
   SearchReturnInfo:
     model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
   Selector:
@@ -593,6 +617,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   MetadataLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
+  TaskLimitsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
+  TaskLimitsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskLogs:

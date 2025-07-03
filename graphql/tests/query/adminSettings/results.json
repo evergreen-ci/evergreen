@@ -10,9 +10,7 @@
         "errors": [
           {
             "message": "User 'regular_user' lacks required admin permissions",
-            "path": [
-              "adminSettings"
-            ],
+            "path": ["adminSettings"],
             "extensions": {
               "code": "FORBIDDEN"
             }
@@ -21,12 +19,76 @@
       }
     },
     {
-      "query_file": "permission_granted.graphql",
+      "query_file": "announcements.graphql",
       "result": {
         "data": {
           "adminSettings": {
             "banner": "This is an important notification",
             "bannerTheme": "ANNOUNCEMENT"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "runners.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "notify": {
+              "ses": {
+                "senderAddress": "evg-sender@email.com"
+              }
+            },
+            "hostInit": {
+              "hostThrottle": 32,
+              "provisioningThrottle": 100,
+              "cloudStatusBatchSize": 100,
+              "maxTotalDynamicHosts": 1000
+            },
+            "taskLimits": {
+              "maxTasksPerVersion": 500,
+              "maxTaskExecution": 5,
+              "maxDailyAutomaticRestarts": 0,
+              "maxIncludesPerVersion": 10,
+              "maxHourlyPatchTasks": 500,
+              "maxPendingGeneratedTasks": 0,
+              "maxGenerateTaskJSONSize": 5,
+              "maxConcurrentLargeParserProjectTasks": 1,
+              "maxDegradedModeConcurrentLargeParserProjectTasks": 1,
+              "maxDegradedModeParserProjectSize": 10,
+              "maxParserProjectSize": 0,
+              "maxExecTimeoutSecs": 10000
+            },
+            "scheduler": {
+              "taskFinder": "LEGACY",
+              "patchFactor": 50,
+              "patchTimeInQueueFactor": 20,
+              "commitQueueFactor": 0,
+              "mainlineTimeInQueueFactor": 0,
+              "expectedRuntimeFactor": 10,
+              "generateTaskFactor": 50,
+              "numDependentsFactor": 5,
+              "stepbackTaskFactor": 10,
+              "hostAllocator": "UTILIZATION",
+              "hostAllocatorRoundingRule": "DOWN",
+              "hostAllocatorFeedbackRule": "NO_FEEDBACK",
+              "hostsOverallocatedRule": "IGNORE",
+              "futureHostFraction": 0.5,
+              "cacheDurationSeconds": 60,
+              "targetTimeSeconds": 60,
+              "acceptableHostIdleTimeSeconds": 30,
+              "groupVersions": true
+            },
+            "repotracker": {
+              "numNewRepoRevisionsToFetch": 2,
+              "maxRepoRevisionsToSearch": 20,
+              "maxConcurrentRequests": 0
+            },
+            "podLifecycle": {
+              "maxParallelPodRequests": 100,
+              "maxPodDefinitionCleanupRate": 0,
+              "maxSecretCleanupRate": 0
+            }
           }
         }
       }

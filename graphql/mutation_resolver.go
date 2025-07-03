@@ -152,18 +152,15 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
-
 	newSettings, err := data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
 	}
-
-	updatedSettingsAPI := restModel.APIAdminSettings{}
-	if err := updatedSettingsAPI.BuildFromService(newSettings); err != nil {
+	updatedAdminSettings := restModel.NewConfigModel()
+	if err := updatedAdminSettings.BuildFromService(newSettings); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
 	}
-
-	return &updatedSettingsAPI, nil
+	return updatedAdminSettings, nil
 }
 
 // DeleteDistro is the resolver for the deleteDistro field.

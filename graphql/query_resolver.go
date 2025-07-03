@@ -59,13 +59,11 @@ func (r *queryResolver) AdminSettings(ctx context.Context) (*restModel.APIAdminS
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
-
-	adminSettings := restModel.APIAdminSettings{}
-	err = adminSettings.BuildFromService(config)
-	if err != nil {
+	adminSettings := restModel.NewConfigModel()
+	if err = adminSettings.BuildFromService(config); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API admin settings from service: %s", err.Error()))
 	}
-	return &adminSettings, nil
+	return adminSettings, nil
 }
 
 // AWSRegions is the resolver for the awsRegions field.

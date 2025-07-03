@@ -179,11 +179,6 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		}
 		as.Providers = &cloudProviders
 		as.ShutdownWaitSeconds = &v.ShutdownWaitSeconds
-		apiServiceFlags := APIServiceFlags{}
-		if err := apiServiceFlags.BuildFromService(v.ServiceFlags); err != nil {
-			return errors.Wrap(err, "converting service flags to API model")
-		}
-		as.ServiceFlags = &apiServiceFlags
 		spawnHostConfig := APISpawnHostConfig{}
 		err = spawnHostConfig.BuildFromService(v.Spawnhost)
 		if err != nil {
@@ -2075,6 +2070,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 	case evergreen.SchedulerConfig:
 		a.TaskFinder = utility.ToStringPtr(v.TaskFinder)
 		a.HostAllocator = utility.ToStringPtr(v.HostAllocator)
+		a.HostAllocatorRoundingRule = utility.ToStringPtr(v.HostAllocatorRoundingRule)
 		a.HostAllocatorFeedbackRule = utility.ToStringPtr(v.HostAllocatorFeedbackRule)
 		a.HostsOverallocatedRule = utility.ToStringPtr(v.HostsOverallocatedRule)
 		a.FutureHostFraction = v.FutureHostFraction
@@ -2100,6 +2096,7 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 	return evergreen.SchedulerConfig{
 		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
 		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
+		HostAllocatorRoundingRule:     utility.FromStringPtr(a.HostAllocatorRoundingRule),
 		HostAllocatorFeedbackRule:     utility.FromStringPtr(a.HostAllocatorFeedbackRule),
 		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
 		FutureHostFraction:            a.FutureHostFraction,
