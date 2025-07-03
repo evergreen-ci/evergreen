@@ -86,36 +86,37 @@ type Settings struct {
 	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 	// TODO (DEVPROD-15898): remove this key path.
-	KanopySSHKeyPath    string                    `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
-	LoggerConfig        LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
-	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
-	Overrides           OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
-	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
-	PerfMonitoringURL   string                    `yaml:"perf_monitoring_url" bson:"perf_monitoring_url" json:"perf_monitoring_url"`
-	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
-	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
-	PodLifecycle        PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
-	PprofPort           string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
-	ProjectCreation     ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
-	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
-	ReleaseMode         ReleaseModeConfig         `yaml:"release_mode" bson:"release_mode" json:"release_mode" id:"release_mode"`
-	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
-	RuntimeEnvironments RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
-	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
-	ServiceFlags        ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
-	ShutdownWaitSeconds int                       `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
-	SingleTaskDistro    SingleTaskDistroConfig    `yaml:"single_task_distro" bson:"single_task_distro" json:"single_task_distro" id:"single_task_distro"`
-	Slack               SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
-	SleepSchedule       SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
-	Spawnhost           SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
-	Splunk              SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
-	SSH                 SSHConfig                 `yaml:"ssh" bson:"ssh" json:"ssh" id:"ssh"`
-	TaskLimits          TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
-	TestSelection       TestSelectionConfig       `yaml:"test_selection" bson:"test_selection" json:"test_selection" id:"test_selection"`
-	Tracer              TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
-	Triggers            TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
-	Ui                  UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	KanopySSHKeyPath        string                    `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
+	LoggerConfig            LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
+	LogPath                 string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
+	Notify                  NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	Overrides               OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
+	ParameterStore          ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
+	PerfMonitoringURL       string                    `yaml:"perf_monitoring_url" bson:"perf_monitoring_url" json:"perf_monitoring_url"`
+	PerfMonitoringKanopyURL string                    `yaml:"perf_monitoring_kanopy_url" bson:"perf_monitoring_kanopy_url" json:"perf_monitoring_kanopy_url"`
+	Plugins                 PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
+	PluginsNew              util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
+	PodLifecycle            PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
+	PprofPort               string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	ProjectCreation         ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
+	Providers               CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	ReleaseMode             ReleaseModeConfig         `yaml:"release_mode" bson:"release_mode" json:"release_mode" id:"release_mode"`
+	RepoTracker             RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
+	RuntimeEnvironments     RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
+	Scheduler               SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
+	ServiceFlags            ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
+	ShutdownWaitSeconds     int                       `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
+	SingleTaskDistro        SingleTaskDistroConfig    `yaml:"single_task_distro" bson:"single_task_distro" json:"single_task_distro" id:"single_task_distro"`
+	Slack                   SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
+	SleepSchedule           SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
+	Spawnhost               SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
+	Splunk                  SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	SSH                     SSHConfig                 `yaml:"ssh" bson:"ssh" json:"ssh" id:"ssh"`
+	TaskLimits              TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
+	TestSelection           TestSelectionConfig       `yaml:"test_selection" bson:"test_selection" json:"test_selection" id:"test_selection"`
+	Tracer                  TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
+	Ui                      UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -129,27 +130,28 @@ func (c *Settings) Get(ctx context.Context) error {
 func (c *Settings) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			awsInstanceRoleKey:     c.AWSInstanceRole,
-			bannerKey:              c.Banner,
-			bannerThemeKey:         c.BannerTheme,
-			configDirKey:           c.ConfigDir,
-			domainNameKey:          c.DomainName,
-			expansionsKey:          c.Expansions,
-			expansionsNewKey:       c.ExpansionsNew,
-			githubPRCreatorOrgKey:  c.GithubPRCreatorOrg,
-			githubOrgsKey:          c.GithubOrgs,
-			githubWebhookSecretKey: c.GithubWebhookSecret,
-			disabledGQLQueriesKey:  c.DisabledGQLQueries,
-			kanopySSHKeyPathKey:    c.KanopySSHKeyPath,
-			logPathKey:             c.LogPath,
-			perfMonitoringURLKey:   c.PerfMonitoringURL,
-			pprofPortKey:           c.PprofPort,
-			pluginsKey:             c.Plugins,
-			pluginsNewKey:          c.PluginsNew,
-			splunkKey:              c.Splunk,
-			sshKey:                 c.SSH,
-			spawnhostKey:           c.Spawnhost,
-			shutdownWaitKey:        c.ShutdownWaitSeconds,
+			awsInstanceRoleKey:         c.AWSInstanceRole,
+			bannerKey:                  c.Banner,
+			bannerThemeKey:             c.BannerTheme,
+			configDirKey:               c.ConfigDir,
+			domainNameKey:              c.DomainName,
+			expansionsKey:              c.Expansions,
+			expansionsNewKey:           c.ExpansionsNew,
+			githubPRCreatorOrgKey:      c.GithubPRCreatorOrg,
+			githubOrgsKey:              c.GithubOrgs,
+			githubWebhookSecretKey:     c.GithubWebhookSecret,
+			disabledGQLQueriesKey:      c.DisabledGQLQueries,
+			kanopySSHKeyPathKey:        c.KanopySSHKeyPath,
+			logPathKey:                 c.LogPath,
+			perfMonitoringURLKey:       c.PerfMonitoringURL,
+			perfMonitoringKanopyURLKey: c.PerfMonitoringKanopyURL,
+			pprofPortKey:               c.PprofPort,
+			pluginsKey:                 c.Plugins,
+			pluginsNewKey:              c.PluginsNew,
+			splunkKey:                  c.Splunk,
+			sshKey:                     c.SSH,
+			spawnhostKey:               c.Spawnhost,
+			shutdownWaitKey:            c.ShutdownWaitSeconds,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

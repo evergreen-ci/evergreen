@@ -18,17 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type CedarConfig struct {
-	BaseURL      string `json:"base_url"`
-	GRPCBaseURL  string `json:"grpc_base_url"`
-	RPCPort      string `json:"rpc_port"`
-	Username     string `json:"username"`
-	APIKey       string `json:"api_key,omitempty"`
-	Insecure     bool   `json:"insecure"`
-	SPSURL       string `json:"sps_url"`
-	SPSKanopyURL string `json:"sps_kanopy_url"`
-}
-
 // GetBuildloggerLogsOptions represents the arguments passed into the
 // GetBuildloggerLogs function.
 type GetBuildloggerLogsOptions struct {

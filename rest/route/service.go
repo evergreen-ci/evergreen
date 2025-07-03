@@ -66,7 +66,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	stsManager := cloud.GetSTSManager(false)
 
 	// Agent protocol routes
-	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
 	app.AddRoute("/agent/perf_monitoring_url").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeGetPerfURL(settings.PerfMonitoringURL))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
 	app.AddRoute("/distros/{distro_id}/ami").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDistroAMI())

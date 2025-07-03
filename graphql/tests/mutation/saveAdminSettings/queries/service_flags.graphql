@@ -17,7 +17,6 @@ mutation {
         elasticIPsDisabled: true
         emailNotificationsDisabled: true
         eventProcessingDisabled: true
-        evergreenTestResultsDisabled: true
         githubPRTestingDisabled: true
         githubStatusAPIDisabled: true
         hostAllocatorDisabled: true
@@ -59,7 +58,6 @@ mutation {
       elasticIPsDisabled
       emailNotificationsDisabled
       eventProcessingDisabled
-      evergreenTestResultsDisabled
       githubPRTestingDisabled
       githubStatusAPIDisabled
       hostAllocatorDisabled

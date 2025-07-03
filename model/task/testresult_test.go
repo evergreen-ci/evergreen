@@ -2,9 +2,6 @@ package task
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -31,30 +28,28 @@ func TestGetTaskTestResults(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	srv, handler := newMockCedarServer(env)
-	defer srv.Close()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 
 	output.TestResults.BucketConfig.Name = t.TempDir()
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
 
 	task0 := Task{
-		Id:             "task0",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task0",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task1 := Task{
-		Id:             "task1",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task1",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task2 := Task{
-		Id:             "task2",
-		Execution:      1,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task2",
+		Execution: 1,
+
 		TaskOutputInfo: &output,
 	}
 	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2))
@@ -62,20 +57,6 @@ func TestGetTaskTestResults(t *testing.T) {
 	savedResults0 := saveTestResults(t, ctx, testBucket, svc, &task0, 10)
 	savedResults1 := saveTestResults(t, ctx, testBucket, svc, &task1, 10)
 	savedResults2 := saveTestResults(t, ctx, testBucket, svc, &task2, 10)
-
-	externalServiceTask := Task{
-		Id:             "external_service_task",
-		Execution:      1,
-		ResultsService: TestResultsServiceCedar,
-		TaskOutputInfo: &outputCedar,
-	}
-	externalServiceResults := make([]testresult.TestResult, 10)
-	for i := 0; i < len(externalServiceResults); i++ {
-		result := getTestResult()
-		result.TaskID = externalServiceTask.Id
-		result.Execution = externalServiceTask.Execution
-		externalServiceResults[i] = result
-	}
 
 	for _, test := range []struct {
 		name                string
@@ -110,15 +91,6 @@ func TestGetTaskTestResults(t *testing.T) {
 				},
 				Results: nil,
 			},
-		},
-		{
-			name: "ServiceError",
-			setup: func(_ *testing.T) {
-				handler.status = http.StatusInternalServerError
-				handler.data = nil
-			},
-			taskOpts: []Task{externalServiceTask},
-			hasErr:   true,
 		},
 		{
 			name:     "WithoutFilterOptions",
@@ -173,13 +145,11 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	srv, handler := newMockCedarServer(env)
-	defer srv.Close()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 	task0 := Task{
-		Id:             "task0",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task0",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
@@ -206,9 +176,9 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults0, tr.ID)))
 
 	task1 := Task{
-		Id:             "task1",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task1",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
@@ -231,13 +201,6 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults1, tr.ID)))
 
-	externalServiceTask := Task{
-		Id:             "external_service_task",
-		Execution:      0,
-		ResultsService: TestResultsServiceCedar,
-		TaskOutputInfo: &outputCedar,
-	}
-
 	for _, test := range []struct {
 		name          string
 		setup         func(t *testing.T)
@@ -254,16 +217,6 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 			name:     "Niltask.Task",
 			taskOpts: []Task{},
 			output:   output,
-		},
-		{
-			name: "ServiceError",
-			setup: func(_ *testing.T) {
-				handler.status = http.StatusInternalServerError
-				handler.data = nil
-			},
-			taskOpts: []Task{externalServiceTask},
-			hasErr:   true,
-			output:   outputCedar,
 		},
 		{
 			name:     "SameService",
@@ -291,29 +244,6 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	}
 }
 
-type mockHandler struct {
-	status int
-	data   []byte
-}
-
-func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.status > 0 {
-		w.WriteHeader(h.status)
-	}
-	if h.data != nil {
-		_, _ = w.Write(h.data)
-	}
-}
-
-func newMockCedarServer(env evergreen.Environment) (*httptest.Server, *mockHandler) {
-	handler := &mockHandler{}
-	srv := httptest.NewServer(handler)
-	env.Settings().Cedar.BaseURL = strings.TrimPrefix(srv.URL, "http://")
-	env.Settings().Cedar.Insecure = true
-
-	return srv, handler
-}
-
 func TestGetFailedTestSamples(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -325,19 +255,17 @@ func TestGetFailedTestSamples(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	srv, handler := newMockCedarServer(env)
-	defer srv.Close()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 	task5 := Task{
-		Id:             "task5",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task5",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task4 := Task{
-		Id:             "task4",
-		Execution:      1,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task4",
+		Execution: 1,
+
 		TaskOutputInfo: &output,
 	}
 
@@ -358,14 +286,6 @@ func TestGetFailedTestSamples(t *testing.T) {
 	for i := 0; i < len(savedResults1); i++ {
 		sample1[i] = savedResults1[i].GetDisplayTestName()
 	}
-
-	externalServiceTask := Task{
-		Id:             "external_service_task",
-		Execution:      0,
-		ResultsService: TestResultsServiceCedar,
-		TaskOutputInfo: &outputCedar,
-	}
-
 	for _, test := range []struct {
 		name            string
 		setup           func(t *testing.T)
@@ -381,15 +301,6 @@ func TestGetFailedTestSamples(t *testing.T) {
 		{
 			name:     "Niltask.Task",
 			taskOpts: []Task{},
-			hasErr:   true,
-		},
-		{
-			name: "ServiceError",
-			setup: func(_ *testing.T) {
-				handler.status = http.StatusInternalServerError
-				handler.data = nil
-			},
-			taskOpts: []Task{externalServiceTask},
 			hasErr:   true,
 		},
 		{
@@ -454,28 +365,28 @@ func TestAppendResults(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 
 	output.TestResults.BucketConfig.Name = t.TempDir()
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
 
 	task0 := Task{
-		Id:             "task0",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task0",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task1 := Task{
-		Id:             "task1",
-		Execution:      0,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task1",
+		Execution: 0,
+
 		TaskOutputInfo: &output,
 	}
 	task2 := Task{
-		Id:             "task2",
-		Execution:      1,
-		ResultsService: TestResultsServiceEvergreen,
+		Id:        "task2",
+		Execution: 1,
+
 		TaskOutputInfo: &output,
 	}
 	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2))

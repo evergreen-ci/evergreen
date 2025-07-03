@@ -45,7 +45,7 @@ func (s *localService) AppendTestResultMetadata(ctx context.Context, _ []string,
 	return errors.Wrap(err, "appending DB test results")
 }
 
-func (s *localService) GetTaskTestResults(ctx context.Context, taskOpts []Task, _ []Task) ([]testresult.TaskTestResults, error) {
+func (s *localService) GetTaskTestResults(ctx context.Context, taskOpts []Task) ([]testresult.TaskTestResults, error) {
 	allTaskResults, err := s.Get(ctx, taskOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting local test results")
@@ -66,10 +66,6 @@ func (s *localService) GetTaskTestResultsStats(ctx context.Context, taskOpts []T
 	}
 
 	return mergedStats, nil
-}
-
-func (s *localService) GetFailedTestSamples(ctx context.Context, taskOpts []Task, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
-	return nil, errors.New("not implemented")
 }
 
 // Get fetches the unmerged test results for the given tasks from the local

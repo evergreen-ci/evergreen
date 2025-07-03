@@ -179,7 +179,6 @@ func getLogService(ctx context.Context, o TaskLogOutput) (log.LogService, error)
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
 func getBuildloggerLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	opts := apimodels.GetBuildloggerLogsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		TaskID:    task.Id,
 		Execution: utility.ToIntPtr(task.Execution),
 		Start:     utility.FromInt64Ptr(getOpts.Start),

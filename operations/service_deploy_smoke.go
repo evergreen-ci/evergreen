@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/globals"
-	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -62,13 +61,9 @@ func smokeStartEvergreen() cli.Command {
 		modeFlagName           = "mode"
 		execModeIDFlagName     = "exec_mode_id"
 		execModeSecretFlagName = "exec_mode_secret"
-
-		cedarPort = 7070
-
-		statusPort = "2287"
-
-		monitorPort = 2288
-		jasperPort  = 2289
+		statusPort             = "2287"
+		monitorPort            = 2288
+		jasperPort             = 2289
 	)
 
 	wd, err := os.Getwd()
@@ -149,10 +144,6 @@ func smokeStartEvergreen() cli.Command {
 			}
 
 			if startAgent {
-				_, err = timberutil.NewMockCedarServer(ctx, cedarPort)
-				if err != nil {
-					return errors.Wrap(err, "starting mock Cedar service")
-				}
 
 				var envVars []string
 				switch mode {
@@ -183,11 +174,6 @@ func smokeStartEvergreen() cli.Command {
 					return errors.Wrap(err, "running agent")
 				}
 			} else if startAgentMonitor {
-				_, err = timberutil.NewMockCedarServer(ctx, cedarPort)
-				if err != nil {
-					return errors.Wrap(err, "starting mock Cedar service")
-				}
-
 				if distroID == "" {
 					return errors.New("distro ID URL cannot be empty when starting agent monitor")
 				}

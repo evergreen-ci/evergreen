@@ -97,7 +97,7 @@ func TestSendTestResults(t *testing.T) {
 	}
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: conf.Task.TaskOutputInfo.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
-	svc := task.NewEvergreenService(env)
+	svc := task.NewTestResultService(env)
 
 	saveTestResults(t, ctx, testBucket, svc, &conf.Task, 1, results)
 	t.Run("ToEvergreen", func(t *testing.T) {
