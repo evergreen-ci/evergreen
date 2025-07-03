@@ -24,7 +24,7 @@ func InitializeTaskOutput(t *testing.T) *task.TaskOutput {
 			},
 		},
 		TestResults: task.TestResultOutput{
-			Version: 1,
+			Version: task.TestResultServiceEvergreen,
 			BucketConfig: evergreen.BucketConfig{
 				Name: t.TempDir(),
 				Type: evergreen.BucketTypeLocal,

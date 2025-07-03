@@ -47,6 +47,7 @@ var (
 	loggerConfigKey        = bsonutil.MustHaveTag(Settings{}, "LoggerConfig")
 	logPathKey             = bsonutil.MustHaveTag(Settings{}, "LogPath")
 	pprofPortKey           = bsonutil.MustHaveTag(Settings{}, "PprofPort")
+	perfMonitoringURLKey   = bsonutil.MustHaveTag(Settings{}, "PerfMonitoringURL")
 	githubPRCreatorOrgKey  = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
 	githubOrgsKey          = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	githubWebhookSecretKey = bsonutil.MustHaveTag(Settings{}, "GithubWebhookSecret")

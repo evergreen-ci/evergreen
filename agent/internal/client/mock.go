@@ -29,7 +29,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
 // Mock mocks the Communicator for testing.
@@ -73,13 +72,13 @@ type Mock struct {
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
-	CedarGRPCConn *grpc.ClientConn
-
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults []testresult.TestResult
 	HasTestResults   bool
 	ResultsFailed    bool
+	TestResultStats  testresult.TaskTestResultsStats
+	FailedTestSample []string
 	TestLogs         []*testlog.TestLog
 	TestLogCount     int
 
@@ -321,22 +320,9 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}, nil
 }
 
-// GetCedarConfig returns a mock Cedar service configuration.
-func (c *Mock) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	return &apimodels.CedarConfig{
-		BaseURL:  "base_url",
-		RPCPort:  "1000",
-		Username: "user",
-		APIKey:   "api_key",
-	}, nil
-}
-
-// GetCedarGRPCConn returns gRPC connection if it is set.
-func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	if c.CedarGRPCConn == nil {
-		return nil, nil
-	}
-	return c.CedarGRPCConn, nil
+// GetPerfMonitoringURL returns a mock performance URL.
+func (c *Mock) GetPerfMonitoringURL(ctx context.Context) (string, error) {
+	return "http://myurl.mongodb.com", nil
 }
 
 // GetLoggerProducer constructs a single channel log producer.
@@ -486,7 +472,11 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *testlog.TestLo
 
 // SendTestResults appends test results to the local list of test results.
 func (c *Mock) SendTestResults(ctx context.Context, td TaskData, tr *testresult.DbTaskTestResults) error {
-	c.ResultsFailed = tr != nil && tr.Stats.FailedCount > 0
+	if tr != nil {
+		c.ResultsFailed = tr.Stats.FailedCount > 0
+		c.TestResultStats = tr.Stats
+		c.FailedTestSample = tr.FailedTestsSample
+	}
 	return nil
 }
 

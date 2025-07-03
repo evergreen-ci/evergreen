@@ -22,7 +22,7 @@ require (
 	github.com/evergreen-ci/certdepot v0.0.0-20250313151408-76b756321eda
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
 	github.com/evergreen-ci/gimlet v0.0.0-20250610151514-2545690ba23c
-	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
+	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa // indirect
 	github.com/evergreen-ci/pail v0.0.0-20250501154731-3b1a60d7772f
 	github.com/evergreen-ci/poplar v0.0.0-20250313160224-22f0e4e98238
 	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
@@ -42,7 +42,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20250313150805-ef0cd9968322
 	github.com/mongodb/anser v0.0.0-20250324144457-fcc2c57eee09
-	github.com/mongodb/grip v0.0.0-20250605170751-42f96c9d4abf
+	github.com/mongodb/grip v0.0.0-20250625162527-b6db77cf60c4
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.18.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
