@@ -29561,14 +29561,11 @@ func (ec *executionContext) _HostInitConfig_hostThrottle(ctx context.Context, fi
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostInitConfig_hostThrottle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -29605,14 +29602,11 @@ func (ec *executionContext) _HostInitConfig_provisioningThrottle(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostInitConfig_provisioningThrottle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -29649,14 +29643,11 @@ func (ec *executionContext) _HostInitConfig_cloudStatusBatchSize(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostInitConfig_cloudStatusBatchSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -29693,14 +29684,11 @@ func (ec *executionContext) _HostInitConfig_maxTotalDynamicHosts(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostInitConfig_maxTotalDynamicHosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -40677,14 +40665,11 @@ func (ec *executionContext) _NotifyConfig_ses(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(model.APISESConfig)
 	fc.Result = res
-	return ec.marshalNSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx, field.Selections, res)
+	return ec.marshalOSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_NotifyConfig_ses(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -46279,14 +46264,11 @@ func (ec *executionContext) _PodLifecycleConfig_maxParallelPodRequests(ctx conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PodLifecycleConfig_maxParallelPodRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -46323,14 +46305,11 @@ func (ec *executionContext) _PodLifecycleConfig_maxPodDefinitionCleanupRate(ctx 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PodLifecycleConfig_maxPodDefinitionCleanupRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -46367,14 +46346,11 @@ func (ec *executionContext) _PodLifecycleConfig_maxSecretCleanupRate(ctx context
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PodLifecycleConfig_maxSecretCleanupRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57184,14 +57160,11 @@ func (ec *executionContext) _RepotrackerConfig_numNewRepoRevisionsToFetch(ctx co
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RepotrackerConfig_numNewRepoRevisionsToFetch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57228,14 +57201,11 @@ func (ec *executionContext) _RepotrackerConfig_maxRepoRevisionsToSearch(ctx cont
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RepotrackerConfig_maxRepoRevisionsToSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57272,14 +57242,11 @@ func (ec *executionContext) _RepotrackerConfig_maxConcurrentRequests(ctx context
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RepotrackerConfig_maxConcurrentRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57690,14 +57657,11 @@ func (ec *executionContext) _SESConfig_senderAddress(ctx context.Context, field 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SESConfig_senderAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57892,14 +57856,11 @@ func (ec *executionContext) _SchedulerConfig_taskFinder(ctx context.Context, fie
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNFinderVersion2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOFinderVersion2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_taskFinder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57936,14 +57897,11 @@ func (ec *executionContext) _SchedulerConfig_hostAllocator(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNHostAllocatorVersion2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOHostAllocatorVersion2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_hostAllocator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -57980,14 +57938,11 @@ func (ec *executionContext) _SchedulerConfig_hostAllocatorRoundingRule(ctx conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNRoundingRule2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalORoundingRule2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_hostAllocatorRoundingRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58024,14 +57979,11 @@ func (ec *executionContext) _SchedulerConfig_hostAllocatorFeedbackRule(ctx conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNFeedbackRule2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOFeedbackRule2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_hostAllocatorFeedbackRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58068,14 +58020,11 @@ func (ec *executionContext) _SchedulerConfig_hostsOverallocatedRule(ctx context.
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNOverallocatedRule2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOOverallocatedRule2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_hostsOverallocatedRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58112,14 +58061,11 @@ func (ec *executionContext) _SchedulerConfig_futureHostFraction(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(float64)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalOFloat2float64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_futureHostFraction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58156,14 +58102,11 @@ func (ec *executionContext) _SchedulerConfig_cacheDurationSeconds(ctx context.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_cacheDurationSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58200,14 +58143,11 @@ func (ec *executionContext) _SchedulerConfig_targetTimeSeconds(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_targetTimeSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58244,14 +58184,11 @@ func (ec *executionContext) _SchedulerConfig_acceptableHostIdleTimeSeconds(ctx c
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_acceptableHostIdleTimeSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58332,14 +58269,11 @@ func (ec *executionContext) _SchedulerConfig_patchFactor(ctx context.Context, fi
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_patchFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58376,14 +58310,11 @@ func (ec *executionContext) _SchedulerConfig_patchTimeInQueueFactor(ctx context.
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_patchTimeInQueueFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58420,14 +58351,11 @@ func (ec *executionContext) _SchedulerConfig_commitQueueFactor(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_commitQueueFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58464,14 +58392,11 @@ func (ec *executionContext) _SchedulerConfig_mainlineTimeInQueueFactor(ctx conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_mainlineTimeInQueueFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58508,14 +58433,11 @@ func (ec *executionContext) _SchedulerConfig_expectedRuntimeFactor(ctx context.C
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_expectedRuntimeFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58552,14 +58474,11 @@ func (ec *executionContext) _SchedulerConfig_generateTaskFactor(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_generateTaskFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58596,14 +58515,11 @@ func (ec *executionContext) _SchedulerConfig_numDependentsFactor(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(float64)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalOFloat2float64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_numDependentsFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -58640,14 +58556,11 @@ func (ec *executionContext) _SchedulerConfig_stepbackTaskFactor(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SchedulerConfig_stepbackTaskFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68634,14 +68547,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxTasksPerVersion(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxTasksPerVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68678,14 +68588,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxIncludesPerVersion(ctx context.
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxIncludesPerVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68722,14 +68629,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxHourlyPatchTasks(ctx context.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxHourlyPatchTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68766,14 +68670,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxPendingGeneratedTasks(ctx conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxPendingGeneratedTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68810,14 +68711,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxGenerateTaskJSONSize(ctx contex
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxGenerateTaskJSONSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68854,14 +68752,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxConcurrentLargeParserProjectTas
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxConcurrentLargeParserProjectTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68898,14 +68793,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxDegradedModeConcurrentLargePars
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxDegradedModeConcurrentLargeParserProjectTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68942,14 +68834,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxDegradedModeParserProjectSize(c
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxDegradedModeParserProjectSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68986,14 +68875,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxParserProjectSize(ctx context.C
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxParserProjectSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -69030,14 +68916,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxExecTimeoutSecs(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxExecTimeoutSecs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -69074,14 +68957,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxTaskExecution(ctx context.Conte
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxTaskExecution(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -69118,14 +68998,11 @@ func (ec *executionContext) _TaskLimitsConfig_maxDailyAutomaticRestarts(ctx cont
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalNInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskLimitsConfig_maxDailyAutomaticRestarts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -83850,28 +83727,28 @@ func (ec *executionContext) unmarshalInputHostInitConfigInput(ctx context.Contex
 		switch k {
 		case "hostThrottle":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostThrottle"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.HostThrottle = data
 		case "provisioningThrottle":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provisioningThrottle"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ProvisioningThrottle = data
 		case "cloudStatusBatchSize":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloudStatusBatchSize"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CloudStatusBatchSize = data
 		case "maxTotalDynamicHosts":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxTotalDynamicHosts"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -84290,7 +84167,7 @@ func (ec *executionContext) unmarshalInputNotifyConfigInput(ctx context.Context,
 		switch k {
 		case "ses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ses"))
-			data, err := ec.unmarshalOSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx, v)
+			data, err := ec.unmarshalNSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -84878,21 +84755,21 @@ func (ec *executionContext) unmarshalInputPodLifecycleConfigInput(ctx context.Co
 		switch k {
 		case "maxParallelPodRequests":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxParallelPodRequests"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxParallelPodRequests = data
 		case "maxPodDefinitionCleanupRate":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxPodDefinitionCleanupRate"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxPodDefinitionCleanupRate = data
 		case "maxSecretCleanupRate":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxSecretCleanupRate"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -86194,21 +86071,21 @@ func (ec *executionContext) unmarshalInputRepotrackerConfigInput(ctx context.Con
 		switch k {
 		case "numNewRepoRevisionsToFetch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numNewRepoRevisionsToFetch"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.NumNewRepoRevisionsToFetch = data
 		case "maxRepoRevisionsToSearch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxRepoRevisionsToSearch"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxRepoRevisionsToSearch = data
 		case "maxConcurrentRequests":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxConcurrentRequests"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -86290,7 +86167,7 @@ func (ec *executionContext) unmarshalInputSESConfigInput(ctx context.Context, ob
 		switch k {
 		case "senderAddress":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("senderAddress"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -86378,126 +86255,126 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 		switch k {
 		case "taskFinder":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskFinder"))
-			data, err := ec.unmarshalOFinderVersion2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNFinderVersion2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TaskFinder = data
 		case "hostAllocator":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostAllocator"))
-			data, err := ec.unmarshalOHostAllocatorVersion2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNHostAllocatorVersion2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.HostAllocator = data
 		case "hostAllocatorRoundingRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostAllocatorRoundingRule"))
-			data, err := ec.unmarshalORoundingRule2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNRoundingRule2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.HostAllocatorRoundingRule = data
 		case "hostAllocatorFeedbackRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostAllocatorFeedbackRule"))
-			data, err := ec.unmarshalOFeedbackRule2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNFeedbackRule2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.HostAllocatorFeedbackRule = data
 		case "hostsOverallocatedRule":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostsOverallocatedRule"))
-			data, err := ec.unmarshalOOverallocatedRule2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNOverallocatedRule2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.HostsOverallocatedRule = data
 		case "futureHostFraction":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("futureHostFraction"))
-			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.FutureHostFraction = data
 		case "cacheDurationSeconds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheDurationSeconds"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CacheDurationSeconds = data
 		case "targetTimeSeconds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetTimeSeconds"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.TargetTimeSeconds = data
 		case "acceptableHostIdleTimeSeconds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("acceptableHostIdleTimeSeconds"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.AcceptableHostIdleTimeSeconds = data
 		case "groupVersions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupVersions"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.GroupVersions = data
 		case "patchFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchFactor"))
-			data, err := ec.unmarshalOInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PatchFactor = data
 		case "patchTimeInQueueFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchTimeInQueueFactor"))
-			data, err := ec.unmarshalOInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.PatchTimeInQueueFactor = data
 		case "commitQueueFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("commitQueueFactor"))
-			data, err := ec.unmarshalOInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.CommitQueueFactor = data
 		case "mainlineTimeInQueueFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mainlineTimeInQueueFactor"))
-			data, err := ec.unmarshalOInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MainlineTimeInQueueFactor = data
 		case "expectedRuntimeFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expectedRuntimeFactor"))
-			data, err := ec.unmarshalOInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.ExpectedRuntimeFactor = data
 		case "generateTaskFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generateTaskFactor"))
-			data, err := ec.unmarshalOInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.GenerateTaskFactor = data
 		case "numDependentsFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numDependentsFactor"))
-			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.NumDependentsFactor = data
 		case "stepbackTaskFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stepbackTaskFactor"))
-			data, err := ec.unmarshalOInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -87547,84 +87424,84 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 		switch k {
 		case "maxTasksPerVersion":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxTasksPerVersion"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxTasksPerVersion = data
 		case "maxIncludesPerVersion":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxIncludesPerVersion"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxIncludesPerVersion = data
 		case "maxHourlyPatchTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxHourlyPatchTasks"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxHourlyPatchTasks = data
 		case "maxPendingGeneratedTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxPendingGeneratedTasks"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxPendingGeneratedTasks = data
 		case "maxGenerateTaskJSONSize":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxGenerateTaskJSONSize"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxGenerateTaskJSONSize = data
 		case "maxConcurrentLargeParserProjectTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxConcurrentLargeParserProjectTasks"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxConcurrentLargeParserProjectTasks = data
 		case "maxDegradedModeConcurrentLargeParserProjectTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxDegradedModeConcurrentLargeParserProjectTasks"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxDegradedModeConcurrentLargeParserProjectTasks = data
 		case "maxDegradedModeParserProjectSize":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxDegradedModeParserProjectSize"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxDegradedModeParserProjectSize = data
 		case "maxParserProjectSize":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxParserProjectSize"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxParserProjectSize = data
 		case "maxExecTimeoutSecs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxExecTimeoutSecs"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxExecTimeoutSecs = data
 		case "maxTaskExecution":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxTaskExecution"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxTaskExecution = data
 		case "maxDailyAutomaticRestarts":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxDailyAutomaticRestarts"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -92130,24 +92007,12 @@ func (ec *executionContext) _HostInitConfig(ctx context.Context, sel ast.Selecti
 			out.Values[i] = graphql.MarshalString("HostInitConfig")
 		case "hostThrottle":
 			out.Values[i] = ec._HostInitConfig_hostThrottle(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "provisioningThrottle":
 			out.Values[i] = ec._HostInitConfig_provisioningThrottle(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "cloudStatusBatchSize":
 			out.Values[i] = ec._HostInitConfig_cloudStatusBatchSize(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxTotalDynamicHosts":
 			out.Values[i] = ec._HostInitConfig_maxTotalDynamicHosts(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -94170,9 +94035,6 @@ func (ec *executionContext) _NotifyConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("NotifyConfig")
 		case "ses":
 			out.Values[i] = ec._NotifyConfig_ses(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -96048,19 +95910,10 @@ func (ec *executionContext) _PodLifecycleConfig(ctx context.Context, sel ast.Sel
 			out.Values[i] = graphql.MarshalString("PodLifecycleConfig")
 		case "maxParallelPodRequests":
 			out.Values[i] = ec._PodLifecycleConfig_maxParallelPodRequests(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxPodDefinitionCleanupRate":
 			out.Values[i] = ec._PodLifecycleConfig_maxPodDefinitionCleanupRate(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxSecretCleanupRate":
 			out.Values[i] = ec._PodLifecycleConfig_maxSecretCleanupRate(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -98706,19 +98559,10 @@ func (ec *executionContext) _RepotrackerConfig(ctx context.Context, sel ast.Sele
 			out.Values[i] = graphql.MarshalString("RepotrackerConfig")
 		case "numNewRepoRevisionsToFetch":
 			out.Values[i] = ec._RepotrackerConfig_numNewRepoRevisionsToFetch(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxRepoRevisionsToSearch":
 			out.Values[i] = ec._RepotrackerConfig_maxRepoRevisionsToSearch(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxConcurrentRequests":
 			out.Values[i] = ec._RepotrackerConfig_maxConcurrentRequests(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -98863,9 +98707,6 @@ func (ec *executionContext) _SESConfig(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = graphql.MarshalString("SESConfig")
 		case "senderAddress":
 			out.Values[i] = ec._SESConfig_senderAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -98946,49 +98787,22 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("SchedulerConfig")
 		case "taskFinder":
 			out.Values[i] = ec._SchedulerConfig_taskFinder(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "hostAllocator":
 			out.Values[i] = ec._SchedulerConfig_hostAllocator(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "hostAllocatorRoundingRule":
 			out.Values[i] = ec._SchedulerConfig_hostAllocatorRoundingRule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "hostAllocatorFeedbackRule":
 			out.Values[i] = ec._SchedulerConfig_hostAllocatorFeedbackRule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "hostsOverallocatedRule":
 			out.Values[i] = ec._SchedulerConfig_hostsOverallocatedRule(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "futureHostFraction":
 			out.Values[i] = ec._SchedulerConfig_futureHostFraction(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "cacheDurationSeconds":
 			out.Values[i] = ec._SchedulerConfig_cacheDurationSeconds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "targetTimeSeconds":
 			out.Values[i] = ec._SchedulerConfig_targetTimeSeconds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "acceptableHostIdleTimeSeconds":
 			out.Values[i] = ec._SchedulerConfig_acceptableHostIdleTimeSeconds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "groupVersions":
 			out.Values[i] = ec._SchedulerConfig_groupVersions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -98996,44 +98810,20 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			}
 		case "patchFactor":
 			out.Values[i] = ec._SchedulerConfig_patchFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "patchTimeInQueueFactor":
 			out.Values[i] = ec._SchedulerConfig_patchTimeInQueueFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "commitQueueFactor":
 			out.Values[i] = ec._SchedulerConfig_commitQueueFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "mainlineTimeInQueueFactor":
 			out.Values[i] = ec._SchedulerConfig_mainlineTimeInQueueFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "expectedRuntimeFactor":
 			out.Values[i] = ec._SchedulerConfig_expectedRuntimeFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "generateTaskFactor":
 			out.Values[i] = ec._SchedulerConfig_generateTaskFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "numDependentsFactor":
 			out.Values[i] = ec._SchedulerConfig_numDependentsFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "stepbackTaskFactor":
 			out.Values[i] = ec._SchedulerConfig_stepbackTaskFactor(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -101939,64 +101729,28 @@ func (ec *executionContext) _TaskLimitsConfig(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("TaskLimitsConfig")
 		case "maxTasksPerVersion":
 			out.Values[i] = ec._TaskLimitsConfig_maxTasksPerVersion(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxIncludesPerVersion":
 			out.Values[i] = ec._TaskLimitsConfig_maxIncludesPerVersion(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxHourlyPatchTasks":
 			out.Values[i] = ec._TaskLimitsConfig_maxHourlyPatchTasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxPendingGeneratedTasks":
 			out.Values[i] = ec._TaskLimitsConfig_maxPendingGeneratedTasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxGenerateTaskJSONSize":
 			out.Values[i] = ec._TaskLimitsConfig_maxGenerateTaskJSONSize(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxConcurrentLargeParserProjectTasks":
 			out.Values[i] = ec._TaskLimitsConfig_maxConcurrentLargeParserProjectTasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxDegradedModeConcurrentLargeParserProjectTasks":
 			out.Values[i] = ec._TaskLimitsConfig_maxDegradedModeConcurrentLargeParserProjectTasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxDegradedModeParserProjectSize":
 			out.Values[i] = ec._TaskLimitsConfig_maxDegradedModeParserProjectSize(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxParserProjectSize":
 			out.Values[i] = ec._TaskLimitsConfig_maxParserProjectSize(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxExecTimeoutSecs":
 			out.Values[i] = ec._TaskLimitsConfig_maxExecTimeoutSecs(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxTaskExecution":
 			out.Values[i] = ec._TaskLimitsConfig_maxTaskExecution(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "maxDailyAutomaticRestarts":
 			out.Values[i] = ec._TaskLimitsConfig_maxDailyAutomaticRestarts(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -109378,8 +109132,9 @@ var (
 	}
 )
 
-func (ec *executionContext) marshalNSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, sel ast.SelectionSet, v model.APISESConfig) graphql.Marshaler {
-	return ec._SESConfig(ctx, sel, &v)
+func (ec *executionContext) unmarshalNSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, v any) (model.APISESConfig, error) {
+	res, err := ec.unmarshalInputSESConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v any) (SaveDistroInput, error) {
@@ -113319,9 +113074,8 @@ var (
 	}
 )
 
-func (ec *executionContext) unmarshalOSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, v any) (model.APISESConfig, error) {
-	res, err := ec.unmarshalInputSESConfigInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
+func (ec *executionContext) marshalOSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, sel ast.SelectionSet, v model.APISESConfig) graphql.Marshaler {
+	return ec._SESConfig(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOSchedulerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISchedulerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISchedulerConfig) graphql.Marshaler {
