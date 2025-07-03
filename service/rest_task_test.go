@@ -65,7 +65,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		ExpectedDuration: 99 * time.Millisecond,
 		TaskOutputInfo: &task.TaskOutput{
 			TestResults: task.TestResultOutput{
-				Version: 1,
+				Version: task.TestResultServiceEvergreen,
 				BucketConfig: evergreen.BucketConfig{
 					Type:              evergreen.BucketTypeLocal,
 					TestResultsPrefix: "test-results",
@@ -365,7 +365,7 @@ func TestGetTaskStatus(t *testing.T) {
 			ResultsService: task.TestResultsServiceEvergreen,
 			TaskOutputInfo: &task.TaskOutput{
 				TestResults: task.TestResultOutput{
-					Version: 1,
+					Version: task.TestResultServiceEvergreen,
 					BucketConfig: evergreen.BucketConfig{
 						Type:              evergreen.BucketTypeLocal,
 						TestResultsPrefix: "test-results",

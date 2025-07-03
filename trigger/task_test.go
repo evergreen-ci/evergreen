@@ -34,7 +34,7 @@ import (
 
 var output = task.TaskOutput{
 	TestResults: task.TestResultOutput{
-		Version: 1,
+		Version: task.TestResultServiceEvergreen,
 		BucketConfig: evergreen.BucketConfig{
 			Type:              evergreen.BucketTypeLocal,
 			TestResultsPrefix: "test-results",
@@ -217,7 +217,7 @@ func (s *taskSuite) SetupTest() {
 		FinishTime:          startTime.Add(20 * time.Minute),
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
-		TaskOutputInfo:      &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
+		TaskOutputInfo:      &task.TaskOutput{TestResults: task.TestResultOutput{Version: task.TestResultServiceEvergreen}},
 	}
 	s.NoError(s.task.Insert(s.ctx))
 

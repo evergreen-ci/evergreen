@@ -18,15 +18,15 @@ func InitializeTaskOutput(env evergreen.Environment) *TaskOutput {
 
 	return &TaskOutput{
 		TaskLogs: TaskLogOutput{
-			Version:      1,
+			Version:      TestResultServiceEvergreen,
 			BucketConfig: settings.Buckets.LogBucket,
 		},
 		TestLogs: TestLogOutput{
-			Version:      1,
+			Version:      TestResultServiceEvergreen,
 			BucketConfig: settings.Buckets.LogBucket,
 		},
 		TestResults: TestResultOutput{
-			Version:      1,
+			Version:      TestResultServiceEvergreen,
 			BucketConfig: settings.Buckets.TestResultsBucket,
 		},
 	}

@@ -146,7 +146,7 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger cli
 	}
 
 	if log != nil {
-		// When sending test logs to Cedar we need to use a
+		// When sending test logs we need to use a
 		// unique string since there may be duplicate file
 		// names if there are duplicate test names.
 		log.Name = utility.RandomString()
