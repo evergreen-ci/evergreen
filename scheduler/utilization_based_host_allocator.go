@@ -188,8 +188,8 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 
 	// enforce the max hosts cap
 	if isMaxHostsCapacity(maxHosts, containerPool, numNewHosts, len(existingHosts)) {
-		// TODO (DEVPROD-7920): remove log once distro max hosts limitation is
-		// improved.
+		// TODO (DEVPROD-18957): remove log once the distro max host auto-tuning
+		// logic is working effectively.
 		grip.InfoWhen(evergreen.IsEc2Provider(d.Provider) && numNewHosts > 0 && numNewHosts+len(existingHosts) > maxHosts, message.Fields{
 			"message":                     "dynamically allocated distro needs to create more hosts than distro max hosts allows",
 			"target_distro_hosts":         numNewHosts + len(existingHosts),
@@ -199,7 +199,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 			"max_hosts":                   maxHosts,
 			"distro":                      d.Id,
 			"provider":                    d.Provider,
-			"ticket":                      "DEVPROD-7920",
+			"ticket":                      "DEVPROD-18957",
 		})
 		numNewHosts = maxHosts - len(existingHosts)
 	}
