@@ -145,7 +145,6 @@
       "email_notifications_disabled": true,
       "task_logging_disabled": true,
       "cache_stats_job_disabled": true,
-      "evergreen_test_results_disabled": false,
       "agent_start_disabled": true,
       "host_init_disabled": false,
       "pod_init_disabled": false,

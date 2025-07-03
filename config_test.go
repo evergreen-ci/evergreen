@@ -761,10 +761,8 @@ func (s *AdminSuite) TestCedarConfig() {
 	defer cancel()
 
 	config := CedarConfig{
-		BaseURL: "url.com",
-		RPCPort: "9090",
-		User:    "username",
-		APIKey:  "key",
+		DBURL:  "url.com",
+		DBName: "username",
 	}
 
 	err := config.Set(ctx)
@@ -774,7 +772,6 @@ func (s *AdminSuite) TestCedarConfig() {
 	s.NotNil(settings)
 	s.Equal(config, settings.Cedar)
 
-	config.RPCPort = "7070"
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig(ctx)

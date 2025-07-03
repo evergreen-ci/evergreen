@@ -33,12 +33,6 @@ var output = TaskOutput{
 	},
 }
 
-var outputCedar = TaskOutput{
-	TestResults: TestResultOutput{
-		Version: TestResultServiceCedar,
-	},
-}
-
 func TestEvergreenService(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

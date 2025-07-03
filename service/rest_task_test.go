@@ -475,10 +475,6 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	require.NoError(env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
-	flags := evergreen.ServiceFlags{
-		EvergreenTestResultsDisabled: true,
-	}
-	require.NoError(evergreen.SetServiceFlags(ctx, flags))
 	defer func() {
 		assert.NoError(db.ClearCollections(task.Collection))
 		assert.NoError(task.ClearTestResults(ctx, env))

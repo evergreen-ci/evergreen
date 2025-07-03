@@ -4759,7 +4759,7 @@ func TestHasResults(t *testing.T) {
 			tsk:  &Task{Id: "task"},
 		},
 		{
-			name: "RegularTaskLegacyCedarResultsFlag",
+			name: "RegularTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "task",
 				HasTestResults: true,
@@ -4779,7 +4779,7 @@ func TestHasResults(t *testing.T) {
 			},
 		},
 		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
+			name: "DisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
@@ -4793,7 +4793,7 @@ func TestHasResults(t *testing.T) {
 			hasResults: true,
 		},
 		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			name: "ArchivedDisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
@@ -4869,7 +4869,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			tsk:  &Task{Id: "task"},
 		},
 		{
-			name: "RegularTaskResultsLegacyCedarResultsFlag",
+			name: "RegularTaskResultsLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "task",
 				Execution:      1,
@@ -4898,7 +4898,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		},
 		{
 
-			name: "ArchivedRegularTaskResultsLegacyCedarResultsFlags",
+			name: "ArchivedRegularTaskResultsLegacyResultsFlags",
 			tsk: &Task{
 				Id:             "task_0",
 				OldTaskId:      "task",
@@ -4948,7 +4948,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
+			name: "DisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				Execution:      1,
@@ -4984,7 +4984,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			name: "ArchivedDisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,

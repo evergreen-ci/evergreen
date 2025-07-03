@@ -32,38 +32,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GET /rest/v2/agent/cedar_config
-type agentCedarConfig struct {
-	config evergreen.CedarConfig
-}
-
-func makeAgentCedarConfig(config evergreen.CedarConfig) *agentCedarConfig {
-	return &agentCedarConfig{
-		config: config,
-	}
-}
-
-func (h *agentCedarConfig) Factory() gimlet.RouteHandler {
-	return &agentCedarConfig{
-		config: h.config,
-	}
-}
-
-func (*agentCedarConfig) Parse(_ context.Context, _ *http.Request) error { return nil }
-
-func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
-	return gimlet.NewJSONResponse(apimodels.CedarConfig{
-		BaseURL:      h.config.BaseURL,
-		GRPCBaseURL:  h.config.GRPCBaseURL,
-		RPCPort:      h.config.RPCPort,
-		Username:     h.config.User,
-		APIKey:       h.config.APIKey,
-		Insecure:     h.config.Insecure,
-		SPSURL:       h.config.SPSURL,
-		SPSKanopyURL: h.config.SPSKanopyURL,
-	})
-}
-
 // GET /rest/v2/agent/perf_monitoring_url
 type agentPerfURL struct {
 	perfURL string
@@ -842,13 +810,6 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
-	}
-	if flags.EvergreenTestResultsDisabled {
-		return gimlet.NewJSONResponse(struct{}{})
-	}
 	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
