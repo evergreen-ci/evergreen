@@ -82,7 +82,6 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					grip.Infof("Found secret field '%s' at path '%s'", field.Name, fieldPath)
 					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
 					if err != nil {
 						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
@@ -97,7 +96,6 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapValue := fieldValue.MapIndex(key)
 						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
 						secretValue := mapValue.String()
-						grip.Infof("Found secret map field '%s' at path '%s'", key.String(), mapFieldPath)
 						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
 						if err != nil {
 							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
@@ -178,8 +176,6 @@ func trySetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSet
 		return nil, errors.Wrap(err, "converting settings to service model")
 	}
 	newSettings := i.(evergreen.Settings)
-	// print all of newSettings
-	grip.Infof("New settings: %+v", newSettings)
 
 	if useParameterStore {
 		paramMgr := evergreen.GetEnvironment().ParameterManager()
