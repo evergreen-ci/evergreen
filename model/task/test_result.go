@@ -74,6 +74,14 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 	var baseTasks []Task
 	if output.TestResults.Version == 0 && getOpts != nil {
 		baseTasks = getOpts.BaseTasks
+		// If base tasks are newer than the actual tasks and used the Evergreen test result service,
+		// we need to remove those base tasks from the cedar request and fetch them in a separate request.
+		if len(baseTasks) > 0 {
+			baseTaskOutput, baseTaskOk := baseTasks[0].GetTaskOutputSafe()
+			if baseTaskOk && baseTaskOutput.TestResults.Version == 1 {
+				baseTasks = nil
+			}
+		}
 	}
 	allTestResults, err := svc.GetTaskTestResults(ctx, tasks, baseTasks)
 	if err != nil {
