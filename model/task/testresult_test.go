@@ -29,7 +29,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 
 	output.TestResults.BucketConfig.Name = t.TempDir()
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
@@ -146,7 +146,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 	task0 := Task{
 		Id:        "task0",
 		Execution: 0,
@@ -270,7 +270,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 	task5 := Task{
 		Id:        "task5",
 		Execution: 0,
@@ -380,7 +380,7 @@ func TestAppendResults(t *testing.T) {
 		assert.NoError(t, ClearTestResults(ctx, env))
 		require.NoError(t, db.Clear(Collection))
 	}()
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 
 	output.TestResults.BucketConfig.Name = t.TempDir()
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})

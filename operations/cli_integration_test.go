@@ -291,7 +291,7 @@ func TestCLITestHistory(t *testing.T) {
 		assert.NoError(t, task.ClearTestResults(ctx, env))
 	}()
 	testutil.ConfigureIntegrationTest(t, testConfig)
-	svc := task.NewEvergreenService(env)
+	svc := task.NewTestResultService(env)
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()

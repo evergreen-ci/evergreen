@@ -45,7 +45,7 @@ func (s *localService) AppendTestResultMetadata(ctx context.Context, _ []string,
 	return errors.Wrap(err, "appending DB test results")
 }
 
-func (s *localService) GetTaskTestResults(ctx context.Context, taskOpts []Task, _ []Task) ([]testresult.TaskTestResults, error) {
+func (s *localService) GetTaskTestResults(ctx context.Context, taskOpts []Task) ([]testresult.TaskTestResults, error) {
 	allTaskResults, err := s.Get(ctx, taskOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting local test results")

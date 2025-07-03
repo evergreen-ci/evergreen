@@ -849,7 +849,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	if len(testName) == 0 {
 		testName = "test_0"
 	}
-	svc := task.NewEvergreenService(s.env)
+	svc := task.NewTestResultService(s.env)
 
 	results := []testresult.TestResult{{
 		TestName:  testName,
@@ -1115,7 +1115,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		TaskOutputInfo: &output,
 	}
 	s.NoError(t2.Insert(s.ctx))
-	svc := task.NewEvergreenService(s.env)
+	svc := task.NewTestResultService(s.env)
 
 	results1 := []testresult.TestResult{
 		{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus},
@@ -1454,7 +1454,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
 	}
-	svc := task.NewEvergreenService(env)
+	svc := task.NewTestResultService(env)
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
 	saveTestResults(t, ctx, testBucket, svc, &tasks[1], 1, []testresult.TestResult{{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}})

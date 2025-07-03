@@ -77,19 +77,7 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results service")
 	}
 
-	var baseTasks []Task
-	if output.TestResults.Version == 0 && getOpts != nil {
-		baseTasks = getOpts.BaseTasks
-		// If base tasks are newer than the actual tasks and used the Evergreen test result service,
-		// we need to remove those base tasks from the cedar request and fetch them in a separate request.
-		if len(baseTasks) > 0 {
-			baseTaskOutput, baseTaskOk := baseTasks[0].GetTaskOutputSafe()
-			if baseTaskOk && baseTaskOutput.TestResults.Version == 1 {
-				baseTasks = nil
-			}
-		}
-	}
-	allTestResults, err := svc.GetTaskTestResults(ctx, tasks, baseTasks)
+	allTestResults, err := svc.GetTaskTestResults(ctx, tasks)
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results")
 	}
@@ -142,7 +130,7 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, tasks 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results service")
 	}
-	allTaskResults, err := svc.GetTaskTestResults(ctx, tasks, nil)
+	allTaskResults, err := svc.GetTaskTestResults(ctx, tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results")
 	}
@@ -193,7 +181,7 @@ func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilt
 
 func getTestResultService(env evergreen.Environment, version int) (TestResultsService, error) {
 	if version <= 1 {
-		return NewEvergreenService(env), nil
+		return NewTestResultService(env), nil
 	} else {
 		return NewLocalService(env), nil
 	}

@@ -10,7 +10,7 @@ import (
 // underlying test results store.
 type TestResultsService interface {
 	AppendTestResultMetadata(context.Context, []string, int, int, testresult.DbTaskTestResults) error
-	GetTaskTestResults(context.Context, []Task, []Task) ([]testresult.TaskTestResults, error)
+	GetTaskTestResults(context.Context, []Task) ([]testresult.TaskTestResults, error)
 	GetTaskTestResultsStats(context.Context, []Task) (testresult.TaskTestResultsStats, error)
 }
 

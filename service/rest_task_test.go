@@ -31,7 +31,7 @@ import (
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult, path string) (*task.Task, error) {
-	svc := task.NewEvergreenService(env)
+	svc := task.NewTestResultService(env)
 	tsk := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
