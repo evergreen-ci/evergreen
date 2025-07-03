@@ -181,7 +181,7 @@ func download(ctx context.Context, config *evergreen.Settings, t *testresult.DbT
 	if !ok || outputInfo == nil {
 		return nil, nil
 	}
-	// This is required for backward compatability for tasks that uploaded their
+	// This is required for backward compatibility for tasks that uploaded their
 	// test results to cedar and do not have s3 info directly on their task ouptut struct.
 	if outputInfo.TestResults.Version == TestResultServiceCedar {
 		outputInfo.TestResults.BucketConfig = config.Buckets.TestResultsBucket

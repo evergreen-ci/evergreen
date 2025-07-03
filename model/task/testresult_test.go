@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"net/http"
 	"testing"
 	"time"
 
@@ -242,20 +241,6 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 			}
 			assert.Equal(t, test.expectedStats, stats)
 		})
-	}
-}
-
-type mockHandler struct {
-	status int
-	data   []byte
-}
-
-func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.status > 0 {
-		w.WriteHeader(h.status)
-	}
-	if h.data != nil {
-		_, _ = w.Write(h.data)
 	}
 }
 
