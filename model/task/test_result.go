@@ -180,7 +180,7 @@ func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilt
 }
 
 func getTestResultService(env evergreen.Environment, version int) (TestResultsService, error) {
-	if version <= 1 {
+	if version == TestResultServiceCedar || version == TestResultServiceEvergreen {
 		return NewTestResultService(env), nil
 	} else {
 		return NewLocalService(env), nil

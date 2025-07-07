@@ -17,22 +17,18 @@ import (
 
 const failedTestsSampleSize = 10
 
-// ClearTestResults clears the local test results store.
-func ClearTestResults(ctx context.Context, env evergreen.Environment) error {
-	return errors.Wrap(env.CedarDB().Collection(testresult.Collection).Drop(ctx), "clearing the local test results store")
-}
-
-// testResultService implements the local test results service.
+// testResultService implements a test result service where test results are stored in s3 with relevant test
+// result metadata stored in the cedar DB cluster.
 type testResultService struct {
 	env evergreen.Environment
 }
 
-// NewTestResultService returns a local test results service implementation.
+// NewTestResultService returns a new test result service.
 func NewTestResultService(env evergreen.Environment) *testResultService {
 	return &testResultService{env: env}
 }
 
-// AppendTestResultMetadata appends test results to the local test results collection.
+// AppendTestResultMetadata appends test results to the test results collection in the cedar database.
 func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
 	updatedFailedSample := record.FailedTestsSample
 	for _, sample := range failedTestSample {
@@ -76,8 +72,8 @@ func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpt
 	return mergedStats, nil
 }
 
-// Get fetches the unmerged test results for the given tasks from the local
-// store.
+// Get fetches the unmerged test results metadata for the given tasks from the cedar DB
+// and downloads the associated test results from s3.
 func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
 	var filter bson.M
 	if len(taskOpts) == 1 {
