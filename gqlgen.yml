@@ -18,6 +18,18 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   AdminSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+  Web:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebConfig
+  WebInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIWebConfig
+  WebAPI:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
+  WebAPIInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
+  WebUI:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
+  WebUIInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
   Arch:

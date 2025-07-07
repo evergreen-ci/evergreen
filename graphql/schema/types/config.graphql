@@ -143,6 +143,7 @@ input AdminSettingsInput {
   podLifecycle: PodLifecycleConfigInput
   scheduler: SchedulerConfigInput
   repotracker: RepotrackerConfigInput
+  web: WebInput
 }
 
 type AdminSettings {
@@ -155,6 +156,7 @@ type AdminSettings {
   podLifecycle: PodLifecycleConfig
   scheduler: SchedulerConfig
   repotracker: RepotrackerConfig
+  web: Web
 }
 
 type SpruceConfig {
@@ -268,6 +270,64 @@ type UIConfig {
   betaFeatures: BetaFeatures!
   defaultProject: String!
   userVoice: String
+}
+
+input WebInput {
+  api: WebAPIInput
+  ui: WebUIInput
+  disabledGQLQueries: [String!]
+}
+
+type Web {
+  api: WebAPI
+  ui: WebUI
+  disabledGQLQueries: [String!]
+}
+
+input WebAPIInput {
+  httpListenAddr: String!
+  url: String!
+  corpUrl: String!
+}
+
+type WebAPI {
+  httpListenAddr: String
+  url: String
+  corpUrl: String
+}
+
+input WebUIInput {
+  url: String!
+  helpUrl: String!
+  uiv2Url: String!
+  parsleyUrl: String!
+  httpListenAddr: String!
+  secret: String!
+  defaultProject: String!
+  corsOrigins: [String!]!
+  fileStreamingContentTypes: [String!]!
+  loginDomain: String!
+  userVoice: String!
+  csrfKey: String!
+  cacheTemplates: Boolean!
+  stagingEnvironment: String!
+}
+
+type WebUI {
+  url: String
+  helpUrl: String
+  uiv2Url: String
+  parsleyUrl: String
+  httpListenAddr: String
+  secret: String
+  defaultProject: String
+  corsOrigins: [String!]
+  fileStreamingContentTypes: [String!]
+  loginDomain: String
+  userVoice: String
+  csrfKey: String
+  cacheTemplates: Boolean
+  stagingEnvironment: String
 }
 
 type SlackConfig {
