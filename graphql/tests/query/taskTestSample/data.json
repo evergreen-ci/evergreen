@@ -263,6 +263,11 @@
         "logs": { "agent": null, "system": null, "task": null }
       },
       "has_test_results": true,
+      "task_output_info": {
+        "test_results": {
+          "version": 2
+        }
+      },
       "failed_results": true
     },
     {
