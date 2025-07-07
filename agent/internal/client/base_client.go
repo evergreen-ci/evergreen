@@ -21,8 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/juniper/gopb"
-	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -31,17 +29,15 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
 // baseCommunicator provides common methods for Communicator functionality but
 // does not implement the entire interface.
 type baseCommunicator struct {
-	serverURL       string
-	retry           utility.RetryOptions
-	httpClient      *http.Client
-	reqHeaders      map[string]string
-	cedarGRPCClient *grpc.ClientConn
+	serverURL  string
+	retry      utility.RetryOptions
+	httpClient *http.Client
+	reqHeaders map[string]string
 
 	lastMessageSent time.Time
 	mutex           sync.RWMutex
@@ -105,45 +101,6 @@ func (c *baseCommunicator) resetClient() {
 
 	c.httpClient = utility.GetDefaultHTTPRetryableClient()
 	c.httpClient.Timeout = heartbeatTimeout
-}
-
-func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
-	if c.cedarGRPCClient == nil {
-		cc, err := c.GetCedarConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting Cedar config")
-		}
-
-		if cc.GRPCBaseURL == "" && cc.BaseURL == "" {
-			// No cedar URLs probably means we are running
-			// evergreen locally or in some testing mode.
-			return nil
-		} else if cc.GRPCBaseURL == "" {
-			// Default the GRPC url to the HTTP base url if it's unpopulated
-			cc.GRPCBaseURL = cc.BaseURL
-		}
-
-		dialOpts := timber.DialCedarOptions{
-			BaseAddress: cc.GRPCBaseURL,
-			RPCPort:     cc.RPCPort,
-			Username:    cc.Username,
-			APIKey:      cc.APIKey,
-			// Insecure should always be set to false except when
-			// running Cedar locally, e.g. with our smoke tests.
-			Insecure: cc.Insecure,
-			Retries:  10,
-		}
-		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
-		if err != nil {
-			return errors.Wrap(err, "creating Cedar gRPC client connection")
-		}
-	}
-
-	// We should always check the health of the conn as a sanity check,
-	// this way we can fail the agent early and avoid task system failures.
-	healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
-	_, err := healthClient.Check(ctx, &gopb.HealthCheckRequest{})
-	return errors.Wrap(err, "checking Cedar gRPC health")
 }
 
 // GetProjectRef loads the task's project.
@@ -367,15 +324,6 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	return "", nil
 }
 
-// GetCedarGRPCConn returns the client connection to cedar if it exists, or
-// creates it if it doesn't exist.
-func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	if err := c.createCedarGRPCConn(ctx); err != nil {
-		return nil, errors.Wrap(err, "setting up Cedar gRPC connection")
-	}
-	return c.cedarGRPCClient, nil
-}
-
 func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task, config *LoggerConfig) (LoggerProducer, error) {
 	if config == nil {
 		config = &LoggerConfig{
@@ -477,24 +425,22 @@ func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData
 	return &version, nil
 }
 
-// GetCedarConfig returns the Cedar service configuration.
-func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
+// GetPerfMonitoringURL returns the url of the Performance Monitoring API.
+func (c *baseCommunicator) GetPerfMonitoringURL(ctx context.Context) (string, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   "agent/cedar_config",
+		path:   "agent/perf_monitoring_url",
 	}
-
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, util.RespError(resp, errors.Wrap(err, "getting the Cedar config").Error())
+		return "", util.RespError(resp, errors.Wrap(err, "getting the performance monitoring URL").Error())
 	}
-
-	config := &apimodels.CedarConfig{}
-	if err := utility.ReadJSON(resp.Body, config); err != nil {
-		return nil, errors.Wrap(err, "reading the Cedar config from response")
+	defer resp.Body.Close()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "reading performance monitoring URL from response")
 	}
-
-	return config, nil
+	return string(out), nil
 }
 
 func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {

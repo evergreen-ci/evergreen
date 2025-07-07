@@ -18,7 +18,6 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
-	"google.golang.org/grpc"
 )
 
 type Communicator interface {
@@ -73,11 +72,8 @@ type SharedCommunicator interface {
 	// project variables, project private variables, and version parameters are
 	// included, but not project parameters.
 	GetExpansionsAndVars(context.Context, TaskData) (*apimodels.ExpansionsAndVars, error)
-	// GetCedarConfig returns the Cedar service configuration.
-	GetCedarConfig(context.Context) (*apimodels.CedarConfig, error)
-	// GetCedarGRPCConn returns the client connection to cedar if it exists, or
-	// creates it if it doesn't exist.
-	GetCedarGRPCConn(context.Context) (*grpc.ClientConn, error)
+	// GetPerfMonitoringURL returns the Performance monitoring URL configuration.
+	GetPerfMonitoringURL(context.Context) (string, error)
 	// SetResultsInfo sets the test results information in the task.
 	SetResultsInfo(context.Context, TaskData, bool) error
 

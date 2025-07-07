@@ -35,7 +35,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-07-03"
+	AgentVersion = "2025-07-06"
 )
 
 const (
@@ -92,6 +92,7 @@ type Settings struct {
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Overrides           OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
 	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
+	PerfMonitoringURL   string                    `yaml:"perf_monitoring_url" bson:"perf_monitoring_url" json:"perf_monitoring_url"`
 	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PodLifecycle        PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
@@ -141,6 +142,7 @@ func (c *Settings) Set(ctx context.Context) error {
 			disabledGQLQueriesKey:  c.DisabledGQLQueries,
 			kanopySSHKeyPathKey:    c.KanopySSHKeyPath,
 			logPathKey:             c.LogPath,
+			perfMonitoringURLKey:   c.PerfMonitoringURL,
 			pprofPortKey:           c.PprofPort,
 			pluginsKey:             c.Plugins,
 			pluginsNewKey:          c.PluginsNew,
