@@ -77,19 +77,7 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results service")
 	}
 
-	var baseTasks []Task
-	if output.TestResults.Version == 0 && getOpts != nil {
-		baseTasks = getOpts.BaseTasks
-		// If base tasks are newer than the actual tasks and used the Evergreen test result service,
-		// we need to remove those base tasks from the cedar request and fetch them in a separate request.
-		if len(baseTasks) > 0 {
-			baseTaskOutput, baseTaskOk := baseTasks[0].GetTaskOutputSafe()
-			if baseTaskOk && baseTaskOutput.TestResults.Version == 1 {
-				baseTasks = nil
-			}
-		}
-	}
-	allTestResults, err := svc.GetTaskTestResults(ctx, tasks, baseTasks)
+	allTestResults, err := svc.GetTaskTestResults(ctx, tasks)
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results")
 	}
@@ -134,32 +122,23 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, tasks 
 	if len(tasks) == 0 {
 		return nil, errors.New("must specify task options")
 	}
-
-	var allSamples []testresult.TaskTestResultsFailedSample
-	for service, tasksByService := range groupTasksByService(tasks) {
-		svc, err := GetServiceImpl(env, service)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting test result service")
-		}
-		// TODO: DEVPROD-17978 Cedar does not have a way to return unmerged test results via API, so we need to keep
-		// GetFailedTestSamples as an available interface function until we shutdown cedar.
-		var samples []testresult.TaskTestResultsFailedSample
-		var allTaskResults []testresult.TaskTestResults
-		if service == TestResultsServiceCedar {
-			samples, err = svc.GetFailedTestSamples(ctx, tasksByService, regexFilters)
-		} else {
-			allTaskResults, err = svc.GetTaskTestResults(ctx, tasksByService, nil)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting test results")
-			}
-			samples, err = getFailedTestSamples(allTaskResults, regexFilters)
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "getting failed test result samples")
-		}
-		allSamples = append(allSamples, samples...)
+	output, ok := tasks[0].GetTaskOutputSafe()
+	if !ok {
+		return []testresult.TaskTestResultsFailedSample{}, nil
 	}
-	return allSamples, nil
+	svc, err := getTestResultService(env, output.TestResults.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results service")
+	}
+	allTaskResults, err := svc.GetTaskTestResults(ctx, tasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results")
+	}
+	samples, err := getFailedTestSamples(allTaskResults, regexFilters)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting failed test result samples")
+	}
+	return samples, nil
 }
 
 func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
@@ -201,21 +180,11 @@ func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilt
 }
 
 func getTestResultService(env evergreen.Environment, version int) (TestResultsService, error) {
-	if version == 0 {
-		return NewCedarService(env), nil
-	} else if version == 1 {
-		return NewEvergreenService(env), nil
+	if version == TestResultServiceCedar || version == TestResultServiceEvergreen {
+		return NewTestResultService(env), nil
 	} else {
 		return NewLocalService(env), nil
 	}
-}
-
-func groupTasksByService(tasks []Task) map[string][]Task {
-	servicesToTasks := map[string][]Task{}
-	for _, task := range tasks {
-		servicesToTasks[task.ResultsService] = append(servicesToTasks[task.ResultsService], task)
-	}
-	return servicesToTasks
 }
 
 // filterAndSortTestResults takes a slice of test results and returns a

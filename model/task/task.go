@@ -2510,7 +2510,6 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 			"$unset": []string{
 				DetailsKey,
 				TaskOutputInfoKey,
-				ResultsServiceKey,
 				ResultsFailedKey,
 				HasTestResultsKey,
 				ResetWhenFinishedKey,

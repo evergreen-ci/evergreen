@@ -187,7 +187,6 @@ input ServiceFlagsInput {
   backgroundStatsDisabled: Boolean!
   taskLoggingDisabled: Boolean!
   cacheStatsJobDisabled: Boolean!
-  evergreenTestResultsDisabled: Boolean!
   cacheStatsEndpointDisabled: Boolean!
   taskReliabilityDisabled: Boolean!
   hostAllocatorDisabled: Boolean!
@@ -228,7 +227,6 @@ type ServiceFlags {
   backgroundStatsDisabled: Boolean!
   taskLoggingDisabled: Boolean!
   cacheStatsJobDisabled: Boolean!
-  evergreenTestResultsDisabled: Boolean!
   cacheStatsEndpointDisabled: Boolean!
   taskReliabilityDisabled: Boolean!
   hostAllocatorDisabled: Boolean!

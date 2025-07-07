@@ -32,7 +32,6 @@
               "elasticIPsDisabled": true,
               "emailNotificationsDisabled": true,
               "eventProcessingDisabled": true,
-              "evergreenTestResultsDisabled": true,
               "githubPRTestingDisabled": true,
               "githubStatusAPIDisabled": true,
               "hostAllocatorDisabled": true,

@@ -10,7 +10,7 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "github_pull_request",
       "branch": "spruce",
-      "results_service": "local",
+      "has_test_results": true,
       "results_failed": true,
       "task_output_info": {
         "test_results": {

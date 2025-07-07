@@ -31,7 +31,7 @@ import (
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult, path string) (*task.Task, error) {
-	svc := task.NewEvergreenService(env)
+	svc := task.NewTestResultService(env)
 	tsk := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -76,7 +76,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 	}
 
 	if len(testResults) > 0 {
-		tsk.ResultsService = task.TestResultsServiceEvergreen
+		tsk.HasTestResults = true
 		info := testresult.TestResultsInfo{TaskID: taskId, Execution: 0}
 		tr := &testresult.DbTaskTestResults{
 			ID:          info.ID(),
@@ -362,7 +362,7 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
-			ResultsService: task.TestResultsServiceEvergreen,
+			HasTestResults: true,
 			TaskOutputInfo: &task.TaskOutput{
 				TestResults: task.TestResultOutput{
 					Version: task.TestResultServiceEvergreen,
@@ -477,10 +477,6 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	require.NoError(env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
-	flags := evergreen.ServiceFlags{
-		EvergreenTestResultsDisabled: true,
-	}
-	require.NoError(evergreen.SetServiceFlags(ctx, flags))
 	defer func() {
 		assert.NoError(db.ClearCollections(task.Collection))
 		assert.NoError(task.ClearTestResults(ctx, env))

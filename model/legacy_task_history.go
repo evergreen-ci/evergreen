@@ -252,7 +252,7 @@ func (thi *taskHistoryIterator) GetFailedTests(tasks []task.Task) (map[string][]
 	}
 	results, err := task.GetFailedTestSamples(ctx, env, allTasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting failed test results samples from Cedar")
+		return nil, errors.Wrap(err, "getting failed test results samples")
 	}
 
 	failedTestsMap := map[string][]string{}
