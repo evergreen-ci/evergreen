@@ -76,6 +76,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 	}
 
 	if len(testResults) > 0 {
+		tsk.HasTestResults = true
 		info := testresult.TestResultsInfo{TaskID: taskId, Execution: 0}
 		tr := &testresult.DbTaskTestResults{
 			ID:          info.ID(),
@@ -361,6 +362,7 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
+			HasTestResults: true,
 			TaskOutputInfo: &task.TaskOutput{
 				TestResults: task.TestResultOutput{
 					Version: task.TestResultServiceEvergreen,

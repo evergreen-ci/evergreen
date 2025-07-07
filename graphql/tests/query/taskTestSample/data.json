@@ -262,7 +262,7 @@
         },
         "logs": { "agent": null, "system": null, "task": null }
       },
-      "results_service": "local",
+      "has_test_results": true,
       "failed_results": true
     },
     {
