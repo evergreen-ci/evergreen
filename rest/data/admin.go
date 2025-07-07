@@ -44,6 +44,9 @@ func GetNecessaryServiceFlags(ctx context.Context) (evergreen.ServiceFlags, erro
 
 // storeAdminSecrets recursively finds all fields tagged with "secret:true"
 // and stores them in the parameter manager
+// The function has section commented out because all the functionality does not currently exist.
+// It is currently only uncommented during the testing to ensure that the function works as expected.
+// Those sections will be uncommented/deleted when the functionality is implemented.
 func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
 	if paramMgr == nil {
 		catcher.Add(errors.New("parameter manager is nil"))
