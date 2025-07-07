@@ -858,7 +858,7 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
 	}
-	resp, err := c.request(ctx, info, permissions)
+	resp, err := c.retryRequest(ctx, info, permissions)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
 	}
