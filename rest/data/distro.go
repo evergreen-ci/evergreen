@@ -134,6 +134,8 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string, singl
 		},
 		HostAllocatorSettings: distro.HostAllocatorSettings{
 			Version: evergreen.HostAllocatorUtilization,
+			// kim: TODO: test that this works in staging for new distro.
+			AutoTuneMaximumHosts: true,
 		},
 		PlannerSettings: distro.PlannerSettings{
 			Version: evergreen.PlannerVersionTunable,
