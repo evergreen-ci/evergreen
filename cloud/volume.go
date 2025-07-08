@@ -31,6 +31,8 @@ func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.V
 
 func GetEC2ManagerForVolume(ctx context.Context, vol *host.Volume) (Manager, error) {
 	provider := evergreen.ProviderNameEc2OnDemand
+	// WARNING: We unfortunately have to hard-code variables for E2E testing.
+	// Note that this should be avoided when possible, but is necessary in this case.
 	if os.Getenv("SETTINGS_OVERRIDE") != "" {
 		// Use the mock manager during integration tests
 		provider = evergreen.ProviderNameMock
