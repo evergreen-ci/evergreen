@@ -15,6 +15,18 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
+type APIConfig struct {
+	HTTPListenAddr *string `json:"httpListenAddr,omitempty"`
+	URL            *string `json:"url,omitempty"`
+	CorpURL        *string `json:"corpUrl,omitempty"`
+}
+
+type APIConfigInput struct {
+	HTTPListenAddr string `json:"httpListenAddr"`
+	URL            string `json:"url"`
+	CorpURL        string `json:"corpUrl"`
+}
+
 type AbortInfo struct {
 	BuildVariantDisplayName string `json:"buildVariantDisplayName"`
 	NewVersion              string `json:"newVersion"`
@@ -590,6 +602,23 @@ type TestFilterOptions struct {
 type TestSortOptions struct {
 	SortBy    TestSortCategory `json:"sortBy"`
 	Direction SortDirection    `json:"direction"`
+}
+
+type UIConfigInput struct {
+	URL                       string   `json:"url"`
+	HelpURL                   string   `json:"helpUrl"`
+	Uiv2Url                   string   `json:"uiv2Url"`
+	ParsleyURL                string   `json:"parsleyUrl"`
+	HTTPListenAddr            string   `json:"httpListenAddr"`
+	Secret                    string   `json:"secret"`
+	DefaultProject            string   `json:"defaultProject"`
+	CorsOrigins               []string `json:"corsOrigins"`
+	FileStreamingContentTypes []string `json:"fileStreamingContentTypes"`
+	LoginDomain               string   `json:"loginDomain"`
+	UserVoice                 string   `json:"userVoice"`
+	CsrfKey                   string   `json:"csrfKey"`
+	CacheTemplates            bool     `json:"cacheTemplates"`
+	StagingEnvironment        string   `json:"stagingEnvironment"`
 }
 
 type UpdateBetaFeaturesInput struct {

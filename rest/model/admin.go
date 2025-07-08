@@ -48,11 +48,9 @@ func NewConfigModel() *APIAdminSettings {
 		TaskLimits:          &APITaskLimitsConfig{},
 		TestSelection:       &APITestSelectionConfig{},
 		Triggers:            &APITriggerConfig{},
-		Ui:                  &APIUIConfig{},
 		Spawnhost:           &APISpawnHostConfig{},
 		Tracer:              &APITracerSettings{},
 		GitHubCheckRun:      &APIGitHubCheckRunConfig{},
-		Web:                 &APIWebConfig{},
 	}
 }
 
@@ -110,7 +108,6 @@ type APIAdminSettings struct {
 	Tracer              *APITracerSettings            `json:"tracer,omitempty"`
 	GitHubCheckRun      *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
 	ShutdownWaitSeconds *int                          `json:"shutdown_wait_seconds,omitempty"`
-	Web                 *APIWebConfig                 `json:"web,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -208,11 +205,11 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting release mode config to API model")
 		}
 		as.ReleaseMode = &releaseModeConfig
-		webConfig := APIWebConfig{}
-		if err = webConfig.BuildFromService(v); err != nil {
-			return errors.Wrap(err, "converting web config to API model")
+		apiConfig := APIapiConfig{}
+		if err = apiConfig.BuildFromService(v.Api); err != nil {
+			return errors.Wrap(err, "converting API config to API model")
 		}
-		as.Web = &webConfig
+		as.Api = &apiConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}
@@ -3045,41 +3042,4 @@ func (a *APIAWSAccountRoleMapping) ToService() evergreen.AWSAccountRoleMapping {
 		Account: utility.FromStringPtr(a.Account),
 		Role:    utility.FromStringPtr(a.Role),
 	}
-}
-// APIWebConfig represents the web configuration section in admin settings
-type APIWebConfig struct {
-	Api                *APIapiConfig `json:"api,omitempty"`
-	Ui                 *APIUIConfig  `json:"ui,omitempty"`
-	DisabledGQLQueries []string      `json:"disabled_gql_queries"`
-}
-
-func (w *APIWebConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *evergreen.Settings:
-		if v == nil {
-			return errors.New("cannot convert nil settings to API web config")
-		}
-		
-		apiConfig := APIapiConfig{}
-		if err := apiConfig.BuildFromService(v.Api); err != nil {
-			return errors.Wrap(err, "converting API config to API model")
-		}
-		w.Api = &apiConfig
-		
-		uiConfig := APIUIConfig{}
-		if err := uiConfig.BuildFromService(v.Ui); err != nil {
-			return errors.Wrap(err, "converting UI config to API model")
-		}
-		w.Ui = &uiConfig
-		
-		w.DisabledGQLQueries = v.DisabledGQLQueries
-		
-	default:
-		return errors.Errorf("programmatic error: expected Settings but got type %T", h)
-	}
-	return nil
-}
-
-func (w *APIWebConfig) ToService() (interface{}, error) {
-	return nil, nil
 }

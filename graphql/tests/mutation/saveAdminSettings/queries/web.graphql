@@ -1,55 +1,51 @@
 mutation {
   saveAdminSettings(
     adminSettings: {
-      web: {
-        api: {
-          httpListenAddr: ":9090"
-          url: "http://localhost:9090"
-          corpUrl: "https://evergreen-staging.corp.mongodb.com"
-        }
-        ui: {
-          url: "http://localhost:3000"
-          helpUrl: "https://help.example.com"
-          uiv2Url: "http://localhost:3000"
-          parsleyUrl: "http://localhost:4173"
-          httpListenAddr: ":3000"
-          secret: "test-secret"
-          defaultProject: "evergreen"
-          corsOrigins: ["http://localhost:3000", "http://localhost:5173"]
-          fileStreamingContentTypes: ["text/plain", "application/json"]
-          loginDomain: "localhost"
-          userVoice: "https://uservoice.com"
-          csrfKey: "12345678901234567890123456789012"
-          cacheTemplates: true
-          stagingEnvironment: "staging"
-        }
-        disabledGQLQueries: ["query1", "query2"]
+      api: {
+        httpListenAddr: ":9090"
+        url: "http://localhost:9090"
+        corpUrl: "https://evergreen-staging.corp.mongodb.com"
       }
+      ui: {
+        url: "http://localhost:3000"
+        helpUrl: "https://help.example.com"
+        uiv2Url: "http://localhost:3000"
+        parsleyUrl: "http://localhost:4173"
+        httpListenAddr: ":3000"
+        secret: "test-secret"
+        defaultProject: "evergreen"
+        corsOrigins: ["http://localhost:3000", "http://localhost:5173"]
+        fileStreamingContentTypes: ["text/plain", "application/json"]
+        loginDomain: "localhost"
+        userVoice: "https://uservoice.com"
+        csrfKey: "12345678901234567890123456789012"
+        cacheTemplates: true
+        stagingEnvironment: "staging"
+      }
+      disabledGQLQueries: ["query1", "query2"]
     }
   ) {
-    web {
-      api {
-        httpListenAddr
-        url
-        corpUrl
-      }
-      ui {
-        url
-        helpUrl
-        uiv2Url
-        parsleyUrl
-        httpListenAddr
-        secret
-        defaultProject
-        corsOrigins
-        fileStreamingContentTypes
-        loginDomain
-        userVoice
-        csrfKey
-        cacheTemplates
-        stagingEnvironment
-      }
-      disabledGQLQueries
+    api {
+      httpListenAddr
+      url
+      corpUrl
     }
+    ui {
+      url
+      helpUrl
+      uiv2Url
+      parsleyUrl
+      httpListenAddr
+      secret
+      defaultProject
+      corsOrigins
+      fileStreamingContentTypes
+      loginDomain
+      userVoice
+      csrfKey
+      cacheTemplates
+      stagingEnvironment
+    }
+    disabledGQLQueries
   }
 }
