@@ -33,7 +33,7 @@ func GetEC2ManagerForVolume(ctx context.Context, vol *host.Volume) (Manager, err
 	provider := evergreen.ProviderNameEc2OnDemand
 	// WARNING: We unfortunately have to hard-code variables for E2E testing.
 	// Note that this should be avoided when possible, but is necessary in this case.
-	if os.Getenv("SETTINGS_OVERRIDE") != "" {
+	if os.Getenv(evergreen.SettingsOverride) != "" {
 		// Use the mock manager during integration tests
 		provider = evergreen.ProviderNameMock
 		// Set a host that will be utilized during Spruce e2e tests in spawn/volume.ts.
