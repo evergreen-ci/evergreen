@@ -30,7 +30,6 @@ type ServiceFlags struct {
 	PodAllocatorDisabled            bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `bson:"unrecognized_pod_cleanup_disabled" json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled        bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
 	StaticAPIKeysDisabled           bool `bson:"static_api_keys_disabled" json:"static_api_keys_disabled"`
@@ -84,7 +83,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			taskReliabilityDisabledKey:         c.TaskReliabilityDisabled,
 			hostAllocatorDisabledKey:           c.HostAllocatorDisabled,
 			podAllocatorDisabledKey:            c.PodAllocatorDisabled,
-			backgroundCleanupDisabledKey:       c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
