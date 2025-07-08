@@ -133,8 +133,7 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string, singl
 			Version: evergreen.FinderVersionLegacy,
 		},
 		HostAllocatorSettings: distro.HostAllocatorSettings{
-			Version: evergreen.HostAllocatorUtilization,
-			// kim: TODO: test that this works in staging for new distro.
+			Version:              evergreen.HostAllocatorUtilization,
 			AutoTuneMaximumHosts: true,
 		},
 		PlannerSettings: distro.PlannerSettings{
