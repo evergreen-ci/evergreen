@@ -199,7 +199,8 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Version: utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies),
 		},
 		HostAllocatorSettings: model.APIHostAllocatorSettings{
-			Version: utility.ToStringPtr(evergreen.HostAllocatorUtilization),
+			Version:              utility.ToStringPtr(evergreen.HostAllocatorUtilization),
+			AutoTuneMaximumHosts: true,
 		},
 		BootstrapSettings: model.APIBootstrapSettings{
 			Method:        utility.ToStringPtr(distro.BootstrapMethodLegacySSH),
