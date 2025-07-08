@@ -797,6 +797,7 @@ func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger 
 
 func NewVersionGithubCheckOutcomeSubscription(id string, sub Subscriber) Subscription {
 	subscription := NewSubscriptionByID(ResourceTypeVersion, TriggerGithubCheckOutcome, id, sub)
+	// kim: NOTE: last updated means the subscription can expire.
 	subscription.LastUpdated = time.Now()
 	return subscription
 }

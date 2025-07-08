@@ -353,6 +353,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 		if ref.IsGithubChecksEnabled() {
+			// kim: NOTE: this triggers the downstream changes if GitHub checks
+			// are enabled.
 			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":            "error adding github check subscriptions",
@@ -874,6 +876,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
+		// kim: NOTE: this is where GH commit check aliases should be resolved
+		// for commits.
 		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(ctx, v.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",
