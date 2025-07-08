@@ -65,11 +65,22 @@ type TestResult struct {
 // TestLogInfo describes a metadata for a test result's log stored using
 // Evergreen logging.
 type TestLogInfo struct {
-	LogName       string    `json:"log_name" bson:"log_name"`
-	LogsToMerge   []*string `json:"logs_to_merge" bson:"logs_to_merge"`
-	LineNum       int32     `json:"line_num" bson:"line_num"`
-	RenderingType *string   `json:"rendering_type" bson:"rendering_type"`
+	LogName       string    `json:"log_name" bson:"log_name" parquet:"name=logname"`
+	LogsToMerge   []*string `json:"logs_to_merge" bson:"logs_to_merge" parquet:"name=logstomerge"`
+	LineNum       int32     `json:"line_num" bson:"line_num" parquet:"name=linenum"`
+	RenderingType *string   `json:"rendering_type" bson:"rendering_type" parquet:"name=renderingtype"`
 	Version       int32     `json:"version" bson:"version"`
+	// The following are deprecated fields used for tasks that wrote test results
+	// through Cedar. These tasks wrote using custom parquet tags that included underscores.
+	// Tasks that wrote test results directly to Evergreen will use the tags above that don't
+	// contain any underscores, since when the evergreen test result service first launched
+	// the fields above didn't contain parquet tags and hence defaulted to tag names with no underscores
+	// because of how the parquet-go library automatically resolves tag names. Both fields are now
+	// required to support backwards compatability.
+	LogNameCedar       string    `parquet:"name=log_name"`
+	LogsToMergeCedar   []*string `parquet:"name=logs_to_merge"`
+	LineNumCedar       int32     `parquet:"name=line_num"`
+	RenderingTypeCedar *string   `parquet:"name=rendering_type"`
 }
 
 // ParquetTestResults describes a set of test results from a task execution to
@@ -207,11 +218,15 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 		printTime := true
 		var logsToMerge string
 		if tr.LogInfo != nil {
-			if utility.FromStringPtr(tr.LogInfo.RenderingType) == "resmoke" {
+			if utility.FromStringPtr(tr.LogInfo.RenderingType) == "resmoke" || utility.FromStringPtr(tr.LogInfo.RenderingTypeCedar) == "resmoke" {
 				printTime = false
 			}
 
-			for _, logPath := range tr.LogInfo.LogsToMerge {
+			logPathsToMerge := tr.LogInfo.LogsToMerge
+			if len(logPathsToMerge) == 0 {
+				logPathsToMerge = tr.LogInfo.LogsToMergeCedar
+			}
+			for _, logPath := range logPathsToMerge {
 				logsToMerge += fmt.Sprintf("&logs_to_merge=%s", url.QueryEscape(*logPath))
 			}
 		}
@@ -231,8 +246,13 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 // used for test logs where the name of the test in the logging service may
 // differ from that in the test results service.
 func (tr TestResult) getLogTestName() string {
-	if tr.LogInfo != nil && tr.LogInfo.LogName != "" {
-		return tr.LogInfo.LogName
+	if tr.LogInfo != nil {
+		if tr.LogInfo.LogName != "" {
+			return tr.LogInfo.LogName
+		}
+		if tr.LogInfo.LogNameCedar != "" {
+			return tr.LogInfo.LogNameCedar
+		}
 	}
 	if tr.LogTestName != "" {
 		return tr.LogTestName
@@ -243,6 +263,9 @@ func (tr TestResult) getLogTestName() string {
 
 func (tr TestResult) getLineNum() int {
 	if tr.LogInfo != nil {
+		if int(tr.LogInfo.LineNumCedar) > 0 {
+			return int(tr.LogInfo.LineNumCedar)
+		}
 		return int(tr.LogInfo.LineNum)
 	}
 

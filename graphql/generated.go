@@ -1270,7 +1270,6 @@ type ComplexityRoot struct {
 		AdminParameterStoreDisabled     func(childComplexity int) int
 		AgentStartDisabled              func(childComplexity int) int
 		AlertsDisabled                  func(childComplexity int) int
-		BackgroundCleanupDisabled       func(childComplexity int) int
 		BackgroundReauthDisabled        func(childComplexity int) int
 		BackgroundStatsDisabled         func(childComplexity int) int
 		CLIUpdatesDisabled              func(childComplexity int) int
@@ -8201,13 +8200,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.AlertsDisabled(childComplexity), true
-
-	case "ServiceFlags.backgroundCleanupDisabled":
-		if e.complexity.ServiceFlags.BackgroundCleanupDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.BackgroundCleanupDisabled(childComplexity), true
 
 	case "ServiceFlags.backgroundReauthDisabled":
 		if e.complexity.ServiceFlags.BackgroundReauthDisabled == nil {
@@ -17852,8 +17844,6 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_unrecognizedPodCleanupDisabled(ctx, field)
 			case "backgroundReauthDisabled":
 				return ec.fieldContext_ServiceFlags_backgroundReauthDisabled(ctx, field)
-			case "backgroundCleanupDisabled":
-				return ec.fieldContext_ServiceFlags_backgroundCleanupDisabled(ctx, field)
 			case "cloudCleanupDisabled":
 				return ec.fieldContext_ServiceFlags_cloudCleanupDisabled(ctx, field)
 			case "sleepScheduleDisabled":
@@ -59760,50 +59750,6 @@ func (ec *executionContext) fieldContext_ServiceFlags_backgroundReauthDisabled(_
 	return fc, nil
 }
 
-func (ec *executionContext) _ServiceFlags_backgroundCleanupDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ServiceFlags_backgroundCleanupDisabled(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.BackgroundCleanupDisabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_backgroundCleanupDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ServiceFlags_cloudCleanupDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ServiceFlags_cloudCleanupDisabled(ctx, field)
 	if err != nil {
@@ -86372,7 +86318,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "backgroundCleanupDisabled", "cloudCleanupDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "adminParameterStoreDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "adminParameterStoreDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86526,13 +86472,6 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.BackgroundReauthDisabled = data
-		case "backgroundCleanupDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backgroundCleanupDisabled"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BackgroundCleanupDisabled = data
 		case "cloudCleanupDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloudCleanupDisabled"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -98997,11 +98936,6 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			}
 		case "backgroundReauthDisabled":
 			out.Values[i] = ec._ServiceFlags_backgroundReauthDisabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "backgroundCleanupDisabled":
-			out.Values[i] = ec._ServiceFlags_backgroundCleanupDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
