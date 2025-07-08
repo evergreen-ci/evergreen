@@ -2137,6 +2137,7 @@ type APIServiceFlags struct {
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
 	AdminParameterStoreDisabled     bool `json:"admin_parameter_store_disabled"`
+	LegacyUITaskPagesDisabled       bool `json:"legacy_ui_task_pages_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2613,6 +2614,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
 		AdminParameterStoreDisabled:     as.AdminParameterStoreDisabled,
+		LegacyUITaskPagesDisabled:       as.LegacyUITaskPagesDisabled,
 	}, nil
 }
 

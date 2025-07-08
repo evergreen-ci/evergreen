@@ -144,10 +144,16 @@ type abortedByDisplay struct {
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	flags, err := evergreen.GetServiceFlags(r.Context())
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		return
+	}
+
 	projCtx := MustHaveProjectContext(r)
 	executionStr := gimlet.GetVars(r)["execution"]
 	var execution int
-	var err error
 
 	if executionStr != "" {
 		execution, err = strconv.Atoi(executionStr)
@@ -162,7 +168,14 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
+	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
+
+	if flags.LegacyUITaskPagesDisabled {
+		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+		return
+	}
+
+	if RedirectSpruceUsers(w, r, spruceLink) {
 		return
 	}
 
