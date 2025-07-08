@@ -116,21 +116,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbDistro)
-			assert.Equal(t, originalMaxHosts, dbDistro.HostAllocatorSettings.MaximumHosts, "max hosts should not change if auto-tuning disabled")
-		},
-		"NoopsForSingleTaskDistro": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {
-			j.distro.SingleTaskDistro = true
-			require.NoError(t, j.distro.Insert(t.Context()))
-
-			originalMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
-			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts}, 10)...)
-			j.Run(t.Context())
-			require.NoError(t, j.Error())
-
-			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbDistro)
-			assert.Equal(t, originalMaxHosts, dbDistro.HostAllocatorSettings.MaximumHosts, "max hosts should not change for single task distro")
+			assert.Equal(t, originalMaxHosts, dbDistro.HostAllocatorSettings.MaximumHosts, "max hosts should not change for non-EC2 distro")
 		},
 		"NoopsForNoHostStats": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {
 			originalMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts

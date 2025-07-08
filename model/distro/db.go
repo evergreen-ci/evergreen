@@ -227,7 +227,6 @@ func FindByCanAutoTune(ctx context.Context) ([]Distro, error) {
 	q := bson.M{
 		DisabledKey:         bson.M{"$ne": true},
 		ProviderKey:         bson.M{"$in": []string{evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2OnDemand}},
-		SingleTaskDistroKey: false,
 		autoTuneMaxHostsKey: true,
 	}
 	return Find(ctx, q)
