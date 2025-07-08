@@ -5,7 +5,6 @@ mutation {
         adminParameterStoreDisabled: true
         agentStartDisabled: true
         alertsDisabled: true
-        backgroundCleanupDisabled: true
         backgroundReauthDisabled: true
         backgroundStatsDisabled: true
         cacheStatsEndpointDisabled: true
@@ -46,7 +45,6 @@ mutation {
       adminParameterStoreDisabled
       agentStartDisabled
       alertsDisabled
-      backgroundCleanupDisabled
       backgroundReauthDisabled
       backgroundStatsDisabled
       cacheStatsEndpointDisabled
