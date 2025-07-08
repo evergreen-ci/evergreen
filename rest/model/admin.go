@@ -2137,7 +2137,8 @@ type APIServiceFlags struct {
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
 	AdminParameterStoreDisabled     bool `json:"admin_parameter_store_disabled"`
-	LegacyUITaskPagesDisabled       bool `json:"legacy_ui_task_pages_disabled"`
+	LegacyUITaskPageDisabled        bool `json:"legacy_ui_task_page_disabled"`
+	LegacyUITaskHistoryPageDisabled bool `json:"legacy_ui_task_history_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2569,6 +2570,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
 		as.AdminParameterStoreDisabled = v.AdminParameterStoreDisabled
+		as.LegacyUITaskPageDisabled = v.LegacyUITaskPageDisabled
+		as.LegacyUITaskHistoryPageDisabled = v.LegacyUITaskHistoryPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2614,7 +2617,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
 		AdminParameterStoreDisabled:     as.AdminParameterStoreDisabled,
-		LegacyUITaskPagesDisabled:       as.LegacyUITaskPagesDisabled,
+		LegacyUITaskPageDisabled:        as.LegacyUITaskPageDisabled,
+		LegacyUITaskHistoryPageDisabled: as.LegacyUITaskHistoryPageDisabled,
 	}, nil
 }
 

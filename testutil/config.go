@@ -398,7 +398,8 @@ func MockConfig() *evergreen.Settings {
 			ElasticIPsDisabled:              true,
 			ReleaseModeDisabled:             true,
 			AdminParameterStoreDisabled:     true,
-			LegacyUITaskPagesDisabled:       true,
+			LegacyUITaskPageDisabled:        true,
+			LegacyUITaskHistoryPageDisabled: true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{

@@ -170,7 +170,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
 
-	if flags.LegacyUITaskPagesDisabled {
+	if flags.LegacyUITaskPageDisabled {
 		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 		return
 	}
