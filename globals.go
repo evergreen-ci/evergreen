@@ -370,6 +370,9 @@ const (
 	// indicating that there are still running tasks.
 	PRTasksRunningDescription = "tasks are running"
 
+	// ResmokeRenderingType is name used for the resmoke rendering type when rendering logs.
+	ResmokeRenderingType = "resmoke"
+
 	// RedactedValue is the value that is shown in the REST API and UI for redacted values.
 	RedactedValue       = "{REDACTED}"
 	RedactedAfterValue  = "{REDACTED_AFTER}"
