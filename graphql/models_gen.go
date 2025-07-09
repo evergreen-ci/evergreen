@@ -28,6 +28,25 @@ type AddFavoriteProjectInput struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
+type AdminEvent struct {
+	Section   *string        `json:"section,omitempty"`
+	After     map[string]any `json:"after,omitempty"`
+	Before    map[string]any `json:"before,omitempty"`
+	Timestamp time.Time      `json:"timestamp"`
+	User      string         `json:"user"`
+}
+
+// AdminEventsInput is the input to the adminEvents query.
+type AdminEventsInput struct {
+	Before *time.Time `json:"before,omitempty"`
+	Limit  *int       `json:"limit,omitempty"`
+}
+
+type AdminEventsPayload struct {
+	Count           int           `json:"count"`
+	EventLogEntries []*AdminEvent `json:"eventLogEntries"`
+}
+
 // Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
 // This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
 // tickets from JIRA for a given task on a given execution.
@@ -394,8 +413,6 @@ type RepoPermissionsOptions struct {
 	RepoID string `json:"repoId"`
 }
 
-// SpruceConfig defines settings that apply to all users of Evergreen.
-// For example, if the banner field is populated, then a sitewide banner will be shown to all users.
 type SaveAdminSettingsInput struct {
 	AdminSettings *model.APIAdminSettings `json:"adminSettings"`
 }
