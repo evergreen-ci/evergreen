@@ -56,58 +56,59 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Amboy               *APIAmboyConfig               `json:"amboy,omitempty"`
-	AmboyDB             *APIAmboyDBConfig             `json:"amboy_db,omitempty"`
-	Api                 *APIapiConfig                 `json:"api,omitempty"`
-	AWSInstanceRole     *string                       `json:"aws_instance_role,omitempty"`
-	AuthConfig          *APIAuthConfig                `json:"auth,omitempty"`
-	Banner              *string                       `json:"banner,omitempty"`
-	BannerTheme         *string                       `json:"banner_theme,omitempty"`
-	Buckets             *APIBucketsConfig             `json:"buckets,omitempty"`
-	Cedar               *APICedarConfig               `json:"cedar,omitempty"`
-	ConfigDir           *string                       `json:"configdir,omitempty"`
-	ContainerPools      *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
-	DomainName          *string                       `json:"domain_name,omitempty"`
-	Expansions          map[string]string             `json:"expansions,omitempty"`
-	FWS                 *APIFWSConfig                 `json:"fws,omitempty"`
-	GithubPRCreatorOrg  *string                       `json:"github_pr_creator_org,omitempty"`
-	GithubOrgs          []string                      `json:"github_orgs,omitempty"`
-	GithubWebhookSecret *string                       `json:"github_webhook_secret,omitempty"`
-	DisabledGQLQueries  []string                      `json:"disabled_gql_queries"`
-	HostInit            *APIHostInitConfig            `json:"hostinit,omitempty"`
-	HostJasper          *APIHostJasperConfig          `json:"host_jasper,omitempty"`
-	Jira                *APIJiraConfig                `json:"jira,omitempty"`
-	JIRANotifications   *APIJIRANotificationsConfig   `json:"jira_notifications,omitempty"`
-	KanopySSHKeyPath    *string                       `json:"kanopy_ssh_key_path,omitempty"`
-	LoggerConfig        *APILoggerConfig              `json:"logger_config,omitempty"`
-	LogPath             *string                       `json:"log_path,omitempty"`
-	Notify              *APINotifyConfig              `json:"notify,omitempty"`
-	Overrides           *APIOverridesConfig           `json:"overrides,omitempty"`
-	ParameterStore      *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
-	PerfMonitoringURL   *string                       `json:"perf_monitoring_url"`
-	Plugins             map[string]map[string]any     `json:"plugins,omitempty"`
-	PodLifecycle        *APIPodLifecycleConfig        `json:"pod_lifecycle,omitempty"`
-	PprofPort           *string                       `json:"pprof_port,omitempty"`
-	ProjectCreation     *APIProjectCreationConfig     `json:"project_creation,omitempty"`
-	Providers           *APICloudProviders            `json:"providers,omitempty"`
-	RepoTracker         *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
-	ReleaseMode         *APIReleaseModeConfig         `json:"release_mode,omitempty"`
-	RuntimeEnvironments *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
-	Scheduler           *APISchedulerConfig           `json:"scheduler,omitempty"`
-	ServiceFlags        *APIServiceFlags              `json:"service_flags,omitempty"`
-	SingleTaskDistro    *APISingleTaskDistroConfig    `json:"single_task_distro,omitempty"`
-	Slack               *APISlackConfig               `json:"slack,omitempty"`
-	SleepSchedule       *APISleepScheduleConfig       `json:"sleep_schedule,omitempty"`
-	SSH                 *APISSHConfig                 `json:"ssh,omitempty"`
-	Splunk              *APISplunkConfig              `json:"splunk,omitempty"`
-	TaskLimits          *APITaskLimitsConfig          `json:"task_limits,omitempty"`
-	TestSelection       *APITestSelectionConfig       `json:"test_selection,omitempty"`
-	Triggers            *APITriggerConfig             `json:"triggers,omitempty"`
-	Ui                  *APIUIConfig                  `json:"ui,omitempty"`
-	Spawnhost           *APISpawnHostConfig           `json:"spawnhost,omitempty"`
-	Tracer              *APITracerSettings            `json:"tracer,omitempty"`
-	GitHubCheckRun      *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
-	ShutdownWaitSeconds *int                          `json:"shutdown_wait_seconds,omitempty"`
+	Amboy                   *APIAmboyConfig               `json:"amboy,omitempty"`
+	AmboyDB                 *APIAmboyDBConfig             `json:"amboy_db,omitempty"`
+	Api                     *APIapiConfig                 `json:"api,omitempty"`
+	AWSInstanceRole         *string                       `json:"aws_instance_role,omitempty"`
+	AuthConfig              *APIAuthConfig                `json:"auth,omitempty"`
+	Banner                  *string                       `json:"banner,omitempty"`
+	BannerTheme             *string                       `json:"banner_theme,omitempty"`
+	Buckets                 *APIBucketsConfig             `json:"buckets,omitempty"`
+	Cedar                   *APICedarConfig               `json:"cedar,omitempty"`
+	ConfigDir               *string                       `json:"configdir,omitempty"`
+	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
+	DomainName              *string                       `json:"domain_name,omitempty"`
+	Expansions              map[string]string             `json:"expansions,omitempty"`
+	FWS                     *APIFWSConfig                 `json:"fws,omitempty"`
+	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
+	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
+	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
+	DisabledGQLQueries      []string                      `json:"disabled_gql_queries"`
+	HostInit                *APIHostInitConfig            `json:"hostinit,omitempty"`
+	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
+	Jira                    *APIJiraConfig                `json:"jira,omitempty"`
+	JIRANotifications       *APIJIRANotificationsConfig   `json:"jira_notifications,omitempty"`
+	KanopySSHKeyPath        *string                       `json:"kanopy_ssh_key_path,omitempty"`
+	LoggerConfig            *APILoggerConfig              `json:"logger_config,omitempty"`
+	LogPath                 *string                       `json:"log_path,omitempty"`
+	Notify                  *APINotifyConfig              `json:"notify,omitempty"`
+	Overrides               *APIOverridesConfig           `json:"overrides,omitempty"`
+	ParameterStore          *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
+	PerfMonitoringURL       *string                       `json:"perf_monitoring_url"`
+	PerfMonitoringKanopyURL *string                       `json:"perf_monitoring_kanopy_url"`
+	Plugins                 map[string]map[string]any     `json:"plugins,omitempty"`
+	PodLifecycle            *APIPodLifecycleConfig        `json:"pod_lifecycle,omitempty"`
+	PprofPort               *string                       `json:"pprof_port,omitempty"`
+	ProjectCreation         *APIProjectCreationConfig     `json:"project_creation,omitempty"`
+	Providers               *APICloudProviders            `json:"providers,omitempty"`
+	RepoTracker             *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
+	ReleaseMode             *APIReleaseModeConfig         `json:"release_mode,omitempty"`
+	RuntimeEnvironments     *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
+	Scheduler               *APISchedulerConfig           `json:"scheduler,omitempty"`
+	ServiceFlags            *APIServiceFlags              `json:"service_flags,omitempty"`
+	SingleTaskDistro        *APISingleTaskDistroConfig    `json:"single_task_distro,omitempty"`
+	Slack                   *APISlackConfig               `json:"slack,omitempty"`
+	SleepSchedule           *APISleepScheduleConfig       `json:"sleep_schedule,omitempty"`
+	SSH                     *APISSHConfig                 `json:"ssh,omitempty"`
+	Splunk                  *APISplunkConfig              `json:"splunk,omitempty"`
+	TaskLimits              *APITaskLimitsConfig          `json:"task_limits,omitempty"`
+	TestSelection           *APITestSelectionConfig       `json:"test_selection,omitempty"`
+	Triggers                *APITriggerConfig             `json:"triggers,omitempty"`
+	Ui                      *APIUIConfig                  `json:"ui,omitempty"`
+	Spawnhost               *APISpawnHostConfig           `json:"spawnhost,omitempty"`
+	Tracer                  *APITracerSettings            `json:"tracer,omitempty"`
+	GitHubCheckRun          *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
+	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -146,6 +147,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
 		as.PerfMonitoringURL = &v.PerfMonitoringURL
+		as.PerfMonitoringKanopyURL = &v.PerfMonitoringKanopyURL
 		as.Plugins = v.Plugins
 		as.PprofPort = &v.PprofPort
 		as.Expansions = v.Expansions
@@ -250,6 +252,9 @@ func (as *APIAdminSettings) ToService() (any, error) {
 	}
 	if as.PerfMonitoringURL != nil {
 		settings.PerfMonitoringURL = *as.PerfMonitoringURL
+	}
+	if as.PerfMonitoringKanopyURL != nil {
+		settings.PerfMonitoringKanopyURL = *as.PerfMonitoringKanopyURL
 	}
 
 	apiModelReflect := reflect.ValueOf(*as)
@@ -708,25 +713,15 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL      *string `json:"base_url"`
-	GRPCBaseURL  *string `json:"grpc_base_url"`
-	RPCPort      *string `json:"rpc_port"`
-	User         *string `json:"user"`
-	APIKey       *string `json:"api_key"`
-	SPSURL       *string `json:"sps_url"`
-	SPSKanopyURL *string `json:"sps_kanopy_url"`
+	DBURL  *string `json:"db_url"`
+	DBName *string `json:"db_name"`
 }
 
 func (a *APICedarConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.CedarConfig:
-		a.BaseURL = utility.ToStringPtr(v.BaseURL)
-		a.GRPCBaseURL = utility.ToStringPtr(v.GRPCBaseURL)
-		a.RPCPort = utility.ToStringPtr(v.RPCPort)
-		a.User = utility.ToStringPtr(v.User)
-		a.APIKey = utility.ToStringPtr(v.APIKey)
-		a.SPSURL = utility.ToStringPtr(v.SPSURL)
-		a.SPSKanopyURL = utility.ToStringPtr(v.SPSKanopyURL)
+		a.DBURL = utility.ToStringPtr(v.DBURL)
+		a.DBName = utility.ToStringPtr(v.DBName)
 	default:
 		return errors.Errorf("programmatic error: expected Cedar config but got type %T", h)
 	}
@@ -735,13 +730,8 @@ func (a *APICedarConfig) BuildFromService(h any) error {
 
 func (a *APICedarConfig) ToService() (any, error) {
 	return evergreen.CedarConfig{
-		BaseURL:      utility.FromStringPtr(a.BaseURL),
-		GRPCBaseURL:  utility.FromStringPtr(a.GRPCBaseURL),
-		RPCPort:      utility.FromStringPtr(a.RPCPort),
-		User:         utility.FromStringPtr(a.User),
-		APIKey:       utility.FromStringPtr(a.APIKey),
-		SPSURL:       utility.FromStringPtr(a.SPSURL),
-		SPSKanopyURL: utility.FromStringPtr(a.SPSKanopyURL),
+		DBURL:  utility.FromStringPtr(a.DBURL),
+		DBName: utility.FromStringPtr(a.DBName),
 	}, nil
 }
 
@@ -2136,14 +2126,12 @@ type APIServiceFlags struct {
 	BackgroundStatsDisabled         bool `json:"background_stats_disabled"`
 	TaskLoggingDisabled             bool `json:"task_logging_disabled"`
 	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
-	EvergreenTestResultsDisabled    bool `json:"evergreen_test_results_disabled"`
 	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
 	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
 	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	StaticAPIKeysDisabled           bool `json:"static_api_keys_disabled"`
@@ -2569,13 +2557,11 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
-		as.EvergreenTestResultsDisabled = v.EvergreenTestResultsDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.PodAllocatorDisabled = v.PodAllocatorDisabled
 		as.UnrecognizedPodCleanupDisabled = v.UnrecognizedPodCleanupDisabled
-		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
@@ -2616,13 +2602,11 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		BackgroundStatsDisabled:         as.BackgroundStatsDisabled,
 		TaskLoggingDisabled:             as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
-		EvergreenTestResultsDisabled:    as.EvergreenTestResultsDisabled,
 		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
 		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
 		HostAllocatorDisabled:           as.HostAllocatorDisabled,
 		PodAllocatorDisabled:            as.PodAllocatorDisabled,
 		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,
-		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,

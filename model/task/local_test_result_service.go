@@ -18,18 +18,23 @@ var (
 	ResultsKey             = bsonutil.MustHaveTag(localDbTaskTestResults{}, "Results")
 )
 
-// localService implements the local test results service.
-type localService struct {
+// localTestResultsService implements the local test results service.
+type localTestResultsService struct {
 	env evergreen.Environment
 }
 
+// ClearTestResults clears the local test results store.
+func ClearTestResults(ctx context.Context, env evergreen.Environment) error {
+	return errors.Wrap(env.CedarDB().Collection(testresult.Collection).Drop(ctx), "clearing the local test results store")
+}
+
 // NewLocalService returns a local test results service implementation.
-func NewLocalService(env evergreen.Environment) *localService {
-	return &localService{env: env}
+func NewLocalService(env evergreen.Environment) *localTestResultsService {
+	return &localTestResultsService{env: env}
 }
 
 // AppendTestResultMetadata appends test results to the local test results collection.
-func (s *localService) AppendTestResultMetadata(ctx context.Context, _ []string, failedCount int, totalResults int, tr testresult.DbTaskTestResults) error {
+func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, _ []string, failedCount int, totalResults int, tr testresult.DbTaskTestResults) error {
 	update := bson.M{
 		"$push": bson.M{ResultsKey: bson.M{"$each": tr.Results}},
 		"$inc": bson.M{
@@ -45,7 +50,7 @@ func (s *localService) AppendTestResultMetadata(ctx context.Context, _ []string,
 	return errors.Wrap(err, "appending DB test results")
 }
 
-func (s *localService) GetTaskTestResults(ctx context.Context, taskOpts []Task, _ []Task) ([]testresult.TaskTestResults, error) {
+func (s *localTestResultsService) GetTaskTestResults(ctx context.Context, taskOpts []Task) ([]testresult.TaskTestResults, error) {
 	allTaskResults, err := s.Get(ctx, taskOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting local test results")
@@ -53,7 +58,7 @@ func (s *localService) GetTaskTestResults(ctx context.Context, taskOpts []Task, 
 	return allTaskResults, nil
 }
 
-func (s *localService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
+func (s *localTestResultsService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
 	allTaskResults, err := s.Get(ctx, taskOpts, testresult.StatsKey)
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting local test results")
@@ -68,13 +73,9 @@ func (s *localService) GetTaskTestResultsStats(ctx context.Context, taskOpts []T
 	return mergedStats, nil
 }
 
-func (s *localService) GetFailedTestSamples(ctx context.Context, taskOpts []Task, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
-	return nil, errors.New("not implemented")
-}
-
 // Get fetches the unmerged test results for the given tasks from the local
 // store.
-func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
+func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
 	ids := make([]dbTaskTestResultsID, len(taskOpts))
 	for i, task := range taskOpts {
 		ids[i].TaskID = task.Id

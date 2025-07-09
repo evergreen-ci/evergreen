@@ -33,17 +33,11 @@ var output = TaskOutput{
 	},
 }
 
-var outputCedar = TaskOutput{
-	TestResults: TestResultOutput{
-		Version: TestResultServiceCedar,
-	},
-}
-
 func TestEvergreenService(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 	require.NoError(t, ClearTestResults(ctx, env))
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
@@ -55,12 +49,12 @@ func TestEvergreenService(t *testing.T) {
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
 
-	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
-	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
-	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
-	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
-	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
-	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceEvergreen, TaskOutputInfo: &output}
+	task0 := Task{Id: "task0", Execution: 0, TaskOutputInfo: &output}
+	task1 := Task{Id: "task1", Execution: 0, TaskOutputInfo: &output}
+	task2 := Task{Id: "task2", Execution: 1, TaskOutputInfo: &output}
+	task3 := Task{Id: "task3", Execution: 0, TaskOutputInfo: &output}
+	task4 := Task{Id: "task4", Execution: 1, TaskOutputInfo: &output}
+	emptyTask := Task{Id: "DNE", Execution: 0, TaskOutputInfo: &output}
 	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2, task3, task4))
 
 	savedResults0 := saveTestResults(t, ctx, testBucket, svc, &task0, 10)
@@ -192,7 +186,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	svc := NewEvergreenService(env)
+	svc := NewTestResultService(env)
 	require.NoError(t, db.Clear(Collection))
 	defer func() {
 		assert.NoError(t, ClearTestResults(ctx, env))
@@ -239,12 +233,10 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 	baseTask := Task{
 		Id:             "base_task",
 		TaskOutputInfo: &output,
-		ResultsService: TestResultsServiceEvergreen,
 	}
 	task1 := Task{
 		Id:             "task1",
 		TaskOutputInfo: &output,
-		ResultsService: TestResultsServiceEvergreen,
 	}
 	require.NoError(t, baseTask.Insert(ctx))
 	require.NoError(t, task1.Insert(ctx))

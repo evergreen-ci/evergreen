@@ -17,23 +17,19 @@ import (
 
 const failedTestsSampleSize = 10
 
-// ClearTestResults clears the local test results store.
-func ClearTestResults(ctx context.Context, env evergreen.Environment) error {
-	return errors.Wrap(env.CedarDB().Collection(testresult.Collection).Drop(ctx), "clearing the local test results store")
-}
-
-// evergreenService implements the local test results service.
-type evergreenService struct {
+// testResultService implements a test result service where test results are stored in s3 with relevant test
+// result metadata stored in the cedar DB cluster.
+type testResultService struct {
 	env evergreen.Environment
 }
 
-// NewEvergreenService returns a local test results service implementation.
-func NewEvergreenService(env evergreen.Environment) *evergreenService {
-	return &evergreenService{env: env}
+// NewTestResultService returns a new test result service.
+func NewTestResultService(env evergreen.Environment) *testResultService {
+	return &testResultService{env: env}
 }
 
-// AppendTestResultMetadata appends test results to the local test results collection.
-func (s *evergreenService) AppendTestResultMetadata(ctx context.Context, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
+// AppendTestResultMetadata appends test results to the test results collection in the cedar database.
+func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
 	updatedFailedSample := record.FailedTestsSample
 	for _, sample := range failedTestSample {
 		if len(updatedFailedSample) < failedTestsSampleSize {
@@ -53,7 +49,7 @@ func (s *evergreenService) AppendTestResultMetadata(ctx context.Context, failedT
 	return errors.Wrap(err, "appending DB test results")
 }
 
-func (s *evergreenService) GetTaskTestResults(ctx context.Context, taskOpts []Task, _ []Task) ([]testresult.TaskTestResults, error) {
+func (s *testResultService) GetTaskTestResults(ctx context.Context, taskOpts []Task) ([]testresult.TaskTestResults, error) {
 	allTaskResults, err := s.Get(ctx, taskOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results")
@@ -61,7 +57,7 @@ func (s *evergreenService) GetTaskTestResults(ctx context.Context, taskOpts []Ta
 	return allTaskResults, nil
 }
 
-func (s *evergreenService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
+func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
 	allTaskResults, err := s.Get(ctx, taskOpts, testresult.StatsKey)
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results")
@@ -76,13 +72,9 @@ func (s *evergreenService) GetTaskTestResultsStats(ctx context.Context, taskOpts
 	return mergedStats, nil
 }
 
-func (s *evergreenService) GetFailedTestSamples(ctx context.Context, taskOpts []Task, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
-	return nil, errors.New("not implemented")
-}
-
-// Get fetches the unmerged test results for the given tasks from the local
-// store.
-func (s *evergreenService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
+// Get fetches the unmerged test results metadata for the given tasks from the cedar DB
+// and downloads the associated test results from s3.
+func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
 	var filter bson.M
 	if len(taskOpts) == 1 {
 		filter = ByTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)
@@ -135,7 +127,7 @@ func (s *evergreenService) Get(ctx context.Context, taskOpts []Task, fields ...s
 		catcher := grip.NewBasicCatcher()
 		for i := 0; i < runtime.NumCPU(); i++ {
 			wg.Add(1)
-			go workerDownload(ctx, toDownload, config.Buckets.Credentials, catcher, &wg)
+			go workerDownload(ctx, toDownload, config, catcher, &wg)
 		}
 		wg.Wait()
 		if catcher.HasErrors() {
@@ -150,14 +142,14 @@ func (s *evergreenService) Get(ctx context.Context, taskOpts []Task, fields ...s
 	return allTaskResults, nil
 }
 
-func workerDownload(ctx context.Context, toDownload <-chan *testresult.DbTaskTestResults, credentials evergreen.S3Credentials, catcher grip.Catcher, wg *sync.WaitGroup) {
+func workerDownload(ctx context.Context, toDownload <-chan *testresult.DbTaskTestResults, config *evergreen.Settings, catcher grip.Catcher, wg *sync.WaitGroup) {
 	defer func() {
 		catcher.Add(recovery.HandlePanicWithError(recover(), nil, "test results download producer"))
 		wg.Done()
 	}()
 
 	for trs := range toDownload {
-		results, err := download(ctx, credentials, trs)
+		results, err := download(ctx, config, trs)
 		if err != nil {
 			catcher.Add(err)
 			return
@@ -173,7 +165,7 @@ func workerDownload(ctx context.Context, toDownload <-chan *testresult.DbTaskTes
 
 // download returns a TestResult slice with the corresponding Results stored in
 // the offline blob storage.
-func download(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
+func download(ctx context.Context, config *evergreen.Settings, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
 	dbTask, err := FindOneIdAndExecution(ctx, t.Info.TaskID, t.Info.Execution)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s'", t.Info.TaskID)
@@ -182,10 +174,15 @@ func download(ctx context.Context, credentials evergreen.S3Credentials, t *testr
 		return nil, errors.Errorf("task '%s' not found", t.Info.TaskID)
 	}
 	outputInfo, ok := dbTask.GetTaskOutputSafe()
-	if !ok {
+	if !ok || outputInfo == nil {
 		return nil, nil
 	}
-	return outputInfo.TestResults.DownloadParquet(ctx, credentials, t)
+	// This is required for backward compatibility for tasks that uploaded their
+	// test results to cedar and do not have s3 info directly on their task ouptut struct.
+	if outputInfo.TestResults.Version == TestResultServiceCedar {
+		outputInfo.TestResults.BucketConfig = config.Buckets.TestResultsBucket
+	}
+	return outputInfo.TestResults.DownloadParquet(ctx, config.Buckets.Credentials, t)
 }
 
 // ByTaskIDAndExecution constructs a query to find a test result for a specific task id and execution pair.

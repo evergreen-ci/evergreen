@@ -23,7 +23,6 @@ type ServiceFlags struct {
 	CLIUpdatesDisabled              bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
 	BackgroundStatsDisabled         bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 	TaskLoggingDisabled             bool `bson:"task_logging_disabled" json:"task_logging_disabled"`
-	EvergreenTestResultsDisabled    bool `bson:"evergreen_test_results_disabled" json:"evergreen_test_results_disabled"`
 	CacheStatsJobDisabled           bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled      bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled         bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
@@ -31,7 +30,6 @@ type ServiceFlags struct {
 	PodAllocatorDisabled            bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `bson:"unrecognized_pod_cleanup_disabled" json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled        bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
 	StaticAPIKeysDisabled           bool `bson:"static_api_keys_disabled" json:"static_api_keys_disabled"`
@@ -81,12 +79,10 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			githubStatusAPIDisabledKey:         c.GithubStatusAPIDisabled,
 			taskLoggingDisabledKey:             c.TaskLoggingDisabled,
 			cacheStatsJobDisabledKey:           c.CacheStatsJobDisabled,
-			evergreenTestResultsDisabledKey:    c.EvergreenTestResultsDisabled,
 			cacheStatsEndpointDisabledKey:      c.CacheStatsEndpointDisabled,
 			taskReliabilityDisabledKey:         c.TaskReliabilityDisabled,
 			hostAllocatorDisabledKey:           c.HostAllocatorDisabled,
 			podAllocatorDisabledKey:            c.PodAllocatorDisabled,
-			backgroundCleanupDisabledKey:       c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,

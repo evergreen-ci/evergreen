@@ -193,14 +193,12 @@ input ServiceFlagsInput {
   backgroundStatsDisabled: Boolean!
   taskLoggingDisabled: Boolean!
   cacheStatsJobDisabled: Boolean!
-  evergreenTestResultsDisabled: Boolean!
   cacheStatsEndpointDisabled: Boolean!
   taskReliabilityDisabled: Boolean!
   hostAllocatorDisabled: Boolean!
   podAllocatorDisabled: Boolean!
   unrecognizedPodCleanupDisabled: Boolean!
   backgroundReauthDisabled: Boolean!
-  backgroundCleanupDisabled: Boolean!
   cloudCleanupDisabled: Boolean!
   sleepScheduleDisabled: Boolean!
   staticAPIKeysDisabled: Boolean!
@@ -234,14 +232,12 @@ type ServiceFlags {
   backgroundStatsDisabled: Boolean!
   taskLoggingDisabled: Boolean!
   cacheStatsJobDisabled: Boolean!
-  evergreenTestResultsDisabled: Boolean!
   cacheStatsEndpointDisabled: Boolean!
   taskReliabilityDisabled: Boolean!
   hostAllocatorDisabled: Boolean!
   podAllocatorDisabled: Boolean!
   unrecognizedPodCleanupDisabled: Boolean!
   backgroundReauthDisabled: Boolean!
-  backgroundCleanupDisabled: Boolean!
   cloudCleanupDisabled: Boolean!
   sleepScheduleDisabled: Boolean!
   staticAPIKeysDisabled: Boolean!

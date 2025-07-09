@@ -127,11 +127,10 @@ type APITask struct {
 	ResetWhenFinished bool            `json:"reset_when_finished"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	OverrideDependencies bool   `json:"-"`
-	Archived             bool   `json:"archived"`
-	ResultsService       string `json:"-"`
-	HasTestResults       bool   `json:"-"`
-	ResultsFailed        bool   `json:"-"`
+	OverrideDependencies bool `json:"-"`
+	Archived             bool `json:"archived"`
+	HasTestResults       bool `json:"-"`
+	ResultsFailed        bool `json:"-"`
 }
 
 type APIStepbackInfo struct {
@@ -348,7 +347,6 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Blocked:                     t.Blocked(),
 		Requester:                   utility.ToStringPtr(t.Requester),
 		Aborted:                     t.Aborted,
-		ResultsService:              t.ResultsService,
 		HasTestResults:              t.HasTestResults,
 		ResultsFailed:               t.ResultsFailed,
 		MustHaveResults:             t.MustHaveResults,
@@ -543,7 +541,6 @@ func (at *APITask) ToService() (*task.Task, error) {
 		GeneratedBy:                 at.GeneratedBy,
 		DisplayOnly:                 at.DisplayOnly,
 		Requester:                   utility.FromStringPtr(at.Requester),
-		ResultsService:              at.ResultsService,
 		HasTestResults:              at.HasTestResults,
 		ResultsFailed:               at.ResultsFailed,
 		MustHaveResults:             at.MustHaveResults,

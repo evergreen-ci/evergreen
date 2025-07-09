@@ -625,7 +625,7 @@
       "status": "success",
       "display_name": "patch-task",
       "execution": 0,
-      "results_service": "local",
+      "has_test_results": true,
       "task_output_info": {
         "test_results": {
           "version": 2
@@ -641,7 +641,7 @@
       "status": "success",
       "display_name": "patch-task",
       "execution": 1,
-      "results_service": "local",
+      "has_test_results": true,
       "task_output_info": {
         "test_results": {
           "version": 2
@@ -658,7 +658,7 @@
       "display_name": "patch-task",
       "execution": 0,
       "order": 38,
-      "results_service": "local",
+      "has_test_results": true,
       "results_failed": true,
       "task_output_info": {
         "test_results": {
@@ -676,7 +676,7 @@
       "display_name": "commit-task",
       "execution": 0,
       "order": 101,
-      "results_service": "local",
+      "has_test_results": true,
       "results_failed": true,
       "task_output_info": {
         "test_results": {
@@ -694,7 +694,7 @@
       "display_name": "commit-task",
       "execution": 0,
       "order": 100,
-      "results_service": "local",
+      "has_test_results": true,
       "results_failed": true,
       "task_output_info": {
         "test_results": {
@@ -712,7 +712,7 @@
       "display_name": "commit-task",
       "execution": 0,
       "order": 126,
-      "results_service": "local",
+      "has_test_results": true,
       "task_output_info": {
         "test_results": {
           "version": 2
@@ -729,7 +729,7 @@
       "display_name": "commit-task",
       "execution": 0,
       "order": 143,
-      "results_service": "local",
+      "has_test_results": true,
       "task_output_info": {
         "test_results": {
           "version": 2
@@ -818,7 +818,7 @@
           "task": null
         }
       },
-      "results_service": "local",
+      "has_test_results": true,
       "results_failed": true,
       "task_output_info": {
         "test_results": {
@@ -924,7 +924,7 @@
       "status": "success",
       "display_name": "patch-task",
       "execution": 0,
-      "results_service": "local",
+      "has_test_results": true,
       "old_task_id": "multi_exec_task",
       "archived": true,
       "task_output_info": {

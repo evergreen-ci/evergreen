@@ -5,7 +5,6 @@ mutation {
         adminParameterStoreDisabled: true
         agentStartDisabled: true
         alertsDisabled: true
-        backgroundCleanupDisabled: true
         backgroundReauthDisabled: true
         backgroundStatsDisabled: true
         cacheStatsEndpointDisabled: true
@@ -17,7 +16,6 @@ mutation {
         elasticIPsDisabled: true
         emailNotificationsDisabled: true
         eventProcessingDisabled: true
-        evergreenTestResultsDisabled: true
         githubPRTestingDisabled: true
         githubStatusAPIDisabled: true
         hostAllocatorDisabled: true
@@ -47,7 +45,6 @@ mutation {
       adminParameterStoreDisabled
       agentStartDisabled
       alertsDisabled
-      backgroundCleanupDisabled
       backgroundReauthDisabled
       backgroundStatsDisabled
       cacheStatsEndpointDisabled
@@ -59,7 +56,6 @@ mutation {
       elasticIPsDisabled
       emailNotificationsDisabled
       eventProcessingDisabled
-      evergreenTestResultsDisabled
       githubPRTestingDisabled
       githubStatusAPIDisabled
       hostAllocatorDisabled

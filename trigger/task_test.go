@@ -830,7 +830,7 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 	s.task.BuildId = fmt.Sprintf("build_id_%d", n)
 	s.task.RevisionOrderNumber = n
 	s.task.Status = taskStatus
-	s.task.ResultsService = ""
+	s.task.HasTestResults = true
 	s.task.ResultsFailed = false
 	s.data.Status = taskStatus
 	s.event.ResourceId = s.task.Id
@@ -850,7 +850,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	if len(testName) == 0 {
 		testName = "test_0"
 	}
-	svc := task.NewEvergreenService(s.env)
+	svc := task.NewTestResultService(s.env)
 
 	results := []testresult.TestResult{{
 		TestName:  testName,
@@ -1100,7 +1100,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Version:        "v1",
 		BuildId:        "test_build_id",
 		Project:        "myproj",
-		ResultsService: "local",
+		HasTestResults: true,
 		ResultsFailed:  true,
 		TaskOutputInfo: &output,
 	}
@@ -1113,12 +1113,12 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Version:        "v1",
 		BuildId:        "test_build_id",
 		Project:        "myproj",
-		ResultsService: "local",
+		HasTestResults: true,
 		ResultsFailed:  true,
 		TaskOutputInfo: &output,
 	}
 	s.NoError(t2.Insert(s.ctx))
-	svc := task.NewEvergreenService(s.env)
+	svc := task.NewTestResultService(s.env)
 
 	results1 := []testresult.TestResult{
 		{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus},
@@ -1393,10 +1393,6 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
 		assert.NoError(t, task.ClearTestResults(ctx, env))
 	}()
-	flags := evergreen.ServiceFlags{
-		EvergreenTestResultsDisabled: true,
-	}
-	require.NoError(t, evergreen.SetServiceFlags(ctx, flags))
 
 	b := build.Build{Id: "b0"}
 	require.NoError(t, b.Insert(t.Context()))
@@ -1425,14 +1421,14 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		{
 			Id:             "et0_0",
 			DisplayName:    "et0",
-			ResultsService: task.TestResultsServiceEvergreen,
+			HasTestResults: true,
 			ResultsFailed:  true,
 			TaskOutputInfo: &output,
 		},
 		{
 			Id:             "et1_0",
 			DisplayName:    "et1",
-			ResultsService: task.TestResultsServiceEvergreen,
+			HasTestResults: true,
 			TaskOutputInfo: &output,
 		},
 		{
@@ -1451,13 +1447,13 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		{
 			Id:             "et0_1",
 			DisplayName:    "et0",
-			ResultsService: task.TestResultsServiceEvergreen,
+			HasTestResults: true,
 			TaskOutputInfo: &output,
 		},
 		{
 			Id:             "et1_1",
 			DisplayName:    "et1",
-			ResultsService: task.TestResultsServiceEvergreen,
+			HasTestResults: true,
 			ResultsFailed:  true,
 			TaskOutputInfo: &output,
 		},
@@ -1465,7 +1461,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
 	}
-	svc := task.NewEvergreenService(env)
+	svc := task.NewTestResultService(env)
 	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
 	require.NoError(t, err)
 	saveTestResults(t, ctx, testBucket, svc, &tasks[1], 1, []testresult.TestResult{{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}})

@@ -123,7 +123,6 @@ func getTestBuildloggerLogs(ctx context.Context, task Task, getOpts TestLogGetOp
 	}
 
 	return apimodels.GetBuildloggerLogs(ctx, apimodels.GetBuildloggerLogsOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		TaskID:    task.Id,
 		Execution: utility.ToIntPtr(task.Execution),
 		TestName:  getOpts.LogPaths[0],

@@ -4759,18 +4759,10 @@ func TestHasResults(t *testing.T) {
 			tsk:  &Task{Id: "task"},
 		},
 		{
-			name: "RegularTaskLegacyCedarResultsFlag",
+			name: "RegularTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "task",
 				HasTestResults: true,
-			},
-			hasResults: true,
-		},
-		{
-			name: "RegularTaskResultsServicePopulated",
-			tsk: &Task{
-				Id:             "task",
-				ResultsService: "some_service",
 			},
 			hasResults: true,
 		},
@@ -4787,7 +4779,7 @@ func TestHasResults(t *testing.T) {
 			},
 		},
 		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
+			name: "DisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
@@ -4801,21 +4793,7 @@ func TestHasResults(t *testing.T) {
 			hasResults: true,
 		},
 		{
-			name: "DisplayTaskResultsServicePopulated",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", ResultsService: "some_service"},
-				{Id: "exec_task2"},
-			},
-			hasResults: true,
-		},
-		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			name: "ArchivedDisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
@@ -4891,7 +4869,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			tsk:  &Task{Id: "task"},
 		},
 		{
-			name: "RegularTaskResultsLegacyCedarResultsFlag",
+			name: "RegularTaskResultsLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "task",
 				Execution:      1,
@@ -4910,19 +4888,19 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			tsk: &Task{
 				Id:             "task",
 				Execution:      1,
-				ResultsService: "some_service",
+				HasTestResults: true,
 			},
 			expectedOpts: []Task{
 				{
 					Id:             "task",
 					Execution:      1,
-					ResultsService: "some_service",
+					HasTestResults: true,
 				},
 			},
 		},
 		{
 
-			name: "ArchivedRegularTaskResultsLegacyCedarResultsFlags",
+			name: "ArchivedRegularTaskResultsLegacyResultsFlags",
 			tsk: &Task{
 				Id:             "task_0",
 				OldTaskId:      "task",
@@ -4946,7 +4924,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Id:             "task_0",
 				OldTaskId:      "task",
 				Execution:      0,
-				ResultsService: "some_service",
+				HasTestResults: true,
 				Archived:       true,
 			},
 			expectedOpts: []Task{
@@ -4954,7 +4932,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 					Id:             "task",
 					OldTaskId:      "task",
 					Execution:      0,
-					ResultsService: "some_service",
+					HasTestResults: true,
 					Archived:       true,
 				},
 			},
@@ -4972,7 +4950,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
+			name: "DisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				Execution:      1,
@@ -4998,17 +4976,17 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			expectedOpts: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 			},
 		},
 		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			name: "ArchivedDisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
@@ -5043,20 +5021,20 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Archived:       true,
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 2, ResultsService: "some_service"},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			oldExecutionTasks: []Task{
-				{Id: "exec_task1_0", OldTaskId: "exec_task1", ResultsService: "some_service"},
-				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, ResultsService: "some_service"},
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, ResultsService: "some_service"},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasTestResults: true},
+				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasTestResults: true},
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasTestResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
 			expectedOpts: []Task{
-				{Id: "exec_task0", ResultsService: "some_service", DependsOn: []Dependency{}},
-				{Id: "exec_task1", Execution: 2, ResultsService: "some_service", DependsOn: []Dependency{}},
-				{Id: "exec_task3", OldTaskId: "exec_task3", Execution: 1, Archived: true, ResultsService: "some_service", DependsOn: []Dependency{}},
+				{Id: "exec_task0", HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task3", OldTaskId: "exec_task3", Execution: 1, Archived: true, HasTestResults: true, DependsOn: []Dependency{}},
 			},
 		},
 	} {
@@ -5224,7 +5202,6 @@ func TestReset(t *testing.T) {
 			Status:                  evergreen.TaskSucceeded,
 			Details:                 apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
 			TaskOutputInfo:          &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
-			ResultsService:          "r",
 			ResultsFailed:           true,
 			HasTestResults:          true,
 			ResetWhenFinished:       true,
