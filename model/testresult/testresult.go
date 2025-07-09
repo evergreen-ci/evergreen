@@ -70,6 +70,7 @@ type TestLogInfo struct {
 	LineNum       int32     `json:"line_num" bson:"line_num" parquet:"name=linenum"`
 	RenderingType *string   `json:"rendering_type" bson:"rendering_type" parquet:"name=renderingtype"`
 	Version       int32     `json:"version" bson:"version"`
+	// TODO: DEVPROD-19170 remove these fields
 	// The following are deprecated fields used for tasks that wrote test results
 	// through Cedar. These tasks wrote using custom parquet tags that included underscores.
 	// Tasks that wrote test results directly to Evergreen will use the tags above that don't
