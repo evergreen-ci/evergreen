@@ -218,7 +218,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 		printTime := true
 		var logsToMerge string
 		if tr.LogInfo != nil {
-			if utility.FromStringPtr(tr.LogInfo.RenderingType) == "resmoke" || utility.FromStringPtr(tr.LogInfo.RenderingTypeCedar) == "resmoke" {
+			if utility.FromStringPtr(tr.LogInfo.RenderingType) == evergreen.ResmokeRenderingType || utility.FromStringPtr(tr.LogInfo.RenderingTypeCedar) == evergreen.ResmokeRenderingType {
 				printTime = false
 			}
 
