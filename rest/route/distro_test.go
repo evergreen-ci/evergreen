@@ -405,6 +405,12 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusCreated, resp.Status())
 
+	dbDistro, err := distro.FindOneId(ctx, h.distroID)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbDistro)
+	s.Equal(h.distroID, dbDistro.Id)
+	s.True(dbDistro.HostAllocatorSettings.AutoTuneMaximumHosts)
+
 	dbUser, err := user.FindOneById("user")
 	s.NoError(err)
 	s.Require().NotNil(dbUser)
