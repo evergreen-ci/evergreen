@@ -102,7 +102,7 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	APIConfig struct {
 		CorpURL        func(childComplexity int) int
-		HTTPListenAddr func(childComplexity int) int
+		HttpListenAddr func(childComplexity int) int
 		URL            func(childComplexity int) int
 	}
 
@@ -125,7 +125,7 @@ type ComplexityRoot struct {
 	}
 
 	AdminSettings struct {
-		API                func(childComplexity int) int
+		Api                func(childComplexity int) int
 		Banner             func(childComplexity int) int
 		BannerTheme        func(childComplexity int) int
 		DisabledGQLQueries func(childComplexity int) int
@@ -1898,8 +1898,6 @@ type ComplexityRoot struct {
 
 type AdminSettingsResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error)
-
-	API(ctx context.Context, obj *model.APIAdminSettings) (*APIConfig, error)
 }
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
@@ -2245,9 +2243,6 @@ type VolumeResolver interface {
 
 type AdminSettingsInputResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error
-
-	API(ctx context.Context, obj *model.APIAdminSettings, data *APIConfigInput) error
-	UI(ctx context.Context, obj *model.APIAdminSettings, data *UIConfigInput) error
 }
 type DistroInputResolver interface {
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]any) error
@@ -2298,11 +2293,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		return e.complexity.APIConfig.CorpURL(childComplexity), true
 
 	case "APIConfig.httpListenAddr":
-		if e.complexity.APIConfig.HTTPListenAddr == nil {
+		if e.complexity.APIConfig.HttpListenAddr == nil {
 			break
 		}
 
-		return e.complexity.APIConfig.HTTPListenAddr(childComplexity), true
+		return e.complexity.APIConfig.HttpListenAddr(childComplexity), true
 
 	case "APIConfig.url":
 		if e.complexity.APIConfig.URL == nil {
@@ -2375,11 +2370,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		return e.complexity.AbortInfo.User(childComplexity), true
 
 	case "AdminSettings.api":
-		if e.complexity.AdminSettings.API == nil {
+		if e.complexity.AdminSettings.Api == nil {
 			break
 		}
 
-		return e.complexity.AdminSettings.API(childComplexity), true
+		return e.complexity.AdminSettings.Api(childComplexity), true
 
 	case "AdminSettings.banner":
 		if e.complexity.AdminSettings.Banner == nil {
@@ -17441,7 +17436,7 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _APIConfig_httpListenAddr(ctx context.Context, field graphql.CollectedField, obj *APIConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _APIConfig_httpListenAddr(ctx context.Context, field graphql.CollectedField, obj *model.APIapiConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_APIConfig_httpListenAddr(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -17455,7 +17450,7 @@ func (ec *executionContext) _APIConfig_httpListenAddr(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.HTTPListenAddr, nil
+		return obj.HttpListenAddr, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -17482,7 +17477,7 @@ func (ec *executionContext) fieldContext_APIConfig_httpListenAddr(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _APIConfig_url(ctx context.Context, field graphql.CollectedField, obj *APIConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _APIConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APIapiConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_APIConfig_url(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -17523,7 +17518,7 @@ func (ec *executionContext) fieldContext_APIConfig_url(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _APIConfig_corpUrl(ctx context.Context, field graphql.CollectedField, obj *APIConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _APIConfig_corpUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIapiConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_APIConfig_corpUrl(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -18512,7 +18507,7 @@ func (ec *executionContext) _AdminSettings_api(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.AdminSettings().API(rctx, obj)
+		return obj.Api, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18521,17 +18516,17 @@ func (ec *executionContext) _AdminSettings_api(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*APIConfig)
+	res := resTmp.(*model.APIapiConfig)
 	fc.Result = res
-	return ec.marshalOAPIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAPIConfig(ctx, field.Selections, res)
+	return ec.marshalOAPIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_AdminSettings_api(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AdminSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "httpListenAddr":
@@ -82701,8 +82696,8 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputAPIConfigInput(ctx context.Context, obj any) (APIConfigInput, error) {
-	var it APIConfigInput
+func (ec *executionContext) unmarshalInputAPIConfigInput(ctx context.Context, obj any) (model.APIapiConfig, error) {
+	var it model.APIapiConfig
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -82717,21 +82712,21 @@ func (ec *executionContext) unmarshalInputAPIConfigInput(ctx context.Context, ob
 		switch k {
 		case "httpListenAddr":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpListenAddr"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HTTPListenAddr = data
+			it.HttpListenAddr = data
 		case "url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.URL = data
 		case "corpUrl":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("corpUrl"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -82850,22 +82845,18 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 			it.RepoTracker = data
 		case "api":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("api"))
-			data, err := ec.unmarshalOAPIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAPIConfigInput(ctx, v)
+			data, err := ec.unmarshalOAPIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.AdminSettingsInput().API(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Api = data
 		case "ui":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ui"))
-			data, err := ec.unmarshalOUIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUIConfigInput(ctx, v)
+			data, err := ec.unmarshalOUIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.AdminSettingsInput().UI(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.Ui = data
 		case "disabledGQLQueries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledGQLQueries"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -88785,14 +88776,14 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj any) (UIConfigInput, error) {
-	var it UIConfigInput
+func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj any) (model.APIUIConfig, error) {
+	var it model.APIUIConfig
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"url", "helpUrl", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment"}
+	fieldsInOrder := [...]string{"url", "helpUrl", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88801,46 +88792,46 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 		switch k {
 		case "url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.URL = data
+			it.Url = data
 		case "helpUrl":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("helpUrl"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HelpURL = data
+			it.HelpUrl = data
 		case "uiv2Url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uiv2Url"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Uiv2Url = data
+			it.UIv2Url = data
 		case "parsleyUrl":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parsleyUrl"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ParsleyURL = data
+			it.ParsleyUrl = data
 		case "httpListenAddr":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpListenAddr"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HTTPListenAddr = data
+			it.HttpListenAddr = data
 		case "secret":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RedactSecrets == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive redactSecrets is not implemented")
 				}
 				return ec.directives.RedactSecrets(ctx, obj, directive0)
@@ -88850,15 +88841,17 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(string); ok {
+			if data, ok := tmp.(*string); ok {
 				it.Secret = data
+			} else if tmp == nil {
+				it.Secret = nil
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "defaultProject":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultProject"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -88869,7 +88862,7 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			if err != nil {
 				return it, err
 			}
-			it.CorsOrigins = data
+			it.CORSOrigins = data
 		case "fileStreamingContentTypes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileStreamingContentTypes"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -88879,25 +88872,25 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			it.FileStreamingContentTypes = data
 		case "loginDomain":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("loginDomain"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.LoginDomain = data
 		case "userVoice":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userVoice"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.UserVoice = data
 		case "csrfKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("csrfKey"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RedactSecrets == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive redactSecrets is not implemented")
 				}
 				return ec.directives.RedactSecrets(ctx, obj, directive0)
@@ -88907,10 +88900,12 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(string); ok {
+			if data, ok := tmp.(*string); ok {
 				it.CsrfKey = data
+			} else if tmp == nil {
+				it.CsrfKey = nil
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "cacheTemplates":
@@ -88922,11 +88917,18 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			it.CacheTemplates = data
 		case "stagingEnvironment":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stagingEnvironment"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StagingEnvironment = data
+		case "betaFeatures":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("betaFeatures"))
+			data, err := ec.unmarshalNBetaFeaturesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BetaFeatures = data
 		}
 	}
 
@@ -89707,7 +89709,7 @@ func (ec *executionContext) unmarshalInputWorkstationSetupCommandInput(ctx conte
 
 var aPIConfigImplementors = []string{"APIConfig"}
 
-func (ec *executionContext) _APIConfig(ctx context.Context, sel ast.SelectionSet, obj *APIConfig) graphql.Marshaler {
+func (ec *executionContext) _APIConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIapiConfig) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, aPIConfigImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -89944,38 +89946,7 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 		case "repotracker":
 			out.Values[i] = ec._AdminSettings_repotracker(ctx, field, obj)
 		case "api":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._AdminSettings_api(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._AdminSettings_api(ctx, field, obj)
 		case "ui":
 			out.Values[i] = ec._AdminSettings_ui(ctx, field, obj)
 		case "disabledGQLQueries":
@@ -106580,6 +106551,11 @@ func (ec *executionContext) marshalNBetaFeatures2githubᚗcomᚋevergreenᚑci�
 	return ec._BetaFeatures(ctx, sel, &v)
 }
 
+func (ec *executionContext) unmarshalNBetaFeaturesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, v any) (model.APIBetaFeatures, error) {
+	res, err := ec.unmarshalInputBetaFeaturesInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNBetaFeaturesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, v any) (*model.APIBetaFeatures, error) {
 	res, err := ec.unmarshalInputBetaFeaturesInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -112041,14 +112017,14 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) marshalOAPIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAPIConfig(ctx context.Context, sel ast.SelectionSet, v *APIConfig) graphql.Marshaler {
+func (ec *executionContext) marshalOAPIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIapiConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._APIConfig(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOAPIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAPIConfigInput(ctx context.Context, v any) (*APIConfigInput, error) {
+func (ec *executionContext) unmarshalOAPIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx context.Context, v any) (*model.APIapiConfig, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -114888,7 +114864,7 @@ func (ec *executionContext) marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	return ec._UIConfig(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOUIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUIConfigInput(ctx context.Context, v any) (*UIConfigInput, error) {
+func (ec *executionContext) unmarshalOUIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, v any) (*model.APIUIConfig, error) {
 	if v == nil {
 		return nil, nil
 	}

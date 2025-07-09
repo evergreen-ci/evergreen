@@ -24,11 +24,6 @@ func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *model.APIA
 	return &theme, nil
 }
 
-// API is the resolver for the api field.
-func (r *adminSettingsResolver) API(ctx context.Context, obj *model.APIAdminSettings) (*APIConfig, error) {
-	panic(fmt.Errorf("not implemented: API - api"))
-}
-
 // Port is the resolver for the port field.
 func (r *containerPoolResolver) Port(ctx context.Context, obj *model.APIContainerPool) (int, error) {
 	return int(obj.Port), nil
@@ -54,16 +49,6 @@ func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *model
 	themeString := string(*data)
 	obj.BannerTheme = utility.ToStringPtr(themeString)
 	return nil
-}
-
-// API is the resolver for the api field.
-func (r *adminSettingsInputResolver) API(ctx context.Context, obj *model.APIAdminSettings, data *APIConfigInput) error {
-	panic(fmt.Errorf("not implemented: API - api"))
-}
-
-// UI is the resolver for the ui field.
-func (r *adminSettingsInputResolver) UI(ctx context.Context, obj *model.APIAdminSettings, data *UIConfigInput) error {
-	panic(fmt.Errorf("not implemented: UI - ui"))
 }
 
 // AdminSettings returns AdminSettingsResolver implementation.

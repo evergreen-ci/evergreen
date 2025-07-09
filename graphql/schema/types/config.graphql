@@ -133,6 +133,7 @@ type RepotrackerConfig {
   maxConcurrentRequests: Int
 }
 
+
 input AdminSettingsInput {
   banner: String
   bannerTheme: BannerTheme
@@ -293,6 +294,7 @@ input UIConfigInput {
   csrfKey: String! @redactSecrets
   cacheTemplates: Boolean!
   stagingEnvironment: String!
+  betaFeatures: BetaFeaturesInput!
 }
 
 type UIConfig {

@@ -3,11 +3,12 @@ mutation {
     adminSettings: {
       api: {
         httpListenAddr: ":9090"
-        url: "http://localhost:9090"
+        url: "http://localhost:8080"
         corpUrl: "https://evergreen-staging.corp.mongodb.com"
       }
+      disabledGQLQueries: ["query1", "query2", "query3", "query4"]
       ui: {
-        url: "http://localhost:3000"
+        url: "http://localhost:600"
         helpUrl: "https://help.example.com"
         uiv2Url: "http://localhost:3000"
         parsleyUrl: "http://localhost:4173"
@@ -20,9 +21,9 @@ mutation {
         userVoice: "https://uservoice.com"
         csrfKey: "12345678901234567890123456789012"
         cacheTemplates: true
-        stagingEnvironment: "staging"
+        stagingEnvironment: "not-staging"
+        betaFeatures: { spruceWaterfallEnabled: false }
       }
-      disabledGQLQueries: ["query1", "query2"]
     }
   ) {
     api {
@@ -45,6 +46,9 @@ mutation {
       csrfKey
       cacheTemplates
       stagingEnvironment
+      betaFeatures {
+        spruceWaterfallEnabled
+      }
     }
     disabledGQLQueries
   }
