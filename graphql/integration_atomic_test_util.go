@@ -668,7 +668,7 @@ func spawnHostForTestCode(ctx context.Context, vol *host.Volume, h *host.Host) e
 	if err != nil {
 		return err
 	}
-	if os.Getenv("SETTINGS_OVERRIDE") != "" {
+	if os.Getenv(evergreen.SettingsOverride) != "" {
 		// The mock manager needs to spawn the host specified in our test data.
 		// The host should already be spawned in a non-test scenario.
 		_, err := mgr.SpawnHost(ctx, h)

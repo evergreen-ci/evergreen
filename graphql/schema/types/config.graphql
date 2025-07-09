@@ -193,7 +193,6 @@ input ServiceFlagsInput {
   podAllocatorDisabled: Boolean!
   unrecognizedPodCleanupDisabled: Boolean!
   backgroundReauthDisabled: Boolean!
-  backgroundCleanupDisabled: Boolean!
   cloudCleanupDisabled: Boolean!
   sleepScheduleDisabled: Boolean!
   staticAPIKeysDisabled: Boolean!
@@ -233,7 +232,6 @@ type ServiceFlags {
   podAllocatorDisabled: Boolean!
   unrecognizedPodCleanupDisabled: Boolean!
   backgroundReauthDisabled: Boolean!
-  backgroundCleanupDisabled: Boolean!
   cloudCleanupDisabled: Boolean!
   sleepScheduleDisabled: Boolean!
   staticAPIKeysDisabled: Boolean!

@@ -2128,7 +2128,6 @@ type APIServiceFlags struct {
 	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	StaticAPIKeysDisabled           bool `json:"static_api_keys_disabled"`
@@ -2559,7 +2558,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.PodAllocatorDisabled = v.PodAllocatorDisabled
 		as.UnrecognizedPodCleanupDisabled = v.UnrecognizedPodCleanupDisabled
-		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
@@ -2605,7 +2603,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		HostAllocatorDisabled:           as.HostAllocatorDisabled,
 		PodAllocatorDisabled:            as.PodAllocatorDisabled,
 		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,
-		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,

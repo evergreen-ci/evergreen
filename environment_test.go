@@ -49,7 +49,7 @@ func TestEnvironmentSuite(t *testing.T) {
 }
 
 func (s *EnvironmentSuite) SetupSuite() {
-	s.path = os.Getenv("SETTINGS_OVERRIDE")
+	s.path = os.Getenv(SettingsOverride)
 }
 
 func (s *EnvironmentSuite) shouldSkip() {

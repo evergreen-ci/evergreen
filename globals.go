@@ -205,6 +205,7 @@ const (
 	EvergreenVersionID      = "EVG_VERSION_ID"
 	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
 	TraceEndpoint           = "TRACE_ENDPOINT"
+	SettingsOverride        = "SETTINGS_OVERRIDE"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
@@ -369,6 +370,9 @@ const (
 	// PRTasksRunningDescription is the description for a GitHub PR status
 	// indicating that there are still running tasks.
 	PRTasksRunningDescription = "tasks are running"
+
+	// ResmokeRenderingType is name used for the resmoke rendering type when rendering logs.
+	ResmokeRenderingType = "resmoke"
 
 	// RedactedValue is the value that is shown in the REST API and UI for redacted values.
 	RedactedValue       = "{REDACTED}"
