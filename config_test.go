@@ -73,7 +73,7 @@ func TestAdminSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	configFile := os.Getenv("SETTINGS_OVERRIDE")
+	configFile := os.Getenv(SettingsOverride)
 	if configFile == "" {
 		configFile = testConfigFile()
 	}

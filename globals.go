@@ -205,6 +205,7 @@ const (
 	EvergreenVersionID      = "EVG_VERSION_ID"
 	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
 	TraceEndpoint           = "TRACE_ENDPOINT"
+	SettingsOverride        = "SETTINGS_OVERRIDE"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
