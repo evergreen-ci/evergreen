@@ -76,7 +76,7 @@ type TestLogInfo struct {
 	// contain any underscores, since when the evergreen test result service first launched
 	// the fields above didn't contain parquet tags and hence defaulted to tag names with no underscores
 	// because of how the parquet-go library automatically resolves tag names. Both fields are now
-	// required to support backwards compatability.
+	// required to support backwards compatibility.
 	LogNameCedar       string    `parquet:"name=log_name"`
 	LogsToMergeCedar   []*string `parquet:"name=logs_to_merge"`
 	LineNumCedar       int32     `parquet:"name=line_num"`
