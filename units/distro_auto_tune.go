@@ -68,9 +68,10 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if !evergreen.IsEc2Provider(j.distro.Provider) || !j.distro.HostAllocatorSettings.AutoTuneMaximumHosts {
+	if !evergreen.IsEc2Provider(j.distro.Provider) || !j.distro.HostAllocatorSettings.AutoTuneMaximumHosts || j.distro.SingleTaskDistro {
 		// Only auto-tune maximum hosts for dynamically-allocated distros that
-		// have auto-tuning enabled.
+		// have auto-tuning enabled. Skip single task distros since they have
+		// niche usage and are therefore difficult to tune accurately.
 		return
 	}
 
