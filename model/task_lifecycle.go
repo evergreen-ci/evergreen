@@ -1551,7 +1551,7 @@ func updateVersionGithubStatus(ctx context.Context, v *Version, builds []build.B
 // its constituent builds, as well as a boolean indicating if any of them have
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
-func updateVersionStatus(ctx context.Context, v *Version) (string, bool, error) {
+func updateVersionStatus(ctx context.Context, v *Version) (versionStatus string, statusChanged bool, err error) {
 	builds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
 		return "", false, errors.Wrapf(err, "getting builds for version '%s'", v.Id)
@@ -1588,7 +1588,6 @@ func updateVersionStatus(ctx context.Context, v *Version) (string, bool, error) 
 		}
 	}
 
-	var statusChanged bool
 	if evergreen.IsFinishedVersionStatus(versionStatus) {
 		statusChanged, err = v.MarkFinished(ctx, versionStatus, time.Now())
 		if err != nil {
@@ -1602,9 +1601,6 @@ func updateVersionStatus(ctx context.Context, v *Version) (string, bool, error) 
 	}
 
 	if statusChanged {
-		// kim: TODO: write unit test to verify version state change is only
-		// logged once if multiple updateVersionStatus calls are converging on
-		// finished state.
 		event.LogVersionStateChangeEvent(ctx, v.Id, versionStatus)
 	}
 
@@ -1689,7 +1685,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		}
 	}
 
-	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) && versionStatusChanged {
+	if versionStatusChanged && evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
 		// only add tracing for versions, patches need to wait for child patches
 		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
 		if err != nil {
