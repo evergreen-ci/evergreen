@@ -170,6 +170,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
 
+	// TODO: Delete all content in this file with the exception of this redirect.
 	if flags.LegacyUITaskPageDisabled {
 		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 		return
