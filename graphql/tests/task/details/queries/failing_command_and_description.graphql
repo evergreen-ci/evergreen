@@ -3,6 +3,10 @@ query {
     details {
       failingCommand
       description
+      otherFailingCommands {
+        fullDisplayName
+        failureMetadataTags
+      }
     }
   }
   task2: task(taskId: "taskity_task_2") {
