@@ -1682,6 +1682,9 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 	}
 
 	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
+		// kim: TODO: make updateVersionStatus atomically update version status
+		// and only log events + create version-completion trace if the version
+		// status was modified in the DB
 		// only add tracing for versions, patches need to wait for child patches
 		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
 		if err != nil {
@@ -1702,6 +1705,9 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
+		// kim: TODO: make UpdatePatchStatus atomically update patch status and
+		// only log events + create version-completion trace if the patch status
+		// was modified in the DB
 		if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
@@ -1716,6 +1722,11 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
 			if parentPatch != nil {
+				// kim: NOTE: could have updateVersionStatus make the version
+				// status update atomic and return whether the update actually
+				// changed the version status to a finished state. That would
+				// prevent multiple tasks finishing around the same time from
+				// marking the version finished many times.
 				event.LogVersionChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
 			} else {
 				event.LogVersionChildrenCompletionEvent(ctx, p.Id.Hex(), versionStatus, p.Author)
