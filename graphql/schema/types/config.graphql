@@ -285,13 +285,13 @@ input UIConfigInput {
   uiv2Url: String!
   parsleyUrl: String!
   httpListenAddr: String!
-  secret: String! @redactSecrets
+  secret: String! 
   defaultProject: String!
   corsOrigins: [String!]!
   fileStreamingContentTypes: [String!]!
   loginDomain: String!
   userVoice: String!
-  csrfKey: String! @redactSecrets
+  csrfKey: String!
   cacheTemplates: Boolean!
   stagingEnvironment: String!
   betaFeatures: BetaFeaturesInput!
