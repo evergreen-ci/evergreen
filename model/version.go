@@ -204,13 +204,24 @@ func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) 
 	return errors.Wrap(AddSatisfiedTrigger(ctx, v.Id, definitionID), "adding satisfied trigger")
 }
 
-func (v *Version) UpdateStatus(ctx context.Context, newStatus string) error {
+func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (bool, error) {
 	if v.Status == newStatus {
-		return nil
+		return false, nil
+	}
+
+	res, err := evergreen.GetEnvironment().DB().Collection(VersionCollection).UpdateOne(ctx, bson.M{
+		VersionIdKey:     v.Id,
+		VersionStatusKey: bson.M{"$ne": newStatus},
+	}, bson.M{
+		"$set": bson.M{VersionStatusKey: newStatus},
+	})
+	if err != nil {
+		return false, err
 	}
 
 	v.Status = newStatus
-	return setVersionStatus(ctx, v.Id, newStatus)
+
+	return res.ModifiedCount > 0, nil
 }
 
 func setVersionStatus(ctx context.Context, versionId, newStatus string) error {
@@ -240,17 +251,22 @@ func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duratio
 	return timeTaken, makespan, nil
 }
 
-func (v *Version) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
+func (v *Version) MarkFinished(ctx context.Context, status string, finishTime time.Time) (bool, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(VersionCollection).UpdateOne(ctx, bson.M{
+		VersionIdKey:     v.Id,
+		VersionStatusKey: bson.M{"$ne": status},
+	}, bson.M{"$set": bson.M{
+		VersionStatusKey:     status,
+		VersionFinishTimeKey: finishTime,
+	}})
+	if err != nil {
+		return false, err
+	}
+
 	v.Status = status
 	v.FinishTime = finishTime
-	return VersionUpdateOne(
-		ctx,
-		bson.M{VersionIdKey: v.Id},
-		bson.M{"$set": bson.M{
-			VersionFinishTimeKey: finishTime,
-			VersionStatusKey:     status,
-		}},
-	)
+
+	return res.ModifiedCount > 0, err
 }
 
 // UpdateProjectStorageMethod updates the version's parser project storage

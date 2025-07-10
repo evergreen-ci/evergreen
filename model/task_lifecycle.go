@@ -1551,27 +1551,27 @@ func updateVersionGithubStatus(ctx context.Context, v *Version, builds []build.B
 // its constituent builds, as well as a boolean indicating if any of them have
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
-func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
+func updateVersionStatus(ctx context.Context, v *Version) (string, bool, error) {
 	builds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
-		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
+		return "", false, errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
 
 	// Regardless of whether the overall version status has changed, the Github status subset may have changed.
 	if err = updateVersionGithubStatus(ctx, v, builds); err != nil {
-		return "", errors.Wrap(err, "updating version GitHub status")
+		return "", false, errors.Wrap(err, "updating version GitHub status")
 	}
 
 	versionActivated, versionStatus := getVersionActivationAndStatus(builds)
 	// If all the builds are unscheduled and nothing has run, set active to false
 	if versionStatus == evergreen.VersionCreated && !versionActivated {
 		if err = v.SetActivated(ctx, false); err != nil {
-			return "", errors.Wrapf(err, "setting version '%s' as inactive", v.Id)
+			return "", false, errors.Wrapf(err, "setting version '%s' as inactive", v.Id)
 		}
 	}
 
 	if versionStatus == v.Status {
-		return versionStatus, nil
+		return versionStatus, false, nil
 	}
 
 	// only need to check aborted if status has changed
@@ -1584,23 +1584,31 @@ func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
 	}
 	if isAborted != v.Aborted {
 		if err = v.SetAborted(ctx, isAborted); err != nil {
-			return "", errors.Wrapf(err, "setting version '%s' as aborted", v.Id)
+			return "", false, errors.Wrapf(err, "setting version '%s' as aborted", v.Id)
 		}
 	}
 
-	event.LogVersionStateChangeEvent(ctx, v.Id, versionStatus)
-
+	var statusChanged bool
 	if evergreen.IsFinishedVersionStatus(versionStatus) {
-		if err = v.MarkFinished(ctx, versionStatus, time.Now()); err != nil {
-			return "", errors.Wrapf(err, "marking version '%s' as finished with status '%s'", v.Id, versionStatus)
+		statusChanged, err = v.MarkFinished(ctx, versionStatus, time.Now())
+		if err != nil {
+			return "", false, errors.Wrapf(err, "marking version '%s' as finished with status '%s'", v.Id, versionStatus)
 		}
 	} else {
-		if err = v.UpdateStatus(ctx, versionStatus); err != nil {
-			return "", errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
+		statusChanged, err = v.UpdateStatus(ctx, versionStatus)
+		if err != nil {
+			return "", false, errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
 		}
 	}
 
-	return versionStatus, nil
+	if statusChanged {
+		// kim: TODO: write unit test to verify version state change is only
+		// logged once if multiple updateVersionStatus calls are converging on
+		// finished state.
+		event.LogVersionStateChangeEvent(ctx, v.Id, versionStatus)
+	}
+
+	return versionStatus, statusChanged, nil
 }
 
 // UpdatePatchStatus updates the status of a patch.
@@ -1670,7 +1678,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
 	}
 
-	newVersionStatus, err := updateVersionStatus(ctx, taskVersion)
+	newVersionStatus, versionStatusChanged, err := updateVersionStatus(ctx, taskVersion)
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
 	}
@@ -1681,10 +1689,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		}
 	}
 
-	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
-		// kim: TODO: make updateVersionStatus atomically update version status
-		// and only log events + create version-completion trace if the version
-		// status was modified in the DB
+	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) && versionStatusChanged {
 		// only add tracing for versions, patches need to wait for child patches
 		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
 		if err != nil {
@@ -1778,7 +1783,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 		if buildVersion == nil {
 			return errors.Errorf("no version '%s' found", versionId)
 		}
-		newVersionStatus, err := updateVersionStatus(ctx, buildVersion)
+		newVersionStatus, _, err := updateVersionStatus(ctx, buildVersion)
 		if err != nil {
 			return errors.Wrapf(err, "updating version '%s' status", buildVersion.Id)
 		}

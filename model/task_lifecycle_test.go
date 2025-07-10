@@ -1543,9 +1543,10 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 		Status: evergreen.VersionStarted,
 	}
 	assert.NoError(t, v1.Insert(t.Context()))
-	versionStatus, err := updateVersionStatus(t.Context(), &v1)
+	versionStatus, statusChanged, err := updateVersionStatus(t.Context(), &v1)
 	assert.NoError(t, err)
 	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
+	assert.False(t, statusChanged)
 
 	events, err := event.FindAllByResourceID(t.Context(), "v1")
 	assert.NoError(t, err)
@@ -1632,7 +1633,7 @@ func TestUpdateVersionStatus(t *testing.T) {
 				require.NoError(t, b.Insert(t.Context()))
 			}
 
-			status, err := updateVersionStatus(t.Context(), v)
+			status, _, err := updateVersionStatus(t.Context(), v)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedVersionStatus, status)
 
