@@ -73158,8 +73158,30 @@ func (ec *executionContext) _UIConfig_secret(ctx context.Context, field graphql.
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Secret, nil
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Secret, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -73251,11 +73273,14 @@ func (ec *executionContext) _UIConfig_corsOrigins(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]string)
 	fc.Result = res
-	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UIConfig_corsOrigins(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -73292,11 +73317,14 @@ func (ec *executionContext) _UIConfig_fileStreamingContentTypes(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]string)
 	fc.Result = res
-	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UIConfig_fileStreamingContentTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -82859,7 +82887,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 			it.Ui = data
 		case "disabledGQLQueries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledGQLQueries"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -88827,28 +88855,11 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			it.HttpListenAddr = data
 		case "secret":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.Secret = data
-			} else if tmp == nil {
-				it.Secret = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.Secret = data
 		case "defaultProject":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultProject"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -88886,28 +88897,11 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			it.UserVoice = data
 		case "csrfKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("csrfKey"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.CsrfKey = data
-			} else if tmp == nil {
-				it.CsrfKey = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.CsrfKey = data
 		case "cacheTemplates":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheTemplates"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -103976,8 +103970,14 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "corsOrigins":
 			out.Values[i] = ec._UIConfig_corsOrigins(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "fileStreamingContentTypes":
 			out.Values[i] = ec._UIConfig_fileStreamingContentTypes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "loginDomain":
 			out.Values[i] = ec._UIConfig_loginDomain(ctx, field, obj)
 		case "userVoice":

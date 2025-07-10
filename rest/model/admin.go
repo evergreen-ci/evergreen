@@ -48,6 +48,7 @@ func NewConfigModel() *APIAdminSettings {
 		TaskLimits:          &APITaskLimitsConfig{},
 		TestSelection:       &APITestSelectionConfig{},
 		Triggers:            &APITriggerConfig{},
+		Ui:                  &APIUIConfig{},
 		Spawnhost:           &APISpawnHostConfig{},
 		Tracer:              &APITracerSettings{},
 		GitHubCheckRun:      &APIGitHubCheckRunConfig{},

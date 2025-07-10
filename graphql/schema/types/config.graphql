@@ -8,7 +8,7 @@ input SaveAdminSettingsInput {
 }
 
 input SESConfigInput {
-  senderAddress: String!
+  senderAddress: String! 
 }
 
 type SESConfig {
@@ -146,7 +146,7 @@ input AdminSettingsInput {
   repotracker: RepotrackerConfigInput
   api: APIConfigInput
   ui: UIConfigInput
-  disabledGQLQueries: [String!]
+  disabledGQLQueries: [String!]!
 }
 
 type AdminSettings {
@@ -304,10 +304,10 @@ type UIConfig {
   uiv2Url: String
   parsleyUrl: String
   httpListenAddr: String
-  secret: String
+  secret: String @requireAdmin
   defaultProject: String!
-  corsOrigins: [String!]
-  fileStreamingContentTypes: [String!]
+  corsOrigins: [String!]!
+  fileStreamingContentTypes: [String!]!
   loginDomain: String
   userVoice: String
   csrfKey: String
