@@ -132,6 +132,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
   ExternalLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
+  FailingCommand:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFailingCommand
   FeedbackRule:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:

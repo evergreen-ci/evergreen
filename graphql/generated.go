@@ -345,6 +345,11 @@ type ComplexityRoot struct {
 		URL         func(childComplexity int) int
 	}
 
+	FailingCommand struct {
+		FailureMetadataTags func(childComplexity int) int
+		FullDisplayName     func(childComplexity int) int
+	}
+
 	File struct {
 		Link       func(childComplexity int) int
 		Name       func(childComplexity int) int
@@ -1475,16 +1480,17 @@ type ComplexityRoot struct {
 	}
 
 	TaskEndDetail struct {
-		Description         func(childComplexity int) int
-		DiskDevices         func(childComplexity int) int
-		FailingCommand      func(childComplexity int) int
-		FailureMetadataTags func(childComplexity int) int
-		OOMTracker          func(childComplexity int) int
-		Status              func(childComplexity int) int
-		TimedOut            func(childComplexity int) int
-		TimeoutType         func(childComplexity int) int
-		TraceID             func(childComplexity int) int
-		Type                func(childComplexity int) int
+		Description          func(childComplexity int) int
+		DiskDevices          func(childComplexity int) int
+		FailingCommand       func(childComplexity int) int
+		FailureMetadataTags  func(childComplexity int) int
+		OOMTracker           func(childComplexity int) int
+		OtherFailingCommands func(childComplexity int) int
+		Status               func(childComplexity int) int
+		TimedOut             func(childComplexity int) int
+		TimeoutType          func(childComplexity int) int
+		TraceID              func(childComplexity int) int
+		Type                 func(childComplexity int) int
 	}
 
 	TaskEventLogData struct {
@@ -3285,6 +3291,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExternalLinkForMetadata.URL(childComplexity), true
+
+	case "FailingCommand.failureMetadataTags":
+		if e.complexity.FailingCommand.FailureMetadataTags == nil {
+			break
+		}
+
+		return e.complexity.FailingCommand.FailureMetadataTags(childComplexity), true
+
+	case "FailingCommand.fullDisplayName":
+		if e.complexity.FailingCommand.FullDisplayName == nil {
+			break
+		}
+
+		return e.complexity.FailingCommand.FullDisplayName(childComplexity), true
 
 	case "File.link":
 		if e.complexity.File.Link == nil {
@@ -9360,6 +9380,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskEndDetail.OOMTracker(childComplexity), true
+
+	case "TaskEndDetail.otherFailingCommands":
+		if e.complexity.TaskEndDetail.OtherFailingCommands == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.OtherFailingCommands(childComplexity), true
 
 	case "TaskEndDetail.status":
 		if e.complexity.TaskEndDetail.Status == nil {
@@ -23968,6 +23995,94 @@ func (ec *executionContext) _ExternalLinkForMetadata_displayName(ctx context.Con
 func (ec *executionContext) fieldContext_ExternalLinkForMetadata_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExternalLinkForMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FailingCommand_fullDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APIFailingCommand) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FailingCommand_fullDisplayName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FullDisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FailingCommand_fullDisplayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FailingCommand",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FailingCommand_failureMetadataTags(ctx context.Context, field graphql.CollectedField, obj *model.APIFailingCommand) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FailingCommand_failureMetadataTags(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FailureMetadataTags, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FailingCommand_failureMetadataTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FailingCommand",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -63693,6 +63808,8 @@ func (ec *executionContext) fieldContext_Task_details(_ context.Context, field g
 				return ec.fieldContext_TaskEndDetail_failureMetadataTags(ctx, field)
 			case "oomTracker":
 				return ec.fieldContext_TaskEndDetail_oomTracker(ctx, field)
+			case "otherFailingCommands":
+				return ec.fieldContext_TaskEndDetail_otherFailingCommands(ctx, field)
 			case "status":
 				return ec.fieldContext_TaskEndDetail_status(ctx, field)
 			case "timedOut":
@@ -66998,6 +67115,56 @@ func (ec *executionContext) fieldContext_TaskEndDetail_oomTracker(_ context.Cont
 				return ec.fieldContext_OomTrackerInfo_pids(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OomTrackerInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskEndDetail_otherFailingCommands(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_otherFailingCommands(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OtherFailingCommands, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIFailingCommand)
+	fc.Result = res
+	return ec.marshalNFailingCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFailingCommandᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_otherFailingCommands(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "fullDisplayName":
+				return ec.fieldContext_FailingCommand_fullDisplayName(ctx, field)
+			case "failureMetadataTags":
+				return ec.fieldContext_FailingCommand_failureMetadataTags(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FailingCommand", field.Name)
 		},
 	}
 	return fc, nil
@@ -90376,6 +90543,50 @@ func (ec *executionContext) _ExternalLinkForMetadata(ctx context.Context, sel as
 	return out
 }
 
+var failingCommandImplementors = []string{"FailingCommand"}
+
+func (ec *executionContext) _FailingCommand(ctx context.Context, sel ast.SelectionSet, obj *model.APIFailingCommand) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, failingCommandImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FailingCommand")
+		case "fullDisplayName":
+			out.Values[i] = ec._FailingCommand_fullDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "failureMetadataTags":
+			out.Values[i] = ec._FailingCommand_failureMetadataTags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var fileImplementors = []string{"File"}
 
 func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj *model.APIFile) graphql.Marshaler {
@@ -101263,6 +101474,11 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "otherFailingCommands":
+			out.Values[i] = ec._TaskEndDetail_otherFailingCommands(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "status":
 			out.Values[i] = ec._TaskEndDetail_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -106091,6 +106307,54 @@ func (ec *executionContext) marshalNExternalLinkForMetadata2ᚖgithubᚗcomᚋev
 func (ec *executionContext) unmarshalNExternalLinkInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExternalLink(ctx context.Context, v any) (model.APIExternalLink, error) {
 	res, err := ec.unmarshalInputExternalLinkInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFailingCommand2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFailingCommand(ctx context.Context, sel ast.SelectionSet, v model.APIFailingCommand) graphql.Marshaler {
+	return ec._FailingCommand(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFailingCommand2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFailingCommandᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIFailingCommand) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFailingCommand2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFailingCommand(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNFeedbackRule2ᚖstring(ctx context.Context, v any) (*string, error) {
