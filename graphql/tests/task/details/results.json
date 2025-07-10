@@ -8,12 +8,7 @@
             "details": {
               "oomTracker": {
                 "detected": true,
-                "pids": [
-                  1234,
-                  5678,
-                  9101,
-                  1235
-                ]
+                "pids": [1234, 5678, 9101, 1235]
               }
             }
           }
@@ -27,7 +22,17 @@
           "task1": {
             "details": {
               "failingCommand": "a failing command",
-              "description": "a description"
+              "description": "a description",
+              "otherFailingCommands": [
+                {
+                  "fullDisplayName": "other failing command 1",
+                  "failureMetadataTags": ["tag1", "tag2"]
+                },
+                {
+                  "fullDisplayName": "other failing command 2",
+                  "failureMetadataTags": []
+                }
+              ]
             }
           },
           "task2": {
@@ -37,7 +42,7 @@
             }
           }
         }
-      } 
+      }
     }
   ]
 }
