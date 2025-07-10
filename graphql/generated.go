@@ -259,6 +259,7 @@ type ComplexityRoot struct {
 		Aliases               func(childComplexity int) int
 		Arch                  func(childComplexity int) int
 		AuthorizedKeysFile    func(childComplexity int) int
+		AvailableRegions      func(childComplexity int) int
 		BootstrapSettings     func(childComplexity int) int
 		ContainerPool         func(childComplexity int) int
 		DisableShallowClone   func(childComplexity int) int
@@ -1885,6 +1886,8 @@ type ContainerPoolResolver interface {
 	Port(ctx context.Context, obj *model.APIContainerPool) (int, error)
 }
 type DistroResolver interface {
+	AvailableRegions(ctx context.Context, obj *model.APIDistro) ([]string, error)
+
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error)
 }
 type HostResolver interface {
@@ -2886,6 +2889,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.AuthorizedKeysFile(childComplexity), true
+
+	case "Distro.availableRegions":
+		if e.complexity.Distro.AvailableRegions == nil {
+			break
+		}
+
+		return e.complexity.Distro.AvailableRegions(childComplexity), true
 
 	case "Distro.bootstrapSettings":
 		if e.complexity.Distro.BootstrapSettings == nil {
@@ -21395,6 +21405,50 @@ func (ec *executionContext) fieldContext_Distro_authorizedKeysFile(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_availableRegions(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_availableRegions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Distro().AvailableRegions(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_availableRegions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_bootstrapSettings(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 	if err != nil {
@@ -30094,6 +30148,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_arch(ctx, field)
 			case "authorizedKeysFile":
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "availableRegions":
+				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -51414,6 +51470,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_arch(ctx, field)
 			case "authorizedKeysFile":
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "availableRegions":
+				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -51600,6 +51658,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_arch(ctx, field)
 			case "authorizedKeysFile":
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "availableRegions":
+				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -57704,6 +57764,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_arch(ctx, field)
 			case "authorizedKeysFile":
 				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "availableRegions":
+				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
 			case "containerPool":
@@ -89758,6 +89820,42 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "availableRegions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Distro_availableRegions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "bootstrapSettings":
 			out.Values[i] = ec._Distro_bootstrapSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
