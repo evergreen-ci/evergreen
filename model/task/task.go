@@ -184,12 +184,6 @@ type Task struct {
 	TaskOutputInfo *TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
-	// kim: NOTE: not set for any tasks in the version
-	// ops_manager_kubernetes_2bf048583ebeaf0f5a58a4b7c5405b1a22ccf545, so the
-	// issue happens before tasks are created.
-	// kim: NOTE: on newer version
-	// (ops_manager_kubernetes_c08a7f5a91df6a7ec9bf64640627a0ab7d91a012), some
-	// (but not atll) tasks have this set and the variant/task regexes are .*
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
 
 	// CheckRunPath is a local file path to an output json file for the checkrun.

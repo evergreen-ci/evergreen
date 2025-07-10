@@ -222,7 +222,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 	// least to most recent.
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
-		// kim: NOTE: this logs as expected for latest commit
 		grip.Infof("Processing revision %s in project %s", revision, ref.Id)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
@@ -343,8 +342,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
-		// kim: NOTE: this is erroring and the continue on error is causing GH
-		// checks to not be created.
 		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build break subscriptions",
@@ -356,8 +353,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 		}
 		if ref.IsGithubChecksEnabled() {
-			// kim: NOTE: this is where the GH commit check subscription is
-			// supposed to be created.
 			// kim: TODO: manually test that his fixes the GH check sub.
 			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -883,8 +878,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
-		// kim: NOTE: this is where GH commit check aliases should be resolved
-		// for commits.
 		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(ctx, v.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",

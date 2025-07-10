@@ -1355,7 +1355,6 @@ func updateBuildGithubStatus(ctx context.Context, b *build.Build, buildTasks []t
 	}
 
 	if evergreen.IsFinishedBuildStatus(buildStatus.status) {
-		// kim: NOTE: this has logged for at least one of the most recent builds.
 		event.LogBuildGithubCheckFinishedEvent(ctx, b.Id, buildStatus.status)
 	}
 
@@ -1542,8 +1541,6 @@ func updateVersionGithubStatus(ctx context.Context, v *Version, builds []build.B
 	_, githubBuildStatus := getVersionActivationAndStatus(githubStatusBuilds)
 
 	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
-		// kim: NOTE: this has logged for the most recent version multiple
-		// times.
 		event.LogVersionGithubCheckFinishedEvent(ctx, v.Id, githubBuildStatus)
 	}
 
@@ -1561,7 +1558,6 @@ func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
 	}
 
 	// Regardless of whether the overall version status has changed, the Github status subset may have changed.
-	// kim: NOTE: this checks the GH commit check status for the version
 	if err = updateVersionGithubStatus(ctx, v, builds); err != nil {
 		return "", errors.Wrap(err, "updating version GitHub status")
 	}

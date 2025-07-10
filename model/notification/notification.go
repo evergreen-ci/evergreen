@@ -199,7 +199,6 @@ func (n *Notification) Composer(ctx context.Context) (message.Composer, error) {
 		payload.Owner = sub.Owner
 		payload.Repo = sub.Repo
 		payload.Ref = sub.Ref
-		// kim: NOTE: this is the message payload for updating GitHub commit checks
 		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
 
 	case event.GithubMergeSubscriberType:

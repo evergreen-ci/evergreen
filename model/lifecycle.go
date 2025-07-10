@@ -1112,8 +1112,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 
 	isGithubCheck := false
 	if len(creationInfo.GithubChecksAliases) > 0 {
-		// kim: NOTE: this is where it decides if a task that's being created is
-		// part of a GH commit check.
 		var err error
 		name, tags, ok := creationInfo.Project.GetTaskNameAndTags(buildVarTask)
 		if ok {
