@@ -353,7 +353,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 		}
 		if ref.IsGithubChecksEnabled() {
-			// kim: TODO: manually test that his fixes the GH check sub.
 			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":            "error adding github check subscriptions",
