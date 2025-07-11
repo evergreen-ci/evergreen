@@ -1774,9 +1774,15 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 		if buildVersion == nil {
 			return errors.Errorf("no version '%s' found", versionId)
 		}
-		newVersionStatus, _, err := updateVersionStatus(ctx, buildVersion)
+		newVersionStatus, versionStatusChanged, err := updateVersionStatus(ctx, buildVersion)
 		if err != nil {
 			return errors.Wrapf(err, "updating version '%s' status", buildVersion.Id)
+		}
+
+		if !versionStatusChanged {
+			// If the version stayed the same, then the patch status has also
+			// stayed the same.
+			continue
 		}
 
 		if evergreen.IsPatchRequester(buildVersion.Requester) {
