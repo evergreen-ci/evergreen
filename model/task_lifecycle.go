@@ -1733,13 +1733,14 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		// was before and all the extra queries for the patch family were
 		// duplicates.
 		if psu.patchStatusChanged {
+			rootPatch := p
 			if psu.parentPatch != nil {
-				event.LogVersionChildrenCompletionEvent(ctx, psu.parentPatch.Id.Hex(), psu.patchFamilyCollectiveStatus, psu.parentPatch.Author)
-			} else {
-				event.LogVersionChildrenCompletionEvent(ctx, p.Id.Hex(), psu.patchFamilyCollectiveStatus, p.Author)
+				rootPatch = psu.parentPatch
 			}
 
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, p)
+			event.LogVersionChildrenCompletionEvent(ctx, rootPatch.Id.Hex(), psu.patchFamilyCollectiveStatus, rootPatch.Author)
+
+			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, rootPatch)
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
