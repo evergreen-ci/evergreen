@@ -1208,6 +1208,11 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	type expectedEvent struct {
+		resourceID string
+		eventType  string
+	}
+
 	type testCase struct {
 		tasks []task.Task
 
@@ -1218,6 +1223,8 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		expectedBuildActivation   bool
 		expectedVersionActivation bool
 		expectedPatchActivation   bool
+
+		expectedEvents []expectedEvent
 	}
 
 	for name, test := range map[string]testCase{
@@ -1347,6 +1354,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			}
 			p := &patch.Patch{
 				Id:        patch.NewId(v.Id),
+				Version:   v.Id,
 				Status:    evergreen.VersionCreated,
 				Activated: true,
 			}
@@ -1374,13 +1382,51 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 
 			v, err = VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
+			require.NotZero(t, v)
 			assert.Equal(t, test.expectedVersionStatus, v.Status)
 			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(v.Activated))
+			if evergreen.IsFinishedVersionStatus(test.expectedVersionStatus) {
+				events, err := event.FindAllByResourceID(t.Context(), v.Id)
+				require.NoError(t, err)
+				var foundVersionFinished bool
+				for _, e := range events {
+					if e.ResourceType != event.ResourceTypeVersion {
+						continue
+					}
+					if e.EventType != event.VersionStateChange {
+						continue
+					}
+					data, ok := e.Data.(*event.VersionEventData)
+					require.True(t, ok)
+					assert.Equal(t, test.expectedVersionStatus, data.Status)
+					foundVersionFinished = true
+				}
+				assert.True(t, foundVersionFinished, "expected to find a version finished event")
+			}
 
 			p, err = patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
+			require.NotZero(t, p)
 			assert.Equal(t, test.expectedPatchStatus, p.Status)
 			assert.Equal(t, test.expectedPatchActivation, p.Activated)
+			if evergreen.IsFinishedVersionStatus(test.expectedPatchStatus) {
+				events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+				require.NoError(t, err)
+				var foundPatchFinished bool
+				for _, e := range events {
+					if e.ResourceType != event.ResourceTypePatch {
+						continue
+					}
+					if e.EventType != event.PatchStateChange {
+						continue
+					}
+					data, ok := e.Data.(*event.PatchEventData)
+					require.True(t, ok)
+					assert.Equal(t, test.expectedPatchStatus, data.Status)
+					foundPatchFinished = true
+				}
+				assert.True(t, foundPatchFinished, "expected to find a patch finished event")
+			}
 		})
 	}
 }
