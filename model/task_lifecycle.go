@@ -1732,7 +1732,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		// kim: TODO: double-check that this logic is equivalent to what it
 		// was before and all the extra queries for the patch family were
 		// duplicates.
-		if psu.patchStatusChanged {
+		if psu.patchStatusChanged && psu.isPatchFamilyDone {
 			rootPatch := p
 			if psu.parentPatch != nil {
 				rootPatch = psu.parentPatch
