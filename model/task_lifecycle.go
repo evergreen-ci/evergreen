@@ -1607,8 +1607,8 @@ type patchStatusUpdate struct {
 	patchFamilyCollectiveStatus string
 }
 
-// UpdatePatchStatus updates the status of a patch.
-func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) (*patchStatusUpdate, error) {
+// updatePatchStatus updates the status of a patch.
+func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (*patchStatusUpdate, error) {
 	if status == p.Status {
 		return &patchStatusUpdate{}, nil
 	}
@@ -1724,7 +1724,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		psu, err := UpdatePatchStatus(ctx, p, newVersionStatus)
+		psu, err := updatePatchStatus(ctx, p, newVersionStatus)
 		if err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
@@ -1802,7 +1802,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if _, err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
+			if _, err = updatePatchStatus(ctx, p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
