@@ -7,8 +7,20 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
+
+// AvailableRegions is the resolver for the availableRegions field.
+func (r *distroResolver) AvailableRegions(ctx context.Context, obj *model.APIDistro) ([]string, error) {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	d := obj.ToService()
+	availableRegions := d.GetRegionsList(settings.Providers.AWS.AllowedRegions)
+	return availableRegions, nil
+}
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.
 func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error) {
