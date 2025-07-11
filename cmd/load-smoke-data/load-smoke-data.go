@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"flag"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -15,7 +16,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	goparquet "github.com/fraugster/parquet-go"
+	"github.com/fraugster/parquet-go/floor"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
@@ -116,6 +121,32 @@ func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 
 	grip.Infof("wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
 
+	return nil
+}
+
+func writeDummyTestResultToLocalBucket(ctx context.Context) error {
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: "/tmp"})
+	if err != nil {
+		return errors.Wrap(err, "creating local bucket")
+	}
+
+	tr := testresult.DbTaskTestResults{
+		CreatedAt: time.Now(),
+		Info: testresult.TestResultsInfo{
+			Project: "evergreen",
+		},
+	}
+
+	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", "test_prefix", testresult.PartitionKey(tr.CreatedAt, tr.Info.Project, tr.Info.ID())))
+	defer w.Close()
+
+	savedParquet := testresult.ParquetTestResults{
+		CreatedAt: tr.CreatedAt,
+		Results:   make([]testresult.ParquetTestResult, 1),
+	}
+	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
+	pw.Write(savedParquet)
+	pw.Close()
 	return nil
 }
 
@@ -225,7 +256,7 @@ func main() {
 	catcher.Wrap(buildAmboyIndexes(ctx, dbURI, amboyDB), "building Amboy indexes")
 	catcher.Wrapf(getFilesFromPathAndInsert(ctx, path, db), "adding DB documents from file path '%s'", path)
 	catcher.Wrap(writeDummyGridFSFile(ctx, db), "writing dummy file to GridFS")
-
+	catcher.Wrap(writeDummyTestResultToLocalBucket(ctx), "writing dummy test result to local bucket")
 	catcher.Add(client.Disconnect(ctx))
 	grip.EmergencyFatal(catcher.Resolve())
 }
