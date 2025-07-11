@@ -1,0 +1,7 @@
+query AdminEventsNoPermissions {
+  adminEvents(opts: {}) {
+    eventLogEntries {
+      user
+    }
+  }
+}

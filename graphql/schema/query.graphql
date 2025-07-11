@@ -5,6 +5,7 @@ type Query {
   buildBaron(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW), execution: Int!): BuildBaron!
 
   # config
+  adminEvents(opts: AdminEventsInput!): AdminEventsPayload! @requireAdmin
   adminSettings: AdminSettings @requireAdmin
   awsRegions: [String!]
   clientConfig: ClientConfig

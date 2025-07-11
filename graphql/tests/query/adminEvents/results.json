@@ -1,0 +1,138 @@
+{
+  "tests": [
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "User 'regular_user' lacks required admin permissions",
+            "path": ["adminEvents"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "admin_events.graphql",
+      "result": {
+        "data": {
+          "adminEvents": {
+            "count": 3,
+            "eventLogEntries": [
+              {
+                "after": {
+                  "buffer_interval_seconds": 0,
+                  "buffer_target_per_interval": 0,
+                  "ses": {
+                    "sender_address": "new-email@email.com"
+                  }
+                },
+                "before": {
+                  "buffer_interval_seconds": 0,
+                  "buffer_target_per_interval": 0,
+                  "ses": {
+                    "sender_address": "evg-sender@email.com"
+                  }
+                },
+                "section": "notify",
+                "timestamp": "2025-07-09T13:53:46.312-04:00",
+                "user": "admin"
+              },
+              {
+                "after": {
+                  "acceptable_host_idle_time_seconds": 20,
+                  "cache_duration_seconds": 60,
+                  "commit_queue_factor": 0,
+                  "expected_runtime_factor": 10,
+                  "free_host_fraction": 0.1,
+                  "generate_task_factor": 50,
+                  "group_versions": true,
+                  "host_allocator": "utilization",
+                  "host_allocator_feedback_rule": "no-feedback",
+                  "host_allocator_rounding_rule": "round-up",
+                  "hosts_overallocated_rule": "no-terminations-when-overallocated",
+                  "mainline_time_in_queue_factor": 0,
+                  "num_dependents_factor": 5,
+                  "patch_time_in_queue_factor": 20,
+                  "patch_zipper_factor": 50,
+                  "stepback_task_factor": 10,
+                  "target_time_seconds": 60,
+                  "task_finder": "legacy"
+                },
+                "before": {
+                  "acceptable_host_idle_time_seconds": 30,
+                  "cache_duration_seconds": 60,
+                  "commit_queue_factor": 0,
+                  "expected_runtime_factor": 10,
+                  "free_host_fraction": 0.1,
+                  "generate_task_factor": 50,
+                  "group_versions": true,
+                  "host_allocator": "utilization",
+                  "host_allocator_feedback_rule": "no-feedback",
+                  "host_allocator_rounding_rule": "round-down",
+                  "hosts_overallocated_rule": "no-terminations-when-overallocated",
+                  "mainline_time_in_queue_factor": 0,
+                  "num_dependents_factor": 5,
+                  "patch_time_in_queue_factor": 20,
+                  "patch_zipper_factor": 50,
+                  "stepback_task_factor": 10,
+                  "target_time_seconds": 60,
+                  "task_finder": "legacy"
+                },
+                "section": "scheduler",
+                "timestamp": "2025-07-09T13:46:47.303-04:00",
+                "user": "admin"
+              },
+              {
+                "after": {
+                  "max_parallel_pod_requests": 2000,
+                  "max_pod_definition_cleanup_rate": 0,
+                  "max_secret_cleanup_rate": 0
+                },
+                "before": {
+                  "max_parallel_pod_requests": 100,
+                  "max_pod_definition_cleanup_rate": 0,
+                  "max_secret_cleanup_rate": 0
+                },
+                "section": "pod_lifecycle",
+                "timestamp": "2025-07-09T13:40:47.296-04:00",
+                "user": "admin"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "admin_events_before.graphql",
+      "result": {
+        "data": {
+          "adminEvents": {
+            "count": 1,
+            "eventLogEntries": [
+              {
+                "after": {
+                  "max_parallel_pod_requests": 2000,
+                  "max_pod_definition_cleanup_rate": 0,
+                  "max_secret_cleanup_rate": 0
+                },
+                "before": {
+                  "max_parallel_pod_requests": 100,
+                  "max_pod_definition_cleanup_rate": 0,
+                  "max_secret_cleanup_rate": 0
+                },
+                "section": "pod_lifecycle",
+                "timestamp": "2025-07-09T13:40:47.296-04:00",
+                "user": "admin"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

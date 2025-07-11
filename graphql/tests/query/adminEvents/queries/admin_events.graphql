@@ -1,0 +1,12 @@
+query AdminEvents {
+  adminEvents(opts: {}) {
+    count
+    eventLogEntries {
+      after
+      before
+      section
+      timestamp
+      user
+    }
+  }
+}
