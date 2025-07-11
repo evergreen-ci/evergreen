@@ -1543,9 +1543,10 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 		Status: evergreen.VersionStarted,
 	}
 	assert.NoError(t, v1.Insert(t.Context()))
-	versionStatus, err := updateVersionStatus(t.Context(), &v1)
+	versionStatus, statusChanged, err := updateVersionStatus(t.Context(), &v1)
 	assert.NoError(t, err)
 	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
+	assert.False(t, statusChanged)
 
 	events, err := event.FindAllByResourceID(t.Context(), "v1")
 	assert.NoError(t, err)
@@ -1554,12 +1555,14 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 }
 
 func TestUpdateVersionStatus(t *testing.T) {
+	colls := []string{task.Collection, build.Collection, VersionCollection, event.EventCollection}
 	type testCase struct {
 		builds []build.Build
 
-		expectedVersionStatus     string
-		expectedVersionAborted    bool
-		expectedVersionActivation bool
+		expectedVersionStatus        string
+		expectedVersionAborted       bool
+		expectedVersionActivation    bool
+		expectedVersionStatusChanged bool
 	}
 
 	for name, test := range map[string]testCase{
@@ -1568,58 +1571,64 @@ func TestUpdateVersionStatus(t *testing.T) {
 				{Status: evergreen.BuildCreated},
 				{Status: evergreen.BuildCreated},
 			},
-			expectedVersionStatus:     evergreen.VersionCreated,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: false,
+			expectedVersionStatus:        evergreen.VersionCreated,
+			expectedVersionStatusChanged: false,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    false,
 		},
 		"VersionStartedForMixOfSucceededBuildAndBuildWithUnfinishedEssentialTasks": {
 			builds: []build.Build{
 				{Status: evergreen.BuildCreated, Activated: true, HasUnfinishedEssentialTask: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionStarted,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionStarted,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 		"VersionStartedForMixOfFailedBuildAndBuildWithUnfinishedEssentialTasks": {
 			builds: []build.Build{
 				{Status: evergreen.BuildCreated, HasUnfinishedEssentialTask: true},
 				{Status: evergreen.BuildFailed, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionFailed,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionFailed,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 		"VersionStartedForMixOfFinishedAndUnfinishedBuilds": {
 			builds: []build.Build{
 				{Status: evergreen.BuildStarted, Activated: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionStarted,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionStarted,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 		"VersionAbortedForAbortedBuild": {
 			builds: []build.Build{
 				{Status: evergreen.BuildFailed, Activated: true, Aborted: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionFailed,
-			expectedVersionAborted:    true,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionFailed,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       true,
+			expectedVersionActivation:    true,
 		},
 		"VersionFinishedForAllFinishedBuilds": {
 			builds: []build.Build{
 				{Status: evergreen.BuildFailed, Activated: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionFailed,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionFailed,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(colls...))
 			v := &Version{
 				Id:        primitive.NewObjectID().Hex(),
 				Status:    evergreen.VersionCreated,
@@ -1632,9 +1641,20 @@ func TestUpdateVersionStatus(t *testing.T) {
 				require.NoError(t, b.Insert(t.Context()))
 			}
 
-			status, err := updateVersionStatus(t.Context(), v)
+			status, statusChanged, err := updateVersionStatus(t.Context(), v)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedVersionStatus, status)
+			assert.Equal(t, test.expectedVersionStatusChanged, statusChanged)
+			if statusChanged {
+				events, err := event.FindAllByResourceID(t.Context(), v.Id)
+				require.NoError(t, err)
+				require.Len(t, events, 1)
+				assert.Equal(t, event.VersionStateChange, events[0].EventType, "should log version event if the version status has changed")
+			} else {
+				events, err := event.FindAllByResourceID(t.Context(), v.Id)
+				require.NoError(t, err)
+				assert.Empty(t, events, "should not log any version events if the version status hasn't changed")
+			}
 
 			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
@@ -1643,6 +1663,36 @@ func TestUpdateVersionStatus(t *testing.T) {
 			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(dbVersion.Activated))
 		})
 	}
+
+	t.Run("ReturnsStatusNotChangedForMarkingSuccessOnVersionAlreadyMarkedSuccessful", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(colls...))
+		v := &Version{
+			Id:        primitive.NewObjectID().Hex(),
+			Status:    evergreen.VersionSucceeded,
+			Activated: utility.TruePtr(),
+		}
+		require.NoError(t, v.Insert(t.Context()))
+
+		b := build.Build{
+			Id:      "b",
+			Version: v.Id,
+			Status:  evergreen.VersionSucceeded,
+		}
+		require.NoError(t, b.Insert(t.Context()))
+
+		status, statusChanged, err := updateVersionStatus(t.Context(), v)
+		require.NoError(t, err)
+		assert.Equal(t, evergreen.VersionSucceeded, status)
+		assert.False(t, statusChanged, "status was already success so it should not change the status")
+
+		events, err := event.FindAllByResourceID(t.Context(), v.Id)
+		require.NoError(t, err)
+		assert.Empty(t, events, "should not log any version events if the version status hasn't changed")
+
+		dbVersion, err := VersionFindOneId(t.Context(), v.Id)
+		require.NoError(t, err)
+		assert.Equal(t, evergreen.VersionSucceeded, dbVersion.Status)
+	})
 }
 
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
