@@ -1388,7 +1388,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			if evergreen.IsFinishedVersionStatus(test.expectedVersionStatus) {
 				events, err := event.FindAllByResourceID(t.Context(), v.Id)
 				require.NoError(t, err)
-				var foundVersionFinished bool
+				var numVersionFinishedEvents int
 				for _, e := range events {
 					if e.ResourceType != event.ResourceTypeVersion {
 						continue
@@ -1399,9 +1399,9 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 					data, ok := e.Data.(*event.VersionEventData)
 					require.True(t, ok)
 					assert.Equal(t, test.expectedVersionStatus, data.Status)
-					foundVersionFinished = true
+					numVersionFinishedEvents++
 				}
-				assert.True(t, foundVersionFinished, "expected to find a version finished event")
+				assert.Equal(t, 1, numVersionFinishedEvents, "expected to find exactly one version finished event")
 			}
 
 			p, err = patch.FindOneId(t.Context(), p.Id.Hex())
@@ -1412,7 +1412,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			if evergreen.IsFinishedVersionStatus(test.expectedPatchStatus) {
 				events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
 				require.NoError(t, err)
-				var foundPatchFinished bool
+				var numPatchFinishedEvents int
 				for _, e := range events {
 					if e.ResourceType != event.ResourceTypePatch {
 						continue
@@ -1423,9 +1423,9 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 					data, ok := e.Data.(*event.PatchEventData)
 					require.True(t, ok)
 					assert.Equal(t, test.expectedPatchStatus, data.Status)
-					foundPatchFinished = true
+					numPatchFinishedEvents++
 				}
-				assert.True(t, foundPatchFinished, "expected to find a patch finished event")
+				assert.Equal(t, 1, numPatchFinishedEvents, "expected to find exactly one patch finished event")
 			}
 		})
 	}
