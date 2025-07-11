@@ -438,31 +438,46 @@ func (p *Patch) Insert(ctx context.Context) error {
 	return db.Insert(ctx, Collection, p)
 }
 
-func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) error {
+func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (bool, error) {
 	if p.Status == newStatus {
-		return nil
+		return false, nil
 	}
 
-	p.Status = newStatus
-	update := bson.M{
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:     p.Id,
+		StatusKey: bson.M{"$ne": newStatus},
+	}, bson.M{
 		"$set": bson.M{
 			StatusKey: newStatus,
 		},
+	})
+	if err != nil {
+		return false, err
 	}
-	return UpdateOne(ctx, bson.M{IdKey: p.Id}, update)
+
+	p.Status = newStatus
+
+	return res.ModifiedCount > 0, nil
 }
 
-func (p *Patch) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
-	p.Status = status
-	p.FinishTime = finishTime
-	return UpdateOne(
-		ctx,
-		bson.M{IdKey: p.Id},
-		bson.M{"$set": bson.M{
+func (p *Patch) MarkFinished(ctx context.Context, status string, finishTime time.Time) (bool, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:     p.Id,
+		StatusKey: bson.M{"$ne": status},
+	}, bson.M{
+		"$set": bson.M{
 			FinishTimeKey: finishTime,
 			StatusKey:     status,
-		}},
-	)
+		},
+	})
+	if err != nil {
+		return false, err
+	}
+
+	p.Status = status
+	p.FinishTime = finishTime
+
+	return res.ModifiedCount > 0, nil
 }
 
 // ConfigChanged looks through the parts of the patch and returns true if the
