@@ -340,6 +340,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project_identifier": ref.Identifier,
 				"revision":           revision,
 			}))
+			// If the version errored during creation, skip the remaining
+			// version logic because the version may not exist or it may exist
+			// in a half-broken state.
 			continue
 		}
 		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
