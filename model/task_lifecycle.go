@@ -1706,9 +1706,6 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		// kim: TODO: make UpdatePatchStatus atomically update patch status and
-		// only log events + create version-completion trace if the patch status
-		// was modified in the DB
 		if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
