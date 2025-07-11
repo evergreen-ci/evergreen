@@ -1601,10 +1601,10 @@ func updateVersionStatus(ctx context.Context, v *Version) (versionStatus string,
 }
 
 type patchStatusUpdate struct {
-	patchStatusChanged          bool
-	parentPatch                 *patch.Patch
-	isPatchFamilyDone           bool
-	patchFamilyCollectiveStatus string
+	patchStatusChanged                  bool
+	isPatchFamilyDone                   bool
+	parentPatch                         *patch.Patch
+	patchFamilyFinishedCollectiveStatus string
 }
 
 // updatePatchStatus updates the status of a patch.
@@ -1652,7 +1652,7 @@ func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (*pat
 			} else {
 				event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
 			}
-			psu.patchFamilyCollectiveStatus = collectiveStatus
+			psu.patchFamilyFinishedCollectiveStatus = collectiveStatus
 		}
 
 	}
@@ -1738,7 +1738,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 				rootPatch = psu.parentPatch
 			}
 
-			event.LogVersionChildrenCompletionEvent(ctx, rootPatch.Id.Hex(), psu.patchFamilyCollectiveStatus, rootPatch.Author)
+			event.LogVersionChildrenCompletionEvent(ctx, rootPatch.Id.Hex(), psu.patchFamilyFinishedCollectiveStatus, rootPatch.Author)
 
 			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, rootPatch)
 			if err != nil {

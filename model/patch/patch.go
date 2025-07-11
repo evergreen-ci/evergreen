@@ -804,6 +804,7 @@ func (p *Patch) GetPatchFamily(ctx context.Context) ([]string, *Patch, error) {
 	var parentPatch *Patch
 	var err error
 	if p.IsParent() {
+		parentPatch = p
 		childrenOrSiblings = p.Triggers.ChildPatches
 	}
 	if p.IsChild() {
