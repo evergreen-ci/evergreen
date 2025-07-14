@@ -14,6 +14,22 @@ resolver:
   dir: graphql
   filename_template: "{name}_resolver.go"
 models:
+  AmboyConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyConfig
+  AmboyConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyConfig
+  AmboyDBConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyDBConfig
+  AmboyDBConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyDBConfig
+  AmboyNamedQueueConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyNamedQueueConfig
+  AmboyNamedQueueConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyNamedQueueConfig
+  AmboyRetryConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyRetryConfig
+  AmboyRetryConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyRetryConfig
   AdminSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   AdminSettingsInput:
@@ -310,6 +326,14 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
   JiraTicket:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  LogBuffering:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
+  LogBufferingInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
+  LoggerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
+  LoggerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
   LogkeeperBuild:
     model: github.com/evergreen-ci/plank.Build
   LogkeeperTest:
@@ -651,6 +675,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
+  TriggerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerConfig
+  TriggerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerConfig
   ContainerResources:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
   ContainerResourcesInput:
