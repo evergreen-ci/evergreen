@@ -949,7 +949,7 @@ func TestGetProjectTasks(t *testing.T) {
 	h := getProjectTasksHandler{
 		projectName: "p1",
 		taskName:    "t1",
-		opts: serviceModel.GetProjectTasksOpts{
+		opts: model.GetProjectTasksOpts{
 			Limit: 10,
 		},
 	}
