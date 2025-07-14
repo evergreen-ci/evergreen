@@ -100,6 +100,12 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	APIConfig struct {
+		CorpURL        func(childComplexity int) int
+		HttpListenAddr func(childComplexity int) int
+		URL            func(childComplexity int) int
+	}
+
 	AWSConfig struct {
 		MaxVolumeSizePerUser func(childComplexity int) int
 		Pod                  func(childComplexity int) int
@@ -119,15 +125,18 @@ type ComplexityRoot struct {
 	}
 
 	AdminSettings struct {
-		Banner       func(childComplexity int) int
-		BannerTheme  func(childComplexity int) int
-		HostInit     func(childComplexity int) int
-		Notify       func(childComplexity int) int
-		PodLifecycle func(childComplexity int) int
-		RepoTracker  func(childComplexity int) int
-		Scheduler    func(childComplexity int) int
-		ServiceFlags func(childComplexity int) int
-		TaskLimits   func(childComplexity int) int
+		Api                func(childComplexity int) int
+		Banner             func(childComplexity int) int
+		BannerTheme        func(childComplexity int) int
+		DisabledGQLQueries func(childComplexity int) int
+		HostInit           func(childComplexity int) int
+		Notify             func(childComplexity int) int
+		PodLifecycle       func(childComplexity int) int
+		RepoTracker        func(childComplexity int) int
+		Scheduler          func(childComplexity int) int
+		ServiceFlags       func(childComplexity int) int
+		TaskLimits         func(childComplexity int) int
+		Ui                 func(childComplexity int) int
 	}
 
 	Annotation struct {
@@ -1672,9 +1681,21 @@ type ComplexityRoot struct {
 	}
 
 	UIConfig struct {
-		BetaFeatures   func(childComplexity int) int
-		DefaultProject func(childComplexity int) int
-		UserVoice      func(childComplexity int) int
+		BetaFeatures              func(childComplexity int) int
+		CORSOrigins               func(childComplexity int) int
+		CacheTemplates            func(childComplexity int) int
+		CsrfKey                   func(childComplexity int) int
+		DefaultProject            func(childComplexity int) int
+		FileStreamingContentTypes func(childComplexity int) int
+		HelpUrl                   func(childComplexity int) int
+		HttpListenAddr            func(childComplexity int) int
+		LoginDomain               func(childComplexity int) int
+		ParsleyUrl                func(childComplexity int) int
+		Secret                    func(childComplexity int) int
+		StagingEnvironment        func(childComplexity int) int
+		UIv2Url                   func(childComplexity int) int
+		Url                       func(childComplexity int) int
+		UserVoice                 func(childComplexity int) int
 	}
 
 	UpdateBetaFeaturesPayload struct {
@@ -2270,6 +2291,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	_ = ec
 	switch typeName + "." + field {
 
+	case "APIConfig.corpUrl":
+		if e.complexity.APIConfig.CorpURL == nil {
+			break
+		}
+
+		return e.complexity.APIConfig.CorpURL(childComplexity), true
+
+	case "APIConfig.httpListenAddr":
+		if e.complexity.APIConfig.HttpListenAddr == nil {
+			break
+		}
+
+		return e.complexity.APIConfig.HttpListenAddr(childComplexity), true
+
+	case "APIConfig.url":
+		if e.complexity.APIConfig.URL == nil {
+			break
+		}
+
+		return e.complexity.APIConfig.URL(childComplexity), true
+
 	case "AWSConfig.maxVolumeSizePerUser":
 		if e.complexity.AWSConfig.MaxVolumeSizePerUser == nil {
 			break
@@ -2333,6 +2375,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AbortInfo.User(childComplexity), true
 
+	case "AdminSettings.api":
+		if e.complexity.AdminSettings.Api == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Api(childComplexity), true
+
 	case "AdminSettings.banner":
 		if e.complexity.AdminSettings.Banner == nil {
 			break
@@ -2346,6 +2395,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.BannerTheme(childComplexity), true
+
+	case "AdminSettings.disabledGQLQueries":
+		if e.complexity.AdminSettings.DisabledGQLQueries == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.DisabledGQLQueries(childComplexity), true
 
 	case "AdminSettings.hostInit":
 		if e.complexity.AdminSettings.HostInit == nil {
@@ -2395,6 +2451,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.TaskLimits(childComplexity), true
+
+	case "AdminSettings.ui":
+		if e.complexity.AdminSettings.Ui == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Ui(childComplexity), true
 
 	case "Annotation.createdIssues":
 		if e.complexity.Annotation.CreatedIssues == nil {
@@ -10235,12 +10298,96 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UIConfig.BetaFeatures(childComplexity), true
 
+	case "UIConfig.corsOrigins":
+		if e.complexity.UIConfig.CORSOrigins == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.CORSOrigins(childComplexity), true
+
+	case "UIConfig.cacheTemplates":
+		if e.complexity.UIConfig.CacheTemplates == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.CacheTemplates(childComplexity), true
+
+	case "UIConfig.csrfKey":
+		if e.complexity.UIConfig.CsrfKey == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.CsrfKey(childComplexity), true
+
 	case "UIConfig.defaultProject":
 		if e.complexity.UIConfig.DefaultProject == nil {
 			break
 		}
 
 		return e.complexity.UIConfig.DefaultProject(childComplexity), true
+
+	case "UIConfig.fileStreamingContentTypes":
+		if e.complexity.UIConfig.FileStreamingContentTypes == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.FileStreamingContentTypes(childComplexity), true
+
+	case "UIConfig.helpUrl":
+		if e.complexity.UIConfig.HelpUrl == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.HelpUrl(childComplexity), true
+
+	case "UIConfig.httpListenAddr":
+		if e.complexity.UIConfig.HttpListenAddr == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.HttpListenAddr(childComplexity), true
+
+	case "UIConfig.loginDomain":
+		if e.complexity.UIConfig.LoginDomain == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.LoginDomain(childComplexity), true
+
+	case "UIConfig.parsleyUrl":
+		if e.complexity.UIConfig.ParsleyUrl == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.ParsleyUrl(childComplexity), true
+
+	case "UIConfig.secret":
+		if e.complexity.UIConfig.Secret == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.Secret(childComplexity), true
+
+	case "UIConfig.stagingEnvironment":
+		if e.complexity.UIConfig.StagingEnvironment == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.StagingEnvironment(childComplexity), true
+
+	case "UIConfig.uiv2Url":
+		if e.complexity.UIConfig.UIv2Url == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.UIv2Url(childComplexity), true
+
+	case "UIConfig.url":
+		if e.complexity.UIConfig.Url == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.Url(childComplexity), true
 
 	case "UIConfig.userVoice":
 		if e.complexity.UIConfig.UserVoice == nil {
@@ -11225,6 +11372,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAPIConfigInput,
 		ec.unmarshalInputAddFavoriteProjectInput,
 		ec.unmarshalInputAdminSettingsInput,
 		ec.unmarshalInputBetaFeaturesInput,
@@ -11319,6 +11467,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputToolchainOpts,
 		ec.unmarshalInputTriggerAliasInput,
+		ec.unmarshalInputUIConfigInput,
 		ec.unmarshalInputUpdateBetaFeaturesInput,
 		ec.unmarshalInputUpdateParsleySettingsInput,
 		ec.unmarshalInputUpdateSpawnHostStatusInput,
@@ -17314,6 +17463,129 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _APIConfig_httpListenAddr(ctx context.Context, field graphql.CollectedField, obj *model.APIapiConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_APIConfig_httpListenAddr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HttpListenAddr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_APIConfig_httpListenAddr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APIapiConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_APIConfig_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_APIConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIConfig_corpUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIapiConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_APIConfig_corpUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CorpURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_APIConfig_corpUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AWSConfig_maxVolumeSizePerUser(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AWSConfig_maxVolumeSizePerUser(ctx, field)
 	if err != nil {
@@ -18243,6 +18515,172 @@ func (ec *executionContext) fieldContext_AdminSettings_repotracker(_ context.Con
 				return ec.fieldContext_RepotrackerConfig_maxConcurrentRequests(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepotrackerConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_api(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_api(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Api, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIapiConfig)
+	fc.Result = res
+	return ec.marshalOAPIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_api(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "httpListenAddr":
+				return ec.fieldContext_APIConfig_httpListenAddr(ctx, field)
+			case "url":
+				return ec.fieldContext_APIConfig_url(ctx, field)
+			case "corpUrl":
+				return ec.fieldContext_APIConfig_corpUrl(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type APIConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_ui(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_ui(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ui, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIUIConfig)
+	fc.Result = res
+	return ec.marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "betaFeatures":
+				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
+			case "url":
+				return ec.fieldContext_UIConfig_url(ctx, field)
+			case "helpUrl":
+				return ec.fieldContext_UIConfig_helpUrl(ctx, field)
+			case "uiv2Url":
+				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
+			case "parsleyUrl":
+				return ec.fieldContext_UIConfig_parsleyUrl(ctx, field)
+			case "httpListenAddr":
+				return ec.fieldContext_UIConfig_httpListenAddr(ctx, field)
+			case "secret":
+				return ec.fieldContext_UIConfig_secret(ctx, field)
+			case "defaultProject":
+				return ec.fieldContext_UIConfig_defaultProject(ctx, field)
+			case "corsOrigins":
+				return ec.fieldContext_UIConfig_corsOrigins(ctx, field)
+			case "fileStreamingContentTypes":
+				return ec.fieldContext_UIConfig_fileStreamingContentTypes(ctx, field)
+			case "loginDomain":
+				return ec.fieldContext_UIConfig_loginDomain(ctx, field)
+			case "userVoice":
+				return ec.fieldContext_UIConfig_userVoice(ctx, field)
+			case "csrfKey":
+				return ec.fieldContext_UIConfig_csrfKey(ctx, field)
+			case "cacheTemplates":
+				return ec.fieldContext_UIConfig_cacheTemplates(ctx, field)
+			case "stagingEnvironment":
+				return ec.fieldContext_UIConfig_stagingEnvironment(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_disabledGQLQueries(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisabledGQLQueries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_disabledGQLQueries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -34804,6 +35242,12 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_scheduler(ctx, field)
 			case "repotracker":
 				return ec.fieldContext_AdminSettings_repotracker(ctx, field)
+			case "api":
+				return ec.fieldContext_AdminSettings_api(ctx, field)
+			case "ui":
+				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "disabledGQLQueries":
+				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -51240,6 +51684,12 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_scheduler(ctx, field)
 			case "repotracker":
 				return ec.fieldContext_AdminSettings_repotracker(ctx, field)
+			case "api":
+				return ec.fieldContext_AdminSettings_api(ctx, field)
+			case "ui":
+				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "disabledGQLQueries":
+				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -61806,10 +62256,34 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 			switch field.Name {
 			case "betaFeatures":
 				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
+			case "url":
+				return ec.fieldContext_UIConfig_url(ctx, field)
+			case "helpUrl":
+				return ec.fieldContext_UIConfig_helpUrl(ctx, field)
+			case "uiv2Url":
+				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
+			case "parsleyUrl":
+				return ec.fieldContext_UIConfig_parsleyUrl(ctx, field)
+			case "httpListenAddr":
+				return ec.fieldContext_UIConfig_httpListenAddr(ctx, field)
+			case "secret":
+				return ec.fieldContext_UIConfig_secret(ctx, field)
 			case "defaultProject":
 				return ec.fieldContext_UIConfig_defaultProject(ctx, field)
+			case "corsOrigins":
+				return ec.fieldContext_UIConfig_corsOrigins(ctx, field)
+			case "fileStreamingContentTypes":
+				return ec.fieldContext_UIConfig_fileStreamingContentTypes(ctx, field)
+			case "loginDomain":
+				return ec.fieldContext_UIConfig_loginDomain(ctx, field)
 			case "userVoice":
 				return ec.fieldContext_UIConfig_userVoice(ctx, field)
+			case "csrfKey":
+				return ec.fieldContext_UIConfig_csrfKey(ctx, field)
+			case "cacheTemplates":
+				return ec.fieldContext_UIConfig_cacheTemplates(ctx, field)
+			case "stagingEnvironment":
+				return ec.fieldContext_UIConfig_stagingEnvironment(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
 		},
@@ -72639,6 +73113,274 @@ func (ec *executionContext) fieldContext_UIConfig_betaFeatures(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _UIConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Url, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_helpUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_helpUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HelpUrl, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_helpUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_uiv2Url(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_uiv2Url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UIv2Url, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_uiv2Url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_parsleyUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_parsleyUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ParsleyUrl, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_parsleyUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_httpListenAddr(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_httpListenAddr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HttpListenAddr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_httpListenAddr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_secret(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_secret(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Secret, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_secret(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UIConfig_defaultProject(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UIConfig_defaultProject(ctx, field)
 	if err != nil {
@@ -72683,6 +73425,135 @@ func (ec *executionContext) fieldContext_UIConfig_defaultProject(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _UIConfig_corsOrigins(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_corsOrigins(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CORSOrigins, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_corsOrigins(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_fileStreamingContentTypes(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_fileStreamingContentTypes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FileStreamingContentTypes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_fileStreamingContentTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_loginDomain(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_loginDomain(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LoginDomain, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_loginDomain(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UIConfig_userVoice(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UIConfig_userVoice(ctx, field)
 	if err != nil {
@@ -72712,6 +73583,129 @@ func (ec *executionContext) _UIConfig_userVoice(ctx context.Context, field graph
 }
 
 func (ec *executionContext) fieldContext_UIConfig_userVoice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_csrfKey(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_csrfKey(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CsrfKey, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_csrfKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_cacheTemplates(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_cacheTemplates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CacheTemplates, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_cacheTemplates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_stagingEnvironment(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_stagingEnvironment(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StagingEnvironment, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_stagingEnvironment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UIConfig",
 		Field:      field,
@@ -81903,6 +82897,47 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAPIConfigInput(ctx context.Context, obj any) (model.APIapiConfig, error) {
+	var it model.APIapiConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"httpListenAddr", "url", "corpUrl"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "httpListenAddr":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpListenAddr"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HttpListenAddr = data
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
+		case "corpUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("corpUrl"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CorpURL = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Context, obj any) (AddFavoriteProjectInput, error) {
 	var it AddFavoriteProjectInput
 	asMap := map[string]any{}
@@ -81937,7 +82972,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker"}
+	fieldsInOrder := [...]string{"banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82009,6 +83044,27 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.RepoTracker = data
+		case "api":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("api"))
+			data, err := ec.unmarshalOAPIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Api = data
+		case "ui":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ui"))
+			data, err := ec.unmarshalOUIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Ui = data
+		case "disabledGQLQueries":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledGQLQueries"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisabledGQLQueries = data
 		}
 	}
 
@@ -86229,11 +87285,28 @@ func (ec *executionContext) unmarshalInputSESConfigInput(ctx context.Context, ob
 		switch k {
 		case "senderAddress":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("senderAddress"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
 			}
-			it.SenderAddress = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.SenderAddress = data
+			} else if tmp == nil {
+				it.SenderAddress = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -87921,6 +88994,148 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj any) (model.APIUIConfig, error) {
+	var it model.APIUIConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url", "helpUrl", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Url = data
+		case "helpUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("helpUrl"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HelpUrl = data
+		case "uiv2Url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uiv2Url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UIv2Url = data
+		case "parsleyUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parsleyUrl"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParsleyUrl = data
+		case "httpListenAddr":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpListenAddr"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HttpListenAddr = data
+		case "secret":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("secret"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Secret = data
+			} else if tmp == nil {
+				it.Secret = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "defaultProject":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultProject"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultProject = data
+		case "corsOrigins":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("corsOrigins"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CORSOrigins = data
+		case "fileStreamingContentTypes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileStreamingContentTypes"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FileStreamingContentTypes = data
+		case "loginDomain":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("loginDomain"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LoginDomain = data
+		case "userVoice":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userVoice"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserVoice = data
+		case "csrfKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("csrfKey"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CsrfKey = data
+		case "cacheTemplates":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheTemplates"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CacheTemplates = data
+		case "stagingEnvironment":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stagingEnvironment"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StagingEnvironment = data
+		case "betaFeatures":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("betaFeatures"))
+			data, err := ec.unmarshalNBetaFeaturesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BetaFeatures = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateBetaFeaturesInput(ctx context.Context, obj any) (UpdateBetaFeaturesInput, error) {
 	var it UpdateBetaFeaturesInput
 	asMap := map[string]any{}
@@ -88693,6 +89908,46 @@ func (ec *executionContext) unmarshalInputWorkstationSetupCommandInput(ctx conte
 
 // region    **************************** object.gotpl ****************************
 
+var aPIConfigImplementors = []string{"APIConfig"}
+
+func (ec *executionContext) _APIConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIapiConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aPIConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("APIConfig")
+		case "httpListenAddr":
+			out.Values[i] = ec._APIConfig_httpListenAddr(ctx, field, obj)
+		case "url":
+			out.Values[i] = ec._APIConfig_url(ctx, field, obj)
+		case "corpUrl":
+			out.Values[i] = ec._APIConfig_corpUrl(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var aWSConfigImplementors = []string{"AWSConfig"}
 
 func (ec *executionContext) _AWSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAWSConfig) graphql.Marshaler {
@@ -88891,6 +90146,15 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_scheduler(ctx, field, obj)
 		case "repotracker":
 			out.Values[i] = ec._AdminSettings_repotracker(ctx, field, obj)
+		case "api":
+			out.Values[i] = ec._AdminSettings_api(ctx, field, obj)
+		case "ui":
+			out.Values[i] = ec._AdminSettings_ui(ctx, field, obj)
+		case "disabledGQLQueries":
+			out.Values[i] = ec._AdminSettings_disabledGQLQueries(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -102949,13 +104213,43 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "url":
+			out.Values[i] = ec._UIConfig_url(ctx, field, obj)
+		case "helpUrl":
+			out.Values[i] = ec._UIConfig_helpUrl(ctx, field, obj)
+		case "uiv2Url":
+			out.Values[i] = ec._UIConfig_uiv2Url(ctx, field, obj)
+		case "parsleyUrl":
+			out.Values[i] = ec._UIConfig_parsleyUrl(ctx, field, obj)
+		case "httpListenAddr":
+			out.Values[i] = ec._UIConfig_httpListenAddr(ctx, field, obj)
+		case "secret":
+			out.Values[i] = ec._UIConfig_secret(ctx, field, obj)
 		case "defaultProject":
 			out.Values[i] = ec._UIConfig_defaultProject(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "corsOrigins":
+			out.Values[i] = ec._UIConfig_corsOrigins(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fileStreamingContentTypes":
+			out.Values[i] = ec._UIConfig_fileStreamingContentTypes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "loginDomain":
+			out.Values[i] = ec._UIConfig_loginDomain(ctx, field, obj)
 		case "userVoice":
 			out.Values[i] = ec._UIConfig_userVoice(ctx, field, obj)
+		case "csrfKey":
+			out.Values[i] = ec._UIConfig_csrfKey(ctx, field, obj)
+		case "cacheTemplates":
+			out.Values[i] = ec._UIConfig_cacheTemplates(ctx, field, obj)
+		case "stagingEnvironment":
+			out.Values[i] = ec._UIConfig_stagingEnvironment(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -105517,6 +106811,11 @@ func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋ
 
 func (ec *executionContext) marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v model.APIBetaFeatures) graphql.Marshaler {
 	return ec._BetaFeatures(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNBetaFeaturesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, v any) (model.APIBetaFeatures, error) {
+	res, err := ec.unmarshalInputBetaFeaturesInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNBetaFeaturesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, v any) (*model.APIBetaFeatures, error) {
@@ -111028,6 +112327,21 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) marshalOAPIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIapiConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._APIConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAPIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIapiConfig(ctx context.Context, v any) (*model.APIapiConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAPIConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOAWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAWSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAWSConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -113851,6 +115165,21 @@ func (ec *executionContext) unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergr
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIUIConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UIConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUIConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, v any) (*model.APIUIConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputUIConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOUpdateBetaFeaturesPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateBetaFeaturesPayload(ctx context.Context, sel ast.SelectionSet, v *UpdateBetaFeaturesPayload) graphql.Marshaler {

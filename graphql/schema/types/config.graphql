@@ -8,7 +8,7 @@ input SaveAdminSettingsInput {
 }
 
 input SESConfigInput {
-  senderAddress: String!
+  senderAddress: String! @redactSecrets
 }
 
 type SESConfig {
@@ -133,6 +133,7 @@ type RepotrackerConfig {
   maxConcurrentRequests: Int
 }
 
+
 input AdminSettingsInput {
   banner: String
   bannerTheme: BannerTheme
@@ -143,6 +144,9 @@ input AdminSettingsInput {
   podLifecycle: PodLifecycleConfigInput
   scheduler: SchedulerConfigInput
   repotracker: RepotrackerConfigInput
+  api: APIConfigInput
+  ui: UIConfigInput
+  disabledGQLQueries: [String!]
 }
 
 type AdminSettings {
@@ -155,6 +159,9 @@ type AdminSettings {
   podLifecycle: PodLifecycleConfig
   scheduler: SchedulerConfig
   repotracker: RepotrackerConfig
+  api: APIConfig
+  ui: UIConfig
+  disabledGQLQueries: [String!]!
 }
 
 type SpruceConfig {
@@ -260,11 +267,54 @@ type ContainerPool {
   port: Int!
 }
 
+input APIConfigInput {
+  httpListenAddr: String!
+  url: String!
+  corpUrl: String!
+}
+
+type APIConfig {
+  httpListenAddr: String
+  url: String
+  corpUrl: String
+}
+
+input UIConfigInput {
+  url: String!
+  helpUrl: String!
+  uiv2Url: String!
+  parsleyUrl: String!
+  httpListenAddr: String!
+  secret: String! @redactSecrets 
+  defaultProject: String!
+  corsOrigins: [String!]!
+  fileStreamingContentTypes: [String!]!
+  loginDomain: String!
+  userVoice: String!
+  csrfKey: String!
+  cacheTemplates: Boolean!
+  stagingEnvironment: String!
+  betaFeatures: BetaFeaturesInput!
+}
+
 type UIConfig {
   betaFeatures: BetaFeatures!
+  url: String
+  helpUrl: String
+  uiv2Url: String
+  parsleyUrl: String
+  httpListenAddr: String
+  secret: String @requireAdmin
   defaultProject: String!
+  corsOrigins: [String!]!
+  fileStreamingContentTypes: [String!]!
+  loginDomain: String
   userVoice: String
+  csrfKey: String
+  cacheTemplates: Boolean
+  stagingEnvironment: String
 }
+
 
 type SlackConfig {
   name: String

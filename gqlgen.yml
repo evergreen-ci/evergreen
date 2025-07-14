@@ -20,6 +20,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
+  APIConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
+  APIConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
   Arch:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
@@ -664,6 +668,8 @@ models:
   TriggerAliasInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   UIConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
+  UIConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser
