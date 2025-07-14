@@ -1589,7 +1589,7 @@ func updateVersionStatus(ctx context.Context, v *Version) (versionStatus string,
 	}
 
 	if evergreen.IsFinishedVersionStatus(versionStatus) {
-		statusChanged, err = v.MarkFinished(ctx, versionStatus, time.Now())
+		statusChanged, err = v.MarkFinished(ctx, versionStatus)
 		if err != nil {
 			return "", false, errors.Wrapf(err, "marking version '%s' as finished with status '%s'", v.Id, versionStatus)
 		}

@@ -204,34 +204,39 @@ func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) 
 	return errors.Wrap(AddSatisfiedTrigger(ctx, v.Id, definitionID), "adding satisfied trigger")
 }
 
-func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (bool, error) {
+func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified bool, err error) {
 	if v.Status == newStatus {
 		return false, nil
 	}
 
-	res, err := evergreen.GetEnvironment().DB().Collection(VersionCollection).UpdateOne(ctx, bson.M{
-		VersionIdKey:     v.Id,
-		VersionStatusKey: bson.M{"$ne": newStatus},
-	}, bson.M{
-		"$set": bson.M{VersionStatusKey: newStatus},
-	})
+	modified, err = setVersionStatus(ctx, v.Id, newStatus)
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "updating status for version '%s'", v.Id)
 	}
 
 	v.Status = newStatus
 
-	return res.ModifiedCount > 0, nil
+	return modified, nil
 }
 
-func setVersionStatus(ctx context.Context, versionId, newStatus string) error {
-	return VersionUpdateOne(
-		ctx,
-		bson.M{VersionIdKey: versionId},
-		bson.M{"$set": bson.M{
-			VersionStatusKey: newStatus,
-		}},
-	)
+func setVersionStatus(ctx context.Context, versionId, newStatus string) (modified bool, err error) {
+	setFields := bson.M{VersionStatusKey: newStatus}
+	if evergreen.IsFinishedVersionStatus(newStatus) {
+		setFields[VersionFinishTimeKey] = time.Now()
+	}
+	update := bson.M{
+		"$set": setFields,
+	}
+
+	res, err := evergreen.GetEnvironment().DB().Collection(VersionCollection).UpdateOne(ctx, bson.M{
+		VersionIdKey:     versionId,
+		VersionStatusKey: bson.M{"$ne": newStatus},
+	}, update)
+	if err != nil {
+		return false, err
+	}
+
+	return res.ModifiedCount > 0, nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of a version for
@@ -251,14 +256,9 @@ func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duratio
 	return timeTaken, makespan, nil
 }
 
-func (v *Version) MarkFinished(ctx context.Context, status string, finishTime time.Time) (bool, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(VersionCollection).UpdateOne(ctx, bson.M{
-		VersionIdKey:     v.Id,
-		VersionStatusKey: bson.M{"$ne": status},
-	}, bson.M{"$set": bson.M{
-		VersionStatusKey:     status,
-		VersionFinishTimeKey: finishTime,
-	}})
+func (v *Version) MarkFinished(ctx context.Context, status string) (bool, error) {
+	finishTime := time.Now()
+	modified, err := setVersionStatus(ctx, v.Id, status)
 	if err != nil {
 		return false, err
 	}
@@ -266,7 +266,7 @@ func (v *Version) MarkFinished(ctx context.Context, status string, finishTime ti
 	v.Status = status
 	v.FinishTime = finishTime
 
-	return res.ModifiedCount > 0, err
+	return modified, err
 }
 
 // UpdateProjectStorageMethod updates the version's parser project storage
