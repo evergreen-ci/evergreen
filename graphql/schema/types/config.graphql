@@ -209,8 +209,8 @@ input AmboyDBConfigInput {
 }
 
 type AmboyDBConfig {
-  url: String
-  database: String
+  url: String @requireAdmin
+  database: String @requireAdmin
 }
 
 input LogBufferingInput {
@@ -253,7 +253,7 @@ type TriggerConfig {
 
 input AdminSettingsInput {
   amboy: AmboyConfigInput
-  amboyDB: AmboyDBConfigInput
+  amboyDB: AmboyDBConfigInput @redactSecrets
   banner: String
   bannerTheme: BannerTheme
   serviceFlags: ServiceFlagsInput
@@ -416,7 +416,7 @@ input UIConfigInput {
   fileStreamingContentTypes: [String!]!
   loginDomain: String!
   userVoice: String!
-  csrfKey: String!
+  csrfKey: String! @redactSecrets
   cacheTemplates: Boolean!
   stagingEnvironment: String!
   betaFeatures: BetaFeaturesInput!

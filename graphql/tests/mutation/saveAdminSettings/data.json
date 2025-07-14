@@ -28,7 +28,6 @@
       "login_domain": "",
       "staging_environment": ""
     },
-
     {
       "_id": "auth",
       "preferred_type": "naive",
@@ -71,7 +70,6 @@
       "multi": null,
       "okta": null
     },
-
     {
       "_id": "global",
       "uiv2_url": "http://localhost:3000",
@@ -219,7 +217,7 @@
       "max_hourly_patch_tasks": 0,
       "max_pending_generated_tasks": 0,
       "max_generate_task_json_size": 0,
-      "max_concurrent_large_parser_project_tasks": 1,
+      "max_concurrent_large_parser_project_tasks": 0,
       "max_degraded_mode_parser_project_size": 0,
       "max_parser_project_size": 0,
       "max_degraded_mode_concurrent_large_parser_project_tasks": 0,
