@@ -1135,9 +1135,7 @@ func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Param			project_id		path	string	true	"the project ID"
 //	@Param			task_name		path	string	true	"the task name"
-//	@Param			num_versions	body	int		false	"The number of latest versions to be searched. Defaults to 20."
-//	@Param			start_at		body	int		false	"The version order number to start returning results after."
-//	@Param			build_variant	body	string	false	"If set, will only include tasks that have run on this build variant."
+//	@Param			{object}		body	dbModel.GetProjectTasksOpts	false	"parameters"
 //	@Success		200				{array}	model.APITask
 func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTasksHandler{url: h.url}
