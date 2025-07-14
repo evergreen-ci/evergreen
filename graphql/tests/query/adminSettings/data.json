@@ -7,7 +7,8 @@
       "domain_name": "localhost",
       "banner": "This is an important notification",
       "banner_theme": "announcement",
-      "github_orgs": ["evergreen-ci"]
+      "github_orgs": ["evergreen-ci"],
+      "disabled_gql_queries": null
     },
     {
       "_id": "notify",
@@ -133,6 +134,40 @@
       },
       "logkeeper_url": "logkeeper-url",
       "redact_keys": ["secret", "password"]
+    },
+    {
+      "_id": "api",
+      "url": "http://localhost:9090",
+      "corp_url": "",
+      "http_listen_addr": ""
+    },
+    {
+      "_id": "ui",
+      "default_project": "evergreen",
+      "url": "http://localhost:9090",
+      "http_listen_addr": ":9090",
+      "secret": "this is a secret",
+      "cors_origins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173"
+      ],
+      "file_streaming_content_types": [
+        "application/json",
+        "text/plain",
+        "text/csv"
+      ],
+      "userVoice": "https://uservoice.com",
+      "uiv2_url": "http://localhost:3000",
+      "parsley_url": "http://localhost:4173",
+      "beta_features": {
+        "spruce_waterfall_enabled": true
+      },
+      "cache_templates": false,
+      "csrf_key": "",
+      "help_url": "",
+      "login_domain": "",
+      "staging_environment": ""
     }
   ]
 }

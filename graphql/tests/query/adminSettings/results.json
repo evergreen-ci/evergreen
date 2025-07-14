@@ -161,6 +161,48 @@
           }
         }
       }
+    },
+    {
+      "query_file": "web.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "api": {
+              "httpListenAddr": "",
+              "url": "http://localhost:9090",
+              "corpUrl": ""
+            },
+            "ui": {
+              "url": "http://localhost:9090",
+              "helpUrl": "",
+              "uiv2Url": "http://localhost:3000",
+              "parsleyUrl": "http://localhost:4173",
+              "httpListenAddr": ":9090",
+              "secret": "this is a secret",
+              "defaultProject": "evergreen",
+              "corsOrigins": [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:4173"
+              ],
+              "fileStreamingContentTypes": [
+                "application/json",
+                "text/plain",
+                "text/csv"
+              ],
+              "loginDomain": "",
+              "userVoice": "https://uservoice.com",
+              "csrfKey": "",
+              "cacheTemplates": false,
+              "stagingEnvironment": "",
+              "betaFeatures": {
+                "spruceWaterfallEnabled": true
+              }
+            },
+            "disabledGQLQueries": []
+          }
+        }
+      }
     }
   ]
 }
