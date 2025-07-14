@@ -60,24 +60,13 @@
               "projectTasksPairs": [
                 {
                   "projectId": "evergreen",
-                  "allowedTasks": [
-                    "compile",
-                    "test"
-                  ],
-                  "allowedBVs": [
-                    "ubuntu1604",
-                    "windows"
-                  ]
+                  "allowedTasks": ["compile", "test"],
+                  "allowedBVs": ["ubuntu1604", "windows"]
                 },
                 {
                   "projectId": "spruce",
-                  "allowedTasks": [
-                    "lint",
-                    "storybook"
-                  ],
-                  "allowedBVs": [
-                    "macOS"
-                  ]
+                  "allowedTasks": ["lint", "storybook"],
+                  "allowedBVs": ["macOS"]
                 }
               ]
             }
@@ -116,7 +105,13 @@
         "data": {
           "spruceConfig": {
             "secretFields": [
+              "github",
               "githubAppAuth",
+              "kanopy",
+              "multi",
+              "naive",
+              "okta",
+              "preferredType",
               "publicKey",
               "secret",
               "servicePassword",
