@@ -45192,11 +45192,14 @@ func (ec *executionContext) _PlannerSettings_numDependentsFactor(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(float64)
 	fc.Result = res
-	return ec.marshalOFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PlannerSettings_numDependentsFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -84035,7 +84038,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			it.DispatcherSettings = data
 		case "execUser":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execUser"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -84098,7 +84101,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			it.IsVirtualWorkstation = data
 		case "mountpoints":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mountpoints"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -84155,7 +84158,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			it.Provider = data
 		case "providerAccount":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerAccount"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -84220,7 +84223,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			it.ValidProjects = data
 		case "warningNote":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("warningNote"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -84708,7 +84711,7 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			}
 		case "autoTuneMaximumHosts":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoTuneMaximumHosts"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -85813,7 +85816,7 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 			it.MainlineTimeInQueueFactor = data
 		case "numDependentsFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numDependentsFactor"))
-			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -96829,6 +96832,9 @@ func (ec *executionContext) _PlannerSettings(ctx context.Context, sel ast.Select
 			}
 		case "numDependentsFactor":
 			out.Values[i] = ec._PlannerSettings_numDependentsFactor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "groupVersions":
 			out.Values[i] = ec._PlannerSettings_groupVersions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

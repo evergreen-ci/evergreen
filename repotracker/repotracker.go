@@ -340,6 +340,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project_identifier": ref.Identifier,
 				"revision":           revision,
 			}))
+			// If the version errored during creation, skip the remaining
+			// version logic because the version may not exist or it may exist
+			// in a half-broken state.
 			continue
 		}
 		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
@@ -349,8 +352,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
 				"revision":           revision,
+				"version":            v.Id,
 			}))
-			continue
 		}
 		if ref.IsGithubChecksEnabled() {
 			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
@@ -360,6 +363,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					"project":            ref.Id,
 					"project_identifier": ref.Identifier,
 					"revision":           revision,
+					"version":            v.Id,
 				}))
 			}
 		}
@@ -372,8 +376,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
 				"revision":           revision,
+				"version":            v.Id,
 			}))
-			continue
 		}
 
 		newestVersion = v
@@ -386,6 +390,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
 				"runner":             RunnerName,
+				"version":            newestVersion.Id,
+				"revision":           newestVersion.Revision,
 			}))
 			return errors.WithStack(err)
 		}

@@ -24,6 +24,10 @@ buckets:
     name: "logs"
     type: "gridfs"
     db_name: "mci_smoke"
+  test_results_bucket:
+    type: "local"
+    name: "/tmp"
+    test_results_prefix: "test_prefix"
 
 domain_name: "evergreen.local"
 configdir: "config_test"
@@ -76,11 +80,5 @@ repotracker:
 shutdown_wait_seconds: 10
 
 cedar:
-  base_url: "localhost"
-  grpc_base_url: "localhost"
-  rpc_port: "7070"
-  user: "user"
-  api_key: "key"
-  insecure: true
-  sps_url: "http://localhost:8080"
-  sps_kanopy_url: "http://localhost:8080"
+  db_url: "mongodb://localhost:27017"
+  db_name: "mci_smoke"
