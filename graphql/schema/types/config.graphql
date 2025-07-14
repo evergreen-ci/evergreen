@@ -134,6 +134,7 @@ type RepotrackerConfig {
 }
 
 input AdminSettingsInput {
+  authConfig: AuthConfigInput
   banner: String
   bannerTheme: BannerTheme
   serviceFlags: ServiceFlagsInput
@@ -146,6 +147,7 @@ input AdminSettingsInput {
 }
 
 type AdminSettings {
+  authConfig: AuthConfig
   banner: String
   bannerTheme: BannerTheme
   serviceFlags: ServiceFlags

@@ -119,6 +119,7 @@ type ComplexityRoot struct {
 	}
 
 	AdminSettings struct {
+		AuthConfig   func(childComplexity int) int
 		Banner       func(childComplexity int) int
 		BannerTheme  func(childComplexity int) int
 		HostInit     func(childComplexity int) int
@@ -140,6 +141,24 @@ type ComplexityRoot struct {
 		TaskExecution     func(childComplexity int) int
 		TaskId            func(childComplexity int) int
 		WebhookConfigured func(childComplexity int) int
+	}
+
+	AuthConfig struct {
+		AllowServiceUsers       func(childComplexity int) int
+		BackgroundReauthMinutes func(childComplexity int) int
+		Github                  func(childComplexity int) int
+		Kanopy                  func(childComplexity int) int
+		Multi                   func(childComplexity int) int
+		Naive                   func(childComplexity int) int
+		Okta                    func(childComplexity int) int
+		PreferredType           func(childComplexity int) int
+	}
+
+	AuthUser struct {
+		DisplayName func(childComplexity int) int
+		Email       func(childComplexity int) int
+		Password    func(childComplexity int) int
+		Username    func(childComplexity int) int
 	}
 
 	BetaFeatures struct {
@@ -385,6 +404,16 @@ type ComplexityRoot struct {
 		EstimatedTasks   func(childComplexity int) int
 		TaskID           func(childComplexity int) int
 		TaskName         func(childComplexity int) int
+	}
+
+	GitHubAuthConfig struct {
+		AppId        func(childComplexity int) int
+		ClientId     func(childComplexity int) int
+		ClientSecret func(childComplexity int) int
+		DefaultOwner func(childComplexity int) int
+		DefaultRepo  func(childComplexity int) int
+		Organization func(childComplexity int) int
+		Users        func(childComplexity int) int
 	}
 
 	GitHubDynamicTokenPermissionGroup struct {
@@ -634,6 +663,12 @@ type ComplexityRoot struct {
 		Key    func(childComplexity int) int
 	}
 
+	KanopyAuthConfig struct {
+		HeaderName func(childComplexity int) int
+		Issuer     func(childComplexity int) int
+		KeysetURL  func(childComplexity int) int
+	}
+
 	LogMessage struct {
 		Message   func(childComplexity int) int
 		Severity  func(childComplexity int) int
@@ -694,6 +729,11 @@ type ComplexityRoot struct {
 		FileDiffs  func(childComplexity int) int
 		HTMLLink   func(childComplexity int) int
 		RawLink    func(childComplexity int) int
+	}
+
+	MultiAuthConfig struct {
+		ReadOnly  func(childComplexity int) int
+		ReadWrite func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -760,6 +800,10 @@ type ComplexityRoot struct {
 		UpdateVolume                  func(childComplexity int, updateVolumeInput UpdateVolumeInput) int
 	}
 
+	NaiveAuthConfig struct {
+		Users func(childComplexity int) int
+	}
+
 	NewDistroPayload struct {
 		NewDistroID func(childComplexity int) int
 	}
@@ -789,6 +833,15 @@ type ComplexityRoot struct {
 	OSInfo struct {
 		Name    func(childComplexity int) int
 		Version func(childComplexity int) int
+	}
+
+	OktaConfig struct {
+		ClientID           func(childComplexity int) int
+		ClientSecret       func(childComplexity int) int
+		ExpireAfterMinutes func(childComplexity int) int
+		Issuer             func(childComplexity int) int
+		Scopes             func(childComplexity int) int
+		UserGroup          func(childComplexity int) int
 	}
 
 	OomTrackerInfo struct {
@@ -2333,6 +2386,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AbortInfo.User(childComplexity), true
 
+	case "AdminSettings.authConfig":
+		if e.complexity.AdminSettings.AuthConfig == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.AuthConfig(childComplexity), true
+
 	case "AdminSettings.banner":
 		if e.complexity.AdminSettings.Banner == nil {
 			break
@@ -2458,6 +2518,90 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Annotation.WebhookConfigured(childComplexity), true
+
+	case "AuthConfig.allowServiceUsers":
+		if e.complexity.AuthConfig.AllowServiceUsers == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.AllowServiceUsers(childComplexity), true
+
+	case "AuthConfig.backgroundReauthMinutes":
+		if e.complexity.AuthConfig.BackgroundReauthMinutes == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.BackgroundReauthMinutes(childComplexity), true
+
+	case "AuthConfig.github":
+		if e.complexity.AuthConfig.Github == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.Github(childComplexity), true
+
+	case "AuthConfig.kanopy":
+		if e.complexity.AuthConfig.Kanopy == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.Kanopy(childComplexity), true
+
+	case "AuthConfig.multi":
+		if e.complexity.AuthConfig.Multi == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.Multi(childComplexity), true
+
+	case "AuthConfig.naive":
+		if e.complexity.AuthConfig.Naive == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.Naive(childComplexity), true
+
+	case "AuthConfig.okta":
+		if e.complexity.AuthConfig.Okta == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.Okta(childComplexity), true
+
+	case "AuthConfig.preferredType":
+		if e.complexity.AuthConfig.PreferredType == nil {
+			break
+		}
+
+		return e.complexity.AuthConfig.PreferredType(childComplexity), true
+
+	case "AuthUser.displayName":
+		if e.complexity.AuthUser.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.AuthUser.DisplayName(childComplexity), true
+
+	case "AuthUser.email":
+		if e.complexity.AuthUser.Email == nil {
+			break
+		}
+
+		return e.complexity.AuthUser.Email(childComplexity), true
+
+	case "AuthUser.password":
+		if e.complexity.AuthUser.Password == nil {
+			break
+		}
+
+		return e.complexity.AuthUser.Password(childComplexity), true
+
+	case "AuthUser.username":
+		if e.complexity.AuthUser.Username == nil {
+			break
+		}
+
+		return e.complexity.AuthUser.Username(childComplexity), true
 
 	case "BetaFeatures.spruceWaterfallEnabled":
 		if e.complexity.BetaFeatures.SpruceWaterfallEnabled == nil {
@@ -3459,6 +3603,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GeneratedTaskCountResults.TaskName(childComplexity), true
+
+	case "GitHubAuthConfig.appId":
+		if e.complexity.GitHubAuthConfig.AppId == nil {
+			break
+		}
+
+		return e.complexity.GitHubAuthConfig.AppId(childComplexity), true
+
+	case "GitHubAuthConfig.clientId":
+		if e.complexity.GitHubAuthConfig.ClientId == nil {
+			break
+		}
+
+		return e.complexity.GitHubAuthConfig.ClientId(childComplexity), true
+
+	case "GitHubAuthConfig.clientSecret":
+		if e.complexity.GitHubAuthConfig.ClientSecret == nil {
+			break
+		}
+
+		return e.complexity.GitHubAuthConfig.ClientSecret(childComplexity), true
+
+	case "GitHubAuthConfig.defaultOwner":
+		if e.complexity.GitHubAuthConfig.DefaultOwner == nil {
+			break
+		}
+
+		return e.complexity.GitHubAuthConfig.DefaultOwner(childComplexity), true
+
+	case "GitHubAuthConfig.defaultRepo":
+		if e.complexity.GitHubAuthConfig.DefaultRepo == nil {
+			break
+		}
+
+		return e.complexity.GitHubAuthConfig.DefaultRepo(childComplexity), true
+
+	case "GitHubAuthConfig.organization":
+		if e.complexity.GitHubAuthConfig.Organization == nil {
+			break
+		}
+
+		return e.complexity.GitHubAuthConfig.Organization(childComplexity), true
+
+	case "GitHubAuthConfig.users":
+		if e.complexity.GitHubAuthConfig.Users == nil {
+			break
+		}
+
+		return e.complexity.GitHubAuthConfig.Users(childComplexity), true
 
 	case "GitHubDynamicTokenPermissionGroup.name":
 		if e.complexity.GitHubDynamicTokenPermissionGroup.Name == nil {
@@ -4521,6 +4714,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.JiraTicket.Key(childComplexity), true
 
+	case "KanopyAuthConfig.headerName":
+		if e.complexity.KanopyAuthConfig.HeaderName == nil {
+			break
+		}
+
+		return e.complexity.KanopyAuthConfig.HeaderName(childComplexity), true
+
+	case "KanopyAuthConfig.issuer":
+		if e.complexity.KanopyAuthConfig.Issuer == nil {
+			break
+		}
+
+		return e.complexity.KanopyAuthConfig.Issuer(childComplexity), true
+
+	case "KanopyAuthConfig.keysetURL":
+		if e.complexity.KanopyAuthConfig.KeysetURL == nil {
+			break
+		}
+
+		return e.complexity.KanopyAuthConfig.KeysetURL(childComplexity), true
+
 	case "LogMessage.message":
 		if e.complexity.LogMessage.Message == nil {
 			break
@@ -4786,6 +5000,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModuleCodeChange.RawLink(childComplexity), true
+
+	case "MultiAuthConfig.readOnly":
+		if e.complexity.MultiAuthConfig.ReadOnly == nil {
+			break
+		}
+
+		return e.complexity.MultiAuthConfig.ReadOnly(childComplexity), true
+
+	case "MultiAuthConfig.readWrite":
+		if e.complexity.MultiAuthConfig.ReadWrite == nil {
+			break
+		}
+
+		return e.complexity.MultiAuthConfig.ReadWrite(childComplexity), true
 
 	case "Mutation.abortTask":
 		if e.complexity.Mutation.AbortTask == nil {
@@ -5514,6 +5742,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UpdateVolume(childComplexity, args["updateVolumeInput"].(UpdateVolumeInput)), true
 
+	case "NaiveAuthConfig.users":
+		if e.complexity.NaiveAuthConfig.Users == nil {
+			break
+		}
+
+		return e.complexity.NaiveAuthConfig.Users(childComplexity), true
+
 	case "NewDistroPayload.newDistroId":
 		if e.complexity.NewDistroPayload.NewDistroID == nil {
 			break
@@ -5625,6 +5860,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OSInfo.Version(childComplexity), true
+
+	case "OktaConfig.clientId":
+		if e.complexity.OktaConfig.ClientID == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.ClientID(childComplexity), true
+
+	case "OktaConfig.clientSecret":
+		if e.complexity.OktaConfig.ClientSecret == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.ClientSecret(childComplexity), true
+
+	case "OktaConfig.expireAfterMinutes":
+		if e.complexity.OktaConfig.ExpireAfterMinutes == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.ExpireAfterMinutes(childComplexity), true
+
+	case "OktaConfig.issuer":
+		if e.complexity.OktaConfig.Issuer == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.Issuer(childComplexity), true
+
+	case "OktaConfig.scopes":
+		if e.complexity.OktaConfig.Scopes == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.Scopes(childComplexity), true
+
+	case "OktaConfig.userGroup":
+		if e.complexity.OktaConfig.UserGroup == nil {
+			break
+		}
+
+		return e.complexity.OktaConfig.UserGroup(childComplexity), true
 
 	case "OomTrackerInfo.detected":
 		if e.complexity.OomTrackerInfo.Detected == nil {
@@ -11227,6 +11504,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddFavoriteProjectInput,
 		ec.unmarshalInputAdminSettingsInput,
+		ec.unmarshalInputAuthConfigInput,
+		ec.unmarshalInputAuthUserInput,
 		ec.unmarshalInputBetaFeaturesInput,
 		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
@@ -11252,6 +11531,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExpansionInput,
 		ec.unmarshalInputExternalLinkInput,
 		ec.unmarshalInputFinderSettingsInput,
+		ec.unmarshalInputGitHubAuthConfigInput,
 		ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput,
 		ec.unmarshalInputGithubAppAuthInput,
 		ec.unmarshalInputGithubUserInput,
@@ -11263,11 +11543,15 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
 		ec.unmarshalInputJiraIssueSubscriberInput,
+		ec.unmarshalInputKanopyAuthConfigInput,
 		ec.unmarshalInputMainlineCommitsOptions,
 		ec.unmarshalInputMetadataLinkInput,
 		ec.unmarshalInputMoveProjectInput,
+		ec.unmarshalInputMultiAuthConfigInput,
+		ec.unmarshalInputNaiveAuthConfigInput,
 		ec.unmarshalInputNotificationsInput,
 		ec.unmarshalInputNotifyConfigInput,
+		ec.unmarshalInputOktaConfigInput,
 		ec.unmarshalInputOperatingSystemOpts,
 		ec.unmarshalInputPackageOpts,
 		ec.unmarshalInputParameterInput,
@@ -11430,7 +11714,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/auth.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -11447,6 +11731,7 @@ var sources = []*ast.Source{
 	{Name: "schema/query.graphql", Input: sourceData("schema/query.graphql"), BuiltIn: false},
 	{Name: "schema/scalars.graphql", Input: sourceData("schema/scalars.graphql"), BuiltIn: false},
 	{Name: "schema/types/annotation.graphql", Input: sourceData("schema/types/annotation.graphql"), BuiltIn: false},
+	{Name: "schema/types/auth.graphql", Input: sourceData("schema/types/auth.graphql"), BuiltIn: false},
 	{Name: "schema/types/config.graphql", Input: sourceData("schema/types/config.graphql"), BuiltIn: false},
 	{Name: "schema/types/distro.graphql", Input: sourceData("schema/types/distro.graphql"), BuiltIn: false},
 	{Name: "schema/types/host.graphql", Input: sourceData("schema/types/host.graphql"), BuiltIn: false},
@@ -17711,6 +17996,65 @@ func (ec *executionContext) fieldContext_AbortInfo_user(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_authConfig(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_authConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AuthConfig, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAuthConfig)
+	fc.Result = res
+	return ec.marshalOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_authConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "okta":
+				return ec.fieldContext_AuthConfig_okta(ctx, field)
+			case "naive":
+				return ec.fieldContext_AuthConfig_naive(ctx, field)
+			case "github":
+				return ec.fieldContext_AuthConfig_github(ctx, field)
+			case "multi":
+				return ec.fieldContext_AuthConfig_multi(ctx, field)
+			case "kanopy":
+				return ec.fieldContext_AuthConfig_kanopy(ctx, field)
+			case "preferredType":
+				return ec.fieldContext_AuthConfig_preferredType(ctx, field)
+			case "backgroundReauthMinutes":
+				return ec.fieldContext_AuthConfig_backgroundReauthMinutes(ctx, field)
+			case "allowServiceUsers":
+				return ec.fieldContext_AuthConfig_allowServiceUsers(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AuthConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AdminSettings_banner(ctx, field)
 	if err != nil {
@@ -18674,6 +19018,678 @@ func (ec *executionContext) fieldContext_Annotation_webhookConfigured(_ context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_okta(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_okta(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Okta, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APIOktaConfig
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APIOktaConfig); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIOktaConfig`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIOktaConfig)
+	fc.Result = res
+	return ec.marshalOOktaConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_okta(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "clientId":
+				return ec.fieldContext_OktaConfig_clientId(ctx, field)
+			case "clientSecret":
+				return ec.fieldContext_OktaConfig_clientSecret(ctx, field)
+			case "issuer":
+				return ec.fieldContext_OktaConfig_issuer(ctx, field)
+			case "scopes":
+				return ec.fieldContext_OktaConfig_scopes(ctx, field)
+			case "userGroup":
+				return ec.fieldContext_OktaConfig_userGroup(ctx, field)
+			case "expireAfterMinutes":
+				return ec.fieldContext_OktaConfig_expireAfterMinutes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OktaConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_naive(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_naive(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Naive, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APINaiveAuthConfig
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APINaiveAuthConfig); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APINaiveAuthConfig)
+	fc.Result = res
+	return ec.marshalONaiveAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINaiveAuthConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_naive(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "users":
+				return ec.fieldContext_NaiveAuthConfig_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NaiveAuthConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_github(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_github(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Github, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APIGithubAuthConfig
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APIGithubAuthConfig); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIGithubAuthConfig)
+	fc.Result = res
+	return ec.marshalOGitHubAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAuthConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_github(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "appId":
+				return ec.fieldContext_GitHubAuthConfig_appId(ctx, field)
+			case "clientId":
+				return ec.fieldContext_GitHubAuthConfig_clientId(ctx, field)
+			case "clientSecret":
+				return ec.fieldContext_GitHubAuthConfig_clientSecret(ctx, field)
+			case "defaultOwner":
+				return ec.fieldContext_GitHubAuthConfig_defaultOwner(ctx, field)
+			case "defaultRepo":
+				return ec.fieldContext_GitHubAuthConfig_defaultRepo(ctx, field)
+			case "organization":
+				return ec.fieldContext_GitHubAuthConfig_organization(ctx, field)
+			case "users":
+				return ec.fieldContext_GitHubAuthConfig_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GitHubAuthConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_multi(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_multi(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Multi, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APIMultiAuthConfig
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APIMultiAuthConfig); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIMultiAuthConfig)
+	fc.Result = res
+	return ec.marshalOMultiAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMultiAuthConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_multi(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "readWrite":
+				return ec.fieldContext_MultiAuthConfig_readWrite(ctx, field)
+			case "readOnly":
+				return ec.fieldContext_MultiAuthConfig_readOnly(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MultiAuthConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_kanopy(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_kanopy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Kanopy, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APIKanopyAuthConfig
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APIKanopyAuthConfig); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIKanopyAuthConfig)
+	fc.Result = res
+	return ec.marshalOKanopyAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIKanopyAuthConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_kanopy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "headerName":
+				return ec.fieldContext_KanopyAuthConfig_headerName(ctx, field)
+			case "issuer":
+				return ec.fieldContext_KanopyAuthConfig_issuer(ctx, field)
+			case "keysetURL":
+				return ec.fieldContext_KanopyAuthConfig_keysetURL(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type KanopyAuthConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_preferredType(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_preferredType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.PreferredType, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_preferredType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_backgroundReauthMinutes(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_backgroundReauthMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BackgroundReauthMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_backgroundReauthMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthConfig_allowServiceUsers(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthConfig_allowServiceUsers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllowServiceUsers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthConfig_allowServiceUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_username(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthUser) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthUser_username(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Username, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthUser) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthUser_displayName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_password(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthUser) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthUser_password(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Password, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_password(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_email(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthUser) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthUser_email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -25056,6 +26072,296 @@ func (ec *executionContext) fieldContext_GeneratedTaskCountResults_estimatedTask
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubAuthConfig_appId(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitHubAuthConfig_appId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AppId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitHubAuthConfig_appId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubAuthConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitHubAuthConfig_clientId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClientId, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitHubAuthConfig_clientId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubAuthConfig_clientSecret(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitHubAuthConfig_clientSecret(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClientSecret, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitHubAuthConfig_clientSecret(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubAuthConfig_defaultOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitHubAuthConfig_defaultOwner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultOwner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitHubAuthConfig_defaultOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubAuthConfig_defaultRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitHubAuthConfig_defaultRepo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultRepo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitHubAuthConfig_defaultRepo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubAuthConfig_organization(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitHubAuthConfig_organization(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Organization, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitHubAuthConfig_organization(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GitHubAuthConfig_users(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GitHubAuthConfig_users(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Users, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GitHubAuthConfig_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GitHubAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -32399,6 +33705,138 @@ func (ec *executionContext) fieldContext_JiraTicket_key(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _KanopyAuthConfig_headerName(ctx context.Context, field graphql.CollectedField, obj *model.APIKanopyAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_KanopyAuthConfig_headerName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeaderName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_KanopyAuthConfig_headerName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KanopyAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KanopyAuthConfig_issuer(ctx context.Context, field graphql.CollectedField, obj *model.APIKanopyAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_KanopyAuthConfig_issuer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Issuer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_KanopyAuthConfig_issuer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KanopyAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KanopyAuthConfig_keysetURL(ctx context.Context, field graphql.CollectedField, obj *model.APIKanopyAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_KanopyAuthConfig_keysetURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.KeysetURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_KanopyAuthConfig_keysetURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KanopyAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LogMessage_message(ctx context.Context, field graphql.CollectedField, obj *apimodels.LogMessage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LogMessage_message(ctx, field)
 	if err != nil {
@@ -34395,6 +35833,94 @@ func (ec *executionContext) fieldContext_ModuleCodeChange_rawLink(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _MultiAuthConfig_readWrite(ctx context.Context, field graphql.CollectedField, obj *model.APIMultiAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MultiAuthConfig_readWrite(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ReadWrite, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MultiAuthConfig_readWrite(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MultiAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MultiAuthConfig_readOnly(ctx context.Context, field graphql.CollectedField, obj *model.APIMultiAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MultiAuthConfig_readOnly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ReadOnly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MultiAuthConfig_readOnly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MultiAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_bbCreateTicket(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_bbCreateTicket(ctx, field)
 	if err != nil {
@@ -34786,6 +36312,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "authConfig":
+				return ec.fieldContext_AdminSettings_authConfig(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -40167,6 +41695,60 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleVersionTasks(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _NaiveAuthConfig_users(ctx context.Context, field graphql.CollectedField, obj *model.APINaiveAuthConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NaiveAuthConfig_users(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Users, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIAuthUser)
+	fc.Result = res
+	return ec.marshalNAuthUser2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUserᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NaiveAuthConfig_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NaiveAuthConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "username":
+				return ec.fieldContext_AuthUser_username(ctx, field)
+			case "displayName":
+				return ec.fieldContext_AuthUser_displayName(ctx, field)
+			case "password":
+				return ec.fieldContext_AuthUser_password(ctx, field)
+			case "email":
+				return ec.fieldContext_AuthUser_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AuthUser", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _NewDistroPayload_newDistroId(ctx context.Context, field graphql.CollectedField, obj *NewDistroPayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_NewDistroPayload_newDistroId(ctx, field)
 	if err != nil {
@@ -40867,6 +42449,255 @@ func (ec *executionContext) fieldContext_OSInfo_version(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OktaConfig_clientId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClientID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_clientId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaConfig_clientSecret(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OktaConfig_clientSecret(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ClientSecret, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_clientSecret(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaConfig_issuer(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OktaConfig_issuer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Issuer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_issuer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaConfig_scopes(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OktaConfig_scopes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Scopes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_scopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaConfig_userGroup(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OktaConfig_userGroup(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserGroup, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_userGroup(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaConfig_expireAfterMinutes(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OktaConfig_expireAfterMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExpireAfterMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OktaConfig_expireAfterMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -51222,6 +53053,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "authConfig":
+				return ec.fieldContext_AdminSettings_authConfig(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -81937,13 +83770,20 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker"}
+	fieldsInOrder := [...]string{"authConfig", "banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "authConfig":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("authConfig"))
+			data, err := ec.unmarshalOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AuthConfig = data
 		case "banner":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -82009,6 +83849,242 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.RepoTracker = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAuthConfigInput(ctx context.Context, obj any) (model.APIAuthConfig, error) {
+	var it model.APIAuthConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"okta", "naive", "github", "multi", "kanopy", "preferredType", "backgroundReauthMinutes", "allowServiceUsers"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "okta":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("okta"))
+			directive0 := func(ctx context.Context) (any, error) {
+				return ec.unmarshalOOktaConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaConfig(ctx, v)
+			}
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *model.APIOktaConfig
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*model.APIOktaConfig); ok {
+				it.Okta = data
+			} else if tmp == nil {
+				it.Okta = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIOktaConfig`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "naive":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("naive"))
+			directive0 := func(ctx context.Context) (any, error) {
+				return ec.unmarshalONaiveAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINaiveAuthConfig(ctx, v)
+			}
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *model.APINaiveAuthConfig
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*model.APINaiveAuthConfig); ok {
+				it.Naive = data
+			} else if tmp == nil {
+				it.Naive = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "github":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("github"))
+			directive0 := func(ctx context.Context) (any, error) {
+				return ec.unmarshalOGitHubAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAuthConfig(ctx, v)
+			}
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *model.APIGithubAuthConfig
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*model.APIGithubAuthConfig); ok {
+				it.Github = data
+			} else if tmp == nil {
+				it.Github = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "multi":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("multi"))
+			directive0 := func(ctx context.Context) (any, error) {
+				return ec.unmarshalOMultiAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMultiAuthConfig(ctx, v)
+			}
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *model.APIMultiAuthConfig
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*model.APIMultiAuthConfig); ok {
+				it.Multi = data
+			} else if tmp == nil {
+				it.Multi = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "kanopy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kanopy"))
+			directive0 := func(ctx context.Context) (any, error) {
+				return ec.unmarshalOKanopyAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIKanopyAuthConfig(ctx, v)
+			}
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *model.APIKanopyAuthConfig
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*model.APIKanopyAuthConfig); ok {
+				it.Kanopy = data
+			} else if tmp == nil {
+				it.Kanopy = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "preferredType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("preferredType"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.PreferredType = data
+			} else if tmp == nil {
+				it.PreferredType = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "backgroundReauthMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backgroundReauthMinutes"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BackgroundReauthMinutes = data
+		case "allowServiceUsers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowServiceUsers"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowServiceUsers = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAuthUserInput(ctx context.Context, obj any) (model.APIAuthUser, error) {
+	var it model.APIAuthUser
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"username", "displayName", "password", "email"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "username":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("username"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Username = data
+		case "displayName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisplayName = data
+		case "password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Password = data
+		case "email":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
 		}
 	}
 
@@ -83508,6 +85584,75 @@ func (ec *executionContext) unmarshalInputFinderSettingsInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGitHubAuthConfigInput(ctx context.Context, obj any) (model.APIGithubAuthConfig, error) {
+	var it model.APIGithubAuthConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"appId", "clientId", "clientSecret", "defaultOwner", "defaultRepo", "organization", "users"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "appId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appId"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppId = data
+		case "clientId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientId = data
+		case "clientSecret":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientSecret"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientSecret = data
+		case "defaultOwner":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultOwner"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultOwner = data
+		case "defaultRepo":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultRepo"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultRepo = data
+		case "organization":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("organization"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Organization = data
+		case "users":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("users"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Users = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGitHubDynamicTokenPermissionGroupInput(ctx context.Context, obj any) (model.APIGitHubDynamicTokenPermissionGroup, error) {
 	var it model.APIGitHubDynamicTokenPermissionGroup
 	asMap := map[string]any{}
@@ -83964,6 +86109,47 @@ func (ec *executionContext) unmarshalInputJiraIssueSubscriberInput(ctx context.C
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputKanopyAuthConfigInput(ctx context.Context, obj any) (model.APIKanopyAuthConfig, error) {
+	var it model.APIKanopyAuthConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"headerName", "issuer", "keysetURL"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "headerName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerName"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HeaderName = data
+		case "issuer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issuer"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Issuer = data
+		case "keysetURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keysetURL"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeysetURL = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Context, obj any) (MainlineCommitsOptions, error) {
 	var it MainlineCommitsOptions
 	asMap := map[string]any{}
@@ -84158,6 +86344,67 @@ func (ec *executionContext) unmarshalInputMoveProjectInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputMultiAuthConfigInput(ctx context.Context, obj any) (model.APIMultiAuthConfig, error) {
+	var it model.APIMultiAuthConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"readWrite", "readOnly"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "readWrite":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("readWrite"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReadWrite = data
+		case "readOnly":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("readOnly"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReadOnly = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputNaiveAuthConfigInput(ctx context.Context, obj any) (model.APINaiveAuthConfig, error) {
+	var it model.APINaiveAuthConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"users"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "users":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("users"))
+			data, err := ec.unmarshalOAuthUserInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUserᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Users = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context, obj any) (model.APINotificationPreferences, error) {
 	var it model.APINotificationPreferences
 	asMap := map[string]any{}
@@ -84234,6 +86481,68 @@ func (ec *executionContext) unmarshalInputNotifyConfigInput(ctx context.Context,
 				return it, err
 			}
 			it.SES = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOktaConfigInput(ctx context.Context, obj any) (model.APIOktaConfig, error) {
+	var it model.APIOktaConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"clientId", "clientSecret", "issuer", "scopes", "userGroup", "expireAfterMinutes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "clientId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientID = data
+		case "clientSecret":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientSecret"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientSecret = data
+		case "issuer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issuer"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Issuer = data
+		case "scopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scopes = data
+		case "userGroup":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userGroup"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserGroup = data
+		case "expireAfterMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expireAfterMinutes"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpireAfterMinutes = data
 		}
 	}
 
@@ -88842,6 +91151,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("AdminSettings")
+		case "authConfig":
+			out.Values[i] = ec._AdminSettings_authConfig(ctx, field, obj)
 		case "banner":
 			out.Values[i] = ec._AdminSettings_banner(ctx, field, obj)
 		case "bannerTheme":
@@ -88986,6 +91297,98 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var authConfigImplementors = []string{"AuthConfig"}
+
+func (ec *executionContext) _AuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAuthConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, authConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AuthConfig")
+		case "okta":
+			out.Values[i] = ec._AuthConfig_okta(ctx, field, obj)
+		case "naive":
+			out.Values[i] = ec._AuthConfig_naive(ctx, field, obj)
+		case "github":
+			out.Values[i] = ec._AuthConfig_github(ctx, field, obj)
+		case "multi":
+			out.Values[i] = ec._AuthConfig_multi(ctx, field, obj)
+		case "kanopy":
+			out.Values[i] = ec._AuthConfig_kanopy(ctx, field, obj)
+		case "preferredType":
+			out.Values[i] = ec._AuthConfig_preferredType(ctx, field, obj)
+		case "backgroundReauthMinutes":
+			out.Values[i] = ec._AuthConfig_backgroundReauthMinutes(ctx, field, obj)
+		case "allowServiceUsers":
+			out.Values[i] = ec._AuthConfig_allowServiceUsers(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var authUserImplementors = []string{"AuthUser"}
+
+func (ec *executionContext) _AuthUser(ctx context.Context, sel ast.SelectionSet, obj *model.APIAuthUser) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, authUserImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AuthUser")
+		case "username":
+			out.Values[i] = ec._AuthUser_username(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._AuthUser_displayName(ctx, field, obj)
+		case "password":
+			out.Values[i] = ec._AuthUser_password(ctx, field, obj)
+		case "email":
+			out.Values[i] = ec._AuthUser_email(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -90826,6 +93229,57 @@ func (ec *executionContext) _GeneratedTaskCountResults(ctx context.Context, sel 
 			out.Values[i] = ec._GeneratedTaskCountResults_taskId(ctx, field, obj)
 		case "estimatedTasks":
 			out.Values[i] = ec._GeneratedTaskCountResults_estimatedTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var gitHubAuthConfigImplementors = []string{"GitHubAuthConfig"}
+
+func (ec *executionContext) _GitHubAuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubAuthConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, gitHubAuthConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GitHubAuthConfig")
+		case "appId":
+			out.Values[i] = ec._GitHubAuthConfig_appId(ctx, field, obj)
+		case "clientId":
+			out.Values[i] = ec._GitHubAuthConfig_clientId(ctx, field, obj)
+		case "clientSecret":
+			out.Values[i] = ec._GitHubAuthConfig_clientSecret(ctx, field, obj)
+		case "defaultOwner":
+			out.Values[i] = ec._GitHubAuthConfig_defaultOwner(ctx, field, obj)
+		case "defaultRepo":
+			out.Values[i] = ec._GitHubAuthConfig_defaultRepo(ctx, field, obj)
+		case "organization":
+			out.Values[i] = ec._GitHubAuthConfig_organization(ctx, field, obj)
+		case "users":
+			out.Values[i] = ec._GitHubAuthConfig_users(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -93075,6 +95529,55 @@ func (ec *executionContext) _JiraTicket(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var kanopyAuthConfigImplementors = []string{"KanopyAuthConfig"}
+
+func (ec *executionContext) _KanopyAuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIKanopyAuthConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, kanopyAuthConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("KanopyAuthConfig")
+		case "headerName":
+			out.Values[i] = ec._KanopyAuthConfig_headerName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "issuer":
+			out.Values[i] = ec._KanopyAuthConfig_issuer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "keysetURL":
+			out.Values[i] = ec._KanopyAuthConfig_keysetURL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var logMessageImplementors = []string{"LogMessage"}
 
 func (ec *executionContext) _LogMessage(ctx context.Context, sel ast.SelectionSet, obj *apimodels.LogMessage) graphql.Marshaler {
@@ -93506,6 +96009,50 @@ func (ec *executionContext) _ModuleCodeChange(ctx context.Context, sel ast.Selec
 			}
 		case "rawLink":
 			out.Values[i] = ec._ModuleCodeChange_rawLink(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var multiAuthConfigImplementors = []string{"MultiAuthConfig"}
+
+func (ec *executionContext) _MultiAuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIMultiAuthConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, multiAuthConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MultiAuthConfig")
+		case "readWrite":
+			out.Values[i] = ec._MultiAuthConfig_readWrite(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "readOnly":
+			out.Values[i] = ec._MultiAuthConfig_readOnly(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -93977,6 +96524,45 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var naiveAuthConfigImplementors = []string{"NaiveAuthConfig"}
+
+func (ec *executionContext) _NaiveAuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APINaiveAuthConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, naiveAuthConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NaiveAuthConfig")
+		case "users":
+			out.Values[i] = ec._NaiveAuthConfig_users(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var newDistroPayloadImplementors = []string{"NewDistroPayload"}
 
 func (ec *executionContext) _NewDistroPayload(ctx context.Context, sel ast.SelectionSet, obj *NewDistroPayload) graphql.Marshaler {
@@ -94171,6 +96757,55 @@ func (ec *executionContext) _OSInfo(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var oktaConfigImplementors = []string{"OktaConfig"}
+
+func (ec *executionContext) _OktaConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIOktaConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, oktaConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OktaConfig")
+		case "clientId":
+			out.Values[i] = ec._OktaConfig_clientId(ctx, field, obj)
+		case "clientSecret":
+			out.Values[i] = ec._OktaConfig_clientSecret(ctx, field, obj)
+		case "issuer":
+			out.Values[i] = ec._OktaConfig_issuer(ctx, field, obj)
+		case "scopes":
+			out.Values[i] = ec._OktaConfig_scopes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "userGroup":
+			out.Values[i] = ec._OktaConfig_userGroup(ctx, field, obj)
+		case "expireAfterMinutes":
+			out.Values[i] = ec._OktaConfig_expireAfterMinutes(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -105498,6 +108133,59 @@ var (
 	}
 )
 
+func (ec *executionContext) marshalNAuthUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUser(ctx context.Context, sel ast.SelectionSet, v model.APIAuthUser) graphql.Marshaler {
+	return ec._AuthUser(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAuthUser2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUserᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIAuthUser) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAuthUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUser(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNAuthUserInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUser(ctx context.Context, v any) (model.APIAuthUser, error) {
+	res, err := ec.unmarshalInputAuthUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v any) (evergreen.BannerTheme, error) {
 	tmp, err := graphql.UnmarshalString(v)
 	res := evergreen.BannerTheme(tmp)
@@ -111063,6 +113751,39 @@ func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._Annotation(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAuthConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AuthConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthConfig(ctx context.Context, v any) (*model.APIAuthConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAuthConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOAuthUserInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUserᚄ(ctx context.Context, v any) ([]model.APIAuthUser, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]model.APIAuthUser, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAuthUserInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUser(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) unmarshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v any) (*evergreen.BannerTheme, error) {
 	if v == nil {
 		return nil, nil
@@ -111774,6 +114495,21 @@ func (ec *executionContext) marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋeve
 	return ret
 }
 
+func (ec *executionContext) marshalOGitHubAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubAuthConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GitHubAuthConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGitHubAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAuthConfig(ctx context.Context, v any) (*model.APIGithubAuthConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGitHubAuthConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx context.Context, v any) ([]model.APIGitHubDynamicTokenPermissionGroup, error) {
 	if v == nil {
 		return nil, nil
@@ -112483,6 +115219,21 @@ func (ec *executionContext) marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._JiraTicket(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOKanopyAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIKanopyAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIKanopyAuthConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._KanopyAuthConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOKanopyAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIKanopyAuthConfig(ctx context.Context, v any) (*model.APIKanopyAuthConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputKanopyAuthConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOMainlineCommits2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommits(ctx context.Context, sel ast.SelectionSet, v *MainlineCommits) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -112562,6 +115313,36 @@ func (ec *executionContext) marshalOMetadataLink2ᚕgithubᚗcomᚋevergreenᚑc
 	return ret
 }
 
+func (ec *executionContext) marshalOMultiAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMultiAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIMultiAuthConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MultiAuthConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOMultiAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMultiAuthConfig(ctx context.Context, v any) (*model.APIMultiAuthConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputMultiAuthConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalONaiveAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINaiveAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APINaiveAuthConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._NaiveAuthConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalONaiveAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINaiveAuthConfig(ctx context.Context, v any) (*model.APINaiveAuthConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputNaiveAuthConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalONote2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPINote(ctx context.Context, sel ast.SelectionSet, v *model.APINote) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -112596,6 +115377,21 @@ func (ec *executionContext) unmarshalONotifyConfigInput2ᚖgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputNotifyConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOOktaConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIOktaConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OktaConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOktaConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaConfig(ctx context.Context, v any) (*model.APIOktaConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputOktaConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

@@ -1,0 +1,106 @@
+
+type AuthConfig {
+  okta: OktaConfig @requireAdmin
+  naive: NaiveAuthConfig @requireAdmin
+  github: GitHubAuthConfig @requireAdmin
+  multi: MultiAuthConfig @requireAdmin
+  kanopy: KanopyAuthConfig @requireAdmin
+  preferredType: String @requireAdmin
+  backgroundReauthMinutes: Int
+  allowServiceUsers: Boolean
+}
+
+type OktaConfig {
+  clientId: String
+  clientSecret: String
+  issuer: String
+  scopes: [String!]!
+  userGroup: String
+  expireAfterMinutes: Int
+}
+
+type NaiveAuthConfig {
+  users: [AuthUser!]!
+}
+
+type AuthUser {
+  username: String
+  displayName: String
+  password: String
+  email: String
+}
+
+type GitHubAuthConfig {
+  appId: Int
+  clientId: String
+  clientSecret: String
+  defaultOwner: String
+  defaultRepo: String
+  organization: String
+  users: [String!]!
+}
+
+type MultiAuthConfig {
+  readWrite: [String!]!
+  readOnly: [String!]!
+}
+
+type KanopyAuthConfig {
+  headerName: String!
+  issuer: String!
+  keysetURL: String!
+}
+
+
+input AuthConfigInput {
+  okta: OktaConfigInput @redactSecrets
+  naive: NaiveAuthConfigInput @redactSecrets
+  github: GitHubAuthConfigInput @redactSecrets
+  multi: MultiAuthConfigInput @redactSecrets
+  kanopy: KanopyAuthConfigInput @redactSecrets
+  preferredType: String @redactSecrets
+  backgroundReauthMinutes: Int
+  allowServiceUsers: Boolean
+}
+
+input OktaConfigInput {
+  clientId: String
+  clientSecret: String
+  issuer: String
+  scopes: [String!]
+  userGroup: String
+  expireAfterMinutes: Int
+}
+
+input NaiveAuthConfigInput {
+  users: [AuthUserInput!]
+}
+
+input AuthUserInput {
+  username: String
+  displayName: String
+  password: String
+  email: String
+}
+
+input GitHubAuthConfigInput {
+  appId: Int
+  clientId: String
+  clientSecret: String
+  defaultOwner: String
+  defaultRepo: String
+  organization: String
+  users: [String!]
+}
+
+input MultiAuthConfigInput {
+  readWrite: [String!]
+  readOnly: [String!]
+}
+
+input KanopyAuthConfigInput {
+  headerName: String!
+  issuer: String!
+  keysetURL: String!
+}
+

@@ -1,0 +1,43 @@
+query Auth {
+  adminSettings {
+    authConfig {
+        okta {
+            clientId
+            clientSecret
+            issuer
+            scopes
+            userGroup
+            expireAfterMinutes
+        }
+        naive {
+            users {
+                username
+                displayName
+                password
+                email
+            }
+        }
+        github {
+            appId
+            clientId
+            clientSecret
+            defaultOwner
+            defaultRepo
+            organization
+            users
+        }
+        multi { 
+            readWrite
+            readOnly
+        }
+        kanopy {
+            headerName
+            issuer
+            keysetURL
+        }
+        preferredType
+        backgroundReauthMinutes
+        allowServiceUsers
+    }
+  }
+}
