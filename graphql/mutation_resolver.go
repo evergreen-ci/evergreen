@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -771,14 +772,26 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, err
 	}
 
+	d, err := distro.FindOneId(ctx, options.DistroID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", options.DistroID, err.Error()))
+	}
+	if d == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", options.DistroID))
+	}
+
+	// Some distros only support a subset of the available regions.
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	availableRegions := d.GetRegionsList(settings.Providers.AWS.AllowedRegions)
+	if !utility.StringSliceContains(availableRegions, options.Region) {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("distro '%s' only supports spawn hosts in the following regions: %s", options.DistroID, strings.Join(availableRegions, ", ")))
+	}
+
+	// Only admins can spawn admin-only distros.
 	if !usr.HasDistroCreatePermission() {
-		d, err := distro.FindOneId(ctx, options.DistroID)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", options.DistroID, err.Error()))
-		}
-		if d == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", options.DistroID))
-		}
 		if d.AdminOnly {
 			// Admin-only distros can only be spawned by distro admins.
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to spawn host in admin-only distro '%s'", options.DistroID))

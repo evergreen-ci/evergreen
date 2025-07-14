@@ -274,6 +274,7 @@ type Distro {
   aliases: [String!]!
   arch: Arch!
   authorizedKeysFile: String!
+  availableRegions: [String!]!
   bootstrapSettings: BootstrapSettings!
   containerPool: String!
   disabled: Boolean!
