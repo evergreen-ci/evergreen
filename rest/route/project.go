@@ -1133,10 +1133,10 @@ func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
 //	@Tags			tasks
 //	@Router			/projects/{project_id}/tasks/{task_name} [get]
 //	@Security		Api-User || Api-Key
-//	@Param			project_id		path	string	true	"the project ID"
-//	@Param			task_name		path	string	true	"the task name"
-//	@Param			{object}		body	model.GetProjectTasksOpts	false	"parameters"
-//	@Success		200				{array}	model.APITask
+//	@Param			project_id	path	string						true	"the project ID"
+//	@Param			task_name	path	string						true	"the task name"
+//	@Param			{object}	body	model.GetProjectTasksOpts	false	"parameters"
+//	@Success		200			{array}	model.APITask
 func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTasksHandler{url: h.url}
 }
