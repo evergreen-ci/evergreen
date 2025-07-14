@@ -6,9 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -131,10 +129,6 @@ func getTaskLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log
 		return nil, err
 	}
 
-	if output.TaskLogs.Version == 0 {
-		return getBuildloggerLogs(ctx, task, getOpts)
-	}
-
 	svc, err := getLogService(ctx, output.TaskLogs)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
@@ -174,27 +168,4 @@ func getLogService(ctx context.Context, o TaskLogOutput) (log.LogService, error)
 	}
 
 	return log.NewLogServiceV0(b), nil
-}
-
-// getBuildloggerLogs makes request to Cedar Buildlogger for logs.
-func getBuildloggerLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
-	opts := apimodels.GetBuildloggerLogsOptions{
-		TaskID:    task.Id,
-		Execution: utility.ToIntPtr(task.Execution),
-		Start:     utility.FromInt64Ptr(getOpts.Start),
-		End:       utility.FromInt64Ptr(getOpts.End),
-		Limit:     getOpts.LineLimit,
-		Tail:      getOpts.TailN,
-	}
-	if getOpts.LogType == TaskLogTypeAll {
-		opts.Tags = []string{
-			string(TaskLogTypeAgent),
-			string(TaskLogTypeSystem),
-			string(TaskLogTypeTask),
-		}
-	} else {
-		opts.Tags = []string{string(getOpts.LogType)}
-	}
-
-	return apimodels.GetBuildloggerLogs(ctx, opts)
 }

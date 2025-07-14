@@ -35,7 +35,7 @@ func makeFetchAnnotationsByBuild() gimlet.RouteHandler {
 //	@Summary		List task annotations by build
 //	@Description	Fetches the annotations for all the tasks in a build.
 //	@Tags			annotations
-//	@Router			/tasks/{build_id}/annotations [get]
+//	@Router			/builds/{build_id}/annotations [get]
 //	@Security		Api-User || Api-Key
 //	@Param			build_id				path	string	true	"build_id"
 //	@Param			fetch_all_executions	query	string	false	"Fetches previous executions of the task if they are available"
@@ -84,7 +84,7 @@ func makeFetchAnnotationsByVersion() gimlet.RouteHandler {
 //	@Summary		List task annotations by version
 //	@Description	Fetches the annotations for all the tasks in a version.
 //	@Tags			annotations
-//	@Router			/tasks/{version_id}/annotations [get]
+//	@Router			/versions/{version_id}/annotations [get]
 //	@Security		Api-User || Api-Key
 //	@Param			version_id				path	string	true	"version_id"
 //	@Param			fetch_all_executions	query	string	false	"Fetches previous executions of the task if they are available"

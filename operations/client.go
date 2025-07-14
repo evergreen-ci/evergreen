@@ -27,10 +27,19 @@ func Client() cli.Command {
 	}
 }
 
+// a list of strings that indicate that kanopy-oidc is not installed or not in the PATH.
+var kanopyOIDCNotInstalledMessages = []string{
+	"executable file not found in $PATH",
+	"command not found",
+}
+
+const (
+	optOutTextIntro = "Evergreen CLI will attempt to retrieve or generate a JWT token. "
+	optOutText      = "To opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160."
+)
+
 // runKanopyOIDCLogin executes the kanopy-oidc login command and captures the JWT token from the output.
 // It also displays output to the user in real-time while ensuring that the JWT token is not printed.
-const optOutText = "Evergreen CLI will attempt to retrieve or generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160."
-
 func runKanopyOIDCLogin(reason string) (string, error) {
 	cmd := exec.Command("kanopy-oidc", "login", "-n", "-f", "device")
 
@@ -43,6 +52,19 @@ func runKanopyOIDCLogin(reason string) (string, error) {
 
 	// Start the command
 	if err := cmd.Start(); err != nil {
+		// if the error is that kanopy-oidc is not installed, link the installation instructions
+		for _, msg := range kanopyOIDCNotInstalledMessages {
+			if strings.Contains(err.Error(), msg) {
+				printKanopyAuthHeader(true)
+				grip.Info(
+					"The Evergreen CLI would like to use kanopy-oidc to authenticate you, but it is not installed or not in your PATH.\n" +
+						"Please follow the installation instructions at: go/install-kanopy-oidc-evergreen\n" +
+						"\n" + optOutText,
+				)
+				printKanopyAuthHeader(false)
+				return "", nil
+			}
+		}
 		return "", errors.Wrap(err, "starting kanopy-oidc login")
 	}
 
@@ -65,10 +87,9 @@ func runKanopyOIDCLogin(reason string) (string, error) {
 				if reason != "" {
 					grip.Info(reason)
 				}
-				grip.Info(optOutText)
+				grip.Info(optOutTextIntro + optOutText)
 				printedHeader = true
 			}
-
 			// This is not a JWT token - display to the user
 			grip.Info(line)
 		}
