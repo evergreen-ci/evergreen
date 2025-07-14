@@ -30,7 +30,7 @@
         "data": null,
         "errors": [
           {
-            "message": "distro 'rhel71-power8-large' only supports spawn hosts in following regions: us-east-1, eu-west-1",
+            "message": "distro 'rhel71-power8-large' only supports spawn hosts in the following regions: us-east-1, eu-west-1",
             "path": ["spawnHost"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"

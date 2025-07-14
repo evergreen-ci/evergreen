@@ -787,7 +787,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 	availableRegions := d.GetRegionsList(settings.Providers.AWS.AllowedRegions)
 	if !utility.StringSliceContains(availableRegions, options.Region) {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("distro '%s' only supports spawn hosts in following regions: %s", options.DistroID, strings.Join(availableRegions, ", ")))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("distro '%s' only supports spawn hosts in the following regions: %s", options.DistroID, strings.Join(availableRegions, ", ")))
 	}
 
 	// Only admins can spawn admin-only distros.
