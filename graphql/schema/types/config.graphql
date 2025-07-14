@@ -8,7 +8,7 @@ input SaveAdminSettingsInput {
 }
 
 input SESConfigInput {
-  senderAddress: String! 
+  senderAddress: String! @redactSecrets
 }
 
 type SESConfig {
@@ -146,7 +146,7 @@ input AdminSettingsInput {
   repotracker: RepotrackerConfigInput
   api: APIConfigInput
   ui: UIConfigInput
-  disabledGQLQueries: [String!]!
+  disabledGQLQueries: [String!]
 }
 
 type AdminSettings {
@@ -161,7 +161,7 @@ type AdminSettings {
   repotracker: RepotrackerConfig
   api: APIConfig
   ui: UIConfig
-  disabledGQLQueries: [String!]
+  disabledGQLQueries: [String!]!
 }
 
 type SpruceConfig {
@@ -285,7 +285,7 @@ input UIConfigInput {
   uiv2Url: String!
   parsleyUrl: String!
   httpListenAddr: String!
-  secret: String! 
+  secret: String! @redactSecrets 
   defaultProject: String!
   corsOrigins: [String!]!
   fileStreamingContentTypes: [String!]!

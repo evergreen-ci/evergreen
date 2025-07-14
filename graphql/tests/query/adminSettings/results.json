@@ -130,7 +130,7 @@
                 "spruceWaterfallEnabled": true
               }
             },
-            "disabledGQLQueries": null
+            "disabledGQLQueries": []
           }
         }
       }
