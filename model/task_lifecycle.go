@@ -1608,25 +1608,15 @@ type patchStatusUpdate struct {
 }
 
 // updatePatchStatus updates the status of a patch.
-func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (*patchStatusUpdate, error) {
+func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (patchStatusUpdate, error) {
+	var psu patchStatusUpdate
 	if status == p.Status {
-		return &patchStatusUpdate{}, nil
+		return psu, nil
 	}
 
-	var psu patchStatusUpdate
-
-	var statusChanged bool
-	var err error
-	if evergreen.IsFinishedVersionStatus(status) {
-		statusChanged, err = p.MarkFinished(ctx, status)
-		if err != nil {
-			return nil, errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), status)
-		}
-	} else {
-		statusChanged, err = p.UpdateStatus(ctx, status)
-		if err != nil {
-			return nil, errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
-		}
+	statusChanged, err := p.UpdateStatus(ctx, status)
+	if err != nil {
+		return psu, errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
 	}
 
 	if statusChanged {
@@ -1636,7 +1626,7 @@ func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (*pat
 
 		isDone, parentPatch, err := p.GetFamilyInformation(ctx)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
+			return psu, errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
 		}
 
 		psu.parentPatch = parentPatch
@@ -1645,7 +1635,7 @@ func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (*pat
 		if isDone {
 			collectiveStatus, err := p.CollectiveStatus(ctx)
 			if err != nil {
-				return nil, errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+				return psu, errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
 			if parentPatch != nil {
 				event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
@@ -1657,7 +1647,7 @@ func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (*pat
 
 	}
 
-	return &psu, nil
+	return psu, nil
 }
 
 // UpdateBuildAndVersionStatusForTask updates the status of the task's build based on all the tasks in the build

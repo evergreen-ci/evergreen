@@ -1766,7 +1766,6 @@ func TestUpdatePatchStatus(t *testing.T) {
 			const newStatus = evergreen.VersionCreated
 			psu, err := updatePatchStatus(t.Context(), p, newStatus)
 			require.NoError(t, err)
-			require.NotZero(t, psu)
 
 			assert.False(t, psu.patchStatusChanged)
 			assert.False(t, psu.isPatchFamilyDone)
@@ -1786,7 +1785,6 @@ func TestUpdatePatchStatus(t *testing.T) {
 			const newStatus = evergreen.VersionStarted
 			psu, err := updatePatchStatus(t.Context(), p, newStatus)
 			require.NoError(t, err)
-			require.NotZero(t, psu)
 
 			assert.True(t, psu.patchStatusChanged)
 			assert.False(t, psu.isPatchFamilyDone)
@@ -1822,7 +1820,6 @@ func TestUpdatePatchStatus(t *testing.T) {
 			const newStatus = evergreen.VersionStarted
 			psu, err := updatePatchStatus(t.Context(), p, newStatus)
 			require.NoError(t, err)
-			require.NotZero(t, psu)
 
 			assert.True(t, psu.patchStatusChanged)
 			assert.False(t, psu.isPatchFamilyDone)
@@ -1859,7 +1856,6 @@ func TestUpdatePatchStatus(t *testing.T) {
 			const newStatus = evergreen.VersionSucceeded
 			psu, err := updatePatchStatus(t.Context(), p, newStatus)
 			require.NoError(t, err)
-			require.NotZero(t, psu)
 
 			assert.True(t, psu.patchStatusChanged)
 			assert.True(t, psu.isPatchFamilyDone)
@@ -1894,7 +1890,6 @@ func TestUpdatePatchStatus(t *testing.T) {
 			const newStatus = evergreen.VersionSucceeded
 			psu, err := updatePatchStatus(t.Context(), p, newStatus)
 			require.NoError(t, err)
-			require.NotZero(t, psu)
 
 			assert.True(t, psu.patchStatusChanged)
 			assert.True(t, psu.isPatchFamilyDone)
