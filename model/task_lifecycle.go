@@ -1607,7 +1607,8 @@ type patchStatusUpdate struct {
 	patchFamilyFinishedCollectiveStatus string
 }
 
-// updatePatchStatus updates the status of a patch.
+// updatePatchStatus updates the status of a patch. It returns information about
+// the patch status and its patch family, if any.
 func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (patchStatusUpdate, error) {
 	var psu patchStatusUpdate
 	if status == p.Status {
@@ -1719,9 +1720,6 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
-		// kim: TODO: double-check that this logic is equivalent to what it
-		// was before and all the extra queries for the patch family were
-		// duplicates.
 		if psu.patchStatusChanged && psu.isPatchFamilyDone {
 			rootPatch := p
 			if psu.parentPatch != nil {
