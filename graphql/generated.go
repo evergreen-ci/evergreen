@@ -19433,7 +19433,7 @@ func (ec *executionContext) _AuthConfig_preferredType(ctx context.Context, field
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOAuthConfigType2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_AuthConfig_preferredType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -19443,7 +19443,7 @@ func (ec *executionContext) fieldContext_AuthConfig_preferredType(_ context.Cont
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type AuthConfigType does not have child fields")
 		},
 	}
 	return fc, nil
@@ -113765,6 +113765,42 @@ func (ec *executionContext) unmarshalOAuthConfigInput2ᚖgithubᚗcomᚋevergree
 	res, err := ec.unmarshalInputAuthConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
+
+func (ec *executionContext) unmarshalOAuthConfigType2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalOAuthConfigType2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAuthConfigType2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(marshalOAuthConfigType2ᚖstring[*v])
+	return res
+}
+
+var (
+	unmarshalOAuthConfigType2ᚖstring = map[string]string{
+		"OKTA":   model.OktaPreferredType,
+		"NAIVE":  model.NaivePreferredType,
+		"GITHUB": model.GithubPreferredType,
+		"MULTI":  model.MultiPreferredType,
+		"KANOPY": model.KanopyPreferredType,
+	}
+	marshalOAuthConfigType2ᚖstring = map[string]string{
+		model.OktaPreferredType:   "OKTA",
+		model.NaivePreferredType:  "NAIVE",
+		model.GithubPreferredType: "GITHUB",
+		model.MultiPreferredType:  "MULTI",
+		model.KanopyPreferredType: "KANOPY",
+	}
+)
 
 func (ec *executionContext) unmarshalOAuthUserInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUserᚄ(ctx context.Context, v any) ([]model.APIAuthUser, error) {
 	if v == nil {

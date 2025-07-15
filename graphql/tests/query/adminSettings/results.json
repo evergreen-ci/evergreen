@@ -83,7 +83,7 @@
                 "issuer": "https://kanopy.com",
                 "keysetURL": "https://kanopy.com/keyset"
               },
-              "preferredType": "naive",
+              "preferredType": "NAIVE",
               "backgroundReauthMinutes": 0,
               "allowServiceUsers": false
             }

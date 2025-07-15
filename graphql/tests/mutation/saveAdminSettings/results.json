@@ -144,7 +144,7 @@
         "data": {
           "saveAdminSettings": {
             "authConfig": {
-              "preferredType": "naive",
+              "preferredType": "NAIVE",
               "naive": {
                 "users": [
                   {

@@ -41,6 +41,19 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
   AuthConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
+  AuthConfigType:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      OKTA:
+        value: github.com/evergreen-ci/evergreen/rest/model.OktaPreferredType
+      NAIVE:
+        value: github.com/evergreen-ci/evergreen/rest/model.NaivePreferredType
+      GITHUB:
+        value: github.com/evergreen-ci/evergreen/rest/model.GithubPreferredType
+      MULTI:
+        value: github.com/evergreen-ci/evergreen/rest/model.MultiPreferredType
+      KANOPY:
+        value: github.com/evergreen-ci/evergreen/rest/model.KanopyPreferredType
   AuthUser:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
   AuthUserInput:
