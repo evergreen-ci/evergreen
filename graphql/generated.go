@@ -124,6 +124,19 @@ type ComplexityRoot struct {
 		User                    func(childComplexity int) int
 	}
 
+	AdminEvent struct {
+		After     func(childComplexity int) int
+		Before    func(childComplexity int) int
+		Section   func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+		User      func(childComplexity int) int
+	}
+
+	AdminEventsPayload struct {
+		Count           func(childComplexity int) int
+		EventLogEntries func(childComplexity int) int
+	}
+
 	AdminSettings struct {
 		Api                func(childComplexity int) int
 		Banner             func(childComplexity int) int
@@ -1104,6 +1117,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AWSRegions               func(childComplexity int) int
+		AdminEvents              func(childComplexity int, opts AdminEventsInput) int
 		AdminSettings            func(childComplexity int) int
 		BbGetCreatedTickets      func(childComplexity int, taskID string) int
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
@@ -2071,6 +2085,7 @@ type ProjectVarsResolver interface {
 type QueryResolver interface {
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
+	AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error)
 	AdminSettings(ctx context.Context) (*model.APIAdminSettings, error)
 	AWSRegions(ctx context.Context) ([]string, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
@@ -2377,6 +2392,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AbortInfo.User(childComplexity), true
+
+	case "AdminEvent.after":
+		if e.complexity.AdminEvent.After == nil {
+			break
+		}
+
+		return e.complexity.AdminEvent.After(childComplexity), true
+
+	case "AdminEvent.before":
+		if e.complexity.AdminEvent.Before == nil {
+			break
+		}
+
+		return e.complexity.AdminEvent.Before(childComplexity), true
+
+	case "AdminEvent.section":
+		if e.complexity.AdminEvent.Section == nil {
+			break
+		}
+
+		return e.complexity.AdminEvent.Section(childComplexity), true
+
+	case "AdminEvent.timestamp":
+		if e.complexity.AdminEvent.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.AdminEvent.Timestamp(childComplexity), true
+
+	case "AdminEvent.user":
+		if e.complexity.AdminEvent.User == nil {
+			break
+		}
+
+		return e.complexity.AdminEvent.User(childComplexity), true
+
+	case "AdminEventsPayload.count":
+		if e.complexity.AdminEventsPayload.Count == nil {
+			break
+		}
+
+		return e.complexity.AdminEventsPayload.Count(childComplexity), true
+
+	case "AdminEventsPayload.eventLogEntries":
+		if e.complexity.AdminEventsPayload.EventLogEntries == nil {
+			break
+		}
+
+		return e.complexity.AdminEventsPayload.EventLogEntries(childComplexity), true
 
 	case "AdminSettings.api":
 		if e.complexity.AdminSettings.Api == nil {
@@ -7166,6 +7230,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.AWSRegions(childComplexity), true
 
+	case "Query.adminEvents":
+		if e.complexity.Query.AdminEvents == nil {
+			break
+		}
+
+		args, err := ec.field_Query_adminEvents_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AdminEvents(childComplexity, args["opts"].(AdminEventsInput)), true
+
 	case "Query.adminSettings":
 		if e.complexity.Query.AdminSettings == nil {
 			break
@@ -11384,6 +11460,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAPIConfigInput,
 		ec.unmarshalInputAddFavoriteProjectInput,
+		ec.unmarshalInputAdminEventsInput,
 		ec.unmarshalInputAdminSettingsInput,
 		ec.unmarshalInputBetaFeaturesInput,
 		ec.unmarshalInputBootstrapSettingsInput,
@@ -15222,6 +15299,34 @@ func (ec *executionContext) field_Query___type_argsName(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_adminEvents_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_adminEvents_argsOpts(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["opts"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_adminEvents_argsOpts(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (AdminEventsInput, error) {
+	if _, ok := rawArgs["opts"]; !ok {
+		var zeroVal AdminEventsInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+	if tmp, ok := rawArgs["opts"]; ok {
+		return ec.unmarshalNAdminEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEventsInput(ctx, tmp)
+	}
+
+	var zeroVal AdminEventsInput
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_bbGetCreatedTickets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17988,6 +18093,317 @@ func (ec *executionContext) fieldContext_AbortInfo_user(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminEvent_section(ctx context.Context, field graphql.CollectedField, obj *AdminEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminEvent_section(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Section, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminEvent_section(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminEvent_after(ctx context.Context, field graphql.CollectedField, obj *AdminEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminEvent_after(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.After, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]any)
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminEvent_after(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminEvent_before(ctx context.Context, field graphql.CollectedField, obj *AdminEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminEvent_before(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Before, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]any)
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminEvent_before(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminEvent_timestamp(ctx context.Context, field graphql.CollectedField, obj *AdminEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminEvent_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminEvent_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminEvent_user(ctx context.Context, field graphql.CollectedField, obj *AdminEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminEvent_user(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminEvent_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminEventsPayload_count(ctx context.Context, field graphql.CollectedField, obj *AdminEventsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminEventsPayload_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminEventsPayload_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminEventsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminEventsPayload_eventLogEntries(ctx context.Context, field graphql.CollectedField, obj *AdminEventsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminEventsPayload_eventLogEntries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EventLogEntries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*AdminEvent)
+	fc.Result = res
+	return ec.marshalNAdminEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEventᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminEventsPayload_eventLogEntries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminEventsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "section":
+				return ec.fieldContext_AdminEvent_section(ctx, field)
+			case "after":
+				return ec.fieldContext_AdminEvent_after(ctx, field)
+			case "before":
+				return ec.fieldContext_AdminEvent_before(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_AdminEvent_timestamp(ctx, field)
+			case "user":
+				return ec.fieldContext_AdminEvent_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminEvent", field.Name)
 		},
 	}
 	return fc, nil
@@ -51664,6 +52080,89 @@ func (ec *executionContext) fieldContext_Query_buildBaron(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_adminEvents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_adminEvents(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().AdminEvents(rctx, fc.Args["opts"].(AdminEventsInput))
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *AdminEventsPayload
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*AdminEventsPayload); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/graphql.AdminEventsPayload`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*AdminEventsPayload)
+	fc.Result = res
+	return ec.marshalNAdminEventsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEventsPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_adminEvents(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "count":
+				return ec.fieldContext_AdminEventsPayload_count(ctx, field)
+			case "eventLogEntries":
+				return ec.fieldContext_AdminEventsPayload_eventLogEntries(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminEventsPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_adminEvents_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_adminSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_adminSettings(ctx, field)
 	if err != nil {
@@ -83027,6 +83526,44 @@ func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputAdminEventsInput(ctx context.Context, obj any) (AdminEventsInput, error) {
+	var it AdminEventsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["limit"]; !present {
+		asMap["limit"] = 10
+	}
+
+	fieldsInOrder := [...]string{"before", "limit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "before":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Before = data
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context, obj any) (model.APIAdminSettings, error) {
 	var it model.APIAdminSettings
 	asMap := map[string]any{}
@@ -90122,6 +90659,100 @@ func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet
 			}
 		case "user":
 			out.Values[i] = ec._AbortInfo_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var adminEventImplementors = []string{"AdminEvent"}
+
+func (ec *executionContext) _AdminEvent(ctx context.Context, sel ast.SelectionSet, obj *AdminEvent) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminEventImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminEvent")
+		case "section":
+			out.Values[i] = ec._AdminEvent_section(ctx, field, obj)
+		case "after":
+			out.Values[i] = ec._AdminEvent_after(ctx, field, obj)
+		case "before":
+			out.Values[i] = ec._AdminEvent_before(ctx, field, obj)
+		case "timestamp":
+			out.Values[i] = ec._AdminEvent_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "user":
+			out.Values[i] = ec._AdminEvent_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var adminEventsPayloadImplementors = []string{"AdminEventsPayload"}
+
+func (ec *executionContext) _AdminEventsPayload(ctx context.Context, sel ast.SelectionSet, obj *AdminEventsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminEventsPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminEventsPayload")
+		case "count":
+			out.Values[i] = ec._AdminEventsPayload_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "eventLogEntries":
+			out.Values[i] = ec._AdminEventsPayload_eventLogEntries(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -98518,6 +99149,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "adminEvents":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_adminEvents(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "adminSettings":
 			field := field
 
@@ -106820,6 +107473,79 @@ func (ec *executionContext) marshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋ
 func (ec *executionContext) unmarshalNAddFavoriteProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx context.Context, v any) (AddFavoriteProjectInput, error) {
 	res, err := ec.unmarshalInputAddFavoriteProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAdminEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*AdminEvent) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAdminEvent2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEvent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAdminEvent2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEvent(ctx context.Context, sel ast.SelectionSet, v *AdminEvent) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminEvent(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAdminEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEventsInput(ctx context.Context, v any) (AdminEventsInput, error) {
+	res, err := ec.unmarshalInputAdminEventsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAdminEventsPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEventsPayload(ctx context.Context, sel ast.SelectionSet, v AdminEventsPayload) graphql.Marshaler {
+	return ec._AdminEventsPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAdminEventsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminEventsPayload(ctx context.Context, sel ast.SelectionSet, v *AdminEventsPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminEventsPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAdminSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v model.APIAdminSettings) graphql.Marshaler {
