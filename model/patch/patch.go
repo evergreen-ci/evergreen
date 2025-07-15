@@ -438,41 +438,33 @@ func (p *Patch) Insert(ctx context.Context) error {
 	return db.Insert(ctx, Collection, p)
 }
 
-func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (bool, error) {
+func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (modified bool, err error) {
 	if p.Status == newStatus {
 		return false, nil
 	}
 
-	return p.setStatus(ctx, newStatus)
-}
-
-func (p *Patch) MarkFinished(ctx context.Context, status string) (bool, error) {
-	return p.setStatus(ctx, status)
-}
-
-func (p *Patch) setStatus(ctx context.Context, status string) (modified bool, err error) {
 	setFields := bson.M{
-		StatusKey: status,
+		StatusKey: newStatus,
 	}
 	finishTime := time.Now()
-	if evergreen.IsFinishedVersionStatus(status) {
+	if evergreen.IsFinishedVersionStatus(newStatus) {
 		setFields[FinishTimeKey] = finishTime
 	}
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
 		IdKey:     p.Id,
-		StatusKey: bson.M{"$ne": status},
+		StatusKey: bson.M{"$ne": newStatus},
 	}, bson.M{
 		"$set": bson.M{
 			FinishTimeKey: finishTime,
-			StatusKey:     status,
+			StatusKey:     newStatus,
 		},
 	})
 	if err != nil {
 		return false, err
 	}
 
-	p.Status = status
-	if evergreen.IsFinishedVersionStatus(status) {
+	p.Status = newStatus
+	if evergreen.IsFinishedVersionStatus(newStatus) {
 		p.FinishTime = finishTime
 	}
 
