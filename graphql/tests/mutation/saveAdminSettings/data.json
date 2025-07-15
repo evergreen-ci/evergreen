@@ -117,8 +117,8 @@
     },
     {
       "_id": "api",
-      "url": "http://localhost:9090",
-      "http_listen_addr": ""
+      "url": "http://localhost:8080",
+      "http_listen_addr": ":9090"
     },
     {
       "_id": "service_flags",

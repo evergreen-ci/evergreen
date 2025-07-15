@@ -433,7 +433,11 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			return errors.Wrapf(err, "updating build '%s' PR status", b.Id)
 		}
 	}
-	return errors.Wrap(setVersionStatus(ctx, versionId, evergreen.VersionStarted), "changing version status")
+
+	if _, err := setVersionStatus(ctx, versionId, evergreen.VersionStarted); err != nil {
+		return err
+	}
+	return nil
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {

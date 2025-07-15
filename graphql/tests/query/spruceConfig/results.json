@@ -60,24 +60,13 @@
               "projectTasksPairs": [
                 {
                   "projectId": "evergreen",
-                  "allowedTasks": [
-                    "compile",
-                    "test"
-                  ],
-                  "allowedBVs": [
-                    "ubuntu1604",
-                    "windows"
-                  ]
+                  "allowedTasks": ["compile", "test"],
+                  "allowedBVs": ["ubuntu1604", "windows"]
                 },
                 {
                   "projectId": "spruce",
-                  "allowedTasks": [
-                    "lint",
-                    "storybook"
-                  ],
-                  "allowedBVs": [
-                    "macOS"
-                  ]
+                  "allowedTasks": ["lint", "storybook"],
+                  "allowedBVs": ["macOS"]
                 }
               ]
             }
@@ -119,6 +108,7 @@
               "githubAppAuth",
               "publicKey",
               "secret",
+              "senderAddress",
               "servicePassword",
               "vars"
             ]

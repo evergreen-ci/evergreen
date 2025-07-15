@@ -1,6 +1,22 @@
 {
   "tests": [
     {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "User 'regular_user' lacks required admin permissions",
+            "path": ["saveAdminSettings"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
       "query_file": "announcements.graphql",
       "result": {
         "data": {
@@ -123,19 +139,37 @@
       }
     },
     {
-      "query_file": "no_permissions.graphql",
-      "test_user_id": "regular_user",
+      "query_file": "web.graphql",
       "result": {
-        "data": null,
-        "errors": [
-          {
-            "message": "User 'regular_user' lacks required admin permissions",
-            "path": ["saveAdminSettings"],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
+        "data": {
+          "saveAdminSettings": {
+            "api": {
+              "httpListenAddr": ":9090",
+              "url": "http://localhost:8080",
+              "corpUrl": "https://evergreen-staging.corp.mongodb.com"
+            },
+            "ui": {
+              "url": "http://localhost:600",
+              "helpUrl": "https://help.example.com",
+              "uiv2Url": "http://localhost:3000",
+              "parsleyUrl": "http://localhost:4173",
+              "httpListenAddr": ":3000",
+              "secret": "test-secret",
+              "defaultProject": "evergreen",
+              "corsOrigins": ["http://localhost:3000", "http://localhost:5173"],
+              "fileStreamingContentTypes": ["text/plain", "application/json"],
+              "loginDomain": "localhost",
+              "userVoice": "https://uservoice.com",
+              "csrfKey": "12345678901234567890123456789012",
+              "cacheTemplates": true,
+              "stagingEnvironment": "not-staging",
+              "betaFeatures": {
+                "spruceWaterfallEnabled": false
+              }
+            },
+            "disabledGQLQueries": ["query1", "query2", "query3", "query4"]
           }
-        ]
+        }
       }
     },
     {
