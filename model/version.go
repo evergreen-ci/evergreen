@@ -215,6 +215,9 @@ func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified 
 	}
 
 	v.Status = newStatus
+	if evergreen.IsFinishedVersionStatus(newStatus) {
+		v.FinishTime = time.Now()
+	}
 
 	return modified, nil
 }
@@ -254,19 +257,6 @@ func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duratio
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
-}
-
-func (v *Version) MarkFinished(ctx context.Context, status string) (bool, error) {
-	finishTime := time.Now()
-	modified, err := setVersionStatus(ctx, v.Id, status)
-	if err != nil {
-		return false, err
-	}
-
-	v.Status = status
-	v.FinishTime = finishTime
-
-	return modified, err
 }
 
 // UpdateProjectStorageMethod updates the version's parser project storage

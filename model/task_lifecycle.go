@@ -1588,16 +1588,9 @@ func updateVersionStatus(ctx context.Context, v *Version) (versionStatus string,
 		}
 	}
 
-	if evergreen.IsFinishedVersionStatus(versionStatus) {
-		statusChanged, err = v.MarkFinished(ctx, versionStatus)
-		if err != nil {
-			return "", false, errors.Wrapf(err, "marking version '%s' as finished with status '%s'", v.Id, versionStatus)
-		}
-	} else {
-		statusChanged, err = v.UpdateStatus(ctx, versionStatus)
-		if err != nil {
-			return "", false, errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
-		}
+	statusChanged, err = v.UpdateStatus(ctx, versionStatus)
+	if err != nil {
+		return "", false, errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
 	}
 
 	if statusChanged {
