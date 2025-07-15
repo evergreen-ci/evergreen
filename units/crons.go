@@ -240,7 +240,7 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 		}
 		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
-			TerminationReason: "host is expired, decommissioned, or failed to provision",
+			TerminationReason: "host is expired, decommissioned, or failed to provision (this is not an error)",
 		}))
 	}
 

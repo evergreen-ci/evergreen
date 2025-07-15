@@ -6,9 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -77,10 +75,6 @@ func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log
 		return log.EmptyIterator(), nil
 	}
 
-	if output.TestLogs.Version == 0 {
-		return getTestBuildloggerLogs(ctx, task, getOpts)
-	}
-
 	svc, err := getTestLogService(ctx, output.TestLogs)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
@@ -114,21 +108,4 @@ func getTestLogService(ctx context.Context, o TestLogOutput) (log.LogService, er
 	}
 
 	return log.NewLogServiceV0(b), nil
-}
-
-// getTestBuildloggerLogs makes request to Cedar Buildlogger for logs.
-func getTestBuildloggerLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log.LogIterator, error) {
-	if len(getOpts.LogPaths) != 1 {
-		return nil, errors.New("must request exactly one test log from Cedar Buildlogger")
-	}
-
-	return apimodels.GetBuildloggerLogs(ctx, apimodels.GetBuildloggerLogsOptions{
-		TaskID:    task.Id,
-		Execution: utility.ToIntPtr(task.Execution),
-		TestName:  getOpts.LogPaths[0],
-		Start:     utility.FromInt64Ptr(getOpts.Start),
-		End:       utility.FromInt64Ptr(getOpts.End),
-		Limit:     getOpts.LineLimit,
-		Tail:      getOpts.TailN,
-	})
 }

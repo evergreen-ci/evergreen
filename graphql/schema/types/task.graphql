@@ -169,12 +169,18 @@ enum RequiredStatus {
   MUST_SUCCEED
 }
 
+type FailingCommand {
+  fullDisplayName: String!
+  failureMetadataTags: [String!]!
+}
+
 type TaskEndDetail {
   description: String
   diskDevices: [String!]!
   failingCommand: String
   failureMetadataTags: [String!]!
   oomTracker: OomTrackerInfo!
+  otherFailingCommands: [FailingCommand!]!
   status: String!
   timedOut: Boolean
   timeoutType: String
@@ -210,7 +216,6 @@ type TaskFiles {
   fileCount: Int!
   groupedFiles: [GroupedFiles!]!
 }
-
 
 type GroupedFiles {
   files: [File!]

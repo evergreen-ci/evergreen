@@ -5,6 +5,7 @@ var redactedFields = map[string]bool{
 	"githubAppAuth": true,
 	"publicKey": true,
 	"secret": true,
+	"senderAddress": true,
 	"servicePassword": true,
 	"vars": true,
 }

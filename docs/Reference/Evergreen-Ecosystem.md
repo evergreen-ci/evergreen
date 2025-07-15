@@ -58,8 +58,6 @@ You can start an Evergreen patch from other CI systems.
   include: logkeeper, sumologic, splunk, email, jira tickets, github comments.
 * [jasper](https://github.com/mongodb/jasper) is a library for managing processes.
   This is used for executing processes on app servers as well as on hosts.
-* [juniper](https://github.com/evergreen-ci/juniper) is a library that contains
-  gRPC protobuf files for Cedar.
 * [mrpc](https://github.com/evergreen-ci/mrpc) a mongodb rpc protocol implementation
   for producing arbitrary services that mongodb clients can use.
 * [pail](https://github.com/evergreen-ci/pail) is a library for interacting
@@ -74,8 +72,6 @@ You can start an Evergreen patch from other CI systems.
 * [spruce](https://github.com/evergreen-ci/spruce) is Evergreen's new
   React-based UI.
 * [parsley](https://github.com/evergreen-ci/parsley) is Evergreen's React-based log viewer.
-* [timber](https://github.com/evergreen-ci/timber) is the client library for
-  cedar. It gives agents the ability to send task data somewhere for processing.
 
 ## Libraries (Python, JS, Emacs)
 * [evergreen.el](https://github.com/mongodb/evergreen.el) is an Emacs package for
