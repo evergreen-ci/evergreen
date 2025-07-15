@@ -11,6 +11,7 @@ var redactedFields = map[string]bool{
 	"preferredType": true,
 	"publicKey": true,
 	"secret": true,
+	"senderAddress": true,
 	"servicePassword": true,
 	"vars": true,
 }

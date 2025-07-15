@@ -1,14 +1,33 @@
-###### TYPES ######
+###### ADMIN EVENTS ######
+
 """
-SpruceConfig defines settings that apply to all users of Evergreen.
-For example, if the banner field is populated, then a sitewide banner will be shown to all users.
+AdminEventsInput is the input to the adminEvents query.
 """
+input AdminEventsInput {
+  before: Time
+  limit: Int = 10
+}
+
+type AdminEvent {
+  section: String
+  after: Map
+  before: Map
+  timestamp: Time!
+  user: String!
+}
+
+type AdminEventsPayload {
+  count: Int!
+  eventLogEntries: [AdminEvent!]!
+}
+
+###### ADMIN SETTINGS ######
 input SaveAdminSettingsInput {
   adminSettings: AdminSettingsInput!
 }
 
 input SESConfigInput {
-  senderAddress: String!
+  senderAddress: String! @redactSecrets
 }
 
 type SESConfig {
@@ -133,6 +152,7 @@ type RepotrackerConfig {
   maxConcurrentRequests: Int
 }
 
+
 input AdminSettingsInput {
   authConfig: AuthConfigInput
   banner: String
@@ -144,6 +164,9 @@ input AdminSettingsInput {
   podLifecycle: PodLifecycleConfigInput
   scheduler: SchedulerConfigInput
   repotracker: RepotrackerConfigInput
+  api: APIConfigInput
+  ui: UIConfigInput
+  disabledGQLQueries: [String!]
 }
 
 type AdminSettings {
@@ -157,8 +180,15 @@ type AdminSettings {
   podLifecycle: PodLifecycleConfig
   scheduler: SchedulerConfig
   repotracker: RepotrackerConfig
+  api: APIConfig
+  ui: UIConfig
+  disabledGQLQueries: [String!]!
 }
 
+"""
+SpruceConfig defines settings that apply to all users of Evergreen.
+For example, if the banner field is populated, then a sitewide banner will be shown to all users.
+"""
 type SpruceConfig {
   banner: String
   bannerTheme: String
@@ -262,11 +292,54 @@ type ContainerPool {
   port: Int!
 }
 
+input APIConfigInput {
+  httpListenAddr: String!
+  url: String!
+  corpUrl: String!
+}
+
+type APIConfig {
+  httpListenAddr: String
+  url: String
+  corpUrl: String
+}
+
+input UIConfigInput {
+  url: String!
+  helpUrl: String!
+  uiv2Url: String!
+  parsleyUrl: String!
+  httpListenAddr: String!
+  secret: String! @redactSecrets 
+  defaultProject: String!
+  corsOrigins: [String!]!
+  fileStreamingContentTypes: [String!]!
+  loginDomain: String!
+  userVoice: String!
+  csrfKey: String!
+  cacheTemplates: Boolean!
+  stagingEnvironment: String!
+  betaFeatures: BetaFeaturesInput!
+}
+
 type UIConfig {
   betaFeatures: BetaFeatures!
+  url: String
+  helpUrl: String
+  uiv2Url: String
+  parsleyUrl: String
+  httpListenAddr: String
+  secret: String @requireAdmin
   defaultProject: String!
+  corsOrigins: [String!]!
+  fileStreamingContentTypes: [String!]!
+  loginDomain: String
   userVoice: String
+  csrfKey: String
+  cacheTemplates: Boolean
+  stagingEnvironment: String
 }
+
 
 type SlackConfig {
   name: String

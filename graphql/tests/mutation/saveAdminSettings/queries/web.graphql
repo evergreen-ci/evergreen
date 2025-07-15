@@ -1,0 +1,55 @@
+mutation {
+  saveAdminSettings(
+    adminSettings: {
+      api: {
+        httpListenAddr: ":9090"
+        url: "http://localhost:8080"
+        corpUrl: "https://evergreen-staging.corp.mongodb.com"
+      }
+      disabledGQLQueries: ["query1", "query2", "query3", "query4"]
+      ui: {
+        url: "http://localhost:600"
+        helpUrl: "https://help.example.com"
+        uiv2Url: "http://localhost:3000"
+        parsleyUrl: "http://localhost:4173"
+        httpListenAddr: ":3000"
+        secret: "test-secret"
+        defaultProject: "evergreen"
+        corsOrigins: ["http://localhost:3000", "http://localhost:5173"]
+        fileStreamingContentTypes: ["text/plain", "application/json"]
+        loginDomain: "localhost"
+        userVoice: "https://uservoice.com"
+        csrfKey: "12345678901234567890123456789012"
+        cacheTemplates: true
+        stagingEnvironment: "not-staging"
+        betaFeatures: { spruceWaterfallEnabled: false }
+      }
+    }
+  ) {
+    api {
+      httpListenAddr
+      url
+      corpUrl
+    }
+    ui {
+      url
+      helpUrl
+      uiv2Url
+      parsleyUrl
+      httpListenAddr
+      secret
+      defaultProject
+      corsOrigins
+      fileStreamingContentTypes
+      loginDomain
+      userVoice
+      csrfKey
+      cacheTemplates
+      stagingEnvironment
+      betaFeatures {
+        spruceWaterfallEnabled
+      }
+    }
+    disabledGQLQueries
+  }
+}

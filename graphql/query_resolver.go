@@ -53,6 +53,31 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution
 	}, nil
 }
 
+// AdminEvents is the resolver for the adminEvents field.
+func (r *queryResolver) AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error) {
+	before := utility.FromTimePtr(opts.Before)
+	limit := utility.FromIntPtr(opts.Limit)
+
+	events, err := event.FindLatestAdminEvents(ctx, limit, before)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving admin events: %s", err.Error()))
+	}
+
+	eventLogEntries := []*AdminEvent{}
+	for _, e := range events {
+		entry, err := makeAdminEvent(ctx, e)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		eventLogEntries = append(eventLogEntries, entry)
+	}
+
+	return &AdminEventsPayload{
+		EventLogEntries: eventLogEntries,
+		Count:           len(eventLogEntries),
+	}, nil
+}
+
 // AdminSettings is the resolver for the adminSettings field.
 func (r *queryResolver) AdminSettings(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig(ctx)

@@ -114,6 +114,7 @@
               "preferredType",
               "publicKey",
               "secret",
+              "senderAddress",
               "servicePassword",
               "vars"
             ]

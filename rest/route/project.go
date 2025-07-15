@@ -1119,7 +1119,7 @@ type getProjectTasksHandler struct {
 	taskName    string
 	url         string
 
-	opts dbModel.GetProjectTasksOpts
+	opts model.GetProjectTasksOpts
 }
 
 func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
@@ -1133,12 +1133,10 @@ func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
 //	@Tags			tasks
 //	@Router			/projects/{project_id}/tasks/{task_name} [get]
 //	@Security		Api-User || Api-Key
-//	@Param			project_id		path	string	true	"the project ID"
-//	@Param			task_name		path	string	true	"the task name"
-//	@Param			num_versions	body	int		false	"The number of latest versions to be searched. Defaults to 20."
-//	@Param			start_at		body	int		false	"The version order number to start returning results after."
-//	@Param			build_variant	body	string	false	"If set, will only include tasks that have run on this build variant."
-//	@Success		200				{array}	model.APITask
+//	@Param			project_id	path	string						true	"the project ID"
+//	@Param			task_name	path	string						true	"the task name"
+//	@Param			{object}	body	model.GetProjectTasksOpts	false	"parameters"
+//	@Success		200			{array}	model.APITask
 func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTasksHandler{url: h.url}
 }
@@ -1172,7 +1170,12 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, h.opts)
+	tasks, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, dbModel.GetProjectTasksOpts{
+		Limit:        h.opts.Limit,
+		BuildVariant: h.opts.BuildVariant,
+		StartAt:      h.opts.StartAt,
+		Requesters:   h.opts.Requesters,
+	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting tasks for project '%s' and task '%s'", h.projectName, h.taskName))
 	}
