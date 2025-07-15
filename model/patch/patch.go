@@ -443,24 +443,21 @@ func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (bool, error
 		return false, nil
 	}
 
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
-		IdKey:     p.Id,
-		StatusKey: bson.M{"$ne": newStatus},
-	}, bson.M{
-		"$set": bson.M{
-			StatusKey: newStatus,
-		},
-	})
-	if err != nil {
-		return false, err
-	}
-
-	p.Status = newStatus
-
-	return res.ModifiedCount > 0, nil
+	return p.setStatus(ctx, newStatus)
 }
 
-func (p *Patch) MarkFinished(ctx context.Context, status string, finishTime time.Time) (bool, error) {
+func (p *Patch) MarkFinished(ctx context.Context, status string) (bool, error) {
+	return p.setStatus(ctx, status)
+}
+
+func (p *Patch) setStatus(ctx context.Context, status string) (modified bool, err error) {
+	setFields := bson.M{
+		StatusKey: status,
+	}
+	var finishTime time.Time
+	if evergreen.IsFinishedVersionStatus(status) {
+		setFields[FinishTimeKey] = finishTime
+	}
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
 		IdKey:     p.Id,
 		StatusKey: bson.M{"$ne": status},
