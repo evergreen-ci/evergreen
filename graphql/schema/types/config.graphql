@@ -1,8 +1,27 @@
-###### TYPES ######
+###### ADMIN EVENTS ######
+
 """
-SpruceConfig defines settings that apply to all users of Evergreen.
-For example, if the banner field is populated, then a sitewide banner will be shown to all users.
+AdminEventsInput is the input to the adminEvents query.
 """
+input AdminEventsInput {
+  before: Time
+  limit: Int = 10
+}
+
+type AdminEvent {
+  section: String
+  after: Map
+  before: Map
+  timestamp: Time!
+  user: String!
+}
+
+type AdminEventsPayload {
+  count: Int!
+  eventLogEntries: [AdminEvent!]!
+}
+
+###### ADMIN SETTINGS ######
 input SaveAdminSettingsInput {
   adminSettings: AdminSettingsInput!
 }
@@ -164,6 +183,10 @@ type AdminSettings {
   disabledGQLQueries: [String!]!
 }
 
+"""
+SpruceConfig defines settings that apply to all users of Evergreen.
+For example, if the banner field is populated, then a sitewide banner will be shown to all users.
+"""
 type SpruceConfig {
   banner: String
   bannerTheme: String
