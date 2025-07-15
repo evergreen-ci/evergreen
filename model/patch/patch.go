@@ -454,10 +454,7 @@ func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (modified bo
 		IdKey:     p.Id,
 		StatusKey: bson.M{"$ne": newStatus},
 	}, bson.M{
-		"$set": bson.M{
-			FinishTimeKey: finishTime,
-			StatusKey:     newStatus,
-		},
+		"$set": setFields,
 	})
 	if err != nil {
 		return false, err

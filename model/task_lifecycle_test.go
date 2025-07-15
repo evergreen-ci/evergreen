@@ -1769,6 +1769,7 @@ func TestUpdatePatchStatus(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.Zero(t, dbPatch.FinishTime)
 
 			checkPatchEvents(t, p, []eventTypeAndData{
 				{
@@ -1805,6 +1806,7 @@ func TestUpdatePatchStatus(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.Zero(t, dbPatch.FinishTime)
 
 			checkPatchEvents(t, p, []eventTypeAndData{
 				{
@@ -1841,6 +1843,7 @@ func TestUpdatePatchStatus(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
 
 			checkPatchEvents(t, p, []eventTypeAndData{
 				{
@@ -1874,6 +1877,7 @@ func TestUpdatePatchStatus(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
 
 			checkPatchEvents(t, p, []eventTypeAndData{
 				{
@@ -1893,6 +1897,7 @@ func TestUpdatePatchStatus(t *testing.T) {
 		},
 		"NoopsForUpdatingFinishedPatchToSameStatus": func(t *testing.T, p *patch.Patch) {
 			p.Status = evergreen.VersionSucceeded
+			p.FinishTime = time.Now()
 			require.NoError(t, p.Insert(t.Context()))
 
 			const newStatus = evergreen.VersionSucceeded
@@ -1905,6 +1910,7 @@ func TestUpdatePatchStatus(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
 
 			events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
