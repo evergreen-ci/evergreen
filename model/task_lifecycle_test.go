@@ -1208,11 +1208,6 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	type expectedEvent struct {
-		resourceID string
-		eventType  string
-	}
-
 	type testCase struct {
 		tasks []task.Task
 
@@ -1223,8 +1218,6 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		expectedBuildActivation   bool
 		expectedVersionActivation bool
 		expectedPatchActivation   bool
-
-		expectedEvents []expectedEvent
 	}
 
 	for name, test := range map[string]testCase{
