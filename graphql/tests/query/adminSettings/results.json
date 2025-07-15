@@ -141,7 +141,7 @@
         "data": {
           "adminSettings": {
             "amboy": {
-              "name": "amboy config",
+              "name": "amboy-config",
               "singleName": "amboy-single",
               "poolSizeLocal": 10,
               "poolSizeRemote": 10,
