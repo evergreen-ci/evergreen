@@ -1608,7 +1608,8 @@ type patchStatusUpdate struct {
 }
 
 // updatePatchStatus updates the status of a patch. It returns information about
-// the patch status and its patch family, if any.
+// the patch status. If the patch status changed, it also includes patch family
+// information.
 func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (patchStatusUpdate, error) {
 	var psu patchStatusUpdate
 	if status == p.Status {

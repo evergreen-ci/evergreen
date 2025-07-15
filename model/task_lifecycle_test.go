@@ -1760,25 +1760,6 @@ func TestUpdatePatchStatus(t *testing.T) {
 		}
 	}
 	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch){
-		"NoopsForUpdatingPatchToSameStatus": func(t *testing.T, p *patch.Patch) {
-			require.NoError(t, p.Insert(t.Context()))
-
-			const newStatus = evergreen.VersionCreated
-			psu, err := updatePatchStatus(t.Context(), p, newStatus)
-			require.NoError(t, err)
-
-			assert.False(t, psu.patchStatusChanged)
-			assert.False(t, psu.isPatchFamilyDone)
-			assert.Zero(t, psu.parentPatch)
-			assert.Empty(t, psu.patchFamilyFinishedCollectiveStatus)
-
-			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
-			require.NoError(t, err)
-			require.NotZero(t, dbPatch)
-			assert.Equal(t, newStatus, dbPatch.Status)
-
-			checkPatchEvents(t, p, nil)
-		},
 		"UpdatesPatchToStarted": func(t *testing.T, p *patch.Patch) {
 			require.NoError(t, p.Insert(t.Context()))
 
@@ -1916,6 +1897,25 @@ func TestUpdatePatchStatus(t *testing.T) {
 					},
 				},
 			})
+		},
+		"NoopsForUpdatingFinishedPatchToSameStatus": func(t *testing.T, p *patch.Patch) {
+			p.Status = evergreen.VersionSucceeded
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionSucceeded
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.False(t, psu.patchStatusChanged, "patch status should not change")
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+
+			events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			assert.Empty(t, events, "should not log new patch/vesion finished events when the patch is already finished")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
