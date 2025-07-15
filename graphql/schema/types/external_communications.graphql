@@ -1,13 +1,13 @@
 input JiraConfigInput {
   email: String
   host: String
-  personalAccessToken: String
+  personalAccessToken: String @redactSecret
 }
 
 type JiraConfig {
   email: String
   host: String
-  personalAccessToken: String
+  personalAccessToken: String @requireAdmin
 }
 
 input RuntimeEnvironmentConfigInput {
@@ -22,14 +22,14 @@ type RuntimeEnvironmentConfig {
 
 input SlackConfigInput {
   options: SlackOptionsInput
-  token: String!
+  token: String! @redactSecret
   level: String!
   name: String!
 }
 
 type SlackConfig {
   options: SlackOptions
-  token: String
+  token: String @requireAdmin
   level: String
   name: String
 }
@@ -66,13 +66,13 @@ type SplunkConfig {
 
 input SplunkConnectionInfoInput {
     serverurl: String!
-    token: String!
+    token: String! @redactSecret
     channel: String!
 }
 
 type SplunkConnectionInfo {
     serverurl: String!
-    token: String!
+    token: String! @requireAdmin
     channel: String!
 }
 
