@@ -204,23 +204,42 @@ func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) 
 	return errors.Wrap(AddSatisfiedTrigger(ctx, v.Id, definitionID), "adding satisfied trigger")
 }
 
-func (v *Version) UpdateStatus(ctx context.Context, newStatus string) error {
+func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified bool, err error) {
 	if v.Status == newStatus {
-		return nil
+		return false, nil
+	}
+
+	modified, err = setVersionStatus(ctx, v.Id, newStatus)
+	if err != nil {
+		return false, errors.Wrapf(err, "updating status for version '%s'", v.Id)
 	}
 
 	v.Status = newStatus
-	return setVersionStatus(ctx, v.Id, newStatus)
+	if evergreen.IsFinishedVersionStatus(newStatus) {
+		v.FinishTime = time.Now()
+	}
+
+	return modified, nil
 }
 
-func setVersionStatus(ctx context.Context, versionId, newStatus string) error {
-	return VersionUpdateOne(
-		ctx,
-		bson.M{VersionIdKey: versionId},
-		bson.M{"$set": bson.M{
-			VersionStatusKey: newStatus,
-		}},
-	)
+func setVersionStatus(ctx context.Context, versionId, newStatus string) (modified bool, err error) {
+	setFields := bson.M{VersionStatusKey: newStatus}
+	if evergreen.IsFinishedVersionStatus(newStatus) {
+		setFields[VersionFinishTimeKey] = time.Now()
+	}
+	update := bson.M{
+		"$set": setFields,
+	}
+
+	res, err := evergreen.GetEnvironment().DB().Collection(VersionCollection).UpdateOne(ctx, bson.M{
+		VersionIdKey:     versionId,
+		VersionStatusKey: bson.M{"$ne": newStatus},
+	}, update)
+	if err != nil {
+		return false, err
+	}
+
+	return res.ModifiedCount > 0, nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of a version for
@@ -238,19 +257,6 @@ func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duratio
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
-}
-
-func (v *Version) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
-	v.Status = status
-	v.FinishTime = finishTime
-	return VersionUpdateOne(
-		ctx,
-		bson.M{VersionIdKey: v.Id},
-		bson.M{"$set": bson.M{
-			VersionFinishTimeKey: finishTime,
-			VersionStatusKey:     status,
-		}},
-	)
 }
 
 // UpdateProjectStorageMethod updates the version's parser project storage
