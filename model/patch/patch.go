@@ -454,7 +454,7 @@ func (p *Patch) setStatus(ctx context.Context, status string) (modified bool, er
 	setFields := bson.M{
 		StatusKey: status,
 	}
-	var finishTime time.Time
+	finishTime := time.Now()
 	if evergreen.IsFinishedVersionStatus(status) {
 		setFields[FinishTimeKey] = finishTime
 	}
@@ -472,7 +472,9 @@ func (p *Patch) setStatus(ctx context.Context, status string) (modified bool, er
 	}
 
 	p.Status = status
-	p.FinishTime = finishTime
+	if evergreen.IsFinishedVersionStatus(status) {
+		p.FinishTime = finishTime
+	}
 
 	return res.ModifiedCount > 0, nil
 }
