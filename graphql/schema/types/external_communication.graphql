@@ -1,0 +1,85 @@
+input JiraConfigInput {
+  email: String
+  host: String
+  personalAccessToken: String
+}
+
+type JiraConfig {
+  email: String
+  host: String
+  personalAccessToken: String
+}
+
+input RuntimeEnvironmentConfigInput {
+    baseurl: String!
+    apiKey: String
+}
+
+type RuntimeEnvironmentConfig {
+    baseurl: String!
+    apiKey: String
+}
+
+input SlackConfigInput {
+  options: SlackOptionsInput
+  token: String!
+  level: String!
+  name: String!
+}
+
+type SlackConfig {
+  options: SlackOptions
+  token: String
+  level: String
+  name: String
+}
+
+input SlackOptionsInput {
+  channel: String
+  hostname: String
+  name: String
+  username: String
+  basicMetadata: Boolean
+  fields: Boolean
+  allFields: Boolean
+  fieldsSet: BooleanMap
+}
+
+type SlackOptions {
+    channel: String
+    hostname: String
+    name: String
+    username: String
+    basicMetadata: Boolean
+    fields: Boolean
+    allFields: Boolean
+    fieldsSet: BooleanMap
+}
+
+input SplunkConfigInput {
+    splunkConnectionInfo: SplunkConnectionInfoInput!
+}
+
+type SplunkConfig {
+    splunkConnectionInfo: SplunkConnectionInfo!
+}
+
+input SplunkConnectionInfoInput {
+    serverurl: String!
+    token: String!
+    channel: String!
+}
+
+type SplunkConnectionInfo {
+    serverurl: String!
+    token: String!
+    channel: String!
+}
+
+input TestSelectionConfigInput {
+    url: String!
+}
+
+type TestSelectionConfig {
+    url: String!
+}

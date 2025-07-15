@@ -119,15 +119,20 @@ type ComplexityRoot struct {
 	}
 
 	AdminSettings struct {
-		Banner       func(childComplexity int) int
-		BannerTheme  func(childComplexity int) int
-		HostInit     func(childComplexity int) int
-		Notify       func(childComplexity int) int
-		PodLifecycle func(childComplexity int) int
-		RepoTracker  func(childComplexity int) int
-		Scheduler    func(childComplexity int) int
-		ServiceFlags func(childComplexity int) int
-		TaskLimits   func(childComplexity int) int
+		Banner              func(childComplexity int) int
+		BannerTheme         func(childComplexity int) int
+		HostInit            func(childComplexity int) int
+		Jira                func(childComplexity int) int
+		Notify              func(childComplexity int) int
+		PodLifecycle        func(childComplexity int) int
+		RepoTracker         func(childComplexity int) int
+		RuntimeEnvironments func(childComplexity int) int
+		Scheduler           func(childComplexity int) int
+		ServiceFlags        func(childComplexity int) int
+		Slack               func(childComplexity int) int
+		Splunk              func(childComplexity int) int
+		TaskLimits          func(childComplexity int) int
+		TestSelection       func(childComplexity int) int
 	}
 
 	Annotation struct {
@@ -615,8 +620,9 @@ type ComplexityRoot struct {
 	}
 
 	JiraConfig struct {
-		Email func(childComplexity int) int
-		Host  func(childComplexity int) int
+		Email               func(childComplexity int) int
+		Host                func(childComplexity int) int
+		PersonalAccessToken func(childComplexity int) int
 	}
 
 	JiraIssueSubscriber struct {
@@ -1229,6 +1235,11 @@ type ComplexityRoot struct {
 		VirtualMemoryKB func(childComplexity int) int
 	}
 
+	RuntimeEnvironmentConfig struct {
+		APIKey  func(childComplexity int) int
+		BaseURL func(childComplexity int) int
+	}
+
 	SESConfig struct {
 		SenderAddress func(childComplexity int) int
 	}
@@ -1319,7 +1330,21 @@ type ComplexityRoot struct {
 	}
 
 	SlackConfig struct {
-		Name func(childComplexity int) int
+		Level   func(childComplexity int) int
+		Name    func(childComplexity int) int
+		Options func(childComplexity int) int
+		Token   func(childComplexity int) int
+	}
+
+	SlackOptions struct {
+		AllFields     func(childComplexity int) int
+		BasicMetadata func(childComplexity int) int
+		Channel       func(childComplexity int) int
+		Fields        func(childComplexity int) int
+		FieldsSet     func(childComplexity int) int
+		Hostname      func(childComplexity int) int
+		Name          func(childComplexity int) int
+		Username      func(childComplexity int) int
 	}
 
 	SleepSchedule struct {
@@ -1344,6 +1369,16 @@ type ComplexityRoot struct {
 		SpawnHostsPerUser         func(childComplexity int) int
 		UnexpirableHostsPerUser   func(childComplexity int) int
 		UnexpirableVolumesPerUser func(childComplexity int) int
+	}
+
+	SplunkConfig struct {
+		SplunkConnectionInfo func(childComplexity int) int
+	}
+
+	SplunkConnectionInfo struct {
+		Channel   func(childComplexity int) int
+		ServerURL func(childComplexity int) int
+		Token     func(childComplexity int) int
 	}
 
 	SpruceConfig struct {
@@ -1641,6 +1676,10 @@ type ComplexityRoot struct {
 		Status     func(childComplexity int) int
 		TaskID     func(childComplexity int) int
 		TestFile   func(childComplexity int) int
+	}
+
+	TestSelectionConfig struct {
+		URL func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -2354,6 +2393,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.HostInit(childComplexity), true
 
+	case "AdminSettings.jira":
+		if e.complexity.AdminSettings.Jira == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Jira(childComplexity), true
+
 	case "AdminSettings.notify":
 		if e.complexity.AdminSettings.Notify == nil {
 			break
@@ -2375,6 +2421,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.RepoTracker(childComplexity), true
 
+	case "AdminSettings.runtimeEnvironments":
+		if e.complexity.AdminSettings.RuntimeEnvironments == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.RuntimeEnvironments(childComplexity), true
+
 	case "AdminSettings.scheduler":
 		if e.complexity.AdminSettings.Scheduler == nil {
 			break
@@ -2389,12 +2442,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.ServiceFlags(childComplexity), true
 
+	case "AdminSettings.slack":
+		if e.complexity.AdminSettings.Slack == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Slack(childComplexity), true
+
+	case "AdminSettings.splunk":
+		if e.complexity.AdminSettings.Splunk == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Splunk(childComplexity), true
+
 	case "AdminSettings.taskLimits":
 		if e.complexity.AdminSettings.TaskLimits == nil {
 			break
 		}
 
 		return e.complexity.AdminSettings.TaskLimits(childComplexity), true
+
+	case "AdminSettings.testSelection":
+		if e.complexity.AdminSettings.TestSelection == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.TestSelection(childComplexity), true
 
 	case "Annotation.createdIssues":
 		if e.complexity.Annotation.CreatedIssues == nil {
@@ -4478,6 +4552,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.JiraConfig.Host(childComplexity), true
+
+	case "JiraConfig.personalAccessToken":
+		if e.complexity.JiraConfig.PersonalAccessToken == nil {
+			break
+		}
+
+		return e.complexity.JiraConfig.PersonalAccessToken(childComplexity), true
 
 	case "JiraIssueSubscriber.issueType":
 		if e.complexity.JiraIssueSubscriber.IssueType == nil {
@@ -8011,6 +8092,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ResourceLimits.VirtualMemoryKB(childComplexity), true
 
+	case "RuntimeEnvironmentConfig.apiKey":
+		if e.complexity.RuntimeEnvironmentConfig.APIKey == nil {
+			break
+		}
+
+		return e.complexity.RuntimeEnvironmentConfig.APIKey(childComplexity), true
+
+	case "RuntimeEnvironmentConfig.baseurl":
+		if e.complexity.RuntimeEnvironmentConfig.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.RuntimeEnvironmentConfig.BaseURL(childComplexity), true
+
 	case "SESConfig.senderAddress":
 		if e.complexity.SESConfig.SenderAddress == nil {
 			break
@@ -8466,12 +8561,89 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SingleTaskDistroConfig.ProjectTasksPairs(childComplexity), true
 
+	case "SlackConfig.level":
+		if e.complexity.SlackConfig.Level == nil {
+			break
+		}
+
+		return e.complexity.SlackConfig.Level(childComplexity), true
+
 	case "SlackConfig.name":
 		if e.complexity.SlackConfig.Name == nil {
 			break
 		}
 
 		return e.complexity.SlackConfig.Name(childComplexity), true
+
+	case "SlackConfig.options":
+		if e.complexity.SlackConfig.Options == nil {
+			break
+		}
+
+		return e.complexity.SlackConfig.Options(childComplexity), true
+
+	case "SlackConfig.token":
+		if e.complexity.SlackConfig.Token == nil {
+			break
+		}
+
+		return e.complexity.SlackConfig.Token(childComplexity), true
+
+	case "SlackOptions.allFields":
+		if e.complexity.SlackOptions.AllFields == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.AllFields(childComplexity), true
+
+	case "SlackOptions.basicMetadata":
+		if e.complexity.SlackOptions.BasicMetadata == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.BasicMetadata(childComplexity), true
+
+	case "SlackOptions.channel":
+		if e.complexity.SlackOptions.Channel == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Channel(childComplexity), true
+
+	case "SlackOptions.fields":
+		if e.complexity.SlackOptions.Fields == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Fields(childComplexity), true
+
+	case "SlackOptions.fieldsSet":
+		if e.complexity.SlackOptions.FieldsSet == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.FieldsSet(childComplexity), true
+
+	case "SlackOptions.hostname":
+		if e.complexity.SlackOptions.Hostname == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Hostname(childComplexity), true
+
+	case "SlackOptions.name":
+		if e.complexity.SlackOptions.Name == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Name(childComplexity), true
+
+	case "SlackOptions.username":
+		if e.complexity.SlackOptions.Username == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Username(childComplexity), true
 
 	case "SleepSchedule.dailyStartTime":
 		if e.complexity.SleepSchedule.DailyStartTime == nil {
@@ -8577,6 +8749,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SpawnHostConfig.UnexpirableVolumesPerUser(childComplexity), true
+
+	case "SplunkConfig.splunkConnectionInfo":
+		if e.complexity.SplunkConfig.SplunkConnectionInfo == nil {
+			break
+		}
+
+		return e.complexity.SplunkConfig.SplunkConnectionInfo(childComplexity), true
+
+	case "SplunkConnectionInfo.channel":
+		if e.complexity.SplunkConnectionInfo.Channel == nil {
+			break
+		}
+
+		return e.complexity.SplunkConnectionInfo.Channel(childComplexity), true
+
+	case "SplunkConnectionInfo.serverurl":
+		if e.complexity.SplunkConnectionInfo.ServerURL == nil {
+			break
+		}
+
+		return e.complexity.SplunkConnectionInfo.ServerURL(childComplexity), true
+
+	case "SplunkConnectionInfo.token":
+		if e.complexity.SplunkConnectionInfo.Token == nil {
+			break
+		}
+
+		return e.complexity.SplunkConnectionInfo.Token(childComplexity), true
 
 	case "SpruceConfig.banner":
 		if e.complexity.SpruceConfig.Banner == nil {
@@ -10095,6 +10295,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TestResult.TestFile(childComplexity), true
 
+	case "TestSelectionConfig.url":
+		if e.complexity.TestSelectionConfig.URL == nil {
+			break
+		}
+
+		return e.complexity.TestSelectionConfig.URL(childComplexity), true
+
 	case "TicketFields.assignedTeam":
 		if e.complexity.TicketFields.AssignedTeam == nil {
 			break
@@ -11262,6 +11469,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputIceCreamSettingsInput,
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
+		ec.unmarshalInputJiraConfigInput,
 		ec.unmarshalInputJiraIssueSubscriberInput,
 		ec.unmarshalInputMainlineCommitsOptions,
 		ec.unmarshalInputMetadataLinkInput,
@@ -11294,6 +11502,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputRepotrackerConfigInput,
 		ec.unmarshalInputResourceLimitsInput,
+		ec.unmarshalInputRuntimeEnvironmentConfigInput,
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
@@ -11301,10 +11510,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputServiceFlagsInput,
 		ec.unmarshalInputSetLastRevisionInput,
+		ec.unmarshalInputSlackConfigInput,
+		ec.unmarshalInputSlackOptionsInput,
 		ec.unmarshalInputSleepScheduleInput,
 		ec.unmarshalInputSortOrder,
 		ec.unmarshalInputSpawnHostInput,
 		ec.unmarshalInputSpawnVolumeInput,
+		ec.unmarshalInputSplunkConfigInput,
+		ec.unmarshalInputSplunkConnectionInfoInput,
 		ec.unmarshalInputSubscriberInput,
 		ec.unmarshalInputSubscriptionInput,
 		ec.unmarshalInputTaskAnnotationSettingsInput,
@@ -11316,6 +11529,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTestFilter,
 		ec.unmarshalInputTestFilterOptions,
+		ec.unmarshalInputTestSelectionConfigInput,
 		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputToolchainOpts,
 		ec.unmarshalInputTriggerAliasInput,
@@ -11430,7 +11644,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/external_communication.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -11449,6 +11663,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/annotation.graphql", Input: sourceData("schema/types/annotation.graphql"), BuiltIn: false},
 	{Name: "schema/types/config.graphql", Input: sourceData("schema/types/config.graphql"), BuiltIn: false},
 	{Name: "schema/types/distro.graphql", Input: sourceData("schema/types/distro.graphql"), BuiltIn: false},
+	{Name: "schema/types/external_communication.graphql", Input: sourceData("schema/types/external_communication.graphql"), BuiltIn: false},
 	{Name: "schema/types/host.graphql", Input: sourceData("schema/types/host.graphql"), BuiltIn: false},
 	{Name: "schema/types/image.graphql", Input: sourceData("schema/types/image.graphql"), BuiltIn: false},
 	{Name: "schema/types/issue_link.graphql", Input: sourceData("schema/types/issue_link.graphql"), BuiltIn: false},
@@ -17788,6 +18003,243 @@ func (ec *executionContext) fieldContext_AdminSettings_bannerTheme(_ context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type BannerTheme does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_jira(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_jira(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Jira, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIJiraConfig)
+	fc.Result = res
+	return ec.marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_jira(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_JiraConfig_email(ctx, field)
+			case "host":
+				return ec.fieldContext_JiraConfig_host(ctx, field)
+			case "personalAccessToken":
+				return ec.fieldContext_JiraConfig_personalAccessToken(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type JiraConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_slack(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_slack(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slack, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISlackConfig)
+	fc.Result = res
+	return ec.marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_slack(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "options":
+				return ec.fieldContext_SlackConfig_options(ctx, field)
+			case "token":
+				return ec.fieldContext_SlackConfig_token(ctx, field)
+			case "level":
+				return ec.fieldContext_SlackConfig_level(ctx, field)
+			case "name":
+				return ec.fieldContext_SlackConfig_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SlackConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_splunk(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_splunk(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Splunk, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISplunkConfig)
+	fc.Result = res
+	return ec.marshalOSplunkConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_splunk(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "splunkConnectionInfo":
+				return ec.fieldContext_SplunkConfig_splunkConnectionInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SplunkConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_runtimeEnvironments(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RuntimeEnvironments, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIRuntimeEnvironmentsConfig)
+	fc.Result = res
+	return ec.marshalORuntimeEnvironmentConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_runtimeEnvironments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "baseurl":
+				return ec.fieldContext_RuntimeEnvironmentConfig_baseurl(ctx, field)
+			case "apiKey":
+				return ec.fieldContext_RuntimeEnvironmentConfig_apiKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RuntimeEnvironmentConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_testSelection(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_testSelection(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TestSelection, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITestSelectionConfig)
+	fc.Result = res
+	return ec.marshalOTestSelectionConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_testSelection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_TestSelectionConfig_url(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TestSelectionConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -32119,6 +32571,47 @@ func (ec *executionContext) fieldContext_JiraConfig_host(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _JiraConfig_personalAccessToken(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_JiraConfig_personalAccessToken(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PersonalAccessToken, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_JiraConfig_personalAccessToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "JiraConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JiraIssueSubscriber_issueType(ctx context.Context, field graphql.CollectedField, obj *model.APIJIRAIssueSubscriber) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_JiraIssueSubscriber_issueType(ctx, field)
 	if err != nil {
@@ -34790,6 +35283,16 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "jira":
+				return ec.fieldContext_AdminSettings_jira(ctx, field)
+			case "slack":
+				return ec.fieldContext_AdminSettings_slack(ctx, field)
+			case "splunk":
+				return ec.fieldContext_AdminSettings_splunk(ctx, field)
+			case "runtimeEnvironments":
+				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_AdminSettings_testSelection(ctx, field)
 			case "serviceFlags":
 				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
 			case "notify":
@@ -51226,6 +51729,16 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "jira":
+				return ec.fieldContext_AdminSettings_jira(ctx, field)
+			case "slack":
+				return ec.fieldContext_AdminSettings_slack(ctx, field)
+			case "splunk":
+				return ec.fieldContext_AdminSettings_splunk(ctx, field)
+			case "runtimeEnvironments":
+				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_AdminSettings_testSelection(ctx, field)
 			case "serviceFlags":
 				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
 			case "notify":
@@ -57712,6 +58225,91 @@ func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _RuntimeEnvironmentConfig_baseurl(ctx context.Context, field graphql.CollectedField, obj *model.APIRuntimeEnvironmentsConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RuntimeEnvironmentConfig_baseurl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_baseurl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RuntimeEnvironmentConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RuntimeEnvironmentConfig_apiKey(ctx context.Context, field graphql.CollectedField, obj *model.APIRuntimeEnvironmentsConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RuntimeEnvironmentConfig_apiKey(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.APIKey, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RuntimeEnvironmentConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SESConfig_senderAddress(ctx context.Context, field graphql.CollectedField, obj *model.APISESConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SESConfig_senderAddress(ctx, field)
 	if err != nil {
@@ -60624,6 +61222,147 @@ func (ec *executionContext) fieldContext_SingleTaskDistroConfig_projectTasksPair
 	return fc, nil
 }
 
+func (ec *executionContext) _SlackConfig_options(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackConfig_options(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Options, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISlackOptions)
+	fc.Result = res
+	return ec.marshalOSlackOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackConfig_options(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channel":
+				return ec.fieldContext_SlackOptions_channel(ctx, field)
+			case "hostname":
+				return ec.fieldContext_SlackOptions_hostname(ctx, field)
+			case "name":
+				return ec.fieldContext_SlackOptions_name(ctx, field)
+			case "username":
+				return ec.fieldContext_SlackOptions_username(ctx, field)
+			case "basicMetadata":
+				return ec.fieldContext_SlackOptions_basicMetadata(ctx, field)
+			case "fields":
+				return ec.fieldContext_SlackOptions_fields(ctx, field)
+			case "allFields":
+				return ec.fieldContext_SlackOptions_allFields(ctx, field)
+			case "fieldsSet":
+				return ec.fieldContext_SlackOptions_fieldsSet(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SlackOptions", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackConfig_token(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackConfig_token(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Token, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackConfig_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackConfig_level(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackConfig_level(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Level, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackConfig_level(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SlackConfig_name(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SlackConfig_name(ctx, field)
 	if err != nil {
@@ -60660,6 +61399,334 @@ func (ec *executionContext) fieldContext_SlackConfig_name(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_channel(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_channel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Channel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_hostname(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_hostname(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Hostname, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_hostname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_name(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_username(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_username(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Username, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_basicMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_basicMetadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BasicMetadata, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_basicMetadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_fields(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_fields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_fields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_allFields(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_allFields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllFields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_allFields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_fieldsSet(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_fieldsSet(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FieldsSet, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]bool)
+	fc.Result = res
+	return ec.marshalOBooleanMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_fieldsSet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BooleanMap does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61316,6 +62383,190 @@ func (ec *executionContext) fieldContext_SpawnHostConfig_unexpirableVolumesPerUs
 	return fc, nil
 }
 
+func (ec *executionContext) _SplunkConfig_splunkConnectionInfo(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConfig_splunkConnectionInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SplunkConnectionInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISplunkConnectionInfo)
+	fc.Result = res
+	return ec.marshalNSplunkConnectionInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConfig_splunkConnectionInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "serverurl":
+				return ec.fieldContext_SplunkConnectionInfo_serverurl(ctx, field)
+			case "token":
+				return ec.fieldContext_SplunkConnectionInfo_token(ctx, field)
+			case "channel":
+				return ec.fieldContext_SplunkConnectionInfo_channel(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SplunkConnectionInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SplunkConnectionInfo_serverurl(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConnectionInfo_serverurl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ServerURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConnectionInfo_serverurl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConnectionInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SplunkConnectionInfo_token(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConnectionInfo_token(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Token, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConnectionInfo_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConnectionInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SplunkConnectionInfo_channel(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConnectionInfo_channel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Channel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConnectionInfo_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConnectionInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SpruceConfig_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SpruceConfig_banner(ctx, field)
 	if err != nil {
@@ -61527,6 +62778,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_jira(_ context.Context, fi
 				return ec.fieldContext_JiraConfig_email(ctx, field)
 			case "host":
 				return ec.fieldContext_JiraConfig_host(ctx, field)
+			case "personalAccessToken":
+				return ec.fieldContext_JiraConfig_personalAccessToken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type JiraConfig", field.Name)
 		},
@@ -61704,6 +62957,12 @@ func (ec *executionContext) fieldContext_SpruceConfig_slack(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "options":
+				return ec.fieldContext_SlackConfig_options(ctx, field)
+			case "token":
+				return ec.fieldContext_SlackConfig_token(ctx, field)
+			case "level":
+				return ec.fieldContext_SlackConfig_level(ctx, field)
 			case "name":
 				return ec.fieldContext_SlackConfig_name(ctx, field)
 			}
@@ -71754,6 +73013,50 @@ func (ec *executionContext) _TestResult_testFile(ctx context.Context, field grap
 func (ec *executionContext) fieldContext_TestResult_testFile(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestSelectionConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestSelectionConfig_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestSelectionConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestSelectionConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -81937,7 +83240,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker"}
+	fieldsInOrder := [...]string{"banner", "bannerTheme", "jira", "slack", "splunk", "runtimeEnvironments", "testSelection", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81960,6 +83263,41 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 			if err = ec.resolvers.AdminSettingsInput().BannerTheme(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "jira":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jira"))
+			data, err := ec.unmarshalOJiraConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Jira = data
+		case "slack":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slack"))
+			data, err := ec.unmarshalOSlackConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slack = data
+		case "splunk":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("splunk"))
+			data, err := ec.unmarshalOSplunkConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Splunk = data
+		case "runtimeEnvironments":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("runtimeEnvironments"))
+			data, err := ec.unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RuntimeEnvironments = data
+		case "testSelection":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
+			data, err := ec.unmarshalOTestSelectionConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TestSelection = data
 		case "serviceFlags":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceFlags"))
 			data, err := ec.unmarshalOServiceFlagsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx, v)
@@ -83924,6 +85262,47 @@ func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, ob
 				return it, err
 			}
 			it.URL = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputJiraConfigInput(ctx context.Context, obj any) (model.APIJiraConfig, error) {
+	var it model.APIJiraConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"email", "host", "personalAccessToken"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "email":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
+		case "host":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Host = data
+		case "personalAccessToken":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("personalAccessToken"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PersonalAccessToken = data
 		}
 	}
 
@@ -86213,6 +87592,40 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx context.Context, obj any) (model.APIRuntimeEnvironmentsConfig, error) {
+	var it model.APIRuntimeEnvironmentsConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"baseurl", "apiKey"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "baseurl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseurl"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKey = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSESConfigInput(ctx context.Context, obj any) (model.APISESConfig, error) {
 	var it model.APISESConfig
 	asMap := map[string]any{}
@@ -86787,6 +88200,130 @@ func (ec *executionContext) unmarshalInputSetLastRevisionInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSlackConfigInput(ctx context.Context, obj any) (model.APISlackConfig, error) {
+	var it model.APISlackConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"options", "token", "level", "name"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "options":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+			data, err := ec.unmarshalOSlackOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Options = data
+		case "token":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Token = data
+		case "level":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("level"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Level = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSlackOptionsInput(ctx context.Context, obj any) (model.APISlackOptions, error) {
+	var it model.APISlackOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channel", "hostname", "name", "username", "basicMetadata", "fields", "allFields", "fieldsSet"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Channel = data
+		case "hostname":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostname"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Hostname = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "username":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("username"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Username = data
+		case "basicMetadata":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("basicMetadata"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BasicMetadata = data
+		case "fields":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fields"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Fields = data
+		case "allFields":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allFields"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllFields = data
+		case "fieldsSet":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fieldsSet"))
+			data, err := ec.unmarshalOBooleanMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FieldsSet = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context, obj any) (host.SleepScheduleInfo, error) {
 	var it host.SleepScheduleInfo
 	asMap := map[string]any{}
@@ -87080,6 +88617,74 @@ func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, 
 				return it, err
 			}
 			it.Type = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSplunkConfigInput(ctx context.Context, obj any) (model.APISplunkConfig, error) {
+	var it model.APISplunkConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"splunkConnectionInfo"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "splunkConnectionInfo":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("splunkConnectionInfo"))
+			data, err := ec.unmarshalNSplunkConnectionInfoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SplunkConnectionInfo = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSplunkConnectionInfoInput(ctx context.Context, obj any) (model.APISplunkConnectionInfo, error) {
+	var it model.APISplunkConnectionInfo
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"serverurl", "token", "channel"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "serverurl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverurl"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServerURL = data
+		case "token":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Token = data
+		case "channel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channel"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Channel = data
 		}
 	}
 
@@ -87757,6 +89362,33 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 				return it, err
 			}
 			it.Page = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestSelectionConfigInput(ctx context.Context, obj any) (model.APITestSelectionConfig, error) {
+	var it model.APITestSelectionConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
 		}
 	}
 
@@ -88877,6 +90509,16 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "jira":
+			out.Values[i] = ec._AdminSettings_jira(ctx, field, obj)
+		case "slack":
+			out.Values[i] = ec._AdminSettings_slack(ctx, field, obj)
+		case "splunk":
+			out.Values[i] = ec._AdminSettings_splunk(ctx, field, obj)
+		case "runtimeEnvironments":
+			out.Values[i] = ec._AdminSettings_runtimeEnvironments(ctx, field, obj)
+		case "testSelection":
+			out.Values[i] = ec._AdminSettings_testSelection(ctx, field, obj)
 		case "serviceFlags":
 			out.Values[i] = ec._AdminSettings_serviceFlags(ctx, field, obj)
 		case "notify":
@@ -92920,6 +94562,8 @@ func (ec *executionContext) _JiraConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._JiraConfig_email(ctx, field, obj)
 		case "host":
 			out.Values[i] = ec._JiraConfig_host(ctx, field, obj)
+		case "personalAccessToken":
+			out.Values[i] = ec._JiraConfig_personalAccessToken(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -98789,6 +100433,47 @@ func (ec *executionContext) _ResourceLimits(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var runtimeEnvironmentConfigImplementors = []string{"RuntimeEnvironmentConfig"}
+
+func (ec *executionContext) _RuntimeEnvironmentConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIRuntimeEnvironmentsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, runtimeEnvironmentConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RuntimeEnvironmentConfig")
+		case "baseurl":
+			out.Values[i] = ec._RuntimeEnvironmentConfig_baseurl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "apiKey":
+			out.Values[i] = ec._RuntimeEnvironmentConfig_apiKey(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var sESConfigImplementors = []string{"SESConfig"}
 
 func (ec *executionContext) _SESConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISESConfig) graphql.Marshaler {
@@ -99343,8 +101028,64 @@ func (ec *executionContext) _SlackConfig(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("SlackConfig")
+		case "options":
+			out.Values[i] = ec._SlackConfig_options(ctx, field, obj)
+		case "token":
+			out.Values[i] = ec._SlackConfig_token(ctx, field, obj)
+		case "level":
+			out.Values[i] = ec._SlackConfig_level(ctx, field, obj)
 		case "name":
 			out.Values[i] = ec._SlackConfig_name(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var slackOptionsImplementors = []string{"SlackOptions"}
+
+func (ec *executionContext) _SlackOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APISlackOptions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, slackOptionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SlackOptions")
+		case "channel":
+			out.Values[i] = ec._SlackOptions_channel(ctx, field, obj)
+		case "hostname":
+			out.Values[i] = ec._SlackOptions_hostname(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._SlackOptions_name(ctx, field, obj)
+		case "username":
+			out.Values[i] = ec._SlackOptions_username(ctx, field, obj)
+		case "basicMetadata":
+			out.Values[i] = ec._SlackOptions_basicMetadata(ctx, field, obj)
+		case "fields":
+			out.Values[i] = ec._SlackOptions_fields(ctx, field, obj)
+		case "allFields":
+			out.Values[i] = ec._SlackOptions_allFields(ctx, field, obj)
+		case "fieldsSet":
+			out.Values[i] = ec._SlackOptions_fieldsSet(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99541,6 +101282,94 @@ func (ec *executionContext) _SpawnHostConfig(ctx context.Context, sel ast.Select
 			}
 		case "unexpirableVolumesPerUser":
 			out.Values[i] = ec._SpawnHostConfig_unexpirableVolumesPerUser(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var splunkConfigImplementors = []string{"SplunkConfig"}
+
+func (ec *executionContext) _SplunkConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISplunkConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, splunkConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SplunkConfig")
+		case "splunkConnectionInfo":
+			out.Values[i] = ec._SplunkConfig_splunkConnectionInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var splunkConnectionInfoImplementors = []string{"SplunkConnectionInfo"}
+
+func (ec *executionContext) _SplunkConnectionInfo(ctx context.Context, sel ast.SelectionSet, obj *model.APISplunkConnectionInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, splunkConnectionInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SplunkConnectionInfo")
+		case "serverurl":
+			out.Values[i] = ec._SplunkConnectionInfo_serverurl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "token":
+			out.Values[i] = ec._SplunkConnectionInfo_token(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channel":
+			out.Values[i] = ec._SplunkConnectionInfo_channel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -102632,6 +104461,45 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
 		case "testFile":
 			out.Values[i] = ec._TestResult_testFile(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var testSelectionConfigImplementors = []string{"TestSelectionConfig"}
+
+func (ec *executionContext) _TestSelectionConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APITestSelectionConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, testSelectionConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TestSelectionConfig")
+		case "url":
+			out.Values[i] = ec._TestSelectionConfig_url(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -109431,6 +111299,21 @@ func (ec *executionContext) unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreen�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNSplunkConnectionInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx context.Context, sel ast.SelectionSet, v *model.APISplunkConnectionInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SplunkConnectionInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSplunkConnectionInfoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx context.Context, v any) (*model.APISplunkConnectionInfo, error) {
+	res, err := ec.unmarshalInputSplunkConnectionInfoInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNStatusCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v task.StatusCount) graphql.Marshaler {
 	return ec._StatusCount(ctx, sel, &v)
 }
@@ -111119,6 +113002,24 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOBooleanMap2map(ctx context.Context, v any) (map[string]bool, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := UnmarshalBooleanMap(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOBooleanMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]bool) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := MarshalBooleanMap(v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx context.Context, v any) (model.APIBuildBaronSettings, error) {
 	res, err := ec.unmarshalInputBuildBaronSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -112461,6 +114362,14 @@ func (ec *executionContext) marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._JiraConfig(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOJiraConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, v any) (*model.APIJiraConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputJiraConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOJiraIssueSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIJIRAIssueSubscriber) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -113212,6 +115121,21 @@ var (
 	}
 )
 
+func (ec *executionContext) marshalORuntimeEnvironmentConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIRuntimeEnvironmentsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RuntimeEnvironmentConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx context.Context, v any) (*model.APIRuntimeEnvironmentsConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputRuntimeEnvironmentConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, sel ast.SelectionSet, v model.APISESConfig) graphql.Marshaler {
 	return ec._SESConfig(ctx, sel, &v)
 }
@@ -113265,6 +115189,29 @@ func (ec *executionContext) marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑci
 		return graphql.Null
 	}
 	return ec._SlackConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSlackConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx context.Context, v any) (*model.APISlackConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSlackConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSlackOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx context.Context, sel ast.SelectionSet, v *model.APISlackOptions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SlackOptions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSlackOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx context.Context, v any) (*model.APISlackOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSlackOptionsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOSleepSchedule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx context.Context, sel ast.SelectionSet, v *host.SleepScheduleInfo) graphql.Marshaler {
@@ -113328,6 +115275,21 @@ func (ec *executionContext) unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreen
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputSpawnHostInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSplunkConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISplunkConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SplunkConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSplunkConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx context.Context, v any) (*model.APISplunkConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSplunkConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -113737,6 +115699,21 @@ func (ec *executionContext) unmarshalOTestFilterOptions2ᚖgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputTestFilterOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTestSelectionConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx context.Context, sel ast.SelectionSet, v *model.APITestSelectionConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TestSelectionConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTestSelectionConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx context.Context, v any) (*model.APITestSelectionConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTestSelectionConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

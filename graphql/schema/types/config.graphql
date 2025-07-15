@@ -136,6 +136,11 @@ type RepotrackerConfig {
 input AdminSettingsInput {
   banner: String
   bannerTheme: BannerTheme
+  jira: JiraConfigInput
+  slack: SlackConfigInput
+  splunk: SplunkConfigInput
+  runtimeEnvironments: RuntimeEnvironmentConfigInput
+  testSelection: TestSelectionConfigInput
   serviceFlags: ServiceFlagsInput
   notify: NotifyConfigInput
   taskLimits: TaskLimitsConfigInput
@@ -148,6 +153,11 @@ input AdminSettingsInput {
 type AdminSettings {
   banner: String
   bannerTheme: BannerTheme
+  jira: JiraConfig
+  slack: SlackConfig
+  splunk: SplunkConfig
+  runtimeEnvironments: RuntimeEnvironmentConfig
+  testSelection: TestSelectionConfig
   serviceFlags: ServiceFlags
   notify: NotifyConfig
   taskLimits: TaskLimitsConfig
@@ -266,14 +276,6 @@ type UIConfig {
   userVoice: String
 }
 
-type SlackConfig {
-  name: String
-}
-
-type JiraConfig {
-  email: String
-  host: String
-}
 
 type CloudProviderConfig {
   aws: AWSConfig

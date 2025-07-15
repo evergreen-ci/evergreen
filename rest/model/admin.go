@@ -193,6 +193,11 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting slack config to API model")
 		}
 		as.Slack = &slackConfig
+		splunkConfig := APISplunkConfig{}
+		if err = splunkConfig.BuildFromService(v.Splunk); err != nil {
+			return errors.Wrap(err, "converting splunk config to API model")
+		}
+		as.Splunk = &splunkConfig
 		containerPoolsConfig := APIContainerPoolsConfig{}
 		if err = containerPoolsConfig.BuildFromService(v.ContainerPools); err != nil {
 			return errors.Wrap(err, "converting container pools config to API model")

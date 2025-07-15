@@ -2,4 +2,5 @@
 scalar Time
 scalar Duration
 scalar StringMap
+scalar BooleanMap
 scalar Map
