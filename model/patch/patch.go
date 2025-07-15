@@ -443,11 +443,27 @@ func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (bool, error
 		return false, nil
 	}
 
-	return p.setStatus(ctx, newStatus)
+	modified, err := p.setStatus(ctx, newStatus)
+	if err != nil {
+		return false, errors.Wrapf(err, "updating status to '%s'", newStatus)
+	}
+
+	p.Status = newStatus
+
+	return modified, nil
 }
 
 func (p *Patch) MarkFinished(ctx context.Context, status string) (bool, error) {
-	return p.setStatus(ctx, status)
+	finishTime := time.Now()
+	modified, err := p.setStatus(ctx, status)
+	if err != nil {
+		return false, err
+	}
+
+	p.Status = status
+	p.FinishTime = finishTime
+
+	return modified, nil
 }
 
 func (p *Patch) setStatus(ctx context.Context, status string) (modified bool, err error) {
@@ -470,9 +486,6 @@ func (p *Patch) setStatus(ctx context.Context, status string) (modified bool, er
 	if err != nil {
 		return false, err
 	}
-
-	p.Status = status
-	p.FinishTime = finishTime
 
 	return res.ModifiedCount > 0, nil
 }
