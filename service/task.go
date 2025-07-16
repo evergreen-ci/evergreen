@@ -428,7 +428,7 @@ func getAbortedBy(ctx context.Context, abortedByTaskId string) (*abortedByDispla
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy build")
 	}
-	if buildDisplay == nil || abortedTask == nil {
+	if buildDisplay == nil {
 		return nil, errors.New("problem getting abortBy display information")
 	}
 	abortedBy := &abortedByDisplay{

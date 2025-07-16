@@ -203,10 +203,6 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 			expansions.Update(bv.Expansions)
 		}
 	}
-
-	if project == nil {
-		project = &model.Project{}
-	}
 	params := append(project.GetParameters(), v.Parameters...)
 	if err = updateExpansions(ctx, &expansions, t.Project, params); err != nil {
 		return nil, nil, errors.Wrap(err, "updating expansions")

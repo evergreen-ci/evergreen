@@ -818,10 +818,8 @@ func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error
 	if err := rm.UpdateRole(newRole); err != nil {
 		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
 	}
-	if creator != nil {
-		if err := creator.AddRole(ctx, newRole.ID); err != nil {
-			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
-		}
+	if err := creator.AddRole(ctx, newRole.ID); err != nil {
+		return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 	}
 	return nil
 }
