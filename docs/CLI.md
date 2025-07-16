@@ -1,18 +1,15 @@
 # CLI
 
-How to set up and use the command-line tool
-==
+## How to set up and use the command-line tool
 
-Downloading the Command Line Tool
---
+## Downloading the Command Line Tool
 
 Go to your [evergreen user settings page](https://spruce.mongodb.com/preferences) and follow the steps there.
 Copy and paste the text in the configuration panel on the settings page into a file in your *home directory* called `.evergreen.yml`, which will contain the information needed for the client to access the server.
 
 On macOS, the evergreen binary is currently not notarized. To allow running it, go to System Preferences, then Security and Privacy. You should be able to make an exception for it in the "General" tab.
 
-Authentication
---
+## Authentication
 [Service users](../Project-Configuration/Project-and-Distro-Settings#service-users) do not need any further authentication as they can rely on the api key in the `.evergreen.yml` file. 
 
 API Keys will soon be deprecated for human users. The following will need to be done to authenticate when using the CLI. 
@@ -44,8 +41,7 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
    - To test if you are all effectively communicating with Evergreen via a personal access token, you can comment out or delete the api key from your evergreen config file (~/.evergreen.yml) and try running a command, for example, evergreen list --projects.
 
 
-Basic Patch Usage
---
+## Basic Patch Usage
 
 `evergreen patch` allows you to submit patches to test your local changes. It will also check your project YAML any for validation errors before submission. If you want to view warnings, look at the [validate](#validating-changes-to-config-files) command.
 
@@ -110,12 +106,10 @@ Note that `set-module` command will not work for module includes and this flag m
 evergreen patch --include-modules
 ```
 
-Working Tree Changes
----
+## Working Tree Changes
 By default patches will include only committed changes, not changes in Git's working tree or index. To include changes from the working tree use the `--uncommitted, -u` flag or set a default by inserting `patch_uncommitted_changes: true` in the `~/.evergreen.yml` file.
 
-Defaults
----
+## Defaults
 The first time you run a patch, you'll be asked if you want to set the given inputs such as tasks or variants as the default for that project.
 After setting defaults, you can omit the flags and the default values will be used, so that just running `evergreen patch` will work.
 
@@ -123,12 +117,10 @@ Defaults may be changed at any time by editing your `~/.evergreen.yml` file.
 
 Additionally, the default project for a directory is also tracked by the first successful patch you perform in that directory. Symlinks are resolved to their absolute path. The defaults are maintained in the `~/.evergreen.yml` file, under the `projects_for_directory` key. The value for this key is a map, where the map keys are absolute paths, and the map values are project identifiers. The automatic defaulting can be disabled by setting disable_auto_defaulting to true.
 
-Prompts
----
+## Prompts
 Many prompts will ask for a y/n (i.e. yes/no) response. If you hit enter or use `--skip_confirm`, we will default to yes if the prompt specifies Y/n, and no if the prompt specifies y/N.
 
-Advanced Patch Tips
---
+## Advanced Patch Tips
 
 ### Multiple Defaults
 While the `evergreen` program has no built-in method of saving multiple configurations of defaults for a project, you can easily mimic this functionality by using multiple local evergreen configurations.
@@ -220,8 +212,7 @@ Calling the command:
  
 will use the above local alias and schedule every variant with tasks named "compile" and tasks that end with "tests".
 
-Operating on existing patches
---
+## Operating on existing patches
 
 To list patches you've created:
 
@@ -294,8 +285,7 @@ evergreen evaluate <path-to-yaml-project-file>
 
 Flags `--tasks` and `--variants` can be added to only show expanded tasks and variants, respectively.
 
-Basic Host Usage
---
+## Basic Host Usage
 Evergreen Spawn Hosts can now be managed from the command line, and this can be explored via the command line `--help` arguments. 
 
 ### Attaching an EBS Volume
@@ -353,8 +343,7 @@ evergreen host exec --host <host_id> --script <bash script>
 ```
 This is useful to unblock a host when it can't be reached over SSH.
 
-Other Commands
---
+## Other Commands
 
 ### Get Update
 
