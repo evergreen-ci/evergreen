@@ -277,7 +277,6 @@ that were added previously.
 
 | Name                      | Type     | Description                                                                                                                                                                          |
 | ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-|  |
 | add_failure_metadata_tags | []string | If set, then additional metadata tags will be associated with the failing command. See [here](Project-Commands#basic-command-structure) for more details on `failure_metadata_tags`. |
 
 Example in a command:
