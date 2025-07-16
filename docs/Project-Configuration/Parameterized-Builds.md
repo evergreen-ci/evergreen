@@ -46,20 +46,20 @@ If the project configuration is modified, patches will use this value unless ove
 
 When creating a patch, use `--param KEY=VALUE` to define each parameter. These will override parameter defaults and project variables, if they exist for the key. Note that the `=` character is not acceptable in a parameter key or value. **Reminder that this should not be used to pass secrets, since these values are not private.**
 
-If the user doesn't currently have parameter defaults (and hasn't included `--yes` to skip prompts), they will receive a prompt to add defaults to their local configuration. Defaults are added to the local configuration as a mapping: 
+If the user doesn't currently have parameter defaults (and hasn't included `--yes` to skip prompts), they will receive a prompt to add defaults to their local configuration. Defaults are added to the local configuration as a mapping:
 
 ```
-project: 
+project:
 - name: evergreen
   parameters:
     foo: bar
 ```
 
-If defaults are defined here, they will overwrite defaults in the project YAML. 
+If defaults are defined here, they will overwrite defaults in the project YAML.
 
 ### Project Page Usage
 
-You can default parameters for specific patch aliases from the Project Page. 
+You can default parameters for specific patch aliases from the Project Page.
 This is only available for CLI patches, not for PR patches or periodic builds.
 As detailed in the hierarchy, these can be overwritten by users.
 
@@ -70,7 +70,7 @@ As detailed in the hierarchy, these can be overwritten by users.
 This is the only place where description is used by Evergreen.
 
 ```
-evergreen list --parameters --project <project_id> 
+evergreen list --parameters --project <project_id>
 ```
 This returns the parameters defined in the project's config.
 ```
@@ -101,7 +101,7 @@ Can parameters be changed after a patch is finalized?
 
 Can I define separate parameters for PR patches?
 
-* No, it's only possible to configure parameters from the CLI or the configure page, 
+* No, it's only possible to configure parameters from the CLI or the configure page,
 but PR patches are finalized immediately, so modifying from the configure page is unavailable.
 
 There's another feature I'd like for parameters that don't exist. What should I do?

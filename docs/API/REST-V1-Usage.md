@@ -146,7 +146,7 @@ The response contains the [entire version document](#retrieve-info-on-a-particul
 ## Retrieve info on a particular version by its revision
 
     GET /rest/v1/projects/{project_id}/revisions/{revision}
-     
+
      or
 
     GET /rest/v1/projects/{project_id}/revisions/{revision}
@@ -198,7 +198,7 @@ _Note that the revision is equivalent to the git hash._
 ## Retrieve info on a particular version
 
     GET /rest/v1/versions/{version_id}
-      
+
 ### Request
 
     curl https://evergreen.example.com/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652
@@ -241,7 +241,7 @@ _Note that the revision is equivalent to the git hash._
 }
 ```
 
-## Retrieve the YAML configuration for a specific version 
+## Retrieve the YAML configuration for a specific version
 
     GET /rest/v1/versions/{version_id}/config
 

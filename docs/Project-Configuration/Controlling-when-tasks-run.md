@@ -1,6 +1,6 @@
 # Controlling When a Task Runs on the Waterfall
 
-There are multiple ways to control the scheduling of builds/tasks on a project's *waterfall* page. This means that tasks manually scheduled by a PR or patch will run regardless of cron/batchtime settings. 
+There are multiple ways to control the scheduling of builds/tasks on a project's *waterfall* page. This means that tasks manually scheduled by a PR or patch will run regardless of cron/batchtime settings.
 
 In short:
 
@@ -12,7 +12,7 @@ In short:
 
 **Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity. (This is not a yaml setting.)
 
-The yaml settings **only apply to mainline commits.** If more than one is set, more specific details on how these 
+The yaml settings **only apply to mainline commits.** If more than one is set, more specific details on how these
 features interact with each other are found [here](Project-Configuration-Files#specific-activation-override-hierarchy).
 Documentation on limiting when tasks runs beyond the waterfall can be found [here](Project-Configuration-Files#limiting-when-a-task-or-variant-will-run).
 
@@ -47,13 +47,13 @@ buildvariants:
 
 In the example above, when a mainline commit is triggered at 10:00, it will not initially schedule any tasks in `the-main-bv`. Let's also say that there was another mainline commit triggered at 11:00.
 
-At 12:00, Evergreen's cron jobs will look for the latest mainline commit, which happens to be the one made at 11:00 in this example. Then, Evergreen will activate `first_test` task in the mainline commit that was created in 11:00 because the cron settings specify that the task should run at 12:00 every day. 
+At 12:00, Evergreen's cron jobs will look for the latest mainline commit, which happens to be the one made at 11:00 in this example. Then, Evergreen will activate `first_test` task in the mainline commit that was created in 11:00 because the cron settings specify that the task should run at 12:00 every day.
 
 Similarly, the `second_test` task will be scheduled at 0:00 on the latest mainline commit at the time due to the `@daily` cron.
 
 ### Batchtime
 
-Batchtime delays a mainline task/variant activation until a specified time has passed since its last run. This is useful for projects with high commit activity, as it will prevent Evergreen from activating tasks/variants too frequently which can lead to resource contention and inefficiencies. 
+Batchtime delays a mainline task/variant activation until a specified time has passed since its last run. This is useful for projects with high commit activity, as it will prevent Evergreen from activating tasks/variants too frequently which can lead to resource contention and inefficiencies.
 
 E.g.: Task 'A' has a batchtime of 60 minutes. The first commit of the day is at 10:00AM and the task activates immediately. A new mainline commit is made at 10:30AM. Evergreen will not activate task 'A' on the new mainline commit until 11:00AM, which is 60 minutes after the last run. If a new mainline commit is made at 10:45AM, Evergreen will still wait until 11:00AM to activate task 'A' on this newest mainline commit.
 

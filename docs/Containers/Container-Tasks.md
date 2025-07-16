@@ -61,8 +61,8 @@ the initial release for container tasks.
 such as CPU and memory usage must be explicitly configured, unlike
 in the current distro model. Users are also free to bring their own
 custom image to use, where only the software dependencies required for
-their particular workflow are downloaded during runtime. Furthermore, 
-the container your task runs on is dedicated solely to that task and is not 
+their particular workflow are downloaded during runtime. Furthermore,
+the container your task runs on is dedicated solely to that task and is not
 reused, so you are free to do whatever you want with it without needing to worry about
 leaving the environment in a messy state for the next task.
 
@@ -73,7 +73,7 @@ which are at a high level as follows:
    policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit).
 2. Follow the image creation and management steps [here](#creating-and-managing-your-container-images) to obtain a usable image URI
 to run container tasks on.
-3. Configure to your project YAML via the steps [here](#update-your-yaml-configuration) 
+3. Configure to your project YAML via the steps [here](#update-your-yaml-configuration)
 to create a variant that uses the new image and runs tasks in containers.
 4. Schedule the tasks in your new container variant in a patch to test your changes.
 
@@ -106,7 +106,7 @@ The following is the process by which you can create a usable image from your cu
     builds the image and pushes it to Amazon Elastic Container
     Registry (ECR). You may then reference the URI of the newly built image.
     Its format will be as follows:
-    
+
     > **557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/&lt;DIRECTORY&gt;:&lt;SHA&gt;**
 
     Where **&lt;DIRECTORY&gt;** is your project's directory name in our image
@@ -186,7 +186,7 @@ containers:
     system:
       cpu_architecture: x86_64
       operating_system: linux
-      
+
   - name: example-small-container
     working_dir: /
     image: ${image_project_variable}
@@ -326,7 +326,7 @@ Instead, modules must be cloned via OAuth over HTTPS. This means
 that if your modules' git clones rely on a host's SSH keys to clone a private
 repository in your existing workflow, the cloning method will need to be
 changed. This can be done by specifying an owner and repo instead of a url. e.g:
-instead of: 
+instead of:
 
 ```yaml
 modules:
@@ -334,7 +334,7 @@ modules:
     repo: git@github.com:evergreen-ci/evergreen.git
 ```
 
-use: 
+use:
 ```yaml
 modules:
   - name: evergreen
@@ -342,8 +342,8 @@ modules:
     repo: evergreen
 ```
 
-Note: the ssh clone method for modules is being deprecated and shouldn't be used for 
-none container tasks either. 
+Note: the ssh clone method for modules is being deprecated and shouldn't be used for
+none container tasks either.
 
 ### Host.create
 

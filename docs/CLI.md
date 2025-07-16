@@ -10,17 +10,17 @@ Copy and paste the text in the configuration panel on the settings page into a f
 On macOS, the evergreen binary is currently not notarized. To allow running it, go to System Preferences, then Security and Privacy. You should be able to make an exception for it in the "General" tab.
 
 ## Authentication
-[Service users](../Project-Configuration/Project-and-Distro-Settings#service-users) do not need any further authentication as they can rely on the api key in the `.evergreen.yml` file. 
+[Service users](../Project-Configuration/Project-and-Distro-Settings#service-users) do not need any further authentication as they can rely on the api key in the `.evergreen.yml` file.
 
-API Keys will soon be deprecated for human users. The following will need to be done to authenticate when using the CLI. 
+API Keys will soon be deprecated for human users. The following will need to be done to authenticate when using the CLI.
 
-### Ensure that your Evergreen CLI is not out of date 
-Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't have automatic updates enabled. 
+### Ensure that your Evergreen CLI is not out of date
+Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't have automatic updates enabled.
 
 ### Install kanopy-oidc
-  
+
   *Note: This will already be configured for you on all spawn hosts except Windows hosts. Please see [DEVPROD-18592](https://jira.mongodb.org/browse/DEVPROD-18592) for updates. If you are using a Windows spawn host, please opt out by setting 'do_not_run_kanopy_oidc' to true in your evergreen config file (~/.evergreen.yml) until further notice.*
-  
+
   - [Download](https://github.com/kanopy-platform/kanopy-oidc/releases/) the latest release for your laptop’s OS/architecture. If you already have Kanopy-OIDC installed, make sure you’re running version 0.5.0 or later.
   - untar the release tarball
   - put the kanopy-oidc binary on your PATH
@@ -33,10 +33,10 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
   > **This is now available by default. Please follow [DEVPROD-4160](https://jira.mongodb.org/browse/DEVPROD-4160) for updates. You can also test this by deleting or commenting out the `api_key` from your evergreen config file (~/.evergreen.yml).**
 
   *Note: If you are not prompted, please update your Evergreen CLI using evergreen get-update --install to ensure you have the latest release.*
-  
+
   - Any Evergreen CLI commands that talk to evergreen will attempt to generate a token for you using kanopy-oidc behind the scenes. It will then use that instead of the api token saved in your evergreen config file (~/.evergreen.yml).
   - If you do not have kanopy-oidc installed properly, this will fail.
-  - It will print a url for you to use to authenticate. Open the link in your laptop's browser and authenticate. 
+  - It will print a url for you to use to authenticate. Open the link in your laptop's browser and authenticate.
   - If you need some more time and would like to opt out of the CLI attempting to generate and use a token, you can do that by setting do_not_run_kanopy_oidc to true in your evergreen config file (~/.evergreen.yml).
   - To test if you are all effectively communicating with Evergreen via a personal access token, you can comment out or delete the api key from your evergreen config file (~/.evergreen.yml) and try running a command, for example, evergreen list --projects.
 
@@ -49,7 +49,7 @@ To submit a patch, run this from your local copy of the mongodb/mongo repo:
 ```bash
 evergreen patch -p <project-id>
 ```
-    
+
 Variants and tasks for a patch can be specified with the `-v` and `-t`:
 ```bash
 evergreen patch -v enterprise-suse11-64 -t compile
@@ -181,7 +181,7 @@ Though keep in mind that the merge base must still exist in the canonical GitHub
 The `--` feature can also be used to pass flags to `git diff`.
 
 #### Local Aliases
-Users can define local aliases in their `evergreen.yml` files and even override a patch alias defined by a project admin. Local aliases are defined at the project level. 
+Users can define local aliases in their `evergreen.yml` files and even override a patch alias defined by a project admin. Local aliases are defined at the project level.
 
 ```yaml
 api_server_host: #api
@@ -209,7 +209,7 @@ projects:
 Calling the command:
 
       evergreen patch -a alias_name
- 
+
 will use the above local alias and schedule every variant with tasks named "compile" and tasks that end with "tests".
 
 ## Operating on existing patches
@@ -220,13 +220,13 @@ To list patches you've created:
 
 
 ### To cancel a patch:
- 
+
 ```
 evergreen cancel-patch -i <patch_id>
 ```
-    
+
 ### To finalize a patch:
- 
+
 ```
 evergreen finalize-patch -i <patch_id>
 ```
@@ -286,24 +286,24 @@ evergreen evaluate <path-to-yaml-project-file>
 Flags `--tasks` and `--variants` can be added to only show expanded tasks and variants, respectively.
 
 ## Basic Host Usage
-Evergreen Spawn Hosts can now be managed from the command line, and this can be explored via the command line `--help` arguments. 
+Evergreen Spawn Hosts can now be managed from the command line, and this can be explored via the command line `--help` arguments.
 
 ### Attaching an EBS Volume
 
-To create a new EBS volume: 
+To create a new EBS volume:
 ```
-evergreen volume create --size <size> --type <default=gp2> --zone <default=us-east-1a> 
+evergreen volume create --size <size> --type <default=gp2> --zone <default=us-east-1a>
 ```
-While the Availability Zone does have a default, this must be in the _same zone as the host_. If you don't know your host's availability zone, this can be found easily at `evergreen host list --mine`. 
+While the Availability Zone does have a default, this must be in the _same zone as the host_. If you don't know your host's availability zone, this can be found easily at `evergreen host list --mine`.
 
 To attach the volume to your host (assuming the same availability zone), use:
 ```
 evergreen host attach --host <host_id> --volume <volume_id>
 ```
-If you forget your volume ID, you can find this with `evergreen volume list`. If the volume is already attached, you will see a host ID given with this volume, and a volume can only have one host. 
+If you forget your volume ID, you can find this with `evergreen volume list`. If the volume is already attached, you will see a host ID given with this volume, and a volume can only have one host.
 
-A volume can only be deleted if detached, so removing a volume would for example be: 
-``` 
+A volume can only be deleted if detached, so removing a volume would for example be:
+```
 evergreen host detach --host <host_id> --volume <volume_id>
 evergreen volume delete --id <volume_id>
 ```
@@ -315,7 +315,7 @@ Tags can be modified for hosts using the following syntax:
 evergreen host modify --tag KEY=VALUE
 evergreen --delete-tag KEY
 ```
-Note these tags cannot overwrite Evergreen tags. 
+Note these tags cannot overwrite Evergreen tags.
 
 Hosts can be set to never expire using the `--no-expire` option. Keep in mind that if making a host unexpirable from the
 CLI, you should also set up a [sleep schedule](Hosts/Spawn-Hosts#unexpirable-host-sleep-schedules) from the command line
@@ -334,7 +334,7 @@ creation. There are limits on the number of spawn hosts (expirable or unexpirabl
 
 ### Stop/Start Host to Change Instance Type
 
-Instance type can only be changed if the host is stopped. Hosts can be stopped and started using `evergreen host start/stop --host <id> --wait <set-to-block>`. To change instance type, `host modify --type` (approved types can be configured from the admin settings). 
+Instance type can only be changed if the host is stopped. Hosts can be stopped and started using `evergreen host start/stop --host <id> --wait <set-to-block>`. To change instance type, `host modify --type` (approved types can be configured from the admin settings).
 
 ### Run a script on a host
 Run a bash script on a host.
@@ -366,7 +366,7 @@ evergreen fetch -t <task-id> --source --artifacts
 ```
 
 Specify the optional `--dir` argument to choose the destination path where the data is fetched to; if omitted, it defaults to the current working directory.
- 
+
 #### List
 
 The command `evergreen list` can help you determine what projects, variants, and tasks are available for patching against.
@@ -386,7 +386,7 @@ The list command can take an optional `-f/--file` argument for specifying a loca
 #### Last Green
 
 The command `evergreen last-green` can help you find an entirely successful commit to patch against.
-To use it, specify the project you wish to query along with the set of variants to verify as passing. 
+To use it, specify the project you wish to query along with the set of variants to verify as passing.
 ```
 evergreen last-green -p <project_id> -v <variant1> -v <variant2> -v <variant...>
 ```

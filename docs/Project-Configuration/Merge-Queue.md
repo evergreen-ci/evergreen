@@ -149,10 +149,10 @@ recent statuses. To get some statuses to choose from, you can retrigger tests on
 an existing PR by typing `evergreen retry`, open an empty PR, or commit an empty
 commit.
 
-**Q:** Is there a plan to have Evergreen send merge notifications? 
+**Q:** Is there a plan to have Evergreen send merge notifications?
 
 **A:** No. We believe it makes more sense for notifications to come from GitHub,
-since it manages the queue, and supports sending notifications. 
+since it manages the queue, and supports sending notifications.
 
 **Q:** Is it possible to attribute the merge queue patch to your Evergreen user?
 
@@ -201,9 +201,9 @@ tasks, but you still wish them to run automatically.
 
 
 **A:** If you rely on having branch protection rules for individual variants, then changes for this need to be made both
-in Evergreen and in GitHub. In Evergreen, at least one task from this variant needs to be added to both the PR aliases 
-and the merge queue aliases (as mentioned above, these rules apply to both the PR and 
-the merge queue). Ensure you've saved the page. 
+in Evergreen and in GitHub. In Evergreen, at least one task from this variant needs to be added to both the PR aliases
+and the merge queue aliases (as mentioned above, these rules apply to both the PR and
+the merge queue). Ensure you've saved the page.
 
 In GitHub, you can now add a new branch protection rule for the "evergreen/<variant_name>" status check.
 

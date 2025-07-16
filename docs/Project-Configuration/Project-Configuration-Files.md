@@ -125,7 +125,7 @@ and they are referenced within a task definition by
       resmoke_args: >- ## syntax needed to allow multiple arguments.
         --hello=world
         --its=me
-      
+
 ```
 
 Notice that the function reference can define a set of `vars` which are
@@ -224,7 +224,7 @@ buildvariants:
   tasks:
   - name: compile
   - name: passing_test
-    depends_on: 
+    depends_on:
     - name: compile
     - name: passing_test
       variant: osx-108
@@ -269,7 +269,7 @@ Fields:
     non-module related build variant fields ([context](../decisions/2024-07-18_allow_module_expansions)).
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
-    `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, and `run_on`. 
+    `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, and `run_on`.
     We can also [define when a task will run](#limiting-when-a-task-or-variant-will-run). If there are
     conflicting settings definitions at different levels, the order of priority
     is defined [here](#task-fields-override-hierarchy).
@@ -278,13 +278,13 @@ Fields:
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
--   `stepback`: indicate if this variant should opt-in or out of stepback. 
+-   `stepback`: indicate if this variant should opt-in or out of stepback.
     (If disabled at the project-level, this value will be ignored, otherwise it will override.)
--   `deactivate_previous`: indicate if this variant should unschedule older 
+-   `deactivate_previous`: indicate if this variant should unschedule older
     mainline tasks on success (if disabled at the project-level, this value will be ignored, otherwise it will override.)
 -   `batchtime`: interval of time in minutes that Evergreen should wait
     before activating this variant for mainline commits. The default is set on the project
-    settings page. This cannot be set for individual tasks. 
+    settings page. This cannot be set for individual tasks.
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
     Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
     commit should be activated (cannot be combined with batchtime). This also
@@ -299,14 +299,14 @@ Fields:
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 -   Build variants support [all options that limit when a task will run](#limiting-when-a-task-or-variant-will-run)
     (`allowed_requesters`, `patch_only`, `patchable`, `disable`, etc.). If set for the
-    build variant, it will apply to all tasks under the build variant. 
+    build variant, it will apply to all tasks under the build variant.
 
 Additionally, an item in the `tasks` list can be of the form
 
 ``` yaml
 tasks:
 - name: compile
-  run_on: 
+  run_on:
   - ubuntu1404-build
 ```
 
@@ -338,7 +338,7 @@ YAML settings to take effect, they must exist in the main config file.
 
 
 ``` yaml
-include: 
+include:
    - filename: other.yml
    - filename: small.yml ## path to file inside the module's repo
      module: module_name
@@ -348,9 +348,9 @@ Warning: YAML anchors currently not supported.
 
 #### Limitations and Alternatives
 
-We do limit the [number of included files](../Reference/Limits#include-limits) that can be given in order to ensure safe GitHub API usage. 
-An alternative to relying on Evergreen for including the files would be to use `evergreen evaluate` as a pre-commit hook. 
-[This command](#Validating-changes-to-config-files) generates the effective project yaml from all the include files and remove the includes list, 
+We do limit the [number of included files](../Reference/Limits#include-limits) that can be given in order to ensure safe GitHub API usage.
+An alternative to relying on Evergreen for including the files would be to use `evergreen evaluate` as a pre-commit hook.
+[This command](#Validating-changes-to-config-files) generates the effective project yaml from all the include files and remove the includes list,
 so you could have one "generated" yaml that's committed to your repo to use for Evergreen testing that doesn't need to pull files from GitHub.
 
 #### Merging Rules
@@ -379,10 +379,10 @@ We will maintain the following merge rules:
 #### Testing with module includes
 
 When running a patch normally, the module include files will be pulled
-from GitHub. In order to see your local changes reflected in a patch, 
+from GitHub. In order to see your local changes reflected in a patch,
 the patch must be created with the `include-modules` flag.
 
-Note: the `set-modules` command will not reflect the local changes 
+Note: the `set-modules` command will not reflect the local changes
 in the project configuration page.
 
 ``` evergreen patch --include-modules ```
@@ -419,12 +419,12 @@ Manifest" will contain details on how the modules were parsed from YAML and
 which git revisions are being used. If no modules have been defined, the
 "Version Manifest" will not appear at all in the Spruce UI.
 
-For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), a new 
+For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), a new
 manifest will be created that uses the latest revision available for each module.
 
 For manual patches, GitHub PRs, and periodic builds, by default, the git revisions in the
-version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision). 
-You can change the git revision for modules by setting a module manually with 
+version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision).
+You can change the git revision for modules by setting a module manually with
 [evergreen set-module](../CLI/#operating-on-existing-patches) or
 by specifying the `auto_update` option (as described below) to use the
 latest revision available for a module. The full hierarchy of how
@@ -432,7 +432,7 @@ module revisions are determined is available in the [git.get_project](Project-Co
 docs.
 
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
-tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
+tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point
 the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
 
 The modules will only be cloned in the [git.get_project](Project-Commands#gitgetproject) command if the [build variant](Project-Configuration-Files#build-variants)
@@ -477,9 +477,9 @@ All projects can have a `pre` and `post` field which define a list of commands
 to run at the start and end of every task that isn't in a task group. For task
 groups, `setup_task` and `teardown_task` will run instead of `pre` and `post`
 (see [task groups](#task-groups) for more information). These are incredibly
-useful as a place for results commands or for task setup and cleanup. Note: If a 
-host runs into an issue and needs to exit it will exit without running the post 
-task commands. 
+useful as a place for results commands or for task setup and cleanup. Note: If a
+host runs into an issue and needs to exit it will exit without running the post
+task commands.
 
 ``` yaml
 pre_error_fails_task: true
@@ -551,7 +551,7 @@ or on a specific task to set the maximum allowed length of execution time. Exec 
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours, and cannot be set above 24 hours.
-`exec_timeout_secs` can only be set on the project or on a task as seen in below example. 
+`exec_timeout_secs` can only be set on the project or on a task as seen in below example.
 It cannot be set on functions or build variant tasks.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).
@@ -673,7 +673,7 @@ or for particular tasks under a build variant:
 ```yaml
 buildvariants:
 - name: anything
-  tasks: 
+  tasks:
   - name: only_commit_queue
     allowed_requesters: ["github_pr"]
 ```
@@ -814,9 +814,9 @@ Every task has some expansions available by default:
     version, if applicable
 -   `${version_id}` is the id of the task's version
 -   `${workdir}` is the task's working directory
--   `${__project_aws_ssh_key_name}` is the unique key name for the ssh key 
-    pair generated by Evergreen. 
--   `${__project_aws_ssh_key_value}` is the unencrypted PEM encoded PKCS#1 private key 
+-   `${__project_aws_ssh_key_name}` is the unique key name for the ssh key
+    pair generated by Evergreen.
+-   `${__project_aws_ssh_key_value}` is the unencrypted PEM encoded PKCS#1 private key
     returned along with `${__project_aws_ssh_key_name}`.
 
 The following expansions are available unless a task was from an
@@ -837,9 +837,9 @@ inter-project dependency:
     This is not the task, build, or project ID that initiated the trigger.
 -   `${trigger_event_identifier}` is the ID of the task, build, or project that
     initiated this trigger
--   `${trigger_event_type}` is either "task", "build", or "push" (i.e. project) 
+-   `${trigger_event_type}` is either "task", "build", or "push" (i.e. project)
     identifying what type of ID `${trigger_event_identifier}` is
--   `${trigger_version}` is the version ID for the task or build that 
+-   `${trigger_version}` is the version ID for the task or build that
     initiated this trigger
 -   `${trigger_status}` is the task or build status of whatever
     initiated this trigger
@@ -1031,7 +1031,7 @@ You can also for the whole project set the method of stepping back to "Bisection
 
 ### Out of memory (OOM) Tracker
 
-By default, the OOM tracker is enabled. 
+By default, the OOM tracker is enabled.
 
 If there is an OOM kill, immediately before the post-task starts, there will be
 an agent log message saying whether it found any OOM killed processes, with their
@@ -1460,9 +1460,9 @@ Parameters:
     commands run once per host that's running the task group tasks. Note that
     `post` does not run for task group tasks.
 -   `teardown_group_timeout_secs`: set a timeout for the `teardown_group`.
-    The maximum and the default is 3 minutes. If it's not set or if it's set to a 
-    number higher than the maximum, it will default to 3 minutes. Hitting this timeout 
-    will stop the `teardown_group` commands but will not cause the task to fail. 
+    The maximum and the default is 3 minutes. If it's not set or if it's set to a
+    number higher than the maximum, it will default to 3 minutes. Hitting this timeout
+    will stop the `teardown_group` commands but will not cause the task to fail.
 -   `setup_task`: commands to run prior to running each task in the task group.
     Note that `pre` does not run for task group tasks.
 -   `setup_task_can_fail_task`: if true, task will fail if a command in
@@ -1479,12 +1479,12 @@ Parameters:
     commands but will not cause the task to fail unless
     `teardown_task_can_fail_task` is true.
 -   `max_hosts`: number of hosts across which to distribute the tasks in
-    this group. This defaults to 1. If set to -1, it will be updated to the 
+    this group. This defaults to 1. If set to -1, it will be updated to the
     number of tasks in this task group. There will be a validation warning
-    if max hosts is less than 1 (apart from -1) or greater than the number of 
+    if max hosts is less than 1 (apart from -1) or greater than the number of
     tasks in task group. When max hosts is 1, this is a special case where the
     tasks will run serially on a single host. If any task fails, the task group
-    will stop, so the remaining tasks after the failed one will not run. Please see [special considerations for single host task groups](#the-following-constraints-apply-to-single-host-task-groups). 
+    will stop, so the remaining tasks after the failed one will not run. Please see [special considerations for single host task groups](#the-following-constraints-apply-to-single-host-task-groups).
 -   `timeout`: timeout handler which will be called instead of the top-level
     timeout handler. If it is not present, the top-level timeout handler will
     run if a top-level timeout handler exists. See [timeout
@@ -1498,9 +1498,9 @@ Parameters:
 
 Intentionally, `teardown_group_can_fail_task` is not supported. Teardown groups
 are not ran within the same context of the task's normal execution and we
-discourage relying on it for anything critical in general. 
+discourage relying on it for anything critical in general.
 
-For that same reason, teardown groups also cannot run the [manually set task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route. 
+For that same reason, teardown groups also cannot run the [manually set task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route.
 
 #### The following constraints apply to all task groups:
 
@@ -1549,14 +1549,14 @@ If a task in a multi-host task group is restarted:
   a new task group, so it will run the teardown group commands, clear the task
   directory, and re-run the setup group commands.
 
-#### Teardown task and teardown group reliability 
-Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a 
-host runs into an issue and needs to exit before it ran the `teardown_task` 
-or `teardown_group`, it will exit without running them. 
+#### Teardown task and teardown group reliability
+Both `teardown_task` and `teardown_group` are not 100% guaranteed to run. If a
+host runs into an issue and needs to exit before it ran the `teardown_task`
+or `teardown_group`, it will exit without running them.
 
-Additionally, `teardown_group` has a max timeout of 3 minutes. Even if the 
-timeout is manually set higher with `teardown_group_timeout_secs`, a three minute 
-timeout will be enforced.  
+Additionally, `teardown_group` has a max timeout of 3 minutes. Even if the
+timeout is manually set higher with `teardown_group_timeout_secs`, a three minute
+timeout will be enforced.
 
 ### Task Dependencies
 
@@ -1567,7 +1567,7 @@ parameters are available:
 -   `status` - string (default: "success"). One of ["success",
     "failed", or "`*`"]. "`*`" includes any finished status as well
     as when the task is blocked.
--   `variant` - string (by default, uses existing variant). Can specify a 
+-   `variant` - string (by default, uses existing variant). Can specify a
      variant for the dependency to exist in, or "`*`" will depend on the task
      for all matching variants.
 -   `patch_optional` - boolean (default: false). If true the dependency
@@ -1613,7 +1613,7 @@ supported as a space-separated list. For example,
 
 Notably, selectors return items that satisfy all of the criteria. That is,
 they return the *set intersection* of each individual criterion. So the below yaml,
-while technically valid, wouldn't match anything given that these are static variant names, so the set 
+while technically valid, wouldn't match anything given that these are static variant names, so the set
 intersection will be nothing.
 
 ``` yaml
@@ -1623,7 +1623,7 @@ intersection will be nothing.
     variant: "A B"
 ```
 
-[Task/variant tags](#task-and-variant-tags) 
+[Task/variant tags](#task-and-variant-tags)
 can also be used to define dependencies.
 
 ``` yaml
@@ -1642,13 +1642,13 @@ can also be used to define dependencies.
 Some commits to your repository don't need to be tested. The obvious
 examples here would be documentation or configuration files for other
 Evergreen projects---changes to README.md don't need to trigger your
-builds. 
+builds.
 
 To address this, project files can define a top-level `ignore`
 list of gitignore-style globs which tell Evergreen to not automatically
-run tasks for commits that only change ignored files, and we will not 
+run tasks for commits that only change ignored files, and we will not
 create PR patches but instead send a successful status for all required
-checks as well as the base `evergreen` check. 
+checks as well as the base `evergreen` check.
 
 ``` yaml
 ignore:
@@ -1712,7 +1712,7 @@ tasks:
        working_dir: src
        script: |
         exit 1
-        
+
   - name: task2
     commands:
     - func: my_function
@@ -1777,7 +1777,7 @@ buildvariants:
 - name: build_variant_definition
   run_on:
     - lowest_priority
-  tasks: 
+  tasks:
     - name: task_definition
       run_on: highest_priority
 tasks:

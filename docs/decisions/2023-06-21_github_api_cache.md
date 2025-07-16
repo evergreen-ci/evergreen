@@ -1,7 +1,7 @@
 # 2023-06-21 GitHub API Response Caching
 
 * status: accepted
-* date: 2023-06-21 
+* date: 2023-06-21
 * authors: Jonathan Brill
 
 ## Context and Problem Statement

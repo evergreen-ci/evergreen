@@ -89,7 +89,7 @@ Evergreen offers integration with the GitHub checks API. Users have the option t
 ### Configuration
 
 To add a check run to a task, specify it in the list of tasks in the build variant definition.
-Check runs cannot be defined in the task level and will be ignored if done so. 
+Check runs cannot be defined in the task level and will be ignored if done so.
 
 Specifying a task tag (like in the example below) will create a check run for all the tasks matching the tag. However, this means if there are more tasks matching that tag than the check run limit, it will fail the check run validation. To use the check run on a few select tasks matching the tag, we recommend separating out the tag into two (e.g. [task_tag] into [task_tag_no_check_run] and [task_task_with_check_run]) to not exceed the limit and still use the tags.
 
@@ -117,7 +117,7 @@ buildvariants:
         create_check_run:
           path_to_outputs: "" ## Evergreen will create a default output if a path is not specified
       - name: ".task_tag" ## this will create a check run for every task tagged with `[task_tag]`
-        create_check_run: 
+        create_check_run:
           path_to_outputs: ""
     expansions:
       checkRun_key: apple

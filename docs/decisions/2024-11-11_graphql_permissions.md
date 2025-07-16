@@ -22,8 +22,8 @@ This meant that the Evergreen team needed to retroactively add the missing permi
 
 ## Decision Outcome
 ### Mirroring the REST API
-To enforce project permissions, the REST API uses a middleware function called [`RequiresProjectPermission`](https://github.com/evergreen-ci/evergreen/blob/af18e60d63f99d5c0fbfe4679d86a96829bc7098/rest/route/middleware.go#L605-L615). This function has two main roles:   
-1. Determine the project ID from the given path parameters via [`urlVarsToProjectScopes`](https://github.com/evergreen-ci/evergreen/blob/af18e60d63f99d5c0fbfe4679d86a96829bc7098/rest/route/middleware.go#L639). 
+To enforce project permissions, the REST API uses a middleware function called [`RequiresProjectPermission`](https://github.com/evergreen-ci/evergreen/blob/af18e60d63f99d5c0fbfe4679d86a96829bc7098/rest/route/middleware.go#L605-L615). This function has two main roles:
+1. Determine the project ID from the given path parameters via [`urlVarsToProjectScopes`](https://github.com/evergreen-ci/evergreen/blob/af18e60d63f99d5c0fbfe4679d86a96829bc7098/rest/route/middleware.go#L639).
 2. Check the user's permission for the project associated with that ID.
 
 Since [directives](https://the-guild.dev/graphql/tools/docs/schema-directives) were already being used as a form of access control in the GraphQL schema, the team decided to implement a new directive that would mirror the functionality of `RequiresProjectPermission`. Directives are evaluated before the execution of a query or mutation and can be used as middleware to restrict access.

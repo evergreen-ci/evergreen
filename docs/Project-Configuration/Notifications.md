@@ -28,7 +28,7 @@ Receive notifications that your spawn host is going to expire soon, so you can u
 ### Build Break Notifications
 Project Admins may enable this at the project level.
 
-When a task that was previously green (or is a new), becomes red or purple, a build-break notification will be issued. If the original committer can be identified, Evergreen will lookup their build-break notification settings, and follow that. 
+When a task that was previously green (or is a new), becomes red or purple, a build-break notification will be issued. If the original committer can be identified, Evergreen will lookup their build-break notification settings, and follow that.
 
 If we can't identify the original committer, Evergreen will notify project admins.
 
@@ -45,7 +45,7 @@ Evergreen sets a handful of headers which can be used to filter emails or webhoo
 ### Warning to GMail Users
 If you're using GMail through the browser UI, you won't be able to filter notifications because GMail does not support filtering on custom headers. Instead, we inject the custom Evergreen headers into the body of the email and hide it from view. You can create a filter in GMail using the "Has the words" field.
 
-For example, if you want to create a filter that captures all email notifications in the `mci` project, add `X-Evergreen-project:mci` into this field. Do not put spaces before or after the colon. 
+For example, if you want to create a filter that captures all email notifications in the `mci` project, add `X-Evergreen-project:mci` into this field. Do not put spaces before or after the colon.
 
 To add more than one filter, separate the terms with a space, e.g: `X-Evergreen-project:mci X-Evergreen-object:patch` would capture patch notifications in the "mci" project. Order does not matter.
 

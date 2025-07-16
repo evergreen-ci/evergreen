@@ -386,12 +386,12 @@ The call to AssumeRole includes an external ID formatted as
 - An Evergreen project's ID can be found on its General Settings page.
 - The list of requesters can be found [here](../Reference/Glossary.md#requesters).
 
-The originating role is: 
+The originating role is:
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
 and your role should only trust that exact role. You should add an
 external ID to your role's trust policy to ensure only your project
-can assume the role. Evergreen's account ID can be found on the 
-[wiki page](https://wiki.corp.mongodb.com/spaces/IAMSEC/pages/346197399/AWS+Account+List) 
+can assume the role. Evergreen's account ID can be found on the
+[wiki page](https://wiki.corp.mongodb.com/spaces/IAMSEC/pages/346197399/AWS+Account+List)
 under `Kernel-Build`.
 
 An example of a trust policy with an external ID is below:
@@ -683,14 +683,14 @@ Parameters:
     GitHub app token, `is_oauth` must be set to true so that the clone command is formatted properly.
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
     patch builds, Evergreen will `git fetch --unshallow` if the base
-    commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`. 
--   `shallow_clone`: Sets `clone_depth` to 100, if not already set. 
+    commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`.
+-   `shallow_clone`: Sets `clone_depth` to 100, if not already set.
 -   `recurse_submodules`: automatically initialize and update each
-    submodule in the repository, including any nested submodules. 
+    submodule in the repository, including any nested submodules.
 
 The parameters for each module are:
 
--   `name`: the name of the module 
+-   `name`: the name of the module
 -   `owner`: the github owner of the module
 -   `repo`: the repo of the module
 -   `prefix`: the subdirectory to clone the repository in. It will be
@@ -715,10 +715,10 @@ doesn't work for patches -- hashes will need to be specified in the revisions se
 The github.generate_token command will use the github app saved in your [project settings](Github-Integrations#dynamic-github-access-tokens) to dynamically generate a short lived github access token. If you run into any issues, please see the [FAQ](../FAQ.md#dynamic-github-access-tokens).
 
 Parameters:
--   `owner`: The account owner of the repository. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner. 
--   `repo`: The name of the repository without the .git extension. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's repository. 
+-   `owner`: The account owner of the repository. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner.
+-   `repo`: The name of the repository without the .git extension. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's repository.
 -   `expansion_name`: The name for the expansion the token will be saved in.
--   `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app). Expansions cannot be used for this field. 
+-   `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app). Expansions cannot be used for this field.
 
 For an example of how to generate a token and use that token to clone a repository, please see below. (Please check if [git.get_project](#gitget_project) or [modules](Project-Configuration-Files#modules) work for your use case before cloning manually).
 
@@ -736,21 +736,21 @@ For an example of how to generate a token and use that token to clone a reposito
       git clone https://x-access-token:${generated_token}@github.com/sample-owner/sample-repo.git
 ```
 
-_While an owner and repository is used when generating a token from a github app (the project owner and repository being the default), you cannot rely on the token being restricted to that repository, as it may have the power to access other repositories in the org as well._ 
+_While an owner and repository is used when generating a token from a github app (the project owner and repository being the default), you cannot rely on the token being restricted to that repository, as it may have the power to access other repositories in the org as well._
 
-### Token Lifespan 
+### Token Lifespan
 
-Generated access tokens have a lifespan of one hour. Therefore, for long running tasks we recommend generating a token right before it's needed. A token will also be revoked and the expansion will be removed if it goes out of scope. 
+Generated access tokens have a lifespan of one hour. Therefore, for long running tasks we recommend generating a token right before it's needed. A token will also be revoked and the expansion will be removed if it goes out of scope.
 
-### Token Scope 
+### Token Scope
 
-#### Regular Tasks 
--   Tokens created in any part of the task will be scoped to that task. It will be revoked at the end up the task after the post task commands have finished running. 
+#### Regular Tasks
+-   Tokens created in any part of the task will be scoped to that task. It will be revoked at the end up the task after the post task commands have finished running.
 #### Task Groups
--   Tokens created by individual tasks in a task group (including setup_task and teardown_task) will be scoped to that specific task. 
+-   Tokens created by individual tasks in a task group (including setup_task and teardown_task) will be scoped to that specific task.
 -   Tokens created by `setup_group` in [task groups](Project-Configuration-Files#task-groups) will be scoped to the entire task group and revoked after `teardown_group` commands have finished running. However, we recommend against generating a single GitHub token for an entire task group. The token may reach its one hour limit and no longer be valid when needed. Shorter token scopes also enhances security.
 
-The following yaml provides a visual breakdown of token scopes. 
+The following yaml provides a visual breakdown of token scopes.
 
 ``` yaml
 task_groups:
@@ -779,7 +779,7 @@ tasks:
             ## ${setup_group_token} is in scope (and one shared token for all tasks in the group)
             ## setup_task_token is in scope (and a fresh token for this task)
             ## task1_token is in scope
-        
+
     - name: task2
       commands:
         - command: shell.exec
@@ -1212,7 +1212,7 @@ Parameters:
     to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
--   `local_file`: the local file to posts. This is relative to [task's working directory](./Best-Practices.md#task-directory). 
+-   `local_file`: the local file to posts. This is relative to [task's working directory](./Best-Practices.md#task-directory).
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
     30, 2020 containing dots (".") are not supported.
@@ -1230,10 +1230,10 @@ Parameters:
     of gitignore file globs. All files that are matched - ones that
     would be ignored by gitignore - are included in the put. If no
     files are found, the task continues execution.
-    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
+    This is relative to [task's working directory](./Best-Practices.md#task-directory).
 -   `local_files_include_filter_prefix`: an optional path to start
     processing the `local_files_include_filter`.
-    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
+    This is relative to [task's working directory](./Best-Practices.md#task-directory).
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
     you can use this parameter.

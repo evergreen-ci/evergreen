@@ -1,6 +1,6 @@
 # Single Task Distros
 
-Single task distros are distros that will only run one task before terminating. These distros should only be used by specific tasks that build binaries for public releases. 
+Single task distros are distros that will only run one task before terminating. These distros should only be used by specific tasks that build binaries for public releases.
 
 ## Who Should Use Single Task Distros?
 
@@ -12,10 +12,10 @@ To use single task distros, the specified tasks/build variants must first be whi
 
 ## Creating Single Task Distros
 
-If a single task distro that fits your needs does not exist, create a Runtime Environments DEVPROD ticket on Jira requesting the specific image you need your distro to have. 
+If a single task distro that fits your needs does not exist, create a Runtime Environments DEVPROD ticket on Jira requesting the specific image you need your distro to have.
 
 ## Limitations
 
-Single host task groups will still run on the same host due to the fact that they can logically be considered one task. They will run the group setup and teardown as expected. 
+Single host task groups will still run on the same host due to the fact that they can logically be considered one task. They will run the group setup and teardown as expected.
 
 In addition, generate task commands will not be allowed in any host using theses distros.

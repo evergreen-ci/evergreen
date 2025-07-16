@@ -55,5 +55,5 @@ The top-most level for a given patch build is the [patch details page](https://s
 
 The next level is the [task details page](https://spruce.mongodb.com/task/evergreen_race_detector_test_agent_internal_taskoutput_d03d37ed2d43602506e276059634c580f3d5e46e_25_06_06_13_31_24/tests?execution=0), which contains information relevant to that specific task. This includes ETA if the task is running, estimated time to start and position in the task queue if the task is scheduled to run, as well as any test results and files of the task if it has already run. There are also tabs for the task history when viewing a mainline task.
 
-The [waterfall page](https://spruce.mongodb.com/project/evergreen/waterfall) lists all of the mainline commit builds for a project, and the status of each task in each build. This page is useful for getting a high-level overview of the health of a project. 
+The [waterfall page](https://spruce.mongodb.com/project/evergreen/waterfall) lists all of the mainline commit builds for a project, and the status of each task in each build. This page is useful for getting a high-level overview of the health of a project.
 

@@ -16,7 +16,7 @@ rate depending on the task environment.
 
 * Create a new REST endpoint (or repurpose an existing one) that allows for tasks to mark themselves to restart upon failure,
 with the expectation that interested teams would request service users with the needed permissions to hit this endpoint, at which
-point a task could arbitrarily decide when to mark itself for restart via shell scripts 
+point a task could arbitrarily decide when to mark itself for restart via shell scripts
 
 * Use the agent's existing local API, by adding a retryable parameter to its custom end task response route that users already
 leverage to let tasks define their own task end status. This new retryable parameter would be forwarded over to the Evergreen

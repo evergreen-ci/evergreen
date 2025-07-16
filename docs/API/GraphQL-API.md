@@ -116,7 +116,7 @@ application requesting the data.
     execution
     displayName
     baseTask {
-      id 
+      id
       execution
       status
       displayName
