@@ -1,6 +1,9 @@
 # Controlling When a Task Runs on the Waterfall
 
-There are multiple ways to control the scheduling of builds/tasks on a project's _waterfall_ page. This means that tasks manually scheduled by a PR or patch will run regardless of cron/batchtime settings.
+By default, the latest commit on the waterfall will be activated each time our activation job is run. (That means if many commits are made in a short period of time, 
+only the latest commit will be activated.)
+
+There are multiple ways to control the scheduling of builds/tasks on a project's *waterfall* page. This means that tasks manually scheduled by a PR or patch will run regardless of cron/batchtime settings. 
 
 In short:
 

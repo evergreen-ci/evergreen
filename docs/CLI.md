@@ -281,6 +281,10 @@ We will then check that directory for changes, confirm them with you, and add th
 
 ##### To add changes to a module on top of an existing patch
 
+The `module_paths` field is used by `evergreen patch` to keep a cache of where the user's local modules are located. This avoids the patch command re-prompting the user every time a module path is needed. 
+
+Note: The `evergreen validate` and `evergreen evaluate` commands (which support including files from local modules), do not use the module cache.
+
 ```bash
 cd ~/projects/module-project-directory
 evergreen set-module -i <patch_id> -m <module-name>
