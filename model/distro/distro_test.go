@@ -101,7 +101,7 @@ func TestIsParent(t *testing.T) {
 
 	conf := evergreen.ContainerPoolsConfig{
 		Pools: []evergreen.ContainerPool{
-			evergreen.ContainerPool{
+			{
 				Distro:        "distro-1",
 				Id:            "test-pool",
 				MaxContainers: 100,
@@ -171,17 +171,17 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 	testSettings := &evergreen.Settings{
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
+				{
 					Distro:        "valid-distro",
 					Id:            "test-pool-1",
 					MaxContainers: 100,
 				},
-				evergreen.ContainerPool{
+				{
 					Distro:        "invalid-distro",
 					Id:            "test-pool-2",
 					MaxContainers: 100,
 				},
-				evergreen.ContainerPool{
+				{
 					Distro:        "missing-distro",
 					Id:            "test-pool-3",
 					MaxContainers: 100,
