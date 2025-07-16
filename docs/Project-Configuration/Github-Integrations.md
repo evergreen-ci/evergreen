@@ -14,7 +14,7 @@ We have documentation here but we also provide it on the PR itself. It will disp
 
 Evergreen has an option to create patches for pull requests and this can be defined on the project page.
 
-If "Automated Testing" is enabled, Evergreen will automatically create a patch for each pull request opened in the repository as well as each subsequent push to each pull request.
+If "Automated Testing" is enabled, Evergreen will automatically create a patch for each pull request opened in the repository. It will also create a patch for every subsequent push to the pull request as well as automatic base changes.
 
 If you'd like the option of creating patches but wouldn't like it to happen automatically, you can enable "Manual Testing".
 
