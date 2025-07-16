@@ -71,7 +71,7 @@ type APIBuild struct {
 	// keys of this object are statuses and the values are the number of tasks
 	// within this build in that status. Note that this field provides data that
 	// you can get yourself by querying tasks for this build.
-	StatusCounts task.TaskStatusCount `json:"status_counts,omitempty"`
+	StatusCounts task.TaskStatusCount `json:"status_counts"`
 	// Some routes will return information about the variant as defined in the
 	// project. Does not expand expansions; they will be returned as written in
 	// the project yaml (i.e. ${syntax})
