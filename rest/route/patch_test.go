@@ -1163,7 +1163,6 @@ func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
           "name": "some_task_group",
         }
       ],
-      "activate": false
     },
     {
       "name": "testBV2",
@@ -1173,7 +1172,6 @@ func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
           "activate": false
         }
       ],
-      "activate": false
     },
     {
       "name": "testBV3",
@@ -1183,7 +1181,6 @@ func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
           "activate": false
         }
       ],
-      "activate": false
     }
   ],
   "tasks": [
