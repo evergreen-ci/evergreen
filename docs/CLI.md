@@ -88,38 +88,38 @@ evergreen patch --regex_variants "enterprise.*" -t unittest // valid
 
 To use the same tasks and variants defined for the previous patch created for this project, you can use the `--reuse` flag. If any tasks/variants were defined for the previous patch but do not exist for the new patch, they will not be added. Note also that aliases will not be re-calculated; this is so if an alias had been given to the previous patch but then the user chose to tweak the specific tasks/variants, the final configuration is the one that we reuse.
 
-```
+```bash
 evergreen patch --reuse
 ```
 
 To repeat a specific patch id, you can use the '--repeat-patch' flag.
 
-```
+```bash
 evergreen patch --repeat-patch <patch_id>
 ```
 
 Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
 
-```
+```bash
 evergreen patch --repeat-failed
 ```
 
 To repeat the failed of a specific patch, the '--repeat-failed' flag can be used with the '--repeat-patch' flag to specify the patch id.
 
-```
+```bash
 evergreen patch --repeat-failed --repeat-patch <patch_id>
 ```
 
 To skip all (y/n) prompts, the `-y` keyword can be given:
 
-```
+```bash
 evergreen patch -y
 ```
 
 To use local changes for an included file from a module, the `--include-modules` flag can be used:
 Note that `set-module` command will not work for module includes and this flag must be used instead.
 
-```
+```bash
 evergreen patch --include-modules
 ```
 
@@ -249,13 +249,13 @@ To list patches you've created:
 
 ### To cancel a patch
 
-```
+```bash
 evergreen cancel-patch -i <patch_id>
 ```
 
 ### To finalize a patch
 
-```
+```bash
 evergreen finalize-patch -i <patch_id>
 ```
 
@@ -263,13 +263,13 @@ Finalizing a patch actually creates and schedules and tasks. Before this the pat
 
 #### To create a patch and add module changes in one command
 
-```
+```bash
 evergreen patch --include-modules
 ```
 
 This will attempt to add changes for each module that your project supports. This flag will prompt you to provide your local absolute path to the module, and it will be stored in your evergreen.yml file. For example:
 
-```
+```yaml
 projects:
     - name: my_favorite_project
       module_paths:
@@ -281,7 +281,7 @@ We will then check that directory for changes, confirm them with you, and add th
 
 ##### To add changes to a module on top of an existing patch
 
-```
+```bash
 cd ~/projects/module-project-directory
 evergreen set-module -i <patch_id> -m <module-name>
 ```
@@ -295,7 +295,7 @@ To validate local changes within [included module files](Project-Configuration/P
 
 Note: Must include a local path for includes that use a module.
 
-```
+```bash
 evergreen validate <path-to-yaml-project-file> -lm <module-name>=<path-to-yaml>
 ```
 
@@ -313,7 +313,7 @@ Note: validation is server-side and requires a valid evergreen configuration fil
 Additionally, the `evaluate` command can be used to locally expand task tags and return a fully evaluated version of a project file.
 To evaluate local changes within [included module files](Project-Configuration/Project-Configuration-Files#include), use the `local_modules` flag to list out module name and path pairs.
 
-```
+```bash
 evergreen evaluate <path-to-yaml-project-file>
 ```
 
@@ -327,7 +327,7 @@ Evergreen Spawn Hosts can now be managed from the command line, and this can be 
 
 To create a new EBS volume:
 
-```
+```bash
 evergreen volume create --size <size> --type <default=gp2> --zone <default=us-east-1a>
 ```
 
@@ -335,7 +335,7 @@ While the Availability Zone does have a default, this must be in the _same zone 
 
 To attach the volume to your host (assuming the same availability zone), use:
 
-```
+```bash
 evergreen host attach --host <host_id> --volume <volume_id>
 ```
 
@@ -343,7 +343,7 @@ If you forget your volume ID, you can find this with `evergreen volume list`. If
 
 A volume can only be deleted if detached, so removing a volume would for example be:
 
-```
+```bash
 evergreen host detach --host <host_id> --volume <volume_id>
 evergreen volume delete --id <volume_id>
 ```
@@ -352,7 +352,7 @@ evergreen volume delete --id <volume_id>
 
 Tags can be modified for hosts using the following syntax:
 
-```
+```bash
 evergreen host modify --tag KEY=VALUE
 evergreen --delete-tag KEY
 ```
@@ -365,7 +365,7 @@ as well; if you don't set one, your unexpirable host will be automatically assig
 example, this command will make a host unexpirable and defines a sleep schedule so the host is on from 9 am to 5 pm
 between Monday and Friday in Eastern Time:
 
-```sh
+```bash
 evergreen host modify --host "<HOST_ID>" --no-expire --daily-start '09:00' --daily-stop '17:00' --weekdays-off Saturday --weekdays-off Sunday --timezone "America/New_York"
 ```
 
@@ -381,7 +381,7 @@ Instance type can only be changed if the host is stopped. Hosts can be stopped a
 
 Run a bash script on a host.
 
-```
+```bash
 evergreen host exec --host <host_id> --script <bash script>
 ```
 
@@ -395,7 +395,7 @@ The command `evergreen get-update` fetches the latest version of the Evergreen C
 
 Example that downloads the binary:
 
-```
+```bash
 evergreen get-update --auto
 ```
 
@@ -407,7 +407,7 @@ The command `evergreen fetch` can automate downloading of the binaries associate
 
 Example that downloads the artifacts for the given task ID and cloning its source:
 
-```
+```bash
 evergreen fetch -t <task-id> --source --artifacts
 ```
 
@@ -418,7 +418,7 @@ Specify the optional `--dir` argument to choose the destination path where the d
 The command `evergreen list` can help you determine what projects, variants, and tasks are available for patching against.
 The commands
 
-```
+```bash
 evergreen list --projects
 evergreen list --tasks -p <project_id>
 evergreen list --variants -p <project_id>
@@ -435,13 +435,13 @@ The list command can take an optional `-f/--file` argument for specifying a loca
 The command `evergreen last-green` can help you find an entirely successful commit to patch against.
 To use it, specify the project you wish to query along with the set of variants to verify as passing.
 
-```
+```bash
 evergreen last-green -p <project_id> -v <variant1> -v <variant2> -v <variant...>
 ```
 
 A run might look something like
 
-```
+```bash
 evergreen last-green -p mci -v ubuntu
 
    Revision : 97ac269b1e5cf0961fce5bcf985f01c263911efb
@@ -454,7 +454,7 @@ evergreen last-green -p mci -v ubuntu
 
 The command `evergreen task` contains subcommands for interacting with task run data, including task output (build) data.
 
-```
+```bash
 # Fetch task logs
 evergreen task build TaskLogs --task_id <task_id> --execution <execution> --type <task_log_type>
 
@@ -488,7 +488,7 @@ The "url" keys in each list item should contain the appropriate URL to the binar
 
 The Evergreen CLI has the ability to send slack and email notifications for scripting. These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
 
-```
+```bash
 # Send a Slack message
 evergreen notify slack --target <#channel or @user> --msg <message>
 

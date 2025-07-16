@@ -4,7 +4,7 @@ Specific GitHub pull request behavior can trigger behavior in Evergreen.
 
 ## Help Text
 
-```
+```bash
 evergreen help
 ```
 
@@ -22,7 +22,7 @@ You can read more about these options [here](../Project-Configuration/Project-an
 
 ### Retry a patch
 
-```
+```bash
 evergreen retry
 ```
 
@@ -30,7 +30,7 @@ Sometimes Evergreen has trouble creating a PR patch, due to internal server erro
 
 #### Set PR patches to reuse a patch definition
 
-```
+```bash
 evergreen keep-definitions
 ```
 
@@ -40,7 +40,7 @@ Note that if you schedule more tasks in a patch created after `evergreen keep-de
 
 #### Stop PR patches from reusing a patch definition
 
-```
+```bash
 evergreen reset-definitions
 ```
 
@@ -54,13 +54,13 @@ until the label is removed and a new commit or `evergreen retry` comment is push
 
 #### Create a patch for manual testing
 
-```
+```bash
 evergreen patch
 ```
 
 If your project is configured for manual testing, then Evergreen will only add GitHub checks to the PR when prompted, as opposed to for every commit. Commenting `evergreen patch` will trigger this.
 
-```
+```bash
 evergreen patch --alias <alias>
 ```
 
@@ -68,7 +68,7 @@ Override the default GitHub PR patch definition with a custom alias.
 
 #### Refresh GitHub checks
 
-```
+```bash
 evergreen refresh
 ```
 
@@ -93,7 +93,7 @@ Check runs cannot be defined in the task level and will be ignored if done so.
 
 Specifying a task tag (like in the example below) will create a check run for all the tasks matching the tag. However, this means if there are more tasks matching that tag than the check run limit, it will fail the check run validation. To use the check run on a few select tasks matching the tag, we recommend separating out the tag into two (e.g. [task_tag] into [task_tag_no_check_run] and [task_task_with_check_run]) to not exceed the limit and still use the tags.
 
-```
+```yaml
 pre:
   - command: git.get_project
     params:
@@ -143,8 +143,7 @@ Evergreen supports using expansions in the output file, but please be careful to
 
 #### Example output.json file
 
-```
-
+```json
 {
   "title": "This is my report for ${checkRun_key}",
   "summary": "We found 6 failures and 2 warnings",
@@ -161,7 +160,6 @@ Evergreen supports using expansions in the output file, but please be careful to
       }
   ]
 }
-
 ```
 
 #### Interacting with the GitHub UI
@@ -219,7 +217,7 @@ If token restrictions are specified both in the project configuration file under
 
 For example, if the project settings for the requester specifies
 
-```
+```json
 {
     checks: write
     pull-request: write
@@ -229,7 +227,7 @@ For example, if the project settings for the requester specifies
 
 and the command specifies
 
-```
+```json
 {
     pull-request: read
     actions: write
@@ -238,7 +236,7 @@ and the command specifies
 
 The permissions for the resulting token will be
 
-```
+```json
 # note that checks not being specified is the
 # equivalent of asking for no secret permissions
 

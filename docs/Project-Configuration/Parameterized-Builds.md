@@ -32,7 +32,7 @@ Parameters can be defined in multiple different places, and can overwrite existi
 
 To define default values for parameters, as well as descriptions, parameters can now be added to the project YAML:
 
-```
+```yaml
 parameters:
     - key: foo
       value: bar
@@ -49,7 +49,7 @@ When creating a patch, use `--param KEY=VALUE` to define each parameter. These w
 
 If the user doesn't currently have parameter defaults (and hasn't included `--yes` to skip prompts), they will receive a prompt to add defaults to their local configuration. Defaults are added to the local configuration as a mapping:
 
-```
+```yaml
 project:
 - name: evergreen
   parameters:
@@ -70,13 +70,13 @@ As detailed in the hierarchy, these can be overwritten by users.
 
 This is the only place where description is used by Evergreen.
 
-```
+```bash
 evergreen list --parameters --project <project_id>
 ```
 
 This returns the parameters defined in the project's config.
 
-```
+```bash
 Name      Default       Description
 ----      -------       -----------
 foo       bar           this is a demonstration

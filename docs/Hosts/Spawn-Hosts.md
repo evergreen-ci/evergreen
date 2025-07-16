@@ -12,7 +12,7 @@ If you are having trouble connecting to a spawn host:
 - Verify you are using the correct ssh key used when creating the Spawn Host. Use the -i argument to specify the location of your local private ssh key to use.
 - Newer versions of macOS do not by default support older SSH algorithms. Please add these lines to the `Host *` stanza of your ~/.ssh/config:
 
-```
+```sshconfig
   Host *
       HostkeyAlgorithms +ssh-rsa
       PubkeyAcceptedAlgorithms +ssh-rsa
