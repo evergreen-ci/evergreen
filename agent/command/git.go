@@ -33,8 +33,6 @@ import (
 
 const (
 	gitFetchProjectRetries = 5
-	defaultCommitterName   = "Evergreen Agent"
-	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
 	shallowCloneDepth      = 100
 
 	gitGetProjectAttribute = "evergreen.command.git_get_project"

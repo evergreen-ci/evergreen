@@ -36,7 +36,6 @@ const (
 	TaskPriorityChanged        = "TASK_PRIORITY_CHANGED"
 	TaskJiraAlertCreated       = "TASK_JIRA_ALERT_CREATED"
 	TaskDependenciesOverridden = "TASK_DEPENDENCIES_OVERRIDDEN"
-	MergeTaskUnscheduled       = "MERGE_TASK_UNSCHEDULED"
 )
 
 // implements Data
