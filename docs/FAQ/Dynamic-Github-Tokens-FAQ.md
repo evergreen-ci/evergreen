@@ -1,6 +1,6 @@
 # Dynamic Github Access Tokens FAQ
 
-##### Which permissions should the github app have?
+## Which permissions should the github app have?
 
 The permissions for you app should be limited to only what is necessary. The permissions that are necessary will depend on how you plan to use the generated tokens.
 
@@ -8,11 +8,11 @@ The permissions for you app should be limited to only what is necessary. The per
 - **contents:write**: To use the app to `git push`, request `contents:write` under repository permissions.
 - **checks:write**: To use the app to generate a token to pass into [github check runs](Project-Configuration/Github-Integrations/github-check-runs) (this is not available yet but will be soon), request `checks:write` under repository permissions.
 
-##### Can more than one app be associated with my project?
+### Can more than one app be associated with my project?
 
 No, only one app per project is supported.
 
-##### Why am I seeing `HTTP status code 401: 401 (Unauthorized): requester does not have permission to create a token` error when I try to clone with a generated token?
+#### Why am I seeing `HTTP status code 401: 401 (Unauthorized): requester does not have permission to create a token` error when I try to clone with a generated token?
 
 It is possible that the token is being generated with permissions being fully restricted to `No Permissions` in the project settings. Double check that the [project settings](Github-Integrations#dynamic-github-access-tokens) did not restrict this requester to `No Permissions`.
 
