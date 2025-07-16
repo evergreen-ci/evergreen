@@ -58,7 +58,7 @@ type APIPatch struct {
 	// Whether the patch has been finalized and activated
 	Activated            bool                 `json:"activated"`
 	Alias                *string              `json:"alias,omitempty"`
-	GithubPatchData      APIGithubPatch       `json:"github_patch_data,omitempty"`
+	GithubPatchData      APIGithubPatch       `json:"github_patch_data"`
 	ModuleCodeChanges    []APIModulePatch     `json:"module_code_changes"`
 	Parameters           []APIParameter       `json:"parameters"`
 	ProjectStorageMethod *string              `json:"project_storage_method,omitempty"`
