@@ -4,7 +4,7 @@ Specific GitHub pull request behavior can trigger behavior in Evergreen.
 
 ## Help Text
 
-```
+```bash
 evergreen help
 ```
 
@@ -20,9 +20,9 @@ If you'd like the option of creating patches but wouldn't like it to happen auto
 
 You can read more about these options [here](../Project-Configuration/Project-and-Distro-Settings#github-pull-request-testing).
 
-#### Retry a patch
+### Retry a patch
 
-```
+```bash
 evergreen retry
 ```
 
@@ -30,7 +30,7 @@ Sometimes Evergreen has trouble creating a PR patch, due to internal server erro
 
 #### Set PR patches to reuse a patch definition
 
-```
+```bash
 evergreen keep-definitions
 ```
 
@@ -40,7 +40,7 @@ Note that if you schedule more tasks in a patch created after `evergreen keep-de
 
 #### Stop PR patches from reusing a patch definition
 
-```
+```bash
 evergreen reset-definitions
 ```
 
@@ -54,13 +54,13 @@ until the label is removed and a new commit or `evergreen retry` comment is push
 
 #### Create a patch for manual testing
 
-```
+```bash
 evergreen patch
 ```
 
 If your project is configured for manual testing, then Evergreen will only add GitHub checks to the PR when prompted, as opposed to for every commit. Commenting `evergreen patch` will trigger this.
 
-```
+```bash
 evergreen patch --alias <alias>
 ```
 
@@ -68,7 +68,7 @@ Override the default GitHub PR patch definition with a custom alias.
 
 #### Refresh GitHub checks
 
-```
+```bash
 evergreen refresh
 ```
 
@@ -86,14 +86,14 @@ See [GitHub Merge Queue](../Project-Configuration/Merge-Queue.md) for more infor
 
 Evergreen offers integration with the GitHub checks API. Users have the option to specify check runs with or without output and they will then be sent to GitHub once the task finishes running. The check run will include basic information about the task such as the status and complete time as well as whatever information is sent as output.
 
-#### Configuration
+### Configuration
 
 To add a check run to a task, specify it in the list of tasks in the build variant definition.
-Check runs cannot be defined in the task level and will be ignored if done so. 
+Check runs cannot be defined in the task level and will be ignored if done so.
 
 Specifying a task tag (like in the example below) will create a check run for all the tasks matching the tag. However, this means if there are more tasks matching that tag than the check run limit, it will fail the check run validation. To use the check run on a few select tasks matching the tag, we recommend separating out the tag into two (e.g. [task_tag] into [task_tag_no_check_run] and [task_task_with_check_run]) to not exceed the limit and still use the tags.
 
-```
+```yaml
 pre:
   - command: git.get_project
     params:
@@ -117,7 +117,7 @@ buildvariants:
         create_check_run:
           path_to_outputs: "" ## Evergreen will create a default output if a path is not specified
       - name: ".task_tag" ## this will create a check run for every task tagged with `[task_tag]`
-        create_check_run: 
+        create_check_run:
           path_to_outputs: ""
     expansions:
       checkRun_key: apple
@@ -141,16 +141,15 @@ The output json file can specify the following fields. Required fields are only 
 
 Evergreen supports using expansions in the output file, but please be careful to not pass any keys or sensitive data.
 
-##### Example output.json file:
+#### Example output.json file
 
-```
-
+```json
 {
   "title": "This is my report for ${checkRun_key}",
   "summary": "We found 6 failures and 2 warnings",
   "text": "It looks like there are some errors on lines 2 and 4.",
   "annotations": [
-      {
+    {
       "path": "README.md",
       "annotation_level": "warning",
       "title": "Why did the line of code change its mind",
@@ -158,10 +157,9 @@ Evergreen supports using expansions in the output file, but please be careful to
       "raw_details": "Do you mean this other thing?",
       "start_line": 2,
       "end_line": 2
-      }
+    }
   ]
 }
-
 ```
 
 #### Interacting with the GitHub UI
@@ -192,7 +190,7 @@ If you run into any issues, please see our [FAQ](../FAQ.md#dynamic-github-access
 
 If you don't already have a github app, reach out to the IT team for help obtaining one.
 
-#### Saving An App Id and Key
+### Saving An App Id and Key
 
 To get started, save your app ID and app key in your project settings in the GitHub App Settings tab. ![save-app.png](../images/github-app-save.png)
 
@@ -219,7 +217,7 @@ If token restrictions are specified both in the project configuration file under
 
 For example, if the project settings for the requester specifies
 
-```
+```json
 {
     checks: write
     pull-request: write
@@ -229,7 +227,7 @@ For example, if the project settings for the requester specifies
 
 and the command specifies
 
-```
+```json
 {
     pull-request: read
     actions: write
@@ -238,7 +236,7 @@ and the command specifies
 
 The permissions for the resulting token will be
 
-```
+```json
 # note that checks not being specified is the
 # equivalent of asking for no secret permissions
 
