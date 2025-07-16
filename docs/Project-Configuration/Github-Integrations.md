@@ -20,7 +20,7 @@ If you'd like the option of creating patches but wouldn't like it to happen auto
 
 You can read more about these options [here](../Project-Configuration/Project-and-Distro-Settings#github-pull-request-testing).
 
-#### Retry a patch
+### Retry a patch
 
 ```
 evergreen retry
@@ -86,7 +86,7 @@ See [GitHub Merge Queue](../Project-Configuration/Merge-Queue.md) for more infor
 
 Evergreen offers integration with the GitHub checks API. Users have the option to specify check runs with or without output and they will then be sent to GitHub once the task finishes running. The check run will include basic information about the task such as the status and complete time as well as whatever information is sent as output.
 
-#### Configuration
+### Configuration
 
 To add a check run to a task, specify it in the list of tasks in the build variant definition.
 Check runs cannot be defined in the task level and will be ignored if done so. 
@@ -141,7 +141,7 @@ The output json file can specify the following fields. Required fields are only 
 
 Evergreen supports using expansions in the output file, but please be careful to not pass any keys or sensitive data.
 
-##### Example output.json file:
+#### Example output.json file:
 
 ```
 
@@ -192,7 +192,7 @@ If you run into any issues, please see our [FAQ](../FAQ.md#dynamic-github-access
 
 If you don't already have a github app, reach out to the IT team for help obtaining one.
 
-#### Saving An App Id and Key
+### Saving An App Id and Key
 
 To get started, save your app ID and app key in your project settings in the GitHub App Settings tab. ![save-app.png](../images/github-app-save.png)
 

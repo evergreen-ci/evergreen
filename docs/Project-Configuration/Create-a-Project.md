@@ -32,7 +32,7 @@ If you do not see the `New Project` button on the [project settings page](https:
 
 6. Click "Create New Project".
 
-#### Project S3 Bucket Lifecycle Policy
+### Project S3 Bucket Lifecycle Policy
 
 The S3 bucket created for your project will have the following lifecycle policy:
 

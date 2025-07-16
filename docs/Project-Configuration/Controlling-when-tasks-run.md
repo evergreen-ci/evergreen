@@ -16,7 +16,7 @@ The yaml settings **only apply to mainline commits.** If more than one is set, m
 features interact with each other are found [here](Project-Configuration-Files#specific-activation-override-hierarchy).
 Documentation on limiting when tasks runs beyond the waterfall can be found [here](Project-Configuration-Files#limiting-when-a-task-or-variant-will-run).
 
-### Activate
+## Activate
 `activate: false` prevents a build variant or task on a mainline commit from activating automatically. This can be specified in the
 buildvariants section of the project configuration file on a build variant or a task within the build variant. If a cron job wants to activate a build/task but also has `activate` set to false, the build/task will not run.
 

@@ -700,7 +700,7 @@ The parameters for each module are:
 -   `branch`: must be the name of branch, commit hashes _are not
     accepted_.
 
-#### Module Hash Hierarchy
+### Module Hash Hierarchy
 The hash used for a module during cloning is determined by the following hierarchy:
 
 - For GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.

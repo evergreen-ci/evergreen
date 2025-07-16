@@ -28,7 +28,7 @@ Parameters can be defined in multiple different places, and can overwrite existi
 
 ## Usage
 
-#### Project Config
+### Project Config
 
 To define default values for parameters, as well as descriptions, parameters can now be added to the project YAML:
 ```

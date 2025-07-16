@@ -7,7 +7,7 @@ to encounter are listed here.
 
 Evergreen limits users to two never expiring spawn hosts at a time.
 
-#### Can an exception be requested?
+### Can an exception be requested?
 
 Exceptions can be requested on a case-by-case which will be granted based on
 [our policy](https://mongodb.stackenterprise.co/questions/1122).

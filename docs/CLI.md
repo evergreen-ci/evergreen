@@ -130,7 +130,7 @@ Many prompts will ask for a y/n (i.e. yes/no) response. If you hit enter or use 
 Advanced Patch Tips
 --
 
-##### Multiple Defaults
+### Multiple Defaults
 While the `evergreen` program has no built-in method of saving multiple configurations of defaults for a project, you can easily mimic this functionality by using multiple local evergreen configurations.
 The command line tool allows you to pass in a specific config file with `--config`:
 ```bash
@@ -174,7 +174,7 @@ projects:
 for running basic compile/unit tasks for a variety of platforms with `evergreen --config compile.yml patch`.
 This setup also makes it easy to do scripting for nice, automatic patch generation.
 
-##### Git Diff
+#### Git Diff
 Extra args to the `git diff` command used to generate your patch may be specified by appending them after `--`.  For example, to generate a patch relative to the previous commit:
 
       evergreen patch -- HEAD~1
@@ -228,20 +228,20 @@ To list patches you've created:
       evergreen list-patches
 
 
-##### To cancel a patch:
+### To cancel a patch:
  
 ```
 evergreen cancel-patch -i <patch_id>
 ```
     
-##### To finalize a patch:
+### To finalize a patch:
  
 ```
 evergreen finalize-patch -i <patch_id>
 ```
 Finalizing a patch actually creates and schedules and tasks. Before this the patch only exists as a patch "intent". You can finalize a patch either by passing --finalize or -f or by clicking the "Schedule Patch" button in the UI of an un-finalized patch.
 
-##### To create a patch and add module changes in one command:
+#### To create a patch and add module changes in one command:
 ```
 evergreen patch --include-modules
 ```
@@ -356,7 +356,7 @@ This is useful to unblock a host when it can't be reached over SSH.
 Other Commands
 --
 
-#### Get Update
+### Get Update
 
 The command `evergreen get-update` fetches the latest version of the Evergreen CLI binary if the current binary is out of date on a given machine.
 
