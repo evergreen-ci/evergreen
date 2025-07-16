@@ -42,7 +42,7 @@ Below is an example with:
 - Commits 1 - 10 (1 first, 10 last) labeled '1', '2', ... that are inactive.
 - A failing commit labeled 'Latest commit'.
 
-(i.e. x ? ? ? ? ? ? ? _ ? ? ✔️ where x is the latest commit, _ is the offending commit, and ✔️ is the latest passing).
+(i.e. x ? ? ? ? ? ? ? \_ ? ? ✔️ where x is the latest commit, \_ is the offending commit, and ✔️ is the latest passing).
 
 Stepback bisection is turned on and attempting to find the commit '3'.
 
