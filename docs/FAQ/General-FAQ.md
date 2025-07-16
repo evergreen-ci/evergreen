@@ -1,6 +1,6 @@
 # General FAQ
 
-### How and what commit is chosen when running `evergreen patch`?
+## How and what commit is chosen when running `evergreen patch`?
 
 The Evergreen CLI grabs the user's config file and determines what project should be used. The CLI then establishes a connection with the Evergreen server and retrieves that project's information, specifically the GitHub org + repo + branch (which we'll call, org, repo, and main respectively).
 
@@ -23,6 +23,6 @@ Some Caveats to be aware of:
 
 For more on their differences and examples, see [controlling when tasks run](Project-Configuration/Controlling-when-tasks-run).
 
-### Why am I seeing a 'fatal: ...no merge base' error?
+## Why am I seeing a 'fatal: ...no merge base' error?
 
 This is most likely because your repo was cloned with a specified depth and the merge base was outside the range of the depth. To fix this, rebase your HEAD to the latest master. If this happens often, we recommend increasing the clone depth in your project's [`git.get_project`](Project-Configuration/Project-Commands#gitget_project) to a more suitable depth.
