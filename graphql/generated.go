@@ -438,7 +438,7 @@ type ComplexityRoot struct {
 		Repo     func(childComplexity int) int
 	}
 
-	GithubPatchData struct {
+	GithubPatch struct {
 		Author     func(childComplexity int) int
 		BaseOwner  func(childComplexity int) int
 		BaseRepo   func(childComplexity int) int
@@ -3700,61 +3700,61 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GithubPRSubscriber.Repo(childComplexity), true
 
-	case "GithubPatchData.author":
-		if e.complexity.GithubPatchData.Author == nil {
+	case "GithubPatch.author":
+		if e.complexity.GithubPatch.Author == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.Author(childComplexity), true
+		return e.complexity.GithubPatch.Author(childComplexity), true
 
-	case "GithubPatchData.baseOwner":
-		if e.complexity.GithubPatchData.BaseOwner == nil {
+	case "GithubPatch.baseOwner":
+		if e.complexity.GithubPatch.BaseOwner == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.BaseOwner(childComplexity), true
+		return e.complexity.GithubPatch.BaseOwner(childComplexity), true
 
-	case "GithubPatchData.baseRepo":
-		if e.complexity.GithubPatchData.BaseRepo == nil {
+	case "GithubPatch.baseRepo":
+		if e.complexity.GithubPatch.BaseRepo == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.BaseRepo(childComplexity), true
+		return e.complexity.GithubPatch.BaseRepo(childComplexity), true
 
-	case "GithubPatchData.headBranch":
-		if e.complexity.GithubPatchData.HeadBranch == nil {
+	case "GithubPatch.headBranch":
+		if e.complexity.GithubPatch.HeadBranch == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.HeadBranch(childComplexity), true
+		return e.complexity.GithubPatch.HeadBranch(childComplexity), true
 
-	case "GithubPatchData.headHash":
-		if e.complexity.GithubPatchData.HeadHash == nil {
+	case "GithubPatch.headHash":
+		if e.complexity.GithubPatch.HeadHash == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.HeadHash(childComplexity), true
+		return e.complexity.GithubPatch.HeadHash(childComplexity), true
 
-	case "GithubPatchData.headOwner":
-		if e.complexity.GithubPatchData.HeadOwner == nil {
+	case "GithubPatch.headOwner":
+		if e.complexity.GithubPatch.HeadOwner == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.HeadOwner(childComplexity), true
+		return e.complexity.GithubPatch.HeadOwner(childComplexity), true
 
-	case "GithubPatchData.headRepo":
-		if e.complexity.GithubPatchData.HeadRepo == nil {
+	case "GithubPatch.headRepo":
+		if e.complexity.GithubPatch.HeadRepo == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.HeadRepo(childComplexity), true
+		return e.complexity.GithubPatch.HeadRepo(childComplexity), true
 
-	case "GithubPatchData.prNumber":
-		if e.complexity.GithubPatchData.PRNumber == nil {
+	case "GithubPatch.prNumber":
+		if e.complexity.GithubPatch.PRNumber == nil {
 			break
 		}
 
-		return e.complexity.GithubPatchData.PRNumber(childComplexity), true
+		return e.complexity.GithubPatch.PRNumber(childComplexity), true
 
 	case "GithubProjectConflicts.commitCheckIdentifiers":
 		if e.complexity.GithubProjectConflicts.CommitCheckIdentifiers == nil {
@@ -26607,8 +26607,8 @@ func (ec *executionContext) fieldContext_GithubPRSubscriber_repo(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_author(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_author(ctx, field)
+func (ec *executionContext) _GithubPatch_author(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_author(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26635,9 +26635,9 @@ func (ec *executionContext) _GithubPatchData_author(ctx context.Context, field g
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26648,8 +26648,8 @@ func (ec *executionContext) fieldContext_GithubPatchData_author(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_baseOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_baseOwner(ctx, field)
+func (ec *executionContext) _GithubPatch_baseOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_baseOwner(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26676,9 +26676,9 @@ func (ec *executionContext) _GithubPatchData_baseOwner(ctx context.Context, fiel
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_baseOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_baseOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26689,8 +26689,8 @@ func (ec *executionContext) fieldContext_GithubPatchData_baseOwner(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_baseRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_baseRepo(ctx, field)
+func (ec *executionContext) _GithubPatch_baseRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_baseRepo(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26717,9 +26717,9 @@ func (ec *executionContext) _GithubPatchData_baseRepo(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_baseRepo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_baseRepo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26730,8 +26730,8 @@ func (ec *executionContext) fieldContext_GithubPatchData_baseRepo(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_headBranch(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_headBranch(ctx, field)
+func (ec *executionContext) _GithubPatch_headBranch(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headBranch(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26758,9 +26758,9 @@ func (ec *executionContext) _GithubPatchData_headBranch(ctx context.Context, fie
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_headBranch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_headBranch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26771,8 +26771,8 @@ func (ec *executionContext) fieldContext_GithubPatchData_headBranch(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_headHash(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_headHash(ctx, field)
+func (ec *executionContext) _GithubPatch_headHash(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headHash(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26799,9 +26799,9 @@ func (ec *executionContext) _GithubPatchData_headHash(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_headHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_headHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26812,8 +26812,8 @@ func (ec *executionContext) fieldContext_GithubPatchData_headHash(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_headOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_headOwner(ctx, field)
+func (ec *executionContext) _GithubPatch_headOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headOwner(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26840,9 +26840,9 @@ func (ec *executionContext) _GithubPatchData_headOwner(ctx context.Context, fiel
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_headOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_headOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26853,8 +26853,8 @@ func (ec *executionContext) fieldContext_GithubPatchData_headOwner(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_headRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_headRepo(ctx, field)
+func (ec *executionContext) _GithubPatch_headRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headRepo(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26881,9 +26881,9 @@ func (ec *executionContext) _GithubPatchData_headRepo(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_headRepo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_headRepo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -26894,8 +26894,8 @@ func (ec *executionContext) fieldContext_GithubPatchData_headRepo(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _GithubPatchData_prNumber(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GithubPatchData_prNumber(ctx, field)
+func (ec *executionContext) _GithubPatch_prNumber(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_prNumber(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26922,9 +26922,9 @@ func (ec *executionContext) _GithubPatchData_prNumber(ctx context.Context, field
 	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GithubPatchData_prNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GithubPatch_prNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GithubPatchData",
+		Object:     "GithubPatch",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -43492,7 +43492,7 @@ func (ec *executionContext) _Patch_githubPatchData(ctx context.Context, field gr
 	}
 	res := resTmp.(model.APIGithubPatch)
 	fc.Result = res
-	return ec.marshalOGithubPatchData2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch(ctx, field.Selections, res)
+	return ec.marshalOGithubPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Patch_githubPatchData(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -43504,23 +43504,23 @@ func (ec *executionContext) fieldContext_Patch_githubPatchData(_ context.Context
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "author":
-				return ec.fieldContext_GithubPatchData_author(ctx, field)
+				return ec.fieldContext_GithubPatch_author(ctx, field)
 			case "baseOwner":
-				return ec.fieldContext_GithubPatchData_baseOwner(ctx, field)
+				return ec.fieldContext_GithubPatch_baseOwner(ctx, field)
 			case "baseRepo":
-				return ec.fieldContext_GithubPatchData_baseRepo(ctx, field)
+				return ec.fieldContext_GithubPatch_baseRepo(ctx, field)
 			case "headBranch":
-				return ec.fieldContext_GithubPatchData_headBranch(ctx, field)
+				return ec.fieldContext_GithubPatch_headBranch(ctx, field)
 			case "headHash":
-				return ec.fieldContext_GithubPatchData_headHash(ctx, field)
+				return ec.fieldContext_GithubPatch_headHash(ctx, field)
 			case "headOwner":
-				return ec.fieldContext_GithubPatchData_headOwner(ctx, field)
+				return ec.fieldContext_GithubPatch_headOwner(ctx, field)
 			case "headRepo":
-				return ec.fieldContext_GithubPatchData_headRepo(ctx, field)
+				return ec.fieldContext_GithubPatch_headRepo(ctx, field)
 			case "prNumber":
-				return ec.fieldContext_GithubPatchData_prNumber(ctx, field)
+				return ec.fieldContext_GithubPatch_prNumber(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GithubPatchData", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GithubPatch", field.Name)
 		},
 	}
 	return fc, nil
@@ -93547,33 +93547,33 @@ func (ec *executionContext) _GithubPRSubscriber(ctx context.Context, sel ast.Sel
 	return out
 }
 
-var githubPatchDataImplementors = []string{"GithubPatchData"}
+var githubPatchImplementors = []string{"GithubPatch"}
 
-func (ec *executionContext) _GithubPatchData(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubPatch) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, githubPatchDataImplementors)
+func (ec *executionContext) _GithubPatch(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubPatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, githubPatchImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("GithubPatchData")
+			out.Values[i] = graphql.MarshalString("GithubPatch")
 		case "author":
-			out.Values[i] = ec._GithubPatchData_author(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_author(ctx, field, obj)
 		case "baseOwner":
-			out.Values[i] = ec._GithubPatchData_baseOwner(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_baseOwner(ctx, field, obj)
 		case "baseRepo":
-			out.Values[i] = ec._GithubPatchData_baseRepo(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_baseRepo(ctx, field, obj)
 		case "headBranch":
-			out.Values[i] = ec._GithubPatchData_headBranch(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_headBranch(ctx, field, obj)
 		case "headHash":
-			out.Values[i] = ec._GithubPatchData_headHash(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_headHash(ctx, field, obj)
 		case "headOwner":
-			out.Values[i] = ec._GithubPatchData_headOwner(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_headOwner(ctx, field, obj)
 		case "headRepo":
-			out.Values[i] = ec._GithubPatchData_headRepo(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_headRepo(ctx, field, obj)
 		case "prNumber":
-			out.Values[i] = ec._GithubPatchData_prNumber(ctx, field, obj)
+			out.Values[i] = ec._GithubPatch_prNumber(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -114535,8 +114535,8 @@ func (ec *executionContext) marshalOGithubPRSubscriber2ᚖgithubᚗcomᚋevergre
 	return ec._GithubPRSubscriber(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOGithubPatchData2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch(ctx context.Context, sel ast.SelectionSet, v model.APIGithubPatch) graphql.Marshaler {
-	return ec._GithubPatchData(ctx, sel, &v)
+func (ec *executionContext) marshalOGithubPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch(ctx context.Context, sel ast.SelectionSet, v model.APIGithubPatch) graphql.Marshaler {
+	return ec._GithubPatch(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOGithubUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubUser(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubUser) graphql.Marshaler {
