@@ -35,7 +35,7 @@ type ClientProjectConf struct {
 	Parameters     map[string]string    `json:"parameters" yaml:"parameters,omitempty"`
 	ModulePaths    map[string]string    `json:"module_paths" yaml:"module_paths,omitempty"`
 	TriggerAliases []string             `json:"trigger_aliases" yaml:"trigger_aliases"`
-	LocalAliases   []model.ProjectAlias `json:"local_aliases" yaml:"local_aliases,omitempty"`
+	LocalAliases   []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
@@ -90,10 +90,10 @@ type ClientSettings struct {
 	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
 	LoadedFrom            string              `json:"-" yaml:"-"`
 	DisableAutoDefaulting bool                `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
-	ProjectsForDirectory  map[string]string   `json:"projects_for_directory" yaml:"projects_for_directory,omitempty"`
+	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
 
 	// StagingEnvironment configures which staging environment to point to.
-	StagingEnvironment string `json:"staging_environment" yaml:"staging_environment,omitempty"`
+	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {

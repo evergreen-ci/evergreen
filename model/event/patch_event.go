@@ -26,8 +26,8 @@ const (
 )
 
 type PatchEventData struct {
-	Status string `bson:"status,omitempty" json:"status"`
-	Author string `bson:"author,omitempty" json:"author"`
+	Status string `bson:"status,omitempty" json:"status,omitempty"`
+	Author string `bson:"author,omitempty" json:"author,omitempty"`
 }
 
 func LogPatchStateChangeEvent(ctx context.Context, id, newStatus string) {

@@ -43,25 +43,25 @@ type Host struct {
 	Host            string        `bson:"host_id" json:"host"`
 	User            string        `bson:"user" json:"user"`
 	Secret          string        `bson:"secret" json:"secret"`
-	ServicePassword string        `bson:"service_password,omitempty" json:"service_password" mapstructure:"service_password,omitempty"`
+	ServicePassword string        `bson:"service_password,omitempty" json:"service_password,omitempty" mapstructure:"service_password,omitempty"`
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
 	// IPAllocationID is the ID for the IP allocated to this host.
 	// Only set for hosts using elastic IPs.
-	IPAllocationID string `bson:"ip_allocation_id,omitempty" json:"ip_allocation_id"`
+	IPAllocationID string `bson:"ip_allocation_id,omitempty" json:"ip_allocation_id,omitempty"`
 	// IPAssociationID is the ID for the association link between this host and
 	// its IP. Only set for hosts using elastic IPs.
-	IPAssociationID string `bson:"ip_association_id,omitempty" json:"ip_association_id"`
+	IPAssociationID string `bson:"ip_association_id,omitempty" json:"ip_association_id,omitempty"`
 	// IP holds the IPv6 address when applicable.
 	IP string `bson:"ip_address" json:"ip_address"`
 	// IPv4 is the host's private IPv4 address.
 	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
 	// PersistentDNSName is the long-lived DNS name of the host, which should
 	// never change once set.
-	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name"`
+	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
 	// PublicIPv4 is the host's IPv4 address when available.
-	PublicIPv4 string `bson:"public_ipv4_address,omitempty" json:"public_ipv4_address"`
+	PublicIPv4 string `bson:"public_ipv4_address,omitempty" json:"public_ipv4_address,omitempty"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -73,31 +73,31 @@ type Host struct {
 	// True if the app server has done all necessary host setup work (although
 	// the host may need to do additional provisioning before it is running).
 	Provisioned   bool      `bson:"provisioned" json:"provisioned"`
-	ProvisionTime time.Time `bson:"prov_time,omitempty" json:"prov_time"`
+	ProvisionTime time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
 
-	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options"`
+	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
 	// the task that is currently running on the host
-	RunningTask             string `bson:"running_task,omitempty" json:"running_task"`
+	RunningTask             string `bson:"running_task,omitempty" json:"running_task,omitempty"`
 	RunningTaskExecution    int    `bson:"running_task_execution" json:"running_task_execution"`
-	RunningTaskBuildVariant string `bson:"running_task_bv,omitempty" json:"running_task_bv"`
-	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version"`
-	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project"`
-	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group"`
-	RunningTaskGroupOrder   int    `bson:"running_task_group_order,omitempty" json:"running_task_group_order"`
+	RunningTaskBuildVariant string `bson:"running_task_bv,omitempty" json:"running_task_bv,omitempty"`
+	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
+	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
+	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group,omitempty"`
+	RunningTaskGroupOrder   int    `bson:"running_task_group_order,omitempty" json:"running_task_group_order,omitempty"`
 
 	// TaskGroupTeardownStartTime represents the time when the teardown of task groups process started for the host.
-	TaskGroupTeardownStartTime time.Time `bson:"teardown_start_time,omitempty" json:"teardown_start_time"`
+	TaskGroupTeardownStartTime time.Time `bson:"teardown_start_time,omitempty" json:"teardown_start_time,omitempty"`
 
 	// the task the most recently finished running on the host
 	LastTask         string `bson:"last_task" json:"last_task"`
-	LastGroup        string `bson:"last_group,omitempty" json:"last_group"`
-	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv"`
-	LastVersion      string `bson:"last_version,omitempty" json:"last_version"`
-	LastProject      string `bson:"last_project,omitempty" json:"last_project"`
+	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
+	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
+	LastVersion      string `bson:"last_version,omitempty" json:"last_version,omitempty"`
+	LastProject      string `bson:"last_project,omitempty" json:"last_project,omitempty"`
 
 	// the full task struct that is running on the host (only populated by certain aggregations)
-	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full"`
+	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
 
 	ExpirationTime time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
 	NoExpiration   bool      `bson:"no_expiration" json:"no_expiration"`
@@ -129,7 +129,7 @@ type Host struct {
 
 	// NeedsReprovision is set if the host needs to be reprovisioned.
 	// These fields must be unset if no provisioning is needed anymore.
-	NeedsReprovision ReprovisionType `bson:"needs_reprovision,omitempty" json:"needs_reprovision"`
+	NeedsReprovision ReprovisionType `bson:"needs_reprovision,omitempty" json:"needs_reprovision,omitempty"`
 
 	// JasperCredentialsID is used to match hosts to their Jasper credentials
 	// for non-legacy hosts.
@@ -137,45 +137,45 @@ type Host struct {
 
 	// InstanceType is the EC2 host's requested instance type. This is kept
 	// up-to-date even if the instance type is changed.
-	InstanceType string `bson:"instance_type" json:"instance_type"`
+	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// LastInstanceEditTime tracks when the instance type was last modified
-	LastInstanceEditTime time.Time `bson:"last_instance_edit_time,omitempty" json:"last_instance_edit_time"`
+	LastInstanceEditTime time.Time `bson:"last_instance_edit_time,omitempty" json:"last_instance_edit_time,omitempty"`
 	// The volumeID and device name for each volume attached to the host
-	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes"`
+	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// accrues the value of idle time.
-	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time" yaml:"total_idle_time,omitempty"`
+	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
 
 	// managed containers require different information based on host type
 	// True if this host is a parent of containers
-	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers"`
+	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
 	// stores URLs of container images already downloaded on a parent
-	ContainerImages map[string]bool `bson:"container_images,omitempty" json:"container_images"`
+	ContainerImages map[string]bool `bson:"container_images,omitempty" json:"container_images,omitempty"`
 	// stores the ID of the host a container is on
-	ParentID string `bson:"parent_id,omitempty" json:"parent_id"`
+	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
-	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time"`
+	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
 	// ContainerPoolSettings
-	ContainerPoolSettings *evergreen.ContainerPool `bson:"container_pool_settings,omitempty" json:"container_pool_settings"`
+	ContainerPoolSettings *evergreen.ContainerPool `bson:"container_pool_settings,omitempty" json:"container_pool_settings,omitempty"`
 	ContainerBuildAttempt int                      `bson:"container_build_attempt" json:"container_build_attempt"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
-	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options"`
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 
 	// DockerOptions stores information for creating a container with a specific image and command
-	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options"`
+	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 
 	// PortBindings is populated if PublishPorts is specified when creating docker container from task
-	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings"`
+	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings,omitempty"`
 	// InstanceTags stores user-specified tags for instances
-	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags"`
+	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
 	// SSHKeyNames contains the names of the SSH key that have been distributed
 	// to this host.
-	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names"`
+	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
 
 	// SSHPort is the port to use when connecting to the host with SSH.
-	SSHPort int `bson:"ssh_port,omitempty" json:"ssh_port"`
+	SSHPort int `bson:"ssh_port,omitempty" json:"ssh_port,omitempty"`
 
 	IsVirtualWorkstation bool `bson:"is_virtual_workstation" json:"is_virtual_workstation"`
 	// HomeVolumeSize is the size of the home volume in GB
@@ -183,7 +183,7 @@ type Host struct {
 	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
 
 	// SleepSchedule stores host sleep schedule information.
-	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
+	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule,omitempty"`
 }
 
 type Tag struct {
@@ -260,27 +260,27 @@ func GetPortMap(m nat.PortMap) PortMap {
 // settings.
 type DockerOptions struct {
 	// Optional parameters to define a registry name and authentication
-	RegistryName     string `mapstructure:"docker_registry_name" bson:"docker_registry_name,omitempty" json:"docker_registry_name"`
-	RegistryUsername string `mapstructure:"docker_registry_user" bson:"docker_registry_user,omitempty" json:"docker_registry_user"`
-	RegistryPassword string `mapstructure:"docker_registry_pw" bson:"docker_registry_pw,omitempty" json:"docker_registry_pw"`
+	RegistryName     string `mapstructure:"docker_registry_name" bson:"docker_registry_name,omitempty" json:"docker_registry_name,omitempty"`
+	RegistryUsername string `mapstructure:"docker_registry_user" bson:"docker_registry_user,omitempty" json:"docker_registry_user,omitempty"`
+	RegistryPassword string `mapstructure:"docker_registry_pw" bson:"docker_registry_pw,omitempty" json:"docker_registry_pw,omitempty"`
 
 	// Image is required and specifies the image for the container.
 	// This can be a URL or an image base, to be combined with a registry.
-	Image string `mapstructure:"image_url" bson:"image_url,omitempty" json:"image_url"`
+	Image string `mapstructure:"image_url" bson:"image_url,omitempty" json:"image_url,omitempty"`
 	// Method is either "pull" or "import" and defines how to retrieve the image.
-	Method string `mapstructure:"build_type" bson:"build_type,omitempty" json:"build_type"`
+	Method string `mapstructure:"build_type" bson:"build_type,omitempty" json:"build_type,omitempty"`
 	// Command is the command to run on the docker (if not specified, will use the default entrypoint).
-	Command string `mapstructure:"command" bson:"command,omitempty" json:"command"`
+	Command string `mapstructure:"command" bson:"command,omitempty" json:"command,omitempty"`
 	// If PublishPorts is true, any port that's exposed in the image will be published
-	PublishPorts bool `mapstructure:"publish_ports" bson:"publish_ports,omitempty" json:"publish_ports"`
+	PublishPorts bool `mapstructure:"publish_ports" bson:"publish_ports,omitempty" json:"publish_ports,omitempty"`
 	// If extra hosts are provided,these will be added to /etc/hosts on the container (in the form of hostname:IP)
-	ExtraHosts []string `mapstructure:"extra_hosts" bson:"extra_hosts,omitempty" json:"extra_hosts"`
+	ExtraHosts []string `mapstructure:"extra_hosts" bson:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
 	// If the container is created from host create, we want to skip building the image with agent
-	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build"`
+	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
-	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars"`
+	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 	// StdinData is the data to pass to the container command's stdin.
-	StdinData []byte `mapstructure:"stdin_data" bson:"stdin_data,omitempty" json:"stdin_data"`
+	StdinData []byte `mapstructure:"stdin_data" bson:"stdin_data,omitempty" json:"stdin_data,omitempty"`
 }
 
 // FromDistroSettings loads the Docker container options from the provider
@@ -324,14 +324,14 @@ type SpawnOptions struct {
 	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
 	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
-	TimeoutTeardown time.Time `bson:"timeout_teardown,omitempty" json:"timeout_teardown"`
+	TimeoutTeardown time.Time `bson:"timeout_teardown,omitempty" json:"timeout_teardown,omitempty"`
 
 	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
-	TimeoutSetup time.Time `bson:"timeout_setup,omitempty" json:"timeout_setup"`
+	TimeoutSetup time.Time `bson:"timeout_setup,omitempty" json:"timeout_setup,omitempty"`
 
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
-	TaskID string `bson:"task_id,omitempty" json:"task_id"`
+	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
 
 	// TaskExecutionNumber is the execution number of the task that spawned this host. This
 	// field is deliberately NOT omitempty in order to support the aggregation in
@@ -340,36 +340,36 @@ type SpawnOptions struct {
 
 	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
-	BuildID string `bson:"build_id,omitempty" json:"build_id"`
+	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
 
 	// Retries is the number of times Evergreen should try to spawn this host.
-	Retries int `bson:"retries,omitempty" json:"retries"`
+	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
 
 	// Respawns is the number of spawn attempts remaining if the host is externally terminated after
 	// being spawned.
-	Respawns int `bson:"respawns,omitempty" json:"respawns"`
+	Respawns int `bson:"respawns,omitempty" json:"respawns,omitempty"`
 
 	// SpawnedByTask indicates that this host has been spawned by a task.
-	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task"`
+	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
 }
 
 // SleepScheduleInfo stores information about a host's sleep schedule and
 // related bookkeeping information.
 type SleepScheduleInfo struct {
 	// WholeWeekdaysOff represents whole weekdays for the host to sleep.
-	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off"`
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
 	// DailyStartTime and DailyStopTime represent a daily schedule for when to
 	// start a stopped host back up. The format is "HH:MM".
-	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time"`
+	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
 	// DailyStopTime represents a daily schedule for when to stop a host. The
 	// format is "HH:MM".
-	DailyStopTime string `bson:"daily_stop_time,omitempty" json:"daily_stop_time"`
+	DailyStopTime string `bson:"daily_stop_time,omitempty" json:"daily_stop_time,omitempty"`
 	// TimeZone is the time zone for this host's sleep schedule.
 	TimeZone string `bson:"time_zone" json:"time_zone"`
 	// TemporarilyExemptUntil stores when a user's temporary exemption ends, if
 	// any has been set. The sleep schedule will not take effect until
 	// this timestamp passes.
-	TemporarilyExemptUntil time.Time `bson:"temporarily_exempt_until,omitempty" json:"temporarily_exempt_until"`
+	TemporarilyExemptUntil time.Time `bson:"temporarily_exempt_until,omitempty" json:"temporarily_exempt_until,omitempty"`
 	// PermanentlyExempt determines if a host is permanently exempt from the
 	// sleep schedule. If true, the sleep schedule will never take effect.
 	PermanentlyExempt bool `bson:"permanently_exempt" json:"permanently_exempt"`
@@ -382,10 +382,10 @@ type SleepScheduleInfo struct {
 	ShouldKeepOff bool `bson:"should_keep_off" json:"should_keep_off"`
 	// NextStopTime is the next time that the host should stop for its sleep
 	// schedule.
-	NextStopTime time.Time `bson:"next_stop_time,omitempty" json:"next_stop_time"`
+	NextStopTime time.Time `bson:"next_stop_time,omitempty" json:"next_stop_time,omitempty"`
 	// NextStartTime is the next time that the host should start for its sleep
 	// schedule.
-	NextStartTime time.Time `bson:"next_start_time,omitempty" json:"next_start_time"`
+	NextStartTime time.Time `bson:"next_start_time,omitempty" json:"next_start_time,omitempty"`
 }
 
 // NewSleepScheduleInfo creates a new sleep schedule for a host that does not
@@ -495,13 +495,13 @@ type HostModifyOptions struct {
 // sleep schedule.
 type SleepScheduleOptions struct {
 	// WholeWeekdaysOff are when the host is off for its sleep schedule.
-	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off"`
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
 	// DailyStartTime is the daily time to start the host for each day the host is on
 	// during its sleep schedule. The format is "HH:MM".
-	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time"`
+	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
 	// DailyStopTime is the daily time to stop the host for each day the host is
 	// on during its sleep schedule. The format is "HH:MM".
-	DailyStopTime string `bson:"daily_stop_time,omitempty" json:"daily_stop_time"`
+	DailyStopTime string `bson:"daily_stop_time,omitempty" json:"daily_stop_time,omitempty"`
 	// TimeZone is the time zone in which the sleep schedule runs.
 	TimeZone string `bson:"time_zone" json:"time_zone"`
 }

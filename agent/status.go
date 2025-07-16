@@ -109,15 +109,15 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 }
 
 type triggerEndTaskResp struct {
-	Description            string   `json:"desc"`
-	Status                 string   `json:"status"`
-	Type                   string   `json:"type"`
-	AddFailureMetadataTags []string `json:"add_failure_metadata_tags"`
+	Description            string   `json:"desc,omitempty"`
+	Status                 string   `json:"status,omitempty"`
+	Type                   string   `json:"type,omitempty"`
+	AddFailureMetadataTags []string `json:"add_failure_metadata_tags,omitempty"`
 	ShouldContinue         bool     `json:"should_continue"`
 }
 
 type triggerAddMetadataTagResp struct {
-	AddFailureMetadataTags []string `json:"add_failure_metadata_tags"`
+	AddFailureMetadataTags []string `json:"add_failure_metadata_tags,omitempty"`
 }
 
 func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {

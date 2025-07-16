@@ -52,11 +52,11 @@ type APIBuild struct {
 	// Contains a subset of information about tasks for the build; this is not
 	// provided/accurate for most routes (get versions for project is an
 	// exception).
-	TaskCache []APITaskCache `json:"task_cache"`
+	TaskCache []APITaskCache `json:"task_cache,omitempty"`
 	// Tasks is the build's task cache with just the names
 	Tasks []string `json:"tasks"`
 	// List of tags defined for the build variant, if any
-	Tags []*string `json:"tags"`
+	Tags []*string `json:"tags,omitempty"`
 	// How long the build took to complete all tasks
 	TimeTaken APIDuration `json:"time_taken_ms"`
 	// Displayed title of the build showing version and variant running
@@ -71,7 +71,7 @@ type APIBuild struct {
 	// keys of this object are statuses and the values are the number of tasks
 	// within this build in that status. Note that this field provides data that
 	// you can get yourself by querying tasks for this build.
-	StatusCounts task.TaskStatusCount `json:"status_counts"`
+	StatusCounts task.TaskStatusCount `json:"status_counts,omitempty"`
 	// Some routes will return information about the variant as defined in the
 	// project. Does not expand expansions; they will be returned as written in
 	// the project yaml (i.e. ${syntax})
@@ -80,9 +80,9 @@ type APIBuild struct {
 
 type DefinitionInfo struct {
 	// The cron defined for the variant, if provided, as defined in the project settings
-	CronBatchTime *string `json:"cron"`
+	CronBatchTime *string `json:"cron,omitempty"`
 	// The batchtime defined for the variant, if provided, as defined in the project settings
-	BatchTime *int `json:"batchtime"`
+	BatchTime *int `json:"batchtime,omitempty"`
 }
 
 // PopulateDefinitionInfo adds cron/batchtime for the variant, if applicable. Not supported for matrices.
@@ -186,7 +186,7 @@ type APITaskCache struct {
 	TimeTaken       time.Duration           `json:"time_taken" swaggertype:"primitive,integer"`
 	TimeTakenMS     APIDuration             `json:"time_taken_ms"`
 	Activated       bool                    `json:"activated"`
-	FailedTestNames []string                `json:"failed_test_names"`
+	FailedTestNames []string                `json:"failed_test_names,omitempty"`
 }
 
 type APIVariantTasks struct {

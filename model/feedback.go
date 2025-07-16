@@ -19,7 +19,7 @@ var (
 
 type FeedbackSubmission struct {
 	Type        string           `json:"type" bson:"type"`
-	User        string           `json:"user" bson:"user,omitempty"`
+	User        string           `json:"user,omitempty" bson:"user,omitempty"`
 	SubmittedAt time.Time        `json:"submitted_at" bson:"submitted_at"`
 	Questions   []QuestionAnswer `json:"questions" bson:"questions"`
 }

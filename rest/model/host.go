@@ -293,8 +293,8 @@ type APIOffboardUserResults struct {
 
 type APIHostIsUpOptions struct {
 	HostID        string `json:"host_id"`
-	Hostname      string `json:"hostname"`
-	EC2InstanceID string `json:"ec2_instance_id"`
+	Hostname      string `json:"hostname,omitempty"`
+	EC2InstanceID string `json:"ec2_instance_id,omitempty"`
 }
 
 // APIHostProvisioningOptions represents the script to provision a host.

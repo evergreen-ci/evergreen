@@ -12,7 +12,7 @@ import (
 
 type TaskAPIEventLogEntry struct {
 	ID           *string        `bson:"_id" json:"-"`
-	ResourceType *string        `bson:"r_type,omitempty" json:"resource_type"`
+	ResourceType *string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  *time.Time     `bson:"processed_at" json:"processed_at"`
 	Timestamp    *time.Time     `bson:"ts" json:"timestamp"`
 	ResourceId   *string        `bson:"r_id" json:"resource_id"`
@@ -22,20 +22,20 @@ type TaskAPIEventLogEntry struct {
 
 type TaskEventData struct {
 	Execution int        `bson:"execution" json:"execution"`
-	HostId    *string    `bson:"h_id,omitempty" json:"host_id"`
-	PodId     *string    `bson:"pod_id,omitempty" json:"pod_id"`
-	UserId    *string    `bson:"u_id,omitempty" json:"user_id"`
-	Status    *string    `bson:"s,omitempty" json:"status"`
-	JiraIssue *string    `bson:"jira,omitempty" json:"jira"`
-	JiraLink  *string    `bson:"jira_link,omitempty" json:"jira_link"`
-	BlockedOn *string    `bson:"blocked_on,omitempty" json:"blocked_on"`
-	Timestamp *time.Time `bson:"ts,omitempty" json:"timestamp"`
-	Priority  int64      `bson:"pri,omitempty" json:"priority"`
+	HostId    *string    `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	PodId     *string    `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
+	UserId    *string    `bson:"u_id,omitempty" json:"user_id,omitempty"`
+	Status    *string    `bson:"s,omitempty" json:"status,omitempty"`
+	JiraIssue *string    `bson:"jira,omitempty" json:"jira,omitempty"`
+	JiraLink  *string    `bson:"jira_link,omitempty" json:"jira_link,omitempty"`
+	BlockedOn *string    `bson:"blocked_on,omitempty" json:"blocked_on,omitempty"`
+	Timestamp *time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
+	Priority  int64      `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
 type HostAPIEventLogEntry struct {
 	ID           *string           `bson:"_id" json:"-"`
-	ResourceType *string           `bson:"r_type,omitempty" json:"resource_type"`
+	ResourceType *string           `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  *time.Time        `bson:"processed_at" json:"processed_at"`
 	Timestamp    *time.Time        `bson:"ts" json:"timestamp"`
 	ResourceId   *string           `bson:"r_id" json:"resource_id"`
@@ -44,27 +44,27 @@ type HostAPIEventLogEntry struct {
 }
 
 type HostAPIEventData struct {
-	AgentRevision      *string     `bson:"a_rev,omitempty" json:"agent_revision"`
-	AgentBuild         *string     `bson:"a_build,omitempty" json:"agent_build"`
-	JasperRevision     *string     `bson:"j_rev,omitempty" json:"jasper_revision"`
-	OldStatus          *string     `bson:"o_s,omitempty" json:"old_status"`
-	NewStatus          *string     `bson:"n_s,omitempty" json:"new_status"`
-	Logs               *string     `bson:"log,omitempty" json:"logs"`
-	Hostname           *string     `bson:"hn,omitempty" json:"hostname"`
-	ProvisioningMethod *string     `bson:"prov_method" json:"provisioning_method"`
-	TaskId             *string     `bson:"t_id,omitempty" json:"task_id"`
-	TaskPid            *string     `bson:"t_pid,omitempty" json:"task_pid"`
-	TaskStatus         *string     `bson:"t_st,omitempty" json:"task_status"`
-	Execution          *string     `bson:"execution,omitempty" json:"execution"`
-	MonitorOp          *string     `bson:"monitor_op,omitempty" json:"monitor"`
-	User               *string     `bson:"usr" json:"user"`
+	AgentRevision      *string     `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
+	AgentBuild         *string     `bson:"a_build,omitempty" json:"agent_build,omitempty"`
+	JasperRevision     *string     `bson:"j_rev,omitempty" json:"jasper_revision,omitempty"`
+	OldStatus          *string     `bson:"o_s,omitempty" json:"old_status,omitempty"`
+	NewStatus          *string     `bson:"n_s,omitempty" json:"new_status,omitempty"`
+	Logs               *string     `bson:"log,omitempty" json:"logs,omitempty"`
+	Hostname           *string     `bson:"hn,omitempty" json:"hostname,omitempty"`
+	ProvisioningMethod *string     `bson:"prov_method" json:"provisioning_method,omitempty"`
+	TaskId             *string     `bson:"t_id,omitempty" json:"task_id,omitempty"`
+	TaskPid            *string     `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
+	TaskStatus         *string     `bson:"t_st,omitempty" json:"task_status,omitempty"`
+	Execution          *string     `bson:"execution,omitempty" json:"execution,omitempty"`
+	MonitorOp          *string     `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	User               *string     `bson:"usr" json:"user,omitempty"`
 	Successful         bool        `bson:"successful,omitempty" json:"successful"`
 	Duration           APIDuration `bson:"duration,omitempty" json:"duration"`
 }
 
 type PodAPIEventLogEntry struct {
 	ID           *string          `bson:"_id" json:"-"`
-	ResourceType *string          `bson:"r_type,omitempty" json:"resource_type"`
+	ResourceType *string          `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  *time.Time       `bson:"processed_at" json:"processed_at"`
 	Timestamp    *time.Time       `bson:"ts" json:"timestamp"`
 	ResourceId   *string          `bson:"r_id" json:"resource_id"`
@@ -73,14 +73,14 @@ type PodAPIEventLogEntry struct {
 }
 
 type PodAPIEventData struct {
-	OldStatus *string `bson:"old_status,omitempty" json:"old_status"`
-	NewStatus *string `bson:"new_status,omitempty" json:"new_status"`
-	Reason    *string `bson:"reason,omitempty" json:"reason"`
+	OldStatus *string `bson:"old_status,omitempty" json:"old_status,omitempty"`
+	NewStatus *string `bson:"new_status,omitempty" json:"new_status,omitempty"`
+	Reason    *string `bson:"reason,omitempty" json:"reason,omitempty"`
 
 	// Fields related to pods running tasks
-	TaskID        *string `bson:"task_id,omitempty" json:"task_id"`
-	TaskExecution *int    `bson:"task_execution,omitempty" json:"task_execution"`
-	TaskStatus    *string `bson:"task_status,omitempty" json:"task_status"`
+	TaskID        *string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+	TaskExecution *int    `bson:"task_execution,omitempty" json:"task_execution,omitempty"`
+	TaskStatus    *string `bson:"task_status,omitempty" json:"task_status,omitempty"`
 }
 
 func (el *TaskEventData) BuildFromService(ctx context.Context, v *event.TaskEventData) error {

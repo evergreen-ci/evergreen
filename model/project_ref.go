@@ -51,24 +51,24 @@ type ProjectRef struct {
 
 	// RemotePath is the path to the Evergreen config file.
 	RemotePath             string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	DisplayName            string              `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Enabled                bool                `bson:"enabled,omitempty" json:"enabled" yaml:"enabled"`
-	Restricted             *bool               `bson:"restricted,omitempty" json:"restricted" yaml:"restricted"`
+	DisplayName            string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
+	Enabled                bool                `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
+	Restricted             *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
 	Owner                  string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                   string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
 	Branch                 string              `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled"`
-	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled" yaml:"repotracker_disabled"`
-	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled" yaml:"dispatching_disabled"`
-	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled" yaml:"stepback_disabled"`
-	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect" yaml:"stepback_bisect"`
-	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled" yaml:"version_control_enabled"`
-	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled" yaml:"manual_pr_testing_enabled"`
-	GithubChecksEnabled    *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled" yaml:"github_checks_enabled"`
+	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
+	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
+	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
+	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
+	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
+	PRTestingEnabled       *bool               `bson:"pr_testing_enabled,omitempty" json:"pr_testing_enabled,omitempty" yaml:"pr_testing_enabled"`
+	ManualPRTestingEnabled *bool               `bson:"manual_pr_testing_enabled,omitempty" json:"manual_pr_testing_enabled,omitempty" yaml:"manual_pr_testing_enabled"`
+	GithubChecksEnabled    *bool               `bson:"github_checks_enabled,omitempty" json:"github_checks_enabled,omitempty" yaml:"github_checks_enabled"`
 	BatchTime              int                 `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	DeactivatePrevious     *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous" yaml:"deactivate_previous"`
-	NotifyOnBuildFailure   *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure"`
+	DeactivatePrevious     *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
+	NotifyOnBuildFailure   *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
 	Triggers               []TriggerDefinition `bson:"triggers" json:"triggers"`
 	// all aliases defined for the project
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
@@ -93,49 +93,49 @@ type ProjectRef struct {
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
 	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams" json:"git_tag_authorized_teams"`
-	GitTagVersionsEnabled *bool    `bson:"git_tag_versions_enabled,omitempty" json:"git_tag_versions_enabled"`
+	GitTagVersionsEnabled *bool    `bson:"git_tag_versions_enabled,omitempty" json:"git_tag_versions_enabled,omitempty"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
 
 	// Disable task stats caching for this project.
-	DisabledStatsCache *bool `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache"`
+	DisabledStatsCache *bool `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
 	// List of commands
 	// Lacks omitempty so that SetupCommands can be identified as either [] or nil in a ProjectSettingsEvent
 	WorkstationConfig WorkstationConfig `bson:"workstation_config" json:"workstation_config"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
-	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings"`
+	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings,omitempty"`
 
 	// Plugin settings
-	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings" yaml:"build_baron_settings,omitempty"`
-	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled" yaml:"perf_enabled,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
+	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions" yaml:"container_size_definitions,omitempty"`
-	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets" yaml:"container_secrets,omitempty"`
+	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions,omitempty" yaml:"container_size_definitions,omitempty"`
+	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
 	// RepoRefId is the repo ref id that this project ref tracks, if any.
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
 
 	// The following fields are used by Evergreen and are not discoverable.
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
-	Hidden *bool `bson:"hidden,omitempty" json:"hidden"`
+	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
-	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links" yaml:"external_links,omitempty"`
-	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner" yaml:"banner,omitempty"`
+	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
+	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
 
 	// Filter/view settings
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
-	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters"`
+	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 
 	// GitHubDynamicTokenPermissionGroups is a list of permission groups for GitHub dynamic access tokens.
-	GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups" yaml:"github_dynamic_token_permission_groups,omitempty"`
+	GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups,omitempty" yaml:"github_dynamic_token_permission_groups,omitempty"`
 
 	// GitHubPermissionGroupByRequester is a mapping of requester type to the user defined GitHub permission groups above.
-	GitHubPermissionGroupByRequester map[string]string `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester" yaml:"github_token_permission_by_requester,omitempty"`
+	GitHubPermissionGroupByRequester map[string]string `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`
 
 	// LastAutoRestartedTaskAt is the last timestamp that a task in this project was restarted automatically.
 	LastAutoRestartedTaskAt time.Time `bson:"last_auto_restarted_task_at"`
@@ -146,14 +146,14 @@ type ProjectRef struct {
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
 type GitHubDynamicTokenPermissionGroup struct {
 	// Name is the name of the group.
-	Name string `bson:"name,omitempty" json:"name" yaml:"name,omitempty"`
+	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
-	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions" yaml:"permissions,omitempty"`
+	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
 	// AllPermissions is a flag that indicates that the group has all permissions.
 	// If this is set to true, the Permissions field is ignored.
 	// If this is set to false, the Permissions field is used (and may be
 	// nil, representing no permissions).
-	AllPermissions bool `bson:"all_permissions,omitempty" json:"all_permissions" yaml:"all_permissions,omitempty"`
+	AllPermissions bool `bson:"all_permissions,omitempty" json:"all_permissions,omitempty" yaml:"all_permissions,omitempty"`
 }
 
 // defaultGitHubTokenPermissionGroup is an empty, all permissions, group.
@@ -334,15 +334,15 @@ type ProjectBanner struct {
 }
 
 type ExternalLink struct {
-	DisplayName string   `bson:"display_name,omitempty" json:"display_name" yaml:"display_name,omitempty"`
-	Requesters  []string `bson:"requesters,omitempty" json:"requesters" yaml:"requesters,omitempty"`
-	URLTemplate string   `bson:"url_template,omitempty" json:"url_template" yaml:"url_template,omitempty"`
+	DisplayName string   `bson:"display_name,omitempty" json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Requesters  []string `bson:"requesters,omitempty" json:"requesters,omitempty" yaml:"requesters,omitempty"`
+	URLTemplate string   `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
 type CommitQueueParams struct {
 	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
 	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	Message     string `bson:"message,omitempty" json:"message" yaml:"message"`
+	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -412,15 +412,15 @@ type TriggerDefinition struct {
 	DefinitionID string `bson:"definition_id" json:"definition_id"`
 
 	// filters for this trigger
-	BuildVariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex"`
-	TaskRegex         string `bson:"task_regex,omitempty" json:"task_regex"`
-	Status            string `bson:"status,omitempty" json:"status"`
-	DateCutoff        *int   `bson:"date_cutoff,omitempty" json:"date_cutoff"`
+	BuildVariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
+	TaskRegex         string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
+	Status            string `bson:"status,omitempty" json:"status,omitempty"`
+	DateCutoff        *int   `bson:"date_cutoff,omitempty" json:"date_cutoff,omitempty"`
 
 	// definitions for tasks to run for this trigger
-	ConfigFile                   string `bson:"config_file,omitempty" json:"config_file"`
-	Alias                        string `bson:"alias,omitempty" json:"alias"`
-	UnscheduleDownstreamVersions bool   `bson:"unschedule_downstream_versions,omitempty" json:"unschedule_downstream_versions"`
+	ConfigFile                   string `bson:"config_file,omitempty" json:"config_file,omitempty"`
+	Alias                        string `bson:"alias,omitempty" json:"alias,omitempty"`
+	UnscheduleDownstreamVersions bool   `bson:"unschedule_downstream_versions,omitempty" json:"unschedule_downstream_versions,omitempty"`
 }
 
 type PeriodicBuildDefinition struct {
@@ -428,9 +428,9 @@ type PeriodicBuildDefinition struct {
 	ConfigFile    string    `bson:"config_file" json:"config_file"`
 	IntervalHours int       `bson:"interval_hours" json:"interval_hours"`
 	Cron          string    `bson:"cron" json:"cron"`
-	Alias         string    `bson:"alias,omitempty" json:"alias"`
-	Message       string    `bson:"message,omitempty" json:"message"`
-	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time"`
+	Alias         string    `bson:"alias,omitempty" json:"alias,omitempty"`
+	Message       string    `bson:"message,omitempty" json:"message,omitempty"`
+	NextRunTime   time.Time `bson:"next_run_time,omitempty" json:"next_run_time,omitempty"`
 }
 
 type WorkstationConfig struct {

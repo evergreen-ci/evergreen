@@ -57,59 +57,59 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Amboy                   *APIAmboyConfig               `json:"amboy"`
-	AmboyDB                 *APIAmboyDBConfig             `json:"amboy_db"`
-	Api                     *APIapiConfig                 `json:"api"`
-	AWSInstanceRole         *string                       `json:"aws_instance_role"`
-	AuthConfig              *APIAuthConfig                `json:"auth"`
-	Banner                  *string                       `json:"banner"`
-	BannerTheme             *string                       `json:"banner_theme"`
-	Buckets                 *APIBucketsConfig             `json:"buckets"`
-	Cedar                   *APICedarConfig               `json:"cedar"`
-	ConfigDir               *string                       `json:"configdir"`
-	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools"`
-	DomainName              *string                       `json:"domain_name"`
-	Expansions              map[string]string             `json:"expansions"`
-	FWS                     *APIFWSConfig                 `json:"fws"`
-	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org"`
-	GithubOrgs              []string                      `json:"github_orgs"`
-	GithubWebhookSecret     *string                       `json:"github_webhook_secret"`
+	Amboy                   *APIAmboyConfig               `json:"amboy,omitempty"`
+	AmboyDB                 *APIAmboyDBConfig             `json:"amboy_db,omitempty"`
+	Api                     *APIapiConfig                 `json:"api,omitempty"`
+	AWSInstanceRole         *string                       `json:"aws_instance_role,omitempty"`
+	AuthConfig              *APIAuthConfig                `json:"auth,omitempty"`
+	Banner                  *string                       `json:"banner,omitempty"`
+	BannerTheme             *string                       `json:"banner_theme,omitempty"`
+	Buckets                 *APIBucketsConfig             `json:"buckets,omitempty"`
+	Cedar                   *APICedarConfig               `json:"cedar,omitempty"`
+	ConfigDir               *string                       `json:"configdir,omitempty"`
+	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
+	DomainName              *string                       `json:"domain_name,omitempty"`
+	Expansions              map[string]string             `json:"expansions,omitempty"`
+	FWS                     *APIFWSConfig                 `json:"fws,omitempty"`
+	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
+	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
+	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
 	DisabledGQLQueries      []string                      `json:"disabled_gql_queries"`
-	HostInit                *APIHostInitConfig            `json:"hostinit"`
-	HostJasper              *APIHostJasperConfig          `json:"host_jasper"`
-	Jira                    *APIJiraConfig                `json:"jira"`
-	JIRANotifications       *APIJIRANotificationsConfig   `json:"jira_notifications"`
-	KanopySSHKeyPath        *string                       `json:"kanopy_ssh_key_path"`
-	LoggerConfig            *APILoggerConfig              `json:"logger_config"`
-	LogPath                 *string                       `json:"log_path"`
-	Notify                  *APINotifyConfig              `json:"notify"`
-	Overrides               *APIOverridesConfig           `json:"overrides"`
-	ParameterStore          *APIParameterStoreConfig      `json:"parameter_store"`
+	HostInit                *APIHostInitConfig            `json:"hostinit,omitempty"`
+	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
+	Jira                    *APIJiraConfig                `json:"jira,omitempty"`
+	JIRANotifications       *APIJIRANotificationsConfig   `json:"jira_notifications,omitempty"`
+	KanopySSHKeyPath        *string                       `json:"kanopy_ssh_key_path,omitempty"`
+	LoggerConfig            *APILoggerConfig              `json:"logger_config,omitempty"`
+	LogPath                 *string                       `json:"log_path,omitempty"`
+	Notify                  *APINotifyConfig              `json:"notify,omitempty"`
+	Overrides               *APIOverridesConfig           `json:"overrides,omitempty"`
+	ParameterStore          *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
 	PerfMonitoringURL       *string                       `json:"perf_monitoring_url"`
 	PerfMonitoringKanopyURL *string                       `json:"perf_monitoring_kanopy_url"`
-	Plugins                 map[string]map[string]any     `json:"plugins"`
-	PodLifecycle            *APIPodLifecycleConfig        `json:"pod_lifecycle"`
-	PprofPort               *string                       `json:"pprof_port"`
-	ProjectCreation         *APIProjectCreationConfig     `json:"project_creation"`
-	Providers               *APICloudProviders            `json:"providers"`
-	RepoTracker             *APIRepoTrackerConfig         `json:"repotracker"`
-	ReleaseMode             *APIReleaseModeConfig         `json:"release_mode"`
-	RuntimeEnvironments     *APIRuntimeEnvironmentsConfig `json:"runtime_environments"`
-	Scheduler               *APISchedulerConfig           `json:"scheduler"`
-	ServiceFlags            *APIServiceFlags              `json:"service_flags"`
-	SingleTaskDistro        *APISingleTaskDistroConfig    `json:"single_task_distro"`
-	Slack                   *APISlackConfig               `json:"slack"`
-	SleepSchedule           *APISleepScheduleConfig       `json:"sleep_schedule"`
-	SSH                     *APISSHConfig                 `json:"ssh"`
-	Splunk                  *APISplunkConfig              `json:"splunk"`
-	TaskLimits              *APITaskLimitsConfig          `json:"task_limits"`
-	TestSelection           *APITestSelectionConfig       `json:"test_selection"`
-	Triggers                *APITriggerConfig             `json:"triggers"`
-	Ui                      *APIUIConfig                  `json:"ui"`
-	Spawnhost               *APISpawnHostConfig           `json:"spawnhost"`
-	Tracer                  *APITracerSettings            `json:"tracer"`
-	GitHubCheckRun          *APIGitHubCheckRunConfig      `json:"github_check_run"`
-	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds"`
+	Plugins                 map[string]map[string]any     `json:"plugins,omitempty"`
+	PodLifecycle            *APIPodLifecycleConfig        `json:"pod_lifecycle,omitempty"`
+	PprofPort               *string                       `json:"pprof_port,omitempty"`
+	ProjectCreation         *APIProjectCreationConfig     `json:"project_creation,omitempty"`
+	Providers               *APICloudProviders            `json:"providers,omitempty"`
+	RepoTracker             *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
+	ReleaseMode             *APIReleaseModeConfig         `json:"release_mode,omitempty"`
+	RuntimeEnvironments     *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
+	Scheduler               *APISchedulerConfig           `json:"scheduler,omitempty"`
+	ServiceFlags            *APIServiceFlags              `json:"service_flags,omitempty"`
+	SingleTaskDistro        *APISingleTaskDistroConfig    `json:"single_task_distro,omitempty"`
+	Slack                   *APISlackConfig               `json:"slack,omitempty"`
+	SleepSchedule           *APISleepScheduleConfig       `json:"sleep_schedule,omitempty"`
+	SSH                     *APISSHConfig                 `json:"ssh,omitempty"`
+	Splunk                  *APISplunkConfig              `json:"splunk,omitempty"`
+	TaskLimits              *APITaskLimitsConfig          `json:"task_limits,omitempty"`
+	TestSelection           *APITestSelectionConfig       `json:"test_selection,omitempty"`
+	Triggers                *APITriggerConfig             `json:"triggers,omitempty"`
+	Ui                      *APIUIConfig                  `json:"ui,omitempty"`
+	Spawnhost               *APISpawnHostConfig           `json:"spawnhost,omitempty"`
+	Tracer                  *APITracerSettings            `json:"tracer,omitempty"`
+	GitHubCheckRun          *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
+	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -329,8 +329,8 @@ type APIAmboyConfig struct {
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
-	Retry                                 APIAmboyRetryConfig        `json:"retry"`
-	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues"`
+	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
+	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues,omitempty"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h any) error {
@@ -416,12 +416,12 @@ func (a *APIAmboyDBConfig) ToService() (any, error) {
 }
 
 type APIAmboyRetryConfig struct {
-	NumWorkers                          int `json:"num_workers"`
-	MaxCapacity                         int `json:"max_capacity"`
-	MaxRetryAttempts                    int `json:"max_retry_attempts"`
-	MaxRetryTimeSeconds                 int `json:"max_retry_time_seconds"`
-	RetryBackoffSeconds                 int `json:"retry_backoff_seconds"`
-	StaleRetryingMonitorIntervalSeconds int `json:"stale_retrying_monitor_interval_seconds"`
+	NumWorkers                          int `json:"num_workers,omitempty"`
+	MaxCapacity                         int `json:"max_capacity,omitempty"`
+	MaxRetryAttempts                    int `json:"max_retry_attempts,omitempty"`
+	MaxRetryTimeSeconds                 int `json:"max_retry_time_seconds,omitempty"`
+	RetryBackoffSeconds                 int `json:"retry_backoff_seconds,omitempty"`
+	StaleRetryingMonitorIntervalSeconds int `json:"stale_retrying_monitor_interval_seconds,omitempty"`
 }
 
 func (a *APIAmboyRetryConfig) BuildFromService(h any) error {
@@ -454,9 +454,9 @@ func (a *APIAmboyRetryConfig) ToService() (any, error) {
 type APIAmboyNamedQueueConfig struct {
 	Name               *string `json:"name"`
 	Regexp             *string `json:"regexp"`
-	NumWorkers         int     `json:"num_workers"`
-	SampleSize         int     `json:"sample_size"`
-	LockTimeoutSeconds int     `json:"lock_timeout_seconds"`
+	NumWorkers         int     `json:"num_workers,omitempty"`
+	SampleSize         int     `json:"sample_size,omitempty"`
+	LockTimeoutSeconds int     `json:"lock_timeout_seconds,omitempty"`
 }
 
 func (a *APIAmboyNamedQueueConfig) BuildFromService(h evergreen.AmboyNamedQueueConfig) {
@@ -1859,8 +1859,8 @@ func (a *APIECSConfig) ToService() (*evergreen.ECSConfig, error) {
 // APIAWSVPCConfig represents configuration options for tasks in ECS using
 // AWSVPC networking.
 type APIAWSVPCConfig struct {
-	Subnets        []string `json:"subnets"`
-	SecurityGroups []string `json:"security_groups"`
+	Subnets        []string `json:"subnets,omitempty"`
+	SecurityGroups []string `json:"security_groups,omitempty"`
 }
 
 func (a *APIAWSVPCConfig) BuildFromService(conf evergreen.AWSVPCConfig) {
@@ -2679,13 +2679,13 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 }
 
 type APIJIRANotificationsConfig struct {
-	CustomFields map[string]APIJIRANotificationsProject `json:"custom_fields"`
+	CustomFields map[string]APIJIRANotificationsProject `json:"custom_fields,omitempty"`
 }
 
 type APIJIRANotificationsProject struct {
-	Fields     map[string]string `json:"fields"`
-	Components []string          `json:"components"`
-	Labels     []string          `json:"labels"`
+	Fields     map[string]string `json:"fields,omitempty"`
+	Components []string          `json:"components,omitempty"`
+	Labels     []string          `json:"labels,omitempty"`
 }
 
 func (j *APIJIRANotificationsConfig) BuildFromService(h any) error {
@@ -2780,11 +2780,11 @@ func (c *APITriggerConfig) ToService() (any, error) {
 }
 
 type APIHostJasperConfig struct {
-	BinaryName       *string `json:"binary_name"`
-	DownloadFileName *string `json:"download_file_name"`
-	Port             int     `json:"port"`
-	URL              *string `json:"url"`
-	Version          *string `json:"version"`
+	BinaryName       *string `json:"binary_name,omitempty"`
+	DownloadFileName *string `json:"download_file_name,omitempty"`
+	Port             int     `json:"port,omitempty"`
+	URL              *string `json:"url,omitempty"`
+	Version          *string `json:"version,omitempty"`
 }
 
 func (c *APIHostJasperConfig) BuildFromService(h any) error {

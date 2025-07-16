@@ -70,7 +70,7 @@ type APITask struct {
 	DisplayName *string `json:"display_name"`
 	// The ID of the host this task ran or is running on
 	HostId *string `json:"host_id"`
-	PodID  *string `json:"pod_id"`
+	PodID  *string `json:"pod_id,omitempty"`
 	// The number of the execution of this particular task
 	Execution int `json:"execution"`
 	// For mainline commits, represents the position in the commit history of
@@ -98,7 +98,7 @@ type APITask struct {
 	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
 	// Contains previous executions of the task if they were requested, and
 	// available. May be empty
-	PreviousExecutions []APITask `json:"previous_executions"`
+	PreviousExecutions []APITask `json:"previous_executions,omitempty"`
 	GenerateTask       bool      `json:"generate_task"`
 	GeneratedBy        string    `json:"generated_by"`
 	// The list of artifacts associated with the task.
@@ -106,12 +106,12 @@ type APITask struct {
 	DisplayOnly bool      `json:"display_only"`
 	// The ID of the task's parent display task, if requested and available
 	ParentTaskId   string    `json:"parent_task_id"`
-	ExecutionTasks []*string `json:"execution_tasks"`
+	ExecutionTasks []*string `json:"execution_tasks,omitempty"`
 	// List of tags defined for the task, if any
-	Tags              []*string `json:"tags"`
+	Tags              []*string `json:"tags,omitempty"`
 	Mainline          bool      `json:"mainline"`
-	TaskGroup         string    `json:"task_group"`
-	TaskGroupMaxHosts int       `json:"task_group_max_hosts"`
+	TaskGroup         string    `json:"task_group,omitempty"`
+	TaskGroupMaxHosts int       `json:"task_group_max_hosts,omitempty"`
 	Blocked           bool      `json:"blocked"`
 	// Version created by one of patch_request", "github_pull_request",
 	// "gitter_request" (caused by git commit, aka the repotracker requester),
@@ -120,7 +120,7 @@ type APITask struct {
 	Requester         *string         `json:"requester"`
 	TestResults       []APITest       `json:"test_results"`
 	Aborted           bool            `json:"aborted"`
-	AbortInfo         APIAbortInfo    `json:"abort_info"`
+	AbortInfo         APIAbortInfo    `json:"abort_info,omitempty"`
 	AMI               *string         `json:"ami"`
 	MustHaveResults   bool            `json:"must_have_test_results"`
 	BaseTask          APIBaseTaskInfo `json:"base_task"`
@@ -141,10 +141,10 @@ type APIStepbackInfo struct {
 }
 
 type APIAbortInfo struct {
-	User       string `json:"user"`
-	TaskID     string `json:"task_id"`
-	NewVersion string `json:"new_version"`
-	PRClosed   bool   `json:"pr_closed"`
+	User       string `json:"user,omitempty"`
+	TaskID     string `json:"task_id,omitempty"`
+	NewVersion string `json:"new_version,omitempty"`
+	PRClosed   bool   `json:"pr_closed,omitempty"`
 }
 
 type LogLinks struct {
@@ -156,7 +156,7 @@ type LogLinks struct {
 	AgentLogLink *string `json:"agent_log"`
 	// Link to logs created by the machine running the task
 	SystemLogLink *string `json:"system_log"`
-	EventLogLink  *string `json:"event_log"`
+	EventLogLink  *string `json:"event_log,omitempty"`
 }
 
 type ApiTaskEndDetail struct {
@@ -176,7 +176,7 @@ type ApiTaskEndDetail struct {
 	FailureMetadataTags []string `json:"failure_metadata_tags"`
 	// OtherFailingCommands contain information about commands that failed but
 	// did not cause the task to fail.
-	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands"`
+	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands,omitempty"`
 	// Whether this task ended in a timeout.
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
@@ -239,9 +239,9 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 // task.
 type APIFailingCommand struct {
 	// FullDisplayName is the full display name of the failing command.
-	FullDisplayName *string `json:"full_display_name"`
+	FullDisplayName *string `json:"full_display_name,omitempty"`
 	// FailureMetadataTags are tags associated with the failing command.
-	FailureMetadataTags []string `json:"failure_metadata_tags"`
+	FailureMetadataTags []string `json:"failure_metadata_tags,omitempty"`
 }
 
 func (afc *APIFailingCommand) BuildFromService(fc apimodels.FailingCommand) {
@@ -652,12 +652,12 @@ func (ad *APIDependency) BuildFromService(dep task.Dependency) {
 type APIContainerOptions struct {
 	CPU            int     `json:"cpu"`
 	MemoryMB       int     `json:"memory_mb"`
-	WorkingDir     *string `json:"working_dir"`
-	Image          *string `json:"image"`
-	RepoCredsName  *string `json:"repo_creds_name"`
-	OS             *string `json:"os"`
-	Arch           *string `json:"arch"`
-	WindowsVersion *string `json:"windows_version"`
+	WorkingDir     *string `json:"working_dir,omitempty"`
+	Image          *string `json:"image,omitempty"`
+	RepoCredsName  *string `json:"repo_creds_name,omitempty"`
+	OS             *string `json:"os,omitempty"`
+	Arch           *string `json:"arch,omitempty"`
+	WindowsVersion *string `json:"windows_version,omitempty"`
 }
 
 func (o *APIContainerOptions) BuildFromService(dbOpts task.ContainerOptions) {

@@ -15,8 +15,8 @@ func (a *APICLIUpdate) BuildFromService(c evergreen.ClientConfig) {
 }
 
 type APIClientConfig struct {
-	ClientBinaries   []APIClientBinary `json:"client_binaries"`
-	S3ClientBinaries []APIClientBinary `json:"s3_client_binaries"`
+	ClientBinaries   []APIClientBinary `json:"client_binaries,omitempty"`
+	S3ClientBinaries []APIClientBinary `json:"s3_client_binaries,omitempty"`
 	LatestRevision   *string           `json:"latest_revision"`
 }
 

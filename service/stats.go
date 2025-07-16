@@ -45,14 +45,14 @@ type UITask struct {
 	CreateTime             time.Time `json:"create_time"`
 	DispatchTime           time.Time `json:"dispatch_time"`
 	ScheduledTime          time.Time `json:"scheduled_time"`
-	ContainerAllocatedTime time.Time `json:"container_allocated_time"`
+	ContainerAllocatedTime time.Time `json:"container_allocated_time,omitempty"`
 	StartTime              time.Time `json:"start_time"`
 	FinishTime             time.Time `json:"finish_time"`
 	Version                string    `json:"version"`
 	Status                 string    `json:"status"`
 	Host                   string    `json:"host"`
 	Distro                 string    `json:"distro"`
-	Container              string    `json:"container"`
+	Container              string    `json:"container,omitempty"`
 	IsDisplay              bool      `json:"is_display"`
 }
 

@@ -57,13 +57,13 @@ type APIPatch struct {
 	VariantsTasks []VariantTask `json:"variants_tasks"`
 	// Whether the patch has been finalized and activated
 	Activated            bool                 `json:"activated"`
-	Alias                *string              `json:"alias"`
-	GithubPatchData      githubPatch          `json:"github_patch_data"`
+	Alias                *string              `json:"alias,omitempty"`
+	GithubPatchData      githubPatch          `json:"github_patch_data,omitempty"`
 	ModuleCodeChanges    []APIModulePatch     `json:"module_code_changes"`
 	Parameters           []APIParameter       `json:"parameters"`
-	ProjectStorageMethod *string              `json:"project_storage_method"`
+	ProjectStorageMethod *string              `json:"project_storage_method,omitempty"`
 	ChildPatches         []APIPatch           `json:"child_patches"`
-	ChildPatchAliases    []APIChildPatchAlias `json:"child_patch_aliases"`
+	ChildPatchAliases    []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester            *string              `json:"requester"`
 	MergedFrom           *string              `json:"merged_from"`
 }

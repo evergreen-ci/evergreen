@@ -30,14 +30,14 @@ const (
 
 // DistroEventData implements EventData.
 type DistroEventData struct {
-	DistroId string `bson:"d_id,omitempty" json:"d_id"`
-	User     string `bson:"user,omitempty" json:"user"`
+	DistroId string `bson:"d_id,omitempty" json:"d_id,omitempty"`
+	User     string `bson:"user,omitempty" json:"user,omitempty"`
 	Before   any    `bson:"before" json:"before"`
 	After    any    `bson:"after" json:"after"`
 
 	// Fields used by legacy UI
-	Data   any    `bson:"dstr,omitempty" json:"dstr"`
-	UserId string `bson:"u_id,omitempty" json:"u_id"`
+	Data   any    `bson:"dstr,omitempty" json:"dstr,omitempty"`
+	UserId string `bson:"u_id,omitempty" json:"u_id,omitempty"`
 }
 
 func LogDistroEvent(ctx context.Context, distroId string, eventType string, eventData DistroEventData) {

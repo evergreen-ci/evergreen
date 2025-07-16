@@ -27,14 +27,14 @@ const (
 // TaskStartRequest holds information sent by the agent to the
 // API server at the beginning of each task run.
 type TaskStartRequest struct {
-	TraceID     string   `json:"trace_id"`
-	DiskDevices []string `json:"disk_devices"`
+	TraceID     string   `json:"trace_id,omitempty"`
+	DiskDevices []string `json:"disk_devices,omitempty"`
 }
 
 // HeartbeatResponse is sent by the API server in response to
 // the agent's heartbeat message.
 type HeartbeatResponse struct {
-	Abort bool `json:"abort"`
+	Abort bool `json:"abort,omitempty"`
 }
 
 // CheckMergeRequest holds information sent by the agent to get a PR and check mergeability.
@@ -62,30 +62,30 @@ type AttachTestResultsRequest struct {
 // TaskEndDetail contains data sent from the agent to the API server after each task run.
 // This should be used to store data relating to what happened when the task ran
 type TaskEndDetail struct {
-	Status         string `bson:"status,omitempty" json:"status"`
-	Type           string `bson:"type,omitempty" json:"type"`
-	PostErrored    bool   `bson:"post_errored,omitempty" json:"post_errored"`
-	Description    string `bson:"desc,omitempty" json:"desc"`
-	FailingCommand string `bson:"failing_command,omitempty" json:"failing_command"`
+	Status         string `bson:"status,omitempty" json:"status,omitempty"`
+	Type           string `bson:"type,omitempty" json:"type,omitempty"`
+	PostErrored    bool   `bson:"post_errored,omitempty" json:"post_errored,omitempty"`
+	Description    string `bson:"desc,omitempty" json:"desc,omitempty"`
+	FailingCommand string `bson:"failing_command,omitempty" json:"failing_command,omitempty"`
 	// FailureMetadataTags are user metadata tags associated with the
 	// command that caused the task to fail.
-	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags"`
+	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
 	// OtherFailingCommands contains information about commands that failed
 	// while the task was running but did not cause the task to fail.
-	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands"`
-	TimedOut             bool             `bson:"timed_out,omitempty" json:"timed_out"`
-	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type"`
-	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration" swaggertype:"primitive,integer"`
-	OOMTracker           *OOMTrackerInfo  `bson:"oom_killer,omitempty" json:"oom_killer"`
-	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules"`
-	TraceID              string           `bson:"trace_id,omitempty" json:"trace_id"`
-	DiskDevices          []string         `bson:"disk_devices,omitempty" json:"disk_devices"`
+	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands,omitempty"`
+	TimedOut             bool             `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
+	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
+	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
+	OOMTracker           *OOMTrackerInfo  `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
+	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules,omitempty"`
+	TraceID              string           `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
+	DiskDevices          []string         `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.
 type FailingCommand struct {
-	FullDisplayName     string   `bson:"full_display_name,omitempty" json:"full_display_name"`
-	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags"`
+	FullDisplayName     string   `bson:"full_display_name,omitempty" json:"full_display_name,omitempty"`
+	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
 }
 
 type OOMTrackerInfo struct {
@@ -103,12 +103,12 @@ type DisableInfo struct {
 }
 
 type ModuleCloneInfo struct {
-	Prefixes map[string]string `bson:"prefixes,omitempty" json:"prefixes"`
+	Prefixes map[string]string `bson:"prefixes,omitempty" json:"prefixes,omitempty"`
 }
 
 type TaskEndDetails struct {
-	TimeoutStage string `bson:"timeout_stage,omitempty" json:"timeout_stage"`
-	TimedOut     bool   `bson:"timed_out,omitempty" json:"timed_out"`
+	TimeoutStage string `bson:"timeout_stage,omitempty" json:"timeout_stage,omitempty"`
+	TimedOut     bool   `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 }
 
 type GetNextTaskDetails struct {
@@ -127,22 +127,22 @@ type AgentSetupData struct {
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
-	TaskId              string `json:"task_id"`
-	TaskExecution       int    `json:"task_execution"`
-	TaskSecret          string `json:"task_secret"`
-	TaskGroup           string `json:"task_group"`
-	Version             string `json:"version"`
-	Build               string `json:"build"`
-	ShouldExit          bool   `json:"should_exit"`
-	ShouldTeardownGroup bool   `json:"should_teardown_group"`
+	TaskId              string `json:"task_id,omitempty"`
+	TaskExecution       int    `json:"task_execution,omitempty"`
+	TaskSecret          string `json:"task_secret,omitempty"`
+	TaskGroup           string `json:"task_group,omitempty"`
+	Version             string `json:"version,omitempty"`
+	Build               string `json:"build,omitempty"`
+	ShouldExit          bool   `json:"should_exit,omitempty"`
+	ShouldTeardownGroup bool   `json:"should_teardown_group,omitempty"`
 	// EstimatedMaxIdleDuration is included in the response when there is no task to run.
 	// It helps the host be smart about retries to request the next task.
-	EstimatedMaxIdleDuration time.Duration `json:"estimated_max_idle_duration"`
+	EstimatedMaxIdleDuration time.Duration `json:"estimated_max_idle_duration,omitempty"`
 }
 
 // EndTaskResponse is what is returned when the task ends
 type EndTaskResponse struct {
-	ShouldExit bool `json:"should_exit"`
+	ShouldExit bool `json:"should_exit,omitempty"`
 }
 
 type CreateHost struct {
@@ -366,23 +366,23 @@ type ExpansionsAndVars struct {
 
 // CheckRunOutput represents the output for a CheckRun.
 type CheckRunOutput struct {
-	Title            string                `json:"title" plugin:"expand"`
-	Summary          string                `json:"summary" plugin:"expand"`
-	Text             string                `json:"text" plugin:"expand"`
-	AnnotationsCount *int                  `json:"annotations_count"`
-	AnnotationsURL   string                `json:"annotations_url" plugin:"expand"`
-	Annotations      []*CheckRunAnnotation `json:"annotations" plugin:"expand"`
+	Title            string                `json:"title,omitempty" plugin:"expand"`
+	Summary          string                `json:"summary,omitempty" plugin:"expand"`
+	Text             string                `json:"text,omitempty" plugin:"expand"`
+	AnnotationsCount *int                  `json:"annotations_count,omitempty"`
+	AnnotationsURL   string                `json:"annotations_url,omitempty" plugin:"expand"`
+	Annotations      []*CheckRunAnnotation `json:"annotations,omitempty" plugin:"expand"`
 }
 
 // CheckRunAnnotation represents an annotation object for a CheckRun output.
 type CheckRunAnnotation struct {
-	Path            string `json:"path" plugin:"expand"`
-	StartLine       *int   `json:"start_line" `
-	EndLine         *int   `json:"end_line" `
-	StartColumn     *int   `json:"start_column"`
-	EndColumn       *int   `json:"end_column" `
-	AnnotationLevel string `json:"annotation_level" plugin:"expand"`
-	Message         string `json:"message" plugin:"expand"`
-	Title           string `json:"title" plugin:"expand"`
-	RawDetails      string `json:"raw_details" plugin:"expand"`
+	Path            string `json:"path,omitempty" plugin:"expand"`
+	StartLine       *int   `json:"start_line,omitempty" `
+	EndLine         *int   `json:"end_line,omitempty" `
+	StartColumn     *int   `json:"start_column,omitempty"`
+	EndColumn       *int   `json:"end_column,omitempty" `
+	AnnotationLevel string `json:"annotation_level,omitempty" plugin:"expand"`
+	Message         string `json:"message,omitempty" plugin:"expand"`
+	Title           string `json:"title,omitempty" plugin:"expand"`
+	RawDetails      string `json:"raw_details,omitempty" plugin:"expand"`
 }

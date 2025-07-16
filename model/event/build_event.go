@@ -23,8 +23,8 @@ const (
 )
 
 type BuildEventData struct {
-	Status            string `bson:"status,omitempty" json:"status"`
-	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status"`
+	Status            string `bson:"status,omitempty" json:"status,omitempty"`
+	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
 }
 
 func LogBuildStateChangeEvent(ctx context.Context, id, status string) {

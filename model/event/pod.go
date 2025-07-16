@@ -35,14 +35,14 @@ const (
 
 // PodData contains information relevant to a pod event.
 type PodData struct {
-	OldStatus string `bson:"old_status,omitempty" json:"old_status"`
-	NewStatus string `bson:"new_status,omitempty" json:"new_status"`
-	Reason    string `bson:"reason,omitempty" json:"reason"`
+	OldStatus string `bson:"old_status,omitempty" json:"old_status,omitempty"`
+	NewStatus string `bson:"new_status,omitempty" json:"new_status,omitempty"`
+	Reason    string `bson:"reason,omitempty" json:"reason,omitempty"`
 
 	// Fields related to pods running tasks
-	TaskID        string `bson:"task_id,omitempty" json:"task_id"`
-	TaskExecution int    `bson:"task_execution,omitempty" json:"task_execution"`
-	TaskStatus    string `bson:"task_status,omitempty" json:"task_status"`
+	TaskID        string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+	TaskExecution int    `bson:"task_execution,omitempty" json:"task_execution,omitempty"`
+	TaskStatus    string `bson:"task_status,omitempty" json:"task_status,omitempty"`
 }
 
 // LogPodEvent logs an event for a pod to the event log.

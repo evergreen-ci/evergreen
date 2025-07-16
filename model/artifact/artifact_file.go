@@ -55,17 +55,17 @@ type File struct {
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
 	// AWSKey is the key with which the file was uploaded to S3.
-	AWSKey string `json:"aws_key" bson:"aws_key,omitempty"`
+	AWSKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
 	// AWSSecret is the secret with which the file was uploaded to S3.
-	AWSSecret string `json:"aws_secret" bson:"aws_secret,omitempty"`
+	AWSSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
 	// AWSRoleARN is the role ARN with which the file was uploaded to S3.
-	AWSRoleARN string `json:"aws_role_arn" bson:"aws_role_arn,omitempty"`
+	AWSRoleARN string `json:"aws_role_arn,omitempty" bson:"aws_role_arn,omitempty"`
 	// ExternalID is the external ID with which the file was uploaded to S3.
-	ExternalID string `json:"external_id" bson:"external_id,omitempty"`
+	ExternalID string `json:"external_id,omitempty" bson:"external_id,omitempty"`
 	// Bucket is the aws bucket in which the file is stored.
-	Bucket string `json:"bucket" bson:"bucket,omitempty"`
+	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	// FileKey is the path to the file in the bucket.
-	FileKey string `json:"filekey" bson:"filekey,omitempty"`
+	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
 	// ContentType is the content type of the file.
 	ContentType string `json:"content_type" bson:"content_type"`
 }

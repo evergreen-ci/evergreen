@@ -30,20 +30,20 @@ type Pod struct {
 	Status Status `bson:"status"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
-	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts"`
+	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
 	// Family is the family name of the pod definition stored in the cloud
 	// provider.
-	Family string `bson:"family,omitempty" json:"family"`
+	Family string `bson:"family,omitempty" json:"family,omitempty"`
 	// TimeInfo contains timing information for the pod's lifecycle.
-	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info"`
+	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
 	// Resources are external resources that are owned and managed by this pod.
-	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info"`
+	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
 	// TaskRuntimeInfo contains information about the tasks that a pod is
 	// assigned.
-	TaskRuntimeInfo TaskRuntimeInfo `bson:"task_runtime_info,omitempty" json:"task_runtime_info"`
+	TaskRuntimeInfo TaskRuntimeInfo `bson:"task_runtime_info,omitempty" json:"task_runtime_info,omitempty"`
 	// AgentVersion is the version of the agent running on this pod if it's a
 	// pod that runs tasks.
-	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version"`
+	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
 }
 
 // TaskIntentPodOptions represents options to create an intent pod that runs
@@ -190,18 +190,18 @@ type TimeInfo struct {
 	// Initializing is the time when this pod was initialized and is waiting to
 	// be created in the container orchestration service. This should correspond
 	// with the time when the pod transitions to the "initializing" status.
-	Initializing time.Time `bson:"initializing,omitempty" json:"initializing"`
+	Initializing time.Time `bson:"initializing,omitempty" json:"initializing,omitempty"`
 	// Starting is the time when this pod was actually requested to start its
 	// containers. This should correspond with the time when the pod transitions
 	// to the "starting" status.
-	Starting time.Time `bson:"starting,omitempty" json:"starting"`
+	Starting time.Time `bson:"starting,omitempty" json:"starting,omitempty"`
 	// LastCommunicated is the last time that the pod connected to the
 	// application server or the application server connected to the pod. This
 	// is used as one indicator of liveliness.
-	LastCommunicated time.Time `bson:"last_communicated,omitempty" json:"last_communicated"`
+	LastCommunicated time.Time `bson:"last_communicated,omitempty" json:"last_communicated,omitempty"`
 	// AgentStarted is the time that the agent initiated first contact with the
 	// application server. This only applies to agent pods.
-	AgentStarted time.Time `bson:"agent_started,omitempty" json:"agent_started"`
+	AgentStarted time.Time `bson:"agent_started,omitempty" json:"agent_started,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
@@ -215,14 +215,14 @@ func (i TimeInfo) IsZero() bool {
 type ResourceInfo struct {
 	// ExternalID is the unique resource identifier for the aggregate collection
 	// of containers running for the pod in the container service.
-	ExternalID string `bson:"external_id,omitempty" json:"external_id"`
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// DefinitionID is the resource identifier for the pod definition template.
-	DefinitionID string `bson:"definition_id,omitempty" json:"definition_id"`
+	DefinitionID string `bson:"definition_id,omitempty" json:"definition_id,omitempty"`
 	// Cluster is the namespace where the containers are running.
-	Cluster string `bson:"cluster,omitempty" json:"cluster"`
+	Cluster string `bson:"cluster,omitempty" json:"cluster,omitempty"`
 	// Containers include resource information about containers running in the
 	// pod.
-	Containers []ContainerResourceInfo `bson:"containers,omitempty" json:"containers"`
+	Containers []ContainerResourceInfo `bson:"containers,omitempty" json:"containers,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
@@ -236,12 +236,12 @@ func (i ResourceInfo) IsZero() bool {
 type ContainerResourceInfo struct {
 	// ExternalID is the unique resource identifier for the container running in
 	// the container service.
-	ExternalID string `bson:"external_id,omitempty" json:"external_id"`
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// Name is the friendly name of the container.
-	Name string `bson:"name,omitempty" json:"name"`
+	Name string `bson:"name,omitempty" json:"name,omitempty"`
 	// SecretIDs are the resource identifiers for the secrets owned by this
 	// container.
-	SecretIDs []string `bson:"secret_ids,omitempty" json:"secret_ids"`
+	SecretIDs []string `bson:"secret_ids,omitempty" json:"secret_ids,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
@@ -257,7 +257,7 @@ type TaskContainerCreationOptions struct {
 	Image string `bson:"image" json:"image"`
 	// RepoCredsExternalID is the external identifier for the repository
 	// credentials.
-	RepoCredsExternalID string `bson:"repo_creds_external_id,omitempty" json:"repo_creds_external_id"`
+	RepoCredsExternalID string `bson:"repo_creds_external_id,omitempty" json:"repo_creds_external_id,omitempty"`
 	// MemoryMB is the memory (in MB) that the task's container will be
 	// allocated.
 	MemoryMB int `bson:"memory_mb" json:"memory_mb"`
@@ -272,16 +272,16 @@ type TaskContainerCreationOptions struct {
 	Arch Arch `bson:"arch" json:"arch"`
 	// WindowsVersion specifies the particular version of Windows the container
 	// should run in. This only applies if OS is OSWindows.
-	WindowsVersion WindowsVersion `bson:"windows_version,omitempty" json:"windows_version"`
+	WindowsVersion WindowsVersion `bson:"windows_version,omitempty" json:"windows_version,omitempty"`
 	// EnvVars is a mapping of the non-secret environment variables to expose in
 	// the task's container environment.
-	EnvVars map[string]string `bson:"env_vars,omitempty" json:"env_vars"`
+	EnvVars map[string]string `bson:"env_vars,omitempty" json:"env_vars,omitempty"`
 	// EnvSecrets are secret values to expose in the task's container
 	// environment variables. The key is the name of the environment variable
 	// and the value is the configuration for the secret value.
-	EnvSecrets map[string]Secret `bson:"env_secrets,omitempty" json:"env_secrets"`
+	EnvSecrets map[string]Secret `bson:"env_secrets,omitempty" json:"env_secrets,omitempty"`
 	// WorkingDir is the working directory for the task's container.
-	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir"`
+	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir,omitempty"`
 }
 
 // OS represents a recognized operating system for pods.
@@ -529,10 +529,10 @@ func (o TaskContainerCreationOptions) IsZero() bool {
 type Secret struct {
 	// ExternalID is the unique external resource identifier for a secret that
 	// already exists in the secrets storage service.
-	ExternalID string `bson:"external_id,omitempty" json:"external_id"`
+	ExternalID string `bson:"external_id,omitempty" json:"external_id,omitempty"`
 	// Value is the value of the secret. This is a cached copy of the actual
 	// secret value stored in the secrets storage service.
-	Value string `bson:"value,omitempty" json:"value"`
+	Value string `bson:"value,omitempty" json:"value,omitempty"`
 }
 
 func (s Secret) hash() string {
@@ -554,10 +554,10 @@ func (s Secret) IsZero() bool {
 // that it is running or has run previously.
 type TaskRuntimeInfo struct {
 	// RunningTaskID is the ID of the task currently running on the pod.
-	RunningTaskID string `bson:"running_task_id,omitempty" json:"running_task_id"`
+	RunningTaskID string `bson:"running_task_id,omitempty" json:"running_task_id,omitempty"`
 	// RunningTaskExecution is the execution number of the task currently
 	// running on the pod.
-	RunningTaskExecution int `bson:"running_task_execution,omitempty" json:"running_task_execution"`
+	RunningTaskExecution int `bson:"running_task_execution,omitempty" json:"running_task_execution,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the

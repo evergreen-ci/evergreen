@@ -27,45 +27,45 @@ import (
 )
 
 type Distro struct {
-	Id                   string            `bson:"_id" json:"_id" mapstructure:"_id,omitempty"`
-	AdminOnly            bool              `bson:"admin_only,omitempty" json:"admin_only" mapstructure:"admin_only,omitempty"`
-	Aliases              []string          `bson:"aliases,omitempty" json:"aliases" mapstructure:"aliases,omitempty"`
-	Arch                 string            `bson:"arch" json:"arch" mapstructure:"arch,omitempty"`
-	WorkDir              string            `bson:"work_dir" json:"work_dir" mapstructure:"work_dir,omitempty"`
-	Provider             string            `bson:"provider" json:"provider" mapstructure:"provider,omitempty"`
-	ProviderSettingsList []*birch.Document `bson:"provider_settings,omitempty" json:"provider_settings" mapstructure:"provider_settings,omitempty"`
+	Id                   string            `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	AdminOnly            bool              `bson:"admin_only,omitempty" json:"admin_only,omitempty" mapstructure:"admin_only,omitempty"`
+	Aliases              []string          `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch                 string            `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir              string            `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	Provider             string            `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettingsList []*birch.Document `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	// ProviderAccount is the identifier for the provider's account.
-	ProviderAccount       string                `bson:"provider_account,omitempty" json:"provider_account" mapstructure:"provider_account,omitempty"`
-	SetupAsSudo           bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo" mapstructure:"setup_as_sudo,omitempty"`
-	Setup                 string                `bson:"setup,omitempty" json:"setup" mapstructure:"setup,omitempty"`
-	User                  string                `bson:"user,omitempty" json:"user" mapstructure:"user,omitempty"`
+	ProviderAccount       string                `bson:"provider_account,omitempty" json:"provider_account,omitempty" mapstructure:"provider_account,omitempty"`
+	SetupAsSudo           bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	Setup                 string                `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	User                  string                `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
 	BootstrapSettings     BootstrapSettings     `bson:"bootstrap_settings" json:"bootstrap_settings" mapstructure:"bootstrap_settings"`
-	SSHOptions            []string              `bson:"ssh_options,omitempty" json:"ssh_options" mapstructure:"ssh_options,omitempty"`
-	AuthorizedKeysFile    string                `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file" mapstructure:"authorized_keys_file,omitempty"`
-	SpawnAllowed          bool                  `bson:"spawn_allowed" json:"spawn_allowed" mapstructure:"spawn_allowed,omitempty"`
-	Expansions            []Expansion           `bson:"expansions,omitempty" json:"expansions" mapstructure:"expansions,omitempty"`
-	Disabled              bool                  `bson:"disabled,omitempty" json:"disabled" mapstructure:"disabled,omitempty"`
-	ContainerPool         string                `bson:"container_pool,omitempty" json:"container_pool" mapstructure:"container_pool,omitempty"`
+	SSHOptions            []string              `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	AuthorizedKeysFile    string                `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file,omitempty" mapstructure:"authorized_keys_file,omitempty"`
+	SpawnAllowed          bool                  `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions            []Expansion           `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled              bool                  `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	ContainerPool         string                `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 	FinderSettings        FinderSettings        `bson:"finder_settings" json:"finder_settings" mapstructure:"finder_settings"`
 	PlannerSettings       PlannerSettings       `bson:"planner_settings" json:"planner_settings" mapstructure:"planner_settings"`
 	DispatcherSettings    DispatcherSettings    `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
 	HostAllocatorSettings HostAllocatorSettings `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 	DisableShallowClone   bool                  `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	Note                  string                `bson:"note" json:"note" mapstructure:"note"`
-	WarningNote           string                `bson:"warning_note,omitempty" json:"warning_note" mapstructure:"warning_note,omitempty"`
-	ValidProjects         []string              `bson:"valid_projects,omitempty" json:"valid_projects" mapstructure:"valid_projects,omitempty"`
+	WarningNote           string                `bson:"warning_note,omitempty" json:"warning_note,omitempty" mapstructure:"warning_note,omitempty"`
+	ValidProjects         []string              `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
-	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings" mapstructure:"icecream_settings,omitempty"`
-	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints" mapstructure:"mountpoints,omitempty"`
+	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
+	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
 	// SingleTaskDistro is a bool that indicates whether the hosts with this distro will only be allowed to run one task.
-	SingleTaskDistro bool `bson:"single_task_distro,omitempty" json:"single_task_distro" mapstructure:"single_task_distro,omitempty"`
+	SingleTaskDistro bool `bson:"single_task_distro,omitempty" json:"single_task_distro,omitempty" mapstructure:"single_task_distro,omitempty"`
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
-	ImageID string `bson:"image_id,omitempty" json:"image_id" mapstructure:"image_id,omitempty"`
+	ImageID string `bson:"image_id,omitempty" json:"image_id,omitempty" mapstructure:"image_id,omitempty"`
 
 	// ExecUser is the user to run shell.exec and subprocess.exec processes as. If unset, processes are run as the regular distro User.
-	ExecUser string `bson:"exec_user,omitempty" json:"exec_user" mapstructure:"exec_user,omitempty"`
+	ExecUser string `bson:"exec_user,omitempty" json:"exec_user,omitempty" mapstructure:"exec_user,omitempty"`
 }
 
 // DistroData is the same as a distro, with the only difference being that all
@@ -104,29 +104,29 @@ func (d *Distro) GetDefaultAMI() string {
 type BootstrapSettings struct {
 	// Required
 	Method        string `bson:"method" json:"method" mapstructure:"method"`
-	Communication string `bson:"communication,omitempty" json:"communication" mapstructure:"communication,omitempty"`
+	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                 []EnvVar             `bson:"env,omitempty" json:"env" mapstructure:"env,omitempty"`
-	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
-	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts" mapstructure:"precondition_scripts,omitempty"`
+	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
-	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir" mapstructure:"client_dir,omitempty"`
-	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir" mapstructure:"jasper_binary_dir,omitempty"`
-	JasperCredentialsPath string `json:"jasper_credentials_path" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
+	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
+	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
+	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
 
 	// Windows-specific
-	ServiceUser string `bson:"service_user,omitempty" json:"service_user" mapstructure:"service_user,omitempty"`
-	ShellPath   string `bson:"shell_path,omitempty" json:"shell_path" mapstructure:"shell_path,omitempty"`
-	RootDir     string `bson:"root_dir,omitempty" json:"root_dir" mapstructure:"root_dir,omitempty"`
+	ServiceUser string `bson:"service_user,omitempty" json:"service_user,omitempty" mapstructure:"service_user,omitempty"`
+	ShellPath   string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
+	RootDir     string `bson:"root_dir,omitempty" json:"root_dir,omitempty" mapstructure:"root_dir,omitempty"`
 }
 
 // PreconditionScript represents a script that must run and succeed before the
 // Jasper service can start on a provisioning host.
 type PreconditionScript struct {
-	Path   string `bson:"path,omitempty" json:"path" mapstructure:"path,omitempty"`
-	Script string `bson:"script,omitempty" json:"script" mapstructure:"script,omitempty"`
+	Path   string `bson:"path,omitempty" json:"path,omitempty" mapstructure:"path,omitempty"`
+	Script string `bson:"script,omitempty" json:"script,omitempty" mapstructure:"script,omitempty"`
 }
 
 type EnvVar struct {
@@ -136,11 +136,11 @@ type EnvVar struct {
 
 // ResourceLimits represents resource limits in Linux.
 type ResourceLimits struct {
-	NumFiles        int `bson:"num_files,omitempty" json:"num_files" mapstructure:"num_files,omitempty"`
-	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes" mapstructure:"num_processes,omitempty"`
-	NumTasks        int `bson:"num_tasks,omitempty" json:"num_tasks" mapstructure:"num_tasks,omitempty"`
-	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory" mapstructure:"locked_memory,omitempty"`
-	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory" mapstructure:"virtual_memory,omitempty"`
+	NumFiles        int `bson:"num_files,omitempty" json:"num_files,omitempty" mapstructure:"num_files,omitempty"`
+	NumProcesses    int `bson:"num_processes,omitempty" json:"num_processes,omitempty" mapstructure:"num_processes,omitempty"`
+	NumTasks        int `bson:"num_tasks,omitempty" json:"num_tasks,omitempty" mapstructure:"num_tasks,omitempty"`
+	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
+	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
 }
 
 type HomeVolumeSettings struct {
@@ -148,8 +148,8 @@ type HomeVolumeSettings struct {
 }
 
 type IceCreamSettings struct {
-	SchedulerHost string `bson:"scheduler_host,omitempty" json:"scheduler_host" mapstructure:"scheduler_host,omitempty"`
-	ConfigPath    string `bson:"config_path,omitempty" json:"config_path" mapstructure:"config_path,omitempty"`
+	SchedulerHost string `bson:"scheduler_host,omitempty" json:"scheduler_host,omitempty" mapstructure:"scheduler_host,omitempty"`
+	ConfigPath    string `bson:"config_path,omitempty" json:"config_path,omitempty" mapstructure:"config_path,omitempty"`
 }
 
 // WriteConfigScript returns the shell script to update the icecream config
@@ -284,8 +284,8 @@ type DispatcherSettings struct {
 type DistroGroup []Distro
 
 type Expansion struct {
-	Key   string `bson:"key,omitempty" json:"key"`
-	Value string `bson:"value,omitempty" json:"value"`
+	Key   string `bson:"key,omitempty" json:"key,omitempty"`
+	Value string `bson:"value,omitempty" json:"value,omitempty"`
 }
 
 const (

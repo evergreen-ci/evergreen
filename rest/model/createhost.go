@@ -6,16 +6,16 @@ import (
 )
 
 type APICreateHost struct {
-	DNSName    *string `json:"dns_name"`
-	IP         *string `json:"ip_address"`
-	IPv4       *string `json:"ipv4_address"`
-	InstanceID *string `json:"instance_id"`
+	DNSName    *string `json:"dns_name,omitempty"`
+	IP         *string `json:"ip_address,omitempty"`
+	IPv4       *string `json:"ipv4_address,omitempty"`
+	InstanceID *string `json:"instance_id,omitempty"`
 
-	HostID       *string      `json:"host_id"`
-	ParentID     *string      `json:"parent_id"`
-	Image        *string      `json:"image"`
-	Command      *string      `json:"command"`
-	PortBindings host.PortMap `json:"port_bindings"`
+	HostID       *string      `json:"host_id,omitempty"`
+	ParentID     *string      `json:"parent_id,omitempty"`
+	Image        *string      `json:"image,omitempty"`
+	Command      *string      `json:"command,omitempty"`
+	PortBindings host.PortMap `json:"port_bindings,omitempty"`
 }
 
 func (createHost *APICreateHost) BuildFromService(h host.Host) {

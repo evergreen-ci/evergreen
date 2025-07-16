@@ -60,14 +60,14 @@ func (p *APICreatePod) ToService() (*pod.Pod, error) {
 // APIPod represents a pod to be used and returned from the REST API.
 type APIPod struct {
 	ID                        *string                            `json:"id"`
-	Type                      APIPodType                         `json:"type"`
-	Status                    APIPodStatus                       `json:"status"`
-	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts"`
-	Family                    *string                            `json:"family"`
-	TimeInfo                  APIPodTimeInfo                     `json:"time_info"`
-	Resources                 APIPodResourceInfo                 `json:"resources"`
-	TaskRuntimeInfo           APITaskRuntimeInfo                 `json:"task_runtime_info"`
-	AgentVersion              *string                            `json:"agent_version"`
+	Type                      APIPodType                         `json:"type,omitempty"`
+	Status                    APIPodStatus                       `json:"status,omitempty"`
+	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts,omitempty"`
+	Family                    *string                            `json:"family,omitempty"`
+	TimeInfo                  APIPodTimeInfo                     `json:"time_info,omitempty"`
+	Resources                 APIPodResourceInfo                 `json:"resources,omitempty"`
+	TaskRuntimeInfo           APITaskRuntimeInfo                 `json:"task_runtime_info,omitempty"`
+	AgentVersion              *string                            `json:"agent_version,omitempty"`
 }
 
 // BuildFromService converts a service-layer pod model into a REST API model.
@@ -206,16 +206,16 @@ func (s APIPodStatus) ToService() (*pod.Status, error) {
 // APIPodTaskContainerCreationOptions represents options to apply to the task's
 // container when creating a pod.
 type APIPodTaskContainerCreationOptions struct {
-	Image               *string                 `json:"image"`
-	RepoCredsExternalID *string                 `json:"repo_creds_external_id"`
-	MemoryMB            *int                    `json:"memory_mb"`
-	CPU                 *int                    `json:"cpu"`
-	OS                  APIPodOS                `json:"os"`
-	Arch                APIPodArch              `json:"arch"`
-	WindowsVersion      APIPodWindowsVersion    `json:"windows_version"`
-	EnvVars             map[string]string       `json:"env_vars"`
-	EnvSecrets          map[string]APIPodSecret `json:"env_secrets"`
-	WorkingDir          *string                 `json:"working_dir"`
+	Image               *string                 `json:"image,omitempty"`
+	RepoCredsExternalID *string                 `json:"repo_creds_external_id,omitempty"`
+	MemoryMB            *int                    `json:"memory_mb,omitempty"`
+	CPU                 *int                    `json:"cpu,omitempty"`
+	OS                  APIPodOS                `json:"os,omitempty"`
+	Arch                APIPodArch              `json:"arch,omitempty"`
+	WindowsVersion      APIPodWindowsVersion    `json:"windows_version,omitempty"`
+	EnvVars             map[string]string       `json:"env_vars,omitempty"`
+	EnvSecrets          map[string]APIPodSecret `json:"env_secrets,omitempty"`
+	WorkingDir          *string                 `json:"working_dir,omitempty"`
 }
 
 // BuildFromService converts service-layer task container creation options into
@@ -338,9 +338,9 @@ func (v *APIPodWindowsVersion) ToService() (*pod.WindowsVersion, error) {
 
 // APIPodResourceInfo represents timing information about the pod lifecycle.
 type APIPodTimeInfo struct {
-	Initializing     *time.Time `json:"initializing"`
-	Starting         *time.Time `json:"starting"`
-	LastCommunicated *time.Time `json:"last_communicated"`
+	Initializing     *time.Time `json:"initializing,omitempty"`
+	Starting         *time.Time `json:"starting,omitempty"`
+	LastCommunicated *time.Time `json:"last_communicated,omitempty"`
 }
 
 // BuildFromService converts service-layer resource information into REST API
@@ -364,10 +364,10 @@ func (i *APIPodTimeInfo) ToService() pod.TimeInfo {
 // APIPodResourceInfo represents information about external resources associated
 // with a pod.
 type APIPodResourceInfo struct {
-	ExternalID   *string                    `json:"external_id"`
-	DefinitionID *string                    `json:"definition_id"`
-	Cluster      *string                    `json:"cluster"`
-	Containers   []APIContainerResourceInfo `json:"containers"`
+	ExternalID   *string                    `json:"external_id,omitempty"`
+	DefinitionID *string                    `json:"definition_id,omitempty"`
+	Cluster      *string                    `json:"cluster,omitempty"`
+	Containers   []APIContainerResourceInfo `json:"containers,omitempty"`
 }
 
 // BuildFromService converts service-layer pod resource information into REST
@@ -401,9 +401,9 @@ func (i *APIPodResourceInfo) ToService() pod.ResourceInfo {
 // APIPodResourceInfo represents information about external resources associated
 // with a container.
 type APIContainerResourceInfo struct {
-	ExternalID *string  `json:"external_id"`
-	Name       *string  `json:"name"`
-	SecretIDs  []string `json:"secret_ids"`
+	ExternalID *string  `json:"external_id,omitempty"`
+	Name       *string  `json:"name,omitempty"`
+	SecretIDs  []string `json:"secret_ids,omitempty"`
 }
 
 // BuildFromService converts service-layer container resource information into
@@ -427,8 +427,8 @@ func (i *APIContainerResourceInfo) ToService() pod.ContainerResourceInfo {
 // APIPodSecret represents a secret associated with a pod returned from the REST
 // API.
 type APIPodSecret struct {
-	ExternalID *string `json:"external_id"`
-	Value      *string `json:"value"`
+	ExternalID *string `json:"external_id,omitempty"`
+	Value      *string `json:"value,omitempty"`
 }
 
 // BuildFromService converts a service-layer pod secret into a REST API pod
@@ -449,8 +449,8 @@ func (s *APIPodSecret) ToService() pod.Secret {
 // APITaskRuntimeInfo represents information about tasks that a pod is running
 // or has run previously.
 type APITaskRuntimeInfo struct {
-	RunningTaskID        *string `json:"running_task_id"`
-	RunningTaskExecution *int    `json:"running_task_execution"`
+	RunningTaskID        *string `json:"running_task_id,omitempty"`
+	RunningTaskExecution *int    `json:"running_task_execution,omitempty"`
 }
 
 // BuildFromService converts service-layer task runtime information into REST

@@ -42,15 +42,15 @@ const (
 // implements Data
 type TaskEventData struct {
 	Execution int    `bson:"execution" json:"execution"`
-	HostId    string `bson:"h_id,omitempty" json:"host_id"`
-	PodID     string `bson:"pod_id,omitempty" json:"pod_id"`
-	UserId    string `bson:"u_id,omitempty" json:"user_id"`
-	Status    string `bson:"s,omitempty" json:"status"`
-	JiraIssue string `bson:"jira,omitempty" json:"jira"`
-	BlockedOn string `bson:"blocked_on,omitempty" json:"blocked_on"`
+	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	PodID     string `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
+	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
+	Status    string `bson:"s,omitempty" json:"status,omitempty"`
+	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`
+	BlockedOn string `bson:"blocked_on,omitempty" json:"blocked_on,omitempty"`
 
-	Timestamp time.Time `bson:"ts,omitempty" json:"timestamp"`
-	Priority  int64     `bson:"pri,omitempty" json:"priority"`
+	Timestamp time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
+	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
 func logTaskEvent(ctx context.Context, taskId string, eventType string, eventData TaskEventData) {
