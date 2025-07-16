@@ -35,7 +35,7 @@ type uiVersion struct {
 	ActiveTasks  int
 	RepoOwner    string          `json:"repo_owner"`
 	Repo         string          `json:"repo_name"`
-	UpstreamData *uiUpstreamData `json:"upstream,omitempty"`
+	UpstreamData *uiUpstreamData `json:"upstream"`
 	TimeTaken    time.Duration   `json:"time_taken"`
 	Makespan     time.Duration   `json:"makespan"`
 }
@@ -80,7 +80,7 @@ type uiBuild struct {
 	RepoOwner       string               `json:"repo_owner"`
 	Repo            string               `json:"repo_name"`
 	TaskStatusCount task.TaskStatusCount `json:"taskStatusCount"`
-	UpstreamData    *uiUpstreamData      `json:"upstream_data,omitempty"`
+	UpstreamData    *uiUpstreamData      `json:"upstream_data"`
 }
 
 type uiTask struct {

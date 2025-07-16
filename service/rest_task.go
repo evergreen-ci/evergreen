@@ -37,7 +37,7 @@ type RestTask struct {
 	Activated           bool                  `json:"activated"`
 	BuildId             string                `json:"build_id"`
 	DistroId            string                `json:"distro"`
-	Container           string                `json:"container,omitempty"`
+	Container           string                `json:"container"`
 	BuildVariant        string                `json:"build_variant"`
 	DependsOn           []task.Dependency     `json:"depends_on"`
 	DisplayName         string                `json:"display_name"`
@@ -53,9 +53,9 @@ type RestTask struct {
 	ExpectedDuration    time.Duration         `json:"expected_duration"`
 	LocalTestResults    taskTestResultsByName `json:"test_results"`
 	MinQueuePos         int                   `json:"min_queue_pos"`
-	PatchNumber         int                   `json:"patch_number,omitempty"`
-	PatchId             string                `json:"patch_id,omitempty"`
-	ModulePaths         map[string]string     `json:"module_paths,omitempty"`
+	PatchNumber         int                   `json:"patch_number"`
+	PatchId             string                `json:"patch_id"`
+	ModulePaths         map[string]string     `json:"module_paths"`
 
 	// Artifacts and binaries
 	Files []taskFile `json:"files"`

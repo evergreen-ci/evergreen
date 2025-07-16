@@ -53,8 +53,8 @@ type LoginCache struct {
 }
 
 type GithubUser struct {
-	UID         int    `bson:"uid,omitempty" json:"uid,omitempty"`
-	LastKnownAs string `bson:"last_known_as,omitempty" json:"last_known_as,omitempty"`
+	UID         int    `bson:"uid,omitempty" json:"uid"`
+	LastKnownAs string `bson:"last_known_as,omitempty" json:"last_known_as"`
 }
 
 type PubKey struct {
@@ -67,9 +67,9 @@ type UserSettings struct {
 	Timezone         string                  `json:"timezone" bson:"timezone"`
 	Region           string                  `json:"region" bson:"region"`
 	GithubUser       GithubUser              `json:"github_user" bson:"github_user,omitempty"`
-	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
-	SlackMemberId    string                  `bson:"slack_member_id,omitempty" json:"slack_member_id,omitempty"`
-	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
+	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username"`
+	SlackMemberId    string                  `bson:"slack_member_id,omitempty" json:"slack_member_id"`
+	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications"`
 	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options" bson:"use_spruce_options"`
 	DateFormat       string                  `json:"date_format" bson:"date_format"`
 	TimeFormat       string                  `json:"time_format" bson:"time_format"`

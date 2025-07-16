@@ -10,8 +10,8 @@ import (
 
 // Settings represents settings that can be configured for the Parsley log viewer.
 type Settings struct {
-	SectionsEnabled          *bool `bson:"sections_enabled,omitempty" json:"sections_enabled,omitempty"`
-	JumpToFailingLineEnabled *bool `bson:"jump_to_failing_line_enabled,omitempty" json:"jump_to_failing_line_enabled,omitempty"`
+	SectionsEnabled          *bool `bson:"sections_enabled,omitempty" json:"sections_enabled"`
+	JumpToFailingLineEnabled *bool `bson:"jump_to_failing_line_enabled,omitempty" json:"jump_to_failing_line_enabled"`
 }
 
 // MergeExistingParsleySettings returns the merged result of oldSettings and newSettings.
@@ -27,7 +27,7 @@ func MergeExistingParsleySettings(oldSettings Settings, newSettings Settings) Se
 // Filter represents a filter for the Parsley log viewer. Parsley filters can be defined at
 // the project-level and at the user-level.
 type Filter struct {
-	Description   string `bson:"description,omitempty" json:"description,omitempty"`
+	Description   string `bson:"description,omitempty" json:"description"`
 	Expression    string `bson:"expression" json:"expression"`
 	CaseSensitive bool   `bson:"case_sensitive" json:"case_sensitive"`
 	ExactMatch    bool   `bson:"exact_match" json:"exact_match"`

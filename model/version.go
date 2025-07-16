@@ -22,89 +22,89 @@ import (
 )
 
 type Version struct {
-	Id         string    `bson:"_id" json:"id,omitempty"`
-	CreateTime time.Time `bson:"create_time" json:"create_time,omitempty"`
-	StartTime  time.Time `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime time.Time `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision   string    `bson:"gitspec" json:"revision,omitempty"`
+	Id         string    `bson:"_id" json:"id"`
+	CreateTime time.Time `bson:"create_time" json:"create_time"`
+	StartTime  time.Time `bson:"start_time" json:"start_time"`
+	FinishTime time.Time `bson:"finish_time" json:"finish_time"`
+	Revision   string    `bson:"gitspec" json:"revision"`
 	// Author is a reference to the Evergreen user that authored
 	// this commit, if they can be identified. This may refer to the user's
 	// ID or their display name.
-	Author string `bson:"author" json:"author,omitempty"`
+	Author string `bson:"author" json:"author"`
 	// AuthorID is an optional reference to the Evergreen user that authored
 	// this commit, if they can be identified. This always refers to the user's
 	// ID.
-	AuthorID            string `bson:"author_id,omitempty" json:"author_id,omitempty"`
-	AuthorEmail         string `bson:"author_email" json:"author_email,omitempty"`
-	Message             string `bson:"message" json:"message,omitempty"`
-	Status              string `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
+	AuthorID            string `bson:"author_id,omitempty" json:"author_id"`
+	AuthorEmail         string `bson:"author_email" json:"author_email"`
+	Message             string `bson:"message" json:"message"`
+	Status              string `bson:"status" json:"status"`
+	RevisionOrderNumber int    `bson:"order,omitempty" json:"order"`
 	Ignored             bool   `bson:"ignored" json:"ignored"`
-	Owner               string `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string `bson:"branch_name" json:"branch_name,omitempty"`
+	Owner               string `bson:"owner_name" json:"owner_name"`
+	Repo                string `bson:"repo_name" json:"repo_name"`
+	Branch              string `bson:"branch_name" json:"branch_name"`
 	// BuildVariants contains information about build variant activation. This
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
-	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
+	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status"`
+	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id"`
+	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to to distinguish the unset value from the default value
-	Activated *bool `bson:"activated,omitempty" json:"activated,omitempty"`
+	Activated *bool `bson:"activated,omitempty" json:"activated"`
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
-	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
-	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
+	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags"`
+	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag"`
 
 	// Parameters stores user-defined parameters
-	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters,omitempty"`
+	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters"`
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
-	BuildIds []string `bson:"builds" json:"builds,omitempty"`
+	BuildIds []string `bson:"builds" json:"builds"`
 
-	Identifier string `bson:"identifier" json:"identifier,omitempty"`
-	Remote     bool   `bson:"remote" json:"remote,omitempty"`
-	RemotePath string `bson:"remote_path" json:"remote_path,omitempty"`
+	Identifier string `bson:"identifier" json:"identifier"`
+	Remote     bool   `bson:"remote" json:"remote"`
+	RemotePath string `bson:"remote_path" json:"remote_path"`
 	// version requester - this is used to help tell the
 	// reason this version was created. e.g. it could be
 	// because the repotracker requested it (via tracking the
 	// repository) or it was triggered by a developer
 	// patch request
-	Requester string `bson:"r" json:"requester,omitempty"`
+	Requester string `bson:"r" json:"requester"`
 
 	// child patches will store the id of the parent patch
-	ParentPatchID     string `bson:"parent_patch_id" json:"parent_patch_id,omitempty"`
-	ParentPatchNumber int    `bson:"parent_patch_number" json:"parent_patch_number,omitempty"`
+	ParentPatchID     string `bson:"parent_patch_id" json:"parent_patch_id"`
+	ParentPatchNumber int    `bson:"parent_patch_number" json:"parent_patch_number"`
 
 	// version errors - this is used to keep track of any errors that were
 	// encountered in the process of creating a version. If there are no errors
 	// this field is omitted in the database
-	Errors   []string `bson:"errors,omitempty" json:"errors,omitempty"`
-	Warnings []string `bson:"warnings,omitempty" json:"warnings,omitempty"`
+	Errors   []string `bson:"errors,omitempty" json:"errors"`
+	Warnings []string `bson:"warnings,omitempty" json:"warnings"`
 
-	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
+	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers"`
 
 	// Fields set if triggered by an upstream build
 	// TriggerID is the ID of the entity that triggered the downstream version.
-	TriggerID string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
+	TriggerID string `bson:"trigger_id,omitempty" json:"trigger_id"`
 	// TriggerType is the type of entity that triggered the downstream version.
-	TriggerType string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	TriggerType string `bson:"trigger_type,omitempty" json:"trigger_type"`
 	// TriggerEvent is the event ID that triggered the downstream version.
-	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event"`
 	// TriggerSHA is the SHA of the untracked commit that triggered the downstream version,
 	// this field is only populated for push level triggers.
-	TriggerSHA string `bson:"trigger_sha,omitempty" json:"trigger_sha,omitempty"`
+	TriggerSHA string `bson:"trigger_sha,omitempty" json:"trigger_sha"`
 
 	// this is only used for aggregations, and is not stored in the DB
-	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
+	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants"`
 
 	// ProjectStorageMethod describes how the parser project for this version is
 	// stored. If this is empty, the default storage method is StorageMethodDB.
-	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"storage_method" json:"storage_method,omitempty"`
+	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"storage_method" json:"storage_method"`
 	// PreGenerationProjectStorageMethod describes how the cached parser project from before it was modified
 	// by generate.tasks for this version is stored. If this is empty, the default storage method is StorageMethodDB.
-	PreGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"pre_generation_storage_method" json:"pre_generation_storage_method,omitempty"`
+	PreGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"pre_generation_storage_method" json:"pre_generation_storage_method"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
@@ -318,21 +318,21 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 // VersionBuildStatus stores metadata relating to each build
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
-	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
-	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
-	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
+	DisplayName      string                `bson:"display_name,omitempty" json:"display_name"`
+	BuildId          string                `bson:"build_id,omitempty" json:"build_id"`
+	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks"`
 	ActivationStatus `bson:",inline"`
 }
 
 type BatchTimeTaskStatus struct {
 	TaskName         string `bson:"task_name" json:"task_name"`
-	TaskId           string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+	TaskId           string `bson:"task_id,omitempty" json:"task_id"`
 	ActivationStatus `bson:",inline"`
 }
 
 type ActivationStatus struct {
 	Activated  bool      `bson:"activated" json:"activated"`
-	ActivateAt time.Time `bson:"activate_at,omitempty" json:"activate_at,omitempty"`
+	ActivateAt time.Time `bson:"activate_at,omitempty" json:"activate_at"`
 }
 
 func (s *ActivationStatus) ShouldActivate(now time.Time) bool {

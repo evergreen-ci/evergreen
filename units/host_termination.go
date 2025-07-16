@@ -59,13 +59,13 @@ type HostTerminationOptions struct {
 	// TerminateIfBusy, if set, will terminate a host even if it's currently
 	// running a task. Otherwise, if it's running a task, termination will
 	// either refuse to terminate the host or will reset the task.
-	TerminateIfBusy bool `bson:"terminate_if_busy,omitempty" json:"terminate_if_busy,omitempty"`
+	TerminateIfBusy bool `bson:"terminate_if_busy,omitempty" json:"terminate_if_busy"`
 	// SkipCloudHostTermination, if set, will skip terminating and cleaning up
 	// the host in the cloud. The host will still be marked terminated in the
 	// DB.
-	SkipCloudHostTermination bool `bson:"skip_cloud_host_termination,omitempty" json:"skip_cloud_host_termination,omitempty"`
+	SkipCloudHostTermination bool `bson:"skip_cloud_host_termination,omitempty" json:"skip_cloud_host_termination"`
 	// TerminationReason is the reason that the host was terminated.
-	TerminationReason string `bson:"termination_reason,omitempty" json:"termination_reason,omitempty"`
+	TerminationReason string `bson:"termination_reason,omitempty" json:"termination_reason"`
 }
 
 func NewHostTerminationJob(env evergreen.Environment, h *host.Host, opts HostTerminationOptions) amboy.Job {

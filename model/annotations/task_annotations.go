@@ -16,17 +16,17 @@ type TaskAnnotation struct {
 	Id            string          `bson:"_id" json:"id"`
 	TaskId        string          `bson:"task_id" json:"task_id"`
 	TaskExecution int             `bson:"task_execution" json:"task_execution"`
-	Metadata      *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	Metadata      *birch.Document `bson:"metadata,omitempty" json:"metadata"`
 	// comment about the failure
-	Note *Note `bson:"note,omitempty" json:"note,omitempty"`
+	Note *Note `bson:"note,omitempty" json:"note"`
 	// links to tickets definitely related.
-	Issues []IssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
+	Issues []IssueLink `bson:"issues,omitempty" json:"issues"`
 	// links to tickets possibly related
-	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues"`
 	// links to tickets created from the task using a custom web hook
-	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
+	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues"`
 	// links to be displayed in the UI metadata sidebar
-	MetadataLinks []MetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
+	MetadataLinks []MetadataLink `bson:"metadata_links,omitempty" json:"metadata_links"`
 }
 
 // MetadataLink represents an arbitrary link to be associated with a task.
@@ -35,26 +35,26 @@ type MetadataLink struct {
 	URL string `bson:"url" json:"url"`
 	// Text to be displayed
 	Text   string  `bson:"text" json:"text"`
-	Source *Source `bson:"source,omitempty" json:"source,omitempty"`
+	Source *Source `bson:"source,omitempty" json:"source"`
 }
 
 type IssueLink struct {
 	URL string `bson:"url" json:"url"`
 	// Text to be displayed
-	IssueKey        string  `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
-	Source          *Source `bson:"source,omitempty" json:"source,omitempty"`
-	ConfidenceScore float64 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+	IssueKey        string  `bson:"issue_key,omitempty" json:"issue_key"`
+	Source          *Source `bson:"source,omitempty" json:"source"`
+	ConfidenceScore float64 `bson:"confidence_score,omitempty" json:"confidence_score"`
 }
 
 type Source struct {
-	Author    string    `bson:"author,omitempty" json:"author,omitempty"`
-	Time      time.Time `bson:"time,omitempty" json:"time,omitempty"`
-	Requester string    `bson:"requester,omitempty" json:"requester,omitempty"`
+	Author    string    `bson:"author,omitempty" json:"author"`
+	Time      time.Time `bson:"time,omitempty" json:"time"`
+	Requester string    `bson:"requester,omitempty" json:"requester"`
 }
 
 type Note struct {
-	Message string  `bson:"message,omitempty" json:"message,omitempty"`
-	Source  *Source `bson:"source,omitempty" json:"source,omitempty"`
+	Message string  `bson:"message,omitempty" json:"message"`
+	Source  *Source `bson:"source,omitempty" json:"source"`
 }
 
 type TaskUpdate struct {

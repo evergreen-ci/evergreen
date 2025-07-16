@@ -21,7 +21,7 @@ type Manifest struct {
 	Modules map[string]*Module `json:"modules" bson:"modules"`
 	// True if the version is a mainline build.
 	IsBase          bool              `json:"is_base" bson:"is_base"`
-	ModuleOverrides map[string]string `json:"module_overrides,omitempty" bson:"-"`
+	ModuleOverrides map[string]string `json:"module_overrides" bson:"-"`
 }
 
 // A Module is a snapshot of the module associated with a version.

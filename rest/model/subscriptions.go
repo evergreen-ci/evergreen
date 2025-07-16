@@ -29,7 +29,7 @@ type APISubscription struct {
 	// The subscription owner.
 	Owner *string `json:"owner"`
 	// Data for the particular condition that triggers the subscription.
-	TriggerData map[string]string `json:"trigger_data,omitempty"`
+	TriggerData map[string]string `json:"trigger_data"`
 }
 
 func (s *APISelector) BuildFromService(selector event.Selector) {

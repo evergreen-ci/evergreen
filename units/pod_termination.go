@@ -31,7 +31,7 @@ func init() {
 type podTerminationJob struct {
 	job.Base `bson:"metadata" json:"metadata"`
 	PodID    string `bson:"pod_id" json:"pod_id"`
-	Reason   string `bson:"reason,omitempty" json:"reason,omitempty"`
+	Reason   string `bson:"reason,omitempty" json:"reason"`
 
 	pod       *pod.Pod
 	ecsClient cocoa.ECSClient

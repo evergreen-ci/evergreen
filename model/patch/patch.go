@@ -105,16 +105,16 @@ type Parameter struct {
 type GitMetadata struct {
 	Username    string `bson:"username" json:"username"`
 	Email       string `bson:"email" json:"email"`
-	GitVersion  string `bson:"git_version,omitempty" json:"git_version,omitempty"`
-	LocalBranch string `bson:"local_branch,omitempty" json:"local_branch,omitempty"`
+	GitVersion  string `bson:"git_version,omitempty" json:"git_version"`
+	LocalBranch string `bson:"local_branch,omitempty" json:"local_branch"`
 }
 
 type LocalModuleInclude struct {
-	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty" json:"filename,omitempty"`
-	Module   string `yaml:"module,omitempty" bson:"module,omitempty" json:"module,omitempty"`
+	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty" json:"filename"`
+	Module   string `yaml:"module,omitempty" bson:"module,omitempty" json:"module"`
 
 	// FileContent is only used for local module includes for CLI patches
-	FileContent []byte `yaml:"file_content,omitempty" bson:"file_content,omitempty" json:"file_content,omitempty"`
+	FileContent []byte `yaml:"file_content,omitempty" bson:"file_content,omitempty" json:"file_content"`
 }
 
 // Patch stores all details related to a patch request
@@ -152,7 +152,7 @@ type Patch struct {
 	Project string `bson:"branch"`
 	// Branch contains the branch that the project tracks. The tag `branch_name` is
 	// used to avoid conflict with legacy usage of the Project field.
-	Branch string `bson:"branch_name" json:"branch_name,omitempty"`
+	Branch string `bson:"branch_name" json:"branch_name"`
 	// ProjectStorageMethod describes how the parser project is stored for this
 	// patch before it's finalized. This field is only set while the patch is
 	// unfinalized and is cleared once the patch has been finalized.
@@ -215,16 +215,16 @@ type PatchTriggerDefinition struct {
 	ChildProject   string          `bson:"child_project" json:"child_project"`
 	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
 	// The parent status that the child patch should run on: failure, success, or *
-	Status         string `bson:"status,omitempty" json:"status,omitempty"`
-	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+	Status         string `bson:"status,omitempty" json:"status"`
+	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module"`
 	// The revision to base the downstream patch off of
-	DownstreamRevision string `bson:"downstream_revision,omitempty" json:"downstream_revision,omitempty"`
+	DownstreamRevision string `bson:"downstream_revision,omitempty" json:"downstream_revision"`
 }
 
 type TaskSpecifier struct {
-	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty"`
-	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
-	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
+	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias"`
+	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex"`
+	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex"`
 }
 
 // IsFinished returns whether or not the patch has finished based on its

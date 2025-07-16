@@ -31,62 +31,62 @@ type EC2ProviderSettings struct {
 	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
 
 	// AMI is the AMI ID.
-	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
+	AMI string `mapstructure:"ami" json:"ami" bson:"ami,omitempty"`
 
 	// InstanceType is the EC2 instance type.
-	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
+	InstanceType string `mapstructure:"instance_type" json:"instance_type" bson:"instance_type,omitempty"`
 
 	// IPv6 is set to true if the instance should have only an IPv6 address.
-	IPv6 bool `mapstructure:"ipv6" json:"ipv6,omitempty" bson:"ipv6,omitempty"`
+	IPv6 bool `mapstructure:"ipv6" json:"ipv6" bson:"ipv6,omitempty"`
 
 	// DoNotAssignPublicIPv4Address, if true, skips assigning a public IPv4
 	// address to task hosts. An AWS SSH key will be assigned to the host only
 	// if a public IPv4 address is also assigned.
 	// Does not apply if the host is using IPv6 or if the host is a spawn host
 	// or host.create host, which need an IPv4 address for SSH.
-	DoNotAssignPublicIPv4Address bool `mapstructure:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address,omitempty" bson:"do_not_assign_public_ipv4_address,omitempty"`
+	DoNotAssignPublicIPv4Address bool `mapstructure:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address" bson:"do_not_assign_public_ipv4_address,omitempty"`
 
 	// KeyName is the AWS SSH key name.
-	KeyName string `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
+	KeyName string `mapstructure:"key_name" json:"key_name" bson:"key_name,omitempty"`
 
 	// MountPoints are the disk mount points for EBS volumes.
-	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
+	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points" bson:"mount_points,omitempty"`
 
 	// SecurityGroupIDs is a list of security group IDs.
-	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
+	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids" bson:"security_group_ids,omitempty"`
 
 	// IAMInstanceProfileARN is the Amazon Resource Name (ARN) of the instance profile.
-	IAMInstanceProfileARN string `mapstructure:"iam_instance_profile_arn,omitempty" json:"iam_instance_profile_arn,omitempty"  bson:"iam_instance_profile_arn,omitempty"`
+	IAMInstanceProfileARN string `mapstructure:"iam_instance_profile_arn,omitempty" json:"iam_instance_profile_arn"  bson:"iam_instance_profile_arn,omitempty"`
 
 	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
-	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
+	SubnetId string `mapstructure:"subnet_id" json:"subnet_id" bson:"subnet_id,omitempty"`
 
 	// Tenancy, if set, determines how EC2 instances are distributed across
 	// physical hardware.
-	Tenancy evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy,omitempty" bson:"tenancy,omitempty"`
+	Tenancy evergreen.EC2Tenancy `mapstructure:"tenancy" json:"tenancy" bson:"tenancy,omitempty"`
 
 	// VpcName is used to get the subnet ID automatically. Either subnet id or vpc name must set.
-	VpcName string `mapstructure:"vpc_name" json:"vpc_name,omitempty" bson:"vpc_name,omitempty"`
+	VpcName string `mapstructure:"vpc_name" json:"vpc_name" bson:"vpc_name,omitempty"`
 
 	// IsVpc is set to true if the security group is part of a VPC.
-	IsVpc bool `mapstructure:"is_vpc" json:"is_vpc,omitempty" bson:"is_vpc,omitempty"`
+	IsVpc bool `mapstructure:"is_vpc" json:"is_vpc" bson:"is_vpc,omitempty"`
 
 	// UserData specifies configuration that runs after the instance starts.
-	UserData string `mapstructure:"user_data" json:"user_data,omitempty" bson:"user_data,omitempty"`
+	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
 
 	// MergeUserDataParts specifies whether multiple user data parts should be
 	// merged into a single user data part.
 	// EVG-7760: This is primarily a workaround for a problem with Windows not
 	// allowing multiple scripts of the same type as part of a multipart user
 	// data upload.
-	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts,omitempty" bson:"merge_user_data_parts,omitempty"`
+	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts" bson:"merge_user_data_parts,omitempty"`
 
 	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
-	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
+	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options" bson:"fleet_options,omitempty"`
 
 	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
 	// IP addresses.
-	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled,omitempty" bson:"elastic_ips_enabled,omitempty"`
+	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled" bson:"elastic_ips_enabled,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -172,11 +172,11 @@ func (s *EC2ProviderSettings) getRegion() string {
 // FleetConfig specifies how the EC2 Fleet manager should spawn hosts.
 type FleetConfig struct {
 	// UseOnDemand will cause Fleet to use on-demand instances to instantiate hosts. Defaults to spot instances.
-	UseOnDemand bool `mapstructure:"use_on_demand" json:"use_on_demand,omitempty" bson:"use_on_demand,omitempty"`
+	UseOnDemand bool `mapstructure:"use_on_demand" json:"use_on_demand" bson:"use_on_demand,omitempty"`
 
 	// UseCapacityOptimized will cause Fleet to use the capacity-optimized allocation strategy for spawning hosts. Defaults to the AWS default (lowest-cost).
 	// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-allocation-strategy.html for more information about Fleet allocation strategies.
-	UseCapacityOptimized bool `mapstructure:"use_capacity_optimized" json:"use_capacity_optimized,omitempty" bson:"use_capacity_optimized,omitempty"`
+	UseCapacityOptimized bool `mapstructure:"use_capacity_optimized" json:"use_capacity_optimized" bson:"use_capacity_optimized,omitempty"`
 }
 
 func (f *FleetConfig) awsTargetCapacityType() types.DefaultTargetCapacityType {

@@ -22,41 +22,41 @@ type APITaskAnnotation struct {
 	// The number of the execution of the task that the annotation is for
 	TaskExecution *int `bson:"task_execution" json:"task_execution"`
 	// Structured data about the task. Since this is user-given json data, the structure can differ between annotations
-	Metadata *birch.Document `bson:"metadata,omitempty" json:"metadata,omitempty" swaggertype:"object"`
+	Metadata *birch.Document `bson:"metadata,omitempty" json:"metadata" swaggertype:"object"`
 	// Comment about the task failure
-	Note *APINote `bson:"note,omitempty" json:"note,omitempty"`
+	Note *APINote `bson:"note,omitempty" json:"note"`
 	// Links to tickets definitely related
-	Issues []APIIssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
+	Issues []APIIssueLink `bson:"issues,omitempty" json:"issues"`
 	// Links to tickets possibly related
-	SuspectedIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
-	CreatedIssues   []APIIssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
+	SuspectedIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues"`
+	CreatedIssues   []APIIssueLink `bson:"created_issues,omitempty" json:"created_issues"`
 	// List of links associated with a task, to be displayed in the task metadata sidebar, currently limited to 1
-	MetadataLinks []APIMetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
+	MetadataLinks []APIMetadataLink `bson:"metadata_links,omitempty" json:"metadata_links"`
 }
 
 type APINote struct {
 	// Comment about the task failure
-	Message *string `bson:"message,omitempty" json:"message,omitempty"`
+	Message *string `bson:"message,omitempty" json:"message"`
 	// The source of the note
-	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
+	Source *APISource `bson:"source,omitempty" json:"source"`
 }
 type APISource struct {
 	// The author of the edit
-	Author *string `bson:"author,omitempty" json:"author,omitempty"`
+	Author *string `bson:"author,omitempty" json:"author"`
 	// The time of the edit
-	Time *time.Time `bson:"time,omitempty" json:"time,omitempty"`
+	Time *time.Time `bson:"time,omitempty" json:"time"`
 	// The source of the request (api or ui)
-	Requester *string `bson:"requester,omitempty" json:"requester,omitempty"`
+	Requester *string `bson:"requester,omitempty" json:"requester"`
 }
 type APIIssueLink struct {
 	// The url of the ticket
 	URL *string `bson:"url" json:"url"`
 	// Text to be displayed
-	IssueKey *string `bson:"issue_key,omitempty" json:"issue_key,omitempty"`
+	IssueKey *string `bson:"issue_key,omitempty" json:"issue_key"`
 	// The source of the edit
-	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
+	Source *APISource `bson:"source,omitempty" json:"source"`
 	// The confidence score of the issue
-	ConfidenceScore *float64 `bson:"confidence_score,omitempty" json:"confidence_score,omitempty"`
+	ConfidenceScore *float64 `bson:"confidence_score,omitempty" json:"confidence_score"`
 }
 type APIMetadataLink struct {
 	// The url of the link
@@ -64,7 +64,7 @@ type APIMetadataLink struct {
 	// Text to be displayed
 	Text *string `bson:"text" json:"text"`
 	// The source of the edit
-	Source *APISource `bson:"source,omitempty" json:"source,omitempty"`
+	Source *APISource `bson:"source,omitempty" json:"source"`
 }
 
 // APISourceBuildFromService takes the annotations.Source DB struct and

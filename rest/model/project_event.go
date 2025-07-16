@@ -54,7 +54,7 @@ type APIProjectVars struct {
 	// Admin-only variable names.
 	AdminOnlyVars map[string]bool `json:"admin_only_vars"`
 	// Names of project variables to delete.
-	VarsToDelete []string `json:"vars_to_delete,omitempty"`
+	VarsToDelete []string `json:"vars_to_delete"`
 
 	// to use for the UI
 	PrivateVarsList   []string `json:"-"`
@@ -75,15 +75,15 @@ type APIProjectAlias struct {
 	// Path to project config file to use.
 	RemotePath *string `json:"remote_path"`
 	// Build variant tags selectors to match.
-	VariantTags []*string `json:"variant_tags,omitempty"`
+	VariantTags []*string `json:"variant_tags"`
 	// Task tag selectors to match.
-	TaskTags []*string `json:"tags,omitempty"`
+	TaskTags []*string `json:"tags"`
 	// If set, deletes the project alias by name.
-	Delete bool `json:"delete,omitempty"`
+	Delete bool `json:"delete"`
 	// Identifier for the project alias.
-	ID *string `json:"_id,omitempty"`
+	ID *string `json:"_id"`
 	// List of allowed parameters to the alias.
-	Parameters []*APIParameter `json:"parameters,omitempty"`
+	Parameters []*APIParameter `json:"parameters"`
 }
 
 func (e *APIProjectEvent) BuildFromService(ctx context.Context, entry model.ProjectChangeEventEntry) error {

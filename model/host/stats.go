@@ -14,9 +14,9 @@ import (
 type DistroStats []StatsByDistro
 type StatsByDistro struct {
 	// ID of the distro the below stats are for
-	Distro string `bson:"distro" json:"distro,omitempty"`
+	Distro string `bson:"distro" json:"distro"`
 	// Provider is the provider type of the distro
-	Provider string `bson:"provider" json:"provider,omitempty"`
+	Provider string `bson:"provider" json:"provider"`
 	// Host status that the below stats are for
 	Status string `bson:"status" json:"status"`
 	// Number of hosts in this status

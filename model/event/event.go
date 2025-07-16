@@ -15,11 +15,11 @@ var notSubscribableTime = time.Date(2015, time.October, 21, 23, 29, 1, 0, time.U
 
 type EventLogEntry struct {
 	ID           string    `bson:"_id" json:"-"`
-	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ResourceType string    `bson:"r_type,omitempty" json:"resource_type"`
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
-	Expirable  bool      `bson:"expirable,omitempty" json:"expirable,omitempty"`
+	Expirable  bool      `bson:"expirable,omitempty" json:"expirable"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
 	EventType  string    `bson:"e_type" json:"event_type"`
 	Data       any       `bson:"data" json:"data"`
@@ -37,11 +37,11 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 
 type UnmarshalEventLogEntry struct {
 	ID           any       `bson:"_id" json:"-"`
-	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ResourceType string    `bson:"r_type,omitempty" json:"resource_type"`
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
+	Expirable  bool        `bson:"expirable,omitempty" json:"expirable"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
 	EventType  string      `bson:"e_type" json:"event_type"`
 	Data       mgobson.Raw `bson:"data" json:"data"`

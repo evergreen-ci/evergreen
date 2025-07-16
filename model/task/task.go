@@ -82,12 +82,12 @@ type Task struct {
 	StartTime              time.Time `bson:"start_time" json:"start_time"`
 	FinishTime             time.Time `bson:"finish_time" json:"finish_time"`
 	ActivatedTime          time.Time `bson:"activated_time" json:"activated_time"`
-	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
-	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
+	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time"`
+	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time"`
 
-	Version string `bson:"version" json:"version,omitempty"`
+	Version string `bson:"version" json:"version"`
 	// Project is the project id of the task.
-	Project  string `bson:"branch" json:"branch,omitempty"`
+	Project  string `bson:"branch" json:"branch"`
 	Revision string `bson:"gitspec" json:"gitspec"`
 	// Priority is a specifiable value that adds weight to the prioritization that task will be given in its
 	// corresponding distro task queue.
@@ -96,12 +96,12 @@ type Task struct {
 	// It contains information on what factors led to the overall queue ranking value for the task.
 	SortingValueBreakdown SortingValueBreakdown `bson:"-" json:"sorting_value_breakdown"`
 	TaskGroup             string                `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts     int                   `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder        int                   `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	ResultsService        string                `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasTestResults        bool                  `bson:"has_test_results,omitempty" json:"has_test_results,omitempty"`
-	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	TaskGroupMaxHosts     int                   `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts"`
+	TaskGroupOrder        int                   `bson:"task_group_order,omitempty" json:"task_group_order"`
+	ResultsService        string                `bson:"results_service,omitempty" json:"results_service"`
+	HasTestResults        bool                  `bson:"has_test_results,omitempty" json:"has_test_results"`
+	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed"`
+	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -122,10 +122,10 @@ type Task struct {
 	DistroId string `bson:"distro" json:"distro"`
 	// Container is the name of the container configuration for running a
 	// container task.
-	Container string `bson:"container,omitempty" json:"container,omitempty"`
+	Container string `bson:"container,omitempty" json:"container"`
 	// ContainerOpts contains the options to configure the container that will
 	// run the task.
-	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options,omitempty"`
+	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options"`
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
@@ -133,23 +133,23 @@ type Task struct {
 	// efficient querying. It is true if any of its dependencies is unattainable
 	// and is false if all of its dependencies are attainable.
 	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
-	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
 	// wait for its dependencies to finish before running.
-	OverrideDependencies bool `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+	OverrideDependencies bool `bson:"override_dependencies,omitempty" json:"override_dependencies"`
 
 	// SecondaryDistros refer to the optional secondary distros that can be
 	// associated with a task. This is used for running tasks in case there are
 	// idle hosts in a distro with an empty primary queue. This is a distinct concept
 	// from distro aliases (i.e. alternative distro names).
 	// Tags refer to outdated naming; maintained for compatibility.
-	SecondaryDistros []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
+	SecondaryDistros []string `bson:"distro_aliases,omitempty" json:"distro_aliases"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
 
 	// Tags that describe the task
-	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
+	Tags []string `bson:"tags,omitempty" json:"tags"`
 
 	// The host the task was run on. This value is only set for host tasks.
 	HostId string `bson:"host_id,omitempty" json:"host_id"`
@@ -160,10 +160,10 @@ type Task struct {
 
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
-	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
+	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform"`
 
 	// The version of the agent this task was run on.
-	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`
+	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version"`
 	// TaskOutputInfo holds the information for the interface that
 	// coordinates persistent storage of a task's output data.
 	// There are four possible scenarios:
@@ -181,28 +181,28 @@ type Task struct {
 	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
 	// `Task.GetTaskOutputSafe()`.
-	TaskOutputInfo *TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
+	TaskOutputInfo *TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info"`
 
 	// Set to true if the task should be considered for mainline github checks
-	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
+	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check"`
 
 	// CheckRunPath is a local file path to an output json file for the checkrun.
-	CheckRunPath *string `bson:"check_run_path,omitempty" json:"check_run_path,omitempty"`
+	CheckRunPath *string `bson:"check_run_path,omitempty" json:"check_run_path"`
 
 	// CheckRunId is the id for the checkrun that was created in github.
 	// This is used to update the checkrun for future executions of the task.
-	CheckRunId *int64 `bson:"check_run_id,omitempty" json:"check_run_id,omitempty"`
+	CheckRunId *int64 `bson:"check_run_id,omitempty" json:"check_run_id"`
 
 	// CanReset indicates that the task has successfully archived and is in a valid state to be reset.
-	CanReset bool `bson:"can_reset,omitempty" json:"can_reset,omitempty"`
+	CanReset bool `bson:"can_reset,omitempty" json:"can_reset"`
 
 	Execution int    `bson:"execution" json:"execution"`
-	OldTaskId string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
-	Archived  bool   `bson:"archived,omitempty" json:"archived,omitempty"`
+	OldTaskId string `bson:"old_task_id,omitempty" json:"old_task_id"`
+	Archived  bool   `bson:"archived,omitempty" json:"archived"`
 
 	// RevisionOrderNumber for user-submitted patches is the user's current patch submission count.
 	// For mainline commits for a project, it is the amount of versions for that repositry so far.
-	RevisionOrderNumber int `bson:"order,omitempty" json:"order,omitempty"`
+	RevisionOrderNumber int `bson:"order,omitempty" json:"order"`
 
 	// task requester - this is used to help tell the
 	// reason this task was created. e.g. it could be
@@ -212,8 +212,8 @@ type Task struct {
 	Requester string `bson:"r" json:"r"`
 
 	// tasks that are part of a child patch will store the id and patch number of the parent patch
-	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
-	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
+	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id"`
+	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number"`
 
 	// Status represents the various stages the task could be in. Note that this
 	// task status is distinct from the way a task status is displayed in the
@@ -225,15 +225,15 @@ type Task struct {
 	Status    string                  `bson:"status" json:"status"`
 	Details   apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
 	Aborted   bool                    `bson:"abort,omitempty" json:"abort"`
-	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
+	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info"`
 
 	// HostCreateDetails stores information about why host.create failed for this task
-	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details,omitempty"`
+	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details"`
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
 	// It may be added via aggregation
-	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
+	DisplayStatus string `bson:"display_status,omitempty" json:"display_status"`
 	// DisplayStatusCache is semantically the same as DisplayStatus, but is persisted to the DB, unlike DisplayStatus.
-	DisplayStatusCache string `bson:"display_status_cache,omitempty" json:"display_status_cache,omitempty"`
+	DisplayStatusCache string `bson:"display_status_cache,omitempty" json:"display_status_cache"`
 	// BaseTask is not persisted to the db. It is the data of the task on the base commit
 	// It may be added via aggregation
 	BaseTask BaseTaskInfo `bson:"base_task" json:"base_task"`
@@ -241,83 +241,83 @@ type Task struct {
 	// TimeTaken is how long the task took to execute (if it has finished) or how long the task has been running (if it has started)
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
-	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
+	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met"`
 
 	// how long we expect the task to take from start to
 	// finish. expected duration is the legacy value, but the UI
 	// probably depends on it, so we maintain both values.
-	ExpectedDuration       time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
-	ExpectedDurationStdDev time.Duration            `bson:"expected_duration_std_dev,omitempty" json:"expected_duration_std_dev,omitempty"`
+	ExpectedDuration       time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration"`
+	ExpectedDurationStdDev time.Duration            `bson:"expected_duration_std_dev,omitempty" json:"expected_duration_std_dev"`
 	DurationPrediction     util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
 	// test results embedded from the testresults collection
 	LocalTestResults []testresult.TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly           bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	DisplayOnly           bool     `bson:"display_only,omitempty" json:"display_only"`
+	ExecutionTasks        []string `bson:"execution_tasks,omitempty" json:"execution_tasks"`
 	LatestParentExecution int      `bson:"latest_parent_execution" json:"latest_parent_execution"`
 
-	StepbackInfo *StepbackInfo `bson:"stepback_info,omitempty" json:"stepback_info,omitempty"`
+	StepbackInfo *StepbackInfo `bson:"stepback_info,omitempty" json:"stepback_info"`
 
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running. This and
 	// ResetFailedWhenFinished are mutually exclusive settings.
-	ResetWhenFinished bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetWhenFinished bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished"`
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running and only reset if it fails. This is typically to deal
 	// with tasks that should be reset on failure but cannot do so yet because
 	// they're currently running. This and ResetWhenFinished are mutually
 	// exclusive settings.
-	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
+	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished"`
 	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
-	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`
+	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts"`
 	// IsAutomaticRestart indicates that the task was restarted via a failing agent command that was set to retry on failure.
-	IsAutomaticRestart bool  `bson:"is_automatic_restart,omitempty" json:"is_automatic_restart,omitempty"`
+	IsAutomaticRestart bool  `bson:"is_automatic_restart,omitempty" json:"is_automatic_restart"`
 	DisplayTask        *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
-	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
+	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task. This will not be set for
 	// tasks where the generate.tasks command runs outside of the main task
 	// block (e.g. pre, timeout).
-	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
+	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task"`
 	// GeneratedTasks indicates that the task has already generated other tasks. This fields
 	// allows us to noop future requests, since a task should only generate others once.
-	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
+	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
-	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
+	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by"`
 	// GeneratedJSONAsString is the configuration information to update the
 	// project YAML for generate.tasks. This is only used to store the
 	// configuration if GeneratedJSONStorageMethod is unset or is explicitly set
 	// to "db".
-	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json,omitempty"`
+	GeneratedJSONAsString GeneratedJSONFiles `bson:"generated_json,omitempty" json:"generated_json"`
 	// GeneratedJSONStorageMethod describes how the generated JSON for
 	// generate.tasks is stored for this task before it's merged with the
 	// existing project YAML.
-	GeneratedJSONStorageMethod evergreen.ParserProjectStorageMethod `bson:"generated_json_storage_method,omitempty" json:"generated_json_storage_method,omitempty"`
+	GeneratedJSONStorageMethod evergreen.ParserProjectStorageMethod `bson:"generated_json_storage_method,omitempty" json:"generated_json_storage_method"`
 	// GenerateTasksError any encountered while generating tasks.
-	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error,omitempty"`
+	GenerateTasksError string `bson:"generate_error,omitempty" json:"generate_error"`
 	// GeneratedTasksToActivate is only populated if we want to override activation for these generated tasks, because of stepback.
 	// Maps the build variant to a list of task names.
-	GeneratedTasksToActivate map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
+	GeneratedTasksToActivate map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback"`
 	// NumGeneratedTasks is the number of tasks that this task has generated.
-	NumGeneratedTasks int `bson:"num_generated_tasks,omitempty" json:"num_generated_tasks,omitempty"`
+	NumGeneratedTasks int `bson:"num_generated_tasks,omitempty" json:"num_generated_tasks"`
 	// EstimatedNumGeneratedTasks is the estimated number of tasks that this task will generate.
-	EstimatedNumGeneratedTasks *int `bson:"estimated_num_generated_tasks,omitempty" json:"estimated_num_generated_tasks,omitempty"`
+	EstimatedNumGeneratedTasks *int `bson:"estimated_num_generated_tasks,omitempty" json:"estimated_num_generated_tasks"`
 	// NumActivatedGeneratedTasks is the number of tasks that this task has generated and activated.
-	NumActivatedGeneratedTasks int `bson:"num_activated_generated_tasks,omitempty" json:"num_activated_generated_tasks,omitempty"`
+	NumActivatedGeneratedTasks int `bson:"num_activated_generated_tasks,omitempty" json:"num_activated_generated_tasks"`
 	// EstimatedNumActivatedGeneratedTasks is the estimated number of tasks that this task will generate and activate.
-	EstimatedNumActivatedGeneratedTasks *int `bson:"estimated_num_activated_generated_tasks,omitempty" json:"estimated_num_activated_generated_tasks,omitempty"`
+	EstimatedNumActivatedGeneratedTasks *int `bson:"estimated_num_activated_generated_tasks,omitempty" json:"estimated_num_activated_generated_tasks"`
 
 	// Fields set if triggered by an upstream build.
-	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
-	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
-	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id"`
+	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type"`
+	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event"`
 
 	// IsEssentialToSucceed indicates that this task must finish in order for
 	// its build and version to be considered successful. For example, tasks
@@ -335,7 +335,7 @@ type Task struct {
 
 	// CachedProjectStorageMethod is a cached value how the parser project for this task's version was
 	// stored at the time this task was created. If this is empty, the default storage method is StorageMethodDB.
-	CachedProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"cached_project_storage_method" json:"cached_project_storage_method,omitempty"`
+	CachedProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"cached_project_storage_method" json:"cached_project_storage_method"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
@@ -353,13 +353,13 @@ type StepbackInfo struct {
 	// PreviousStepbackTaskId stores the last stepback iteration id.
 	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 	// GeneratedStepbackInfo stores information on a generator for it's generated tasks.
-	GeneratedStepbackInfo []StepbackInfo `bson:"generated_stepback_info,omitempty" json:"generated_stepback_info,omitempty"`
+	GeneratedStepbackInfo []StepbackInfo `bson:"generated_stepback_info,omitempty" json:"generated_stepback_info"`
 
 	// Generator fields only (responsible for propogating stepback in its generated tasks).
 	// DisplayName is the display name of the generated task.
-	DisplayName string `bson:"display_name,omitempty" json:"display_name,omitempty"`
+	DisplayName string `bson:"display_name,omitempty" json:"display_name"`
 	// BuildVariant is the build variant of the generated task.
-	BuildVariant string `bson:"build_variant,omitempty" json:"build_variant,omitempty"`
+	BuildVariant string `bson:"build_variant,omitempty" json:"build_variant"`
 }
 
 // IsZero returns true if the StepbackInfo is empty or nil.
@@ -436,10 +436,10 @@ type Dependency struct {
 	// Finished indicates if the task's dependency has finished running or not.
 	Finished bool `bson:"finished" json:"finished"`
 	// FinishedAt indicates the time the task's dependency was finished at.
-	FinishedAt time.Time `bson:"finished_at,omitempty" json:"finished_at,omitempty"`
+	FinishedAt time.Time `bson:"finished_at,omitempty" json:"finished_at"`
 	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
 	// the generated tasks if this is set
-	OmitGeneratedTasks bool `bson:"omit_generated_tasks,omitempty" json:"omit_generated_tasks,omitempty"`
+	OmitGeneratedTasks bool `bson:"omit_generated_tasks,omitempty" json:"omit_generated_tasks"`
 }
 
 // BaseTaskInfo is a subset of task fields that should be returned for patch tasks.
@@ -490,10 +490,10 @@ func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 }
 
 type AbortInfo struct {
-	User       string `bson:"user,omitempty" json:"user,omitempty"`
-	TaskID     string `bson:"task_id,omitempty" json:"task_id,omitempty"`
-	NewVersion string `bson:"new_version,omitempty" json:"new_version,omitempty"`
-	PRClosed   bool   `bson:"pr_closed,omitempty" json:"pr_closed,omitempty"`
+	User       string `bson:"user,omitempty" json:"user"`
+	TaskID     string `bson:"task_id,omitempty" json:"task_id"`
+	NewVersion string `bson:"new_version,omitempty" json:"new_version"`
+	PRClosed   bool   `bson:"pr_closed,omitempty" json:"pr_closed"`
 }
 
 var (

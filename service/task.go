@@ -38,7 +38,7 @@ type uiTaskData struct {
 	Revision             string                  `json:"gitspec"`
 	BuildVariant         string                  `json:"build_variant"`
 	Distro               string                  `json:"distro"`
-	Container            string                  `json:"container,omitempty"`
+	Container            string                  `json:"container"`
 	BuildId              string                  `json:"build_id"`
 	Status               string                  `json:"status"`
 	TaskWaiting          string                  `json:"task_waiting"`
@@ -55,19 +55,19 @@ type uiTaskData struct {
 	TaskEndDetails       apimodels.TaskEndDetail `json:"task_end_details"`
 	TestResults          []uiTestResult          `json:"test_results"`
 	Aborted              bool                    `json:"abort"`
-	AbortInfo            task.AbortInfo          `json:"abort_info,omitempty"`
+	AbortInfo            task.AbortInfo          `json:"abort_info"`
 	MinQueuePos          int                     `json:"min_queue_pos"`
 	DependsOn            []uiDep                 `json:"depends_on"`
-	AbortedByDisplay     *abortedByDisplay       `json:"aborted_by_display,omitempty"`
+	AbortedByDisplay     *abortedByDisplay       `json:"aborted_by_display"`
 	OverrideDependencies bool                    `json:"override_dependencies"`
 	IngestTime           time.Time               `json:"ingest_time"`
 	EstWaitTime          time.Duration           `json:"wait_time"`
-	UpstreamData         *uiUpstreamData         `json:"upstream_data,omitempty"`
+	UpstreamData         *uiUpstreamData         `json:"upstream_data"`
 
 	// from the host doc (the dns name)
-	HostDNS string `json:"host_dns,omitempty"`
+	HostDNS string `json:"host_dns"`
 	// from the host doc (the host id)
-	HostId string `json:"host_id,omitempty"`
+	HostId string `json:"host_id"`
 
 	// for breadcrumb
 	BuildVariantDisplay string `json:"build_variant_display"`
@@ -97,7 +97,7 @@ type uiTaskData struct {
 	DisplayOnly    bool         `json:"display_only"`
 	ExecutionTasks []uiExecTask `json:"execution_tasks"`
 	PartOfDisplay  bool         `json:"in_display"`
-	DisplayTaskID  string       `json:"display_task,omitempty"`
+	DisplayTaskID  string       `json:"display_task"`
 
 	// generated task info
 	GeneratedById   string `json:"generated_by_id"`

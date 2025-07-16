@@ -85,12 +85,12 @@ type ProjectSettingsEvent struct {
 	// The following boolean fields are flags that indicate that a given
 	// field is nil instead of [], since this information is lost when
 	// casting the event to a generic interface.
-	GitTagAuthorizedTeamsDefault bool `bson:"git_tag_authorized_teams_default,omitempty" json:"git_tag_authorized_teams_default,omitempty"`
-	GitTagAuthorizedUsersDefault bool `bson:"git_tag_authorized_users_default,omitempty" json:"git_tag_authorized_users_default,omitempty"`
-	PatchTriggerAliasesDefault   bool `bson:"patch_trigger_aliases_default,omitempty" json:"patch_trigger_aliases_default,omitempty"`
-	PeriodicBuildsDefault        bool `bson:"periodic_builds_default,omitempty" json:"periodic_builds_default,omitempty"`
-	TriggersDefault              bool `bson:"triggers_default,omitempty" json:"triggers_default,omitempty"`
-	WorkstationCommandsDefault   bool `bson:"workstation_commands_default,omitempty" json:"workstation_commands_default,omitempty"`
+	GitTagAuthorizedTeamsDefault bool `bson:"git_tag_authorized_teams_default,omitempty" json:"git_tag_authorized_teams_default"`
+	GitTagAuthorizedUsersDefault bool `bson:"git_tag_authorized_users_default,omitempty" json:"git_tag_authorized_users_default"`
+	PatchTriggerAliasesDefault   bool `bson:"patch_trigger_aliases_default,omitempty" json:"patch_trigger_aliases_default"`
+	PeriodicBuildsDefault        bool `bson:"periodic_builds_default,omitempty" json:"periodic_builds_default"`
+	TriggersDefault              bool `bson:"triggers_default,omitempty" json:"triggers_default"`
+	WorkstationCommandsDefault   bool `bson:"workstation_commands_default,omitempty" json:"workstation_commands_default"`
 }
 
 // NewProjectSettingsEvent creates project settings event data from project

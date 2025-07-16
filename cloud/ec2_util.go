@@ -78,13 +78,13 @@ var (
 )
 
 type MountPoint struct {
-	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
-	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
-	Size        int32  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
-	Iops        int32  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
-	Throughput  int32  `mapstructure:"throughput" json:"throughput,omitempty" bson:"throughput,omitempty"`
-	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
-	VolumeType  string `mapstructure:"volume_type" json:"volume_type,omitempty" bson:"volume_type,omitempty"`
+	VirtualName string `mapstructure:"virtual_name" json:"virtual_name" bson:"virtual_name,omitempty"`
+	DeviceName  string `mapstructure:"device_name" json:"device_name" bson:"device_name,omitempty"`
+	Size        int32  `mapstructure:"size" json:"size" bson:"size,omitempty"`
+	Iops        int32  `mapstructure:"iops" json:"iops" bson:"iops,omitempty"`
+	Throughput  int32  `mapstructure:"throughput" json:"throughput" bson:"throughput,omitempty"`
+	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id" bson:"snapshot_id,omitempty"`
+	VolumeType  string `mapstructure:"volume_type" json:"volume_type" bson:"volume_type,omitempty"`
 }
 
 var (

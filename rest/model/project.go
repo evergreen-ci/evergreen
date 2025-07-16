@@ -103,17 +103,17 @@ type APIPatchTriggerDefinition struct {
 	// List of task specifiers.
 	TaskSpecifiers []APITaskSpecifier `json:"task_specifiers"`
 	// Status for the parent patch to conditionally kick off the child patch.
-	Status *string `json:"status,omitempty"`
+	Status *string `json:"status"`
 	// Name of the module corresponding to the upstream project in the
 	// downstream project's YAML.
-	ParentAsModule *string `json:"parent_as_module,omitempty"`
+	ParentAsModule *string `json:"parent_as_module"`
 	// An optional field representing the revision at which to create the downstream patch.
 	// By default, this field is empty and the downstream patch will be based off of its
 	// most recent commit.
-	DownstreamRevision *string `json:"downstream_revision,omitempty"`
+	DownstreamRevision *string `json:"downstream_revision"`
 	// The list of variants/tasks from the alias that will run in the downstream
 	// project.
-	VariantsTasks []VariantTask `json:"variants_tasks,omitempty"`
+	VariantsTasks []VariantTask `json:"variants_tasks"`
 }
 
 func (t *APIPatchTriggerDefinition) BuildFromService(ctx context.Context, def patch.PatchTriggerDefinition) error {
@@ -156,11 +156,11 @@ func (t *APIPatchTriggerDefinition) ToService() patch.PatchTriggerDefinition {
 
 type APITaskSpecifier struct {
 	// Patch alias to run.
-	PatchAlias *string `json:"patch_alias,omitempty"`
+	PatchAlias *string `json:"patch_alias"`
 	// Regex matching tasks to run.
-	TaskRegex *string `json:"task_regex,omitempty"`
+	TaskRegex *string `json:"task_regex"`
 	// Regex matching build variants to run.
-	VariantRegex *string `json:"variant_regex,omitempty"`
+	VariantRegex *string `json:"variant_regex"`
 }
 
 func (ts *APITaskSpecifier) BuildFromService(def patch.TaskSpecifier) {
@@ -188,11 +188,11 @@ type APIPeriodicBuildDefinition struct {
 	// Cron specification for when to run periodic builds.
 	Cron *string `json:"cron"`
 	// Alias to run for the periodic build.
-	Alias *string `json:"alias,omitempty"`
+	Alias *string `json:"alias"`
 	// Message to display in the version metadata.
-	Message *string `json:"message,omitempty"`
+	Message *string `json:"message"`
 	// Next time that the periodic build will run.
-	NextRunTime *time.Time `json:"next_run_time,omitempty"`
+	NextRunTime *time.Time `json:"next_run_time"`
 }
 
 type APIExternalLink struct {
@@ -642,15 +642,15 @@ type APIProjectRef struct {
 	// Usernames of project admins. Can be null for some projects (EVG-6598).
 	Admins []*string `json:"admins"`
 	// Usernames of project admins to remove.
-	DeleteAdmins []*string `json:"delete_admins,omitempty"`
+	DeleteAdmins []*string `json:"delete_admins"`
 	// Usernames authorized to submit git tag versions.
 	GitTagAuthorizedUsers []*string `json:"git_tag_authorized_users" bson:"git_tag_authorized_users"`
 	// Usernames of git tag-authorized users to remove.
-	DeleteGitTagAuthorizedUsers []*string `json:"delete_git_tag_authorized_users,omitempty" bson:"delete_git_tag_authorized_users,omitempty"`
+	DeleteGitTagAuthorizedUsers []*string `json:"delete_git_tag_authorized_users" bson:"delete_git_tag_authorized_users,omitempty"`
 	// Names of GitHub teams authorized to submit git tag versions.
 	GitTagAuthorizedTeams []*string `json:"git_tag_authorized_teams" bson:"git_tag_authorized_teams"`
 	// Names of GitHub teams authorized to submit git tag versions to remove.
-	DeleteGitTagAuthorizedTeams []*string `json:"delete_git_tag_authorized_teams,omitempty" bson:"delete_git_tag_authorized_teams,omitempty"`
+	DeleteGitTagAuthorizedTeams []*string `json:"delete_git_tag_authorized_teams" bson:"delete_git_tag_authorized_teams,omitempty"`
 	// Notify original committer (or admins) when build fails.
 	NotifyOnBuildFailure *bool `json:"notify_on_failure"`
 	// Prevent users from being able to view this project unless explicitly
@@ -673,15 +673,15 @@ type APIProjectRef struct {
 	// List of subscriptions for the project.
 	Subscriptions []APISubscription `json:"subscriptions"`
 	// IDs of subscriptions to delete.
-	DeleteSubscriptions []*string `json:"delete_subscriptions,omitempty"`
+	DeleteSubscriptions []*string `json:"delete_subscriptions"`
 	// List of periodic build definitions.
-	PeriodicBuilds []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
+	PeriodicBuilds []APIPeriodicBuildDefinition `json:"periodic_builds"`
 	// List of container size definitions
 	ContainerSizeDefinitions []APIContainerResources `json:"container_size_definitions"`
 	// List of container secrets.
-	ContainerSecrets []APIContainerSecret `json:"container_secrets,omitempty"`
+	ContainerSecrets []APIContainerSecret `json:"container_secrets"`
 	// Names of container secrets to be deleted.
-	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
+	DeleteContainerSecrets []string `json:"delete_container_secrets"`
 	// List of external links in the version metadata.
 	ExternalLinks []APIExternalLink `json:"external_links"`
 	// Options for banner to display for the project.
@@ -691,9 +691,9 @@ type APIProjectRef struct {
 	// Default project health view.
 	ProjectHealthView model.ProjectHealthView `json:"project_health_view"`
 	// List of GitHub permission groups.
-	GitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup `json:"github_dynamic_token_permission_groups,omitempty"`
+	GitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup `json:"github_dynamic_token_permission_groups"`
 	// GitHub permission group by requester.
-	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
+	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef

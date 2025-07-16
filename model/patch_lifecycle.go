@@ -117,9 +117,9 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, p *patch.Patch, creationI
 type PatchUpdate struct {
 	Description         string               `json:"description"`
 	Caller              string               `json:"caller"`
-	Parameters          []patch.Parameter    `json:"parameters,omitempty"`
-	PatchTriggerAliases []string             `json:"patch_trigger_aliases,omitempty"`
-	VariantsTasks       []patch.VariantTasks `json:"variants_tasks,omitempty"`
+	Parameters          []patch.Parameter    `json:"parameters"`
+	PatchTriggerAliases []string             `json:"patch_trigger_aliases"`
+	VariantsTasks       []patch.VariantTasks `json:"variants_tasks"`
 }
 
 // ConfigurePatch validates and creates the updated tasks/variants if given, and updates description if needed.

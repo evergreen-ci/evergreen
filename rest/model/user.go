@@ -158,8 +158,8 @@ func (s *APIUserSettings) ToService() (user.UserSettings, error) {
 }
 
 type APIGithubUser struct {
-	UID         int     `json:"uid,omitempty"`
-	LastKnownAs *string `json:"last_known_as,omitempty"`
+	UID         int     `json:"uid"`
+	LastKnownAs *string `json:"last_known_as"`
 }
 
 func (g *APIGithubUser) BuildFromService(usr user.GithubUser) {
@@ -176,15 +176,15 @@ func (g *APIGithubUser) ToService() user.GithubUser {
 
 type APINotificationPreferences struct {
 	BuildBreak            *string `json:"build_break"`
-	BuildBreakID          *string `json:"build_break_id,omitempty"`
+	BuildBreakID          *string `json:"build_break_id"`
 	PatchFinish           *string `json:"patch_finish"`
-	PatchFinishID         *string `json:"patch_finish_id,omitempty"`
+	PatchFinishID         *string `json:"patch_finish_id"`
 	PatchFirstFailure     *string `json:"patch_first_failure"`
-	PatchFirstFailureID   *string `json:"patch_first_failure_id,omitempty"`
+	PatchFirstFailureID   *string `json:"patch_first_failure_id"`
 	SpawnHostExpiration   *string `json:"spawn_host_expiration"`
-	SpawnHostExpirationID *string `json:"spawn_host_expiration_id,omitempty"`
+	SpawnHostExpirationID *string `json:"spawn_host_expiration_id"`
 	SpawnHostOutcome      *string `json:"spawn_host_outcome"`
-	SpawnHostOutcomeID    *string `json:"spawn_host_outcome_id,omitempty"`
+	SpawnHostOutcomeID    *string `json:"spawn_host_outcome_id"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(in user.NotificationPreferences) {

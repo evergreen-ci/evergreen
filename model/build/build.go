@@ -32,48 +32,48 @@ type TaskCache struct {
 // another might be "OSX with Python 3.0", etc.
 type Build struct {
 	Id                  string        `bson:"_id" json:"_id"`
-	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time     `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time     `bson:"finish_time" json:"finish_time,omitempty"`
-	Version             string        `bson:"version" json:"version,omitempty"`
-	Project             string        `bson:"branch" json:"branch,omitempty"`
-	Revision            string        `bson:"gitspec" json:"gitspec,omitempty"`
-	BuildVariant        string        `bson:"build_variant" json:"build_variant,omitempty"`
-	Status              string        `bson:"status" json:"status,omitempty"`
-	Activated           bool          `bson:"activated" json:"activated,omitempty"`
-	ActivatedBy         string        `bson:"activated_by" json:"activated_by,omitempty"`
-	ActivatedTime       time.Time     `bson:"activated_time" json:"activated_time,omitempty"`
-	RevisionOrderNumber int           `bson:"order,omitempty" json:"order,omitempty"`
+	CreateTime          time.Time     `bson:"create_time" json:"create_time"`
+	StartTime           time.Time     `bson:"start_time" json:"start_time"`
+	FinishTime          time.Time     `bson:"finish_time" json:"finish_time"`
+	Version             string        `bson:"version" json:"version"`
+	Project             string        `bson:"branch" json:"branch"`
+	Revision            string        `bson:"gitspec" json:"gitspec"`
+	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
+	Status              string        `bson:"status" json:"status"`
+	Activated           bool          `bson:"activated" json:"activated"`
+	ActivatedBy         string        `bson:"activated_by" json:"activated_by"`
+	ActivatedTime       time.Time     `bson:"activated_time" json:"activated_time"`
+	RevisionOrderNumber int           `bson:"order,omitempty" json:"order"`
 	Tasks               []TaskCache   `bson:"tasks" json:"tasks"`
-	TimeTaken           time.Duration `bson:"time_taken" json:"time_taken,omitempty"`
-	DisplayName         string        `bson:"display_name" json:"display_name,omitempty"`
-	PredictedMakespan   time.Duration `bson:"predicted_makespan" json:"predicted_makespan,omitempty"`
-	ActualMakespan      time.Duration `bson:"actual_makespan" json:"actual_makespan,omitempty"`
-	Aborted             bool          `bson:"aborted" json:"aborted,omitempty"`
+	TimeTaken           time.Duration `bson:"time_taken" json:"time_taken"`
+	DisplayName         string        `bson:"display_name" json:"display_name"`
+	PredictedMakespan   time.Duration `bson:"predicted_makespan" json:"predicted_makespan"`
+	ActualMakespan      time.Duration `bson:"actual_makespan" json:"actual_makespan"`
+	Aborted             bool          `bson:"aborted" json:"aborted"`
 
 	// Tags that describe the variant
-	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
+	Tags []string `bson:"tags,omitempty" json:"tags"`
 
 	// The status of the subset of the build that's used for github checks
-	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
+	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status"`
 	// does the build contain tasks considered for mainline github checks
-	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
+	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check"`
 
 	// build requester - this is used to help tell the
 	// reason this build was created. e.g. it could be
 	// because the repotracker requested it (via tracking the
 	// repository) or it was triggered by a developer
 	// patch request
-	Requester string `bson:"r" json:"r,omitempty"`
+	Requester string `bson:"r" json:"r"`
 
 	// builds that are part of a child patch will store the id and number of the parent patch
-	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id,omitempty"`
-	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number,omitempty"`
+	ParentPatchID     string `bson:"parent_patch_id,omitempty" json:"parent_patch_id"`
+	ParentPatchNumber int    `bson:"parent_patch_number,omitempty" json:"parent_patch_number"`
 
 	// Fields set if triggered by an upstream build
-	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
-	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
-	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id"`
+	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type"`
+	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event"`
 
 	// Set to true if all tasks in the build are blocked.
 	// Should not be exposed, only for internal use.
