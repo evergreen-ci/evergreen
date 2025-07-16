@@ -2825,7 +2825,7 @@ func getNumNewParentsAndHostsToSpawn(ctx context.Context, pool *evergreen.Contai
 	}
 
 	if !ignoreMaxHosts { // only want to spawn amount of parents allowed based on pool size
-		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents), pool); err != nil {
+		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents)); err != nil {
 			return 0, 0, errors.Wrap(err, "calculating number of parents that need to spawn")
 		}
 	}
@@ -2868,7 +2868,7 @@ func containerCapacity(numParents, numCurrentContainers, numContainersToSpawn, m
 
 // parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
-func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
+func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int) (int, error) {
 	if parent.Provider == evergreen.ProviderNameStatic {
 		return 0, nil
 	}

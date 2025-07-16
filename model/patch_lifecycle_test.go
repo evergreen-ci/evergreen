@@ -208,7 +208,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				So(patchConfig.PatchedParserProject, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+					projectConfig, err := GetPatchedProjectConfig(ctx, configPatch)
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -232,7 +232,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 					So(patchConfigFromPatchAndDB.PatchedProjectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 
 					Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, configPatch)
 						So(err, ShouldBeNil)
 						So(projectConfigFromPatch, ShouldEqual, patchConfig.PatchedProjectConfig)
 					})
@@ -247,7 +247,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				So(project, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+					projectConfig, err := GetPatchedProjectConfig(ctx, configPatch)
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -267,7 +267,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				So(project, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+					projectConfig, err := GetPatchedProjectConfig(ctx, configPatch)
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
