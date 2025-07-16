@@ -91,7 +91,7 @@ unexpirable host to use something other than the default settings, your options 
 
 ### Option 1: Uptime Schedule {#uptime-schedule}
 
-This is the feature described [above](#unexpirable-host-sleep-schedules) to set times of the week when you want your
+This is the feature described [above](#unexpirable-host-uptime-schedules) to set times of the week when you want your
 host to be on or off. You can set a recurring uptime schedule on your host from [the
 UI](https://spruce.mongodb.com/spawn/host) by pressing the "edit" button your host.
 

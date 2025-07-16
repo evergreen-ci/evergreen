@@ -348,7 +348,7 @@ Warning: YAML anchors currently not supported.
 
 We do limit the [number of included files](../Reference/Limits#include-limits) that can be given in order to ensure safe GitHub API usage.
 An alternative to relying on Evergreen for including the files would be to use `evergreen evaluate` as a pre-commit hook.
-[This command](#Validating-changes-to-config-files) generates the effective project yaml from all the include files and remove the includes list,
+[This command](#validating-changes-to-config-files) generates the effective project yaml from all the include files and remove the includes list,
 so you could have one "generated" yaml that's committed to your repo to use for Evergreen testing that doesn't need to pull files from GitHub.
 
 #### Merging Rules

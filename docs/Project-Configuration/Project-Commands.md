@@ -1327,7 +1327,7 @@ Parameters:
 
 ## shell.exec
 
-This command runs a shell script. To follow [Evergreen best practices](Best-Practices#subprocessexec), we recommend using [subprocess.exec](#subprocess.exec).
+This command runs a shell script. To follow [Evergreen best practices](Best-Practices#subprocessexec), we recommend using [subprocess.exec](#subprocessexec).
 
 ```yaml
 - command: shell.exec
