@@ -57,7 +57,7 @@ type Distro struct {
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
-	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
+	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings" mapstructure:"icecream_settings,omitempty"`
 	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
 	// SingleTaskDistro is a bool that indicates whether the hosts with this distro will only be allowed to run one task.
 	SingleTaskDistro bool `bson:"single_task_distro,omitempty" json:"single_task_distro,omitempty" mapstructure:"single_task_distro,omitempty"`
@@ -108,7 +108,7 @@ type BootstrapSettings struct {
 
 	// Optional
 	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
 	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
@@ -806,19 +806,19 @@ func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error
 	if err := rm.AddScope(newScope); err != nil && !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "adding scope for distro '%s'", d.Id)
 	}
-	newRole := gimlet.Role{
-		ID:     fmt.Sprintf("admin_distro_%s", d.Id),
-		Owners: []string{creator.Id},
-		Scope:  newScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
-			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
-		},
-	}
-	if err := rm.UpdateRole(newRole); err != nil {
-		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
-	}
 	if creator != nil {
+		newRole := gimlet.Role{
+			ID:     fmt.Sprintf("admin_distro_%s", d.Id),
+			Owners: []string{creator.Id},
+			Scope:  newScope.ID,
+			Permissions: map[string]int{
+				evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
+				evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
+			},
+		}
+		if err := rm.UpdateRole(newRole); err != nil {
+			return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
+		}
 		if err := creator.AddRole(ctx, newRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}

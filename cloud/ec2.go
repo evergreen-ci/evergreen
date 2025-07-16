@@ -82,7 +82,7 @@ type EC2ProviderSettings struct {
 	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts,omitempty" bson:"merge_user_data_parts,omitempty"`
 
 	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
-	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
+	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options" bson:"fleet_options,omitempty"`
 
 	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
 	// IP addresses.
