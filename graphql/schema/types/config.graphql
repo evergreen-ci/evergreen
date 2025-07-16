@@ -1,3 +1,21 @@
+###### RESTART TASKS ######
+
+input RestartTasksOptions {
+  startTime: Time!
+  endTime: Time!
+  includeTestFailed: Boolean!
+  includeSystemFailed: Boolean!
+  includeSetupFailed: Boolean!
+}
+
+type AdminTasksToRestartPayload {
+  tasksToRestart: [Task!]!
+}
+
+type RestartAdminTasksPayload {
+  numRestartedTasks: Int!
+}
+
 ###### ADMIN EVENTS ######
 
 """
@@ -151,7 +169,6 @@ type RepotrackerConfig {
   maxRepoRevisionsToSearch: Int
   maxConcurrentRequests: Int
 }
-
 
 input AdminSettingsInput {
   banner: String
@@ -308,7 +325,7 @@ input UIConfigInput {
   uiv2Url: String!
   parsleyUrl: String!
   httpListenAddr: String!
-  secret: String! @redactSecrets 
+  secret: String! @redactSecrets
   defaultProject: String!
   corsOrigins: [String!]!
   fileStreamingContentTypes: [String!]!
@@ -337,7 +354,6 @@ type UIConfig {
   cacheTemplates: Boolean
   stagingEnvironment: String
 }
-
 
 type SlackConfig {
   name: String

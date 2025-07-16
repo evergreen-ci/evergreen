@@ -47,6 +47,10 @@ type AdminEventsPayload struct {
 	EventLogEntries []*AdminEvent `json:"eventLogEntries"`
 }
 
+type AdminTasksToRestartPayload struct {
+	TasksToRestart []*model.APITask `json:"tasksToRestart"`
+}
+
 // Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
 // This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
 // tickets from JIRA for a given task on a given execution.
@@ -411,6 +415,10 @@ type RepoPermissions struct {
 
 type RepoPermissionsOptions struct {
 	RepoID string `json:"repoId"`
+}
+
+type RestartAdminTasksPayload struct {
+	NumRestartedTasks int `json:"numRestartedTasks"`
 }
 
 type SaveAdminSettingsInput struct {
