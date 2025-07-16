@@ -2,7 +2,6 @@
   // See https://github.com/markdownlint/markdownlint/blob/main/docs/RULES.md for the full list of rules.
   "default": true, // Enable all rules by default. Disable rules below.
   "MD013": false, // Don't remove line length limit. This is an old markdown rule that is tyipcally ignored.
-  "MD024": false,
   "MD025": false,
   "MD026": false,
   "MD029": false,
