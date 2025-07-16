@@ -79,8 +79,6 @@ var allGitHubPermissions = []string{
 }
 
 const (
-	GithubPRBlocked = "blocked"
-
 	// All PR statuses except for "blocked" based on statuses listed here:
 	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
 	// Because the pr.MergeableState is not documented, it can change without

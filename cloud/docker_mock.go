@@ -31,10 +31,6 @@ type dockerClientMock struct {
 	containerAttachment *types.HijackedResponse
 }
 
-func GetMockClient() *dockerClientMock {
-	return &dockerClientMock{}
-}
-
 func (c *dockerClientMock) generateContainerID() string {
 	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
