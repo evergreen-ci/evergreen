@@ -813,12 +813,6 @@ func NewExpiringPatchChildOutcomeSubscription(id string, sub Subscriber) Subscri
 	return subscription
 }
 
-func NewExpiringPatchSuccessSubscription(id string, sub Subscriber) Subscription {
-	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerSuccess, id, sub)
-	subscription.LastUpdated = time.Now()
-	return subscription
-}
-
 func NewParentPatchSubscription(id string, sub Subscriber) Subscription {
 	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
 	subscription.LastUpdated = time.Now()

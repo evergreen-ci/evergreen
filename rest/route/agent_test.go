@@ -416,7 +416,6 @@ func TestAgentSetup(t *testing.T) {
 						EC2Keys: []evergreen.EC2Key{
 							{
 								Name:   "ec2-key",
-								Region: "us-east-1",
 								Key:    "key",
 								Secret: "secret",
 							},

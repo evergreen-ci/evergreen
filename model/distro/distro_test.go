@@ -191,6 +191,7 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 	}
 
 	err := ValidateContainerPoolDistros(ctx, testSettings)
+	require.NotNil(t, err)
 	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
 	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }

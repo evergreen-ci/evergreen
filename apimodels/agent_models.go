@@ -15,13 +15,11 @@ import (
 )
 
 const (
-	ScopeTask                       = "task"
-	ScopeBuild                      = "build"
-	DefaultSetupTimeoutSecs         = 600
-	DefaultTeardownTimeoutSecs      = 21600
-	DefaultContainerWaitTimeoutSecs = 600
-	DefaultPollFrequency            = 30
-	DefaultRetries                  = 2
+	ScopeTask                  = "task"
+	ScopeBuild                 = "build"
+	DefaultSetupTimeoutSecs    = 600
+	DefaultTeardownTimeoutSecs = 21600
+	DefaultRetries             = 2
 )
 
 // TaskStartRequest holds information sent by the agent to the

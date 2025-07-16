@@ -582,7 +582,6 @@ const (
 	Information  BannerTheme = "INFORMATION"
 	Warning      BannerTheme = "WARNING"
 	Important    BannerTheme = "IMPORTANT"
-	Empty        BannerTheme = ""
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {
