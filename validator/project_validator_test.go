@@ -3684,6 +3684,25 @@ tasks:
 			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
 			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "params cannot be nil")
 		})
+		Convey("an error should be thrown if a command has no command or function name", func() {
+			exampleYml := `
+tasks:
+- name: example_task
+  commands:
+  - params:
+      script: echo test
+`
+			proj := model.Project{}
+			ctx := context.Background()
+			pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+			So(pp, ShouldNotBeNil)
+			So(proj, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			validationErrs := validatePluginCommands(&proj)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
+			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "must specify either command or function for task 'example_task'")
+		})
 		Convey("an error should return if a shell.exec command is missing a script", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{

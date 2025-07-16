@@ -1506,7 +1506,7 @@ func validateCommands(section string, taskName string, project *model.Project, c
 			hasFuncOrCommand = false
 			errs = append(errs, ValidationError{
 				Level:   Error,
-				Message: fmt.Sprintf("must specify either command or function %s", formattedTaskMsg),
+				Message: fmt.Sprintf("must specify either command or function%s", formattedTaskMsg),
 			})
 		}
 		if cmd.Function != "" && cmd.Command != "" {
