@@ -1499,7 +1499,7 @@ discourage relying on it for anything critical in general.
 
 For that same reason, teardown groups also cannot run the [manually set task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route.
 
-#### The following constraints apply to all task groups:
+#### The following constraints apply to all task groups
 
 - Tasks can appear in multiple task groups. However, no task can be
   assigned to a build variant more than once.
@@ -1513,7 +1513,7 @@ For that same reason, teardown groups also cannot run the [manually set task sta
 - Task groups cannot have tags applied to them and cannot be selected by
   tags.
 
-#### The following constraints apply to single host task groups:
+#### The following constraints apply to single host task groups
 
 - If tasks in a single host task groups have dependencies on another task outside the group, only the first task in the task group should list those dependencies. If a task in the group other than the first one have dependencies outside of the group, the task can be blocked waiting for external dependencies to complete and result in the host being terminated for idleness.
 

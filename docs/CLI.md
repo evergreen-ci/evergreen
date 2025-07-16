@@ -247,13 +247,13 @@ To list patches you've created:
 
       evergreen list-patches
 
-### To cancel a patch:
+### To cancel a patch
 
 ```
 evergreen cancel-patch -i <patch_id>
 ```
 
-### To finalize a patch:
+### To finalize a patch
 
 ```
 evergreen finalize-patch -i <patch_id>
@@ -261,7 +261,7 @@ evergreen finalize-patch -i <patch_id>
 
 Finalizing a patch actually creates and schedules and tasks. Before this the patch only exists as a patch "intent". You can finalize a patch either by passing --finalize or -f or by clicking the "Schedule Patch" button in the UI of an un-finalized patch.
 
-#### To create a patch and add module changes in one command:
+#### To create a patch and add module changes in one command
 
 ```
 evergreen patch --include-modules
@@ -279,7 +279,7 @@ projects:
 We will then check that directory for changes, confirm them with you, and add them to the patch if confirmed. If there are modules you don’t want to include you can skip them and still continue to check others, or if there are no changes we’ll skip them automatically.
 (Note: we won’t set this path for you if you have disable_auto_defaulting set in your evergreen.yml, in which case you will need to add it manually, following the format above.)
 
-##### To add changes to a module on top of an existing patch:
+##### To add changes to a module on top of an existing patch
 
 ```
 cd ~/projects/module-project-directory
