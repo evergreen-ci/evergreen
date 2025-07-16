@@ -93,6 +93,6 @@ within the workstation distro's persistent home directory.
 
 To facilitate upgrading your virtual workstations, home volumes can be migrated to a new workstation using the “Migrate” button on the [My Volumes](https://spruce.mongodb.com/spawn/volume) page:
 
-<img width="1165" alt="Screen Shot 2022-11-14 at 11 59 33 AM" src="https://user-images.githubusercontent.com/9298431/201720970-3303d26e-c9d3-400f-8a50-22a23b05a1f4.png" />
+![Screen Shot 2022-11-14 at 11 59 33 AM](https://user-images.githubusercontent.com/9298431/201720970-3303d26e-c9d3-400f-8a50-22a23b05a1f4.png)
 
 This feature will allow you to configure the parameters of a new host. It will then move the volume over to the new workstation and set the old host to expire in 24 hours.
