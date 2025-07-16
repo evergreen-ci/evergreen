@@ -664,6 +664,7 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: lint-markdown
+    tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
@@ -885,7 +886,6 @@ buildvariants:
       GOROOT: /opt/golang/go1.24
     tasks:
       - name: generate-lint
-      - name: lint-markdown
 
   - name: windows
     display_name: Windows
