@@ -4,7 +4,6 @@
   "MD013": false, // Don't remove line length limit. This is an old markdown rule that is tyipcally ignored.
   "MD024": false, // We deliberately use multiple headings with the same name, like "Request".
   "MD046": false, // TODO We use indented code blocks a bunch in older docs, and it's a lot of work to fix this, so these are excluded for now.
-  "MD051": false,
   "MD055": false,
   "MD058": false,
   "MD059": false
