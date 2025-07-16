@@ -160,10 +160,10 @@ type Host struct {
 	ContainerBuildAttempt int                      `bson:"container_build_attempt" json:"container_build_attempt"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
-	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options"`
 
 	// DockerOptions stores information for creating a container with a specific image and command
-	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
+	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options"`
 
 	// PortBindings is populated if PublishPorts is specified when creating docker container from task
 	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings,omitempty"`
@@ -183,7 +183,7 @@ type Host struct {
 	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
 
 	// SleepSchedule stores host sleep schedule information.
-	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule,omitempty"`
+	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
 }
 
 type Tag struct {
@@ -2825,7 +2825,7 @@ func getNumNewParentsAndHostsToSpawn(ctx context.Context, pool *evergreen.Contai
 	}
 
 	if !ignoreMaxHosts { // only want to spawn amount of parents allowed based on pool size
-		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents), pool); err != nil {
+		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents)); err != nil {
 			return 0, 0, errors.Wrap(err, "calculating number of parents that need to spawn")
 		}
 	}
@@ -2868,7 +2868,7 @@ func containerCapacity(numParents, numCurrentContainers, numContainersToSpawn, m
 
 // parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
-func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
+func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int) (int, error) {
 	if parent.Provider == evergreen.ProviderNameStatic {
 		return 0, nil
 	}

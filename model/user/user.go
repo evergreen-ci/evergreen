@@ -69,7 +69,7 @@ type UserSettings struct {
 	GithubUser       GithubUser              `json:"github_user" bson:"github_user,omitempty"`
 	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
 	SlackMemberId    string                  `bson:"slack_member_id,omitempty" json:"slack_member_id,omitempty"`
-	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
+	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications"`
 	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options" bson:"use_spruce_options"`
 	DateFormat       string                  `json:"date_format" bson:"date_format"`
 	TimeFormat       string                  `json:"time_format" bson:"time_format"`

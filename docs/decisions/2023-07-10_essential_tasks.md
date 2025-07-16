@@ -1,8 +1,8 @@
 # 2023-07-10 Essential Tasks
 
-* status: accepted
-* date: 2023-05-18
-* authors: Kim Tao
+- status: accepted
+- date: 2023-05-18
+- authors: Kim Tao
 
 ## Context and Problem Statement
 

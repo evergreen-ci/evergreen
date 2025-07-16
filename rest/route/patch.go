@@ -95,7 +95,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	if p.Activated != nil {
 		ctx, cancel := p.env.Context()
 		defer cancel()
-		if err := data.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated, p.env.Settings()); err != nil {
+		if err := data.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch activation"))
 		}
 	}
