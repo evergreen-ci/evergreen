@@ -309,7 +309,7 @@ If you'd like for Git Tag triggered versions to be associated with the pusher,
 ensure that they've set their GitHub username in
 [their Evergreen preferences](https://spruce.mongodb.com/preferences/profile).
 
-2.  **Add aliases to determine what tasks will run.**
+1.  **Add aliases to determine what tasks will run.**
 
 There are two options for aliases:
 
@@ -321,7 +321,7 @@ There are two options for aliases:
   tags** to use with the existing project configuration (as you would
   for other aliases).
 
-3. **Ensure that a valid waterfall version is created for the commit you're tagging.**
+1. **Ensure that a valid waterfall version is created for the commit you're tagging.**
 
 Evergreen uses the existing yaml to validate that this is a valid project and simplify internal logic,
 as well as to ensure that the tagged commit is tested.
