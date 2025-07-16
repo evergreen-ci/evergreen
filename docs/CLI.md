@@ -256,6 +256,10 @@ projects:
 We will then check that directory for changes, confirm them with you, and add them to the patch if confirmed. If there are modules you don’t want to include you can skip them and still continue to check others, or if there are no changes we’ll skip them automatically.
 (Note: we won’t set this path for you if you have disable_auto_defaulting set in your evergreen.yml, in which case you will need to add it manually, following the format above.)
 
+The `module_paths` field is used by `evergreen patch` to keep a cache of where the user's local modules are located. This avoids the patch command re-prompting the user every time a module path is needed. 
+
+Note: The `evergreen validate` and `evergreen evaluate` commands (which support including files from local modules), do not use the module cache.
+
 ##### To add changes to a module on top of an existing  patch:
 
 ```
