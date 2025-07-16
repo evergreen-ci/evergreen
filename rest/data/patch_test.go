@@ -437,7 +437,6 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-	settings := testutil.MockConfig()
 	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true)
 	s.NoError(err)
 	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])

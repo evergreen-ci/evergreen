@@ -692,9 +692,6 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 	}
 
 	// regular patch
-	tc := &internal.TaskConfig{
-		Task: task.Task{},
-	}
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 	applyCommand, err := c.getApplyCommand(patchPath)
 	s.NoError(err)
