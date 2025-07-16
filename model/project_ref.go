@@ -114,8 +114,8 @@ type ProjectRef struct {
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
-	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions" yaml:"container_size_definitions,omitempty"`
-	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets" yaml:"container_secrets,omitempty"`
+	ContainerSizeDefinitions []ContainerResources `bson:"container_size_definitions,omitempty" json:"container_size_definitions,omitempty" yaml:"container_size_definitions,omitempty"`
+	ContainerSecrets         []ContainerSecret    `bson:"container_secrets,omitempty" json:"container_secrets,omitempty" yaml:"container_secrets,omitempty"`
 
 	// RepoRefId is the repo ref id that this project ref tracks, if any.
 	RepoRefId string `bson:"repo_ref_id" json:"repo_ref_id" yaml:"repo_ref_id"`
@@ -124,15 +124,15 @@ type ProjectRef struct {
 	// Hidden determines whether or not the project is discoverable/tracked in the UI
 	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
-	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links" yaml:"external_links,omitempty"`
+	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
 	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner" yaml:"banner,omitempty"`
 
 	// Filter/view settings
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
-	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters"`
+	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 
 	// GitHubDynamicTokenPermissionGroups is a list of permission groups for GitHub dynamic access tokens.
-	GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups" yaml:"github_dynamic_token_permission_groups,omitempty"`
+	GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups,omitempty" yaml:"github_dynamic_token_permission_groups,omitempty"`
 
 	// GitHubPermissionGroupByRequester is a mapping of requester type to the user defined GitHub permission groups above.
 	GitHubPermissionGroupByRequester map[string]string `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`

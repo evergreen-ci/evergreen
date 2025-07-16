@@ -20,13 +20,13 @@ type TaskAnnotation struct {
 	// comment about the failure
 	Note *Note `bson:"note,omitempty" json:"note,omitempty"`
 	// links to tickets definitely related.
-	Issues []IssueLink `bson:"issues,omitempty" json:"issues"`
+	Issues []IssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
 	// links to tickets possibly related
-	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues"`
+	SuspectedIssues []IssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
 	// links to tickets created from the task using a custom web hook
-	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues"`
+	CreatedIssues []IssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
 	// links to be displayed in the UI metadata sidebar
-	MetadataLinks []MetadataLink `bson:"metadata_links,omitempty" json:"metadata_links"`
+	MetadataLinks []MetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
 }
 
 // MetadataLink represents an arbitrary link to be associated with a task.

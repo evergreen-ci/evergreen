@@ -26,12 +26,12 @@ type APITaskAnnotation struct {
 	// Comment about the task failure
 	Note *APINote `bson:"note,omitempty" json:"note,omitempty"`
 	// Links to tickets definitely related
-	Issues []APIIssueLink `bson:"issues,omitempty" json:"issues"`
+	Issues []APIIssueLink `bson:"issues,omitempty" json:"issues,omitempty"`
 	// Links to tickets possibly related
-	SuspectedIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues"`
-	CreatedIssues   []APIIssueLink `bson:"created_issues,omitempty" json:"created_issues"`
+	SuspectedIssues []APIIssueLink `bson:"suspected_issues,omitempty" json:"suspected_issues,omitempty"`
+	CreatedIssues   []APIIssueLink `bson:"created_issues,omitempty" json:"created_issues,omitempty"`
 	// List of links associated with a task, to be displayed in the task metadata sidebar, currently limited to 1
-	MetadataLinks []APIMetadataLink `bson:"metadata_links,omitempty" json:"metadata_links"`
+	MetadataLinks []APIMetadataLink `bson:"metadata_links,omitempty" json:"metadata_links,omitempty"`
 }
 
 type APINote struct {

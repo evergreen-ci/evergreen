@@ -367,7 +367,7 @@ type APIPodResourceInfo struct {
 	ExternalID   *string                    `json:"external_id,omitempty"`
 	DefinitionID *string                    `json:"definition_id,omitempty"`
 	Cluster      *string                    `json:"cluster,omitempty"`
-	Containers   []APIContainerResourceInfo `json:"containers"`
+	Containers   []APIContainerResourceInfo `json:"containers,omitempty"`
 }
 
 // BuildFromService converts service-layer pod resource information into REST

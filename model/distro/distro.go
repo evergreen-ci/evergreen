@@ -43,7 +43,7 @@ type Distro struct {
 	SSHOptions            []string              `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 	AuthorizedKeysFile    string                `bson:"authorized_keys_file,omitempty" json:"authorized_keys_file,omitempty" mapstructure:"authorized_keys_file,omitempty"`
 	SpawnAllowed          bool                  `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	Expansions            []Expansion           `bson:"expansions,omitempty" json:"expansions" mapstructure:"expansions,omitempty"`
+	Expansions            []Expansion           `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled              bool                  `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 	ContainerPool         string                `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 	FinderSettings        FinderSettings        `bson:"finder_settings" json:"finder_settings" mapstructure:"finder_settings"`
@@ -107,9 +107,9 @@ type BootstrapSettings struct {
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                 []EnvVar             `bson:"env,omitempty" json:"env" mapstructure:"env,omitempty"`
+	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
 	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
-	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts" mapstructure:"precondition_scripts,omitempty"`
+	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`

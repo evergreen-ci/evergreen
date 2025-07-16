@@ -141,7 +141,7 @@ type Host struct {
 	// LastInstanceEditTime tracks when the instance type was last modified
 	LastInstanceEditTime time.Time `bson:"last_instance_edit_time,omitempty" json:"last_instance_edit_time,omitempty"`
 	// The volumeID and device name for each volume attached to the host
-	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes"`
+	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
@@ -168,7 +168,7 @@ type Host struct {
 	// PortBindings is populated if PublishPorts is specified when creating docker container from task
 	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings,omitempty"`
 	// InstanceTags stores user-specified tags for instances
-	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags"`
+	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
 	// SSHKeyNames contains the names of the SSH key that have been distributed
 	// to this host.

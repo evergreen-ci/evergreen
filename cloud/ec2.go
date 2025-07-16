@@ -50,7 +50,7 @@ type EC2ProviderSettings struct {
 	KeyName string `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
 
 	// MountPoints are the disk mount points for EBS volumes.
-	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points" bson:"mount_points,omitempty"`
+	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
 
 	// SecurityGroupIDs is a list of security group IDs.
 	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`

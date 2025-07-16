@@ -98,7 +98,7 @@ type APITask struct {
 	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
 	// Contains previous executions of the task if they were requested, and
 	// available. May be empty
-	PreviousExecutions []APITask `json:"previous_executions"`
+	PreviousExecutions []APITask `json:"previous_executions,omitempty"`
 	GenerateTask       bool      `json:"generate_task"`
 	GeneratedBy        string    `json:"generated_by"`
 	// The list of artifacts associated with the task.
@@ -176,7 +176,7 @@ type ApiTaskEndDetail struct {
 	FailureMetadataTags []string `json:"failure_metadata_tags"`
 	// OtherFailingCommands contain information about commands that failed but
 	// did not cause the task to fail.
-	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands"`
+	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands,omitempty"`
 	// Whether this task ended in a timeout.
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`

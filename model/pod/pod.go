@@ -222,7 +222,7 @@ type ResourceInfo struct {
 	Cluster string `bson:"cluster,omitempty" json:"cluster,omitempty"`
 	// Containers include resource information about containers running in the
 	// pod.
-	Containers []ContainerResourceInfo `bson:"containers,omitempty" json:"containers"`
+	Containers []ContainerResourceInfo `bson:"containers,omitempty" json:"containers,omitempty"`
 }
 
 // IsZero implements the bsoncodec.Zeroer interface for the sake of defining the

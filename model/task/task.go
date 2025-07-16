@@ -228,7 +228,7 @@ type Task struct {
 	AbortInfo AbortInfo               `bson:"abort_info,omitempty" json:"abort_info,omitempty"`
 
 	// HostCreateDetails stores information about why host.create failed for this task
-	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details"`
+	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details,omitempty"`
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
 	// It may be added via aggregation
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
@@ -353,7 +353,7 @@ type StepbackInfo struct {
 	// PreviousStepbackTaskId stores the last stepback iteration id.
 	PreviousStepbackTaskId string `bson:"previous_stepback_task_id,omitempty" json:"previous_stepback_task_id"`
 	// GeneratedStepbackInfo stores information on a generator for it's generated tasks.
-	GeneratedStepbackInfo []StepbackInfo `bson:"generated_stepback_info,omitempty" json:"generated_stepback_info"`
+	GeneratedStepbackInfo []StepbackInfo `bson:"generated_stepback_info,omitempty" json:"generated_stepback_info,omitempty"`
 
 	// Generator fields only (responsible for propogating stepback in its generated tasks).
 	// DisplayName is the display name of the generated task.

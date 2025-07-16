@@ -52,7 +52,7 @@ type APIBuild struct {
 	// Contains a subset of information about tasks for the build; this is not
 	// provided/accurate for most routes (get versions for project is an
 	// exception).
-	TaskCache []APITaskCache `json:"task_cache"`
+	TaskCache []APITaskCache `json:"task_cache,omitempty"`
 	// Tasks is the build's task cache with just the names
 	Tasks []string `json:"tasks"`
 	// List of tags defined for the build variant, if any

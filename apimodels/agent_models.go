@@ -72,7 +72,7 @@ type TaskEndDetail struct {
 	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
 	// OtherFailingCommands contains information about commands that failed
 	// while the task was running but did not cause the task to fail.
-	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands"`
+	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands,omitempty"`
 	TimedOut             bool             `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`

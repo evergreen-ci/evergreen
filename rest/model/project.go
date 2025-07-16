@@ -113,7 +113,7 @@ type APIPatchTriggerDefinition struct {
 	DownstreamRevision *string `json:"downstream_revision,omitempty"`
 	// The list of variants/tasks from the alias that will run in the downstream
 	// project.
-	VariantsTasks []VariantTask `json:"variants_tasks"`
+	VariantsTasks []VariantTask `json:"variants_tasks,omitempty"`
 }
 
 func (t *APIPatchTriggerDefinition) BuildFromService(ctx context.Context, def patch.PatchTriggerDefinition) error {
@@ -675,11 +675,11 @@ type APIProjectRef struct {
 	// IDs of subscriptions to delete.
 	DeleteSubscriptions []*string `json:"delete_subscriptions,omitempty"`
 	// List of periodic build definitions.
-	PeriodicBuilds []APIPeriodicBuildDefinition `json:"periodic_builds"`
+	PeriodicBuilds []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
 	// List of container size definitions
 	ContainerSizeDefinitions []APIContainerResources `json:"container_size_definitions"`
 	// List of container secrets.
-	ContainerSecrets []APIContainerSecret `json:"container_secrets"`
+	ContainerSecrets []APIContainerSecret `json:"container_secrets,omitempty"`
 	// Names of container secrets to be deleted.
 	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
 	// List of external links in the version metadata.
@@ -691,7 +691,7 @@ type APIProjectRef struct {
 	// Default project health view.
 	ProjectHealthView model.ProjectHealthView `json:"project_health_view"`
 	// List of GitHub permission groups.
-	GitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup `json:"github_dynamic_token_permission_groups"`
+	GitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup `json:"github_dynamic_token_permission_groups,omitempty"`
 	// GitHub permission group by requester.
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 }

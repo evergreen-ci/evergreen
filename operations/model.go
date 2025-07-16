@@ -35,7 +35,7 @@ type ClientProjectConf struct {
 	Parameters     map[string]string    `json:"parameters" yaml:"parameters,omitempty"`
 	ModulePaths    map[string]string    `json:"module_paths" yaml:"module_paths,omitempty"`
 	TriggerAliases []string             `json:"trigger_aliases" yaml:"trigger_aliases"`
-	LocalAliases   []model.ProjectAlias `json:"local_aliases" yaml:"local_aliases,omitempty"`
+	LocalAliases   []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
