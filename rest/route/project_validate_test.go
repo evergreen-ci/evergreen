@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -56,7 +55,6 @@ buildvariants:
 	// Parse the response body to make sure we get errors
 	var results validator.ValidationErrors
 	require.NoError(t, json.Unmarshal(rawBytes, &results))
-	fmt.Println(results)
 	require.NotEmpty(t, results, "Expected validation errors for invalid project input")
 	var messages string
 	for _, validationErr := range results {
