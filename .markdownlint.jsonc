@@ -1,7 +1,6 @@
 {
   // See https://github.com/markdownlint/markdownlint/blob/main/docs/RULES.md for the full list of rules.
   "default": true, // Enable all rules by default. Disable rules below.
-  "MD005": false,
   "MD007": false,
   "MD009": false,
   "MD010": false,

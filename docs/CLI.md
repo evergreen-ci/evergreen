@@ -35,10 +35,10 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
   *Note: If you are not prompted, please update your Evergreen CLI using evergreen get-update --install to ensure you have the latest release.*
   
   - Any Evergreen CLI commands that talk to evergreen will attempt to generate a token for you using kanopy-oidc behind the scenes. It will then use that instead of the api token saved in your evergreen config file (~/.evergreen.yml).
-   - If you do not have kanopy-oidc installed properly, this will fail.
-   - It will print a url for you to use to authenticate. Open the link in your laptop's browser and authenticate. 
-   - If you need some more time and would like to opt out of the CLI attempting to generate and use a token, you can do that by setting do_not_run_kanopy_oidc to true in your evergreen config file (~/.evergreen.yml).
-   - To test if you are all effectively communicating with Evergreen via a personal access token, you can comment out or delete the api key from your evergreen config file (~/.evergreen.yml) and try running a command, for example, evergreen list --projects.
+  - If you do not have kanopy-oidc installed properly, this will fail.
+  - It will print a url for you to use to authenticate. Open the link in your laptop's browser and authenticate. 
+  - If you need some more time and would like to opt out of the CLI attempting to generate and use a token, you can do that by setting do_not_run_kanopy_oidc to true in your evergreen config file (~/.evergreen.yml).
+  - To test if you are all effectively communicating with Evergreen via a personal access token, you can comment out or delete the api key from your evergreen config file (~/.evergreen.yml) and try running a command, for example, evergreen list --projects.
 
 
 ## Basic Patch Usage
