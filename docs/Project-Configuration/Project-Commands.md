@@ -487,11 +487,13 @@ Parameters:
 - `file`: filename for a YAML file containing expansion updates, one key-value
   pair per expansion. For example, to set expansions `fruit=apple`
   `vegetable=spinach`, and `bread=cornbread`, the file should look like:
+
   ```yaml
   fruit: apple
   vegetable: spinach
   bread: cornbread
   ```
+
 - `redact_file_expansions`: if true, the expansions added from the file will be redacted in the task logs.
   By default, this is false.
 - `ignore_missing_file`: do not error if the file is missing.
