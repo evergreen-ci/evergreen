@@ -81,14 +81,13 @@ func (uis *UIServer) schedulePatchUI(w http.ResponseWriter, r *http.Request) {
 	curUser := gimlet.GetUser(r.Context())
 	if curUser == nil {
 		uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("Not authorized to schedule patch"))
+		return
 	}
 	patchUpdateReq := model.PatchUpdate{}
 	if err := utility.ReadJSON(utility.NewRequestReader(r), &patchUpdateReq); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 	}
-	if curUser != nil {
-		patchUpdateReq.Caller = curUser.Username()
-	}
+	patchUpdateReq.Caller = curUser.Username()
 
 	status, err := units.SchedulePatch(r.Context(), uis.env, projCtx.Patch.Id.Hex(), projCtx.Version, patchUpdateReq)
 	if err != nil {
