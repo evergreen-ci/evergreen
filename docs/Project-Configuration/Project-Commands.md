@@ -666,9 +666,9 @@ Parameters:
 - `token`: Use a token to clone instead of the default Evergreen generated GitHub token.
   Since this is a secret, it should be provided as a project
   expansion. For example, you could provide an expansion called
-  "github_token" and then set this field to \${github_token}.
+  "github*token" and then set this field to \${github_token}.
   Evergreen will populate the expansion when it parses the project
-  yaml. This token is _only_ used for the source repository, not modules.
+  yaml. This token is \_only* used for the source repository, not modules.
 - `is_oauth`: If a project token is provided and that token is an OAuth token and not a
   GitHub app token, `is_oauth` must be set to true so that the clone command is formatted properly.
 - `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
@@ -1239,13 +1239,13 @@ Parameters:
   s3 path in the UI for all Evergreen users. "private" which is a legacy option that now does the
   same as "public". "none" which hides the file from the UI for everybody but does not
   affect the underlying s3 permissions (see `permissions` parameter). "signed" which creates
-  a pre signed url with the provided role_arn or credentials, allowing users to see the file
+  a pre signed url with the provided role*arn or credentials, allowing users to see the file
   (even if it's private on S3). Visibility: signed should not be combined with
   permissions: public-read or permissions: public-read-write. It can be combined with aws_session_token
   but only if the generated credentials are from a previous `ec2.assume_role` command in this task or if
   `role_arn` was passed in, otherwise Evergreen won't know the associated role to assume when generating
   the presigned url.
-  Note: This parameter does _not_ affect the underlying permissions of the file
+  Note: This parameter does \_not* affect the underlying permissions of the file
   on S3, only the visibility in the Evergreen UI. To change the permissions of the file on S3, use the `permissions` parameter.
 - `patchable`: defaults to true. If set to false, the command will
   no-op for patches (i.e. continue without performing the s3 put).

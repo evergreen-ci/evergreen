@@ -50,21 +50,21 @@ documentation](https://docs.docker.com/engine/security/) explains the
 features of Docker's isolation model. There are a couple of differences
 to note as we roll out this new feature:
 
-1.  Task Groups: The initial release of container tasks does not support
-    configuring task groups. This is something we aim to support in
-    future iterations.
+1. Task Groups: The initial release of container tasks does not support
+   configuring task groups. This is something we aim to support in
+   future iterations.
 
-2.  Priority: The priority setting feature will not be available during
-    the initial release for container tasks.
+2. Priority: The priority setting feature will not be available during
+   the initial release for container tasks.
 
-3.  Greater configurability: When running container tasks, resources
-    such as CPU and memory usage must be explicitly configured, unlike
-    in the current distro model. Users are also free to bring their own
-    custom image to use, where only the software dependencies required for
-    their particular workflow are downloaded during runtime. Furthermore,
-    the container your task runs on is dedicated solely to that task and is not
-    reused, so you are free to do whatever you want with it without needing to worry about
-    leaving the environment in a messy state for the next task.
+3. Greater configurability: When running container tasks, resources
+   such as CPU and memory usage must be explicitly configured, unlike
+   in the current distro model. Users are also free to bring their own
+   custom image to use, where only the software dependencies required for
+   their particular workflow are downloaded during runtime. Furthermore,
+   the container your task runs on is dedicated solely to that task and is not
+   reused, so you are free to do whatever you want with it without needing to worry about
+   leaving the environment in a messy state for the next task.
 
 ## How To Get Started
 
@@ -93,28 +93,28 @@ housing your Dockerfile in a managed [repository](https://github.com/evergreen-c
 
 The following is the process by which you can create a usable image from your custom Dockerfile:
 
-1.  Ensure you are properly permissioned to stage PRs in the centralized image
-    repository, which hosts Dockerfiles for all teams participating in the
-    experimental offering of running container tasks in Evergreen.
-    Permission can be requested from MANA [here](https://mana.corp.mongodbgov.com/resources/64c464185f1589fbe7faec38).
-2.  Stage a PR against the repo containing a relevant Dockerfile under a new directory
-    that has the name of your project. Review should be requested from
-    **evergreen-ci/evg-app**, and the PR's approval will be contingent
-    on the Dockerfile following the [secure image
-    policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit)
-    that we currently have in place.
-3.  The PR, when approved and merged into the main branch, will trigger an automated Drone pipeline which
-    builds the image and pushes it to Amazon Elastic Container
-    Registry (ECR). You may then reference the URI of the newly built image.
-    Its format will be as follows:
+1. Ensure you are properly permissioned to stage PRs in the centralized image
+   repository, which hosts Dockerfiles for all teams participating in the
+   experimental offering of running container tasks in Evergreen.
+   Permission can be requested from MANA [here](https://mana.corp.mongodbgov.com/resources/64c464185f1589fbe7faec38).
+2. Stage a PR against the repo containing a relevant Dockerfile under a new directory
+   that has the name of your project. Review should be requested from
+   **evergreen-ci/evg-app**, and the PR's approval will be contingent
+   on the Dockerfile following the [secure image
+   policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit)
+   that we currently have in place.
+3. The PR, when approved and merged into the main branch, will trigger an automated Drone pipeline which
+   builds the image and pushes it to Amazon Elastic Container
+   Registry (ECR). You may then reference the URI of the newly built image.
+   Its format will be as follows:
 
-    > **557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/&lt;DIRECTORY&gt;:&lt;SHA&gt;**
+   > **557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen/&lt;DIRECTORY&gt;:&lt;SHA&gt;**
 
-    Where **&lt;DIRECTORY&gt;** is your project's directory name in our image
-    repository. For enhanced security, we need to use immutable image
-    tags, so rather than the typical ":latest" tag, image URIs in your
-    Evergreen YAML must also use a **&lt;SHA&gt;** tag, which would be the hash
-    of the corresponding commit in our [image repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
+   Where **&lt;DIRECTORY&gt;** is your project's directory name in our image
+   repository. For enhanced security, we need to use immutable image
+   tags, so rather than the typical ":latest" tag, image URIs in your
+   Evergreen YAML must also use a **&lt;SHA&gt;** tag, which would be the hash
+   of the corresponding commit in our [image repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
 
 The following is a template Dockerfile that abides by our [image
 policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit) and

@@ -23,10 +23,10 @@ Use only what you need.
 Evergreen is built in Go.
 Your tests can run on any machine that Evergreen can cross-compile its agent for, so it can run on all of Go's myriad supported operating systems and architectures, including
 
-1.  Linux
-2.  OSX
-3.  Windows
-4.  FreeBSD
+1. Linux
+2. OSX
+3. Windows
+4. FreeBSD
 
 on x86, amd64, and arm architectures.
 

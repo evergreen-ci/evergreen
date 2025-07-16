@@ -482,7 +482,7 @@ api:
         url: "https://.evergreen.exe"
 ```
 
-The "url" keys in each list item should contain the appropriate URL to the binary for each architecture. The "latest_revision" key should contain the githash that was used to build the binary. It should match the output of `evergreen version` for _all_ the binaries at the URLs listed in order for auto-updates to be successful.
+The "url" keys in each list item should contain the appropriate URL to the binary for each architecture. The "latest*revision" key should contain the githash that was used to build the binary. It should match the output of `evergreen version` for \_all* the binaries at the URLs listed in order for auto-updates to be successful.
 
 ### Notifications
 

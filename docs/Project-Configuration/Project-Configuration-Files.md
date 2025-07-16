@@ -9,10 +9,10 @@ simple YAML config language.
 
 Before reading onward, you should check out some example project files:
 
-1.  [Sample tutorial project file](https://github.com/evergreen-ci/sample.git)
-2.  [Evergreen's own project file](https://github.com/evergreen-ci/evergreen/blob/master/self-tests.yml)
-3.  [The MongoDB Tools project file](https://github.com/mongodb/mongo-tools/blob/master/common.yml)
-4.  [The MongoDB Server project file](https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml)
+1. [Sample tutorial project file](https://github.com/evergreen-ci/sample.git)
+2. [Evergreen's own project file](https://github.com/evergreen-ci/evergreen/blob/master/self-tests.yml)
+3. [The MongoDB Tools project file](https://github.com/mongodb/mongo-tools/blob/master/common.yml)
+4. [The MongoDB Server project file](https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml)
 
 Though some of them are quite large, the pieces that make them up are
 very simple.
@@ -50,19 +50,19 @@ tasks:
 
 Notice that tasks contain:
 
-1.  A name
-2.  A set of dependencies on other tasks. `depends_on` can be defined at
-    multiple levels of the YAML. If there are conflicting `depends_on`
-    definitions at different levels, the order of priority is defined
-    [here](#dependency-override-hierarchy).
-3.  A distro or list of distros to run on (documented more under
-    ["Build
-    Variants"](#build-variants)).
-    `run_on` can be defined at multiple levels of the YAML. If there are
-    conflicting `run_on` definitions at different levels, the order of priority
-    is defined [here](#task-fields-override-hierarchy).
-4.  A list of commands and/or functions that tell Evergreen how to run
-    it.
+1. A name
+2. A set of dependencies on other tasks. `depends_on` can be defined at
+   multiple levels of the YAML. If there are conflicting `depends_on`
+   definitions at different levels, the order of priority is defined
+   [here](#dependency-override-hierarchy).
+3. A distro or list of distros to run on (documented more under
+   ["Build
+   Variants"](#build-variants)).
+   `run_on` can be defined at multiple levels of the YAML. If there are
+   conflicting `run_on` definitions at different levels, the order of priority
+   is defined [here](#task-fields-override-hierarchy).
+4. A list of commands and/or functions that tell Evergreen how to run
+   it.
 
 Another useful feature is [task tags](#task-and-variant-tags),
 which allows grouping tasks to limit whether [those tasks should run on
