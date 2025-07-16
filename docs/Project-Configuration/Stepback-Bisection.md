@@ -20,20 +20,20 @@ The following are all task-specific fields that populate separately for every ta
 ## Strategy
 Bisection starts with the failed commit that triggers it and the last known passing commit for that task. It then gets the version in the middle and activates the same task. This can be broken down to the following cases.
 
-- If the task passes, Evergreen knows the offending commit is between the same failing commit and the task that just passed.
-    - Evergreen activates the task (current) between the same failing commit and the task that just passed.
-- If the task fails, Evergreen knows the offending commit is between the same passing commit and the task that just failed.
-    - Evergreen activates the task (current) between the same passing commit and the task that just failed.
-- Then in both cases:
-    - The 'current' task's previous stepback task is set to the task that activated this step in stepback.
-    - The task that activated this step in Stepback is updated to point their 'Next Stepback Task' to the 'current' task.
-    - Once this task fails or passes, repeats the case that applies (with 'Previous' being the 'current' task).
+* If the task passes, Evergreen knows the offending commit is between the same failing commit and the task that just passed.
+    * Evergreen activates the task (current) between the same failing commit and the task that just passed.
+* If the task fails, Evergreen knows the offending commit is between the same passing commit and the task that just failed.
+    * Evergreen activates the task (current) between the same passing commit and the task that just failed.
+* Then in both cases:
+    * The 'current' task's previous stepback task is set to the task that activated this step in stepback.
+    * The task that activated this step in Stepback is updated to point their 'Next Stepback Task' to the 'current' task.
+    * Once this task fails or passes, repeats the case that applies (with 'Previous' being the 'current' task).
 
 ## Example
 Below is an example with:
-- A passing commit labeled 'Passing commit'.
-- Commits 1 - 10 (1 first, 10 last) labeled '1', '2', ... that are inactive.
-- A failing commit labeled 'Latest commit'.
+* A passing commit labeled 'Passing commit'.
+* Commits 1 - 10 (1 first, 10 last) labeled '1', '2', ... that are inactive.
+* A failing commit labeled 'Latest commit'.
 
 (i.e. x ? ? ? ? ? ? ? * ? ? ✔️ where x is the latest commit, * is the offending commit, and ✔️ is the latest passing).
 

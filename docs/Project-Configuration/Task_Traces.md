@@ -99,34 +99,34 @@ OTel defines [JSON protobuf encoding](https://opentelemetry.io/docs/specs/otlp/#
 
 Span names should be descriptive and concise, clearly describing the operation being performed.  
 #### **Examples:**  
-- **Bad:** `span1`, `operation_x`, `unknown_process`  
-- **Good:** `test`, `test_span`, `task_execution`
+* **Bad:** `span1`, `operation_x`, `unknown_process`  
+* **Good:** `test`, `test_span`, `task_execution`
 
 ---
 
 ### **Attributes**
 
 Attributes provide additional context to a span. They should be:  
-- Key-value pairs (e.g., string, number, boolean).  
-- Descriptive, concise, and relevant.  
-- Consistent across spans to simplify search and analysis.
+* Key-value pairs (e.g., string, number, boolean).  
+* Descriptive, concise, and relevant.  
+* Consistent across spans to simplify search and analysis.
 
 #### **Examples:**
-- **Bad:**  
-  - Attribute names: `attribute1`, `attr2`  
-  - Lengthy names: `this_is_a_very_long_attribute_name_that_is_hard_to_read`  
+* **Bad:**  
+  * Attribute names: `attribute1`, `attr2`  
+  * Lengthy names: `this_is_a_very_long_attribute_name_that_is_hard_to_read`  
 
-- **Good:**  
-  - `test_name="example_test"`  
-  - `test_status="success"`  
-  - `test_duration=123`
+* **Good:**  
+  * `test_name="example_test"`  
+  * `test_status="success"`  
+  * `test_duration=123`
 
 **Consistency Tip:** Use the same attribute names across spans performing similar operations. For example, all spans representing tests should use `test_name` for the test name. Avoid inconsistent naming like `test_name` in one span and `test_case_name` in another.
 
 **Why It Matters:**  
 Inconsistent attribute naming can:  
-- Make it difficult to compare spans.  
-- Lead to exceeding Honeycomb's global limit of 10,000 attributes, causing trace drops.  
+* Make it difficult to compare spans.  
+* Lead to exceeding Honeycomb's global limit of 10,000 attributes, causing trace drops.  
 > **Tip:** Avoid dynamically setting field names from your instrumentation code or generating field names on the fly. This can lead to runaway schemas, making the dataset difficult to navigate and causing Honeycomb to throttle the creation of new columns. Be cautious not to accidentally send a timestamp as a key instead of a value, and avoid sending unsanitized user input as a field name.
 
 ### **Tips**
@@ -135,16 +135,16 @@ Inconsistent attribute naming can:
 When defining span attributes, it's essential to provide context by using namespaces. This helps clarify the origin and purpose of the attribute, making it easier to interpret in analytics. Learn more about namespaces [here](https://docs.honeycomb.io/get-started/best-practices/organizing-data/#namespace-custom-fields).
 
 ##### **Bad Examples:**
-- `function.name`
-- `function.status`
+* `function.name`
+* `function.status`
 
 ##### **Good Examples:**
-- `resmoke.function.name`
-- `resmoke.function.status`
+* `resmoke.function.name`
+* `resmoke.function.status`
 
 By including a namespace (e.g., `resmoke`, `e2e`), attributes are contextualized, making their purpose within the system clear. This also simplifies data filtering and analysis. For instance:  
-- `task.status=success`  
-- `project.identifier=evergreen`
+* `task.status=success`  
+* `project.identifier=evergreen`
 
 ---
 
@@ -153,12 +153,12 @@ By including a namespace (e.g., `resmoke`, `e2e`), attributes are contextualized
 While namespaces are useful, over-nesting with too many dots can lead to overly complex attribute names. This makes them harder to read and analyze.
 
 ##### **Bad Examples:**
-- `host.is.volume.migration`
-- `host.is.unexpirable`
+* `host.is.volume.migration`
+* `host.is.unexpirable`
 
 ##### **Good Examples:**
-- `host.is_volume_migration`
-- `host.is_unexpirable`
+* `host.is_volume_migration`
+* `host.is_unexpirable`
 
 In these examples, underscores replace excessive dot nesting, keeping the attribute names concise and manageable.
 
@@ -169,8 +169,8 @@ In these examples, underscores replace excessive dot nesting, keeping the attrib
 When defining multi-word attributes, use `snake_case` to separate words. This ensures attributes are easy to read and understand.
 
 ##### **Examples:**
-- **Bad:** `TestStatus`, `testStatus`, `test-status`  
-- **Good:** `test_status`, `test_duration`
+* **Bad:** `TestStatus`, `testStatus`, `test-status`  
+* **Good:** `test_status`, `test_duration`
 
 ---
 
@@ -185,8 +185,8 @@ Balance the need for context with simplicity. Use namespaces thoughtfully to pro
 Events record significant occurrences during a span's lifetime. Use them to capture meaningful moments, such as when a test starts, finishes, or fails.
 
 #### **Examples:**
-- **Bad:** `event1`, `event2`  
-- **Good:** `test_started`, `test_completed`, `test_failed`
+* **Bad:** `event1`, `event2`  
+* **Good:** `test_started`, `test_completed`, `test_failed`
 
 Events should have clear and concise names that describe the recorded event. Include relevant attributes for additional context.
 

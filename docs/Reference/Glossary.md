@@ -26,12 +26,12 @@ The requester is a field in the version/patch document that indicates how it was
 
 Here is a list of valid requester types:
 
-- `github_pull_request`: A pull request from GitHub.
-- `github_merge_request`: A merge request from GitHub.
-- `git_tag_request`: A tag from GitHub.
-- `gitter_request`: A commit on the tracking GitHub branch.
-- `trigger_request`: Trigger patches.
-- `ad_hoc`: Periodic builds.
-- `patch_request`: CLI requests.
+* `github_pull_request`: A pull request from GitHub.
+* `github_merge_request`: A merge request from GitHub.
+* `git_tag_request`: A tag from GitHub.
+* `gitter_request`: A commit on the tracking GitHub branch.
+* `trigger_request`: Trigger patches.
+* `ad_hoc`: Periodic builds.
+* `patch_request`: CLI requests.
 
 Using our [REST API](../API/REST-V2-Usage.mdx) you can find the requester type of a version or patch.
