@@ -304,7 +304,6 @@ are the icons used for each task status:
 
 Version statuses are very similar to task statuses, and are listed below for additional clarity.
 
-
 #### `created`
 
 **Description**: Indicates one of the following:

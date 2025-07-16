@@ -4,7 +4,7 @@ Single task distros are distros that will only run one task before terminating. 
 
 ## Who Should Use Single Task Distros?
 
-Most users should not be using these distros. They are specifically created to compile release binaries in a secure environment. If your task *does* compile for a release, please follow the below steps.
+Most users should not be using these distros. They are specifically created to compile release binaries in a secure environment. If your task _does_ compile for a release, please follow the below steps.
 
 ## How to Use Single Task Distros
 

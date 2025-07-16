@@ -1,8 +1,8 @@
 # 2023-11-02 Use swaggo to generate REST v2 documentation
 
-* status: accepted
-* date: 2023-11-02
-* authors: Brian Samek
+- status: accepted
+- date: 2023-11-02
+- authors: Brian Samek
 
 ## Context and Problem Statement
 

@@ -1,8 +1,8 @@
 # 2023-03-30 Project Create and Enable Logic
 
-* status: accepted
-* date: 2023-03-30
-* authors: Bynn Lee
+- status: accepted
+- date: 2023-03-30
+- authors: Bynn Lee
 
 ## Context and Problem Statement
 

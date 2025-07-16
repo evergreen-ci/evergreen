@@ -1,6 +1,6 @@
 # Controlling When a Task Runs on the Waterfall
 
-There are multiple ways to control the scheduling of builds/tasks on a project's *waterfall* page. This means that tasks manually scheduled by a PR or patch will run regardless of cron/batchtime settings.
+There are multiple ways to control the scheduling of builds/tasks on a project's _waterfall_ page. This means that tasks manually scheduled by a PR or patch will run regardless of cron/batchtime settings.
 
 In short:
 
@@ -17,6 +17,7 @@ features interact with each other are found [here](Project-Configuration-Files#s
 Documentation on limiting when tasks runs beyond the waterfall can be found [here](Project-Configuration-Files#limiting-when-a-task-or-variant-will-run).
 
 ## Activate
+
 `activate: false` prevents a build variant or task on a mainline commit from activating automatically. This can be specified in the
 buildvariants section of the project configuration file on a build variant or a task within the build variant. If a cron job wants to activate a build/task but also has `activate` set to false, the build/task will not run.
 
@@ -34,15 +35,15 @@ Cron can be specified in the buildvariants section in the project configuration 
 
 ```yaml
 buildvariants:
-- name: the-main-bv
-  display_name: The Main BV
-  cron: 0 12 * * * # at 12:00 every day
-  run_on:
-  - my-distro
-  tasks:
-  - name: first_test
-  - name: second_test
-    cron: '@daily' # overrides build variant cron
+  - name: the-main-bv
+    display_name: The Main BV
+    cron: 0 12 * * * # at 12:00 every day
+    run_on:
+      - my-distro
+    tasks:
+      - name: first_test
+      - name: second_test
+        cron: "@daily" # overrides build variant cron
 ```
 
 In the example above, when a mainline commit is triggered at 10:00, it will not initially schedule any tasks in `the-main-bv`. Let's also say that there was another mainline commit triggered at 11:00.

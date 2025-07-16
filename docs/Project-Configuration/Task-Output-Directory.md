@@ -50,9 +50,9 @@ format: text-timestamp
 
 Log Line Formats:
 
--   `text`: Plain text, ingested as-is. A timestamp is prepended to each line
-    upon ingestion. This is the default format but it is not recommended as log
-    merging is timestamp-based.
--   `text-timestamp`: Plain text prefixed with a Unix nanosecond timestamp and
-    whitespace. For example:
-	        1575743479637000000 This is a log line.
+- `text`: Plain text, ingested as-is. A timestamp is prepended to each line
+  upon ingestion. This is the default format but it is not recommended as log
+  merging is timestamp-based.
+- `text-timestamp`: Plain text prefixed with a Unix nanosecond timestamp and
+  whitespace. For example:
+  1575743479637000000 This is a log line.

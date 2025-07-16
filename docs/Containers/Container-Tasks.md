@@ -51,30 +51,32 @@ features of Docker's isolation model. There are a couple of differences
 to note as we roll out this new feature:
 
 1.  Task Groups: The initial release of container tasks does not support
-configuring task groups. This is something we aim to support in
-future iterations.
+    configuring task groups. This is something we aim to support in
+    future iterations.
 
 2.  Priority: The priority setting feature will not be available during
-the initial release for container tasks.
+    the initial release for container tasks.
 
 3.  Greater configurability: When running container tasks, resources
-such as CPU and memory usage must be explicitly configured, unlike
-in the current distro model. Users are also free to bring their own
-custom image to use, where only the software dependencies required for
-their particular workflow are downloaded during runtime. Furthermore,
-the container your task runs on is dedicated solely to that task and is not
-reused, so you are free to do whatever you want with it without needing to worry about
-leaving the environment in a messy state for the next task.
+    such as CPU and memory usage must be explicitly configured, unlike
+    in the current distro model. Users are also free to bring their own
+    custom image to use, where only the software dependencies required for
+    their particular workflow are downloaded during runtime. Furthermore,
+    the container your task runs on is dedicated solely to that task and is not
+    reused, so you are free to do whatever you want with it without needing to worry about
+    leaving the environment in a messy state for the next task.
 
 ## How To Get Started
+
 This section will walk you through the steps to get started with running container tasks in Evergreen,
 which are at a high level as follows:
+
 1. Create your Dockerfile in accordance with our existing [secure image
    policy](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit).
 2. Follow the image creation and management steps [here](#creating-and-managing-your-container-images) to obtain a usable image URI
-to run container tasks on.
+   to run container tasks on.
 3. Configure to your project YAML via the steps [here](#update-your-yaml-configuration)
-to create a variant that uses the new image and runs tasks in containers.
+   to create a variant that uses the new image and runs tasks in containers.
 4. Schedule the tasks in your new container variant in a patch to test your changes.
 
 ### Creating a Dockerfile
@@ -86,7 +88,6 @@ At the moment, our image security automation is still [under
 development](https://docs.google.com/document/d/1MMePuL5YBjJQcNdtwzU2kMLPSsRLzDyE0rhTVkmXDqo/edit#heading=h.ghiwibz2opmd),
 so for the time being, you may create your own Dockerfile for use in container tasks but R&D Dev Prod will be temporarily
 housing your Dockerfile in a managed [repository](https://github.com/evergreen-ci/container-initial-offering-dockerfiles).
-
 
 ### Creating And Managing Your Container Images
 
@@ -121,7 +122,7 @@ includes commonly used tools and packages (e.g. Go, Python, NodeJS, etc.)
 that you can copy/paste and use as a reference for creating your own. Note that directly copying and pasting this
 Dockerfile isn't recommended as it may not be up to date with the latest versions of the tools and packages it installs.
 
-``` dockerfile
+```dockerfile
 # Use an approved base image
 FROM ubuntu:latest
 
@@ -175,7 +176,7 @@ rather than distros which are configured by Evergreen admins.
 Below is an example setup for configuring a build variant to run
 container tasks:
 
-``` yaml
+```yaml
 containers:
   - name: example-container
     working_dir: /
@@ -198,35 +199,35 @@ containers:
 
 Fields:
 
--   **name**: a user-defined name for the container that represents the
-    task or the environment of the container
+- **name**: a user-defined name for the container that represents the
+  task or the environment of the container
 
--   **working_dir**: the working directory for your tasks within the
-    container. In the example, it's set to the root directory
+- **working_dir**: the working directory for your tasks within the
+  container. In the example, it's set to the root directory
 
--   **image**: the Docker image to use for the container. Initially,
-    this must be one of our pre-approved base images. Users will be
-    able to submit Dockerfiles to us for review, at which point we'll
-    build them into a container registry. Defining arbitrary
-    Dockerfiles will be unsupported to start as we need to vet them as
-    we scope out the best image-building primitives that are both
-    sustainable and secure. (**_note_**: this field can be expanded by project variables)
+- **image**: the Docker image to use for the container. Initially,
+  this must be one of our pre-approved base images. Users will be
+  able to submit Dockerfiles to us for review, at which point we'll
+  build them into a container registry. Defining arbitrary
+  Dockerfiles will be unsupported to start as we need to vet them as
+  we scope out the best image-building primitives that are both
+  sustainable and secure. (**_note_**: this field can be expanded by project variables)
 
--   **resources**: the resources allocated to the container: cpu and
-    memory_mb set the CPU units and the memory (in MB), respectively,
-    that the container is allocated
+- **resources**: the resources allocated to the container: cpu and
+  memory_mb set the CPU units and the memory (in MB), respectively,
+  that the container is allocated
 
--   **size**: an alternative to the resources section, a preset size for
-    the container configured within the UI
+- **size**: an alternative to the resources section, a preset size for
+  the container configured within the UI
 
--   **system**: specification for the CPU architecture and the operating
-    system to be used by your container (currently linux is the only
-    supported operating system)
+- **system**: specification for the CPU architecture and the operating
+  system to be used by your container (currently linux is the only
+  supported operating system)
 
 Once containers are configured, they must be referenced by a build
 variant. Example:
 
-``` yaml
+```yaml
 buildvariants:
   - name: container-variant
     display_name: Container Variant
@@ -261,13 +262,13 @@ container YAML configurations.
 
 Options:
 
--   Name: The name for the resource preset. Names must be unique within
-    the list.
+- Name: The name for the resource preset. Names must be unique within
+  the list.
 
--   Memory: The amount of memory (in MiB) to allocate.
+- Memory: The amount of memory (in MiB) to allocate.
 
--   CPU: The CPU units the container can use. These values are expressed
-    in 'vCPU Units'. 1024 CPU units is the equivalent of 1vCPU.
+- CPU: The CPU units the container can use. These values are expressed
+  in 'vCPU Units'. 1024 CPU units is the equivalent of 1vCPU.
 
 Users can define as many container configurations as needed, reflecting
 different appropriate resource needs for various tasks.
@@ -335,6 +336,7 @@ modules:
 ```
 
 use:
+
 ```yaml
 modules:
   - name: evergreen
@@ -350,6 +352,6 @@ none container tasks either.
 Using our [host.create](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Project-Commands#hostcreate)
 command will be unsupported for container tasks.
 
-
 ### Spawning Additional Containers
+
 The ability to start additional containers to run alongside your task from within the task is a feature we are looking to support in the future, and researching as part of [EVG-20339](https://jira.mongodb.org/browse/EVG-20339).

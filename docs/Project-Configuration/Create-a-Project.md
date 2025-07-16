@@ -7,6 +7,7 @@ This guide is meant to help users create their own projects on Evergreen.
 To have access to create a project you must be either a super user or the admin of an existing project.
 
 ### Things to consider before creating a project
+
 1. Why do you need this project? Can this need be met by an existing project instead?
 2. Is this project branching off of a large project? If yes, consider reaching out to the admins of that project to ensure that all edge cases are considered.
 3. Are you creating more than one project at the same time? Is there a way to avoid this?
@@ -14,6 +15,7 @@ To have access to create a project you must be either a super user or the admin 
 ### Steps to Request
 
 If you do not see the `New Project` button on the [project settings page](https://spruce.mongodb.com/project/YourProject/settings/general):
+
 1. Do you want to copy an existing project? If so, then you should ask an admin of that project to follow the steps under "For Project Admins". Note that the Evergreen team will not copy an existing project for you, but if you need help figuring out who the admins are you can ask in #ask-devprod-evergreen.
 2. To request a new project, file a JIRA ticket in the DEVPROD project with the following information:
    1. GitHub repo organization (e.g., "10gen")
@@ -24,6 +26,7 @@ If you do not see the `New Project` button on the [project settings page](https:
 ## Steps to Create
 
 ![create_project_modal.png](../images/create_project_modal.png)
+
 1. Visit the projects page in the new UI https://spruce.mongodb.com/projects/.
 2. Click New Project. If you want to copy the current project, click Duplicate Current Project. Otherwise, click Create New Project.
 3. Enter the project name, repo org ("Owner"), and repo name ("Repo"). Note that only creating projects that track MongoDB owned organizations is supported. If the organization you need is not in the GitHub Organization drop-down, reach out to the Evergreen team to see if it can be supported. Forks are not supported by Evergreen.
@@ -36,9 +39,9 @@ If you do not see the `New Project` button on the [project settings page](https:
 
 The S3 bucket created for your project will have the following lifecycle policy:
 
-* Day 0 - Object uploaded
-* Day 60 - Object moved to Standard-IA
-* Day 365 - Object expires
+- Day 0 - Object uploaded
+- Day 60 - Object moved to Standard-IA
+- Day 365 - Object expires
 
 ## Project Limitations
 

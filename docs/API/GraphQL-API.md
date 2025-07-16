@@ -58,9 +58,15 @@ be accomplished in a single declarative request.
 
 ```graphql
 # Query with variables defined
-query ($options: MainlineCommitsOptions!, $buildVariantOptions: BuildVariantOptions!) {
+query (
+  $options: MainlineCommitsOptions!
+  $buildVariantOptions: BuildVariantOptions!
+) {
   # Pass in the options to the mainlineCommits query
-  mainlineCommits(options: $options, buildVariantOptions: $buildVariantOptions) {
+  mainlineCommits(
+    options: $options
+    buildVariantOptions: $buildVariantOptions
+  ) {
     versions {
       version {
         id
@@ -110,7 +116,7 @@ application requesting the data.
 
 ```graphql
 {
-  task(taskId:"<task_id>", execution:0){
+  task(taskId: "<task_id>", execution: 0) {
     id
     status
     execution

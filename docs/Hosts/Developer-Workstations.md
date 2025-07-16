@@ -50,12 +50,12 @@ systems.
 
 Project settings include a ["Workstation Setup" section](../Project-Configuration/Project-and-Distro-Settings#virtual-workstation-commands)
 where administrators declare a number of simple commands (and directory
-contexts) that will run a project's setup. These commands are *not* shell
-interpolated, and are *not* meant to provision the development environment (e.g.
+contexts) that will run a project's setup. These commands are _not_ shell
+interpolated, and are _not_ meant to provision the development environment (e.g.
 install system packages or modify configuration files in `~/`). Use these
 commands to clone a repository, generate index files, and/or run a test build.
 
-As a prerequisite, users of the project setup *must* have configured
+As a prerequisite, users of the project setup _must_ have configured
 their SSH keys with GitHub, with access to the GitHub repositories
 required for their project. The commands will assemble a clone
 operation for the project's core repository when selected, but
@@ -84,7 +84,7 @@ You may also omit the `--distro` argument to use locally. This makes
 it possible to set your own `--directory` and setup a project at the
 location of your choice. The project directory and intermediate
 required directories will be created as normally. The `-distro`
-argument only modifies the path of the directory *if* the distro
+argument only modifies the path of the directory _if_ the distro
 specified workstation. If you specify
 `--distro` and `--directory` the `--directory` creates a prefix
 within the workstation distro's persistent home directory.
