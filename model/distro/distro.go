@@ -806,20 +806,22 @@ func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error
 	if err := rm.AddScope(newScope); err != nil && !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "adding scope for distro '%s'", d.Id)
 	}
-	newRole := gimlet.Role{
-		ID:     fmt.Sprintf("admin_distro_%s", d.Id),
-		Owners: []string{creator.Id},
-		Scope:  newScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
-			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
-		},
-	}
-	if err := rm.UpdateRole(newRole); err != nil {
-		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
-	}
-	if err := creator.AddRole(ctx, newRole.ID); err != nil {
-		return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
+	if creator != nil {
+		newRole := gimlet.Role{
+			ID:     fmt.Sprintf("admin_distro_%s", d.Id),
+			Owners: []string{creator.Id},
+			Scope:  newScope.ID,
+			Permissions: map[string]int{
+				evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
+				evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
+			},
+		}
+		if err := rm.UpdateRole(newRole); err != nil {
+			return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
+		}
+		if err := creator.AddRole(ctx, newRole.ID); err != nil {
+			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
+		}
 	}
 	return nil
 }
