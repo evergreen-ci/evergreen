@@ -13,32 +13,32 @@
 
 ### Detailed Retention by Data Type
 
-**Tasks & Hosts**
+#### Tasks & Hosts
 
 - **MongoDB:** Retained for **365 days** from `create_time` or `termination_time` (as applicable).
 - **Trino (Data Warehouse):** Retained for **1825 days** for tasks and hosts data.
 
-**Artifacts**
+#### Artifacts
 
 - **S3:**
   - Transitioned to Standard-IA after **30 days**
   - Permanently deleted after **365 days**
 - **MongoDB (Task Artifacts):** Expire after **365 days** based on `create_time`.
 
-**Logs**
+#### Logs
 
 - **S3 Logs:** Deleted after **365 days**.
 
-**Test Results**
+#### Test Results
 
 - **MongoDB Test Results:** Expire after **365 days** based on `created_at`.
 - **S3 Test Results:** Deleted after **730 days** (2 years).
 
-**Versions, Builds, Patches, and Tasks**
+#### Versions, Builds, Patches, and Tasks
 
 - **MongoDB:** Expire after **365 days** based on `create_time`.
 
-**Hosts/Pods**
+#### Hosts/Pods
 
 - **MongoDB:** Expire after **365 days** based on `termination_time` if applicable.
 
