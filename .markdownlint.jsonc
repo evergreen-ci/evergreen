@@ -3,8 +3,6 @@
   "default": true, // Enable all rules by default. Disable rules below.
   "MD013": false, // Don't remove line length limit. This is an old markdown rule that is tyipcally ignored.
   "MD024": false, // We deliberately use multiple headings with the same name, like "Request".
-  "MD034": false,
-  "MD036": false,
   "MD037": false,
   "MD040": false,
   "MD041": false,
