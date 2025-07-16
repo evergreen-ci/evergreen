@@ -52,7 +52,7 @@ type APIBuild struct {
 	// Contains a subset of information about tasks for the build; this is not
 	// provided/accurate for most routes (get versions for project is an
 	// exception).
-	TaskCache []APITaskCache `json:"task_cache,omitempty"`
+	TaskCache []APITaskCache `json:"task_cache"`
 	// Tasks is the build's task cache with just the names
 	Tasks []string `json:"tasks"`
 	// List of tags defined for the build variant, if any
@@ -71,7 +71,7 @@ type APIBuild struct {
 	// keys of this object are statuses and the values are the number of tasks
 	// within this build in that status. Note that this field provides data that
 	// you can get yourself by querying tasks for this build.
-	StatusCounts task.TaskStatusCount `json:"status_counts,omitempty"`
+	StatusCounts task.TaskStatusCount `json:"status_counts"`
 	// Some routes will return information about the variant as defined in the
 	// project. Does not expand expansions; they will be returned as written in
 	// the project yaml (i.e. ${syntax})

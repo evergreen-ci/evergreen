@@ -141,7 +141,7 @@ type Host struct {
 	// LastInstanceEditTime tracks when the instance type was last modified
 	LastInstanceEditTime time.Time `bson:"last_instance_edit_time,omitempty" json:"last_instance_edit_time,omitempty"`
 	// The volumeID and device name for each volume attached to the host
-	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
+	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes"`
 
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
@@ -160,15 +160,15 @@ type Host struct {
 	ContainerBuildAttempt int                      `bson:"container_build_attempt" json:"container_build_attempt"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
-	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options"`
 
 	// DockerOptions stores information for creating a container with a specific image and command
-	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
+	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options"`
 
 	// PortBindings is populated if PublishPorts is specified when creating docker container from task
 	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings,omitempty"`
 	// InstanceTags stores user-specified tags for instances
-	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
+	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags"`
 
 	// SSHKeyNames contains the names of the SSH key that have been distributed
 	// to this host.
@@ -183,7 +183,7 @@ type Host struct {
 	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
 
 	// SleepSchedule stores host sleep schedule information.
-	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule,omitempty"`
+	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
 }
 
 type Tag struct {

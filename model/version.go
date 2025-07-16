@@ -46,7 +46,7 @@ type Version struct {
 	// BuildVariants contains information about build variant activation. This
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
-	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status"`
 	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
@@ -55,11 +55,11 @@ type Version struct {
 	Activated *bool `bson:"activated,omitempty" json:"activated,omitempty"`
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
-	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
-	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
+	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags"`
+	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag"`
 
 	// Parameters stores user-defined parameters
-	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters,omitempty"`
+	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters"`
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`
 
@@ -97,7 +97,7 @@ type Version struct {
 	TriggerSHA string `bson:"trigger_sha,omitempty" json:"trigger_sha,omitempty"`
 
 	// this is only used for aggregations, and is not stored in the DB
-	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants,omitempty"`
+	Builds []build.Build `bson:"build_variants,omitempty" json:"build_variants"`
 
 	// ProjectStorageMethod describes how the parser project for this version is
 	// stored. If this is empty, the default storage method is StorageMethodDB.
@@ -320,7 +320,7 @@ type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
 	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
-	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
+	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks"`
 	ActivationStatus `bson:",inline"`
 }
 

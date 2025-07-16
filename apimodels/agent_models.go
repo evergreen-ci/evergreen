@@ -72,12 +72,12 @@ type TaskEndDetail struct {
 	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
 	// OtherFailingCommands contains information about commands that failed
 	// while the task was running but did not cause the task to fail.
-	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands,omitempty"`
+	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands"`
 	TimedOut             bool             `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
 	OOMTracker           *OOMTrackerInfo  `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
-	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules,omitempty"`
+	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules"`
 	TraceID              string           `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string         `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 }

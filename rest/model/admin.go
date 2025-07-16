@@ -329,8 +329,8 @@ type APIAmboyConfig struct {
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
-	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
-	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues,omitempty"`
+	Retry                                 APIAmboyRetryConfig        `json:"retry"`
+	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h any) error {
