@@ -34,7 +34,6 @@ const (
 	messageTypeNotification             = "Notification"
 	messageTypeUnsubscribeConfirmation  = "UnsubscribeConfirmation"
 
-	interruptionWarningType = "EC2 Spot Instance Interruption Warning"
 	instanceStateChangeType = "EC2 Instance State-change Notification"
 
 	ecsTaskStateChangeType              = "ECS Task State Change"
@@ -158,13 +157,6 @@ func (sns *ec2SNS) handleNotification(ctx context.Context) error {
 	}
 
 	switch notification.DetailType {
-	case interruptionWarningType:
-		if err := sns.handleInstanceInterruptionWarning(ctx, notification.Detail.InstanceID); err != nil {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrap(err, "processing interruption warning").Error(),
-			}
-		}
 	case instanceStateChangeType:
 		switch types.InstanceStateName(notification.Detail.State) {
 		case types.InstanceStateNameRunning:
