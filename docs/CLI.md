@@ -271,9 +271,9 @@ This will attempt to add changes for each module that your project supports. Thi
 
 ```yaml
 projects:
-    - name: my_favorite_project
-      module_paths:
-        my_favorite_module: /Users/first.last/go/src/github.com/my_favorite/module
+  - name: my_favorite_project
+    module_paths:
+      my_favorite_module: /Users/first.last/go/src/github.com/my_favorite/module
 ```
 
 We will then check that directory for changes, confirm them with you, and add them to the patch if confirmed. If there are modules you don’t want to include you can skip them and still continue to check others, or if there are no changes we’ll skip them automatically.

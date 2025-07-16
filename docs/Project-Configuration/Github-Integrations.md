@@ -149,7 +149,7 @@ Evergreen supports using expansions in the output file, but please be careful to
   "summary": "We found 6 failures and 2 warnings",
   "text": "It looks like there are some errors on lines 2 and 4.",
   "annotations": [
-      {
+    {
       "path": "README.md",
       "annotation_level": "warning",
       "title": "Why did the line of code change its mind",
@@ -157,7 +157,7 @@ Evergreen supports using expansions in the output file, but please be careful to
       "raw_details": "Do you mean this other thing?",
       "start_line": 2,
       "end_line": 2
-      }
+    }
   ]
 }
 ```

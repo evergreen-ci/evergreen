@@ -34,9 +34,9 @@ To define default values for parameters, as well as descriptions, parameters can
 
 ```yaml
 parameters:
-    - key: foo
-      value: bar
-      description: this is a demonstration
+  - key: foo
+    value: bar
+    description: this is a demonstration
 ```
 
 Note that value and description are not required. If value is not provided, the default value is the empty string.
@@ -51,9 +51,9 @@ If the user doesn't currently have parameter defaults (and hasn't included `--ye
 
 ```yaml
 project:
-- name: evergreen
-  parameters:
-    foo: bar
+  - name: evergreen
+    parameters:
+      foo: bar
 ```
 
 If defaults are defined here, they will overwrite defaults in the project YAML.
