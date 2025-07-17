@@ -76,8 +76,14 @@ func (at *APITest) BuildFromService(st any) error {
 		}
 		if v.LogInfo != nil {
 			at.Logs.RenderingType = v.LogInfo.RenderingType
+			if at.Logs.RenderingType == nil {
+				at.Logs.RenderingType = v.LogInfo.RenderingTypeCedar
+			}
 			at.Logs.Version = v.LogInfo.Version
 			at.Logs.LineNum = int(v.LogInfo.LineNum)
+			if at.Logs.LineNum == 0 {
+				at.Logs.LineNum = int(v.LogInfo.LineNumCedar)
+			}
 		}
 	case string:
 		at.TaskID = utility.ToStringPtr(v)

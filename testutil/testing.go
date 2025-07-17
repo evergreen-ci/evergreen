@@ -13,10 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	EnvOverride = "SETTINGS_OVERRIDE"
-)
-
 // path to an mci settings file containing sensitive information
 var settingsOverride = flag.String("evergreen.settingsOverride", "", "Settings file"+
 	" to be used to override sensitive info in the testing mci settings"+
@@ -37,9 +33,9 @@ func GetDirectoryOfFile() string {
 // an error parsing the settings
 func GetIntegrationFile(t *testing.T) *evergreen.Settings {
 	if (*settingsOverride) == "" {
-		require.NotZero(t, os.Getenv(EnvOverride), "Integration tests need a settings override file to be provided")
+		require.NotZero(t, os.Getenv(evergreen.SettingsOverride), "Integration tests need a settings override file to be provided")
 
-		*settingsOverride = os.Getenv(EnvOverride)
+		*settingsOverride = os.Getenv(evergreen.SettingsOverride)
 	}
 
 	if !filepath.IsAbs(*settingsOverride) {

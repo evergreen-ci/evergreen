@@ -240,7 +240,7 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 		}
 		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
-			TerminationReason: "host is expired, decommissioned, or failed to provision",
+			TerminationReason: "host is expired, decommissioned, or failed to provision (this is not an error)",
 		}))
 	}
 
@@ -1236,7 +1236,7 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
 }
 
-func logGithubAPILimit(env evergreen.Environment) amboy.QueueOperation {
+func logGithubAPILimit() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		limit, err := thirdparty.CheckGithubAPILimit(ctx)
 		if err != nil {

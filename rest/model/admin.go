@@ -329,7 +329,7 @@ type APIAmboyConfig struct {
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
-	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
+	Retry                                 APIAmboyRetryConfig        `json:"retry"`
 	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues,omitempty"`
 }
 
@@ -1442,7 +1442,6 @@ func (a *APIEC2Key) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
 		a.Name = utility.ToStringPtr(v.Name)
-		a.Region = utility.ToStringPtr(v.Region)
 		a.Key = utility.ToStringPtr(v.Key)
 		a.Secret = utility.ToStringPtr(v.Secret)
 	default:
@@ -1454,7 +1453,6 @@ func (a *APIEC2Key) BuildFromService(h any) error {
 func (a *APIEC2Key) ToService() (any, error) {
 	res := evergreen.EC2Key{}
 	res.Name = utility.FromStringPtr(a.Name)
-	res.Region = utility.FromStringPtr(a.Region)
 	res.Key = utility.FromStringPtr(a.Key)
 	res.Secret = utility.FromStringPtr(a.Secret)
 	return res, nil
@@ -2128,7 +2126,6 @@ type APIServiceFlags struct {
 	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
-	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	StaticAPIKeysDisabled           bool `json:"static_api_keys_disabled"`
@@ -2138,6 +2135,8 @@ type APIServiceFlags struct {
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
 	AdminParameterStoreDisabled     bool `json:"admin_parameter_store_disabled"`
+	LegacyUITaskPageDisabled        bool `json:"legacy_ui_task_page_disabled"`
+	LegacyUITaskHistoryPageDisabled bool `json:"legacy_ui_task_history_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2559,7 +2558,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.PodAllocatorDisabled = v.PodAllocatorDisabled
 		as.UnrecognizedPodCleanupDisabled = v.UnrecognizedPodCleanupDisabled
-		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
@@ -2570,6 +2568,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
 		as.AdminParameterStoreDisabled = v.AdminParameterStoreDisabled
+		as.LegacyUITaskPageDisabled = v.LegacyUITaskPageDisabled
+		as.LegacyUITaskHistoryPageDisabled = v.LegacyUITaskHistoryPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2605,7 +2605,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		HostAllocatorDisabled:           as.HostAllocatorDisabled,
 		PodAllocatorDisabled:            as.PodAllocatorDisabled,
 		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,
-		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
@@ -2616,6 +2615,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
 		AdminParameterStoreDisabled:     as.AdminParameterStoreDisabled,
+		LegacyUITaskPageDisabled:        as.LegacyUITaskPageDisabled,
+		LegacyUITaskHistoryPageDisabled: as.LegacyUITaskHistoryPageDisabled,
 	}, nil
 }
 

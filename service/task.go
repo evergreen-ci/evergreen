@@ -55,7 +55,7 @@ type uiTaskData struct {
 	TaskEndDetails       apimodels.TaskEndDetail `json:"task_end_details"`
 	TestResults          []uiTestResult          `json:"test_results"`
 	Aborted              bool                    `json:"abort"`
-	AbortInfo            task.AbortInfo          `json:"abort_info,omitempty"`
+	AbortInfo            task.AbortInfo          `json:"abort_info"`
 	MinQueuePos          int                     `json:"min_queue_pos"`
 	DependsOn            []uiDep                 `json:"depends_on"`
 	AbortedByDisplay     *abortedByDisplay       `json:"aborted_by_display,omitempty"`
@@ -144,10 +144,16 @@ type abortedByDisplay struct {
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	flags, err := evergreen.GetServiceFlags(r.Context())
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		return
+	}
+
 	projCtx := MustHaveProjectContext(r)
 	executionStr := gimlet.GetVars(r)["execution"]
 	var execution int
-	var err error
 
 	if executionStr != "" {
 		execution, err = strconv.Atoi(executionStr)
@@ -162,7 +168,15 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
+	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
+
+	// TODO: Delete all content in this file with the exception of this redirect.
+	if flags.LegacyUITaskPageDisabled {
+		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+		return
+	}
+
+	if RedirectSpruceUsers(w, r, spruceLink) {
 		return
 	}
 
@@ -414,7 +428,7 @@ func getAbortedBy(ctx context.Context, abortedByTaskId string) (*abortedByDispla
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy build")
 	}
-	if buildDisplay == nil || abortedTask == nil {
+	if buildDisplay == nil {
 		return nil, errors.New("problem getting abortBy display information")
 	}
 	abortedBy := &abortedByDisplay{

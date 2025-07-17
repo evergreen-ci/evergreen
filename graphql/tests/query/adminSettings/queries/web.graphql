@@ -1,0 +1,30 @@
+query Web {
+  adminSettings {
+    api {
+      httpListenAddr
+      url
+      corpUrl
+    }
+
+    ui {
+      url
+      helpUrl
+      uiv2Url
+      parsleyUrl
+      httpListenAddr
+      secret
+      defaultProject
+      corsOrigins
+      fileStreamingContentTypes
+      loginDomain
+      userVoice
+      csrfKey
+      cacheTemplates
+      stagingEnvironment
+      betaFeatures {
+        spruceWaterfallEnabled
+      }
+    }
+    disabledGQLQueries
+  }
+}

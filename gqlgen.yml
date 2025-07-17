@@ -20,6 +20,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
+  APIConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
+  APIConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
   Arch:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
@@ -132,6 +136,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
   ExternalLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIExternalLink
+  FailingCommand:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFailingCommand
   FeedbackRule:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
@@ -172,6 +178,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
   GitHubDynamicTokenPermissionGroup:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
+  GithubPatch:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPatch
   GithubProjectConflicts:
     model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   GithubPRSubscriber:
@@ -662,6 +670,8 @@ models:
   TriggerAliasInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   UIConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
+  UIConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUIConfig
   User:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDBUser

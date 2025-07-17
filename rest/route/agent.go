@@ -364,15 +364,8 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
-
-	const ghTokenLifetime = 50 * time.Minute
-	appToken, err := githubapp.CreateGitHubAppAuth(h.settings).CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating GitHub app token"))
-	}
-
 	knownHosts := h.settings.Expansions[evergreen.GithubKnownHosts]
-	e, err := model.PopulateExpansions(ctx, t, foundHost, appToken, knownHosts)
+	e, err := model.PopulateExpansions(ctx, t, foundHost, knownHosts)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
 	}

@@ -100,12 +100,12 @@ func TestLogService(t *testing.T) {
 
 				lines = append(
 					[]LogLine{
-						LogLine{
+						{
 							Priority:  level.Warning,
 							Timestamp: time.Now().Add(-time.Minute).UnixNano(),
 							Data:      "This should be the first logline.",
 						},
-						LogLine{
+						{
 							Priority:  level.Error,
 							Timestamp: time.Now().Add(-time.Minute).UnixNano(),
 							Data:      "Even though these sequence chunk was added later, it should be read before the previous chunk.",

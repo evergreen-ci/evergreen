@@ -1,0 +1,23 @@
+{
+  "tests": [
+    {
+      "query_file": "github_patch_data.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "githubPatchData": {
+              "author": "me",
+              "baseOwner": "evergreen-ci",
+              "baseRepo": "spruce",
+              "headBranch": "DEVPROD-1123",
+              "headHash": "123456",
+              "headOwner": "me",
+              "headRepo": "spruce",
+              "prNumber": 11
+            }
+          }
+        }
+      }
+    }
+  ]
+}
