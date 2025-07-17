@@ -356,6 +356,7 @@ type VersionMetadata struct {
 	PeriodicBuildID     string
 	RemotePath          string
 	GitTag              GitTag
+	ChangedFiles        []string
 }
 
 var (

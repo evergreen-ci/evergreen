@@ -304,26 +304,27 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		// "Ignore" a version if all changes are to ignored files
 		var ignore bool
-		if len(pInfo.Project.Ignore) > 0 {
-			var filenames []string
-			filenames, err = repoTracker.GetChangedFiles(ctx, revision)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":            "error checking GitHub for ignored files",
-					"runner":             RunnerName,
-					"project":            ref.Id,
-					"project_identifier": ref.Identifier,
-					"revision":           revision,
-				}))
-				continue
-			}
-			if pInfo.Project.IgnoresAllFiles(filenames) {
-				ignore = true
-			}
+		var filenames []string
+		
+		// Always get changed files for build variant filtering
+		filenames, err = repoTracker.GetChangedFiles(ctx, revision)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            "error checking GitHub for changed files",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+			}))
+			// Continue without changed files info rather than failing completely
+			filenames = nil
+		} else if len(pInfo.Project.Ignore) > 0 && pInfo.Project.IgnoresAllFiles(filenames) {
+			ignore = true
 		}
 
 		metadata := model.VersionMetadata{
-			Revision: revisions[i],
+			Revision:     revisions[i],
+			ChangedFiles: filenames,
 		}
 		projectInfo := &model.ProjectInfo{
 			Ref:                 ref,
@@ -818,12 +819,49 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		sourceRev = metadata.SourceVersion.Revision
 	}
 
+	// Filter build variants based on changed files if paths are specified
+	filteredBuildVariants := []model.BuildVariant{}
+	for _, buildvariant := range projectInfo.Project.BuildVariants {
+		// If the build variant has no path patterns, include it (default behavior)
+		if len(buildvariant.Paths) == 0 {
+			filteredBuildVariants = append(filteredBuildVariants, buildvariant)
+			continue
+		}
+		
+		// If we have changed files, check if any match the build variant's path patterns
+		if len(metadata.ChangedFiles) > 0 {
+			if buildvariant.PathsMatchAny(metadata.ChangedFiles) {
+				filteredBuildVariants = append(filteredBuildVariants, buildvariant)
+			} else {
+				grip.Debug(message.Fields{
+					"message":       "build variant skipped due to path filtering",
+					"variant":       buildvariant.Name,
+					"paths":         buildvariant.Paths,
+					"changed_files": metadata.ChangedFiles,
+					"project":       projectInfo.Project.Identifier,
+					"version":       v.Id,
+				})
+			}
+		} else {
+			// If we don't have changed files but the variant has path patterns,
+			// include it to maintain existing behavior (better safe than sorry)
+			filteredBuildVariants = append(filteredBuildVariants, buildvariant)
+			grip.Debug(message.Fields{
+				"message": "build variant included despite path patterns due to missing changed files",
+				"variant": buildvariant.Name,
+				"paths":   buildvariant.Paths,
+				"project": projectInfo.Project.Identifier,
+				"version": v.Id,
+			})
+		}
+	}
+
 	// create all builds for the version
 	buildsToCreate := []any{}
 	tasksToCreate := task.Tasks{}
 	pairsToCreate := model.TVPairSet{}
 	// build all pairsToCreate before creating builds, to handle dependencies (if applicable)
-	for _, buildvariant := range projectInfo.Project.BuildVariants {
+	for _, buildvariant := range filteredBuildVariants {
 		if ctx.Err() != nil {
 			return errors.Wrapf(ctx.Err(), "aborting version creation for version '%s'", v.Id)
 		}
@@ -890,7 +928,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
 
-	for _, buildvariant := range projectInfo.Project.BuildVariants {
+	for _, buildvariant := range filteredBuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		var aliasesMatchingVariant model.ProjectAliases
 		aliasesMatchingVariant, err = githubCheckAliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)

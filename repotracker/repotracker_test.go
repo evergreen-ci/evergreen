@@ -616,7 +616,7 @@ func TestBatchTimes(t *testing.T) {
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
-		So(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, distro.Collection, model.ParserProjectCollection), ShouldBeNil)
+		So(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection), ShouldBeNil)
 		previouslyActivatedVersion := model.Version{
 			Id:         "previously activated",
 			Identifier: "testproject",
@@ -1190,8 +1190,8 @@ tasks:
 	s.Nil(dbBuild)
 
 	dbTasks, err := task.Find(ctx, task.ByVersion(v.Id))
-	s.NoError(err)
-	s.Empty(dbTasks)
+s.NoError(err)
+s.Empty(dbTasks)
 }
 
 func (s *CreateVersionFromConfigSuite) TestErrorsMerged() {
@@ -1889,4 +1889,236 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.Equal(t, usr.Id, v.AuthorID)
 	assert.Equal(t, usr.DisplayName(), v.Author)
 	assert.Equal(t, usr.Email(), v.AuthorEmail)
+}
+
+func TestCreateVersionItemsPathFiltering(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Test configuration with build variants that have different path patterns
+	configYml := `
+buildvariants:
+- name: frontend
+  display_name: Frontend
+  run_on: d
+  paths:
+  - "frontend/**"
+  - "shared/**"
+  tasks:
+  - name: frontend_test
+- name: backend
+  display_name: Backend  
+  run_on: d
+  paths:
+  - "backend/**"
+  - "shared/**"
+  tasks:
+  - name: backend_test
+- name: all_files
+  display_name: All Files
+  run_on: d
+  # No paths specified - should always run
+  tasks:
+  - name: integration_test
+tasks:
+- name: frontend_test
+- name: backend_test  
+- name: integration_test
+`
+
+	projectRef := &model.ProjectRef{
+		Id:         "test_project",
+		Identifier: "test_project",
+		Owner:      "test_owner",
+		Repo:       "test_repo",
+		Branch:     "main",
+	}
+
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, projectRef.Id, p)
+	require.NoError(t, err)
+
+	projectInfo := &model.ProjectInfo{
+		Ref:                 projectRef,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+
+	// Test case 1: Only frontend files changed
+	t.Run("FrontendFilesOnly", func(t *testing.T) {
+		metadata := model.VersionMetadata{
+			ChangedFiles: []string{"frontend/src/app.js", "frontend/package.json"},
+		}
+
+		v := &model.Version{
+			Id:                  "test_version_frontend",
+			CreateTime:          time.Now(),
+			Revision:            "abc123",
+			Author:              "test_author",
+			RevisionOrderNumber: 1,
+			Owner:               "test_owner",
+			Repo:                "test_repo",
+			Branch:              "main",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+
+		err := createVersionItems(ctx, v, metadata, projectInfo, nil)
+		require.NoError(t, err)
+
+		// Should create builds for 'frontend' and 'all_files' variants
+		builds, err := build.Find(ctx, build.ByVersion(v.Id))
+		require.NoError(t, err)
+		
+		buildVariants := make([]string, len(builds))
+		for i, b := range builds {
+			buildVariants[i] = b.BuildVariant
+		}
+		
+		assert.Contains(t, buildVariants, "frontend")
+		assert.Contains(t, buildVariants, "all_files")
+		assert.NotContains(t, buildVariants, "backend")
+		assert.Len(t, builds, 2)
+	})
+
+	// Test case 2: Only backend files changed
+	t.Run("BackendFilesOnly", func(t *testing.T) {
+		metadata := model.VersionMetadata{
+			ChangedFiles: []string{"backend/src/server.go", "backend/config.yml"},
+		}
+
+		v := &model.Version{
+			Id:                  "test_version_backend",
+			CreateTime:          time.Now(),
+			Revision:            "def456",
+			Author:              "test_author",
+			RevisionOrderNumber: 2,
+			Owner:               "test_owner",
+			Repo:                "test_repo",
+			Branch:              "main",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+
+		err := createVersionItems(ctx, v, metadata, projectInfo, nil)
+		require.NoError(t, err)
+
+		builds, err := build.Find(ctx, build.ByVersion(v.Id))
+		require.NoError(t, err)
+		
+		buildVariants := make([]string, len(builds))
+		for i, b := range builds {
+			buildVariants[i] = b.BuildVariant
+		}
+		
+		assert.Contains(t, buildVariants, "backend")
+		assert.Contains(t, buildVariants, "all_files")
+		assert.NotContains(t, buildVariants, "frontend")
+		assert.Len(t, builds, 2)
+	})
+
+	// Test case 3: Shared files changed (should trigger both frontend and backend)
+	t.Run("SharedFiles", func(t *testing.T) {
+		metadata := model.VersionMetadata{
+			ChangedFiles: []string{"shared/utils.js", "shared/constants.go"},
+		}
+
+		v := &model.Version{
+			Id:                  "test_version_shared",
+			CreateTime:          time.Now(),
+			Revision:            "ghi789",
+			Author:              "test_author",
+			RevisionOrderNumber: 3,
+			Owner:               "test_owner",
+			Repo:                "test_repo",
+			Branch:              "main",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+
+		err := createVersionItems(ctx, v, metadata, projectInfo, nil)
+		require.NoError(t, err)
+
+		builds, err := build.Find(ctx, build.ByVersion(v.Id))
+		require.NoError(t, err)
+		
+		buildVariants := make([]string, len(builds))
+		for i, b := range builds {
+			buildVariants[i] = b.BuildVariant
+		}
+		
+		assert.Contains(t, buildVariants, "frontend")
+		assert.Contains(t, buildVariants, "backend")
+		assert.Contains(t, buildVariants, "all_files")
+		assert.Len(t, builds, 3)
+	})
+
+	// Test case 4: No changed files (should include all variants)
+	t.Run("NoChangedFiles", func(t *testing.T) {
+		metadata := model.VersionMetadata{
+			ChangedFiles: nil,
+		}
+
+		v := &model.Version{
+			Id:                  "test_version_no_files",
+			CreateTime:          time.Now(),
+			Revision:            "jkl012",
+			Author:              "test_author",
+			RevisionOrderNumber: 4,
+			Owner:               "test_owner",
+			Repo:                "test_repo",
+			Branch:              "main",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+
+		err := createVersionItems(ctx, v, metadata, projectInfo, nil)
+		require.NoError(t, err)
+
+		builds, err := build.Find(ctx, build.ByVersion(v.Id))
+		require.NoError(t, err)
+		
+		buildVariants := make([]string, len(builds))
+		for i, b := range builds {
+			buildVariants[i] = b.BuildVariant
+		}
+		
+		// All variants should be included when no changed files are available
+		assert.Contains(t, buildVariants, "frontend")
+		assert.Contains(t, buildVariants, "backend")
+		assert.Contains(t, buildVariants, "all_files")
+		assert.Len(t, builds, 3)
+	})
+
+	// Test case 5: Non-matching files (should only include variants without path patterns)
+	t.Run("NonMatchingFiles", func(t *testing.T) {
+		metadata := model.VersionMetadata{
+			ChangedFiles: []string{"docs/README.md", "scripts/deploy.sh"},
+		}
+
+		v := &model.Version{
+			Id:                  "test_version_docs",
+			CreateTime:          time.Now(),
+			Revision:            "mno345",
+			Author:              "test_author",
+			RevisionOrderNumber: 5,
+			Owner:               "test_owner",
+			Repo:                "test_repo",
+			Branch:              "main",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+
+		err := createVersionItems(ctx, v, metadata, projectInfo, nil)
+		require.NoError(t, err)
+
+		builds, err := build.Find(ctx, build.ByVersion(v.Id))
+		require.NoError(t, err)
+		
+		buildVariants := make([]string, len(builds))
+		for i, b := range builds {
+			buildVariants[i] = b.BuildVariant
+		}
+		
+		// Only the 'all_files' variant should run since it has no path patterns
+		assert.Contains(t, buildVariants, "all_files")
+		assert.NotContains(t, buildVariants, "frontend")
+		assert.NotContains(t, buildVariants, "backend")
+		assert.Len(t, builds, 1)
+	})
 }
