@@ -3469,7 +3469,20 @@ func (t *Task) HasCheckRun() bool {
 }
 
 func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
-	return t.DisplayTaskId != ""
+	// if display task ID is empty, we need to check manually if we have an execution task
+	if t.DisplayTaskId == "" {
+		dt, err := t.GetDisplayTask(ctx)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":        "unable to get display task",
+				"execution_task": t.Id,
+			}))
+			return false
+		}
+		return dt != nil
+	}
+
+	return true
 }
 
 func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
@@ -3484,12 +3497,42 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	var dt *Task
 	var err error
 	if t.Archived {
-		dt, err = FindOneOldByIdAndExecution(ctx, dtId, t.Execution)
+		if dtId != "" {
+			dt, err = FindOneOldByIdAndExecution(ctx, dtId, t.Execution)
+		} else {
+			dt, err = FindOneOld(ctx, ByExecutionTask(t.OldTaskId))
+			if dt != nil {
+				dtId = dt.OldTaskId // save the original task ID to cache
+			}
+		}
 	} else {
-		dt, err = FindOneId(ctx, dtId)
+		if dtId != "" {
+			dt, err = FindOneId(ctx, dtId)
+		} else {
+			dt, err = FindOne(ctx, db.Query(ByExecutionTask(t.Id)))
+			if dt != nil {
+				dtId = dt.Id
+			}
+		}
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if t.DisplayTaskId == "" {
+		grip.Info(message.Fields{
+			"message": "missing display task ID",
+			"task_id": t.Id,
+			"dt_id":   dtId,
+			"ticket":  "DEVPROD-13634",
+		})
+		// Cache display task ID for future use. If we couldn't find the display task,
+		// we cache the empty string to show that it doesn't exist.
+		grip.Error(message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
+			"message":         "failed to cache display task ID for task",
+			"task_id":         t.Id,
+			"display_task_id": dtId,
+		}))
 	}
 
 	t.DisplayTask = dt

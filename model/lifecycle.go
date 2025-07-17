@@ -1162,7 +1162,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		TriggerEvent:               creationInfo.Version.TriggerEvent,
 		IsGithubCheck:              isGithubCheck,
 		ActivatedBy:                creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
-		DisplayTaskId:              "",                            // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:       creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 		CachedProjectStorageMethod: creationInfo.Version.ProjectStorageMethod,
 	}
@@ -1347,7 +1346,6 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 		TriggerID:               creationInfo.Version.TriggerID,
 		TriggerType:             creationInfo.Version.TriggerType,
 		TriggerEvent:            creationInfo.Version.TriggerEvent,
-		DisplayTaskId:           "",
 	}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return t, nil
