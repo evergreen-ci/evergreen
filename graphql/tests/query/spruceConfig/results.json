@@ -106,10 +106,12 @@
           "spruceConfig": {
             "secretFields": [
               "githubAppAuth",
+              "personalAccessToken",
               "publicKey",
               "secret",
               "senderAddress",
               "servicePassword",
+              "token",
               "vars"
             ]
           }
