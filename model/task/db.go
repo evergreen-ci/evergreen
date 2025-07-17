@@ -2424,6 +2424,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 			"$match": bson.M{
 				"$or": []bson.M{
 					{DisplayTaskIdKey: ""},
+					{DisplayTaskIdKey: bson.M{"$exists": false}},
 					{DisplayOnlyKey: true},
 				},
 			},

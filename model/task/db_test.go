@@ -1010,7 +1010,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, dt))
 
 	ctx := context.TODO()
-	// execution tasks have been filtered outs
+	// execution tasks have been filtered out
 	opts := GetTasksByVersionOptions{
 		Sorts: []TasksSortOrder{
 			{Key: IdKey, Order: 1},
