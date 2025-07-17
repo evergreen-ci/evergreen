@@ -1334,13 +1334,13 @@ This command runs a shell script. To follow [Evergreen best practices](Best-Prac
   params:
     working_dir: src
     script: |
-      echo "this is a 2nd command in the function!"
+      echo "this is a 2nd command in the function! Hello from ${author}!"
       ls
 ```
 
 Parameters:
 
-- `script`: the script to run
+- `script`: the script to run. Expansions can be used in the script (it is not neccessary to specify `include_expansions_in_env` to do so)
 - `working_dir`: the directory to execute the shell script in
 - `env`: a map of environment variables and their values. In case of
   conflicting environment variables defined by `add_expansions_to_env` or
