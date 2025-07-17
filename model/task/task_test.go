@@ -62,7 +62,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Version:        "v1",
 		Execution:      3,
 		Status:         evergreen.TaskFailed,
-		DisplayTaskId:  utility.ToStringPtr(""),
+		DisplayTaskId:  "",
 		HasAnnotations: true,
 	}
 	t2 := Task{
@@ -70,14 +70,14 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Version:       "v1",
 		Aborted:       true,
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t3 := Task{
 		Id:            "t3",
 		Version:       "v1",
 		Status:        evergreen.TaskSucceeded,
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t4 := Task{
 		Id:      "t4",
@@ -86,7 +86,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			Type: evergreen.CommandTypeSetup,
 		},
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t5 := Task{
 		Id:      "t5",
@@ -97,7 +97,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			TimedOut:    true,
 		},
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t6 := Task{
 		Id:      "t6",
@@ -107,7 +107,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			TimedOut: true,
 		},
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t7 := Task{
 		Id:      "t7",
@@ -116,7 +116,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			Type: evergreen.CommandTypeSystem,
 		},
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t8 := Task{
 		Id:      "t8",
@@ -125,7 +125,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			TimedOut: true,
 		},
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t9 := Task{
 		Id:            "t9",
@@ -133,14 +133,14 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Status:        evergreen.TaskUndispatched,
 		Activated:     false,
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t10 := Task{
 		Id:            "t10",
 		Version:       "v1",
 		Status:        evergreen.TaskUndispatched,
 		Activated:     true,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t11 := Task{
 		Id:        "t11",
@@ -160,7 +160,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			},
 		},
 		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
@@ -3838,15 +3838,14 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
 		Id:            "t1",
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	t2 := &Task{
-		Id:            "t2",
-		DisplayTaskId: nil,
+		Id: "t2",
 	}
 	t3 := &Task{
 		Id:            "t3",
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	assert.NoError(t, t1.Insert(t.Context()))
 	assert.NoError(t, t2.Insert(t.Context()))
@@ -3857,15 +3856,15 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 	var err error
 	t1, err = FindOneId(ctx, t1.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, "dt", utility.FromStringPtr(t1.DisplayTaskId))
+	assert.Equal(t, "dt", t1.DisplayTaskId)
 
 	t2, err = FindOneId(ctx, t2.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, "dt", utility.FromStringPtr(t2.DisplayTaskId))
+	assert.Equal(t, "dt", t2.DisplayTaskId)
 
 	t3, err = FindOneId(ctx, t3.Id)
 	assert.NoError(t, err)
-	assert.NotEqual(t, "dt", utility.FromStringPtr(t3.DisplayTaskId))
+	assert.NotEqual(t, "dt", t3.DisplayTaskId)
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
@@ -4000,7 +3999,7 @@ func TestArchive(t *testing.T) {
 		"ArchivesDisplayTaskAndItsExecutionTasks": func(t *testing.T, dt Task) {
 			execTask := Task{
 				Id:            "execTask",
-				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				DisplayTaskId: dt.Id,
 				Status:        evergreen.TaskSucceeded,
 			}
 			archivedExecTaskID := MakeOldID(execTask.Id, execTask.Execution)
@@ -4449,7 +4448,7 @@ func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 		testTask := &Task{
 			Id:            fmt.Sprintf("task_%d", i),
 			BuildId:       fmt.Sprintf("build_%d", i),
-			DisplayTaskId: utility.ToStringPtr(""),
+			DisplayTaskId: "",
 		}
 		s.NoError(testTask.Insert(s.T().Context()))
 	}
@@ -4503,28 +4502,28 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 		Execution:     2,
 		Version:       "version_known",
 		Status:        evergreen.TaskSucceeded,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	taskNotKnown := &Task{
 		Id:            "task_not_known",
 		Execution:     0,
 		Version:       "version_not_known",
 		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	taskNoAnnotation := &Task{
 		Id:            "task_no_annotation",
 		Execution:     0,
 		Version:       "version_no_annotation",
 		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	taskWithEmptyIssues := &Task{
 		Id:            "task_with_empty_issues",
 		Execution:     0,
 		Version:       "version_with_empty_issues",
 		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	s.NoError(taskKnown2.Insert(s.T().Context()))
 	s.NoError(taskNotKnown.Insert(s.T().Context()))
@@ -4579,7 +4578,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Execution:     0,
 		BuildId:       "build_1",
 		Status:        evergreen.TaskSucceeded,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	s.NoError(testTask1.Insert(s.T().Context()))
 	testTask2 := &Task{
@@ -4588,7 +4587,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		BuildId:       "build_1",
 		DisplayOnly:   true,
 		Status:        evergreen.TaskSucceeded,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	s.NoError(testTask2.Insert(s.T().Context()))
 	for i := 0; i < 10; i++ {

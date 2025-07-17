@@ -351,7 +351,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		ResultsFailed:               t.ResultsFailed,
 		MustHaveResults:             t.MustHaveResults,
 		ResetWhenFinished:           t.ResetWhenFinished,
-		ParentTaskId:                utility.FromStringPtr(t.DisplayTaskId),
+		ParentTaskId:                t.DisplayTaskId,
 		AbortInfo: APIAbortInfo{
 			NewVersion: t.AbortInfo.NewVersion,
 			TaskID:     t.AbortInfo.TaskID,
@@ -548,7 +548,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 			Id:     utility.FromStringPtr(at.BaseTask.Id),
 			Status: utility.FromStringPtr(at.BaseTask.Status),
 		},
-		DisplayTaskId:        utility.ToStringPtr(at.ParentTaskId),
+		DisplayTaskId:        at.ParentTaskId,
 		Aborted:              at.Aborted,
 		Details:              at.Details.ToService(),
 		Archived:             at.Archived,

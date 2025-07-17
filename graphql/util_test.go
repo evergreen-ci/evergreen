@@ -71,7 +71,7 @@ func TestCanRestartTask(t *testing.T) {
 			{TaskId: "testDepends2", Status: "*", Unattainable: false},
 		},
 		Status:        evergreen.TaskUndispatched,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	canRestart := canRestartTask(ctx, blockedTask)
 	assert.False(t, canRestart)
@@ -80,7 +80,7 @@ func TestCanRestartTask(t *testing.T) {
 		Id:             "t4",
 		Status:         evergreen.TaskUndispatched,
 		DisplayStatus:  evergreen.TaskStatusBlocked,
-		DisplayTaskId:  utility.ToStringPtr(""),
+		DisplayTaskId:  "",
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"exec1", "exec2"},
 	}
@@ -90,7 +90,7 @@ func TestCanRestartTask(t *testing.T) {
 	executionTask := &task.Task{
 		Id:            "t2",
 		Status:        evergreen.TaskUndispatched,
-		DisplayTaskId: utility.ToStringPtr("display task"),
+		DisplayTaskId: "display task",
 	}
 	canRestart = canRestartTask(ctx, executionTask)
 	assert.False(t, canRestart)
@@ -98,7 +98,7 @@ func TestCanRestartTask(t *testing.T) {
 	runningTask := &task.Task{
 		Id:            "t3",
 		Status:        evergreen.TaskStarted,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	canRestart = canRestartTask(ctx, runningTask)
 	assert.False(t, canRestart)
@@ -106,7 +106,7 @@ func TestCanRestartTask(t *testing.T) {
 	finishedTask := &task.Task{
 		Id:            "t5",
 		Status:        evergreen.TaskSucceeded,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	canRestart = canRestartTask(ctx, finishedTask)
 	assert.True(t, canRestart)
@@ -114,7 +114,7 @@ func TestCanRestartTask(t *testing.T) {
 	abortedTask := &task.Task{
 		Id:            "t6",
 		Status:        evergreen.TaskUndispatched,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 		Aborted:       true,
 	}
 	canRestart = canRestartTask(ctx, abortedTask)
@@ -128,7 +128,7 @@ func TestCanScheduleTask(t *testing.T) {
 	abortedTask := &task.Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 		Aborted:       true,
 	}
 	canSchedule := canScheduleTask(ctx, abortedTask)
@@ -138,7 +138,7 @@ func TestCanScheduleTask(t *testing.T) {
 		Id:            "t2",
 		Status:        evergreen.TaskUndispatched,
 		DisplayStatus: evergreen.TaskUnscheduled,
-		DisplayTaskId: utility.ToStringPtr("display task"),
+		DisplayTaskId: "display task",
 	}
 	canSchedule = canScheduleTask(ctx, executionTask)
 	assert.False(t, canSchedule)
@@ -147,7 +147,7 @@ func TestCanScheduleTask(t *testing.T) {
 		Id:            "t4",
 		Status:        evergreen.TaskSucceeded,
 		DisplayStatus: evergreen.TaskSucceeded,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	canSchedule = canScheduleTask(ctx, finishedTask)
 	assert.False(t, canSchedule)
@@ -156,7 +156,7 @@ func TestCanScheduleTask(t *testing.T) {
 		Id:            "t3",
 		Status:        evergreen.TaskUndispatched,
 		DisplayStatus: evergreen.TaskUnscheduled,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayTaskId: "",
 	}
 	canSchedule = canScheduleTask(ctx, unscheduledTask)
 	assert.True(t, canSchedule)
@@ -214,7 +214,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               0,
 		Status:                  evergreen.TaskSucceeded,
-		DisplayTaskId:           utility.ToStringPtr(""),
+		DisplayTaskId:           "",
 	}
 	t2 := task.Task{
 		Id:                      "t2",
@@ -224,7 +224,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               0,
 		Status:                  evergreen.TaskFailed,
-		DisplayTaskId:           utility.ToStringPtr(""),
+		DisplayTaskId:           "",
 	}
 	t3 := task.Task{
 		Id:                      "t3",
@@ -234,7 +234,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskSucceeded,
-		DisplayTaskId:           utility.ToStringPtr(""),
+		DisplayTaskId:           "",
 	}
 	t4 := task.Task{
 		Id:                      "t4",
@@ -244,7 +244,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
-		DisplayTaskId:           utility.ToStringPtr(""),
+		DisplayTaskId:           "",
 	}
 	t5 := task.Task{
 		Id:                      "t5",
@@ -254,7 +254,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
-		DisplayTaskId:           utility.ToStringPtr(""),
+		DisplayTaskId:           "",
 	}
 	t6 := task.Task{
 		Id:                      "t6",
@@ -264,7 +264,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
-		DisplayTaskId:           utility.ToStringPtr(""),
+		DisplayTaskId:           "",
 	}
 
 	assert.NoError(t, db.InsertMany(t.Context(), task.Collection, t1, t2, t3, t4, t5, t6))

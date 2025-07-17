@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -58,7 +57,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Project:             projects[0],
 				DurationPrediction:  util.CachedDurationValue{Value: durations[0]},
 				ActivatedBy:         users[0],
-				DisplayTaskId:       utility.ToStringPtr(""),
+				DisplayTaskId:       "",
 			},
 			{
 				Id:                  taskIds[1],
@@ -70,7 +69,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Project:             projects[1],
 				DurationPrediction:  util.CachedDurationValue{Value: durations[1]},
 				ActivatedBy:         users[1],
-				DisplayTaskId:       utility.ToStringPtr(""),
+				DisplayTaskId:       "",
 			},
 			{
 				Id:                  taskIds[2],
@@ -82,7 +81,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Project:             projects[2],
 				DurationPrediction:  util.CachedDurationValue{Value: durations[2]},
 				ActivatedBy:         users[2],
-				DisplayTaskId:       utility.ToStringPtr(""),
+				DisplayTaskId:       "",
 			},
 			{
 				Id:                  taskIds[3],
@@ -94,7 +93,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Project:             projects[3],
 				DurationPrediction:  util.CachedDurationValue{Value: durations[3]},
 				ActivatedBy:         users[3],
-				DisplayTaskId:       utility.ToStringPtr(""),
+				DisplayTaskId:       "",
 			},
 			{
 				Id:                  taskIds[4],
@@ -106,7 +105,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Project:             projects[4],
 				DurationPrediction:  util.CachedDurationValue{},
 				ActivatedBy:         users[4],
-				DisplayTaskId:       utility.ToStringPtr(""),
+				DisplayTaskId:       "",
 				DependsOn: []task.Dependency{{
 					TaskId: "someTask",
 					Status: evergreen.TaskSucceeded,

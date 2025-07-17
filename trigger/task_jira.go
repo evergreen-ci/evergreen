@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -403,7 +402,7 @@ func (j *jiraBuilder) getDescription() (string, error) {
 				HistoryURL:    historyURL(j.data.Task, cleanTestName(test.TestName), j.data.UIRoot),
 				TaskID:        test.TaskID,
 				Execution:     test.Execution,
-				DisplayTaskId: utility.FromStringPtr(j.data.Task.DisplayTaskId),
+				DisplayTaskId: j.data.Task.DisplayTaskId,
 			})
 		}
 	}

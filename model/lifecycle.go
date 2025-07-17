@@ -803,7 +803,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 				if execTask.Activated {
 					displayTaskActivated = true
 				}
-				taskMap[execTaskId].DisplayTaskId = utility.ToStringPtr(id)
+				taskMap[execTaskId].DisplayTaskId = id
 			} else {
 				// exec task already exists so update its parent ID in the database
 				execTasksThatNeedParentId = append(execTasksThatNeedParentId, execTaskId)
@@ -1162,7 +1162,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		TriggerEvent:               creationInfo.Version.TriggerEvent,
 		IsGithubCheck:              isGithubCheck,
 		ActivatedBy:                creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
-		DisplayTaskId:              utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
+		DisplayTaskId:              "",                            // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:       creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 		CachedProjectStorageMethod: creationInfo.Version.ProjectStorageMethod,
 	}
@@ -1347,7 +1347,7 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 		TriggerID:               creationInfo.Version.TriggerID,
 		TriggerType:             creationInfo.Version.TriggerType,
 		TriggerEvent:            creationInfo.Version.TriggerEvent,
-		DisplayTaskId:           utility.ToStringPtr(""),
+		DisplayTaskId:           "",
 	}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return t, nil

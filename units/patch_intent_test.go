@@ -595,7 +595,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			DisplayName:   "et1",
 			Version:       "v1",
 			BuildVariant:  "bv2",
-			DisplayTaskId: utility.ToStringPtr("dt1"),
+			DisplayTaskId: "dt1",
 			Status:        evergreen.TaskFailed,
 			Activated:     true,
 		}
@@ -614,7 +614,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			DisplayName:   "et2",
 			Version:       "v1",
 			BuildVariant:  "bv3",
-			DisplayTaskId: utility.ToStringPtr("dt2"),
+			DisplayTaskId: "dt2",
 			Status:        evergreen.TaskSucceeded,
 			Activated:     false,
 		}

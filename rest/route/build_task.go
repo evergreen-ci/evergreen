@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -132,7 +131,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 
 		if tbh.fetchParentIds {
 			if tasks[i].IsPartOfDisplay(ctx) {
-				taskModel.ParentTaskId = utility.FromStringPtr(tasks[i].DisplayTaskId)
+				taskModel.ParentTaskId = tasks[i].DisplayTaskId
 			}
 		}
 

@@ -254,8 +254,8 @@ func TestDisableOneTask(t *testing.T) {
 					require.NoError(t, b.Insert(t.Context()))
 					tasks := [5]task.Task{
 						{Id: "display-task0", DisplayOnly: true, ExecutionTasks: []string{"exec-task1", "exec-task2"}, Activated: true, BuildId: b.Id, Version: v.Id},
-						{Id: "exec-task1", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true, BuildId: b.Id, Version: v.Id},
-						{Id: "exec-task2", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true, BuildId: b.Id, Version: v.Id},
+						{Id: "exec-task1", DisplayTaskId: "display-task0", Activated: true, BuildId: b.Id, Version: v.Id},
+						{Id: "exec-task2", DisplayTaskId: "display-task0", Activated: true, BuildId: b.Id, Version: v.Id},
 						{Id: "task3", Activated: true, DependsOn: []task.Dependency{{TaskId: "task4"}}, BuildId: b.Id, Version: v.Id},
 						{Id: "task4", Activated: true, BuildId: b.Id, Version: v.Id},
 					}
@@ -289,21 +289,21 @@ func TestDisableManyTasks(t *testing.T) {
 			}
 			et1 := task.Task{
 				Id:            "exec-task1",
-				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				DisplayTaskId: dt.Id,
 				Activated:     true,
 				BuildId:       "build-id",
 				Version:       "abcdefghijk",
 			}
 			et2 := task.Task{
 				Id:            "exec-task2",
-				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				DisplayTaskId: dt.Id,
 				Activated:     true,
 				BuildId:       "build-id",
 				Version:       "abcdefghijk",
 			}
 			et3 := task.Task{
 				Id:            "exec-task3",
-				DisplayTaskId: utility.ToStringPtr(dt.Id),
+				DisplayTaskId: dt.Id,
 				Activated:     true,
 				BuildId:       "build-id",
 				Version:       "abcdefghijk",
@@ -357,28 +357,28 @@ func TestDisableManyTasks(t *testing.T) {
 			}
 			et1 := task.Task{
 				Id:            "exec-task1",
-				DisplayTaskId: utility.ToStringPtr(dt1.Id),
+				DisplayTaskId: dt1.Id,
 				Activated:     true,
 				BuildId:       "build-id",
 				Version:       "abcdefghijk",
 			}
 			et2 := task.Task{
 				Id:            "exec-task2",
-				DisplayTaskId: utility.ToStringPtr(dt1.Id),
+				DisplayTaskId: dt1.Id,
 				Activated:     true,
 				BuildId:       "build-id",
 				Version:       "abcdefghijk",
 			}
 			et3 := task.Task{
 				Id:            "exec-task3",
-				DisplayTaskId: utility.ToStringPtr(dt2.Id),
+				DisplayTaskId: dt2.Id,
 				Activated:     true,
 				BuildId:       "build-id",
 				Version:       "abcdefghijk",
 			}
 			et4 := task.Task{
 				Id:            "exec-task4",
-				DisplayTaskId: utility.ToStringPtr(dt2.Id),
+				DisplayTaskId: dt2.Id,
 				Activated:     true,
 				BuildId:       "build-id",
 				Version:       "abcdefghijk",
@@ -2448,7 +2448,7 @@ func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
 	)
 	et := task.Task{
 		Id:            etID,
-		DisplayTaskId: utility.ToStringPtr(dtID),
+		DisplayTaskId: dtID,
 		Status:        evergreen.TaskStarted,
 		BuildId:       buildID,
 		Version:       versionID,
@@ -4816,7 +4816,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 				Version:        tsk.Version,
 			}
 			require.NoError(t, dt.Insert(t.Context()))
-			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
+			tsk.DisplayTaskId = dt.Id
 			require.NoError(t, tsk.Insert(t.Context()))
 			require.NoError(t, p.Insert(t.Context()))
 
@@ -5088,7 +5088,7 @@ func TestResetStaleTask(t *testing.T) {
 				Version:        tsk.Version,
 			}
 			require.NoError(t, dt.Insert(t.Context()))
-			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
+			tsk.DisplayTaskId = dt.Id
 			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
@@ -5548,7 +5548,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	const displayTaskID = "display_task_id"
 	et0 := task.Task{
 		Id:            "execution_task0",
-		DisplayTaskId: utility.ToStringPtr(displayTaskID),
+		DisplayTaskId: displayTaskID,
 		Activated:     true,
 		ActivatedTime: time.Now(),
 		Status:        evergreen.TaskSucceeded,
@@ -5557,7 +5557,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 	}
 	et1 := task.Task{
 		Id:            "execution_task1",
-		DisplayTaskId: utility.ToStringPtr(displayTaskID),
+		DisplayTaskId: displayTaskID,
 		Activated:     true,
 		ActivatedTime: time.Now(),
 		StartTime:     time.Now().Add(-time.Hour),

@@ -277,9 +277,8 @@ type Task struct {
 	IsAutomaticRestart bool  `bson:"is_automatic_restart,omitempty" json:"is_automatic_restart,omitempty"`
 	DisplayTask        *Task `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
-	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
-	// and is nil if we haven't yet checked whether or not this task has a display task.
-	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
+	// DisplayTaskId is set to the display task ID if the task is an execution task, or the empty string if it's not an execution task.
+	DisplayTaskId string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task. This will not be set for
@@ -1382,8 +1381,8 @@ func SetTasksScheduledAndDepsMetTime(ctx context.Context, tasks []Task, schedule
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
 		if tasks[i].IsPartOfDisplay(ctx) {
-			idsToSchedule = append(idsToSchedule, utility.FromStringPtr(tasks[i].DisplayTaskId))
-			idsToSetDependenciesMet = append(idsToSetDependenciesMet, utility.FromStringPtr(tasks[i].DisplayTaskId))
+			idsToSchedule = append(idsToSchedule, tasks[i].DisplayTaskId)
+			idsToSetDependenciesMet = append(idsToSetDependenciesMet, tasks[i].DisplayTaskId)
 		}
 	}
 	// Remove duplicates to prevent large updates
@@ -3470,70 +3469,27 @@ func (t *Task) HasCheckRun() bool {
 }
 
 func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
-	// if display task ID is nil, we need to check manually if we have an execution task
-	if t.DisplayTaskId == nil {
-		dt, err := t.GetDisplayTask(ctx)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":        "unable to get display task",
-				"execution_task": t.Id,
-			}))
-			return false
-		}
-		return dt != nil
-	}
-
-	return utility.FromStringPtr(t.DisplayTaskId) != ""
+	return t.DisplayTaskId != ""
 }
 
 func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	if t.DisplayTask != nil {
 		return t.DisplayTask, nil
 	}
-	dtId := utility.FromStringPtr(t.DisplayTaskId)
-	if t.DisplayTaskId != nil && dtId == "" {
+	dtId := t.DisplayTaskId
+	if dtId == "" {
 		// display task ID is explicitly set to empty if it's not a display task
 		return nil, nil
 	}
 	var dt *Task
 	var err error
 	if t.Archived {
-		if dtId != "" {
-			dt, err = FindOneOldByIdAndExecution(ctx, dtId, t.Execution)
-		} else {
-			dt, err = FindOneOld(ctx, ByExecutionTask(t.OldTaskId))
-			if dt != nil {
-				dtId = dt.OldTaskId // save the original task ID to cache
-			}
-		}
+		dt, err = FindOneOldByIdAndExecution(ctx, dtId, t.Execution)
 	} else {
-		if dtId != "" {
-			dt, err = FindOneId(ctx, dtId)
-		} else {
-			dt, err = FindOne(ctx, db.Query(ByExecutionTask(t.Id)))
-			if dt != nil {
-				dtId = dt.Id
-			}
-		}
+		dt, err = FindOneId(ctx, dtId)
 	}
 	if err != nil {
 		return nil, err
-	}
-
-	if t.DisplayTaskId == nil {
-		grip.Info(message.Fields{
-			"message": "missing display task ID",
-			"task_id": t.Id,
-			"dt_id":   dtId,
-			"ticket":  "DEVPROD-13634",
-		})
-		// Cache display task ID for future use. If we couldn't find the display task,
-		// we cache the empty string to show that it doesn't exist.
-		grip.Error(message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
-			"message":         "failed to cache display task ID for task",
-			"task_id":         t.Id,
-			"display_task_id": dtId,
-		}))
 	}
 
 	t.DisplayTask = dt
@@ -3970,7 +3926,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 }
 
 func (t *Task) SetDisplayTaskID(ctx context.Context, id string) error {
-	t.DisplayTaskId = utility.ToStringPtr(id)
+	t.DisplayTaskId = id
 	return errors.WithStack(UpdateOne(ctx, bson.M{IdKey: t.Id},
 		bson.M{"$set": bson.M{
 			DisplayTaskIdKey: id,

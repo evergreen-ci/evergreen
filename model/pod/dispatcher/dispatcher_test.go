@@ -140,7 +140,7 @@ func TestAssignNextTask(t *testing.T) {
 			Status:             evergreen.TaskUndispatched,
 			ContainerAllocated: true,
 			ExecutionPlatform:  task.ExecutionPlatformContainer,
-			DisplayTaskId:      utility.ToStringPtr(""),
+			DisplayTaskId:      "",
 		}
 	}
 	getProjectRef := func() model.ProjectRef {
@@ -236,7 +236,7 @@ func TestAssignNextTask(t *testing.T) {
 				ExecutionTasks: []string{params.task.Id},
 				Status:         evergreen.TaskUndispatched,
 			}
-			params.task.DisplayTaskId = utility.ToStringPtr(dt.Id)
+			params.task.DisplayTaskId = dt.Id
 			require.NoError(t, dt.Insert(t.Context()))
 			require.NoError(t, params.task.Insert(t.Context()))
 			require.NoError(t, params.dispatcher.Insert(t.Context()))

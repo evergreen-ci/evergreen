@@ -69,14 +69,14 @@ func TestRestartVersion(t *testing.T) {
 		{Id: buildID},
 	}
 	tasks := []*task.Task{
-		{Id: "task0", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
-		{Id: "task1", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskDispatched, BuildId: buildID},
-		{Id: "display0", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskStarted, BuildId: buildID},
-		{Id: "exec00", Version: versionID, DisplayTaskId: utility.ToStringPtr("display0"), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
-		{Id: "exec10", Version: versionID, DisplayTaskId: utility.ToStringPtr("display0"), Aborted: false, Status: evergreen.TaskStarted, BuildId: buildID},
-		{Id: "display1", Version: versionID, DisplayTaskId: utility.ToStringPtr(""), Aborted: false, Status: evergreen.TaskFailed, BuildId: buildID},
-		{Id: "exec01", Version: versionID, DisplayTaskId: utility.ToStringPtr("display1"), Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
-		{Id: "exec11", Version: versionID, DisplayTaskId: utility.ToStringPtr("display1"), Aborted: false, Status: evergreen.TaskFailed, BuildId: buildID},
+		{Id: "task0", Version: versionID, DisplayTaskId: "", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
+		{Id: "task1", Version: versionID, DisplayTaskId: "", Aborted: false, Status: evergreen.TaskDispatched, BuildId: buildID},
+		{Id: "display0", Version: versionID, DisplayTaskId: "", Aborted: false, Status: evergreen.TaskStarted, BuildId: buildID},
+		{Id: "exec00", Version: versionID, DisplayTaskId: "display0", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
+		{Id: "exec10", Version: versionID, DisplayTaskId: "display0", Aborted: false, Status: evergreen.TaskStarted, BuildId: buildID},
+		{Id: "display1", Version: versionID, DisplayTaskId: "", Aborted: false, Status: evergreen.TaskFailed, BuildId: buildID},
+		{Id: "exec01", Version: versionID, DisplayTaskId: "display1", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: buildID},
+		{Id: "exec11", Version: versionID, DisplayTaskId: "display1", Aborted: false, Status: evergreen.TaskFailed, BuildId: buildID},
 	}
 	for _, item := range versions {
 		require.NoError(t, item.Insert(t.Context()))

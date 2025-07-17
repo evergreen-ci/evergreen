@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -197,7 +196,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				BuildId:       j.task.BuildId,
 				Version:       j.task.Version,
 				Project:       j.task.Project,
-				DisplayTaskId: utility.ToStringPtr(displayTaskID),
+				DisplayTaskId: displayTaskID,
 				Status:        evergreen.TaskFailed,
 			}
 			require.NoError(t, et0.Insert(t.Context()))
@@ -206,7 +205,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				BuildId:       j.task.BuildId,
 				Version:       j.task.Version,
 				Project:       j.task.Project,
-				DisplayTaskId: utility.ToStringPtr(displayTaskID),
+				DisplayTaskId: displayTaskID,
 				Status:        evergreen.TaskUndispatched,
 			}
 			require.NoError(t, et1.Insert(t.Context()))
@@ -219,7 +218,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				ExecutionTasks: []string{j.task.Id, et0.Id, et1.Id},
 			}
 			require.NoError(t, dt.Insert(t.Context()))
-			j.task.DisplayTaskId = utility.ToStringPtr(displayTaskID)
+			j.task.DisplayTaskId = displayTaskID
 			require.NoError(t, j.task.Insert(t.Context()))
 			require.NoError(t, v.Insert(t.Context()))
 

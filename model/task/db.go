@@ -415,7 +415,7 @@ func ByVersionsWithChildTasks(versionIDs []string) bson.M {
 
 // DisplayTasksByVersion produces a query that returns all display tasks for the given version.
 func DisplayTasksByVersion(version string, includeNeverActivatedTasks bool) bson.M {
-	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not null or "")
+	// assumes that all ExecutionTasks know of their corresponding DisplayTask (i.e. DisplayTaskIdKey not "")
 
 	matchOnVersion := bson.M{VersionKey: version}
 	if !includeNeverActivatedTasks {
@@ -427,7 +427,6 @@ func DisplayTasksByVersion(version string, includeNeverActivatedTasks bool) bson
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
 				{DisplayOnlyKey: true},                       // ...
-				{DisplayTaskIdKey: nil},                      // ...
 				{ExecutionTasksKey: bson.M{"$exists": true}}, // has execution tasks
 			},
 			},
@@ -480,15 +479,8 @@ func FailedTasksByIds(taskIds []string) bson.M {
 // Old execution tasks without display task ID populated will still be returned.
 func NonExecutionTasksByVersions(versions []string) bson.M {
 	return bson.M{
-		VersionKey: bson.M{"$in": versions},
-		"$or": []bson.M{
-			{
-				DisplayTaskIdKey: bson.M{"$exists": false},
-			},
-			{
-				DisplayTaskIdKey: "",
-			},
-		},
+		VersionKey:       bson.M{"$in": versions},
+		DisplayTaskIdKey: "",
 	}
 }
 
@@ -1240,13 +1232,10 @@ func FindUniqueBuildVariantNamesByTask(ctx context.Context, projectId string, ta
 func FindTaskNamesByBuildVariant(ctx context.Context, projectId string, buildVariant string, repoOrderNumber int) ([]string, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			ProjectKey:      projectId,
-			BuildVariantKey: buildVariant,
-			RequesterKey:    bson.M{"$in": evergreen.SystemVersionRequesterTypes},
-			"$or": []bson.M{
-				{DisplayTaskIdKey: bson.M{"$exists": false}},
-				{DisplayTaskIdKey: ""},
-			},
+			ProjectKey:       projectId,
+			BuildVariantKey:  buildVariant,
+			RequesterKey:     bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+			DisplayTaskIdKey: "",
 			"$and": []bson.M{
 				{RevisionOrderNumberKey: bson.M{"$gt": repoOrderNumber - VersionLimit}},
 				{RevisionOrderNumberKey: bson.M{"$lte": repoOrderNumber}},

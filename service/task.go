@@ -974,7 +974,7 @@ func (uis *UIServer) getTestResults(ctx context.Context, projCtx projectContext,
 
 		if uiTask.PartOfDisplay {
 			// Display task ID would've been populated when setting PartOfDisplay.
-			uiTask.DisplayTaskID = utility.FromStringPtr(projCtx.Task.DisplayTaskId)
+			uiTask.DisplayTaskID = projCtx.Task.DisplayTaskId
 		}
 	}
 

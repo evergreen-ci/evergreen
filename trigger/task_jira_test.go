@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -421,7 +420,7 @@ func TestJiraDescription(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(strings.Contains(desc, "[History|"), ShouldBeTrue)
 
-			j.data.Task.DisplayTaskId = utility.ToStringPtr("taskId")
+			j.data.Task.DisplayTaskId = "taskId"
 			desc, err = j.getDescription()
 			So(err, ShouldBeNil)
 			So(strings.Contains(desc, "[History|"), ShouldBeFalse)
