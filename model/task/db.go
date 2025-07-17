@@ -426,6 +426,7 @@ func DisplayTasksByVersion(version string, includeNeverActivatedTasks bool) bson
 			matchOnVersion,
 			{"$or": []bson.M{
 				{DisplayTaskIdKey: ""},                       // no 'parent' display task
+				{DisplayTaskIdKey: bson.M{"$exists": false}}, // ...
 				{DisplayOnlyKey: true},                       // ...
 				{ExecutionTasksKey: bson.M{"$exists": true}}, // has execution tasks
 			},
