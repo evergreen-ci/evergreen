@@ -15,7 +15,6 @@ import (
 	"fmt"
 )
 
-
 // GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue struct for GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
 type GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue struct {
 	TeamData *TeamData
@@ -30,7 +29,7 @@ func (dst *GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue) Un
 	}
 
 	// try to unmarshal JSON data into TeamData
-	err = json.Unmarshal(data, &dst.TeamData);
+	err = json.Unmarshal(data, &dst.TeamData)
 	if err == nil {
 		jsonTeamData, _ := json.Marshal(dst.TeamData)
 		if string(jsonTeamData) == "{}" { // empty struct
@@ -53,7 +52,6 @@ func (src GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue) Mar
 
 	return nil, nil // no data in anyOf schemas
 }
-
 
 type NullableGetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue struct {
 	value *GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
@@ -90,5 +88,3 @@ func (v *NullableGetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseVal
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-
