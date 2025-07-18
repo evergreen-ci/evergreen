@@ -1,0 +1,55 @@
+query BackgroundProcessing {
+  adminSettings {
+    amboy {
+      name
+      singleName
+      poolSizeLocal
+      poolSizeRemote
+      localStorage
+      groupDefaultWorkers
+      groupBackgroundCreateFrequencyMinutes
+      groupPruneFrequencyMinutes
+      groupTTLMinutes
+      lockTimeoutMinutes
+      sampleSize
+      retry {
+        numWorkers
+        maxCapacity
+        maxRetryAttempts
+        maxRetryTimeSeconds
+        retryBackoffSeconds
+        staleRetryingMonitorIntervalSeconds
+      }
+      namedQueues {
+        name
+        regexp
+        numWorkers
+        sampleSize
+        lockTimeoutSeconds
+      }
+    }
+    amboyDB {
+      database
+      url
+    }
+    loggerConfig {
+      buffer {
+        useAsync
+        durationSeconds
+        count
+        incomingBufferFactor
+      }
+      defaultLevel
+      thresholdLevel
+      logkeeperURL
+      redactKeys
+    }
+    notify {
+      bufferIntervalSeconds
+      bufferTargetPerInterval
+    }
+    triggers {
+      generateTaskDistro
+    }
+  }
+}

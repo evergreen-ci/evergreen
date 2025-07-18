@@ -171,6 +171,71 @@
           }
         }
       }
+    },
+    {
+      "query_file": "background_processing.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "amboy": {
+              "name": "new-amboy-name",
+              "singleName": "new-amboy-single-name",
+              "poolSizeLocal": 1,
+              "poolSizeRemote": 1,
+              "localStorage": 1,
+              "groupDefaultWorkers": 1,
+              "groupBackgroundCreateFrequencyMinutes": 1,
+              "groupPruneFrequencyMinutes": 1,
+              "groupTTLMinutes": 1,
+              "lockTimeoutMinutes": 1,
+              "sampleSize": 1,
+              "retry": {
+                "numWorkers": 1,
+                "maxCapacity": 1,
+                "maxRetryAttempts": 1,
+                "maxRetryTimeSeconds": 1,
+                "retryBackoffSeconds": 1,
+                "staleRetryingMonitorIntervalSeconds": 1
+              },
+              "namedQueues": [
+                {
+                  "name": "new-named-queue-1",
+                  "regexp": "new-regexp-1",
+                  "numWorkers": 1,
+                  "sampleSize": 1,
+                  "lockTimeoutSeconds": 1
+                },
+                {
+                  "name": "new-named-queue-2",
+                  "regexp": "new-regexp-2",
+                  "numWorkers": 1,
+                  "sampleSize": 1,
+                  "lockTimeoutSeconds": 1
+                }
+              ]
+            },
+            "loggerConfig": {
+              "buffer": {
+                "useAsync": false,
+                "durationSeconds": 1,
+                "count": 1,
+                "incomingBufferFactor": 1
+              },
+              "defaultLevel": "info",
+              "thresholdLevel": "info",
+              "logkeeperURL": "new-logkeeper-url",
+              "redactKeys": ["new-redact-key"]
+            },
+            "notify": {
+              "bufferIntervalSeconds": 1,
+              "bufferTargetPerInterval": 1
+            },
+            "triggers": {
+              "generateTaskDistro": "new-generate-task-distro"
+            }
+          }
+        }
+      }
     }
   ]
 }
