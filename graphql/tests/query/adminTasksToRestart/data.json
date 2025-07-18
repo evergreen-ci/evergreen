@@ -1,0 +1,73 @@
+{
+  "tasks": [
+    {
+      "_id": "task_test_failed",
+      "version": "evergreen_version_101",
+      "status": "failed",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 1,
+      "r": "gitter_request",
+      "start_time": {
+        "$date": "2025-06-09T00:00:03Z"
+      },
+      "finish_time": {
+        "$date": "2025-06-10T00:00:03Z"
+      },
+      "details": {
+        "status": "failed",
+        "type": "test"
+      }
+    },
+    {
+      "_id": "task_system_failed",
+      "version": "evergreen_version_102",
+      "status": "failed",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 1,
+      "order": 2,
+      "r": "ad_hoc",
+      "start_time": {
+        "$date": "2025-06-19T00:00:03Z"
+      },
+      "finish_time": {
+        "$date": "2025-06-20T00:00:03Z"
+      },
+      "details": {
+        "status": "failed",
+        "type": "system"
+      }
+    },
+    {
+      "_id": "task_setup_failed",
+      "version": "evergreen_version_103",
+      "status": "failed",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 103,
+      "r": "git_tag_request",
+      "start_time": {
+        "$date": "2025-06-29T00:00:03Z"
+      },
+      "finish_time": {
+        "$date": "2025-06-30T00:00:03Z"
+      },
+      "details": {
+        "status": "failed",
+        "type": "setup"
+      }
+    }
+  ]
+}

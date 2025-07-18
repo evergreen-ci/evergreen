@@ -1,0 +1,15 @@
+query NoPermissions {
+  adminTasksToRestart(
+    opts: {
+      startTime: "2025-05-09T17:43:06.819-00:00"
+      endTime: "2025-07-09T17:43:06.819-00:00"
+      includeTestFailed: true
+      includeSystemFailed: true
+      includeSetupFailed: true
+    }
+  ) {
+    tasksToRestart {
+      id
+    }
+  }
+}

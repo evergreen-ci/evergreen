@@ -7,12 +7,13 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
 // BannerTheme is the resolver for the bannerTheme field.
-func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error) {
+func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *restModel.APIAdminSettings) (*evergreen.BannerTheme, error) {
 	if obj == nil {
 		return nil, InternalServerError.Send(ctx, "admin settings object undefined when attempting to resolve banner theme")
 	}
@@ -25,12 +26,12 @@ func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *model.APIA
 }
 
 // Port is the resolver for the port field.
-func (r *containerPoolResolver) Port(ctx context.Context, obj *model.APIContainerPool) (int, error) {
+func (r *containerPoolResolver) Port(ctx context.Context, obj *restModel.APIContainerPool) (int, error) {
 	return int(obj.Port), nil
 }
 
 // SecretFields is the resolver for the secretFields field.
-func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *model.APIAdminSettings) ([]string, error) {
+func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *restModel.APIAdminSettings) ([]string, error) {
 	redactedFieldsAsSlice := []string{}
 	for field := range redactedFields {
 		redactedFieldsAsSlice = append(redactedFieldsAsSlice, field)
@@ -42,12 +43,21 @@ func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *model.APIA
 }
 
 // BannerTheme is the resolver for the bannerTheme field.
-func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error {
+func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *restModel.APIAdminSettings, data *evergreen.BannerTheme) error {
 	if data == nil {
 		return nil
 	}
 	themeString := string(*data)
 	obj.BannerTheme = utility.ToStringPtr(themeString)
+	return nil
+}
+
+// IncludeSystemFailed is the resolver for the includeSystemFailed field.
+func (r *restartTasksOptionsResolver) IncludeSystemFailed(ctx context.Context, obj *model.RestartOptions, data bool) error {
+	if obj == nil {
+		return InternalServerError.Send(ctx, "restart options object undefined")
+	}
+	obj.IncludeSysFailed = data
 	return nil
 }
 
@@ -65,7 +75,13 @@ func (r *Resolver) AdminSettingsInput() AdminSettingsInputResolver {
 	return &adminSettingsInputResolver{r}
 }
 
+// RestartTasksOptions returns RestartTasksOptionsResolver implementation.
+func (r *Resolver) RestartTasksOptions() RestartTasksOptionsResolver {
+	return &restartTasksOptionsResolver{r}
+}
+
 type adminSettingsResolver struct{ *Resolver }
 type containerPoolResolver struct{ *Resolver }
 type spruceConfigResolver struct{ *Resolver }
 type adminSettingsInputResolver struct{ *Resolver }
+type restartTasksOptionsResolver struct{ *Resolver }
