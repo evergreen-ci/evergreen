@@ -1789,8 +1789,8 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 	var pairs TaskVariantPairs
 	for _, v := range bvs {
 		for _, t := range tasks {
-			if bvt := p.FindTaskForVariant(t, v); bvtu != nil {
-				if bvtu.IsDisabled() || bvtu.SkipOnRequester(requester) {
+			if bvt := p.FindTaskForVariant(t, v); bvt != nil {
+				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) {
 					continue
 				}
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})

@@ -305,7 +305,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		// "Ignore" a version if all changes are to ignored files
 		var ignore bool
 		var filenames []string
-		
+
 		// Always get changed files for build variant filtering
 		filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 		if err != nil {
@@ -827,7 +827,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			filteredBuildVariants = append(filteredBuildVariants, buildvariant)
 			continue
 		}
-		
+
 		// If we have changed files, check if any match the build variant's path patterns
 		if len(metadata.ChangedFiles) > 0 {
 			if buildvariant.PathsMatchAny(metadata.ChangedFiles) {

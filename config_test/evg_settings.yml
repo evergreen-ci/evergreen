@@ -56,13 +56,8 @@ providers:
     api_version: 1.32
 
 auth:
-  naive:
-    users:
-      - username: "mci-nonprod"
-        password: "change me"
-        display_name: "MCI Nonprod"
   github:
-    app_id: 1234
+    app_id: 1622831
 
 keys:
   mci: "/data/home/etc/mci.pem"
@@ -166,12 +161,35 @@ expansions:
   api_httpscert_path: "/data/api_httpscert_path.pem"
   github_app_key: |-
     -----BEGIN RSA PRIVATE KEY-----
-    GH PRIVATE KEY
+    MIIEowIBAAKCAQEApv+mkqpDn4WmYa/JLlTtcMVAXhqg3S35Mo1CUea20CfSw10F
+    XjRcdcnJtFgs1rtjxm9HpUmu5XUmdxIRRiKBX6EYHUIE1pcQO/+zC7I4Ub1b7kAz
+    aO7hMee3MV7C97ERi74HHVyK82nMT/MRmAXWwahaKaQR4WIS8DgBW72wbQnGGult
+    9ooQ9RFXcdESURtvQiVxF/HV8qKqMKRtdpp1CE9FMU+GsvpiTiDUIj9rIdNMuccK
+    RaqiQ9l0Y5eJe7wuTuhdskzRdFjgM1z/fqBK7qYAaK0PBA7rw5E7J34JbHOAqb/P
+    scr48Xet6wGGJjcI++ytoEhci0NYPx1dRznhrQIDAQABAoIBADgBhwCq/3DRZsJe
+    LM9QBi2KyZKFxatHzsooW7SR9n+Ky4Ffgfxc/SE3omDMLYV6ZPTYvyNsua4Ugujt
+    80MdMVw775VoXa0GDpjAoXBrvb2UDu+xMkyfyIBvIJ37FNHy3VqLSWGMdsE5mx64
+    +w6L7sEVz98lOiXnOUi8z5/P1wpJ8ShW3Nn0b8xIkY4yFs2QQ9KTrA5QNXfJxmTn
+    1W8sKCR9KnjBTKu3a8iwaz6/zxcuIk0CYwKEgWCR7bT2MPoYKGE0Es609UEtqIgb
+    pHxHwHmm6feHeSXRAKnVcvo0NEf5xyo7lWKdINGkT3zvDIlkcsTLHkIFxcXk4AKs
+    kqRyCpUCgYEA0JWKpvpetEDZhoTNfQJgN2Cm3mMI3gVYWaTa/xPmC61pBCCPel81
+    DbQAaByllSTgqIyovacCJ2cxr+0L7JBWCeQtMlF+2FThJlGHQ6j8Mv9y69csplF/
+    BLPsK4xAnGjz3oRztPTnDAc5H5mMnJ7D1jc8DYl3WhZfhzXQ3xbdk6sCgYEAzPYP
+    MxBrxoxDTWq3vxpOIpdRR8FbrOfQKlWZoD+UqCaZQMxnykwm/SDQ1eJGAsXUTkBI
+    N+ZmjnDC2zNCUOqX/+XZ9CADKuoQozsEg8auz+DbYRZQDWmunITmDl06BOUNJg2k
+    6MeNrrVf+5GX1mkS0z6YA3yyVR9myC2G/pooiAcCgYEAy/WuguDHwlK3YgZyOQ8d
+    rojgIw2MGi332pCNZGe8xyZmThbYtbxrUF73FtcMQu6wj6AbUHgCby1FNNYCluv8
+    deedGlr+QeOd1a5bKhoPon6PjXX2vxtprNuS0HJwq4ElFi1GR2hClUxq2y92g5/r
+    t4iDPGlzP7Ao8Tn6aGsfd8kCgYB2icyqnNGoSBDYomLY3I7aBKfWlya9Lmi/QziR
+    bJQ+V+yEhHN2lWprNWJygOY6zk2GYDkkU1V3BhI8Ej5FbBgywK24Ohd651pt/UEU
+    MYGC6qoWUYBE8Z0yGs6u+g4HLK3ZF0UL9/WiWHXFmiO1tplToTzrr1+4SWv5VBNi
+    BqhwWwKBgFa26YddZpd9FJYasC9aG7036AyUA4grQh69oG3YWPVyDEPNExHN+NOV
+    1xKLX5WEU5G0bNub2u2VVCbEe06fw4wovWAxwXhlsGQDvJJHtrqQJM/cWtxNpl96
+    695egoBJUMlGDY85Fqv/XDQcLUX4yj1BTTDtZh093TPDFs6kSwMQ
     -----END RSA PRIVATE KEY-----
-
-github_orgs: ["evergreen-ci", "newOwner"]
-github_pr_creator_org: "10gen"
-github_webhook_secret: "test"
+github_orgs: ["evergreen-ci", "levdavid"]
+github_pr_creator_org: "levdavid"
+github_webhook_secret: "bff806f79f08326f250378e52189ebcffa510d07ffcef26ad609eff8afaaf888"
 
 spawnhost:
   unexpirable_hosts_per_user: 2

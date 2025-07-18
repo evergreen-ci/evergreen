@@ -1190,8 +1190,8 @@ tasks:
 	s.Nil(dbBuild)
 
 	dbTasks, err := task.Find(ctx, task.ByVersion(v.Id))
-s.NoError(err)
-s.Empty(dbTasks)
+	s.NoError(err)
+	s.Empty(dbTasks)
 }
 
 func (s *CreateVersionFromConfigSuite) TestErrorsMerged() {
@@ -1968,12 +1968,12 @@ tasks:
 		// Should create builds for 'frontend' and 'all_files' variants
 		builds, err := build.Find(ctx, build.ByVersion(v.Id))
 		require.NoError(t, err)
-		
+
 		buildVariants := make([]string, len(builds))
 		for i, b := range builds {
 			buildVariants[i] = b.BuildVariant
 		}
-		
+
 		assert.Contains(t, buildVariants, "frontend")
 		assert.Contains(t, buildVariants, "all_files")
 		assert.NotContains(t, buildVariants, "backend")
@@ -2003,12 +2003,12 @@ tasks:
 
 		builds, err := build.Find(ctx, build.ByVersion(v.Id))
 		require.NoError(t, err)
-		
+
 		buildVariants := make([]string, len(builds))
 		for i, b := range builds {
 			buildVariants[i] = b.BuildVariant
 		}
-		
+
 		assert.Contains(t, buildVariants, "backend")
 		assert.Contains(t, buildVariants, "all_files")
 		assert.NotContains(t, buildVariants, "frontend")
@@ -2038,12 +2038,12 @@ tasks:
 
 		builds, err := build.Find(ctx, build.ByVersion(v.Id))
 		require.NoError(t, err)
-		
+
 		buildVariants := make([]string, len(builds))
 		for i, b := range builds {
 			buildVariants[i] = b.BuildVariant
 		}
-		
+
 		assert.Contains(t, buildVariants, "frontend")
 		assert.Contains(t, buildVariants, "backend")
 		assert.Contains(t, buildVariants, "all_files")
@@ -2073,12 +2073,12 @@ tasks:
 
 		builds, err := build.Find(ctx, build.ByVersion(v.Id))
 		require.NoError(t, err)
-		
+
 		buildVariants := make([]string, len(builds))
 		for i, b := range builds {
 			buildVariants[i] = b.BuildVariant
 		}
-		
+
 		// All variants should be included when no changed files are available
 		assert.Contains(t, buildVariants, "frontend")
 		assert.Contains(t, buildVariants, "backend")
@@ -2109,12 +2109,12 @@ tasks:
 
 		builds, err := build.Find(ctx, build.ByVersion(v.Id))
 		require.NoError(t, err)
-		
+
 		buildVariants := make([]string, len(builds))
 		for i, b := range builds {
 			buildVariants[i] = b.BuildVariant
 		}
-		
+
 		// Only the 'all_files' variant should run since it has no path patterns
 		assert.Contains(t, buildVariants, "all_files")
 		assert.NotContains(t, buildVariants, "frontend")
