@@ -1,8 +1,8 @@
 # 2023-03-24 REST route authentication exception
 
-* status: accepted
-* date: 2023-03-24
-* authors: Malik Hadjri
+- status: accepted
+- date: 2023-03-24
+- authors: Malik Hadjri
 
 ## Context and Problem Statement
 

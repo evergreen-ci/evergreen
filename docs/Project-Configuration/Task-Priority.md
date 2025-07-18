@@ -28,7 +28,7 @@ other users' tasks relative to yours. Please stay below 50 if the change is not
 high priority.
 
 Priority can be set in the UI on the version and task pages from the three dots
-menu -> Set priority. 
+menu -> Set priority.
 
 ![set priority](../images/priority.png)
 

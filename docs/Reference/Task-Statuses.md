@@ -30,7 +30,7 @@ these statuses.
 These statuses indicate tasks that are currently in progress or scheduled to
 run.
 
-#### `undispatched`
+### `undispatched`
 
 **Description**: Indicates one of the following:
 
@@ -65,7 +65,7 @@ execution.
 
 These statuses indicate that a task has completed its execution.
 
-#### `success`
+### `success`
 
 **Description**: The task has finished successfully without any errors.
 
@@ -302,8 +302,7 @@ are the icons used for each task status:
 
 ### Version Statuses
 
-Version statuses are very similar to task statuses, and are listed below for additional clarity. 
-
+Version statuses are very similar to task statuses, and are listed below for additional clarity.
 
 #### `created`
 
