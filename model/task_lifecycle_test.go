@@ -1347,6 +1347,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			}
 			p := &patch.Patch{
 				Id:        patch.NewId(v.Id),
+				Version:   v.Id,
 				Status:    evergreen.VersionCreated,
 				Activated: true,
 			}
@@ -1374,13 +1375,51 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 
 			v, err = VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
+			require.NotZero(t, v)
 			assert.Equal(t, test.expectedVersionStatus, v.Status)
 			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(v.Activated))
+			if evergreen.IsFinishedVersionStatus(test.expectedVersionStatus) {
+				events, err := event.FindAllByResourceID(t.Context(), v.Id)
+				require.NoError(t, err)
+				var numVersionFinishedEvents int
+				for _, e := range events {
+					if e.ResourceType != event.ResourceTypeVersion {
+						continue
+					}
+					if e.EventType != event.VersionStateChange {
+						continue
+					}
+					data, ok := e.Data.(*event.VersionEventData)
+					require.True(t, ok)
+					assert.Equal(t, test.expectedVersionStatus, data.Status)
+					numVersionFinishedEvents++
+				}
+				assert.Equal(t, 1, numVersionFinishedEvents, "expected to find exactly one version finished event")
+			}
 
 			p, err = patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
+			require.NotZero(t, p)
 			assert.Equal(t, test.expectedPatchStatus, p.Status)
 			assert.Equal(t, test.expectedPatchActivation, p.Activated)
+			if evergreen.IsFinishedVersionStatus(test.expectedPatchStatus) {
+				events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+				require.NoError(t, err)
+				var numPatchFinishedEvents int
+				for _, e := range events {
+					if e.ResourceType != event.ResourceTypePatch {
+						continue
+					}
+					if e.EventType != event.PatchStateChange {
+						continue
+					}
+					data, ok := e.Data.(*event.PatchEventData)
+					require.True(t, ok)
+					assert.Equal(t, test.expectedPatchStatus, data.Status)
+					numPatchFinishedEvents++
+				}
+				assert.Equal(t, 1, numPatchFinishedEvents, "expected to find exactly one patch finished event")
+			}
 		})
 	}
 }
@@ -1693,6 +1732,204 @@ func TestUpdateVersionStatus(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, evergreen.VersionSucceeded, dbVersion.Status)
 	})
+}
+
+func TestUpdatePatchStatus(t *testing.T) {
+	type eventTypeAndData struct {
+		eventType string
+		data      any
+	}
+	checkPatchEvents := func(t *testing.T, p *patch.Patch, expectedEvents []eventTypeAndData) {
+		events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		assert.Len(t, events, len(expectedEvents))
+		for _, e := range events {
+			for _, expected := range expectedEvents {
+				if e.EventType != expected.eventType {
+					continue
+				}
+				assert.EqualValues(t, expected.data, e.Data)
+			}
+		}
+	}
+	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch){
+		"UpdatesPatchToStarted": func(t *testing.T, p *patch.Patch) {
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionStarted
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.False(t, psu.isPatchFamilyDone)
+			assert.Zero(t, psu.parentPatch)
+			assert.Empty(t, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.Zero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+			})
+		},
+		"UpdatesParentPatchToStarted": func(t *testing.T, p *patch.Patch) {
+			childPatch := &patch.Patch{
+				Id:     patch.NewId(primitive.NewObjectID().Hex()),
+				Status: evergreen.VersionCreated,
+				Triggers: patch.TriggerInfo{
+					ParentPatch: p.Id.Hex(),
+				},
+			}
+			require.NoError(t, childPatch.Insert(t.Context()))
+			p.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionStarted
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.False(t, psu.isPatchFamilyDone)
+			require.NotZero(t, psu.parentPatch)
+			assert.Equal(t, p.Id.Hex(), psu.parentPatch.Id.Hex())
+			assert.Empty(t, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.Zero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+			})
+		},
+		"UpdatesParentPatchToSuccessButChildFailed": func(t *testing.T, p *patch.Patch) {
+			childPatch := &patch.Patch{
+				Id:     patch.NewId(primitive.NewObjectID().Hex()),
+				Status: evergreen.VersionFailed,
+				Triggers: patch.TriggerInfo{
+					ParentPatch: p.Id.Hex(),
+				},
+			}
+			require.NoError(t, childPatch.Insert(t.Context()))
+			p.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionSucceeded
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.True(t, psu.isPatchFamilyDone)
+			require.NotZero(t, psu.parentPatch)
+			assert.Equal(t, p.Id.Hex(), psu.parentPatch.Id.Hex())
+			assert.Equal(t, evergreen.VersionFailed, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+				{
+					eventType: event.PatchChildrenCompletion,
+					data: &event.PatchEventData{
+						Author: p.Author,
+						Status: evergreen.VersionFailed,
+					},
+				},
+			})
+		},
+		"UpdatesPatchToFinished": func(t *testing.T, p *patch.Patch) {
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionSucceeded
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.True(t, psu.isPatchFamilyDone)
+			assert.Zero(t, psu.parentPatch)
+			assert.Equal(t, newStatus, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+				{
+					eventType: event.PatchChildrenCompletion,
+					data: &event.PatchEventData{
+						Status: newStatus,
+						Author: p.Author,
+					},
+				},
+			})
+		},
+		"NoopsForUpdatingFinishedPatchToSameStatus": func(t *testing.T, p *patch.Patch) {
+			p.Status = evergreen.VersionSucceeded
+			p.FinishTime = time.Now()
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionSucceeded
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.False(t, psu.patchStatusChanged, "patch status should not change")
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
+
+			events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			assert.Empty(t, events, "should not log new patch/vesion finished events when the patch is already finished")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(patch.Collection, event.EventCollection))
+
+			patchID := primitive.NewObjectID().Hex()
+			p := &patch.Patch{
+				Id:      patch.NewId(patchID),
+				Status:  evergreen.VersionCreated,
+				Version: patchID,
+			}
+
+			tCase(t, p)
+		})
+	}
 }
 
 func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
