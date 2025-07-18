@@ -158,13 +158,13 @@ func makeDeleteKeys() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-// @Summary		Delete a specified public key from the current user
-// @Description	Delete the SSH public key with name {key_name} from the current user (as determined by the Api-User and Api-Key headers).
-// @Tags			keys
-// @Router			/keys [delete]
-// @Security		Api-User || Api-Key
-// @Param			key_name	query	string	true	"the key name"
-// @Success		200
+//	@Summary		Delete a specified public key from the current user
+//	@Description	Delete the SSH public key with name {key_name} from the current user (as determined by the Api-User and Api-Key headers).
+//	@Tags			keys
+//	@Router			/keys [delete]
+//	@Security		Api-User || Api-Key
+//	@Param			key_name	query	string	true	"the key name"
+//	@Success		200
 func (h *keysDeleteHandler) Factory() gimlet.RouteHandler {
 	return &keysDeleteHandler{}
 }
