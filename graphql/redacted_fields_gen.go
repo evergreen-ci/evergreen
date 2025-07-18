@@ -2,12 +2,21 @@
 package graphql
 
 var redactedFields = map[string]bool{
+	"appId": true,
+	"clientId": true,
+	"clientSecret": true,
+	"defaultOwner": true,
+	"defaultRepo": true,
 	"github": true,
 	"githubAppAuth": true,
+	"headerName": true,
+	"issuer": true,
 	"kanopy": true,
+	"keysetURL": true,
 	"multi": true,
 	"naive": true,
 	"okta": true,
+	"organization": true,
 	"preferredType": true,
 	"publicKey": true,
 	"secret": true,

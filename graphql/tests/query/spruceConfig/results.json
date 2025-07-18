@@ -105,12 +105,21 @@
         "data": {
           "spruceConfig": {
             "secretFields": [
+              "appId",
+              "clientId",
+              "clientSecret",
+              "defaultOwner",
+              "defaultRepo",
               "github",
               "githubAppAuth",
+              "headerName",
+              "issuer",
               "kanopy",
+              "keysetURL",
               "multi",
               "naive",
               "okta",
+              "organization",
               "preferredType",
               "publicKey",
               "secret",

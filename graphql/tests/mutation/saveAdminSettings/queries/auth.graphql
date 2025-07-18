@@ -2,7 +2,7 @@ mutation {
   saveAdminSettings(
     adminSettings: {
       authConfig: {
-        preferredType: "naive"
+        preferredType: NAIVE
         naive: {
           users: [
             {

@@ -18,9 +18,9 @@ type AuthConfig {
 }
 
 type OktaConfig {
-  clientId: String
-  clientSecret: String
-  issuer: String
+  clientId: String @requireAdmin
+  clientSecret: String @requireAdmin
+  issuer: String  @requireAdmin
   scopes: [String!]!
   userGroup: String
   expireAfterMinutes: Int
@@ -38,12 +38,12 @@ type AuthUser {
 }
 
 type GitHubAuthConfig {
-  appId: Int
-  clientId: String
-  clientSecret: String
-  defaultOwner: String
-  defaultRepo: String
-  organization: String
+  appId: Int @requireAdmin
+  clientId: String @requireAdmin
+  clientSecret: String @requireAdmin
+  defaultOwner: String @requireAdmin
+  defaultRepo: String @requireAdmin
+  organization: String @requireAdmin
   users: [String!]!
 }
 
@@ -53,9 +53,9 @@ type MultiAuthConfig {
 }
 
 type KanopyAuthConfig {
-  headerName: String!
-  issuer: String!
-  keysetURL: String!
+  headerName: String! @requireAdmin
+  issuer: String! @requireAdmin
+  keysetURL: String! @requireAdmin
 }
 
 
@@ -65,15 +65,15 @@ input AuthConfigInput {
   github: GitHubAuthConfigInput @redactSecrets
   multi: MultiAuthConfigInput @redactSecrets
   kanopy: KanopyAuthConfigInput @redactSecrets
-  preferredType: String @redactSecrets
+  preferredType: AuthConfigType @redactSecrets
   backgroundReauthMinutes: Int
   allowServiceUsers: Boolean
 }
 
 input OktaConfigInput {
-  clientId: String
-  clientSecret: String
-  issuer: String
+  clientId: String @redactSecrets
+  clientSecret: String @redactSecrets
+  issuer: String @redactSecrets
   scopes: [String!]
   userGroup: String
   expireAfterMinutes: Int
@@ -91,13 +91,13 @@ input AuthUserInput {
 }
 
 input GitHubAuthConfigInput {
-  appId: Int
-  clientId: String
-  clientSecret: String
-  defaultOwner: String
-  defaultRepo: String
-  organization: String
-  users: [String!]
+  appId: Int @redactSecrets
+  clientId: String @redactSecrets
+  clientSecret: String @redactSecrets
+  defaultOwner: String @redactSecrets
+  defaultRepo: String @redactSecrets
+  organization: String @redactSecrets
+  users: [String!]!
 }
 
 input MultiAuthConfigInput {
@@ -106,8 +106,8 @@ input MultiAuthConfigInput {
 }
 
 input KanopyAuthConfigInput {
-  headerName: String!
-  issuer: String!
-  keysetURL: String!
+  headerName: String! @redactSecrets
+  issuer: String! @redactSecrets
+  keysetURL: String! @redactSecrets
 }
 
