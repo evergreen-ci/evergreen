@@ -254,7 +254,7 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "public_dns_name", dnsName)
 		},
-		"SpawnFleetSpotHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+		"SpawnFleetHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			assert.NoError(t, m.spawnFleetHost(ctx, &host.Host{Tag: "ht_1"}, &EC2ProviderSettings{}))
 
 			mockClient := m.client.(*awsClientMock)

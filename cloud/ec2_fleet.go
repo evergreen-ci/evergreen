@@ -135,7 +135,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	}
 
 	if err := m.spawnFleetHost(ctx, h, ec2Settings); err != nil {
-		msg := "error spawning spot host with Fleet"
+		msg := "error spawning host with Fleet"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
 			"host_id":       h.Id,
@@ -145,7 +145,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Wrap(err, msg)
 	}
 	grip.Debug(message.Fields{
-		"message":       "spawned spot host with Fleet",
+		"message":       "spawned host with Fleet",
 		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
@@ -721,7 +721,7 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 		}
 	}
 
-	// Create a fleet with a single spot instance from the launch template
+	// Create a fleet with a single instance from the launch template
 	createFleetInput := &ec2.CreateFleetInput{
 		LaunchTemplateConfigs: []types.FleetLaunchTemplateConfigRequest{
 			{
@@ -734,13 +734,9 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Set
 		},
 		TargetCapacitySpecification: &types.TargetCapacitySpecificationRequest{
 			TotalTargetCapacity:       aws.Int32(1),
-			DefaultTargetCapacityType: ec2Settings.FleetOptions.awsTargetCapacityType(),
+			DefaultTargetCapacityType: types.DefaultTargetCapacityTypeOnDemand,
 		},
 		Type: types.FleetTypeInstant,
-	}
-
-	if allocationStrategy := ec2Settings.FleetOptions.awsAllocationStrategy(); allocationStrategy != "" {
-		createFleetInput.SpotOptions = &types.SpotOptionsRequest{AllocationStrategy: allocationStrategy}
 	}
 
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)

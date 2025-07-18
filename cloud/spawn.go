@@ -173,7 +173,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	// modify the setup script to add the user's public key
 	d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", so.PublicKey, d.GetAuthorizedKeysFile())
 
-	// fake out replacing spot instances with on-demand equivalents
+	// Replace fleet with on-demand explicitly.
 	if d.Provider == evergreen.ProviderNameEc2Fleet {
 		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
