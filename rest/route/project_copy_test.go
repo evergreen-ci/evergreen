@@ -184,14 +184,14 @@ func (s *copyVariablesSuite) SetupTest() {
 		AdminOnlyVars: map[string]bool{"hello": true},
 	}
 	projectVar2 := &model.ProjectVars{
-		Id:   "projectB",
-		Vars: map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
-		// PrivateVars: map[string]bool{},
+		Id:          "projectB",
+		Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
+		PrivateVars: map[string]bool{},
 	}
 	projectVar3 := model.ProjectVars{
-		Id:   "repoRef",
-		Vars: map[string]string{"chicago": "cubs"},
-		// PrivateVars: map[string]bool{},
+		Id:          "repoRef",
+		Vars:        map[string]string{"chicago": "cubs"},
+		PrivateVars: map[string]bool{},
 	}
 
 	s.NoError(projectVar1.Insert(s.T().Context()))
