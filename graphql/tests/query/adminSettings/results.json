@@ -181,7 +181,7 @@
               "database": "amboy",
               "url": "amboy-db-connection-url"
             },
-            "logger": {
+            "loggerConfig": {
               "buffer": {
                 "useAsync": true,
                 "durationSeconds": 10,

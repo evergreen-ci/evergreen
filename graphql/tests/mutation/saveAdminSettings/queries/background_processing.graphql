@@ -39,7 +39,7 @@ mutation BackgroundProcessing {
         ]
       }
       amboyDB: { url: "new-amboy-url", database: "new-amboy-database" }
-      logger: {
+      loggerConfig: {
         buffer: {
           useAsync: false
           durationSeconds: 1
@@ -83,7 +83,7 @@ mutation BackgroundProcessing {
         lockTimeoutSeconds
       }
     }
-    logger {
+    loggerConfig {
       buffer {
         useAsync
         durationSeconds

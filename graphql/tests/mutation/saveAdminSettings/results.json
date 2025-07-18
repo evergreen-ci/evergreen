@@ -214,7 +214,7 @@
                 }
               ]
             },
-            "logger": {
+            "loggerConfig": {
               "buffer": {
                 "useAsync": false,
                 "durationSeconds": 1,

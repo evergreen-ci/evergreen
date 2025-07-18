@@ -32,7 +32,7 @@ query BackgroundProcessing {
       database
       url
     }
-    logger {
+    loggerConfig {
       buffer {
         useAsync
         durationSeconds
