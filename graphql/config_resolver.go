@@ -24,11 +24,6 @@ func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *model.APIA
 	return &theme, nil
 }
 
-// Logger is the resolver for the logger field.
-func (r *adminSettingsResolver) Logger(ctx context.Context, obj *model.APIAdminSettings) (*model.APILoggerConfig, error) {
-	return obj.LoggerConfig, nil
-}
-
 // Port is the resolver for the port field.
 func (r *containerPoolResolver) Port(ctx context.Context, obj *model.APIContainerPool) (int, error) {
 	return int(obj.Port), nil
@@ -53,12 +48,6 @@ func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *model
 	}
 	themeString := string(*data)
 	obj.BannerTheme = utility.ToStringPtr(themeString)
-	return nil
-}
-
-// Logger is the resolver for the logger field.
-func (r *adminSettingsInputResolver) Logger(ctx context.Context, obj *model.APIAdminSettings, data *model.APILoggerConfig) error {
-	obj.LoggerConfig = data
 	return nil
 }
 

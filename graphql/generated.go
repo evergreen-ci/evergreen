@@ -145,7 +145,7 @@ type ComplexityRoot struct {
 		BannerTheme        func(childComplexity int) int
 		DisabledGQLQueries func(childComplexity int) int
 		HostInit           func(childComplexity int) int
-		Logger             func(childComplexity int) int
+		LoggerConfig       func(childComplexity int) int
 		Notify             func(childComplexity int) int
 		PodLifecycle       func(childComplexity int) int
 		RepoTracker        func(childComplexity int) int
@@ -1994,8 +1994,6 @@ type ComplexityRoot struct {
 
 type AdminSettingsResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error)
-
-	Logger(ctx context.Context, obj *model.APIAdminSettings) (*model.APILoggerConfig, error)
 }
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
@@ -2344,8 +2342,6 @@ type VolumeResolver interface {
 
 type AdminSettingsInputResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error
-
-	Logger(ctx context.Context, obj *model.APIAdminSettings, data *model.APILoggerConfig) error
 }
 type DistroInputResolver interface {
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]any) error
@@ -2570,12 +2566,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.HostInit(childComplexity), true
 
-	case "AdminSettings.logger":
-		if e.complexity.AdminSettings.Logger == nil {
+	case "AdminSettings.loggerConfig":
+		if e.complexity.AdminSettings.LoggerConfig == nil {
 			break
 		}
 
-		return e.complexity.AdminSettings.Logger(childComplexity), true
+		return e.complexity.AdminSettings.LoggerConfig(childComplexity), true
 
 	case "AdminSettings.notify":
 		if e.complexity.AdminSettings.Notify == nil {
@@ -19675,8 +19671,8 @@ func (ec *executionContext) fieldContext_AdminSettings_disabledGQLQueries(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _AdminSettings_logger(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AdminSettings_logger(ctx, field)
+func (ec *executionContext) _AdminSettings_loggerConfig(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -19689,7 +19685,7 @@ func (ec *executionContext) _AdminSettings_logger(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.AdminSettings().Logger(rctx, obj)
+		return obj.LoggerConfig, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -19703,12 +19699,12 @@ func (ec *executionContext) _AdminSettings_logger(ctx context.Context, field gra
 	return ec.marshalOLoggerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILoggerConfig(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AdminSettings_logger(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AdminSettings_loggerConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AdminSettings",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "buffer":
@@ -38237,8 +38233,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
-			case "logger":
-				return ec.fieldContext_AdminSettings_logger(ctx, field)
+			case "loggerConfig":
+				return ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
 			case "triggers":
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			}
@@ -54919,8 +54915,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
-			case "logger":
-				return ec.fieldContext_AdminSettings_logger(ctx, field)
+			case "loggerConfig":
+				return ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
 			case "triggers":
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			}
@@ -86296,7 +86292,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries", "logger", "triggers"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries", "loggerConfig", "triggers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86422,15 +86418,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.DisabledGQLQueries = data
-		case "logger":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logger"))
+		case "loggerConfig":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("loggerConfig"))
 			data, err := ec.unmarshalOLoggerConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILoggerConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.AdminSettingsInput().Logger(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.LoggerConfig = data
 		case "triggers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
 			data, err := ec.unmarshalOTriggerConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerConfig(ctx, v)
@@ -94049,39 +94043,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "logger":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._AdminSettings_logger(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "loggerConfig":
+			out.Values[i] = ec._AdminSettings_loggerConfig(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._AdminSettings_triggers(ctx, field, obj)
 		default:

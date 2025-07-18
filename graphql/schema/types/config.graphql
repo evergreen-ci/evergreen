@@ -285,7 +285,7 @@ input AdminSettingsInput {
   api: APIConfigInput
   ui: UIConfigInput
   disabledGQLQueries: [String!]
-  logger: LoggerConfigInput
+  loggerConfig: LoggerConfigInput
   triggers: TriggerConfigInput
 }
 
@@ -304,7 +304,7 @@ type AdminSettings {
   api: APIConfig
   ui: UIConfig
   disabledGQLQueries: [String!]!
-  logger: LoggerConfig
+  loggerConfig: LoggerConfig
   triggers: TriggerConfig
 }
 
