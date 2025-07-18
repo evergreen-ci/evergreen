@@ -579,6 +579,34 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 		update["$unset"] = unsetUpdate
 	}
 
+	if len(projectVars.PrivateVars) != 0 && len(projectVars.AdminOnlyVars) != 0 {
+		// Initialize the private and admin-only vars maps if they don't exist.
+		initializeUpdate := bson.M{}
+		originalProjectVars, err := FindOneProjectVars(ctx, projectVars.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
+		}
+		if originalProjectVars == nil {
+			return nil, errors.Errorf("project vars for project '%s' not found", projectVars.Id)
+		}
+		if originalProjectVars.PrivateVars == nil {
+			initializeUpdate[privateVarsMapKey] = bson.M{}
+		}
+		if originalProjectVars.AdminOnlyVars == nil {
+			initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
+		}
+		if len(initializeUpdate) > 0 {
+			err := db.UpdateContext(ctx,
+				ProjectVarsCollection,
+				bson.M{projectVarIdKey: projectVars.Id},
+				bson.M{"$set": initializeUpdate},
+			)
+			if err != nil {
+				return nil, errors.Wrap(err, "initializing private and admin-only vars in DB")
+			}
+		}
+	}
+
 	change, err := db.FindAndModify(ctx,
 		ProjectVarsCollection,
 		bson.M{projectVarIdKey: projectVars.Id},
