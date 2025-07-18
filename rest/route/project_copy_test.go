@@ -178,19 +178,20 @@ func (s *copyVariablesSuite) SetupTest() {
 	}}
 	s.NoError(repoRef.Replace(s.ctx))
 	projectVar1 := &model.ProjectVars{
-		Id:          "projectA",
-		Vars:        map[string]string{"apple": "red", "hello": "world"},
-		PrivateVars: map[string]bool{"hello": true},
+		Id:            "projectA",
+		Vars:          map[string]string{"apple": "red", "hello": "world"},
+		PrivateVars:   map[string]bool{"hello": true},
+		AdminOnlyVars: map[string]bool{"hello": true},
 	}
 	projectVar2 := &model.ProjectVars{
-		Id:          "projectB",
-		Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
-		PrivateVars: map[string]bool{},
+		Id:   "projectB",
+		Vars: map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
+		// PrivateVars: map[string]bool{},
 	}
 	projectVar3 := model.ProjectVars{
-		Id:          "repoRef",
-		Vars:        map[string]string{"chicago": "cubs"},
-		PrivateVars: map[string]bool{},
+		Id:   "repoRef",
+		Vars: map[string]string{"chicago": "cubs"},
+		// PrivateVars: map[string]bool{},
 	}
 
 	s.NoError(projectVar1.Insert(s.T().Context()))
@@ -232,9 +233,8 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		IncludePrivate: true,
 	}
 	newProjectVar := &model.ProjectVars{
-		Id:          "projectB",
-		Vars:        map[string]string{"banana": "yellow"},
-		PrivateVars: map[string]bool{},
+		Id:   "projectB",
+		Vars: map[string]string{"banana": "yellow"},
 	}
 	_, err := newProjectVar.Upsert(s.ctx)
 	s.NoError(err)
