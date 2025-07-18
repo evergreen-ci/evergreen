@@ -847,15 +847,8 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 }
 
 func isNonZeroBV(bv parserBV) bool {
-	// TODO (DEVPROD-723): this omits activate from consideration, but it's
-	// unclear if it's intentional or not.
-	grip.DebugWhen(bv.Activate != nil, message.Fields{
-		"ticket":             "DEVPROD-723",
-		"message":            "activate is not nil",
-		"build_variant_name": bv.Name,
-	})
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-		bv.Disable != nil || len(bv.Tags) > 0 ||
+		bv.Disable != nil || len(bv.Tags) > 0 || bv.Activate != nil ||
 		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||
 		bv.AllowForGitTag != nil || bv.GitTagOnly != nil || len(bv.AllowedRequesters) > 0 ||
 		bv.Stepback != nil || bv.DeactivatePrevious != nil || len(bv.RunOn) > 0 {

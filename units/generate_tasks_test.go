@@ -268,7 +268,6 @@ var sampleGeneratedProject2 = []string{`
           "activate": false
         }
       ],
-      "activate": false
     },
     {
       "name": "testBV2",
@@ -278,7 +277,6 @@ var sampleGeneratedProject2 = []string{`
           "activate": false
         }
       ],
-      "activate": false
     }
   ],
   "tasks":  [
@@ -432,7 +430,6 @@ var sampleGeneratedProject3 = []string{`
           "activate": false
         }
       ],
-      "activate": false
     },
     {
       "name": "testBV5",
