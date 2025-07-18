@@ -66,12 +66,6 @@ const (
 
 	// EndTaskMessageLimit is the length limit of a user-defined end task response.
 	EndTaskMessageLimit = 500
-
-	// MaxTaskDirCleanupFailures is the maximum number of times the agent can
-	// fail to clean up the task directory before the host is declared
-	// unhealthy. This is to reduce the likelihood of later tasks failing due to
-	// lack of disk space from task directories that were left behind.
-	MaxTaskDirCleanupFailures = 3
 	// MaxPercentageDataVolumeUsage is the maximum percentage of usage on the
 	// data volume that the agent permits after running a task and cleaning up
 	// after it. If the current disk usage still exceeds this threshold after

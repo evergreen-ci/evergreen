@@ -100,7 +100,7 @@
       }
     },
     {
-      "query_file": "secretFields.graphql",
+      "query_file": "secret_fields.graphql",
       "result": {
         "data": {
           "spruceConfig": {
@@ -111,6 +111,8 @@
               "defaultOwner",
               "defaultRepo",
               "github",
+              "amboyDB",
+              "csrfKey",
               "githubAppAuth",
               "headerName",
               "issuer",

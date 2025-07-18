@@ -78,7 +78,7 @@ func (s *eventNotificationSuite) SetupTest() {
 				Subject: "o hai",
 				Body:    "i'm a notification",
 				Headers: map[string][]string{
-					"such": []string{"much"},
+					"such": {"much"},
 				},
 			},
 		},

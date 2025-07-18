@@ -1,0 +1,28 @@
+{
+  "patches": [
+    {
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
+      "branch": "spruce",
+      "version": "5e4ff3abe3c3317e352062e4",
+      "activated": true,
+      "github_patch_data": {
+        "author": "me",
+        "base_owner": "evergreen-ci",
+        "base_repo": "spruce",
+        "head_branch": "DEVPROD-1123",
+        "head_hash": "123456",
+        "head_owner": "me",
+        "head_repo": "spruce",
+        "pr_number": 11
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

@@ -8,6 +8,8 @@ var redactedFields = map[string]bool{
 	"defaultOwner": true,
 	"defaultRepo": true,
 	"github": true,
+	"amboyDB": true,
+	"csrfKey": true,
 	"githubAppAuth": true,
 	"headerName": true,
 	"issuer": true,

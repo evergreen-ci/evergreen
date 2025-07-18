@@ -30,7 +30,7 @@ func getMockProjectSettings() model.ProjectSettings {
 			Vars:        map[string]string{},
 			PrivateVars: map[string]bool{},
 		},
-		Aliases: []model.ProjectAlias{model.ProjectAlias{
+		Aliases: []model.ProjectAlias{{
 			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
 			ProjectID: projectId,
 			Alias:     "alias1",
@@ -38,7 +38,7 @@ func getMockProjectSettings() model.ProjectSettings {
 			Task:      "subcommand",
 		},
 		},
-		Subscriptions: []event.Subscription{event.Subscription{
+		Subscriptions: []event.Subscription{{
 			ID:           "subscription1",
 			ResourceType: "project",
 			Owner:        "admin",
