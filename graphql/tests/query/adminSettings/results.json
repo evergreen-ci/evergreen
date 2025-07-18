@@ -30,6 +30,68 @@
       }
     },
     {
+      "query_file": "auth.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "authConfig": {
+              "okta": {
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "issuer": "issuer",
+                "scopes": ["option1", "option2"],
+                "userGroup": "user_group",
+                "expireAfterMinutes": 0
+              },
+              "naive": {
+                "users": [
+                  {
+                    "username": "admin",
+                    "displayName": "Evergreen Admin",
+                    "password": "password",
+                    "email": ""
+                  },
+                  {
+                    "username": "regular",
+                    "displayName": "Regular User",
+                    "password": "password",
+                    "email": ""
+                  },
+                  {
+                    "username": "privileged",
+                    "displayName": "Privileged User",
+                    "password": "password",
+                    "email": ""
+                  }
+                ]
+              },
+              "github": {
+                "appId": 1234,
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "defaultOwner": "default_owner",
+                "defaultRepo": "default_repo",
+                "organization": "organization",
+                "users": []
+              },
+              "multi": {
+                "readWrite": ["admin", "privileged"],
+                "readOnly": ["admin", "privileged", "regular"]
+              },
+              "kanopy": {
+                "headerName": "",
+                "issuer": "https://kanopy.com",
+                "keysetURL": "https://kanopy.com/keyset"
+              },
+              "preferredType": "NAIVE",
+              "backgroundReauthMinutes": 0,
+              "allowServiceUsers": false
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "runners.graphql",
       "result": {
         "data": {

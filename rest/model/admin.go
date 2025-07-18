@@ -112,6 +112,14 @@ type APIAdminSettings struct {
 	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds,omitempty"`
 }
 
+const (
+	OktaPreferredType   = "okta"
+	NaivePreferredType  = "naive"
+	GithubPreferredType = "github"
+	MultiPreferredType  = "multi"
+	KanopyPreferredType = "kanopy"
+)
+
 // BuildFromService builds a model from the service layer
 func (as *APIAdminSettings) BuildFromService(h any) error {
 	switch v := h.(type) {
