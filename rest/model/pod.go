@@ -62,11 +62,11 @@ type APIPod struct {
 	ID                        *string                            `json:"id"`
 	Type                      APIPodType                         `json:"type,omitempty"`
 	Status                    APIPodStatus                       `json:"status,omitempty"`
-	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts,omitempty"`
+	TaskContainerCreationOpts APIPodTaskContainerCreationOptions `json:"task_container_creation_opts"`
 	Family                    *string                            `json:"family,omitempty"`
-	TimeInfo                  APIPodTimeInfo                     `json:"time_info,omitempty"`
-	Resources                 APIPodResourceInfo                 `json:"resources,omitempty"`
-	TaskRuntimeInfo           APITaskRuntimeInfo                 `json:"task_runtime_info,omitempty"`
+	TimeInfo                  APIPodTimeInfo                     `json:"time_info"`
+	Resources                 APIPodResourceInfo                 `json:"resources"`
+	TaskRuntimeInfo           APITaskRuntimeInfo                 `json:"task_runtime_info"`
 	AgentVersion              *string                            `json:"agent_version,omitempty"`
 }
 

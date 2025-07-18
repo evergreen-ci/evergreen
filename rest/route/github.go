@@ -130,17 +130,16 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 	return (fromApp && !hasApp) || (!fromApp && hasApp)
 }
 
-func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
+func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	// GitHub occasionally aborts requests early before we are able to complete the full operation
-	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom context
-	// instead of using the request context.
-	ctx, cancel := context.WithTimeout(context.Background(), githubWebhookTimeout)
+	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom timeout without cancel.
+	newCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), githubWebhookTimeout)
 	defer cancel()
 
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.HookID == nil {
@@ -158,7 +157,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 
 	case *github.PullRequestEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.Action == nil {
@@ -190,7 +189,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "PR accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
+			if err := gh.AddIntentForPR(newCtx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -211,7 +210,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 				"message": "pull request closed; aborting patch",
 			})
 
-			if err := data.AbortPatchesFromPullRequest(ctx, event); err != nil {
+			if err := data.AbortPatchesFromPullRequest(newCtx, event); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "GitHub hook",
 					"msg_id":  gh.msgID,
@@ -226,7 +225,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 		}
 	case *github.PushEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		grip.Debug(message.Fields{
@@ -239,11 +238,11 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 		})
 		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
 		// to ensure we're up-to-date on the commit the tag is being pushed to.
-		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
+		if err := data.TriggerRepotracker(newCtx, gh.queue, gh.msgID, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 		if isTag(event.GetRef()) {
-			if err := gh.handleGitTag(ctx, event); err != nil {
+			if err := gh.handleGitTag(newCtx, event); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling git tag"))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
@@ -251,30 +250,30 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
-		if err := gh.handleComment(ctx, event); err != nil {
+		if err := gh.handleComment(newCtx, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 	case *github.MergeGroupEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.GetAction() == githubActionChecksRequested {
-			return gh.handleMergeGroupChecksRequested(ctx, event)
+			return gh.handleMergeGroupChecksRequested(newCtx, event)
 		}
 
 	case *github.CheckRunEvent:
 		if event.GetAction() == githubActionRerequested {
-			return gh.handleCheckRunRerequested(ctx, event)
+			return gh.handleCheckRunRerequested(newCtx, event)
 		}
 
 	case *github.CheckSuiteEvent:
 		if event.GetAction() == githubActionRerequested {
-			return gh.handleCheckSuiteRerequested(ctx, event)
+			return gh.handleCheckSuiteRerequested(newCtx, event)
 		}
 	}
 

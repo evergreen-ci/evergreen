@@ -120,7 +120,7 @@ type APITask struct {
 	Requester         *string         `json:"requester"`
 	TestResults       []APITest       `json:"test_results"`
 	Aborted           bool            `json:"aborted"`
-	AbortInfo         APIAbortInfo    `json:"abort_info,omitempty"`
+	AbortInfo         APIAbortInfo    `json:"abort_info"`
 	AMI               *string         `json:"ami"`
 	MustHaveResults   bool            `json:"must_have_test_results"`
 	BaseTask          APIBaseTaskInfo `json:"base_task"`

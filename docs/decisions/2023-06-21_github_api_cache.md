@@ -1,13 +1,12 @@
 # 2023-06-21 GitHub API Response Caching
 
-* status: accepted
-* date: 2023-06-21 
-* authors: Jonathan Brill
+- status: accepted
+- date: 2023-06-21
+- authors: Jonathan Brill
 
 ## Context and Problem Statement
 
 Evergreen has been exhausting its GitHub API limit on a regular basis. Switching to a GitHub App will provide a higher limit, but it's a ways away and it can't be the only solution.
-
 
 ## Decision Outcome
 

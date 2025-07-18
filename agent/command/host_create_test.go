@@ -130,6 +130,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	}
 
 	err = s.cmd.ParseParams(s.params)
+	s.Require().NotNil(err)
 	s.Contains(err.Error(), "when using a file to parse params, no additional params other than file name should be defined")
 
 }

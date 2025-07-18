@@ -132,8 +132,8 @@ func TestPipeline(t *testing.T) {
 				"Sort Latest, GroupBy task, Num Days 1": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -143,8 +143,8 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.Sort = taskstats.SortEarliestFirst
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -158,8 +158,8 @@ func TestPipeline(t *testing.T) {
 
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$lte": startAtDate}},
-							bson.M{"_id.date": bson.M{"$lte": startAtDate, "$gt": startAtDate}, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": bson.M{"$lte": startAtDate}},
+							{"_id.date": bson.M{"$lte": startAtDate, "$gt": startAtDate}, "_id.task_name": bson.M{"$gt": task}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -170,9 +170,9 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.GroupBy = taskstats.GroupByVariant
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -183,9 +183,9 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.GroupBy = taskstats.GroupByVariant
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -200,9 +200,9 @@ func TestPipeline(t *testing.T) {
 
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": bson.M{"$gt": variant}},
-							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": bson.M{"$gt": variant}},
+							{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -215,10 +215,10 @@ func TestPipeline(t *testing.T) {
 
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+							{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -230,10 +230,10 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.StartAt.Date = after.Add(24 * time.Hour)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
-							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+							{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -247,10 +247,10 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.StartAt.Date = startAtDate
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []bson.M{
-							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date}},
-							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": bson.M{"$gt": variant}},
-							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
-							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+							{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date}},
+							{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": bson.M{"$gt": variant}},
+							{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+							{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 						}
 						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
@@ -384,10 +384,10 @@ func TestPipeline(t *testing.T) {
 						Distro:       distro,
 					}
 					expected["$match"].(bson.M)["$or"] = []bson.M{
-						bson.M{"_id.date": bson.M{"$gt": startAt}},
-						bson.M{"_id.date": startAt, "_id.variant": bson.M{"$gt": variant}},
-						bson.M{"_id.date": startAt, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
-						bson.M{"_id.date": startAt, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
+						{"_id.date": bson.M{"$gt": startAt}},
+						{"_id.date": startAt, "_id.variant": bson.M{"$gt": variant}},
+						{"_id.date": startAt, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
+						{"_id.date": startAt, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 					}
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
@@ -439,7 +439,7 @@ func TestPipeline(t *testing.T) {
 									"date": bson.M{
 										"$switch": bson.M{
 											"branches": []bson.M{
-												bson.M{
+												{
 													"case": bson.M{
 														"$and": taskstats.Array{
 															bson.M{

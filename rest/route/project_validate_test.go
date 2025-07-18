@@ -56,5 +56,9 @@ buildvariants:
 	var results validator.ValidationErrors
 	require.NoError(t, json.Unmarshal(rawBytes, &results))
 	require.NotEmpty(t, results, "Expected validation errors for invalid project input")
-	assert.Contains(t, results[0].Message, "buildvariant 'my_build_variant' references a nonexistent distro or container named 'not_real'")
+	var messages string
+	for _, validationErr := range results {
+		messages += validationErr.Message
+	}
+	assert.Contains(t, messages, "buildvariant 'my_build_variant' references a nonexistent distro or container named 'not_real'")
 }
