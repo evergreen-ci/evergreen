@@ -663,6 +663,25 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
+  - name: lint-markdown
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: npm
+          args: ["install", "--save-dev", "markdownlint-cli", "prettier"]
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: npx
+          args: ["markdownlint-cli", "docs/**/*.md"]
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: npx
+          args: ["prettier", "--check", "docs/**/*.md"]
   - name: generate-api-docs
     commands:
       - func: get-project-and-modules

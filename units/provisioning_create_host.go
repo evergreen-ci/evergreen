@@ -27,6 +27,7 @@ const (
 	maxPollAttempts                       = 100
 	maxHostCreateAttempts                 = 6
 	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
+	maxHostCreateJobTime                  = 30 * time.Minute
 )
 
 func init() {
@@ -68,6 +69,7 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, buildIm
 	j.BuildImageStarted = buildImageStarted
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		DispatchBy: j.host.SpawnOptions.TimeoutSetup,
+		MaxTime:    maxHostCreateJobTime,
 	})
 	var wait time.Duration
 	var maxAttempts int

@@ -438,6 +438,17 @@ type ComplexityRoot struct {
 		Repo     func(childComplexity int) int
 	}
 
+	GithubPatch struct {
+		Author     func(childComplexity int) int
+		BaseOwner  func(childComplexity int) int
+		BaseRepo   func(childComplexity int) int
+		HeadBranch func(childComplexity int) int
+		HeadHash   func(childComplexity int) int
+		HeadOwner  func(childComplexity int) int
+		HeadRepo   func(childComplexity int) int
+		PRNumber   func(childComplexity int) int
+	}
+
 	GithubProjectConflicts struct {
 		CommitCheckIdentifiers func(childComplexity int) int
 		CommitQueueIdentifiers func(childComplexity int) int
@@ -856,6 +867,7 @@ type ComplexityRoot struct {
 		Duration            func(childComplexity int) int
 		GeneratedTaskCounts func(childComplexity int) int
 		Githash             func(childComplexity int) int
+		GithubPatchData     func(childComplexity int) int
 		Hidden              func(childComplexity int) int
 		Id                  func(childComplexity int) int
 		ModuleCodeChanges   func(childComplexity int) int
@@ -3688,6 +3700,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GithubPRSubscriber.Repo(childComplexity), true
 
+	case "GithubPatch.author":
+		if e.complexity.GithubPatch.Author == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.Author(childComplexity), true
+
+	case "GithubPatch.baseOwner":
+		if e.complexity.GithubPatch.BaseOwner == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.BaseOwner(childComplexity), true
+
+	case "GithubPatch.baseRepo":
+		if e.complexity.GithubPatch.BaseRepo == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.BaseRepo(childComplexity), true
+
+	case "GithubPatch.headBranch":
+		if e.complexity.GithubPatch.HeadBranch == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.HeadBranch(childComplexity), true
+
+	case "GithubPatch.headHash":
+		if e.complexity.GithubPatch.HeadHash == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.HeadHash(childComplexity), true
+
+	case "GithubPatch.headOwner":
+		if e.complexity.GithubPatch.HeadOwner == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.HeadOwner(childComplexity), true
+
+	case "GithubPatch.headRepo":
+		if e.complexity.GithubPatch.HeadRepo == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.HeadRepo(childComplexity), true
+
+	case "GithubPatch.prNumber":
+		if e.complexity.GithubPatch.PRNumber == nil {
+			break
+		}
+
+		return e.complexity.GithubPatch.PRNumber(childComplexity), true
+
 	case "GithubProjectConflicts.commitCheckIdentifiers":
 		if e.complexity.GithubProjectConflicts.CommitCheckIdentifiers == nil {
 			break
@@ -5944,6 +6012,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Githash(childComplexity), true
+
+	case "Patch.githubPatchData":
+		if e.complexity.Patch.GithubPatchData == nil {
+			break
+		}
+
+		return e.complexity.Patch.GithubPatchData(childComplexity), true
 
 	case "Patch.hidden":
 		if e.complexity.Patch.Hidden == nil {
@@ -26532,6 +26607,334 @@ func (ec *executionContext) fieldContext_GithubPRSubscriber_repo(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _GithubPatch_author(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_author(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Author, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubPatch_baseOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_baseOwner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseOwner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_baseOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubPatch_baseRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_baseRepo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseRepo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_baseRepo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubPatch_headBranch(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headBranch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeadBranch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_headBranch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubPatch_headHash(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headHash(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeadHash, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_headHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubPatch_headOwner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headOwner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeadOwner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_headOwner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubPatch_headRepo(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_headRepo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeadRepo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_headRepo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubPatch_prNumber(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubPatch_prNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PRNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubPatch_prNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubPatch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GithubProjectConflicts_commitCheckIdentifiers(ctx context.Context, field graphql.CollectedField, obj *model1.GithubProjectConflicts) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GithubProjectConflicts_commitCheckIdentifiers(ctx, field)
 	if err != nil {
@@ -36208,6 +36611,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "githubPatchData":
+				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
@@ -36327,6 +36732,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "githubPatchData":
+				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
@@ -42785,6 +43192,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "githubPatchData":
+				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
@@ -43053,6 +43462,65 @@ func (ec *executionContext) fieldContext_Patch_githash(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_githubPatchData(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Patch_githubPatchData(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubPatchData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIGithubPatch)
+	fc.Result = res
+	return ec.marshalOGithubPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Patch_githubPatchData(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "author":
+				return ec.fieldContext_GithubPatch_author(ctx, field)
+			case "baseOwner":
+				return ec.fieldContext_GithubPatch_baseOwner(ctx, field)
+			case "baseRepo":
+				return ec.fieldContext_GithubPatch_baseRepo(ctx, field)
+			case "headBranch":
+				return ec.fieldContext_GithubPatch_headBranch(ctx, field)
+			case "headHash":
+				return ec.fieldContext_GithubPatch_headHash(ctx, field)
+			case "headOwner":
+				return ec.fieldContext_GithubPatch_headOwner(ctx, field)
+			case "headRepo":
+				return ec.fieldContext_GithubPatch_headRepo(ctx, field)
+			case "prNumber":
+				return ec.fieldContext_GithubPatch_prNumber(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GithubPatch", field.Name)
 		},
 	}
 	return fc, nil
@@ -44801,6 +45269,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "githubPatchData":
+				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
@@ -53306,6 +53776,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "githubPatchData":
+				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
@@ -66360,6 +66832,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "githubPatchData":
+				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
@@ -77485,6 +77959,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
+			case "githubPatchData":
+				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
 			case "moduleCodeChanges":
@@ -93071,6 +93547,56 @@ func (ec *executionContext) _GithubPRSubscriber(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var githubPatchImplementors = []string{"GithubPatch"}
+
+func (ec *executionContext) _GithubPatch(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubPatch) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, githubPatchImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GithubPatch")
+		case "author":
+			out.Values[i] = ec._GithubPatch_author(ctx, field, obj)
+		case "baseOwner":
+			out.Values[i] = ec._GithubPatch_baseOwner(ctx, field, obj)
+		case "baseRepo":
+			out.Values[i] = ec._GithubPatch_baseRepo(ctx, field, obj)
+		case "headBranch":
+			out.Values[i] = ec._GithubPatch_headBranch(ctx, field, obj)
+		case "headHash":
+			out.Values[i] = ec._GithubPatch_headHash(ctx, field, obj)
+		case "headOwner":
+			out.Values[i] = ec._GithubPatch_headOwner(ctx, field, obj)
+		case "headRepo":
+			out.Values[i] = ec._GithubPatch_headRepo(ctx, field, obj)
+		case "prNumber":
+			out.Values[i] = ec._GithubPatch_prNumber(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var githubProjectConflictsImplementors = []string{"GithubProjectConflicts"}
 
 func (ec *executionContext) _GithubProjectConflicts(ctx context.Context, sel ast.SelectionSet, obj *model1.GithubProjectConflicts) graphql.Marshaler {
@@ -96640,6 +97166,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "githubPatchData":
+			out.Values[i] = ec._Patch_githubPatchData(ctx, field, obj)
 		case "hidden":
 			out.Values[i] = ec._Patch_hidden(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -114005,6 +114533,10 @@ func (ec *executionContext) marshalOGithubPRSubscriber2ᚖgithubᚗcomᚋevergre
 		return graphql.Null
 	}
 	return ec._GithubPRSubscriber(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOGithubPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubPatch(ctx context.Context, sel ast.SelectionSet, v model.APIGithubPatch) graphql.Marshaler {
+	return ec._GithubPatch(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOGithubUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubUser(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubUser) graphql.Marshaler {

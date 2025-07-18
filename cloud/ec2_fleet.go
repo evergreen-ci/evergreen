@@ -38,7 +38,7 @@ func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, se
 		return subnets, nil
 	}
 
-	supportingAZs, err := c.getAZs(ctx, settings, client, instanceRegion)
+	supportingAZs, err := c.getAZs(ctx, client, instanceRegion)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting supported AZs")
 	}
@@ -54,7 +54,7 @@ func (c instanceTypeSubnetCache) subnetsWithInstanceType(ctx context.Context, se
 	return subnets, nil
 }
 
-func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen.Settings, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
+func (c instanceTypeSubnetCache) getAZs(ctx context.Context, client AWSClient, instanceRegion instanceRegionPair) ([]string, error) {
 	// DescribeInstanceTypeOfferings only returns AZs in the client's region
 	output, err := client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{
 		LocationType: types.LocationTypeAvailabilityZone,

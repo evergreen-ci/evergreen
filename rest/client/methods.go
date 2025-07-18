@@ -858,6 +858,13 @@ func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistr
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "getting all distros")
+	}
+
 	distros := []model.APIDistro{}
 
 	if err = utility.ReadJSON(resp.Body, &distros); err != nil {
