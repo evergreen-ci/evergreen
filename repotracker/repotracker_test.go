@@ -1926,12 +1926,20 @@ tasks:
 - name: integration_test
 `
 
+	// projectRef := &model.ProjectRef{
+	// 	Id:         "test_project",
+	// 	Identifier: "test_project",
+	// 	Owner:      "test_owner",
+	// 	Repo:       "test_repo",
+	// 	Branch:     "main",
+	// }
+
 	projectRef := &model.ProjectRef{
-		Id:         "test_project",
-		Identifier: "test_project",
-		Owner:      "test_owner",
-		Repo:       "test_repo",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
 		Branch:     "main",
+		Id:         "project1",
+		Identifier: "project1",
 	}
 
 	p := &model.Project{}
