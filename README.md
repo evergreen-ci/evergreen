@@ -42,8 +42,7 @@ Automatically run past commits to pinpoint the origin of a test failure.
 
 Setup:
 
-- If you're going to use the makefile, set `GOMODCACHE` (you can just set it to
-  the output of `go env GOMODCACHE`, unless you want it somewhere else).
+- If you're going to use the makefile, set `GOMODCACHE` (`export GOMODCACHE=$(go env GOMODCACHE)`, unless you want it somewhere else).
 - check out a copy of the repo into your gopath. You can use:
   `go get github.com/evergreen-ci/evergreen` or just
   `git clone https://github.com/evergreen-ci/evergreen`.
@@ -55,7 +54,7 @@ Possible Targets:
   _dist_ tarball with all artifacts.
 - run `make local-evergreen` to start a local Evergreen. You will need a mongod
   running, listening on 27017. Log in at http://localhost:9090/login with user
-  `admin` and password `password`. Visiting http://localhost:9090/ should show
-  redirect you the waterfall on the new UI. The new UI is available at
+  `admin` and password `password`. Visiting http://localhost:9090/ should
+  redirect you to the waterfall view on the new UI. The new UI is available at
   https://github.com/evergreen-ci/ui. You need to run the UI server separately
   in order to view the new UI.

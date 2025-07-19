@@ -403,6 +403,11 @@ type BuildVariant struct {
 	// provided for the task
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 
+	// Paths specifies gitignore-style patterns for files that should trigger
+	// this build variant when changed. If provided, the build variant will only
+	// run if at least one changed file matches one of these patterns.
+	Paths []string `yaml:"paths,omitempty" bson:"paths,omitempty"`
+
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
@@ -2257,4 +2262,25 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		Project:  *project,
 	}
 	return &variantsAndTasksFromProject, nil
+}
+
+// PathsMatchAny takes in a slice of filepaths and checks to see if
+// any files are matched by the build variant's Paths patterns.
+// If Paths is empty, it returns true (no path filtering).
+// If Paths is provided, it returns true only if at least one file matches.
+func (bv *BuildVariant) PathsMatchAny(files []string) bool {
+	if len(bv.Paths) == 0 {
+		return true // No path filtering, allow all
+	}
+	if len(files) == 0 {
+		return false
+	}
+	// CompileIgnoreLines has a silly API: it always returns a nil error.
+	pathMatcher := ignore.CompileIgnoreLines(bv.Paths...)
+	for _, f := range files {
+		if pathMatcher.MatchesPath(f) {
+			return true
+		}
+	}
+	return false
 }
