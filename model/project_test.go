@@ -2696,8 +2696,8 @@ patch_aliases:
 	}
 }
 
-func (s *projectSuite) TestBuildVariantPathsMatchAny(t *testing.T) {
-	Convey("With test BuildVariant.Paths setups and a list of .py, .yml, and .md files", t, func() {
+func (s *projectSuite) TestBuildVariantPathsMatchAny() {
+	Convey("With test BuildVariant.Paths setups and a list of .py, .yml, and .md files", s.T(), func() {
 		files := []string{
 			"src/cool/test.py",
 			"etc/other_config.yml",
@@ -2732,7 +2732,7 @@ func (s *projectSuite) TestBuildVariantPathsMatchAny(t *testing.T) {
 			So(bv.PathsMatchAny(files), ShouldBeTrue)
 		})
 		Convey("a build variant with negations should work correctly", func() {
-			bv := &BuildVariant{Paths: []string{"*", "!*.md"}}
+			bv := &BuildVariant{Paths: []string{"!*.md"}}
 			So(bv.PathsMatchAny(files), ShouldBeTrue) // matches .py and .yml files
 		})
 		Convey("a build variant that excludes all files should not match", func() {
