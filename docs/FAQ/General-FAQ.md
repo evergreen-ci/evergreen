@@ -9,7 +9,7 @@ Using that, it runs `git merge-base upstream/main HEAD` to find the common ances
 
 Some Caveats to be aware of:
 
-- Projects can configure an oldest allowed merge-base in their project settings
+- Projects can configure an oldest allowed merge-base in their project settings. If the found merge-base is older than this, the CLI will error out and not allow the patch to be created. Here is an example of the project setting:
 
 ![Oldest Allowed Merge Base](../images/oldest_allowed_merge_base.png)
 
