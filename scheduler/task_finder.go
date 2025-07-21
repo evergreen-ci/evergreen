@@ -66,30 +66,10 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 			continue
 		}
 
-		canDispatch, reason := model.ProjectCanDispatchTask(&ref, &t)
+		canDispatch, _ := model.ProjectCanDispatchTask(&ref, &t)
 		if !canDispatch {
-			grip.Debug(message.Fields{
-				"message":   "skipping task after checking project ref for dispatchability",
-				"reason":    reason,
-				"runner":    RunnerName,
-				"outcome":   "skipping",
-				"task":      t.Id,
-				"requester": t.Requester,
-				"planner":   d.PlannerSettings.Version,
-				"project":   t.Project,
-			})
 			continue
 		}
-		grip.DebugWhen(reason != "", message.Fields{
-			"message":   "scheduling task after checking project ref for dispatchability",
-			"reason":    reason,
-			"runner":    RunnerName,
-			"outcome":   "not skipping",
-			"task":      t.Id,
-			"requester": t.Requester,
-			"planner":   d.PlannerSettings.Version,
-			"project":   t.Project,
-		})
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
@@ -181,30 +161,10 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 			continue
 		}
 
-		canDispatch, reason := model.ProjectCanDispatchTask(&ref, &t)
+		canDispatch, _ := model.ProjectCanDispatchTask(&ref, &t)
 		if !canDispatch {
-			grip.Debug(message.Fields{
-				"message":   "skipping task after checking project ref for dispatchability",
-				"reason":    reason,
-				"runner":    RunnerName,
-				"outcome":   "skipping",
-				"task":      t.Id,
-				"requester": t.Requester,
-				"planner":   d.PlannerSettings.Version,
-				"project":   t.Project,
-			})
 			continue
 		}
-		grip.DebugWhen(reason != "", message.Fields{
-			"message":   "scheduling task after checking project ref for dispatchability",
-			"reason":    reason,
-			"runner":    RunnerName,
-			"outcome":   "not skipping",
-			"task":      t.Id,
-			"requester": t.Requester,
-			"planner":   d.PlannerSettings.Version,
-			"project":   t.Project,
-		})
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
@@ -303,30 +263,10 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 			continue
 		}
 
-		canDispatch, reason := model.ProjectCanDispatchTask(&ref, &t)
+		canDispatch, _ := model.ProjectCanDispatchTask(&ref, &t)
 		if !canDispatch {
-			grip.Debug(message.Fields{
-				"message":   "skipping task after checking project ref for dispatchability",
-				"reason":    reason,
-				"runner":    RunnerName,
-				"outcome":   "skipping",
-				"task":      t.Id,
-				"requester": t.Requester,
-				"planner":   d.PlannerSettings.Version,
-				"project":   t.Project,
-			})
 			continue
 		}
-		grip.DebugWhen(reason != "", message.Fields{
-			"message":   "scheduling task after checking project ref for dispatchability",
-			"reason":    reason,
-			"runner":    RunnerName,
-			"outcome":   "not skipping",
-			"task":      t.Id,
-			"requester": t.Requester,
-			"planner":   d.PlannerSettings.Version,
-			"project":   t.Project,
-		})
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
 			grip.Notice(message.Fields{
