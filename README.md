@@ -52,9 +52,22 @@ Possible Targets:
 - run `make build` to compile a binary for your local system.
 - run `make dist` to compile binaries for all supported systems and create a
   _dist_ tarball with all artifacts.
+
+
+### Running evergreen + Spruce locally
 - run `make local-evergreen` to start a local Evergreen. You will need a mongod
-  running, listening on 27017. Log in at http://localhost:9090/login with user
-  `admin` and password `password`. Visiting http://localhost:9090/ should
-  redirect you to the waterfall view on the new UI. The new UI is available at
-  https://github.com/evergreen-ci/ui. You need to run the UI server separately
-  in order to view the new UI.
+  running, listening on 27017.
+- In order to run the UI (aka spruce), the following steps are needed (in a new terminal window):
+  - `git clone git@github.com:evergreen-ci/ui.git`
+  - `cd ui/apps/spruce`
+  - `yarn install`
+  - `yarn run dev`
+  - In a browser of your choice, navigate to `localhost:3000` and log in using the `admin`/`password` combination!
+  
+### Testing features
+- Makefile supports `test-{package name}` commands that should enable you to run evergreen tests locally. In order to run individual test suites, `RUN_TEST` flag is useful.
+- For instance, to run `TestCreateVersionItemsPathFiltering` suite inside of `repotracker_test.go`, run:
+```bash
+export SETTINGS_OVERRIDE=./config_test/evg_settings.yml
+make test-repotracker RUN_TEST=TestCreateVersionItemsPathFiltering
+```

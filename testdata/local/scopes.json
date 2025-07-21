@@ -1,5 +1,5 @@
-{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance", "602d70a2b2373672ee493189", "mci", "602d70a2b2373672ee493185"] }
-{ "_id" : "unrestricted_projects", "name" : "unrestricted projects", "type" : "project", "parent" : "all_projects", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce","mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance", "602d70a2b2373672ee493189", "602d70a2b2373672ee493185"] }
+{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance", "602d70a2b2373672ee493189", "mci"] }
+{ "_id" : "unrestricted_projects", "name" : "unrestricted projects", "type" : "project", "parent" : "all_projects", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce","mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance", "602d70a2b2373672ee493189"] }
 { "_id" : "restricted_projects", "name" : "restricted projects", "type" : "project", "parent" : "all_projects", "resources": [] }
 { "_id" : "logkeeper", "name" : "logkeeper project", "type" : "project", "resources" : [ "logkeeper" ] }
 { "_id" : "evergreen", "name" : "evergreen project", "type" : "project", "resources" : [ "evergreen" ] }
@@ -12,7 +12,6 @@
 { "_id" : "mongodb-mongo-master", "name" : "mongodb-mongo-master project", "type" : "project", "resources" : [ "mongodb-mongo-master" ] }
 { "_id" : "mongodb-mongo-test", "name" : "mongodb-mongo-test project", "type" : "project", "resources" : [ "mongodb-mongo-test" ] }
 { "_id" : "performance", "name" : "performance project", "type" : "project", "resources" : [ "performance" ] }
-{ "_id" : "levdavid-mms-monorepo-spike", "name" : "levdavid mms-monorepo-spike project", "type" : "project", "resources" : [ "602d70a2b2373672ee493185" ] }
 { "_id" : "localhost", "name" : "localhost distro", "type" : "distro", "resources" : [ "localhost" ] }
 { "_id" : "localhost2", "name" : "localhost2 distro", "type" : "distro", "resources" : [ "localhost2" ] }
 { "_id" : "super", "name" : "super user", "type" : "super_user", "resources" : [ "super_user" ] }
