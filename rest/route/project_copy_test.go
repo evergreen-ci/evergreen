@@ -178,9 +178,10 @@ func (s *copyVariablesSuite) SetupTest() {
 	}}
 	s.NoError(repoRef.Replace(s.ctx))
 	projectVar1 := &model.ProjectVars{
-		Id:          "projectA",
-		Vars:        map[string]string{"apple": "red", "hello": "world"},
-		PrivateVars: map[string]bool{"hello": true},
+		Id:            "projectA",
+		Vars:          map[string]string{"apple": "red", "hello": "world"},
+		PrivateVars:   map[string]bool{"hello": true},
+		AdminOnlyVars: map[string]bool{"hello": true},
 	}
 	projectVar2 := &model.ProjectVars{
 		Id:          "projectB",
@@ -231,10 +232,10 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		DryRun:         true,
 		IncludePrivate: true,
 	}
+	// Explicitly don't set private and admin-only variables for testing.
 	newProjectVar := &model.ProjectVars{
-		Id:          "projectB",
-		Vars:        map[string]string{"banana": "yellow"},
-		PrivateVars: map[string]bool{},
+		Id:   "projectB",
+		Vars: map[string]string{"banana": "yellow"},
 	}
 	_, err := newProjectVar.Upsert(s.ctx)
 	s.NoError(err)
