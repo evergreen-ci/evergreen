@@ -57,6 +57,27 @@ models:
         value: github.com/evergreen-ci/evergreen.ArchDarwinArm64
       WINDOWS_64_BIT:
         value: github.com/evergreen-ci/evergreen.ArchWindowsAmd64
+  AuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
+  AuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
+  PreferredAuthType:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      OKTA:
+        value: github.com/evergreen-ci/evergreen/rest/model.OktaPreferredType
+      NAIVE:
+        value: github.com/evergreen-ci/evergreen/rest/model.NaivePreferredType
+      GITHUB:
+        value: github.com/evergreen-ci/evergreen/rest/model.GithubPreferredType
+      MULTI:
+        value: github.com/evergreen-ci/evergreen/rest/model.MultiPreferredType
+      KANOPY:
+        value: github.com/evergreen-ci/evergreen/rest/model.KanopyPreferredType
+  AuthUser:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
+  AuthUserInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
   AWSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   AWSPodConfig:
@@ -192,6 +213,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
   GithubAppAuthInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
+  GitHubAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig
+  GitHubAuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GitHubDynamicTokenPermissionGroupInput:
@@ -336,6 +361,10 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
   JiraTicket:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  KanopyAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
+  KanopyAuthConfigInput:  
+    model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
   LogBuffering:
     model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
   LogBufferingInput:
@@ -360,6 +389,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModule
   ModuleCodeChange:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
+  MultiAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig 
+  MultiAuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
+  NaiveAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig 
+  NaiveAuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig 
   Note:
     model: github.com/evergreen-ci/evergreen/rest/model.APINote
   Notifications:
@@ -370,6 +407,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotifyConfig
   NotifyConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotifyConfig
+  OktaConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOktaConfig
+  OktaConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOktaConfig
   OomTrackerInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
   OSInfo:
@@ -451,6 +492,27 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   PreconditionScriptInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
+  PriorityLevel:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      EMERGENCY: 
+        value: github.com/evergreen-ci/evergreen.PriorityLevelEmergency
+      ALERT:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelAlert
+      CRITICAL:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelCritical
+      ERROR:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelError
+      WARNING:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelWarning
+      NOTICE:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelNotice
+      INFO:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelInfo
+      DEBUG:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelDebug
+      TRACE:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelTrace
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:

@@ -1,0 +1,91 @@
+mutation {
+  saveAdminSettings(
+    adminSettings: {
+      authConfig: {
+        preferredType: NAIVE
+        naive: {
+          users: [
+            {
+              username: "admin"
+              displayName: "password"
+              password: "password"
+              email: "admin@example.com"
+            }
+            {
+              username: "user"
+              displayName: "password"
+              password: "password"
+              email: "user@example.com"
+            }
+          ]
+        }
+        github: {
+          appId: 0
+          clientId: "client_id"
+          clientSecret: "client_secret"
+          defaultOwner: "default_owner"
+          defaultRepo: "default_repo"
+          organization: "organization"
+          users: ["user1", "user2"]
+        }
+        kanopy: {
+          headerName: "header_name"
+          issuer: "issuer"
+          keysetURL: "keyset_url"
+        }
+        multi: {
+          readWrite: ["okta"]
+          readOnly: ["github"]
+        }
+        okta: {
+          clientSecret: "client_secret"
+          issuer: "issuer"
+          scopes: ["scope1", "scope2"]
+          userGroup: "user_group"
+          expireAfterMinutes: 60
+        }
+        allowServiceUsers: true
+        backgroundReauthMinutes: 30
+      }
+    }
+  ) {
+    authConfig {
+      preferredType
+      naive {
+        users {
+          username
+          displayName
+          email
+        }
+      }
+      github {
+        appId
+        clientId
+        clientSecret
+        defaultOwner
+        defaultRepo
+        organization
+        users
+      }
+      kanopy {
+        headerName
+        issuer
+        keysetURL
+      }
+      multi {
+        readWrite
+        readOnly
+      }
+      okta {
+        clientId
+        clientSecret
+        issuer
+        scopes
+        userGroup
+        expireAfterMinutes
+      }
+      allowServiceUsers
+      backgroundReauthMinutes
+    }
+  }
+}
