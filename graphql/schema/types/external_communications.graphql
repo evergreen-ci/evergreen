@@ -1,10 +1,10 @@
-type CedarConfig {
-  dbUrl: String!
+input CedarConfigInput {
+  dbUrl: String! @redactSecrets
   dbName: String!
 }
 
-input CedarConfigInput {
-  dbUrl: String!
+type CedarConfig {
+  dbUrl: String! @requireAdmin
   dbName: String!
 }
 

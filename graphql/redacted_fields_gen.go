@@ -5,6 +5,7 @@ var redactedFields = map[string]bool{
 	"amboyDB": true,
 	"apiKey": true,
 	"csrfKey": true,
+	"dbUrl": true,
 	"githubAppAuth": true,
 	"personalAccessToken": true,
 	"publicKey": true,

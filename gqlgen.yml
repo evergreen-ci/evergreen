@@ -90,6 +90,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
   BuildVariantTuple:
     model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
+  CedarConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICedarConfig
+  CedarConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICedarConfig
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
   ChildPatchAlias:

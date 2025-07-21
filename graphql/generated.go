@@ -143,6 +143,7 @@ type ComplexityRoot struct {
 		Api                 func(childComplexity int) int
 		Banner              func(childComplexity int) int
 		BannerTheme         func(childComplexity int) int
+		Cedar               func(childComplexity int) int
 		DisabledGQLQueries  func(childComplexity int) int
 		FWS                 func(childComplexity int) int
 		HostInit            func(childComplexity int) int
@@ -258,6 +259,11 @@ type ComplexityRoot struct {
 	BuildVariantTuple struct {
 		BuildVariant func(childComplexity int) int
 		DisplayName  func(childComplexity int) int
+	}
+
+	CedarConfig struct {
+		DBName func(childComplexity int) int
+		DBURL  func(childComplexity int) int
 	}
 
 	ChildPatchAlias struct {
@@ -2596,6 +2602,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.BannerTheme(childComplexity), true
 
+	case "AdminSettings.cedar":
+		if e.complexity.AdminSettings.Cedar == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Cedar(childComplexity), true
+
 	case "AdminSettings.disabledGQLQueries":
 		if e.complexity.AdminSettings.DisabledGQLQueries == nil {
 			break
@@ -3169,6 +3182,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BuildVariantTuple.DisplayName(childComplexity), true
+
+	case "CedarConfig.dbName":
+		if e.complexity.CedarConfig.DBName == nil {
+			break
+		}
+
+		return e.complexity.CedarConfig.DBName(childComplexity), true
+
+	case "CedarConfig.dbUrl":
+		if e.complexity.CedarConfig.DBURL == nil {
+			break
+		}
+
+		return e.complexity.CedarConfig.DBURL(childComplexity), true
 
 	case "ChildPatchAlias.alias":
 		if e.complexity.ChildPatchAlias.Alias == nil {
@@ -12128,6 +12155,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
 		ec.unmarshalInputBuildVariantOptions,
+		ec.unmarshalInputCedarConfigInput,
 		ec.unmarshalInputCommitQueueParamsInput,
 		ec.unmarshalInputContainerResourcesInput,
 		ec.unmarshalInputCopyDistroInput,
@@ -19281,6 +19309,53 @@ func (ec *executionContext) fieldContext_AdminSettings_bannerTheme(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_cedar(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_cedar(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cedar, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APICedarConfig)
+	fc.Result = res
+	return ec.marshalOCedarConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_cedar(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dbUrl":
+				return ec.fieldContext_CedarConfig_dbUrl(ctx, field)
+			case "dbName":
+				return ec.fieldContext_CedarConfig_dbName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CedarConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_fws(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AdminSettings_fws(ctx, field)
 	if err != nil {
@@ -23179,6 +23254,116 @@ func (ec *executionContext) _BuildVariantTuple_displayName(ctx context.Context, 
 func (ec *executionContext) fieldContext_BuildVariantTuple_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BuildVariantTuple",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CedarConfig_dbUrl(ctx context.Context, field graphql.CollectedField, obj *model.APICedarConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CedarConfig_dbUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.DBURL, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CedarConfig_dbUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CedarConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CedarConfig_dbName(ctx context.Context, field graphql.CollectedField, obj *model.APICedarConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CedarConfig_dbName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DBName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CedarConfig_dbName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CedarConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -38837,6 +39022,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "cedar":
+				return ec.fieldContext_AdminSettings_cedar(ctx, field)
 			case "fws":
 				return ec.fieldContext_AdminSettings_fws(ctx, field)
 			case "jira":
@@ -55531,6 +55718,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "cedar":
+				return ec.fieldContext_AdminSettings_cedar(ctx, field)
 			case "fws":
 				return ec.fieldContext_AdminSettings_fws(ctx, field)
 			case "jira":
@@ -87796,7 +87985,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "banner", "bannerTheme", "fws", "jira", "slack", "splunk", "runtimeEnvironments", "testSelection", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries", "loggerConfig", "triggers"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "banner", "bannerTheme", "cedar", "fws", "jira", "slack", "splunk", "runtimeEnvironments", "testSelection", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries", "loggerConfig", "triggers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87852,6 +88041,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 			if err = ec.resolvers.AdminSettingsInput().BannerTheme(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "cedar":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cedar"))
+			data, err := ec.unmarshalOCedarConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Cedar = data
 		case "fws":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fws"))
 			data, err := ec.unmarshalOFWSConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx, v)
@@ -88495,6 +88691,57 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 				return it, err
 			}
 			it.Variants = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCedarConfigInput(ctx context.Context, obj any) (model.APICedarConfig, error) {
+	var it model.APICedarConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dbUrl", "dbName"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dbUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dbUrl"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.DBURL = data
+			} else if tmp == nil {
+				it.DBURL = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "dbName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dbName"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DBName = data
 		}
 	}
 
@@ -95955,6 +96202,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "cedar":
+			out.Values[i] = ec._AdminSettings_cedar(ctx, field, obj)
 		case "fws":
 			out.Values[i] = ec._AdminSettings_fws(ctx, field, obj)
 		case "jira":
@@ -96610,6 +96859,50 @@ func (ec *executionContext) _BuildVariantTuple(ctx context.Context, sel ast.Sele
 			}
 		case "displayName":
 			out.Values[i] = ec._BuildVariantTuple_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var cedarConfigImplementors = []string{"CedarConfig"}
+
+func (ec *executionContext) _CedarConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APICedarConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cedarConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CedarConfig")
+		case "dbUrl":
+			out.Values[i] = ec._CedarConfig_dbUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "dbName":
+			out.Values[i] = ec._CedarConfig_dbName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -119241,6 +119534,21 @@ func (ec *executionContext) marshalOBuildVariantTuple2ᚕᚖgithubᚗcomᚋeverg
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOCedarConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx context.Context, sel ast.SelectionSet, v *model.APICedarConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CedarConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOCedarConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx context.Context, v any) (*model.APICedarConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCedarConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOChildPatchAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIChildPatchAlias) graphql.Marshaler {
