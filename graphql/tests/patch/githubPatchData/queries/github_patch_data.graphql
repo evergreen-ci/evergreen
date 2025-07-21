@@ -1,0 +1,14 @@
+query GithubPatchData {
+  patch(patchId: "5e4ff3abe3c3317e352062e4") {
+    githubPatchData {
+      author
+      baseOwner
+      baseRepo
+      headBranch
+      headHash
+      headOwner
+      headRepo
+      prNumber
+    }
+  }
+}

@@ -48,6 +48,17 @@ input ParameterInput {
   value: String!
 }
 
+type GithubPatch {
+  author: String
+  baseOwner: String
+  baseRepo: String
+  headBranch: String
+  headHash: String
+  headOwner: String
+  headRepo: String
+  prNumber: Int
+}
+
 ###### TYPES ######
 """
 Patch is a manually initiated version submitted to test local code changes.
@@ -67,6 +78,7 @@ type Patch {
   duration: PatchDuration
   generatedTaskCounts: [GeneratedTaskCountResults!]!
   githash: String!
+  githubPatchData: GithubPatch
   hidden: Boolean!
   moduleCodeChanges: [ModuleCodeChange!]!
   parameters: [Parameter!]!
