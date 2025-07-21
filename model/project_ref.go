@@ -2750,7 +2750,7 @@ func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings,
 // ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
 // assuming the given project is going to be enabled.
 // Returns a status code and error if we are already at limit with enabled projects.
-func ValidateEnabledProjectsLimit(ctx context.Context, projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
+func ValidateEnabledProjectsLimit(ctx context.Context, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
 		return http.StatusOK, nil
 	}

@@ -33,7 +33,7 @@ func (s *KvPairSuite) SetupSuite() {
 		"key2": "value2",
 	}
 	s.testMapNested = map[string]map[string]string{
-		"key3": map[string]string{
+		"key3": {
 			"key4": "value4",
 		},
 	}

@@ -34,7 +34,7 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 			Command: "echo hi",
 		},
 		PortBindings: map[string][]string{
-			"1234/tcp": []string{
+			"1234/tcp": {
 				"98765",
 			},
 		},

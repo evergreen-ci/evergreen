@@ -110,7 +110,7 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 }
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
-func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool, settings *evergreen.Settings) error {
+func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool) error {
 	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err

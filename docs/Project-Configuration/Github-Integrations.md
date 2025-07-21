@@ -14,7 +14,7 @@ We have documentation here but we also provide it on the PR itself. It will disp
 
 Evergreen has an option to create patches for pull requests and this can be defined on the project page.
 
-If "Automated Testing" is enabled, Evergreen will automatically create a patch for each pull request opened in the repository as well as each subsequent push to each pull request.
+If "Automated Testing" is enabled, Evergreen will automatically create a patch for each pull request opened in the repository. It will also create a patch for every subsequent push to the pull request as well as automatic base changes.
 
 If you'd like the option of creating patches but wouldn't like it to happen automatically, you can enable "Manual Testing".
 
@@ -28,7 +28,7 @@ evergreen retry
 
 Sometimes Evergreen has trouble creating a PR patch, due to internal server errors or GitHub flakiness. Commenting `evergreen retry` will attempt to recreate this patch. This can also be used to submit a new patch.
 
-#### Set PR patches to reuse a patch definition
+### Set PR patches to reuse a patch definition
 
 ```bash
 evergreen keep-definitions
@@ -38,7 +38,7 @@ By default, `evergreen retry` will create a new patch using the default GitHub P
 
 Note that if you schedule more tasks in a patch created after `evergreen keep-definitions` and wish to overwrite the existing patch definition to use the new one, you'll have to comment `evergreen keep-definitions` again.
 
-#### Stop PR patches from reusing a patch definition
+### Stop PR patches from reusing a patch definition
 
 ```bash
 evergreen reset-definitions
@@ -46,13 +46,13 @@ evergreen reset-definitions
 
 If you used `evergreen keep-definitions`, then `evergreen reset-definitions` will reset your PR patches back to using the original GitHub PR patch definition.
 
-#### Skip CI Testing
+### Skip CI Testing
 
 Sometimes you may want to avoid having Evergreen create patches (perhaps because the work is in progress, or testing isn't relevant yet).
 Simply including `[skip-ci]` or `[skip ci]` in the PR title or the first 100 characters of the description will prevent Evergreen from creating a patch (both from commits and `evergreen retry` comments)
 until the label is removed and a new commit or `evergreen retry` comment is pushed.
 
-#### Create a patch for manual testing
+### Create a patch for manual testing
 
 ```bash
 evergreen patch
@@ -66,7 +66,7 @@ evergreen patch --alias <alias>
 
 Override the default GitHub PR patch definition with a custom alias.
 
-#### Refresh GitHub checks
+### Refresh GitHub checks
 
 ```bash
 evergreen refresh
@@ -74,7 +74,7 @@ evergreen refresh
 
 Sometimes Evergreen has trouble sending updated GitHub statuses, so the checks on the PR may not accurately reflect the state of patch on Evergreen. This is especially troublesome when the repository requires passing checks. To re-sync the GitHub checks with Evergreen, comment `evergreen refresh` on the PR.
 
-#### Handling same SHA PRs
+### Handling same SHA PRs
 
 GitHub only allows one set of statuses for every commit SHA. If you have a situation where you have two PRs where the HEAD commit is the same, Evergreen will only create a patch for the first one and will make a comment on the second one explaining why. In general, if your tasks do not require the context of the PR (most notably the branch name, which is known to be used in some s3.put tasks), then the status displayed for the PRs will be correct. If the tasks do require the context of the PR, you may comment 'evergreen retry' and force Evergreen to abort currently running patches in favor of a new one in the context of the PR you have commented on.
 
@@ -141,7 +141,7 @@ The output json file can specify the following fields. Required fields are only 
 
 Evergreen supports using expansions in the output file, but please be careful to not pass any keys or sensitive data.
 
-#### Example output.json file
+### Example output.json file
 
 ```json
 {
@@ -162,7 +162,7 @@ Evergreen supports using expansions in the output file, but please be careful to
 }
 ```
 
-#### Interacting with the GitHub UI
+### Interacting with the GitHub UI
 
 Once a check run is created with GitHub, a GitHub status will be posted to the PR.
 ![Check Run Status](../images/check_run_status.png)
@@ -175,7 +175,7 @@ The checks can also be viewed in the checks tab.
 
 The check run will include a `view more details` link which will link back to the corresponding evergreen task. The task can be restarted with the re-run button on the check run.
 
-#### Restrictions
+### Restrictions
 
 - Check runs only apply to PR patches
 - There is a limit on how many check runs can be added per version. This limit is set by evergreen based on demand and available resources and is subject to change.
@@ -196,7 +196,7 @@ To get started, save your app ID and app key in your project settings in the Git
 
 Once an app id and key are saved, the app id will remain visible, but the app key will be redacted. If you need to make any changes to it, you can delete it and save it again.
 
-#### Restricting Generated Tokens
+### Restricting Generated Tokens
 
 When tokens are generated by the github.generate_token project command, they will, by default have the full permissions of the github app. They can optionally be restricted directly in the [github.generate_token command](Project-Commands#github_generate_token) and in project settings.
 
@@ -211,7 +211,7 @@ Once you have created a permission group, head back over to the GitHub App Setti
 
 ![github token requester type](../images/github_token_requester.png)
 
-## Tokens Restricted in Both Project Settings and The Command
+### Tokens Restricted in Both Project Settings and The Command
 
 If token restrictions are specified both in the project configuration file under the `github.generate_token` project command directly and in project settings, the generated token will have the most restrictive intersection of the two.
 
