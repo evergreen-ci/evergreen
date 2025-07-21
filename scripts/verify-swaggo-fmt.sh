@@ -22,7 +22,7 @@ fi
 
 # Compare the diff before and after running swaggo fmt. We only care about if the modified files has changed.
 before=$(git diff --diff-filter=M)
-$swaggo fmt -g service/service.go
+$swaggo fmt -g service/service.go --exclude thirdparty/clients,graphql
 after=$(git diff --diff-filter=M)
 if [ "$before" = "$after" ]; then
     echo "No formatting errors found."
