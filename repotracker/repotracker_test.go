@@ -616,7 +616,7 @@ func TestBatchTimes(t *testing.T) {
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
-		So(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection), ShouldBeNil)
+		So(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, distro.Collection, model.ParserProjectCollection), ShouldBeNil)
 		previouslyActivatedVersion := model.Version{
 			Id:         "previously activated",
 			Identifier: "testproject",
