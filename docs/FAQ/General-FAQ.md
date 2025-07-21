@@ -1,5 +1,20 @@
 # General FAQ
 
+## How and what commit is chosen when running `evergreen patch`?
+
+The Evergreen CLI grabs the user's config file and determines what project should be used. The CLI then establishes a connection with the Evergreen server and retrieves that project's information, specifically the GitHub org + repo + branch (which we'll call, org, repo, and main respectively).
+
+The CLI then fetches the corresponding [remote](https://git-scm.com/docs/git-remote) (which we'll call upstream).
+Using that, it runs `git merge-base upstream/main HEAD` to find the common ancestor of the Evergreen tracking branch and the currently checked out branch. This is the commit that will be used as the base for the patch. Changes (including commits and uncommited changes) made after this common ancestor will be included as diff changes in the patch rather than as commits.
+
+Some Caveats to be aware of:
+
+- Projects can configure an oldest allowed merge-base in their project settings. If the found merge-base is older than this, the CLI will error out and not allow the patch to be created. Here is an example of the project setting:
+
+![Oldest Allowed Merge Base](../images/oldest_allowed_merge_base.png)
+
+- If the local instance of the remote branch is out of sync, the CLI will get an older/incorrect merge base. This may result in an error or just unexpected behavior, it depends on how out of sync it is. To solve this, run `git fetch upstream`, where upstream is your remote.
+
 ## What is the difference between cron, batchtime, and periodic build?
 
 - **Batchtime**: Delays activating a task on an existing mainline version until a specified time has passed since it's last run.
