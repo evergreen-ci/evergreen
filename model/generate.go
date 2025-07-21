@@ -847,8 +847,12 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 }
 
 func isNonZeroBV(bv parserBV) bool {
+	// Note that activate is purposefully not included in this list because it's common for
+	// users to specify specifically that activation is false when generating tasks.
+	// Even though it only really works if they add it for the individual tasks that they're adding,
+	// it's a common enough pattern that we should allow it rather than breaking generators.
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-		bv.Disable != nil || len(bv.Tags) > 0 || bv.Activate != nil ||
+		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||
 		bv.AllowForGitTag != nil || bv.GitTagOnly != nil || len(bv.AllowedRequesters) > 0 ||
 		bv.Stepback != nil || bv.DeactivatePrevious != nil || len(bv.RunOn) > 0 {
