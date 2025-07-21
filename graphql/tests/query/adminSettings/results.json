@@ -250,8 +250,8 @@
                 "count": 20,
                 "incomingBufferFactor": 50
               },
-              "defaultLevel": "info",
-              "thresholdLevel": "debug",
+              "defaultLevel": "INFO",
+              "thresholdLevel": "DEBUG",
               "logkeeperURL": "logkeeper-url",
               "redactKeys": ["secret", "password"]
             },
