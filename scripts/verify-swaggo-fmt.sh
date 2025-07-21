@@ -22,13 +22,13 @@ fi
 
 # Compare the diff before and after running swaggo fmt. We only care about if the modified files has changed.
 before=$(git diff --diff-filter=M)
-$swaggo fmt -g service/service.go --exclude thirdparty/clients,graphql
+$swaggo fmt -g service/service.go
 after=$(git diff --diff-filter=M)
 if [ "$before" = "$after" ]; then
     echo "No formatting errors found."
     exit 0
 else
-    echo "Please run 'swag fmt -g service/service.go --exclude thirdparty/clients,graphql' in your local environment to fix the lint errors. If this is your local environment, please commit the changes this command made."
+    echo "Please run 'make swaggo-format' in your local environment to fix the lint errors. If this is your local environment, please commit the changes this command made."
     version=$($swaggo --version)
     echo "Currently using swaggo version: $version"
     exit 1
