@@ -1499,35 +1499,48 @@ func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 }
 
 // Helper for validating a set of plugin commands given a project/registry
-func validateCommands(section string, project *model.Project,
-	commands []model.PluginCommandConf) ValidationErrors {
+func validateCommands(section string, taskName string, project *model.Project, commands []model.PluginCommandConf) ValidationErrors {
 	errs := ValidationErrors{}
+	var formattedTaskMsg string
+	if taskName != "" {
+		formattedTaskMsg = fmt.Sprintf(" for task '%s'", taskName)
+	}
 
 	for i, cmd := range commands {
-		commandName := fmt.Sprintf("'%s' command", cmd.Command)
-		if cmd.Function != "" {
-			commandName = fmt.Sprintf("'%s' function", cmd.Function)
-		}
-		blockInfo := command.BlockInfo{
-			Block:     "",
-			CmdNum:    i + 1,
-			TotalCmds: len(commands),
-		}
-		_, err := command.Render(cmd, project, blockInfo)
-		if err != nil {
-			errs = append(errs, ValidationError{Message: fmt.Sprintf("%s section in %s: %s", section, commandName, err)})
-		}
-		if cmd.Type != "" {
-			if !utility.StringSliceContains(evergreen.ValidCommandTypes, cmd.Type) {
-				msg := fmt.Sprintf("%s section in %s: invalid command type: '%s'", section, commandName, cmd.Type)
-				errs = append(errs, ValidationError{Message: msg})
-			}
+		hasFuncOrCommand := true
+		if cmd.Function == "" && cmd.Command == "" {
+			hasFuncOrCommand = false
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("must specify either command or function%s", formattedTaskMsg),
+			})
 		}
 		if cmd.Function != "" && cmd.Command != "" {
 			errs = append(errs, ValidationError{
 				Level:   Error,
-				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'", cmd.Command, cmd.Function),
+				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'%s", cmd.Command, cmd.Function, formattedTaskMsg),
 			})
+		}
+		if hasFuncOrCommand {
+			commandName := fmt.Sprintf("'%s' command", cmd.Command)
+			if cmd.Function != "" {
+				commandName = fmt.Sprintf("'%s' function", cmd.Function)
+			}
+			blockInfo := command.BlockInfo{
+				Block:     "",
+				CmdNum:    i + 1,
+				TotalCmds: len(commands),
+			}
+			_, err := command.Render(cmd, project, blockInfo)
+			if err != nil {
+				errs = append(errs, ValidationError{Message: fmt.Sprintf("%s section%s in %s: %s", section, formattedTaskMsg, commandName, err)})
+			}
+			if cmd.Type != "" {
+				if !utility.StringSliceContains(evergreen.ValidCommandTypes, cmd.Type) {
+					msg := fmt.Sprintf("%s section%s in %s: invalid command type: '%s'", section, formattedTaskMsg, commandName, cmd.Type)
+					errs = append(errs, ValidationError{Message: msg})
+				}
+			}
 		}
 	}
 	return errs
@@ -1550,7 +1563,7 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 			)
 			continue
 		}
-		valErrs := validateCommands("functions", project, commands.List())
+		valErrs := validateCommands("functions", "", project, commands.List())
 		for _, err := range valErrs {
 			errs = append(errs,
 				ValidationError{
@@ -1584,20 +1597,20 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 	}
 
 	if project.Pre != nil {
-		errs = append(errs, validateCommands("pre", project, project.Pre.List())...)
+		errs = append(errs, validateCommands("pre", "", project, project.Pre.List())...)
 	}
 
 	if project.Post != nil {
-		errs = append(errs, validateCommands("post", project, project.Post.List())...)
+		errs = append(errs, validateCommands("post", "", project, project.Post.List())...)
 	}
 
 	if project.Timeout != nil {
-		errs = append(errs, validateCommands("timeout", project, project.Timeout.List())...)
+		errs = append(errs, validateCommands("timeout", "", project, project.Timeout.List())...)
 	}
 
 	// validate project tasks section
 	for _, task := range project.Tasks {
-		errs = append(errs, validateCommands("tasks", project, task.Commands)...)
+		errs = append(errs, validateCommands("tasks", task.Name, project, task.Commands)...)
 	}
 	return errs
 }

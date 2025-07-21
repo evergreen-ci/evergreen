@@ -134,6 +134,75 @@
           }
         }
       }
+    },
+    {
+      "query_file": "background_processing.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "amboy": {
+              "name": "amboy-config",
+              "singleName": "amboy-single",
+              "poolSizeLocal": 10,
+              "poolSizeRemote": 10,
+              "localStorage": 100,
+              "groupDefaultWorkers": 1,
+              "groupBackgroundCreateFrequencyMinutes": 10,
+              "groupPruneFrequencyMinutes": 10,
+              "groupTTLMinutes": 100,
+              "lockTimeoutMinutes": 10,
+              "sampleSize": 100,
+              "retry": {
+                "numWorkers": 10,
+                "maxCapacity": -1,
+                "maxRetryAttempts": 10,
+                "maxRetryTimeSeconds": 30,
+                "retryBackoffSeconds": 30,
+                "staleRetryingMonitorIntervalSeconds": 30
+              },
+              "namedQueues": [
+                {
+                  "name": "amboy.queue.1",
+                  "regexp": "",
+                  "numWorkers": 2,
+                  "sampleSize": 10,
+                  "lockTimeoutSeconds": 0
+                },
+                {
+                  "name": "amboy.queue.2",
+                  "regexp": "",
+                  "numWorkers": 2,
+                  "sampleSize": 10,
+                  "lockTimeoutSeconds": 30
+                }
+              ]
+            },
+            "amboyDB": {
+              "database": "amboy",
+              "url": "amboy-db-connection-url"
+            },
+            "loggerConfig": {
+              "buffer": {
+                "useAsync": true,
+                "durationSeconds": 10,
+                "count": 20,
+                "incomingBufferFactor": 50
+              },
+              "defaultLevel": "INFO",
+              "thresholdLevel": "DEBUG",
+              "logkeeperURL": "logkeeper-url",
+              "redactKeys": ["secret", "password"]
+            },
+            "notify": {
+              "bufferIntervalSeconds": 30,
+              "bufferTargetPerInterval": 30
+            },
+            "triggers": {
+              "generateTaskDistro": "archlinux-test"
+            }
+          }
+        }
+      }
     }
   ]
 }

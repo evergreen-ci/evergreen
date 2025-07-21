@@ -139,7 +139,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/builds/{build_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByBuild())
 	// degraded_mode is used by Kanopy's alertmanager instance, which is only able to perform basic auth for REST, so it does not pass in user info
 	app.AddRoute("/degraded_mode").Version(2).Post().Wrap(requireAlertmanager).RouteHandler(makeSetDegradedMode())
-	app.AddRoute("/distros").Version(2).Get().Wrap(requireUser, viewDistroSettings).RouteHandler(makeDistroRoute())
+	// Do not apply viewDistroSettings middleware, as it requires a specific distro ID.
+	app.AddRoute("/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeDistroRoute())
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(requireUser, viewDistroSettings).RouteHandler(makeGetDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(requireUser, editDistroSettings).RouteHandler(makePatchDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(requireUser, removeDistroSettings).RouteHandler(makeDeleteDistroByID())

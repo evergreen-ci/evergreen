@@ -138,18 +138,60 @@ type ComplexityRoot struct {
 	}
 
 	AdminSettings struct {
+		Amboy              func(childComplexity int) int
+		AmboyDB            func(childComplexity int) int
 		Api                func(childComplexity int) int
 		Banner             func(childComplexity int) int
 		BannerTheme        func(childComplexity int) int
 		DisabledGQLQueries func(childComplexity int) int
 		HostInit           func(childComplexity int) int
+		LoggerConfig       func(childComplexity int) int
 		Notify             func(childComplexity int) int
 		PodLifecycle       func(childComplexity int) int
 		RepoTracker        func(childComplexity int) int
 		Scheduler          func(childComplexity int) int
 		ServiceFlags       func(childComplexity int) int
 		TaskLimits         func(childComplexity int) int
+		Triggers           func(childComplexity int) int
 		Ui                 func(childComplexity int) int
+	}
+
+	AmboyConfig struct {
+		GroupBackgroundCreateFrequencyMinutes func(childComplexity int) int
+		GroupDefaultWorkers                   func(childComplexity int) int
+		GroupPruneFrequencyMinutes            func(childComplexity int) int
+		GroupTTLMinutes                       func(childComplexity int) int
+		LocalStorage                          func(childComplexity int) int
+		LockTimeoutMinutes                    func(childComplexity int) int
+		Name                                  func(childComplexity int) int
+		NamedQueues                           func(childComplexity int) int
+		PoolSizeLocal                         func(childComplexity int) int
+		PoolSizeRemote                        func(childComplexity int) int
+		Retry                                 func(childComplexity int) int
+		SampleSize                            func(childComplexity int) int
+		SingleName                            func(childComplexity int) int
+	}
+
+	AmboyDBConfig struct {
+		Database func(childComplexity int) int
+		URL      func(childComplexity int) int
+	}
+
+	AmboyNamedQueueConfig struct {
+		LockTimeoutSeconds func(childComplexity int) int
+		Name               func(childComplexity int) int
+		NumWorkers         func(childComplexity int) int
+		Regexp             func(childComplexity int) int
+		SampleSize         func(childComplexity int) int
+	}
+
+	AmboyRetryConfig struct {
+		MaxCapacity                         func(childComplexity int) int
+		MaxRetryAttempts                    func(childComplexity int) int
+		MaxRetryTimeSeconds                 func(childComplexity int) int
+		NumWorkers                          func(childComplexity int) int
+		RetryBackoffSeconds                 func(childComplexity int) int
+		StaleRetryingMonitorIntervalSeconds func(childComplexity int) int
 	}
 
 	Annotation struct {
@@ -668,12 +710,27 @@ type ComplexityRoot struct {
 		Key    func(childComplexity int) int
 	}
 
+	LogBuffering struct {
+		Count                func(childComplexity int) int
+		DurationSeconds      func(childComplexity int) int
+		IncomingBufferFactor func(childComplexity int) int
+		UseAsync             func(childComplexity int) int
+	}
+
 	LogMessage struct {
 		Message   func(childComplexity int) int
 		Severity  func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 		Type      func(childComplexity int) int
 		Version   func(childComplexity int) int
+	}
+
+	LoggerConfig struct {
+		Buffer         func(childComplexity int) int
+		DefaultLevel   func(childComplexity int) int
+		LogkeeperURL   func(childComplexity int) int
+		RedactKeys     func(childComplexity int) int
+		ThresholdLevel func(childComplexity int) int
 	}
 
 	LogkeeperBuild struct {
@@ -817,7 +874,9 @@ type ComplexityRoot struct {
 	}
 
 	NotifyConfig struct {
-		SES func(childComplexity int) int
+		BufferIntervalSeconds   func(childComplexity int) int
+		BufferTargetPerInterval func(childComplexity int) int
+		SES                     func(childComplexity int) int
 	}
 
 	OSInfo struct {
@@ -1707,6 +1766,10 @@ type ComplexityRoot struct {
 		UnscheduleDownstreamVersions func(childComplexity int) int
 	}
 
+	TriggerConfig struct {
+		GenerateTaskDistro func(childComplexity int) int
+	}
+
 	UIConfig struct {
 		BetaFeatures              func(childComplexity int) int
 		CORSOrigins               func(childComplexity int) int
@@ -2454,6 +2517,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminEventsPayload.EventLogEntries(childComplexity), true
 
+	case "AdminSettings.amboy":
+		if e.complexity.AdminSettings.Amboy == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Amboy(childComplexity), true
+
+	case "AdminSettings.amboyDB":
+		if e.complexity.AdminSettings.AmboyDB == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.AmboyDB(childComplexity), true
+
 	case "AdminSettings.api":
 		if e.complexity.AdminSettings.Api == nil {
 			break
@@ -2488,6 +2565,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.HostInit(childComplexity), true
+
+	case "AdminSettings.loggerConfig":
+		if e.complexity.AdminSettings.LoggerConfig == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.LoggerConfig(childComplexity), true
 
 	case "AdminSettings.notify":
 		if e.complexity.AdminSettings.Notify == nil {
@@ -2531,12 +2615,201 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.TaskLimits(childComplexity), true
 
+	case "AdminSettings.triggers":
+		if e.complexity.AdminSettings.Triggers == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Triggers(childComplexity), true
+
 	case "AdminSettings.ui":
 		if e.complexity.AdminSettings.Ui == nil {
 			break
 		}
 
 		return e.complexity.AdminSettings.Ui(childComplexity), true
+
+	case "AmboyConfig.groupBackgroundCreateFrequencyMinutes":
+		if e.complexity.AmboyConfig.GroupBackgroundCreateFrequencyMinutes == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.GroupBackgroundCreateFrequencyMinutes(childComplexity), true
+
+	case "AmboyConfig.groupDefaultWorkers":
+		if e.complexity.AmboyConfig.GroupDefaultWorkers == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.GroupDefaultWorkers(childComplexity), true
+
+	case "AmboyConfig.groupPruneFrequencyMinutes":
+		if e.complexity.AmboyConfig.GroupPruneFrequencyMinutes == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.GroupPruneFrequencyMinutes(childComplexity), true
+
+	case "AmboyConfig.groupTTLMinutes":
+		if e.complexity.AmboyConfig.GroupTTLMinutes == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.GroupTTLMinutes(childComplexity), true
+
+	case "AmboyConfig.localStorage":
+		if e.complexity.AmboyConfig.LocalStorage == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.LocalStorage(childComplexity), true
+
+	case "AmboyConfig.lockTimeoutMinutes":
+		if e.complexity.AmboyConfig.LockTimeoutMinutes == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.LockTimeoutMinutes(childComplexity), true
+
+	case "AmboyConfig.name":
+		if e.complexity.AmboyConfig.Name == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.Name(childComplexity), true
+
+	case "AmboyConfig.namedQueues":
+		if e.complexity.AmboyConfig.NamedQueues == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.NamedQueues(childComplexity), true
+
+	case "AmboyConfig.poolSizeLocal":
+		if e.complexity.AmboyConfig.PoolSizeLocal == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.PoolSizeLocal(childComplexity), true
+
+	case "AmboyConfig.poolSizeRemote":
+		if e.complexity.AmboyConfig.PoolSizeRemote == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.PoolSizeRemote(childComplexity), true
+
+	case "AmboyConfig.retry":
+		if e.complexity.AmboyConfig.Retry == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.Retry(childComplexity), true
+
+	case "AmboyConfig.sampleSize":
+		if e.complexity.AmboyConfig.SampleSize == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.SampleSize(childComplexity), true
+
+	case "AmboyConfig.singleName":
+		if e.complexity.AmboyConfig.SingleName == nil {
+			break
+		}
+
+		return e.complexity.AmboyConfig.SingleName(childComplexity), true
+
+	case "AmboyDBConfig.database":
+		if e.complexity.AmboyDBConfig.Database == nil {
+			break
+		}
+
+		return e.complexity.AmboyDBConfig.Database(childComplexity), true
+
+	case "AmboyDBConfig.url":
+		if e.complexity.AmboyDBConfig.URL == nil {
+			break
+		}
+
+		return e.complexity.AmboyDBConfig.URL(childComplexity), true
+
+	case "AmboyNamedQueueConfig.lockTimeoutSeconds":
+		if e.complexity.AmboyNamedQueueConfig.LockTimeoutSeconds == nil {
+			break
+		}
+
+		return e.complexity.AmboyNamedQueueConfig.LockTimeoutSeconds(childComplexity), true
+
+	case "AmboyNamedQueueConfig.name":
+		if e.complexity.AmboyNamedQueueConfig.Name == nil {
+			break
+		}
+
+		return e.complexity.AmboyNamedQueueConfig.Name(childComplexity), true
+
+	case "AmboyNamedQueueConfig.numWorkers":
+		if e.complexity.AmboyNamedQueueConfig.NumWorkers == nil {
+			break
+		}
+
+		return e.complexity.AmboyNamedQueueConfig.NumWorkers(childComplexity), true
+
+	case "AmboyNamedQueueConfig.regexp":
+		if e.complexity.AmboyNamedQueueConfig.Regexp == nil {
+			break
+		}
+
+		return e.complexity.AmboyNamedQueueConfig.Regexp(childComplexity), true
+
+	case "AmboyNamedQueueConfig.sampleSize":
+		if e.complexity.AmboyNamedQueueConfig.SampleSize == nil {
+			break
+		}
+
+		return e.complexity.AmboyNamedQueueConfig.SampleSize(childComplexity), true
+
+	case "AmboyRetryConfig.maxCapacity":
+		if e.complexity.AmboyRetryConfig.MaxCapacity == nil {
+			break
+		}
+
+		return e.complexity.AmboyRetryConfig.MaxCapacity(childComplexity), true
+
+	case "AmboyRetryConfig.maxRetryAttempts":
+		if e.complexity.AmboyRetryConfig.MaxRetryAttempts == nil {
+			break
+		}
+
+		return e.complexity.AmboyRetryConfig.MaxRetryAttempts(childComplexity), true
+
+	case "AmboyRetryConfig.maxRetryTimeSeconds":
+		if e.complexity.AmboyRetryConfig.MaxRetryTimeSeconds == nil {
+			break
+		}
+
+		return e.complexity.AmboyRetryConfig.MaxRetryTimeSeconds(childComplexity), true
+
+	case "AmboyRetryConfig.numWorkers":
+		if e.complexity.AmboyRetryConfig.NumWorkers == nil {
+			break
+		}
+
+		return e.complexity.AmboyRetryConfig.NumWorkers(childComplexity), true
+
+	case "AmboyRetryConfig.retryBackoffSeconds":
+		if e.complexity.AmboyRetryConfig.RetryBackoffSeconds == nil {
+			break
+		}
+
+		return e.complexity.AmboyRetryConfig.RetryBackoffSeconds(childComplexity), true
+
+	case "AmboyRetryConfig.staleRetryingMonitorIntervalSeconds":
+		if e.complexity.AmboyRetryConfig.StaleRetryingMonitorIntervalSeconds == nil {
+			break
+		}
+
+		return e.complexity.AmboyRetryConfig.StaleRetryingMonitorIntervalSeconds(childComplexity), true
 
 	case "Annotation.createdIssues":
 		if e.complexity.Annotation.CreatedIssues == nil {
@@ -4726,6 +4999,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.JiraTicket.Key(childComplexity), true
 
+	case "LogBuffering.count":
+		if e.complexity.LogBuffering.Count == nil {
+			break
+		}
+
+		return e.complexity.LogBuffering.Count(childComplexity), true
+
+	case "LogBuffering.durationSeconds":
+		if e.complexity.LogBuffering.DurationSeconds == nil {
+			break
+		}
+
+		return e.complexity.LogBuffering.DurationSeconds(childComplexity), true
+
+	case "LogBuffering.incomingBufferFactor":
+		if e.complexity.LogBuffering.IncomingBufferFactor == nil {
+			break
+		}
+
+		return e.complexity.LogBuffering.IncomingBufferFactor(childComplexity), true
+
+	case "LogBuffering.useAsync":
+		if e.complexity.LogBuffering.UseAsync == nil {
+			break
+		}
+
+		return e.complexity.LogBuffering.UseAsync(childComplexity), true
+
 	case "LogMessage.message":
 		if e.complexity.LogMessage.Message == nil {
 			break
@@ -4760,6 +5061,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.LogMessage.Version(childComplexity), true
+
+	case "LoggerConfig.buffer":
+		if e.complexity.LoggerConfig.Buffer == nil {
+			break
+		}
+
+		return e.complexity.LoggerConfig.Buffer(childComplexity), true
+
+	case "LoggerConfig.defaultLevel":
+		if e.complexity.LoggerConfig.DefaultLevel == nil {
+			break
+		}
+
+		return e.complexity.LoggerConfig.DefaultLevel(childComplexity), true
+
+	case "LoggerConfig.logkeeperURL":
+		if e.complexity.LoggerConfig.LogkeeperURL == nil {
+			break
+		}
+
+		return e.complexity.LoggerConfig.LogkeeperURL(childComplexity), true
+
+	case "LoggerConfig.redactKeys":
+		if e.complexity.LoggerConfig.RedactKeys == nil {
+			break
+		}
+
+		return e.complexity.LoggerConfig.RedactKeys(childComplexity), true
+
+	case "LoggerConfig.thresholdLevel":
+		if e.complexity.LoggerConfig.ThresholdLevel == nil {
+			break
+		}
+
+		return e.complexity.LoggerConfig.ThresholdLevel(childComplexity), true
 
 	case "LogkeeperBuild.buildNum":
 		if e.complexity.LogkeeperBuild.BuildNum == nil {
@@ -5809,6 +6145,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Notifications.SpawnHostOutcomeID(childComplexity), true
+
+	case "NotifyConfig.bufferIntervalSeconds":
+		if e.complexity.NotifyConfig.BufferIntervalSeconds == nil {
+			break
+		}
+
+		return e.complexity.NotifyConfig.BufferIntervalSeconds(childComplexity), true
+
+	case "NotifyConfig.bufferTargetPerInterval":
+		if e.complexity.NotifyConfig.BufferTargetPerInterval == nil {
+			break
+		}
+
+		return e.complexity.NotifyConfig.BufferTargetPerInterval(childComplexity), true
 
 	case "NotifyConfig.ses":
 		if e.complexity.NotifyConfig.SES == nil {
@@ -10452,6 +10802,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TriggerAlias.UnscheduleDownstreamVersions(childComplexity), true
 
+	case "TriggerConfig.generateTaskDistro":
+		if e.complexity.TriggerConfig.GenerateTaskDistro == nil {
+			break
+		}
+
+		return e.complexity.TriggerConfig.GenerateTaskDistro(childComplexity), true
+
 	case "UIConfig.betaFeatures":
 		if e.complexity.UIConfig.BetaFeatures == nil {
 			break
@@ -11537,6 +11894,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAddFavoriteProjectInput,
 		ec.unmarshalInputAdminEventsInput,
 		ec.unmarshalInputAdminSettingsInput,
+		ec.unmarshalInputAmboyConfigInput,
+		ec.unmarshalInputAmboyDBConfigInput,
+		ec.unmarshalInputAmboyNamedQueueConfigInput,
+		ec.unmarshalInputAmboyRetryConfigInput,
 		ec.unmarshalInputBetaFeaturesInput,
 		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
@@ -11573,6 +11934,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
 		ec.unmarshalInputJiraIssueSubscriberInput,
+		ec.unmarshalInputLogBufferingInput,
+		ec.unmarshalInputLoggerConfigInput,
 		ec.unmarshalInputMainlineCommitsOptions,
 		ec.unmarshalInputMetadataLinkInput,
 		ec.unmarshalInputMoveProjectInput,
@@ -11629,6 +11992,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputToolchainOpts,
 		ec.unmarshalInputTriggerAliasInput,
+		ec.unmarshalInputTriggerConfigInput,
 		ec.unmarshalInputUIConfigInput,
 		ec.unmarshalInputUpdateBetaFeaturesInput,
 		ec.unmarshalInputUpdateParsleySettingsInput,
@@ -18484,6 +18848,122 @@ func (ec *executionContext) fieldContext_AdminEventsPayload_eventLogEntries(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_amboy(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_amboy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Amboy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAmboyConfig)
+	fc.Result = res
+	return ec.marshalOAmboyConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_amboy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_AmboyConfig_name(ctx, field)
+			case "singleName":
+				return ec.fieldContext_AmboyConfig_singleName(ctx, field)
+			case "poolSizeLocal":
+				return ec.fieldContext_AmboyConfig_poolSizeLocal(ctx, field)
+			case "poolSizeRemote":
+				return ec.fieldContext_AmboyConfig_poolSizeRemote(ctx, field)
+			case "localStorage":
+				return ec.fieldContext_AmboyConfig_localStorage(ctx, field)
+			case "groupDefaultWorkers":
+				return ec.fieldContext_AmboyConfig_groupDefaultWorkers(ctx, field)
+			case "groupBackgroundCreateFrequencyMinutes":
+				return ec.fieldContext_AmboyConfig_groupBackgroundCreateFrequencyMinutes(ctx, field)
+			case "groupPruneFrequencyMinutes":
+				return ec.fieldContext_AmboyConfig_groupPruneFrequencyMinutes(ctx, field)
+			case "groupTTLMinutes":
+				return ec.fieldContext_AmboyConfig_groupTTLMinutes(ctx, field)
+			case "lockTimeoutMinutes":
+				return ec.fieldContext_AmboyConfig_lockTimeoutMinutes(ctx, field)
+			case "sampleSize":
+				return ec.fieldContext_AmboyConfig_sampleSize(ctx, field)
+			case "retry":
+				return ec.fieldContext_AmboyConfig_retry(ctx, field)
+			case "namedQueues":
+				return ec.fieldContext_AmboyConfig_namedQueues(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AmboyConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_amboyDB(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_amboyDB(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AmboyDB, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAmboyDBConfig)
+	fc.Result = res
+	return ec.marshalOAmboyDBConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyDBConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_amboyDB(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_AmboyDBConfig_url(ctx, field)
+			case "database":
+				return ec.fieldContext_AmboyDBConfig_database(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AmboyDBConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AdminSettings_banner(ctx, field)
 	if err != nil {
@@ -18719,6 +19199,10 @@ func (ec *executionContext) fieldContext_AdminSettings_notify(_ context.Context,
 			switch field.Name {
 			case "ses":
 				return ec.fieldContext_NotifyConfig_ses(ctx, field)
+			case "bufferTargetPerInterval":
+				return ec.fieldContext_NotifyConfig_bufferTargetPerInterval(ctx, field)
+			case "bufferIntervalSeconds":
+				return ec.fieldContext_NotifyConfig_bufferIntervalSeconds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NotifyConfig", field.Name)
 		},
@@ -19182,6 +19666,1243 @@ func (ec *executionContext) fieldContext_AdminSettings_disabledGQLQueries(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_loggerConfig(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LoggerConfig, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APILoggerConfig)
+	fc.Result = res
+	return ec.marshalOLoggerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILoggerConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_loggerConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "buffer":
+				return ec.fieldContext_LoggerConfig_buffer(ctx, field)
+			case "defaultLevel":
+				return ec.fieldContext_LoggerConfig_defaultLevel(ctx, field)
+			case "thresholdLevel":
+				return ec.fieldContext_LoggerConfig_thresholdLevel(ctx, field)
+			case "logkeeperURL":
+				return ec.fieldContext_LoggerConfig_logkeeperURL(ctx, field)
+			case "redactKeys":
+				return ec.fieldContext_LoggerConfig_redactKeys(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LoggerConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_triggers(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_triggers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Triggers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITriggerConfig)
+	fc.Result = res
+	return ec.marshalOTriggerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_triggers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "generateTaskDistro":
+				return ec.fieldContext_TriggerConfig_generateTaskDistro(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TriggerConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_name(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_singleName(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_singleName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SingleName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_singleName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_poolSizeLocal(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_poolSizeLocal(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PoolSizeLocal, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_poolSizeLocal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_poolSizeRemote(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_poolSizeRemote(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PoolSizeRemote, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_poolSizeRemote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_localStorage(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_localStorage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LocalStorage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_localStorage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_groupDefaultWorkers(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_groupDefaultWorkers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GroupDefaultWorkers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_groupDefaultWorkers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_groupBackgroundCreateFrequencyMinutes(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_groupBackgroundCreateFrequencyMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GroupBackgroundCreateFrequencyMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_groupBackgroundCreateFrequencyMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_groupPruneFrequencyMinutes(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_groupPruneFrequencyMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GroupPruneFrequencyMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_groupPruneFrequencyMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_groupTTLMinutes(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_groupTTLMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GroupTTLMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_groupTTLMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_lockTimeoutMinutes(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_lockTimeoutMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LockTimeoutMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_lockTimeoutMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_sampleSize(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_sampleSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SampleSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_sampleSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_retry(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_retry(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Retry, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIAmboyRetryConfig)
+	fc.Result = res
+	return ec.marshalOAmboyRetryConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyRetryConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_retry(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "numWorkers":
+				return ec.fieldContext_AmboyRetryConfig_numWorkers(ctx, field)
+			case "maxCapacity":
+				return ec.fieldContext_AmboyRetryConfig_maxCapacity(ctx, field)
+			case "maxRetryAttempts":
+				return ec.fieldContext_AmboyRetryConfig_maxRetryAttempts(ctx, field)
+			case "maxRetryTimeSeconds":
+				return ec.fieldContext_AmboyRetryConfig_maxRetryTimeSeconds(ctx, field)
+			case "retryBackoffSeconds":
+				return ec.fieldContext_AmboyRetryConfig_retryBackoffSeconds(ctx, field)
+			case "staleRetryingMonitorIntervalSeconds":
+				return ec.fieldContext_AmboyRetryConfig_staleRetryingMonitorIntervalSeconds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AmboyRetryConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyConfig_namedQueues(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyConfig_namedQueues(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NamedQueues, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIAmboyNamedQueueConfig)
+	fc.Result = res
+	return ec.marshalNAmboyNamedQueueConfig2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfigᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyConfig_namedQueues(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_AmboyNamedQueueConfig_name(ctx, field)
+			case "regexp":
+				return ec.fieldContext_AmboyNamedQueueConfig_regexp(ctx, field)
+			case "numWorkers":
+				return ec.fieldContext_AmboyNamedQueueConfig_numWorkers(ctx, field)
+			case "sampleSize":
+				return ec.fieldContext_AmboyNamedQueueConfig_sampleSize(ctx, field)
+			case "lockTimeoutSeconds":
+				return ec.fieldContext_AmboyNamedQueueConfig_lockTimeoutSeconds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AmboyNamedQueueConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyDBConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyDBConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyDBConfig_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.URL, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyDBConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyDBConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyDBConfig_database(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyDBConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyDBConfig_database(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Database, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyDBConfig_database(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyDBConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyNamedQueueConfig_name(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyNamedQueueConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyNamedQueueConfig_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyNamedQueueConfig_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyNamedQueueConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyNamedQueueConfig_regexp(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyNamedQueueConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyNamedQueueConfig_regexp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Regexp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyNamedQueueConfig_regexp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyNamedQueueConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyNamedQueueConfig_numWorkers(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyNamedQueueConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyNamedQueueConfig_numWorkers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumWorkers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyNamedQueueConfig_numWorkers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyNamedQueueConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyNamedQueueConfig_sampleSize(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyNamedQueueConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyNamedQueueConfig_sampleSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SampleSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyNamedQueueConfig_sampleSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyNamedQueueConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyNamedQueueConfig_lockTimeoutSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyNamedQueueConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyNamedQueueConfig_lockTimeoutSeconds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LockTimeoutSeconds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyNamedQueueConfig_lockTimeoutSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyNamedQueueConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyRetryConfig_numWorkers(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyRetryConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyRetryConfig_numWorkers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumWorkers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyRetryConfig_numWorkers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyRetryConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyRetryConfig_maxCapacity(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyRetryConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyRetryConfig_maxCapacity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxCapacity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyRetryConfig_maxCapacity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyRetryConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyRetryConfig_maxRetryAttempts(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyRetryConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyRetryConfig_maxRetryAttempts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxRetryAttempts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyRetryConfig_maxRetryAttempts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyRetryConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyRetryConfig_maxRetryTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyRetryConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyRetryConfig_maxRetryTimeSeconds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxRetryTimeSeconds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyRetryConfig_maxRetryTimeSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyRetryConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyRetryConfig_retryBackoffSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyRetryConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyRetryConfig_retryBackoffSeconds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RetryBackoffSeconds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyRetryConfig_retryBackoffSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyRetryConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AmboyRetryConfig_staleRetryingMonitorIntervalSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APIAmboyRetryConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AmboyRetryConfig_staleRetryingMonitorIntervalSeconds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StaleRetryingMonitorIntervalSeconds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AmboyRetryConfig_staleRetryingMonitorIntervalSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AmboyRetryConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33712,6 +35433,173 @@ func (ec *executionContext) fieldContext_JiraTicket_key(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _LogBuffering_useAsync(ctx context.Context, field graphql.CollectedField, obj *model.APILogBuffering) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogBuffering_useAsync(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UseAsync, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogBuffering_useAsync(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogBuffering",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogBuffering_durationSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APILogBuffering) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogBuffering_durationSeconds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DurationSeconds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogBuffering_durationSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogBuffering",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogBuffering_count(ctx context.Context, field graphql.CollectedField, obj *model.APILogBuffering) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogBuffering_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogBuffering_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogBuffering",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogBuffering_incomingBufferFactor(ctx context.Context, field graphql.CollectedField, obj *model.APILogBuffering) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogBuffering_incomingBufferFactor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IncomingBufferFactor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogBuffering_incomingBufferFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogBuffering",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LogMessage_message(ctx context.Context, field graphql.CollectedField, obj *apimodels.LogMessage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LogMessage_message(ctx, field)
 	if err != nil {
@@ -33912,6 +35800,224 @@ func (ec *executionContext) fieldContext_LogMessage_version(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoggerConfig_buffer(ctx context.Context, field graphql.CollectedField, obj *model.APILoggerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LoggerConfig_buffer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Buffer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APILogBuffering)
+	fc.Result = res
+	return ec.marshalOLogBuffering2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILogBuffering(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LoggerConfig_buffer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoggerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "useAsync":
+				return ec.fieldContext_LogBuffering_useAsync(ctx, field)
+			case "durationSeconds":
+				return ec.fieldContext_LogBuffering_durationSeconds(ctx, field)
+			case "count":
+				return ec.fieldContext_LogBuffering_count(ctx, field)
+			case "incomingBufferFactor":
+				return ec.fieldContext_LogBuffering_incomingBufferFactor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogBuffering", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoggerConfig_defaultLevel(ctx context.Context, field graphql.CollectedField, obj *model.APILoggerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LoggerConfig_defaultLevel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultLevel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOPriorityLevel2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LoggerConfig_defaultLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoggerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PriorityLevel does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoggerConfig_thresholdLevel(ctx context.Context, field graphql.CollectedField, obj *model.APILoggerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LoggerConfig_thresholdLevel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThresholdLevel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOPriorityLevel2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LoggerConfig_thresholdLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoggerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PriorityLevel does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoggerConfig_logkeeperURL(ctx context.Context, field graphql.CollectedField, obj *model.APILoggerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LoggerConfig_logkeeperURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LogkeeperURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LoggerConfig_logkeeperURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoggerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoggerConfig_redactKeys(ctx context.Context, field graphql.CollectedField, obj *model.APILoggerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LoggerConfig_redactKeys(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RedactKeys, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalNString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LoggerConfig_redactKeys(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoggerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -36099,6 +38205,10 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "amboy":
+				return ec.fieldContext_AdminSettings_amboy(ctx, field)
+			case "amboyDB":
+				return ec.fieldContext_AdminSettings_amboyDB(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -36123,6 +38233,10 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
+			case "loggerConfig":
+				return ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
+			case "triggers":
+				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -42102,6 +44216,88 @@ func (ec *executionContext) fieldContext_NotifyConfig_ses(_ context.Context, fie
 				return ec.fieldContext_SESConfig_senderAddress(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SESConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NotifyConfig_bufferTargetPerInterval(ctx context.Context, field graphql.CollectedField, obj *model.APINotifyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NotifyConfig_bufferTargetPerInterval(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BufferTargetPerInterval, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NotifyConfig_bufferTargetPerInterval(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NotifyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NotifyConfig_bufferIntervalSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APINotifyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NotifyConfig_bufferIntervalSeconds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BufferIntervalSeconds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NotifyConfig_bufferIntervalSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NotifyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -52691,6 +54887,10 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "amboy":
+				return ec.fieldContext_AdminSettings_amboy(ctx, field)
+			case "amboyDB":
+				return ec.fieldContext_AdminSettings_amboyDB(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -52715,6 +54915,10 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
+			case "loggerConfig":
+				return ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
+			case "triggers":
+				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -74100,6 +76304,47 @@ func (ec *executionContext) fieldContext_TriggerAlias_unscheduleDownstreamVersio
 	return fc, nil
 }
 
+func (ec *executionContext) _TriggerConfig_generateTaskDistro(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TriggerConfig_generateTaskDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GenerateTaskDistro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TriggerConfig_generateTaskDistro(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UIConfig_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 	if err != nil {
@@ -84047,13 +86292,46 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries", "loggerConfig", "triggers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "amboy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amboy"))
+			data, err := ec.unmarshalOAmboyConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Amboy = data
+		case "amboyDB":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amboyDB"))
+			directive0 := func(ctx context.Context) (any, error) {
+				return ec.unmarshalOAmboyDBConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyDBConfig(ctx, v)
+			}
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *model.APIAmboyDBConfig
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*model.APIAmboyDBConfig); ok {
+				it.AmboyDB = data
+			} else if tmp == nil {
+				it.AmboyDB = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIAmboyDBConfig`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "banner":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -84140,6 +86418,282 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.DisabledGQLQueries = data
+		case "loggerConfig":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("loggerConfig"))
+			data, err := ec.unmarshalOLoggerConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILoggerConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LoggerConfig = data
+		case "triggers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
+			data, err := ec.unmarshalOTriggerConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Triggers = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAmboyConfigInput(ctx context.Context, obj any) (model.APIAmboyConfig, error) {
+	var it model.APIAmboyConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "singleName", "poolSizeLocal", "poolSizeRemote", "localStorage", "groupDefaultWorkers", "groupBackgroundCreateFrequencyMinutes", "groupPruneFrequencyMinutes", "groupTTLMinutes", "lockTimeoutMinutes", "sampleSize", "retry", "namedQueues"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "singleName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("singleName"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SingleName = data
+		case "poolSizeLocal":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("poolSizeLocal"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PoolSizeLocal = data
+		case "poolSizeRemote":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("poolSizeRemote"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PoolSizeRemote = data
+		case "localStorage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("localStorage"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LocalStorage = data
+		case "groupDefaultWorkers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupDefaultWorkers"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupDefaultWorkers = data
+		case "groupBackgroundCreateFrequencyMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupBackgroundCreateFrequencyMinutes"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupBackgroundCreateFrequencyMinutes = data
+		case "groupPruneFrequencyMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupPruneFrequencyMinutes"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupPruneFrequencyMinutes = data
+		case "groupTTLMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupTTLMinutes"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GroupTTLMinutes = data
+		case "lockTimeoutMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lockTimeoutMinutes"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LockTimeoutMinutes = data
+		case "sampleSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sampleSize"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SampleSize = data
+		case "retry":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retry"))
+			data, err := ec.unmarshalNAmboyRetryConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyRetryConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Retry = data
+		case "namedQueues":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("namedQueues"))
+			data, err := ec.unmarshalNAmboyNamedQueueConfigInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfigᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NamedQueues = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAmboyDBConfigInput(ctx context.Context, obj any) (model.APIAmboyDBConfig, error) {
+	var it model.APIAmboyDBConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url", "database"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
+		case "database":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("database"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Database = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAmboyNamedQueueConfigInput(ctx context.Context, obj any) (model.APIAmboyNamedQueueConfig, error) {
+	var it model.APIAmboyNamedQueueConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "regexp", "numWorkers", "sampleSize", "lockTimeoutSeconds"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "regexp":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("regexp"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Regexp = data
+		case "numWorkers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numWorkers"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NumWorkers = data
+		case "sampleSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sampleSize"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SampleSize = data
+		case "lockTimeoutSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lockTimeoutSeconds"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LockTimeoutSeconds = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAmboyRetryConfigInput(ctx context.Context, obj any) (model.APIAmboyRetryConfig, error) {
+	var it model.APIAmboyRetryConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"numWorkers", "maxCapacity", "maxRetryAttempts", "maxRetryTimeSeconds", "retryBackoffSeconds", "staleRetryingMonitorIntervalSeconds"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "numWorkers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numWorkers"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NumWorkers = data
+		case "maxCapacity":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxCapacity"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxCapacity = data
+		case "maxRetryAttempts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxRetryAttempts"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxRetryAttempts = data
+		case "maxRetryTimeSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxRetryTimeSeconds"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxRetryTimeSeconds = data
+		case "retryBackoffSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryBackoffSeconds"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryBackoffSeconds = data
+		case "staleRetryingMonitorIntervalSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("staleRetryingMonitorIntervalSeconds"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StaleRetryingMonitorIntervalSeconds = data
 		}
 	}
 
@@ -86095,6 +88649,109 @@ func (ec *executionContext) unmarshalInputJiraIssueSubscriberInput(ctx context.C
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputLogBufferingInput(ctx context.Context, obj any) (model.APILogBuffering, error) {
+	var it model.APILogBuffering
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"useAsync", "durationSeconds", "count", "incomingBufferFactor"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "useAsync":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useAsync"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UseAsync = data
+		case "durationSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("durationSeconds"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DurationSeconds = data
+		case "count":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("count"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Count = data
+		case "incomingBufferFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("incomingBufferFactor"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncomingBufferFactor = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputLoggerConfigInput(ctx context.Context, obj any) (model.APILoggerConfig, error) {
+	var it model.APILoggerConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"buffer", "defaultLevel", "thresholdLevel", "logkeeperURL", "redactKeys"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "buffer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buffer"))
+			data, err := ec.unmarshalNLogBufferingInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILogBuffering(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Buffer = data
+		case "defaultLevel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultLevel"))
+			data, err := ec.unmarshalNPriorityLevel2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultLevel = data
+		case "thresholdLevel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("thresholdLevel"))
+			data, err := ec.unmarshalNPriorityLevel2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThresholdLevel = data
+		case "logkeeperURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logkeeperURL"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LogkeeperURL = data
+		case "redactKeys":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("redactKeys"))
+			data, err := ec.unmarshalNString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RedactKeys = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputMainlineCommitsOptions(ctx context.Context, obj any) (MainlineCommitsOptions, error) {
 	var it MainlineCommitsOptions
 	asMap := map[string]any{}
@@ -86351,7 +89008,7 @@ func (ec *executionContext) unmarshalInputNotifyConfigInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"ses"}
+	fieldsInOrder := [...]string{"ses", "bufferTargetPerInterval", "bufferIntervalSeconds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86360,11 +89017,25 @@ func (ec *executionContext) unmarshalInputNotifyConfigInput(ctx context.Context,
 		switch k {
 		case "ses":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ses"))
-			data, err := ec.unmarshalNSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx, v)
+			data, err := ec.unmarshalOSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.SES = data
+		case "bufferTargetPerInterval":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bufferTargetPerInterval"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BufferTargetPerInterval = data
+		case "bufferIntervalSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bufferIntervalSeconds"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BufferIntervalSeconds = data
 		}
 	}
 
@@ -90069,6 +92740,33 @@ func (ec *executionContext) unmarshalInputTriggerAliasInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTriggerConfigInput(ctx context.Context, obj any) (model.APITriggerConfig, error) {
+	var it model.APITriggerConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"generateTaskDistro"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "generateTaskDistro":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generateTaskDistro"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GenerateTaskDistro = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj any) (model.APIUIConfig, error) {
 	var it model.APIUIConfig
 	asMap := map[string]any{}
@@ -90179,11 +92877,28 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 			it.UserVoice = data
 		case "csrfKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("csrfKey"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
 			}
-			it.CsrfKey = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.CsrfKey = data
+			} else if tmp == nil {
+				it.CsrfKey = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "cacheTemplates":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheTemplates"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -91266,6 +93981,10 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("AdminSettings")
+		case "amboy":
+			out.Values[i] = ec._AdminSettings_amboy(ctx, field, obj)
+		case "amboyDB":
+			out.Values[i] = ec._AdminSettings_amboyDB(ctx, field, obj)
 		case "banner":
 			out.Values[i] = ec._AdminSettings_banner(ctx, field, obj)
 		case "bannerTheme":
@@ -91324,6 +94043,201 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "loggerConfig":
+			out.Values[i] = ec._AdminSettings_loggerConfig(ctx, field, obj)
+		case "triggers":
+			out.Values[i] = ec._AdminSettings_triggers(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var amboyConfigImplementors = []string{"AmboyConfig"}
+
+func (ec *executionContext) _AmboyConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAmboyConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, amboyConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AmboyConfig")
+		case "name":
+			out.Values[i] = ec._AmboyConfig_name(ctx, field, obj)
+		case "singleName":
+			out.Values[i] = ec._AmboyConfig_singleName(ctx, field, obj)
+		case "poolSizeLocal":
+			out.Values[i] = ec._AmboyConfig_poolSizeLocal(ctx, field, obj)
+		case "poolSizeRemote":
+			out.Values[i] = ec._AmboyConfig_poolSizeRemote(ctx, field, obj)
+		case "localStorage":
+			out.Values[i] = ec._AmboyConfig_localStorage(ctx, field, obj)
+		case "groupDefaultWorkers":
+			out.Values[i] = ec._AmboyConfig_groupDefaultWorkers(ctx, field, obj)
+		case "groupBackgroundCreateFrequencyMinutes":
+			out.Values[i] = ec._AmboyConfig_groupBackgroundCreateFrequencyMinutes(ctx, field, obj)
+		case "groupPruneFrequencyMinutes":
+			out.Values[i] = ec._AmboyConfig_groupPruneFrequencyMinutes(ctx, field, obj)
+		case "groupTTLMinutes":
+			out.Values[i] = ec._AmboyConfig_groupTTLMinutes(ctx, field, obj)
+		case "lockTimeoutMinutes":
+			out.Values[i] = ec._AmboyConfig_lockTimeoutMinutes(ctx, field, obj)
+		case "sampleSize":
+			out.Values[i] = ec._AmboyConfig_sampleSize(ctx, field, obj)
+		case "retry":
+			out.Values[i] = ec._AmboyConfig_retry(ctx, field, obj)
+		case "namedQueues":
+			out.Values[i] = ec._AmboyConfig_namedQueues(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var amboyDBConfigImplementors = []string{"AmboyDBConfig"}
+
+func (ec *executionContext) _AmboyDBConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAmboyDBConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, amboyDBConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AmboyDBConfig")
+		case "url":
+			out.Values[i] = ec._AmboyDBConfig_url(ctx, field, obj)
+		case "database":
+			out.Values[i] = ec._AmboyDBConfig_database(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var amboyNamedQueueConfigImplementors = []string{"AmboyNamedQueueConfig"}
+
+func (ec *executionContext) _AmboyNamedQueueConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAmboyNamedQueueConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, amboyNamedQueueConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AmboyNamedQueueConfig")
+		case "name":
+			out.Values[i] = ec._AmboyNamedQueueConfig_name(ctx, field, obj)
+		case "regexp":
+			out.Values[i] = ec._AmboyNamedQueueConfig_regexp(ctx, field, obj)
+		case "numWorkers":
+			out.Values[i] = ec._AmboyNamedQueueConfig_numWorkers(ctx, field, obj)
+		case "sampleSize":
+			out.Values[i] = ec._AmboyNamedQueueConfig_sampleSize(ctx, field, obj)
+		case "lockTimeoutSeconds":
+			out.Values[i] = ec._AmboyNamedQueueConfig_lockTimeoutSeconds(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var amboyRetryConfigImplementors = []string{"AmboyRetryConfig"}
+
+func (ec *executionContext) _AmboyRetryConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAmboyRetryConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, amboyRetryConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AmboyRetryConfig")
+		case "numWorkers":
+			out.Values[i] = ec._AmboyRetryConfig_numWorkers(ctx, field, obj)
+		case "maxCapacity":
+			out.Values[i] = ec._AmboyRetryConfig_maxCapacity(ctx, field, obj)
+		case "maxRetryAttempts":
+			out.Values[i] = ec._AmboyRetryConfig_maxRetryAttempts(ctx, field, obj)
+		case "maxRetryTimeSeconds":
+			out.Values[i] = ec._AmboyRetryConfig_maxRetryTimeSeconds(ctx, field, obj)
+		case "retryBackoffSeconds":
+			out.Values[i] = ec._AmboyRetryConfig_retryBackoffSeconds(ctx, field, obj)
+		case "staleRetryingMonitorIntervalSeconds":
+			out.Values[i] = ec._AmboyRetryConfig_staleRetryingMonitorIntervalSeconds(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -95594,6 +98508,51 @@ func (ec *executionContext) _JiraTicket(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var logBufferingImplementors = []string{"LogBuffering"}
+
+func (ec *executionContext) _LogBuffering(ctx context.Context, sel ast.SelectionSet, obj *model.APILogBuffering) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, logBufferingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LogBuffering")
+		case "useAsync":
+			out.Values[i] = ec._LogBuffering_useAsync(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "durationSeconds":
+			out.Values[i] = ec._LogBuffering_durationSeconds(ctx, field, obj)
+		case "count":
+			out.Values[i] = ec._LogBuffering_count(ctx, field, obj)
+		case "incomingBufferFactor":
+			out.Values[i] = ec._LogBuffering_incomingBufferFactor(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var logMessageImplementors = []string{"LogMessage"}
 
 func (ec *executionContext) _LogMessage(ctx context.Context, sel ast.SelectionSet, obj *apimodels.LogMessage) graphql.Marshaler {
@@ -95615,6 +98574,53 @@ func (ec *executionContext) _LogMessage(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._LogMessage_type(ctx, field, obj)
 		case "version":
 			out.Values[i] = ec._LogMessage_version(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var loggerConfigImplementors = []string{"LoggerConfig"}
+
+func (ec *executionContext) _LoggerConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APILoggerConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, loggerConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LoggerConfig")
+		case "buffer":
+			out.Values[i] = ec._LoggerConfig_buffer(ctx, field, obj)
+		case "defaultLevel":
+			out.Values[i] = ec._LoggerConfig_defaultLevel(ctx, field, obj)
+		case "thresholdLevel":
+			out.Values[i] = ec._LoggerConfig_thresholdLevel(ctx, field, obj)
+		case "logkeeperURL":
+			out.Values[i] = ec._LoggerConfig_logkeeperURL(ctx, field, obj)
+		case "redactKeys":
+			out.Values[i] = ec._LoggerConfig_redactKeys(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -96646,6 +99652,10 @@ func (ec *executionContext) _NotifyConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("NotifyConfig")
 		case "ses":
 			out.Values[i] = ec._NotifyConfig_ses(ctx, field, obj)
+		case "bufferTargetPerInterval":
+			out.Values[i] = ec._NotifyConfig_bufferTargetPerInterval(ctx, field, obj)
+		case "bufferIntervalSeconds":
+			out.Values[i] = ec._NotifyConfig_bufferIntervalSeconds(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -105476,6 +108486,42 @@ func (ec *executionContext) _TriggerAlias(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var triggerConfigImplementors = []string{"TriggerConfig"}
+
+func (ec *executionContext) _TriggerConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APITriggerConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, triggerConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TriggerConfig")
+		case "generateTaskDistro":
+			out.Values[i] = ec._TriggerConfig_generateTaskDistro(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var uIConfigImplementors = []string{"UIConfig"}
 
 func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIUIConfig) graphql.Marshaler {
@@ -108100,6 +111146,79 @@ func (ec *executionContext) unmarshalNAdminSettingsInput2ᚖgithubᚗcomᚋeverg
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNAmboyNamedQueueConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfig(ctx context.Context, sel ast.SelectionSet, v model.APIAmboyNamedQueueConfig) graphql.Marshaler {
+	return ec._AmboyNamedQueueConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAmboyNamedQueueConfig2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfigᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIAmboyNamedQueueConfig) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAmboyNamedQueueConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfig(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNAmboyNamedQueueConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfig(ctx context.Context, v any) (model.APIAmboyNamedQueueConfig, error) {
+	res, err := ec.unmarshalInputAmboyNamedQueueConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAmboyNamedQueueConfigInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfigᚄ(ctx context.Context, v any) ([]model.APIAmboyNamedQueueConfig, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]model.APIAmboyNamedQueueConfig, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAmboyNamedQueueConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfig(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNAmboyRetryConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyRetryConfig(ctx context.Context, v any) (model.APIAmboyRetryConfig, error) {
+	res, err := ec.unmarshalInputAmboyRetryConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNArch2ᚖstring(ctx context.Context, v any) (*string, error) {
 	tmp, err := graphql.UnmarshalString(v)
 	res := unmarshalNArch2ᚖstring[tmp]
@@ -110372,6 +113491,11 @@ func (ec *executionContext) marshalNJiraTicket2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._JiraTicket(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNLogBufferingInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILogBuffering(ctx context.Context, v any) (*model.APILogBuffering, error) {
+	res, err := ec.unmarshalInputLogBufferingInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNLogMessage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋapimodelsᚐLogMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*apimodels.LogMessage) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -111396,6 +114520,54 @@ func (ec *executionContext) unmarshalNPreconditionScriptInput2ᚕgithubᚗcomᚋ
 	return res, nil
 }
 
+func (ec *executionContext) unmarshalNPriorityLevel2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNPriorityLevel2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPriorityLevel2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNPriorityLevel2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+var (
+	unmarshalNPriorityLevel2ᚖstring = map[string]string{
+		"EMERGENCY": evergreen.PriorityLevelEmergency,
+		"ALERT":     evergreen.PriorityLevelAlert,
+		"CRITICAL":  evergreen.PriorityLevelCritical,
+		"ERROR":     evergreen.PriorityLevelError,
+		"WARNING":   evergreen.PriorityLevelWarning,
+		"NOTICE":    evergreen.PriorityLevelNotice,
+		"INFO":      evergreen.PriorityLevelInfo,
+		"DEBUG":     evergreen.PriorityLevelDebug,
+		"TRACE":     evergreen.PriorityLevelTrace,
+	}
+	marshalNPriorityLevel2ᚖstring = map[string]string{
+		evergreen.PriorityLevelEmergency: "EMERGENCY",
+		evergreen.PriorityLevelAlert:     "ALERT",
+		evergreen.PriorityLevelCritical:  "CRITICAL",
+		evergreen.PriorityLevelError:     "ERROR",
+		evergreen.PriorityLevelWarning:   "WARNING",
+		evergreen.PriorityLevelNotice:    "NOTICE",
+		evergreen.PriorityLevelInfo:      "INFO",
+		evergreen.PriorityLevelDebug:     "DEBUG",
+		evergreen.PriorityLevelTrace:     "TRACE",
+	}
+)
+
 func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
 	return ec._Project(ctx, sel, &v)
 }
@@ -111920,11 +115092,6 @@ var (
 		evergreen.HostAllocatorRoundDefault: "DEFAULT",
 	}
 )
-
-func (ec *executionContext) unmarshalNSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, v any) (model.APISESConfig, error) {
-	res, err := ec.unmarshalInputSESConfigInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
 
 func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v any) (SaveDistroInput, error) {
 	res, err := ec.unmarshalInputSaveDistroInput(ctx, v)
@@ -113722,6 +116889,40 @@ func (ec *executionContext) marshalOAdminSettings2ᚖgithubᚗcomᚋevergreenᚑ
 	return ec._AdminSettings(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOAmboyConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAmboyConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AmboyConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAmboyConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyConfig(ctx context.Context, v any) (*model.APIAmboyConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAmboyConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAmboyDBConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyDBConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIAmboyDBConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AmboyDBConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAmboyDBConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyDBConfig(ctx context.Context, v any) (*model.APIAmboyDBConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAmboyDBConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAmboyRetryConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyRetryConfig(ctx context.Context, sel ast.SelectionSet, v model.APIAmboyRetryConfig) graphql.Marshaler {
+	return ec._AmboyRetryConfig(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx context.Context, sel ast.SelectionSet, v *model.APITaskAnnotation) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -115153,6 +118354,28 @@ func (ec *executionContext) marshalOJiraTicket2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._JiraTicket(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOLogBuffering2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILogBuffering(ctx context.Context, sel ast.SelectionSet, v *model.APILogBuffering) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._LogBuffering(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOLoggerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILoggerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APILoggerConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._LoggerConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOLoggerConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILoggerConfig(ctx context.Context, v any) (*model.APILoggerConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputLoggerConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOMainlineCommits2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMainlineCommits(ctx context.Context, sel ast.SelectionSet, v *MainlineCommits) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -115618,6 +118841,50 @@ func (ec *executionContext) unmarshalOPodLifecycleConfigInput2ᚖgithubᚗcomᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalOPriorityLevel2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalOPriorityLevel2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOPriorityLevel2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(marshalOPriorityLevel2ᚖstring[*v])
+	return res
+}
+
+var (
+	unmarshalOPriorityLevel2ᚖstring = map[string]string{
+		"EMERGENCY": evergreen.PriorityLevelEmergency,
+		"ALERT":     evergreen.PriorityLevelAlert,
+		"CRITICAL":  evergreen.PriorityLevelCritical,
+		"ERROR":     evergreen.PriorityLevelError,
+		"WARNING":   evergreen.PriorityLevelWarning,
+		"NOTICE":    evergreen.PriorityLevelNotice,
+		"INFO":      evergreen.PriorityLevelInfo,
+		"DEBUG":     evergreen.PriorityLevelDebug,
+		"TRACE":     evergreen.PriorityLevelTrace,
+	}
+	marshalOPriorityLevel2ᚖstring = map[string]string{
+		evergreen.PriorityLevelEmergency: "EMERGENCY",
+		evergreen.PriorityLevelAlert:     "ALERT",
+		evergreen.PriorityLevelCritical:  "CRITICAL",
+		evergreen.PriorityLevelError:     "ERROR",
+		evergreen.PriorityLevelWarning:   "WARNING",
+		evergreen.PriorityLevelNotice:    "NOTICE",
+		evergreen.PriorityLevelInfo:      "INFO",
+		evergreen.PriorityLevelDebug:     "DEBUG",
+		evergreen.PriorityLevelTrace:     "TRACE",
+	}
+)
+
 func (ec *executionContext) marshalOProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
 	return ec._Project(ctx, sel, &v)
 }
@@ -115884,6 +119151,11 @@ var (
 
 func (ec *executionContext) marshalOSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, sel ast.SelectionSet, v model.APISESConfig) graphql.Marshaler {
 	return ec._SESConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOSESConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, v any) (model.APISESConfig, error) {
+	res, err := ec.unmarshalInputSESConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOSchedulerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISchedulerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISchedulerConfig) graphql.Marshaler {
@@ -116521,6 +119793,21 @@ func (ec *executionContext) unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergr
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOTriggerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APITriggerConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TriggerConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTriggerConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerConfig(ctx context.Context, v any) (*model.APITriggerConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTriggerConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIUIConfig) graphql.Marshaler {
