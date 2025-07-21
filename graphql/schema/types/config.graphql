@@ -35,11 +35,15 @@ type SESConfig {
 }
 
 input NotifyConfigInput {
-  ses: SESConfigInput!
+  ses: SESConfigInput
+  bufferTargetPerInterval: Int
+  bufferIntervalSeconds: Int
 }
 
 type NotifyConfig {
   ses: SESConfig @requireAdmin
+  bufferTargetPerInterval: Int
+  bufferIntervalSeconds: Int
 }
 
 input TaskLimitsConfigInput {
@@ -152,8 +156,123 @@ type RepotrackerConfig {
   maxConcurrentRequests: Int
 }
 
+input AmboyRetryConfigInput {
+  numWorkers: Int!
+  maxCapacity: Int!
+  maxRetryAttempts: Int!
+  maxRetryTimeSeconds: Int!
+  retryBackoffSeconds: Int!
+  staleRetryingMonitorIntervalSeconds: Int!
+}
+
+type AmboyRetryConfig {
+  numWorkers: Int
+  maxCapacity: Int
+  maxRetryAttempts: Int
+  maxRetryTimeSeconds: Int
+  retryBackoffSeconds: Int
+  staleRetryingMonitorIntervalSeconds: Int
+}
+
+input AmboyNamedQueueConfigInput {
+  name: String!
+  regexp: String!
+  numWorkers: Int!
+  sampleSize: Int!
+  lockTimeoutSeconds: Int!
+}
+
+type AmboyNamedQueueConfig {
+  name: String
+  regexp: String
+  numWorkers: Int
+  sampleSize: Int
+  lockTimeoutSeconds: Int
+}
+
+input AmboyConfigInput {
+  name: String!
+  singleName: String!
+  poolSizeLocal: Int!
+  poolSizeRemote: Int!
+  localStorage: Int!
+  groupDefaultWorkers: Int!
+  groupBackgroundCreateFrequencyMinutes: Int!
+  groupPruneFrequencyMinutes: Int!
+  groupTTLMinutes: Int!
+  lockTimeoutMinutes: Int!
+  sampleSize: Int!
+  retry: AmboyRetryConfigInput!
+  namedQueues: [AmboyNamedQueueConfigInput!]!
+}
+
+type AmboyConfig {
+  name: String
+  singleName: String
+  poolSizeLocal: Int
+  poolSizeRemote: Int
+  localStorage: Int
+  groupDefaultWorkers: Int
+  groupBackgroundCreateFrequencyMinutes: Int
+  groupPruneFrequencyMinutes: Int
+  groupTTLMinutes: Int
+  lockTimeoutMinutes: Int
+  sampleSize: Int
+  retry: AmboyRetryConfig
+  namedQueues: [AmboyNamedQueueConfig!]!
+}
+
+input AmboyDBConfigInput {
+  url: String!
+  database: String!
+}
+
+type AmboyDBConfig {
+  url: String @requireAdmin
+  database: String @requireAdmin
+}
+
+input LogBufferingInput {
+  useAsync: Boolean!
+  durationSeconds: Int!
+  count: Int!
+  incomingBufferFactor: Int!
+}
+
+type LogBuffering {
+  useAsync: Boolean!
+  durationSeconds: Int
+  count: Int
+  incomingBufferFactor: Int
+}
+
+input LoggerConfigInput {
+  buffer: LogBufferingInput!
+  defaultLevel: String!
+  thresholdLevel: String!
+  logkeeperURL: String!
+  redactKeys: [String!]!
+}
+
+type LoggerConfig {
+  buffer: LogBuffering
+  defaultLevel: String
+  thresholdLevel: String
+  logkeeperURL: String
+  redactKeys: [String!]!
+}
+
+input TriggerConfigInput {
+  generateTaskDistro: String!
+}
+
+type TriggerConfig {
+  generateTaskDistro: String
+}
 
 input AdminSettingsInput {
+  amboy: AmboyConfigInput
+  amboyDB: AmboyDBConfigInput @redactSecrets
   banner: String
   bannerTheme: BannerTheme
   serviceFlags: ServiceFlagsInput
@@ -166,9 +285,13 @@ input AdminSettingsInput {
   api: APIConfigInput
   ui: UIConfigInput
   disabledGQLQueries: [String!]
+  loggerConfig: LoggerConfigInput
+  triggers: TriggerConfigInput
 }
 
 type AdminSettings {
+  amboy: AmboyConfig
+  amboyDB: AmboyDBConfig
   banner: String
   bannerTheme: BannerTheme
   serviceFlags: ServiceFlags
@@ -181,6 +304,8 @@ type AdminSettings {
   api: APIConfig
   ui: UIConfig
   disabledGQLQueries: [String!]!
+  loggerConfig: LoggerConfig
+  triggers: TriggerConfig
 }
 
 """
@@ -308,13 +433,13 @@ input UIConfigInput {
   uiv2Url: String!
   parsleyUrl: String!
   httpListenAddr: String!
-  secret: String! @redactSecrets 
+  secret: String! @redactSecrets
   defaultProject: String!
   corsOrigins: [String!]!
   fileStreamingContentTypes: [String!]!
   loginDomain: String!
   userVoice: String!
-  csrfKey: String!
+  csrfKey: String! @redactSecrets
   cacheTemplates: Boolean!
   stagingEnvironment: String!
   betaFeatures: BetaFeaturesInput!
@@ -337,7 +462,6 @@ type UIConfig {
   cacheTemplates: Boolean
   stagingEnvironment: String
 }
-
 
 type SlackConfig {
   name: String
