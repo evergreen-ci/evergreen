@@ -28,7 +28,7 @@ if [ "$before" = "$after" ]; then
     echo "No formatting errors found."
     exit 0
 else
-    echo "Please run 'make swaggo-format' in your local environment to fix the lint errors. If this is your local environment, please commit the changes this command made."
+    echo "Please run 'swag fmt -g service/service.go --exclude thirdparty/clients,graphql' in your local environment to fix the lint errors. If this is your local environment, please commit the changes this command made."
     version=$($swaggo --version)
     echo "Currently using swaggo version: $version"
     exit 1
