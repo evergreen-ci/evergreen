@@ -683,10 +683,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionConfig
   TestSelectionConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionConfig
-  MetadataLink:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
-  MetadataLinkInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   TaskLimitsConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
   TaskLimitsConfigInput:

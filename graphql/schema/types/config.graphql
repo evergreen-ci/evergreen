@@ -475,14 +475,6 @@ type UIConfig {
   stagingEnvironment: String
 }
 
-type SlackConfig {
-  name: String
-}
-
-type JiraConfig {
-  email: String
-  host: String
-}
 
 type CloudProviderConfig {
   aws: AWSConfig

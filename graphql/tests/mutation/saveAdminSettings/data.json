@@ -267,6 +267,8 @@
     {
       "_id": "fws",
       "url": ""
+    },
+    {
       "_id": "amboy",
       "name": "amboy-config",
       "database": "amboy",
