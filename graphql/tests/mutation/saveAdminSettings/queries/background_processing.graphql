@@ -46,8 +46,8 @@ mutation BackgroundProcessing {
           count: 1
           incomingBufferFactor: 1
         }
-        defaultLevel: "info"
-        thresholdLevel: "info"
+        defaultLevel: INFO
+        thresholdLevel: INFO
         logkeeperURL: "new-logkeeper-url"
         redactKeys: ["new-redact-key"]
       }

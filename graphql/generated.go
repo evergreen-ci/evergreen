@@ -35881,7 +35881,7 @@ func (ec *executionContext) _LoggerConfig_defaultLevel(ctx context.Context, fiel
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOPriorityLevel2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_LoggerConfig_defaultLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -35891,7 +35891,7 @@ func (ec *executionContext) fieldContext_LoggerConfig_defaultLevel(_ context.Con
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type PriorityLevel does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35922,7 +35922,7 @@ func (ec *executionContext) _LoggerConfig_thresholdLevel(ctx context.Context, fi
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOPriorityLevel2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_LoggerConfig_thresholdLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -35932,7 +35932,7 @@ func (ec *executionContext) fieldContext_LoggerConfig_thresholdLevel(_ context.C
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type PriorityLevel does not have child fields")
 		},
 	}
 	return fc, nil
@@ -88720,14 +88720,14 @@ func (ec *executionContext) unmarshalInputLoggerConfigInput(ctx context.Context,
 			it.Buffer = data
 		case "defaultLevel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultLevel"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNPriorityLevel2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.DefaultLevel = data
 		case "thresholdLevel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("thresholdLevel"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNPriorityLevel2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -114520,6 +114520,54 @@ func (ec *executionContext) unmarshalNPreconditionScriptInput2ᚕgithubᚗcomᚋ
 	return res, nil
 }
 
+func (ec *executionContext) unmarshalNPriorityLevel2ᚖstring(ctx context.Context, v any) (*string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNPriorityLevel2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPriorityLevel2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalString(marshalNPriorityLevel2ᚖstring[*v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+var (
+	unmarshalNPriorityLevel2ᚖstring = map[string]string{
+		"EMERGENCY": evergreen.PriorityLevelEmergency,
+		"ALERT":     evergreen.PriorityLevelAlert,
+		"CRITICAL":  evergreen.PriorityLevelCritical,
+		"ERROR":     evergreen.PriorityLevelError,
+		"WARNING":   evergreen.PriorityLevelWarning,
+		"NOTICE":    evergreen.PriorityLevelNotice,
+		"INFO":      evergreen.PriorityLevelInfo,
+		"DEBUG":     evergreen.PriorityLevelDebug,
+		"TRACE":     evergreen.PriorityLevelTrace,
+	}
+	marshalNPriorityLevel2ᚖstring = map[string]string{
+		evergreen.PriorityLevelEmergency: "EMERGENCY",
+		evergreen.PriorityLevelAlert:     "ALERT",
+		evergreen.PriorityLevelCritical:  "CRITICAL",
+		evergreen.PriorityLevelError:     "ERROR",
+		evergreen.PriorityLevelWarning:   "WARNING",
+		evergreen.PriorityLevelNotice:    "NOTICE",
+		evergreen.PriorityLevelInfo:      "INFO",
+		evergreen.PriorityLevelDebug:     "DEBUG",
+		evergreen.PriorityLevelTrace:     "TRACE",
+	}
+)
+
 func (ec *executionContext) marshalNProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
 	return ec._Project(ctx, sel, &v)
 }
@@ -118792,6 +118840,50 @@ func (ec *executionContext) unmarshalOPodLifecycleConfigInput2ᚖgithubᚗcomᚋ
 	res, err := ec.unmarshalInputPodLifecycleConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
+
+func (ec *executionContext) unmarshalOPriorityLevel2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalOPriorityLevel2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOPriorityLevel2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(marshalOPriorityLevel2ᚖstring[*v])
+	return res
+}
+
+var (
+	unmarshalOPriorityLevel2ᚖstring = map[string]string{
+		"EMERGENCY": evergreen.PriorityLevelEmergency,
+		"ALERT":     evergreen.PriorityLevelAlert,
+		"CRITICAL":  evergreen.PriorityLevelCritical,
+		"ERROR":     evergreen.PriorityLevelError,
+		"WARNING":   evergreen.PriorityLevelWarning,
+		"NOTICE":    evergreen.PriorityLevelNotice,
+		"INFO":      evergreen.PriorityLevelInfo,
+		"DEBUG":     evergreen.PriorityLevelDebug,
+		"TRACE":     evergreen.PriorityLevelTrace,
+	}
+	marshalOPriorityLevel2ᚖstring = map[string]string{
+		evergreen.PriorityLevelEmergency: "EMERGENCY",
+		evergreen.PriorityLevelAlert:     "ALERT",
+		evergreen.PriorityLevelCritical:  "CRITICAL",
+		evergreen.PriorityLevelError:     "ERROR",
+		evergreen.PriorityLevelWarning:   "WARNING",
+		evergreen.PriorityLevelNotice:    "NOTICE",
+		evergreen.PriorityLevelInfo:      "INFO",
+		evergreen.PriorityLevelDebug:     "DEBUG",
+		evergreen.PriorityLevelTrace:     "TRACE",
+	}
+)
 
 func (ec *executionContext) marshalOProject2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, sel ast.SelectionSet, v model.APIProjectRef) graphql.Marshaler {
 	return ec._Project(ctx, sel, &v)

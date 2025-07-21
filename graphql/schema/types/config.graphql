@@ -1,5 +1,17 @@
 ###### ADMIN EVENTS ######
 
+enum PriorityLevel {
+  EMERGENCY
+  ALERT
+  CRITICAL
+  ERROR
+  WARNING
+  NOTICE
+  INFO
+  DEBUG
+  TRACE
+}
+
 """
 AdminEventsInput is the input to the adminEvents query.
 """
@@ -248,16 +260,16 @@ type LogBuffering {
 
 input LoggerConfigInput {
   buffer: LogBufferingInput!
-  defaultLevel: String!
-  thresholdLevel: String!
+  defaultLevel: PriorityLevel!
+  thresholdLevel: PriorityLevel!
   logkeeperURL: String!
   redactKeys: [String!]!
 }
 
 type LoggerConfig {
   buffer: LogBuffering
-  defaultLevel: String
-  thresholdLevel: String
+  defaultLevel: PriorityLevel
+  thresholdLevel: PriorityLevel
   logkeeperURL: String
   redactKeys: [String!]!
 }
