@@ -824,6 +824,14 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		// If the build variant has no path patterns, include it (default behavior)
 		if len(buildvariant.Paths) == 0 {
+			grip.Debug(message.Fields{
+				"message":       "build variant added bc no paths provided",
+				"variant":       buildvariant.Name,
+				"paths":         buildvariant.Paths,
+				"changed_files": metadata.ChangedFiles,
+				"project":       projectInfo.Project.Identifier,
+				"version":       v.Id,
+			})
 			filteredBuildVariants = append(filteredBuildVariants, buildvariant)
 			continue
 		}

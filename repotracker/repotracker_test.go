@@ -1926,14 +1926,6 @@ tasks:
 - name: integration_test
 `
 
-	// projectRef := &model.ProjectRef{
-	// 	Id:         "test_project",
-	// 	Identifier: "test_project",
-	// 	Owner:      "test_owner",
-	// 	Repo:       "test_repo",
-	// 	Branch:     "main",
-	// }
-
 	projectRef := &model.ProjectRef{
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
