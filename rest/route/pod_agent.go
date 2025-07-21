@@ -522,10 +522,6 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 	}
 
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "getting display task"))
-	}
-
 	if p.Status != pod.StatusRunning {
 		j := units.NewPodTerminationJob(h.podID, "pod is no longer running", utility.RoundPartOfMinute(0))
 		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {

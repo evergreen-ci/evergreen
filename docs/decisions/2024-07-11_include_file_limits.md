@@ -6,9 +6,9 @@
 
 ## Context and Problem Statement
 
-The introduction of the `include` capability to project configuration has increased Evergreen's use of git clones since we ask GitHub for each individual included file separately. We needed a way to stop users from infinitely scaling the number of includes until we hit our GitHub API limit. 
+The introduction of the `include` capability to project configuration has increased Evergreen's use of git clones since we ask GitHub for each individual included file separately. We needed a way to stop users from infinitely scaling the number of includes until we hit our GitHub API limit.
 
-Include files take up a significant percentage of all of Evergreen's GitHub operations. After switching to GitHub apps, our new hourly limit is 15,000 requests to GitHub per hour. On average, we only use around 4-8000 of our limit per hour, depending on how active users are. Of those requests, around 60% can be contributed to retrieving include files. For example, on an hour we used 7000 of our limit, we would also have around 4000 include file retrieval requests logged. 
+Include files take up a significant percentage of all of Evergreen's GitHub operations. After switching to GitHub apps, our new hourly limit is 15,000 requests to GitHub per hour. On average, we only use around 4-8000 of our limit per hour, depending on how active users are. Of those requests, around 60% can be contributed to retrieving include files. For example, on an hour we used 7000 of our limit, we would also have around 4000 include file retrieval requests logged.
 
 The two biggest loads are the the mongo repo projects that have around 25 includes on average, and the mms repo projects which currently have 32 include files. However, the mongo projects have not added extra include files in the past year whereas the mms projects have added almost 10 new include files.
 

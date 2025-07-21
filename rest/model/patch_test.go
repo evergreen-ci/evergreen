@@ -184,7 +184,7 @@ func TestGithubPatch(t *testing.T) {
 		HeadHash:  "hash",
 		Author:    "octocat",
 	}
-	a := githubPatch{}
+	a := APIGithubPatch{}
 	a.BuildFromService(p)
 	assert.Equal(123, a.PRNumber)
 	assert.Equal("evergreen-ci", utility.FromStringPtr(a.BaseOwner))

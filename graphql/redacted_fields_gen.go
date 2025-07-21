@@ -11,4 +11,6 @@ var redactedFields = map[string]bool{
 	"servicePassword": true,
 	"token": true,
 	"vars": true,
+	"amboyDB":         true,
+	"csrfKey":         true,
 }

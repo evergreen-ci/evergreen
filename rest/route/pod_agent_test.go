@@ -328,7 +328,6 @@ func TestPodAgentEndTask(t *testing.T) {
 		buildID       = "build"
 		versionID     = "version"
 		projID        = "proj"
-		patchID       = "aabbccddeeff001122334455"
 	)
 	td := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskSucceeded,

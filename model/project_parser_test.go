@@ -2539,6 +2539,7 @@ func TestMergeUniqueFail(t *testing.T) {
 	}
 
 	err := main.mergeUnique(add)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "stepback can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "pre timeout secs can only be defined in one YAML")

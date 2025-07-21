@@ -79,8 +79,6 @@ var allGitHubPermissions = []string{
 }
 
 const (
-	GithubPRBlocked = "blocked"
-
 	// All PR statuses except for "blocked" based on statuses listed here:
 	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
 	// Because the pr.MergeableState is not documented, it can change without
@@ -1220,7 +1218,7 @@ func AppAuthorizedForOrg(ctx context.Context, requiredOrganization, name string)
 			}
 		}
 
-		if resp.NextPage > 0 {
+		if resp != nil && resp.NextPage > 0 {
 			opts.Page = resp.NextPage
 		} else {
 			break
@@ -1552,7 +1550,7 @@ func PostCommentToPullRequest(ctx context.Context, owner, repo string, prNum int
 	if err != nil {
 		return errors.Wrap(err, "can't access GitHub merge API")
 	}
-	if resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
+	if resp != nil && resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
 		return errors.New("unexpected data from GitHub")
 	}
 	return nil

@@ -18,6 +18,22 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   AdminSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+  AmboyConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyConfig
+  AmboyConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyConfig
+  AmboyDBConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyDBConfig
+  AmboyDBConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyDBConfig
+  AmboyNamedQueueConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyNamedQueueConfig
+  AmboyNamedQueueConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyNamedQueueConfig
+  AmboyRetryConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyRetryConfig
+  AmboyRetryConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyRetryConfig
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
   APIConfig:
@@ -101,6 +117,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolsConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
+  ContainerResources:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
+  ContainerResourcesInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
   CopyDistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.CopyDistroOpts
   CopyProjectInput:
@@ -184,6 +204,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
   GitHubDynamicTokenPermissionGroup:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
+  GithubPatch:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPatch
   GithubProjectConflicts:
     model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   GithubPRSubscriber:
@@ -322,6 +344,14 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
   JiraTicket:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  LogBuffering:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
+  LogBufferingInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
+  LoggerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
+  LoggerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
   LogkeeperBuild:
     model: github.com/evergreen-ci/plank.Build
   LogkeeperTest:
@@ -330,6 +360,10 @@ models:
     model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
   MergeQueue:
     model: github.com/evergreen-ci/evergreen/model.MergeQueue
+  MetadataLink:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
+  MetadataLinkInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   Module:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModule
   ModuleCodeChange:
@@ -657,8 +691,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
   TaskLimitsConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
-  TaskLogLinks:
-    model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskLogs:
     fields:
       eventLogs:
@@ -671,6 +703,8 @@ models:
         resolver: true
       allLogs:
         resolver: true
+  TaskLogLinks:
+    model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskSpecifier:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TaskSpecifierInput:
@@ -679,20 +713,20 @@ models:
     model: github.com/evergreen-ci/evergreen/model/task.TaskStats
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
-  TicketFields:
-    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
-  ContainerResources:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
-  ContainerResourcesInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
+  TicketFields:
+    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
   Toolchain:
     model: github.com/evergreen-ci/evergreen/rest/model.APIToolchain
   ToolchainOpts:
     model: github.com/evergreen-ci/evergreen/thirdparty.ToolchainFilterOptions
+  TriggerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerConfig
+  TriggerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerConfig
   TriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   TriggerAliasInput:

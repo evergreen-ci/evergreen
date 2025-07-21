@@ -125,7 +125,7 @@ type Task struct {
 	Container string `bson:"container,omitempty" json:"container,omitempty"`
 	// ContainerOpts contains the options to configure the container that will
 	// run the task.
-	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options,omitempty"`
+	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options"`
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
@@ -993,7 +993,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 		set[TaskOutputInfoKey] = output
 	}
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, []bson.M{
-		bson.M{
+		{
 			"$set": set,
 		},
 		addDisplayStatusCache,
@@ -1061,10 +1061,10 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error
 		set[TaskOutputInfoKey] = output
 	}
 	if err := doUpdate([]bson.M{
-		bson.M{
+		{
 			"$set": set,
 		},
-		bson.M{
+		{
 			"$unset": []string{
 				AbortedKey,
 				AbortInfoKey,
@@ -1105,14 +1105,14 @@ func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergr
 
 func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) error) error {
 	update := []bson.M{
-		bson.M{
+		{
 			"$set": bson.M{
 				StatusKey:        evergreen.TaskUndispatched,
 				DispatchTimeKey:  utility.ZeroTime,
 				LastHeartbeatKey: utility.ZeroTime,
 			},
 		},
-		bson.M{
+		{
 			"$unset": bson.A{
 				HostIdKey,
 				AgentVersionKey,
@@ -1539,7 +1539,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 		return nil, errors.Wrap(err, "finding matching tasks")
 	}
 	update := []bson.M{
-		bson.M{
+		{
 			"$set": bson.M{
 				PriorityKey:  evergreen.DisabledTaskPriority,
 				ActivatedKey: false,
@@ -1651,7 +1651,7 @@ func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 			IdKey: t.Id,
 		},
 		[]bson.M{
-			bson.M{"$set": taskAbortUpdate(reason)},
+			{"$set": taskAbortUpdate(reason)},
 			addDisplayStatusCache,
 		},
 	)
@@ -2488,7 +2488,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.DisplayStatusCache = t.DetermineDisplayStatus()
 	}
 	update := []bson.M{
-		bson.M{
+		{
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
@@ -2506,7 +2506,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				NumNextTaskDispatchesKey:       0,
 			},
 		},
-		bson.M{
+		{
 			"$unset": []string{
 				DetailsKey,
 				TaskOutputInfoKey,
@@ -2920,7 +2920,7 @@ func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
 		ctx,
 		ByIds(ids),
 		[]bson.M{
-			bson.M{"$set": taskAbortUpdate(reason)},
+			{"$set": taskAbortUpdate(reason)},
 			addDisplayStatusCache,
 		},
 	)
@@ -3957,7 +3957,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 			}},
 		},
 		[]bson.M{
-			bson.M{"$set": bson.M{
+			{"$set": bson.M{
 				DependsOnKey: bson.M{
 					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
 				},

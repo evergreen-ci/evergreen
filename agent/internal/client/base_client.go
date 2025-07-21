@@ -836,7 +836,7 @@ func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, 
 		path:     fmt.Sprintf("task/%s/installation_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
 	}
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating installation token to clone '%s/%s'", owner, repo)
 	}

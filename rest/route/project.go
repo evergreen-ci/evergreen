@@ -181,88 +181,6 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/projects/{project_id}/attach_to_repo
-
-type attachProjectToRepoHandler struct {
-	project *dbModel.ProjectRef
-	user    *user.DBUser
-}
-
-func makeAttachProjectToRepoHandler() gimlet.RouteHandler {
-	return &attachProjectToRepoHandler{}
-}
-
-func (h *attachProjectToRepoHandler) Factory() gimlet.RouteHandler {
-	return &attachProjectToRepoHandler{}
-}
-
-// Parse fetches the project's identifier from the http request.
-func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request) error {
-	projectIdentifier := gimlet.GetVars(r)["project_id"]
-	h.user = MustHaveUser(ctx)
-
-	var err error
-	h.project, err = data.FindProjectById(ctx, projectIdentifier, false, false)
-	if err != nil {
-		return errors.Wrapf(err, "finding project '%s'", projectIdentifier)
-	}
-	if h.project.UseRepoSettings() {
-		return errors.New("project is already attached to repo")
-	}
-	return nil
-}
-
-func (h *attachProjectToRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.AttachToRepo(ctx, h.user); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "attaching repo to project"))
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// POST /rest/v2/projects/{project_id}/detach_from_repo
-
-type detachProjectFromRepoHandler struct {
-	project *dbModel.ProjectRef
-	user    *user.DBUser
-}
-
-func makeDetachProjectFromRepoHandler() gimlet.RouteHandler {
-	return &detachProjectFromRepoHandler{}
-}
-
-func (h *detachProjectFromRepoHandler) Factory() gimlet.RouteHandler {
-	return &detachProjectFromRepoHandler{}
-}
-
-// Parse fetches the project's identifier from the http request.
-func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Request) error {
-	projectIdentifier := gimlet.GetVars(r)["project_id"]
-	h.user = MustHaveUser(ctx)
-
-	var err error
-	h.project, err = data.FindProjectById(ctx, projectIdentifier, false, false)
-	if err != nil {
-		return errors.Wrapf(err, "finding project '%s'", projectIdentifier)
-	}
-	if !h.project.UseRepoSettings() {
-		return errors.New("project isn't attached to a repo")
-	}
-	return nil
-}
-
-func (h *detachProjectFromRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.DetachFromRepo(ctx, h.user); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "detaching repo from project"))
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
-}
-
-////////////////////////////////////////////////////////////////////////
-//
 // PATCH /rest/v2/projects/{project_id}
 
 type projectIDPatchHandler struct {
@@ -393,7 +311,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
 		}
-		_, err = dbModel.ValidateEnabledProjectsLimit(ctx, h.newProjectRef.Id, settings, h.originalProject, mergedProjectRef)
+		_, err = dbModel.ValidateEnabledProjectsLimit(ctx, settings, h.originalProject, mergedProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
 		}

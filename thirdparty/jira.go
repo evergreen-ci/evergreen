@@ -139,7 +139,7 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]any) (*JiraCreate
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if res.StatusCode >= 300 || res.StatusCode < 200 {
+	if res != nil && (res.StatusCode >= 300 || res.StatusCode < 200) {
 		msg, _ := io.ReadAll(res.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}
@@ -173,7 +173,7 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]any) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if res.StatusCode >= 300 || res.StatusCode < 200 {
+	if res != nil && (res.StatusCode >= 300 || res.StatusCode < 200) {
 		msg, _ := io.ReadAll(res.Body)
 		return errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}

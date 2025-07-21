@@ -24,18 +24,18 @@ func TestDirectoryRun(t *testing.T) {
 		{
 			name: "RunWithHandlerError",
 			handlers: []*mockDirectoryHandler{
-				&mockDirectoryHandler{},
-				&mockDirectoryHandler{},
-				&mockDirectoryHandler{runErr: true},
+				{},
+				{},
+				{runErr: true},
 			},
 			hasErr: true,
 		},
 		{
 			name: "Run",
 			handlers: []*mockDirectoryHandler{
-				&mockDirectoryHandler{},
-				&mockDirectoryHandler{},
-				&mockDirectoryHandler{},
+				{},
+				{},
+				{},
 			},
 		},
 	} {

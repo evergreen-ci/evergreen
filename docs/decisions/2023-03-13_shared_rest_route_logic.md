@@ -1,8 +1,8 @@
 # 2023-03-13 Shared REST Route Logic
 
-* status: accepted
-* date: 2023-03-13
-* authors: Malik Hadjri
+- status: accepted
+- date: 2023-03-13
+- authors: Malik Hadjri
 
 ## Context and Problem Statement
 

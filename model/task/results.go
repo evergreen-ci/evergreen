@@ -57,7 +57,7 @@ type ResultCounts struct {
 
 	loggable      bool
 	cachedMessage string
-	message.Base  `json:"metadata,omitempty"`
+	message.Base  `json:"metadata"`
 }
 
 // GetResultCounts takes a list of tasks and collects their

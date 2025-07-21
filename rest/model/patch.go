@@ -58,7 +58,7 @@ type APIPatch struct {
 	// Whether the patch has been finalized and activated
 	Activated            bool                 `json:"activated"`
 	Alias                *string              `json:"alias,omitempty"`
-	GithubPatchData      githubPatch          `json:"github_patch_data,omitempty"`
+	GithubPatchData      APIGithubPatch       `json:"github_patch_data"`
 	ModuleCodeChanges    []APIModulePatch     `json:"module_code_changes"`
 	Parameters           []APIParameter       `json:"parameters"`
 	ProjectStorageMethod *string              `json:"project_storage_method,omitempty"`
@@ -280,7 +280,6 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.VariantsTasks = variantTasks
 	apiPatch.Activated = p.Activated
 	apiPatch.Alias = utility.ToStringPtr(p.Alias)
-	apiPatch.GithubPatchData = githubPatch{}
 	apiPatch.Requester = utility.ToStringPtr(p.GetRequester())
 
 	if p.Parameters != nil {
@@ -293,6 +292,8 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	}
 
 	apiPatch.ProjectStorageMethod = utility.ToStringPtr(string(p.ProjectStorageMethod))
+
+	apiPatch.GithubPatchData = APIGithubPatch{}
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 }
 
@@ -470,7 +471,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	return res, catcher.Resolve()
 }
 
-type githubPatch struct {
+type APIGithubPatch struct {
 	PRNumber   int     `json:"pr_number"`
 	BaseOwner  *string `json:"base_owner"`
 	BaseRepo   *string `json:"base_repo"`
@@ -482,7 +483,7 @@ type githubPatch struct {
 }
 
 // BuildFromService converts from service level structs to an APIPatch
-func (g *githubPatch) BuildFromService(p thirdparty.GithubPatch) {
+func (g *APIGithubPatch) BuildFromService(p thirdparty.GithubPatch) {
 	g.PRNumber = p.PRNumber
 	g.BaseOwner = utility.ToStringPtr(p.BaseOwner)
 	g.BaseRepo = utility.ToStringPtr(p.BaseRepo)
@@ -494,7 +495,7 @@ func (g *githubPatch) BuildFromService(p thirdparty.GithubPatch) {
 }
 
 // ToService converts a service layer patch using the data from APIPatch
-func (g *githubPatch) ToService() thirdparty.GithubPatch {
+func (g *APIGithubPatch) ToService() thirdparty.GithubPatch {
 	res := thirdparty.GithubPatch{}
 	res.PRNumber = g.PRNumber
 	res.BaseOwner = utility.FromStringPtr(g.BaseOwner)

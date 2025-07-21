@@ -1,8 +1,8 @@
 # 2023-11-02 Use swaggo to generate REST v2 documentation
 
-* status: accepted
-* date: 2023-11-02
-* authors: Brian Samek
+- status: accepted
+- date: 2023-11-02
+- authors: Brian Samek
 
 ## Context and Problem Statement
 
@@ -35,7 +35,7 @@ sustainable, since the tooling may grow stale and not receive updates.
 Cloud uses a similar approach to generate an OpenAPI spec for their public API
 from code comments using
 [swagger-core](https://github.com/swagger-api/swagger-core). This Java tool is
-under more active development than the equivalent Golang tool. 
+under more active development than the equivalent Golang tool.
 
 Although I have been unable to generate docs for embedded structs with
 go-swagger, another approach would be to generate the partial OpenAPI spec and
@@ -58,13 +58,13 @@ this approach we should also write contract tests to ensure that the
 implementation has not drifted from the comments.
 
 I believe this is a reasonable compromise if the spec cannot be generated from
-code.  
+code.
 
-### Write the OpenAPI spec by hand 
+### Write the OpenAPI spec by hand
 
 This gives us the flexibility to write down exactly how we want the API to
 behave. It is also the recommended approach for using OpenAPI: Design your API
-first so that it is clear and correct, and then generate everything else. 
+first so that it is clear and correct, and then generate everything else.
 
 However, this would require rewriting the API by generating stubs from the spec,
 and is therefore a much larger amount of work.

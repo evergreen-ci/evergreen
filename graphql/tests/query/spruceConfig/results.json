@@ -100,12 +100,14 @@
       }
     },
     {
-      "query_file": "secretFields.graphql",
+      "query_file": "secret_fields.graphql",
       "result": {
         "data": {
           "spruceConfig": {
             "secretFields": [
               "apiKey",
+              "amboyDB",
+              "csrfKey",
               "githubAppAuth",
               "personalAccessToken",
               "publicKey",

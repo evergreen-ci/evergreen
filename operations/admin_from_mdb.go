@@ -178,9 +178,9 @@ func fromMdbForLocal() cli.Command {
 			var filters map[string]bson.M
 			if project != "" {
 				filters = map[string]bson.M{
-					"versions": bson.M{"identifier": project},
-					"builds":   bson.M{"branch": project},
-					"tasks":    bson.M{"branch": project},
+					"versions": {"identifier": project},
+					"builds":   {"branch": project},
+					"tasks":    {"branch": project},
 				}
 			}
 

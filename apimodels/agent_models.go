@@ -15,13 +15,11 @@ import (
 )
 
 const (
-	ScopeTask                       = "task"
-	ScopeBuild                      = "build"
-	DefaultSetupTimeoutSecs         = 600
-	DefaultTeardownTimeoutSecs      = 21600
-	DefaultContainerWaitTimeoutSecs = 600
-	DefaultPollFrequency            = 30
-	DefaultRetries                  = 2
+	ScopeTask                  = "task"
+	ScopeBuild                 = "build"
+	DefaultSetupTimeoutSecs    = 600
+	DefaultTeardownTimeoutSecs = 21600
+	DefaultRetries             = 2
 )
 
 // TaskStartRequest holds information sent by the agent to the
@@ -77,7 +75,7 @@ type TaskEndDetail struct {
 	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
 	OOMTracker           *OOMTrackerInfo  `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
-	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules,omitempty"`
+	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules"`
 	TraceID              string           `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string         `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 }

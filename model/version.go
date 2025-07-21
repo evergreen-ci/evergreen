@@ -56,7 +56,7 @@ type Version struct {
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
-	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
+	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag"`
 
 	// Parameters stores user-defined parameters
 	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters,omitempty"`

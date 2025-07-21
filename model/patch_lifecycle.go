@@ -332,7 +332,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 // GetPatchedProjectConfig returns the project configuration by fetching the
 // latest commit information from GitHub and applying the patch to the latest
 // remote configuration. The error returned can be a validation error.
-func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (string, error) {
+func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error) {
 	if p.Version != "" {
 		return "", errors.Errorf("patch '%s' already finalized", p.Version)
 	}

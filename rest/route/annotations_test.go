@@ -243,6 +243,7 @@ func TestAnnotationByTaskGetHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, vars)
 	err = h.Parse(ctx, r)
 
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "cannot both fetch all executions and request a specific execution")
 }
 
@@ -423,6 +424,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "parsing request URI 'issuelink.com'")
 	assert.Contains(t, err.Error(), "URL 'https://issuelinkcom' must have a domain and extension")
 	assert.Contains(t, err.Error(), "confidence score '-12.000000' must be between 0 and 100")
@@ -443,6 +445,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "task 'non-existent' not found")
 
 	//test with a request that mismatches task execution
@@ -460,6 +463,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "task execution number from query parameter (2) must equal the task execution number specified in the annotation (1)")
 
 	//test with a request that omits task execution
@@ -476,6 +480,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "task execution must be specified in the request query parameter or the request body's annotation")
 
 	//test with request that only has execution in the request body
@@ -526,6 +531,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "converting execution to integer value")
 
 	//test with empty taskId
@@ -555,6 +561,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSystemFailedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "task ID parameter 'TaskSystemFailedId' must equal the task ID specified in the annotation 'TaskSystemUnresponseId'")
 
 	//test with fail statuses
@@ -607,6 +614,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSucceededId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
 
 	a = &restModel.APITaskAnnotation{
@@ -622,6 +630,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskWillRunId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
 
 	a = &restModel.APITaskAnnotation{
@@ -637,6 +646,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskDispatchedId"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "cannot create annotation when task status is")
 
 }
@@ -792,6 +802,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "parsing request URI 'issuelink.com'")
 
 	// test with a task that doesn't exist
@@ -801,6 +812,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "non-existent"})
 	assert.NoError(t, err)
 	err = h.Parse(ctx, r)
+	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "task 'non-existent' not found")
 }
 

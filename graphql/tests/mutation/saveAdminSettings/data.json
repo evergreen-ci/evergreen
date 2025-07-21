@@ -28,7 +28,6 @@
       "login_domain": "",
       "staging_environment": ""
     },
-
     {
       "_id": "auth",
       "preferred_type": "naive",
@@ -71,7 +70,6 @@
       "multi": null,
       "okta": null
     },
-
     {
       "_id": "global",
       "uiv2_url": "http://localhost:3000",
@@ -164,7 +162,12 @@
       "elastic_ips_disabled": false,
       "system_failed_task_restart_disabled": false
     },
-    { "_id": "notify", "ses": { "sender_address": "evg-sender@email.com" } },
+    {
+      "_id": "notify",
+      "ses": { "sender_address": "evg-sender@email.com" },
+      "buffer_target_per_interval": 0,
+      "buffer_interval_seconds": 0
+    },
     {
       "_id": "pod_lifecycle",
       "max_parallel_pod_requests": 0,
@@ -214,7 +217,7 @@
       "max_hourly_patch_tasks": 0,
       "max_pending_generated_tasks": 0,
       "max_generate_task_json_size": 0,
-      "max_concurrent_large_parser_project_tasks": 1,
+      "max_concurrent_large_parser_project_tasks": 0,
       "max_degraded_mode_parser_project_size": 0,
       "max_parser_project_size": 0,
       "max_degraded_mode_concurrent_large_parser_project_tasks": 0,
@@ -264,6 +267,47 @@
     {
       "_id": "fws",
       "url": ""
+      "_id": "amboy",
+      "name": "amboy-config",
+      "database": "amboy",
+      "pool_size_local": 0,
+      "pool_size_remote": 0,
+      "local_storage_size": 0,
+      "single_name": "amboy-single",
+      "group_background_create_frequency": 0,
+      "group_default_workers": 0,
+      "group_prune_frequency": 0,
+      "group_ttl": 0,
+      "require_remote_priority": false,
+      "lock_timeout_minutes": 0,
+      "retry": {
+        "num_workers": 0,
+        "max_capacity": 0,
+        "max_retry_attempts": 0,
+        "max_retry_time_seconds": 0,
+        "retry_backoff_seconds": 0,
+        "stale_retrying_monitor_interval_seconds": 0
+      },
+      "sample_size": 0,
+      "named_queues": []
+    },
+    {
+      "_id": "amboy_db",
+      "url": "amboy-db-connection-url",
+      "database": "amboy"
+    },
+    {
+      "_id": "logger_config",
+      "default_level": "info",
+      "threshold_level": "info",
+      "buffer": {
+        "use_async": true,
+        "duration_seconds": 0,
+        "count": 0,
+        "incoming_buffer_factor": 0
+      },
+      "logkeeper_url": "logkeeper-url",
+      "redact_keys": ["secret", "password"]
     }
   ]
 }

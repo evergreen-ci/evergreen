@@ -30,17 +30,17 @@ type Pod struct {
 	Status Status `bson:"status"`
 	// TaskCreationOpts are options to configure how a task should be
 	// containerized and run in a pod.
-	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts,omitempty"`
+	TaskContainerCreationOpts TaskContainerCreationOptions `bson:"task_creation_opts,omitempty" json:"task_creation_opts"`
 	// Family is the family name of the pod definition stored in the cloud
 	// provider.
 	Family string `bson:"family,omitempty" json:"family,omitempty"`
 	// TimeInfo contains timing information for the pod's lifecycle.
-	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info,omitempty"`
+	TimeInfo TimeInfo `bson:"time_info,omitempty" json:"time_info"`
 	// Resources are external resources that are owned and managed by this pod.
-	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info,omitempty"`
+	Resources ResourceInfo `bson:"resource_info,omitempty" json:"resource_info"`
 	// TaskRuntimeInfo contains information about the tasks that a pod is
 	// assigned.
-	TaskRuntimeInfo TaskRuntimeInfo `bson:"task_runtime_info,omitempty" json:"task_runtime_info,omitempty"`
+	TaskRuntimeInfo TaskRuntimeInfo `bson:"task_runtime_info,omitempty" json:"task_runtime_info"`
 	// AgentVersion is the version of the agent running on this pod if it's a
 	// pod that runs tasks.
 	AgentVersion string `bson:"agent_version,omitempty" json:"agent_version,omitempty"`

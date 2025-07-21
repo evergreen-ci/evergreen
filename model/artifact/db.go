@@ -81,16 +81,6 @@ func ByBuildId(id string) db.Q {
 	return db.Query(bson.M{BuildIdKey: id}).Sort([]string{TaskNameKey})
 }
 
-func BySecret(secret string) db.Q {
-	return db.Query(bson.M{
-		FilesKey: bson.M{
-			"$elemMatch": bson.M{
-				AWSSecretKey: secret,
-			},
-		},
-	})
-}
-
 // === DB Logic ===
 
 // Upsert updates the files entry in the db if an entry already exists,
