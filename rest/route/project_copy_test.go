@@ -232,6 +232,7 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		DryRun:         true,
 		IncludePrivate: true,
 	}
+	// Explicitly don't set private and admin-only variables for testing.
 	newProjectVar := &model.ProjectVars{
 		Id:   "projectB",
 		Vars: map[string]string{"banana": "yellow"},
