@@ -2275,8 +2275,22 @@ func (bv *BuildVariant) PathsMatchAny(files []string) bool {
 	if len(files) == 0 {
 		return false
 	}
+
+	paths := bv.Paths
+	// If all patterns are negation patterns (start with !), add "*" to include all files first
+	allNegation := true
+	for _, path := range bv.Paths {
+		if !strings.HasPrefix(path, "!") {
+			allNegation = false
+			break
+		}
+	}
+	if allNegation {
+		paths = append([]string{"*"}, bv.Paths...)
+	}
+
 	// CompileIgnoreLines has a silly API: it always returns a nil error.
-	pathMatcher := ignore.CompileIgnoreLines(bv.Paths...)
+	pathMatcher := ignore.CompileIgnoreLines(paths...)
 	for _, f := range files {
 		if pathMatcher.MatchesPath(f) {
 			return true

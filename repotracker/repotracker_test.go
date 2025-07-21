@@ -1915,8 +1915,17 @@ buildvariants:
   paths:
   - "backend/**"
   - "shared/**"
+  - "**/*.go"
+  - "go.mod"
   tasks:
   - name: backend_test
+- name: non_docs
+  display_name: Non-Documentation
+  run_on: d
+  paths:
+  - "!**/*.md"
+  tasks:
+  - name: non_docs_test
 - name: all_files
   display_name: All Files
   run_on: d
@@ -1926,6 +1935,7 @@ buildvariants:
 tasks:
 - name: frontend_test
 - name: backend_test  
+- name: non_docs_test
 - name: integration_test
 `
 
@@ -1979,8 +1989,9 @@ tasks:
 
 		assert.Contains(t, buildVariants, "frontend")
 		assert.Contains(t, buildVariants, "all_files")
+		assert.Contains(t, buildVariants, "non_docs")
 		assert.NotContains(t, buildVariants, "backend")
-		assert.Len(t, builds, 2)
+		assert.Len(t, builds, 3)
 	})
 
 	// Test case 2: Only backend files changed
@@ -2014,8 +2025,9 @@ tasks:
 
 		assert.Contains(t, buildVariants, "backend")
 		assert.Contains(t, buildVariants, "all_files")
+		assert.Contains(t, buildVariants, "non_docs")
 		assert.NotContains(t, buildVariants, "frontend")
-		assert.Len(t, builds, 2)
+		assert.Len(t, builds, 3)
 	})
 
 	// Test case 3: Shared files changed (should trigger both frontend and backend)
@@ -2050,7 +2062,8 @@ tasks:
 		assert.Contains(t, buildVariants, "frontend")
 		assert.Contains(t, buildVariants, "backend")
 		assert.Contains(t, buildVariants, "all_files")
-		assert.Len(t, builds, 3)
+		assert.Contains(t, buildVariants, "non_docs")
+		assert.Len(t, builds, 4)
 	})
 
 	// Test case 4: No changed files (should include all variants)
@@ -2086,7 +2099,8 @@ tasks:
 		assert.Contains(t, buildVariants, "frontend")
 		assert.Contains(t, buildVariants, "backend")
 		assert.Contains(t, buildVariants, "all_files")
-		assert.Len(t, builds, 3)
+		assert.Contains(t, buildVariants, "non_docs")
+		assert.Len(t, builds, 4)
 	})
 
 	// Test case 5: Non-matching files (should only include variants without path patterns)
@@ -2118,10 +2132,92 @@ tasks:
 			buildVariants[i] = b.BuildVariant
 		}
 
-		// Only the 'all_files' variant should run since it has no path patterns
+		// The 'all_files' variant always runs (no path patterns)
+		// The 'non_docs' variant should run because scripts/deploy.sh is not a .md file
+		// The 'non_docs' variant should exclude docs/README.md but include scripts/deploy.sh
+		// 'frontend' and 'backend' don't match these specific paths
+		assert.Contains(t, buildVariants, "all_files")
+		assert.Contains(t, buildVariants, "non_docs")
+		assert.NotContains(t, buildVariants, "frontend")
+		assert.NotContains(t, buildVariants, "backend")
+		assert.Len(t, builds, 2)
+	})
+
+	// Test case 6: Go file in non-backend location (e.g., tools, scripts)
+	t.Run("GoFileInNonBackendLocation", func(t *testing.T) {
+		metadata := model.VersionMetadata{
+			ChangedFiles: []string{"tools/migrate/main.go", "scripts/deploy.go"},
+		}
+
+		v := &model.Version{
+			Id:                  fmt.Sprintf("test_version_tools_go_%d", time.Now().UnixNano()),
+			CreateTime:          time.Now(),
+			Revision:            "pqr678",
+			Author:              "test_author",
+			RevisionOrderNumber: 6,
+			Owner:               "test_owner",
+			Repo:                "test_repo",
+			Branch:              "main",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+
+		err := createVersionItems(ctx, v, metadata, projectInfo, nil)
+		require.NoError(t, err)
+
+		builds, err := build.Find(ctx, build.ByVersion(v.Id))
+		require.NoError(t, err)
+
+		buildVariants := make([]string, len(builds))
+		for i, b := range builds {
+			buildVariants[i] = b.BuildVariant
+		}
+
+		// Should trigger 'backend' (due to **/*.go pattern), 'non_docs', and 'all_files'
+		assert.Contains(t, buildVariants, "backend")
+		assert.Contains(t, buildVariants, "non_docs")
+		assert.Contains(t, buildVariants, "all_files")
+		assert.NotContains(t, buildVariants, "frontend")
+		assert.Len(t, builds, 3)
+	})
+
+	// Test case 7: Markdown file changed (should exclude non_docs variant)
+	t.Run("MarkdownFileChanged", func(t *testing.T) {
+		metadata := model.VersionMetadata{
+			ChangedFiles: []string{"docs/README.md", "CHANGELOG.md"},
+		}
+
+		v := &model.Version{
+			Id:                  fmt.Sprintf("test_version_markdown_%d", time.Now().UnixNano()),
+			CreateTime:          time.Now(),
+			Revision:            "stu901",
+			Author:              "test_author",
+			RevisionOrderNumber: 7,
+			Owner:               "test_owner",
+			Repo:                "test_repo",
+			Branch:              "main",
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+
+		err := createVersionItems(ctx, v, metadata, projectInfo, nil)
+		require.NoError(t, err)
+
+		builds, err := build.Find(ctx, build.ByVersion(v.Id))
+		require.NoError(t, err)
+
+		buildVariants := make([]string, len(builds))
+		for i, b := range builds {
+			buildVariants[i] = b.BuildVariant
+		}
+
+		// Only 'all_files' should run because:
+		// - 'frontend' doesn't match docs/** or root *.md
+		// - 'backend' doesn't match docs/** or root *.md
+		// - 'non_docs' excludes *.md files (negation pattern)
+		// - 'all_files' has no paths so always runs
 		assert.Contains(t, buildVariants, "all_files")
 		assert.NotContains(t, buildVariants, "frontend")
 		assert.NotContains(t, buildVariants, "backend")
+		assert.NotContains(t, buildVariants, "non_docs")
 		assert.Len(t, builds, 1)
 	})
 }
