@@ -22,16 +22,19 @@ query ExternalCommunications {
     }
     splunk {
       splunkConnectionInfo {
-        serverurl
+        serverUrl
         token
         channel
       }
     }
     runtimeEnvironments {
-      baseurl
+      baseUrl
       apiKey
     }
     testSelection {
+      url
+    }
+    fws {
       url
     }
   }

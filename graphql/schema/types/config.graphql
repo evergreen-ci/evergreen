@@ -156,6 +156,7 @@ type RepotrackerConfig {
 input AdminSettingsInput {
   banner: String
   bannerTheme: BannerTheme
+  fws: FWSConfigInput
   jira: JiraConfigInput
   slack: SlackConfigInput
   splunk: SplunkConfigInput
@@ -176,6 +177,7 @@ input AdminSettingsInput {
 type AdminSettings {
   banner: String
   bannerTheme: BannerTheme
+  fws: FWSConfig
   jira: JiraConfig
   slack: SlackConfig
   splunk: SplunkConfig

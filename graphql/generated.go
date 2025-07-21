@@ -142,6 +142,7 @@ type ComplexityRoot struct {
 		Banner              func(childComplexity int) int
 		BannerTheme         func(childComplexity int) int
 		DisabledGQLQueries  func(childComplexity int) int
+		FWS                 func(childComplexity int) int
 		HostInit            func(childComplexity int) int
 		Jira                func(childComplexity int) int
 		Notify              func(childComplexity int) int
@@ -371,6 +372,10 @@ type ComplexityRoot struct {
 	ExternalLinkForMetadata struct {
 		DisplayName func(childComplexity int) int
 		URL         func(childComplexity int) int
+	}
+
+	FWSConfig struct {
+		URL func(childComplexity int) int
 	}
 
 	FailingCommand struct {
@@ -2509,6 +2514,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.DisabledGQLQueries(childComplexity), true
 
+	case "AdminSettings.fws":
+		if e.complexity.AdminSettings.FWS == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.FWS(childComplexity), true
+
 	case "AdminSettings.hostInit":
 		if e.complexity.AdminSettings.HostInit == nil {
 			break
@@ -3502,6 +3514,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExternalLinkForMetadata.URL(childComplexity), true
+
+	case "FWSConfig.url":
+		if e.complexity.FWSConfig.URL == nil {
+			break
+		}
+
+		return e.complexity.FWSConfig.URL(childComplexity), true
 
 	case "FailingCommand.failureMetadataTags":
 		if e.complexity.FailingCommand.FailureMetadataTags == nil {
@@ -8248,7 +8267,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RuntimeEnvironmentConfig.APIKey(childComplexity), true
 
-	case "RuntimeEnvironmentConfig.baseurl":
+	case "RuntimeEnvironmentConfig.baseUrl":
 		if e.complexity.RuntimeEnvironmentConfig.BaseURL == nil {
 			break
 		}
@@ -8913,7 +8932,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SplunkConnectionInfo.Channel(childComplexity), true
 
-	case "SplunkConnectionInfo.serverurl":
+	case "SplunkConnectionInfo.serverUrl":
 		if e.complexity.SplunkConnectionInfo.ServerURL == nil {
 			break
 		}
@@ -11693,6 +11712,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputEnvVarInput,
 		ec.unmarshalInputExpansionInput,
 		ec.unmarshalInputExternalLinkInput,
+		ec.unmarshalInputFWSConfigInput,
 		ec.unmarshalInputFinderSettingsInput,
 		ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput,
 		ec.unmarshalInputGithubAppAuthInput,
@@ -18706,6 +18726,51 @@ func (ec *executionContext) fieldContext_AdminSettings_bannerTheme(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_fws(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_fws(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FWS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIFWSConfig)
+	fc.Result = res
+	return ec.marshalOFWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_fws(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_FWSConfig_url(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FWSConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_jira(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AdminSettings_jira(ctx, field)
 	if err != nil {
@@ -18887,8 +18952,8 @@ func (ec *executionContext) fieldContext_AdminSettings_runtimeEnvironments(_ con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "baseurl":
-				return ec.fieldContext_RuntimeEnvironmentConfig_baseurl(ctx, field)
+			case "baseUrl":
+				return ec.fieldContext_RuntimeEnvironmentConfig_baseUrl(ctx, field)
 			case "apiKey":
 				return ec.fieldContext_RuntimeEnvironmentConfig_apiKey(ctx, field)
 			}
@@ -25355,6 +25420,50 @@ func (ec *executionContext) _ExternalLinkForMetadata_displayName(ctx context.Con
 func (ec *executionContext) fieldContext_ExternalLinkForMetadata_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExternalLinkForMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FWSConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APIFWSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FWSConfig_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FWSConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FWSConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -36215,6 +36324,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "fws":
+				return ec.fieldContext_AdminSettings_fws(ctx, field)
 			case "jira":
 				return ec.fieldContext_AdminSettings_jira(ctx, field)
 			case "slack":
@@ -52750,6 +52861,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "fws":
+				return ec.fieldContext_AdminSettings_fws(ctx, field)
 			case "jira":
 				return ec.fieldContext_AdminSettings_jira(ctx, field)
 			case "slack":
@@ -59256,8 +59369,8 @@ func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _RuntimeEnvironmentConfig_baseurl(ctx context.Context, field graphql.CollectedField, obj *model.APIRuntimeEnvironmentsConfig) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RuntimeEnvironmentConfig_baseurl(ctx, field)
+func (ec *executionContext) _RuntimeEnvironmentConfig_baseUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIRuntimeEnvironmentsConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RuntimeEnvironmentConfig_baseUrl(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -59287,7 +59400,7 @@ func (ec *executionContext) _RuntimeEnvironmentConfig_baseurl(ctx context.Contex
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_baseurl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_baseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RuntimeEnvironmentConfig",
 		Field:      field,
@@ -59313,8 +59426,30 @@ func (ec *executionContext) _RuntimeEnvironmentConfig_apiKey(ctx context.Context
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.APIKey, nil
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.APIKey, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -63477,8 +63612,8 @@ func (ec *executionContext) fieldContext_SplunkConfig_splunkConnectionInfo(_ con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "serverurl":
-				return ec.fieldContext_SplunkConnectionInfo_serverurl(ctx, field)
+			case "serverUrl":
+				return ec.fieldContext_SplunkConnectionInfo_serverUrl(ctx, field)
 			case "token":
 				return ec.fieldContext_SplunkConnectionInfo_token(ctx, field)
 			case "channel":
@@ -63490,8 +63625,8 @@ func (ec *executionContext) fieldContext_SplunkConfig_splunkConnectionInfo(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _SplunkConnectionInfo_serverurl(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SplunkConnectionInfo_serverurl(ctx, field)
+func (ec *executionContext) _SplunkConnectionInfo_serverUrl(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConnectionInfo_serverUrl(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -63521,7 +63656,7 @@ func (ec *executionContext) _SplunkConnectionInfo_serverurl(ctx context.Context,
 	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_SplunkConnectionInfo_serverurl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_SplunkConnectionInfo_serverUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SplunkConnectionInfo",
 		Field:      field,
@@ -84940,7 +85075,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"banner", "bannerTheme", "jira", "slack", "splunk", "runtimeEnvironments", "testSelection", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries"}
+	fieldsInOrder := [...]string{"banner", "bannerTheme", "fws", "jira", "slack", "splunk", "runtimeEnvironments", "testSelection", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84963,6 +85098,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 			if err = ec.resolvers.AdminSettingsInput().BannerTheme(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "fws":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fws"))
+			data, err := ec.unmarshalOFWSConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FWS = data
 		case "jira":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jira"))
 			data, err := ec.unmarshalOJiraConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx, v)
@@ -86534,6 +86676,33 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 				return it, err
 			}
 			it.URLTemplate = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputFWSConfigInput(ctx context.Context, obj any) (model.APIFWSConfig, error) {
+	var it model.APIFWSConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
 		}
 	}
 
@@ -89337,15 +89506,15 @@ func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"baseurl", "apiKey"}
+	fieldsInOrder := [...]string{"baseUrl", "apiKey"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "baseurl":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseurl"))
+		case "baseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseUrl"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
@@ -89353,11 +89522,28 @@ func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx cont
 			it.BaseURL = data
 		case "apiKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
 			}
-			it.APIKey = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.APIKey = data
+			} else if tmp == nil {
+				it.APIKey = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -90429,15 +90615,15 @@ func (ec *executionContext) unmarshalInputSplunkConnectionInfoInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"serverurl", "token", "channel"}
+	fieldsInOrder := [...]string{"serverUrl", "token", "channel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "serverurl":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverurl"))
+		case "serverUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverUrl"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
@@ -92574,6 +92760,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "fws":
+			out.Values[i] = ec._AdminSettings_fws(ctx, field, obj)
 		case "jira":
 			out.Values[i] = ec._AdminSettings_jira(ctx, field, obj)
 		case "slack":
@@ -94272,6 +94460,45 @@ func (ec *executionContext) _ExternalLinkForMetadata(ctx context.Context, sel as
 			}
 		case "displayName":
 			out.Values[i] = ec._ExternalLinkForMetadata_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var fWSConfigImplementors = []string{"FWSConfig"}
+
+func (ec *executionContext) _FWSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIFWSConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fWSConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FWSConfig")
+		case "url":
+			out.Values[i] = ec._FWSConfig_url(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -102576,8 +102803,8 @@ func (ec *executionContext) _RuntimeEnvironmentConfig(ctx context.Context, sel a
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RuntimeEnvironmentConfig")
-		case "baseurl":
-			out.Values[i] = ec._RuntimeEnvironmentConfig_baseurl(ctx, field, obj)
+		case "baseUrl":
+			out.Values[i] = ec._RuntimeEnvironmentConfig_baseUrl(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -103490,8 +103717,8 @@ func (ec *executionContext) _SplunkConnectionInfo(ctx context.Context, sel ast.S
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("SplunkConnectionInfo")
-		case "serverurl":
-			out.Values[i] = ec._SplunkConnectionInfo_serverurl(ctx, field, obj)
+		case "serverUrl":
+			out.Values[i] = ec._SplunkConnectionInfo_serverUrl(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -115693,6 +115920,21 @@ func (ec *executionContext) unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergr
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOFWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIFWSConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FWSConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOFWSConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx context.Context, v any) (*model.APIFWSConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputFWSConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOFeedbackRule2ᚖstring(ctx context.Context, v any) (*string, error) {

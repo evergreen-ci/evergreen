@@ -2,6 +2,7 @@
 package graphql
 
 var redactedFields = map[string]bool{
+	"apiKey": true,
 	"githubAppAuth": true,
 	"personalAccessToken": true,
 	"publicKey": true,

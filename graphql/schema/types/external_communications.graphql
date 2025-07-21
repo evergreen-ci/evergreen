@@ -11,13 +11,12 @@ type JiraConfig {
 }
 
 input RuntimeEnvironmentConfigInput {
-    baseurl: String!
-    apiKey: String
+    baseUrl: String!
+    apiKey: String @redactSecrets
 }
-
 type RuntimeEnvironmentConfig {
-    baseurl: String!
-    apiKey: String
+    baseUrl: String!
+    apiKey: String @requireAdmin
 }
 
 input SlackConfigInput {
@@ -65,13 +64,12 @@ type SplunkConfig {
 }
 
 input SplunkConnectionInfoInput {
-    serverurl: String!
+    serverUrl: String!
     token: String! @redactSecrets
     channel: String!
 }
-
 type SplunkConnectionInfo {
-    serverurl: String!
+    serverUrl: String!
     token: String! @requireAdmin
     channel: String!
 }
@@ -82,4 +80,12 @@ input TestSelectionConfigInput {
 
 type TestSelectionConfig {
     url: String!
+}
+
+input FWSConfigInput {
+  url: String!
+}
+
+type FWSConfig {
+  url: String!
 }

@@ -59,17 +59,20 @@
             },
             "splunk": {
               "splunkConnectionInfo": {
-                "serverurl": "testServer",
+                "serverUrl": "testServer",
                 "token": "testToken",
                 "channel": "42"
               }
             },
             "runtimeEnvironments": {
-              "baseurl": "https://example.com",
+              "baseUrl": "https://example.com",
               "apiKey": "runtimeAPIKey"
             },
             "testSelection": {
               "url": "https://example.com"
+            },
+            "fws": {
+              "url": "https://fws.example.com"
             }
           }
         }

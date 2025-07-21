@@ -168,6 +168,10 @@ models:
         value: github.com/evergreen-ci/evergreen.FinderVersionPipeline
       ALTERNATE: 
         value: github.com/evergreen-ci/evergreen.FinderVersionAlternate
+  FWSConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFWSConfig
+  FWSConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFWSConfig
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubAppAuth:

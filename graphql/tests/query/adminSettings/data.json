@@ -143,6 +143,10 @@
       "help_url": "",
       "login_domain": "",
       "staging_environment": ""
+    },
+    {
+      "_id": "fws",
+      "url": "https://fws.example.com"
     }
   ]
 }

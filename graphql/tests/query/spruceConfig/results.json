@@ -105,6 +105,7 @@
         "data": {
           "spruceConfig": {
             "secretFields": [
+              "apiKey",
               "githubAppAuth",
               "personalAccessToken",
               "publicKey",

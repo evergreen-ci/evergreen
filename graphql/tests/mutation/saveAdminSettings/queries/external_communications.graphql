@@ -1,43 +1,39 @@
 mutation {
   saveAdminSettings(
-    adminSettings: { 
-        jira: {
-            email: "jira@example.com",
-            host: "https://jira.exampleChanged.com",
-            personalAccessToken: "secretToken"
-         }
-        slack: {
-            options: {
-                channel: "#general",
-                hostname: "slack.example.com",
-                name: "EvergreenBot",
-                username: "evergreen",
-                basicMetadata: true,
-                fields: true,
-                allFields: true,
-                fieldsSet: {
-                    field1: true,
-                    field2: false
-                }
-            },
-            token: "slackToken",
-            level: "Emergency",
-            name: "Slack Notifications"
+    adminSettings: {
+      jira: {
+        email: "jira@example.com"
+        host: "https://jira.exampleChanged.com"
+        personalAccessToken: "secretToken"
+      }
+      slack: {
+        options: {
+          channel: "#general"
+          hostname: "slack.example.com"
+          name: "EvergreenBot"
+          username: "evergreen"
+          basicMetadata: true
+          fields: true
+          allFields: true
+          fieldsSet: { field1: true, field2: false }
         }
-        splunk: {
-            splunkConnectionInfo: {
-                serverurl: "https://splunk.example.com",
-                token: "SplunkToken"
-                channel: "#splunk-channel"
-            }
+        token: "slackToken"
+        level: "Emergency"
+        name: "Slack Notifications"
+      }
+      splunk: {
+        splunkConnectionInfo: {
+          serverUrl: "https://splunk.example.com"
+          token: "SplunkToken"
+          channel: "#splunk-channel"
         }
-        runtimeEnvironments: {
-            baseurl: "https://runtime.example.com",
-            apiKey: "newApiKey"
-        }
-        testSelection: {
-            url: "https://test-selection.example.com"
-        }
+      }
+      runtimeEnvironments: {
+        baseUrl: "https://runtime.example.com"
+        apiKey: "newApiKey"
+      }
+      testSelection: { url: "https://test-selection.example.com" }
+      fws: { url: "https://fws.example.com" }
     }
   ) {
     jira {
@@ -61,16 +57,19 @@ mutation {
     }
     splunk {
       splunkConnectionInfo {
-        serverurl
+        serverUrl
         token
         channel
       }
     }
     runtimeEnvironments {
-      baseurl
+      baseUrl
       apiKey
     }
     testSelection {
+      url
+    }
+    fws {
       url
     }
   }
