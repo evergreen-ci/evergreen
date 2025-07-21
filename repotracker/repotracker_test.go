@@ -1895,6 +1895,9 @@ func TestCreateVersionItemsPathFiltering(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Clear collections before running tests
+	require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))
+
 	// Test configuration with build variants that have different path patterns
 	configYml := `
 buildvariants:
@@ -1951,7 +1954,7 @@ tasks:
 		}
 
 		v := &model.Version{
-			Id:                  "test_version_frontend",
+			Id:                  fmt.Sprintf("test_version_frontend_%d", time.Now().UnixNano()),
 			CreateTime:          time.Now(),
 			Revision:            "abc123",
 			Author:              "test_author",
@@ -1987,7 +1990,7 @@ tasks:
 		}
 
 		v := &model.Version{
-			Id:                  "test_version_backend",
+			Id:                  fmt.Sprintf("test_version_backend_%d", time.Now().UnixNano()),
 			CreateTime:          time.Now(),
 			Revision:            "def456",
 			Author:              "test_author",
@@ -2022,7 +2025,7 @@ tasks:
 		}
 
 		v := &model.Version{
-			Id:                  "test_version_shared",
+			Id:                  fmt.Sprintf("test_version_shared_%d", time.Now().UnixNano()),
 			CreateTime:          time.Now(),
 			Revision:            "ghi789",
 			Author:              "test_author",
@@ -2057,7 +2060,7 @@ tasks:
 		}
 
 		v := &model.Version{
-			Id:                  "test_version_no_files",
+			Id:                  fmt.Sprintf("test_version_no_files_%d", time.Now().UnixNano()),
 			CreateTime:          time.Now(),
 			Revision:            "jkl012",
 			Author:              "test_author",
@@ -2093,7 +2096,7 @@ tasks:
 		}
 
 		v := &model.Version{
-			Id:                  "test_version_docs",
+			Id:                  fmt.Sprintf("test_version_docs_%d", time.Now().UnixNano()),
 			CreateTime:          time.Now(),
 			Revision:            "mno345",
 			Author:              "test_author",
