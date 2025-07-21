@@ -61,7 +61,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
   AuthConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
-  AuthConfigType:
+  PreferredAuthType:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
       OKTA:

@@ -24,5 +24,5 @@ var redactedFields = map[string]bool{
 	"secret": true,
 	"senderAddress": true,
 	"servicePassword": true,
-	"vars":            true,
+	"vars": true,
 }

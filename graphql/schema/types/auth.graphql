@@ -1,4 +1,4 @@
-enum AuthConfigType {
+enum PreferredAuthType {
   OKTA
   NAIVE
   GITHUB
@@ -12,7 +12,7 @@ type AuthConfig {
   github: GitHubAuthConfig @requireAdmin
   multi: MultiAuthConfig @requireAdmin
   kanopy: KanopyAuthConfig @requireAdmin
-  preferredType: AuthConfigType @requireAdmin
+  preferredType: PreferredAuthType @requireAdmin
   backgroundReauthMinutes: Int
   allowServiceUsers: Boolean
 }
@@ -65,7 +65,7 @@ input AuthConfigInput {
   github: GitHubAuthConfigInput @redactSecrets
   multi: MultiAuthConfigInput @redactSecrets
   kanopy: KanopyAuthConfigInput @redactSecrets
-  preferredType: AuthConfigType @redactSecrets
+  preferredType: PreferredAuthType @redactSecrets
   backgroundReauthMinutes: Int
   allowServiceUsers: Boolean
 }
