@@ -32,10 +32,6 @@ const (
 	RepositoriesCollection = "repo_revisions"
 )
 
-const (
-	GithubRepoType = "github"
-)
-
 type Revision struct {
 	Author          string
 	AuthorID        string

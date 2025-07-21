@@ -33,8 +33,6 @@ import (
 
 const (
 	gitFetchProjectRetries = 5
-	defaultCommitterName   = "Evergreen Agent"
-	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
 	shallowCloneDepth      = 100
 
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
@@ -433,12 +431,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context,
-	comm client.Communicator,
-	logger client.LoggerProducer,
-	conf *internal.TaskConfig,
-	jpm jasper.Manager,
-	opts cloneOpts) error {
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, jpm jasper.Manager, opts cloneOpts) error {
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
@@ -688,7 +681,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	jpm := c.JasperManager()
 
 	// Clone the project.
-	if err := c.fetchSource(ctx, comm, logger, conf, jpm, opts); err != nil {
+	if err := c.fetchSource(ctx, logger, conf, jpm, opts); err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
@@ -820,14 +813,14 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 }
 
 // getApplyCommand returns the git apply command
-func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskConfig) (string, error) {
+func (c *gitFetchProject) getApplyCommand(patchFile string) (string, error) {
 	apply := fmt.Sprintf("GIT_TRACE=1 git apply --binary --index < '%s'", patchFile)
 	return apply, nil
 }
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
 // need to be executed, except for apply. If the patch is empty it will not apply the patch.
-func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, moduleDir, patchPath string) []string {
+func getPatchCommands(modulePatch patch.ModulePatch, moduleDir, patchPath string) []string {
 	patchCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -909,8 +902,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		tempAbsPath := tempFile.Name()
 
 		// this applies the patch using the patch files in the temp directory
-		patchCommandStrings := getPatchCommands(patchPart, conf, moduleDir, tempAbsPath)
-		applyCommand, err := c.getApplyCommand(tempAbsPath, conf)
+		patchCommandStrings := getPatchCommands(patchPart, moduleDir, tempAbsPath)
+		applyCommand, err := c.getApplyCommand(tempAbsPath)
 		if err != nil {
 			return errors.Wrap(err, "getting git apply command")
 		}

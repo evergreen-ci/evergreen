@@ -14,7 +14,6 @@ const (
 	dirFlagName             = "dir"
 	displayNameFlagName     = "name"
 	errorOnWarningsFlagName = "error-on-warnings"
-	forceFlagName           = "force"
 	hostFlagName            = "host"
 	largeFlagName           = "large"
 	limitFlagName           = "limit"

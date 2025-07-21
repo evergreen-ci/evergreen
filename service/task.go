@@ -55,7 +55,7 @@ type uiTaskData struct {
 	TaskEndDetails       apimodels.TaskEndDetail `json:"task_end_details"`
 	TestResults          []uiTestResult          `json:"test_results"`
 	Aborted              bool                    `json:"abort"`
-	AbortInfo            task.AbortInfo          `json:"abort_info,omitempty"`
+	AbortInfo            task.AbortInfo          `json:"abort_info"`
 	MinQueuePos          int                     `json:"min_queue_pos"`
 	DependsOn            []uiDep                 `json:"depends_on"`
 	AbortedByDisplay     *abortedByDisplay       `json:"aborted_by_display,omitempty"`
@@ -428,7 +428,7 @@ func getAbortedBy(ctx context.Context, abortedByTaskId string) (*abortedByDispla
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy build")
 	}
-	if buildDisplay == nil || abortedTask == nil {
+	if buildDisplay == nil {
 		return nil, errors.New("problem getting abortBy display information")
 	}
 	abortedBy := &abortedByDisplay{

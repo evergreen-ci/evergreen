@@ -1123,6 +1123,31 @@ func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEve
 	}, nil
 }
 
+func makeAdminEvent(ctx context.Context, entry event.EventLogEntry) (*AdminEvent, error) {
+	data, ok := entry.Data.(*event.AdminEventData)
+	if !ok {
+		return nil, errors.New("casting admin event data")
+	}
+
+	after, err := interfaceToMap(ctx, data.Changes.After)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'after' field to map")
+	}
+
+	before, err := interfaceToMap(ctx, data.Changes.Before)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'before' field to map")
+	}
+
+	return &AdminEvent{
+		After:     after,
+		Before:    before,
+		Section:   utility.ToStringPtr(data.Section),
+		Timestamp: entry.Timestamp,
+		User:      data.User,
+	}, nil
+}
+
 func interfaceToMap(ctx context.Context, data any) (map[string]any, error) {
 	if data == nil {
 		return nil, nil

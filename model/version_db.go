@@ -216,17 +216,6 @@ func VersionByLastTaskActivation(projectId, variant, taskName string) db.Q {
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
-// ByProjectId finds all non-patch versions within a project.
-func VersionByProjectId(projectId string) db.Q {
-	return db.Query(
-		bson.M{
-			VersionIdentifierKey: projectId,
-			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-		})
-}
-
 func VersionByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
 	q := bson.M{
 		VersionIdentifierKey: projectID,

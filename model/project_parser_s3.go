@@ -64,7 +64,7 @@ func (s *ParserProjectS3Storage) FindOneByID(ctx context.Context, id string) (*P
 // the parser project with only the requested fields populated. This is not any
 // more efficient than FindOneByID. If the context errors, it will return the
 // context error.
-func (s *ParserProjectS3Storage) FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error) {
+func (s *ParserProjectS3Storage) FindOneByIDWithFields(ctx context.Context, id string, _ ...string) (*ParserProject, error) {
 	return s.FindOneByID(ctx, id)
 }
 
