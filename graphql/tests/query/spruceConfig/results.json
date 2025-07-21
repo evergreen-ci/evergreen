@@ -105,14 +105,14 @@
         "data": {
           "spruceConfig": {
             "secretFields": [
+              "amboyDB",
               "appId",
               "clientId",
               "clientSecret",
+              "csrfKey",
               "defaultOwner",
               "defaultRepo",
               "github",
-              "amboyDB",
-              "csrfKey",
               "githubAppAuth",
               "headerName",
               "issuer",
