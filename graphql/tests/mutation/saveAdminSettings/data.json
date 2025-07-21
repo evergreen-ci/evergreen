@@ -310,6 +310,11 @@
       },
       "logkeeper_url": "logkeeper-url",
       "redact_keys": ["secret", "password"]
+    },
+    {
+      "_id": "cedar",
+      "db_url": "",
+      "db_name": ""
     }
   ]
 }

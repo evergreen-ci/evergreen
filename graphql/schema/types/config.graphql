@@ -275,6 +275,7 @@ input AdminSettingsInput {
   amboyDB: AmboyDBConfigInput @redactSecrets
   banner: String
   bannerTheme: BannerTheme
+  cedar: CedarConfigInput
   fws: FWSConfigInput
   jira: JiraConfigInput
   slack: SlackConfigInput
@@ -300,6 +301,7 @@ type AdminSettings {
   amboyDB: AmboyDBConfig
   banner: String
   bannerTheme: BannerTheme
+  cedar: CedarConfig
   fws: FWSConfig
   jira: JiraConfig
   slack: SlackConfig

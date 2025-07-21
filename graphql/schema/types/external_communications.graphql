@@ -1,3 +1,13 @@
+type CedarConfig {
+  dbUrl: String!
+  dbName: String!
+}
+
+input CedarConfigInput {
+  dbUrl: String!
+  dbName: String!
+}
+
 input JiraConfigInput {
   email: String
   host: String

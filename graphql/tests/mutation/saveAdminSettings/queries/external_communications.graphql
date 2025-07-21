@@ -33,7 +33,11 @@ mutation {
         apiKey: "newApiKey"
       }
       testSelection: { url: "https://test-selection.example.com" }
-      fws: { url: "https://fws.example.com" }
+      fws: { url: "https://fws.example.com" },
+      cedar: {
+        dbUrl: "https://cedar-db.example.com"
+        dbName: "CedarDB"
+      }
     }
   ) {
     jira {

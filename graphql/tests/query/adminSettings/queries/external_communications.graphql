@@ -37,5 +37,9 @@ query ExternalCommunications {
     fws {
       url
     }
+    cedar {
+      dbUrl
+      dbName
+    }
   }
 }

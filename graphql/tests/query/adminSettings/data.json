@@ -214,6 +214,11 @@
     {
       "_id": "fws",
       "url": "https://fws.example.com"
+    },
+    {
+      "_id": "cedar",
+      "dbUrl": "mongodb://localhost:27017/cedar",
+      "dbName": "cedar"
     }
   ]
 }
