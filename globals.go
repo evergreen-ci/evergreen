@@ -845,6 +845,18 @@ var DevProdJiraServiceField = map[string]string{
 }
 
 const (
+	PriorityLevelEmergency = "emergency"
+	PriorityLevelAlert     = "alert"
+	PriorityLevelCritical  = "critical"
+	PriorityLevelError     = "error"
+	PriorityLevelWarning   = "warning"
+	PriorityLevelNotice    = "notice"
+	PriorityLevelInfo      = "info"
+	PriorityLevelDebug     = "debug"
+	PriorityLevelTrace     = "trace"
+)
+
+const (
 	DevProdServiceFieldName = "customfield_24158"
 	devProdServiceId        = "27020"
 	devProdServiceValue     = "Other"

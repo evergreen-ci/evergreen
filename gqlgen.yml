@@ -451,6 +451,27 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   PreconditionScriptInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
+  PriorityLevel:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      EMERGENCY: 
+        value: github.com/evergreen-ci/evergreen.PriorityLevelEmergency
+      ALERT:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelAlert
+      CRITICAL:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelCritical
+      ERROR:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelError
+      WARNING:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelWarning
+      NOTICE:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelNotice
+      INFO:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelInfo
+      DEBUG:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelDebug
+      TRACE:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelTrace
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
