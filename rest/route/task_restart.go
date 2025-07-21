@@ -39,7 +39,7 @@ func makeTaskRestartHandler() gimlet.RouteHandler {
 //	@Router			/tasks/{task_id}/restart [post]
 //	@Security		Api-User || Api-Key
 //	@Param			task_id		path		string				true	"task ID"
-//	@Param			{object}	body		taskRestartHandler	false "parameters"
+//	@Param			{object}	body		taskRestartHandler	false	"parameters"
 //	@Success		200			{object}	model.APITask
 func (trh *taskRestartHandler) Factory() gimlet.RouteHandler {
 	return &taskRestartHandler{}

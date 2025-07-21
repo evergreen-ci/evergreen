@@ -11,8 +11,8 @@ API version: 1.0.0
 package fws
 
 import (
-	"encoding/json"
 	"bytes"
+	"encoding/json"
 	"fmt"
 )
 
@@ -21,13 +21,13 @@ var _ MappedNullable = &TeamData{}
 
 // TeamData This dataclass holds the team data for a specific team.
 type TeamData struct {
-	TeamName string `json:"team_name"`
-	JiraProject string `json:"jira_project"`
-	SlackChannelId NullableString `json:"slack_channel_id"`
-	EvergreenTagName string `json:"evergreen_tag_name"`
-	TriageTeamName NullableString `json:"triage_team_name,omitempty"`
-	SlackGroupId NullableString `json:"slack_group_id,omitempty"`
-	TriagedTeamNames []string `json:"triaged_team_names,omitempty"`
+	TeamName         string         `json:"team_name"`
+	JiraProject      string         `json:"jira_project"`
+	SlackChannelId   NullableString `json:"slack_channel_id"`
+	EvergreenTagName string         `json:"evergreen_tag_name"`
+	TriageTeamName   NullableString `json:"triage_team_name,omitempty"`
+	SlackGroupId     NullableString `json:"slack_group_id,omitempty"`
+	TriagedTeamNames []string       `json:"triaged_team_names,omitempty"`
 }
 
 type _TeamData TeamData
@@ -183,6 +183,7 @@ func (o *TeamData) HasTriageTeamName() bool {
 func (o *TeamData) SetTriageTeamName(v string) {
 	o.TriageTeamName.Set(&v)
 }
+
 // SetTriageTeamNameNil sets the value for TriageTeamName to be an explicit nil
 func (o *TeamData) SetTriageTeamNameNil() {
 	o.TriageTeamName.Set(nil)
@@ -225,6 +226,7 @@ func (o *TeamData) HasSlackGroupId() bool {
 func (o *TeamData) SetSlackGroupId(v string) {
 	o.SlackGroupId.Set(&v)
 }
+
 // SetSlackGroupIdNil sets the value for SlackGroupId to be an explicit nil
 func (o *TeamData) SetSlackGroupIdNil() {
 	o.SlackGroupId.Set(nil)
@@ -268,7 +270,7 @@ func (o *TeamData) SetTriagedTeamNames(v []string) {
 }
 
 func (o TeamData) MarshalJSON() ([]byte, error) {
-	toSerialize,err := o.ToMap()
+	toSerialize, err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -309,10 +311,10 @@ func (o *TeamData) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err;
+		return err
 	}
 
-	for _, requiredProperty := range(requiredProperties) {
+	for _, requiredProperty := range requiredProperties {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -368,5 +370,3 @@ func (v *NullableTeamData) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

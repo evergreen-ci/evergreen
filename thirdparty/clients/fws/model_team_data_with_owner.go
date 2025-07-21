@@ -11,8 +11,8 @@ API version: 1.0.0
 package fws
 
 import (
-	"encoding/json"
 	"bytes"
+	"encoding/json"
 	"fmt"
 )
 
@@ -21,7 +21,7 @@ var _ MappedNullable = &TeamDataWithOwner{}
 
 // TeamDataWithOwner Team data with owner information.
 type TeamDataWithOwner struct {
-	TeamData TeamData `json:"team_data"`
+	TeamData   TeamData       `json:"team_data"`
 	OwningUser NullableString `json:"owning_user,omitempty"`
 }
 
@@ -101,6 +101,7 @@ func (o *TeamDataWithOwner) HasOwningUser() bool {
 func (o *TeamDataWithOwner) SetOwningUser(v string) {
 	o.OwningUser.Set(&v)
 }
+
 // SetOwningUserNil sets the value for OwningUser to be an explicit nil
 func (o *TeamDataWithOwner) SetOwningUserNil() {
 	o.OwningUser.Set(nil)
@@ -112,7 +113,7 @@ func (o *TeamDataWithOwner) UnsetOwningUser() {
 }
 
 func (o TeamDataWithOwner) MarshalJSON() ([]byte, error) {
-	toSerialize,err := o.ToMap()
+	toSerialize, err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -141,10 +142,10 @@ func (o *TeamDataWithOwner) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err;
+		return err
 	}
 
-	for _, requiredProperty := range(requiredProperties) {
+	for _, requiredProperty := range requiredProperties {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -200,5 +201,3 @@ func (v *NullableTeamDataWithOwner) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-
