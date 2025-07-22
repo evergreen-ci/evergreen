@@ -1,3 +1,21 @@
+###### RESTART TASKS ######
+
+input RestartAdminTasksOptions {
+  startTime: Time!
+  endTime: Time!
+  includeTestFailed: Boolean!
+  includeSystemFailed: Boolean!
+  includeSetupFailed: Boolean!
+}
+
+type AdminTasksToRestartPayload {
+  tasksToRestart: [Task!]!
+}
+
+type RestartAdminTasksPayload {
+  numRestartedTasks: Int!
+}
+
 ###### ADMIN EVENTS ######
 
 enum PriorityLevel {
@@ -472,7 +490,7 @@ type UIConfig {
   fileStreamingContentTypes: [String!]!
   loginDomain: String
   userVoice: String
-  csrfKey: String
+  csrfKey: String @requireAdmin
   cacheTemplates: Boolean
   stagingEnvironment: String
 }
