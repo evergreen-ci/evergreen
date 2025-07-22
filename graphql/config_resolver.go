@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
@@ -52,15 +51,6 @@ func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *restM
 	return nil
 }
 
-// IncludeSystemFailed is the resolver for the includeSystemFailed field.
-func (r *restartAdminTasksOptionsResolver) IncludeSystemFailed(ctx context.Context, obj *model.RestartOptions, data bool) error {
-	if obj == nil {
-		return InternalServerError.Send(ctx, "restart options object undefined")
-	}
-	obj.IncludeSysFailed = data
-	return nil
-}
-
 // AdminSettings returns AdminSettingsResolver implementation.
 func (r *Resolver) AdminSettings() AdminSettingsResolver { return &adminSettingsResolver{r} }
 
@@ -75,13 +65,7 @@ func (r *Resolver) AdminSettingsInput() AdminSettingsInputResolver {
 	return &adminSettingsInputResolver{r}
 }
 
-// RestartAdminTasksOptions returns RestartAdminTasksOptionsResolver implementation.
-func (r *Resolver) RestartAdminTasksOptions() RestartAdminTasksOptionsResolver {
-	return &restartAdminTasksOptionsResolver{r}
-}
-
 type adminSettingsResolver struct{ *Resolver }
 type containerPoolResolver struct{ *Resolver }
 type spruceConfigResolver struct{ *Resolver }
 type adminSettingsInputResolver struct{ *Resolver }
-type restartAdminTasksOptionsResolver struct{ *Resolver }

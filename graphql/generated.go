@@ -84,7 +84,6 @@ type ResolverRoot interface {
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
-	RestartAdminTasksOptions() RestartAdminTasksOptionsResolver
 	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
@@ -2423,9 +2422,6 @@ type ProjectSettingsInputResolver interface {
 }
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
-}
-type RestartAdminTasksOptionsResolver interface {
-	IncludeSystemFailed(ctx context.Context, obj *model1.RestartOptions, data bool) error
 }
 type SleepScheduleInputResolver interface {
 	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo, data []int) error
@@ -94368,9 +94364,7 @@ func (ec *executionContext) unmarshalInputRestartAdminTasksOptions(ctx context.C
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.RestartAdminTasksOptions().IncludeSystemFailed(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.IncludeSysFailed = data
 		case "includeSetupFailed":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeSetupFailed"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)

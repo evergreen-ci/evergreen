@@ -612,6 +612,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
   RestartAdminTasksOptions:
     model: github.com/evergreen-ci/evergreen/model.RestartOptions
+    fields:
+      includeSystemFailed:
+        fieldName: includeSysFailed
   RoundingRule:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
