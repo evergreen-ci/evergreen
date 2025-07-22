@@ -38,8 +38,8 @@ query ExternalCommunications {
       url
     }
     cedar {
-      dbUrl
       dbName
+      dbUrl
     }
   }
 }

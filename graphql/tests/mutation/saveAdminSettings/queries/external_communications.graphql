@@ -18,7 +18,7 @@ mutation {
           fieldsSet: { field1: true, field2: false }
         }
         token: "slackToken"
-        level: "Emergency"
+        level: EMERGENCY
         name: "Slack Notifications"
       }
       splunk: {
@@ -33,10 +33,10 @@ mutation {
         apiKey: "newApiKey"
       }
       testSelection: { url: "https://test-selection.example.com" }
-      fws: { url: "https://fws.example.com" },
+      fws: { url: "https://fws.example.com" }
       cedar: {
-        dbUrl: "https://cedar-db.example.com"
-        dbName: "CedarDB"
+        dbUrl: "mongodb://localhost:27017",
+        dbName: "cedar"
       }
     }
   ) {
@@ -75,6 +75,10 @@ mutation {
     }
     fws {
       url
+    }
+    cedar {
+      dbName
+      dbUrl
     }
   }
 }

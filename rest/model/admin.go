@@ -212,6 +212,10 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		if err = releaseModeConfig.BuildFromService(v.ReleaseMode); err != nil {
 			return errors.Wrap(err, "converting release mode config to API model")
 		}
+		as.Cedar = &APICedarConfig{}
+		if err = as.Cedar.BuildFromService(v.Cedar); err != nil {
+			return errors.Wrap(err, "converting cedar config to API model")
+		}
 		as.ReleaseMode = &releaseModeConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)

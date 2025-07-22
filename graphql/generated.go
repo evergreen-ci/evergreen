@@ -65402,7 +65402,7 @@ func (ec *executionContext) _SlackConfig_level(ctx context.Context, field graphq
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOPriorityLevel2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SlackConfig_level(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -65412,7 +65412,7 @@ func (ec *executionContext) fieldContext_SlackConfig_level(_ context.Context, fi
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type PriorityLevel does not have child fields")
 		},
 	}
 	return fc, nil
@@ -93582,7 +93582,7 @@ func (ec *executionContext) unmarshalInputSlackConfigInput(ctx context.Context, 
 			}
 		case "level":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("level"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNPriorityLevel2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}

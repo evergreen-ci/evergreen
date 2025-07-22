@@ -54,11 +54,11 @@
                 }
               },
               "token": "123456",
-              "level": "high",
+              "level": "EMERGENCY",
               "name": "test-app"
             },
             "splunk": {
-              "splunkConnectionInfo": {
+              "splunkConnectionInfo": { 
                 "serverUrl": "testServer",
                 "token": "testToken",
                 "channel": "42"
@@ -75,8 +75,8 @@
               "url": "https://fws.example.com"
             },
             "cedar": {
-              "dbUrl": "mongodb://localhost:27017/cedar",
-              "dbName": "cedar"
+              "dbName": "cedar",
+              "dbUrl": "mongodb://localhost:27017/cedar"
             }
           }
         }

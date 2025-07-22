@@ -82,7 +82,7 @@
     },
     {
       "_id": "slack",
-      "level": "high",
+      "level": "emergency",
       "name": "test-app",
       "options": {
         "channel": "#cabc123",
@@ -217,8 +217,8 @@
     },
     {
       "_id": "cedar",
-      "dbUrl": "mongodb://localhost:27017/cedar",
-      "dbName": "cedar"
+      "db_name": "cedar",
+      "db_url": "mongodb://localhost:27017/cedar"
     }
   ]
 }

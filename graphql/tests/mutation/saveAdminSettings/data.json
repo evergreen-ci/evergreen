@@ -313,8 +313,8 @@
     },
     {
       "_id": "cedar",
-      "db_url": "",
-      "db_name": ""
+      "db_name": "cedar",
+      "db_url": "mongodb://localhost:8000"
     }
   ]
 }
