@@ -107,10 +107,10 @@ type ProjectRef struct {
 	WorkstationConfig WorkstationConfig `bson:"workstation_config" json:"workstation_config"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
-	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings,omitempty"`
+	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings"`
 
 	// Plugin settings
-	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
@@ -125,7 +125,7 @@ type ProjectRef struct {
 	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
-	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
+	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner" yaml:"banner,omitempty"`
 
 	// Filter/view settings
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
@@ -148,7 +148,7 @@ type GitHubDynamicTokenPermissionGroup struct {
 	// Name is the name of the group.
 	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
-	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
+	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions" yaml:"permissions,omitempty"`
 	// AllPermissions is a flag that indicates that the group has all permissions.
 	// If this is set to true, the Permissions field is ignored.
 	// If this is set to false, the Permissions field is used (and may be
@@ -2750,7 +2750,7 @@ func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings,
 // ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
 // assuming the given project is going to be enabled.
 // Returns a status code and error if we are already at limit with enabled projects.
-func ValidateEnabledProjectsLimit(ctx context.Context, projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
+func ValidateEnabledProjectsLimit(ctx context.Context, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
 		return http.StatusOK, nil
 	}

@@ -393,7 +393,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			// New patches already create the parser project at the same time as
 			// the patch, so there's no need to get the patched parser project
 			// for them.
-			projectConfig, err := model.GetPatchedProjectConfig(ctx, &as.Settings, p)
+			projectConfig, err := model.GetPatchedProjectConfig(ctx, p)
 			if err != nil {
 				as.LoggedError(w, r, http.StatusInternalServerError, err)
 				return

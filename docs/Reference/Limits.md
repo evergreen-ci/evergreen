@@ -1,4 +1,4 @@
-# Evergreen Limits And Data Retention 
+# Evergreen Limits And Data Retention
 
 Evergreen has different kinds of limits in place. The ones that users are likely
 to encounter are listed here.
@@ -7,25 +7,24 @@ to encounter are listed here.
 
 Evergreen limits users to two never expiring spawn hosts at a time.
 
-#### Can an exception be requested?
+### Can an exception be requested?
 
 Exceptions can be requested on a case-by-case which will be granted based on
 [our policy](https://mongodb.stackenterprise.co/questions/1122).
 
-## Task TTL 
+## Task TTL
 
 Tasks expire expire 365 days after creation. Expired tasks will not be available through Evergreen's API or UI, but finished tasks (tasks that ran) will continue to be available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics).
 
 ## Task Artifacts Data Retention Policy
 
-Artifacts uploaded by tasks using [s3.put](../Project-ConfigurationProject-Commands#s3put) with the default bucket (for example, the s3 bucket created for the project upon project creation) will expire after one year and no longer be available in any way after that. Refer to [Project S3 Bucket Lifecycle Policy](#project_s3_bucket_lifecycle_policy) for more details on the bucket's lifecycle policy. If artifacts were uploaded by specifying a user's S3 bucket with different retention policy to [s3.put](../Project-ConfigurationProject-Commands#s3put), it will follow the retention policy of that bucket. 
-
+Artifacts uploaded by tasks using [s3.put](../Project-ConfigurationProject-Commands#s3put) with the default bucket (for example, the s3 bucket created for the project upon project creation) will expire after one year and no longer be available in any way after that. Refer to [Project S3 Bucket Lifecycle Policy](../Project-Configuration/Create-a-Project#project-s3-bucket-lifecycle-policy) for more details on the bucket's lifecycle policy. If artifacts were uploaded by specifying a user's S3 bucket with different retention policy to [s3.put](../Project-ConfigurationProject-Commands#s3put), it will follow the retention policy of that bucket.
 
 ## Task Output Data Retention Policy
+
 Test results uploaded via [attach.results](../Project-ConfigurationProject-Commands#attachresults), [attach.xunit_results](../Project-ConfigurationProject-Commands#attachxunit_results), and [gotest.parse_files](../Project-ConfigurationProject-Commands#gotestparse_files) will be available via evergreen for 1 year but will continue to be available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics) for longer.
 
 [Task traces](../Project-Configuration/Task_Traces) are available for 60 days in Honeycomb.
-
 
 ## Task Limits
 
@@ -59,18 +58,20 @@ usage.
 ## Config YAML Size Limits
 
 ### Current Limitations
+
 Evergreen limits YAML project configuration sizes to 18MB. The 18MB limit is on the sum of the size
-of the size of the project configuration YAML, plus all included YAML files, plus any additional 
+of the size of the project configuration YAML, plus all included YAML files, plus any additional
 generate.tasks input files. If the YAML length >18MB after task generators have tacked on their
 configuration to the project configuration YAML, the task will fail.
 
 ### CPU Degraded Mode
+
 Running tasks with large config YAMLs is one of the most computationally intensive operations Evergreen
 does. In order to facilitate incremental increases in the maximum allowed config YAML size, Evergreen has a
-safeguard mechanism that will automatically detect periods of high CPU load, and reduce the maximum allowed 
-config YAML size to a previous limit that is known to be safe to proactively prevent performance issues. 
+safeguard mechanism that will automatically detect periods of high CPU load, and reduce the maximum allowed
+config YAML size to a previous limit that is known to be safe to proactively prevent performance issues.
 
-When degraded mode is active, the maximum allowed config YAML size will decrease from 18MB to 16MB, and 
+When degraded mode is active, the maximum allowed config YAML size will decrease from 18MB to 16MB, and
 a maximum number of concurrent running tasks with large config YAMLs will be enforced, potentially causing
 their scheduling to slow down.
 

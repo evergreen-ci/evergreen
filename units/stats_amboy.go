@@ -92,7 +92,8 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			})
 		}
 
-		queueGroup, _ := j.env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+		appCtx, _ := j.env.Context()
+		queueGroup, _ := j.env.RemoteQueueGroup().Get(appCtx, terminateHostQueueGroup)
 		if queueGroup != nil && queueGroup.Info().Started {
 			j.logger.Info(message.Fields{
 				"message": fmt.Sprintf("amboy '%s' group stats", terminateHostQueueGroup),

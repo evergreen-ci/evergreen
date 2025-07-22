@@ -156,7 +156,7 @@ projects:
 				Tasks:   []string{"all"},
 				Alias:   "some-variants",
 				LocalAliases: []model.ProjectAlias{
-					model.ProjectAlias{
+					{
 						Alias:   "bynn",
 						Task:    ".*",
 						Variant: ".*",
@@ -207,7 +207,7 @@ projects_for_directory:
 				Tasks:    []string{"all"},
 				Variants: []string{"all"},
 				LocalAliases: []model.ProjectAlias{
-					model.ProjectAlias{
+					{
 						Alias:   "other one",
 						Task:    ".*",
 						Variant: ".*",

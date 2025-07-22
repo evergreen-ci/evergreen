@@ -112,6 +112,14 @@ type APIAdminSettings struct {
 	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds,omitempty"`
 }
 
+const (
+	OktaPreferredType   = "okta"
+	NaivePreferredType  = "naive"
+	GithubPreferredType = "github"
+	MultiPreferredType  = "multi"
+	KanopyPreferredType = "kanopy"
+)
+
 // BuildFromService builds a model from the service layer
 func (as *APIAdminSettings) BuildFromService(h any) error {
 	switch v := h.(type) {
@@ -329,7 +337,7 @@ type APIAmboyConfig struct {
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
-	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
+	Retry                                 APIAmboyRetryConfig        `json:"retry"`
 	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues,omitempty"`
 }
 
@@ -1442,7 +1450,6 @@ func (a *APIEC2Key) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
 		a.Name = utility.ToStringPtr(v.Name)
-		a.Region = utility.ToStringPtr(v.Region)
 		a.Key = utility.ToStringPtr(v.Key)
 		a.Secret = utility.ToStringPtr(v.Secret)
 	default:
@@ -1454,7 +1461,6 @@ func (a *APIEC2Key) BuildFromService(h any) error {
 func (a *APIEC2Key) ToService() (any, error) {
 	res := evergreen.EC2Key{}
 	res.Name = utility.FromStringPtr(a.Name)
-	res.Region = utility.FromStringPtr(a.Region)
 	res.Key = utility.FromStringPtr(a.Key)
 	res.Secret = utility.FromStringPtr(a.Secret)
 	return res, nil

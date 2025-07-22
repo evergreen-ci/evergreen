@@ -40,9 +40,8 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 		return http.StatusOK, nil
 	}
 
-	// create a separate context from the one the caller has so that the caller
-	// can't interrupt the db operations here
-	newCxt := context.Background()
+	// Prevent the caller from interrupting the db operations here.
+	newCxt := context.WithoutCancel(ctx)
 	// Process additional patch trigger aliases added via UI.
 	// Child patches created with the CLI --trigger-alias flag go through a separate flow, so ensure that new child patches are also created before the parent is finalized.
 	if err := ProcessTriggerAliases(ctx, p, projectRef, env, patchUpdateReq.PatchTriggerAliases); err != nil {

@@ -2686,7 +2686,7 @@ func UpdateHasAnnotations(ctx context.Context, taskId string, execution int, has
 		ctx,
 		ByIdAndExecution(taskId, execution),
 		[]bson.M{
-			bson.M{"$set": bson.M{
+			{"$set": bson.M{
 				HasAnnotationsKey: hasAnnotations,
 			}},
 			addDisplayStatusCache,
@@ -2763,14 +2763,14 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 		ctx,
 		filter,
 		[]bson.M{
-			bson.M{
+			{
 				"$set": bson.M{
 					AbortedKey:           true,
 					AbortInfoKey:         AbortInfo{User: caller},
 					ResetWhenFinishedKey: true,
 				},
 			},
-			bson.M{
+			{
 				"$unset": []string{
 					ResetFailedWhenFinishedKey,
 				},

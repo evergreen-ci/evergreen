@@ -289,7 +289,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// Get and validate patched config
 	var patchedProjectConfig string
 	if patchedParserProject != nil {
-		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, j.env.Settings(), patchDoc)
+		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, patchDoc)
 		if err != nil {
 			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project config")
 		}

@@ -175,10 +175,8 @@ const (
 
 	HostTypeStatic = "static"
 
-	MergeTestStarted   = "started"
 	MergeTestSucceeded = "succeeded"
 	MergeTestFailed    = "failed"
-	EnqueueFailed      = "failed to enqueue"
 
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
@@ -217,8 +215,6 @@ const (
 	// disableLocalLoggingEnvVar is an environment variable to disable all local application logging
 	// besides for fallback logging to stderr.
 	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
-	// AWSRoleARNEnvVar is an environment variable injected by IRSA that provides the role ARN.
-	AWSRoleARNEnvVar = "AWS_ROLE_ARN"
 
 	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
@@ -252,10 +248,6 @@ const (
 	// and disabling tasks older than the task.UnschedulableThreshold from
 	// their distro queue.
 	UnderwaterTaskUnscheduler = "underwater-task-unscheduler"
-
-	// Restart Types
-	RestartVersions = "versions"
-	RestartTasks    = "tasks"
 
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
@@ -851,6 +843,18 @@ var DevProdJiraServiceField = map[string]string{
 	"id":    devProdServiceId,
 	"value": devProdServiceValue,
 }
+
+const (
+	PriorityLevelEmergency = "emergency"
+	PriorityLevelAlert     = "alert"
+	PriorityLevelCritical  = "critical"
+	PriorityLevelError     = "error"
+	PriorityLevelWarning   = "warning"
+	PriorityLevelNotice    = "notice"
+	PriorityLevelInfo      = "info"
+	PriorityLevelDebug     = "debug"
+	PriorityLevelTrace     = "trace"
+)
 
 const (
 	DevProdServiceFieldName = "customfield_24158"

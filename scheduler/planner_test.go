@@ -180,9 +180,9 @@ func TestPlanner(t *testing.T) {
 			})
 			t.Run("HashIgnoresOrder", func(t *testing.T) {
 				tasks := map[int]task.Task{
-					1: task.Task{Id: "one"},
-					2: task.Task{Id: "two"},
-					3: task.Task{Id: "three"},
+					1: {Id: "one"},
+					2: {Id: "two"},
+					3: {Id: "three"},
 				}
 
 				unitOne := NewUnit(task.Task{Id: "four"})

@@ -231,11 +231,6 @@ func prepareUpdate(url, newVersion string) (string, error) {
 		return "", errors.Errorf("received status code '%s'", response.Status)
 	}
 
-	if response == nil {
-		grip.Error(tempFile.Close())
-		return "", errors.Errorf("empty response from URL '%s'", url)
-	}
-
 	defer response.Body.Close()
 	_, err = io.Copy(tempFile, response.Body)
 	if err != nil {

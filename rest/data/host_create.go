@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -184,14 +183,8 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 		return nil, nil, errors.Errorf("project ref '%s' not found", t.Project)
 	}
 
-	const ghTokenLifetime = 50 * time.Minute
-	appToken, err := githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "creating GitHub app token")
-	}
-
 	knownHosts := settings.Expansions[evergreen.GithubKnownHosts]
-	expansions, err := model.PopulateExpansions(ctx, t, h, appToken, knownHosts)
+	expansions, err := model.PopulateExpansions(ctx, t, h, knownHosts)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}
@@ -202,10 +195,6 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 		if bv.Name == t.BuildVariant {
 			expansions.Update(bv.Expansions)
 		}
-	}
-
-	if project == nil {
-		project = &model.Project{}
 	}
 	params := append(project.GetParameters(), v.Parameters...)
 	if err = updateExpansions(ctx, &expansions, t.Project, params); err != nil {

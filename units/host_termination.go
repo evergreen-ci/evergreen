@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -355,10 +354,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		span.SetAttributes(attribute.String(fmt.Sprintf("%s.instance_type", hostTerminationAttributePrefix), instanceType))
 	}
 
-	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
-		event.LogHostProvisionFailed(ctx, j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
+	if j.host.StartedBy == evergreen.User && j.host.TaskCount == 0 {
 		grip.Info(message.Fields{
-			"message":          "provisioning failure",
+			"message":          "task host ran no tasks before it was terminated",
 			"status":           prevStatus,
 			"host_id":          j.HostID,
 			"host_tag":         j.host.Tag,

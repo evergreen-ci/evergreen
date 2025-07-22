@@ -440,10 +440,6 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 	makeJasperDirs := h.MakeJasperDirsCommand()
 
 	markDone := h.MarkUserDataProvisioningDoneCommand()
-	if err != nil {
-		return "", errors.Wrap(err, "creating command to mark when user data is done")
-	}
-
 	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
 
 	setupScriptCmds, err := h.setupScriptCommands(settings)

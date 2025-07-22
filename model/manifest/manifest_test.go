@@ -22,14 +22,14 @@ func TestFindFromVersion(t *testing.T) {
 			Id:          "m1",
 			ProjectName: projectName,
 			Revision:    revision,
-			Modules:     map[string]*Module{moduleName: &Module{}},
+			Modules:     map[string]*Module{moduleName: {}},
 			IsBase:      true,
 		},
 		{
 			Id:          "m2",
 			ProjectName: projectName,
 			Revision:    revision,
-			Modules:     map[string]*Module{moduleName: &Module{}},
+			Modules:     map[string]*Module{moduleName: {}},
 		},
 	}
 	for _, mfest := range mfests {

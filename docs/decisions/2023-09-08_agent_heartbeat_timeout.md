@@ -1,8 +1,8 @@
 # 2023-09-08 Agent Heartbeat Timeout
 
-* status: accepted
-* date: 2023-09-08
-* authors: Kim Tao
+- status: accepted
+- date: 2023-09-08
+- authors: Kim Tao
 
 ## Context and Problem Statement
 

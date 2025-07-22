@@ -18,6 +18,22 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   AdminSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+  AmboyConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyConfig
+  AmboyConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyConfig
+  AmboyDBConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyDBConfig
+  AmboyDBConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyDBConfig
+  AmboyNamedQueueConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyNamedQueueConfig
+  AmboyNamedQueueConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyNamedQueueConfig
+  AmboyRetryConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyRetryConfig
+  AmboyRetryConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAmboyRetryConfig
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
   APIConfig:
@@ -41,6 +57,27 @@ models:
         value: github.com/evergreen-ci/evergreen.ArchDarwinArm64
       WINDOWS_64_BIT:
         value: github.com/evergreen-ci/evergreen.ArchWindowsAmd64
+  AuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
+  AuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
+  PreferredAuthType:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      OKTA:
+        value: github.com/evergreen-ci/evergreen/rest/model.OktaPreferredType
+      NAIVE:
+        value: github.com/evergreen-ci/evergreen/rest/model.NaivePreferredType
+      GITHUB:
+        value: github.com/evergreen-ci/evergreen/rest/model.GithubPreferredType
+      MULTI:
+        value: github.com/evergreen-ci/evergreen/rest/model.MultiPreferredType
+      KANOPY:
+        value: github.com/evergreen-ci/evergreen/rest/model.KanopyPreferredType
+  AuthUser:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
+  AuthUserInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
   AWSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   AWSPodConfig:
@@ -99,6 +136,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolsConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
+  ContainerResources:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
+  ContainerResourcesInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
   CopyDistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.CopyDistroOpts
   CopyProjectInput:
@@ -172,12 +213,18 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
   GithubAppAuthInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
+  GitHubAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig
+  GitHubAuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GitHubDynamicTokenPermissionGroupInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
   GitHubDynamicTokenPermissionGroup:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
+  GithubPatch:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubPatch
   GithubProjectConflicts:
     model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   GithubPRSubscriber:
@@ -314,6 +361,18 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
   JiraTicket:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
+  KanopyAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
+  KanopyAuthConfigInput:  
+    model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
+  LogBuffering:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
+  LogBufferingInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
+  LoggerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
+  LoggerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILoggerConfig
   LogkeeperBuild:
     model: github.com/evergreen-ci/plank.Build
   LogkeeperTest:
@@ -322,10 +381,22 @@ models:
     model: github.com/evergreen-ci/evergreen/apimodels.LogMessage
   MergeQueue:
     model: github.com/evergreen-ci/evergreen/model.MergeQueue
+  MetadataLink:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
+  MetadataLinkInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   Module:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModule
   ModuleCodeChange:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
+  MultiAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig 
+  MultiAuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
+  NaiveAuthConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig 
+  NaiveAuthConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig 
   Note:
     model: github.com/evergreen-ci/evergreen/rest/model.APINote
   Notifications:
@@ -336,6 +407,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotifyConfig
   NotifyConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotifyConfig
+  OktaConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOktaConfig
+  OktaConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOktaConfig
   OomTrackerInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
   OSInfo:
@@ -417,6 +492,27 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   PreconditionScriptInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
+  PriorityLevel:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      EMERGENCY: 
+        value: github.com/evergreen-ci/evergreen.PriorityLevelEmergency
+      ALERT:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelAlert
+      CRITICAL:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelCritical
+      ERROR:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelError
+      WARNING:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelWarning
+      NOTICE:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelNotice
+      INFO:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelInfo
+      DEBUG:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelDebug
+      TRACE:
+        value: github.com/evergreen-ci/evergreen.PriorityLevelTrace
   Project:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
     fields:
@@ -621,16 +717,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
-  MetadataLink:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
-  MetadataLinkInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIMetadataLink
   TaskLimitsConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
   TaskLimitsConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
-  TaskLogLinks:
-    model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskLogs:
     fields:
       eventLogs:
@@ -643,6 +733,8 @@ models:
         resolver: true
       allLogs:
         resolver: true
+  TaskLogLinks:
+    model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
   TaskSpecifier:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TaskSpecifierInput:
@@ -651,20 +743,20 @@ models:
     model: github.com/evergreen-ci/evergreen/model/task.TaskStats
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
-  TicketFields:
-    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
-  ContainerResources:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
-  ContainerResourcesInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
+  TicketFields:
+    model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
   Toolchain:
     model: github.com/evergreen-ci/evergreen/rest/model.APIToolchain
   ToolchainOpts:
     model: github.com/evergreen-ci/evergreen/thirdparty.ToolchainFilterOptions
+  TriggerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerConfig
+  TriggerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITriggerConfig
   TriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   TriggerAliasInput:

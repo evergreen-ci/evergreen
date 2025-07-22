@@ -1,8 +1,8 @@
 # 2023-08-23 Split Callback Timeout
 
-* status: accepted
-* date: 2023-08-23
-* authors: Kim Tao
+- status: accepted
+- date: 2023-08-23
+- authors: Kim Tao
 
 ## Context and Problem Statement
 
@@ -10,10 +10,10 @@ The callback timeout was a global configurable timeout that applied to many bloc
 and teardown group) in the absence of another more specific timeout. Because the setting applied to so many blocks, this
 caused a number of issues:
 
-* The default callback timeout is too short for the post block, because it interacts poorly with the fact that by
+- The default callback timeout is too short for the post block, because it interacts poorly with the fact that by
   default, failing commands in post do not fail the task. Therefore, tasks can invisibly time out in post without
   affecting the task status, meaning they could fail to do some cleanup and nobody would notice.
-* Increasing the callback timeout is bad for teardown group - Evergreen discourages people from increasing callback
+- Increasing the callback timeout is bad for teardown group - Evergreen discourages people from increasing callback
   timeout because it applies to the teardown group. This is due to a design issue where the teardown group only runs
   once the agent has already been assigned the next task to run. The consequence is that giving the teardown group more
   time to run holds up the next task it's supposed to run.

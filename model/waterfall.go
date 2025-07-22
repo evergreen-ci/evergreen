@@ -18,7 +18,6 @@ import (
 
 const (
 	buildsKey                    = "builds"
-	DefaultWaterfallQueryCount   = 20
 	DefaultWaterfallVersionLimit = 5
 	MaxWaterfallVersionLimit     = 300
 )

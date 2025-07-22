@@ -95,9 +95,6 @@ func ExportECSPod(p *pod.Pod, c cocoa.ECSClient, v cocoa.Vault) (cocoa.ECSPod, e
 	}
 
 	res := exportECSPodResources(p.Resources)
-	if err != nil {
-		return nil, errors.Wrap(err, "exporting pod resources")
-	}
 
 	opts := ecs.NewBasicPodOptions().
 		SetClient(c).

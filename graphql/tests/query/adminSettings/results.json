@@ -30,6 +30,68 @@
       }
     },
     {
+      "query_file": "auth.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "authConfig": {
+              "okta": {
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "issuer": "issuer",
+                "scopes": ["option1", "option2"],
+                "userGroup": "user_group",
+                "expireAfterMinutes": 0
+              },
+              "naive": {
+                "users": [
+                  {
+                    "username": "admin",
+                    "displayName": "Evergreen Admin",
+                    "password": "password",
+                    "email": ""
+                  },
+                  {
+                    "username": "regular",
+                    "displayName": "Regular User",
+                    "password": "password",
+                    "email": ""
+                  },
+                  {
+                    "username": "privileged",
+                    "displayName": "Privileged User",
+                    "password": "password",
+                    "email": ""
+                  }
+                ]
+              },
+              "github": {
+                "appId": 1234,
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "defaultOwner": "default_owner",
+                "defaultRepo": "default_repo",
+                "organization": "organization",
+                "users": []
+              },
+              "multi": {
+                "readWrite": ["admin", "privileged"],
+                "readOnly": ["admin", "privileged", "regular"]
+              },
+              "kanopy": {
+                "headerName": "",
+                "issuer": "https://kanopy.com",
+                "keysetURL": "https://kanopy.com/keyset"
+              },
+              "preferredType": "NAIVE",
+              "backgroundReauthMinutes": 0,
+              "allowServiceUsers": false
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "runners.graphql",
       "result": {
         "data": {
@@ -131,6 +193,75 @@
               }
             },
             "disabledGQLQueries": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "background_processing.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "amboy": {
+              "name": "amboy-config",
+              "singleName": "amboy-single",
+              "poolSizeLocal": 10,
+              "poolSizeRemote": 10,
+              "localStorage": 100,
+              "groupDefaultWorkers": 1,
+              "groupBackgroundCreateFrequencyMinutes": 10,
+              "groupPruneFrequencyMinutes": 10,
+              "groupTTLMinutes": 100,
+              "lockTimeoutMinutes": 10,
+              "sampleSize": 100,
+              "retry": {
+                "numWorkers": 10,
+                "maxCapacity": -1,
+                "maxRetryAttempts": 10,
+                "maxRetryTimeSeconds": 30,
+                "retryBackoffSeconds": 30,
+                "staleRetryingMonitorIntervalSeconds": 30
+              },
+              "namedQueues": [
+                {
+                  "name": "amboy.queue.1",
+                  "regexp": "",
+                  "numWorkers": 2,
+                  "sampleSize": 10,
+                  "lockTimeoutSeconds": 0
+                },
+                {
+                  "name": "amboy.queue.2",
+                  "regexp": "",
+                  "numWorkers": 2,
+                  "sampleSize": 10,
+                  "lockTimeoutSeconds": 30
+                }
+              ]
+            },
+            "amboyDB": {
+              "database": "amboy",
+              "url": "amboy-db-connection-url"
+            },
+            "loggerConfig": {
+              "buffer": {
+                "useAsync": true,
+                "durationSeconds": 10,
+                "count": 20,
+                "incomingBufferFactor": 50
+              },
+              "defaultLevel": "INFO",
+              "thresholdLevel": "DEBUG",
+              "logkeeperURL": "logkeeper-url",
+              "redactKeys": ["secret", "password"]
+            },
+            "notify": {
+              "bufferIntervalSeconds": 30,
+              "bufferTargetPerInterval": 30
+            },
+            "triggers": {
+              "generateTaskDistro": "archlinux-test"
+            }
           }
         }
       }

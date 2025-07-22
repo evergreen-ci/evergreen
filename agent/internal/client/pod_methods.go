@@ -38,7 +38,7 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 
 // GetNextTask returns information about the next task to run, or other
 // miscellaneous actions to take in between tasks.
-func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
+func (c *podCommunicator) GetNextTask(ctx context.Context, _ *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("pods/%s/agent/next_task", c.podID),
