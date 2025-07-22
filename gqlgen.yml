@@ -610,7 +610,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
   ResourceLimitsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
-  RestartTasksOptions:
+  RestartAdminTasksOptions:
     model: github.com/evergreen-ci/evergreen/model.RestartOptions
   RoundingRule:
     model: github.com/99designs/gqlgen/graphql.String

@@ -7,7 +7,7 @@ type Query {
   # config
   adminEvents(opts: AdminEventsInput!): AdminEventsPayload! @requireAdmin
   adminSettings: AdminSettings @requireAdmin
-  adminTasksToRestart(opts: RestartTasksOptions!): AdminTasksToRestartPayload! @requireAdmin
+  adminTasksToRestart(opts: RestartAdminTasksOptions!): AdminTasksToRestartPayload! @requireAdmin
   awsRegions: [String!]
   clientConfig: ClientConfig
   instanceTypes: [String!]!

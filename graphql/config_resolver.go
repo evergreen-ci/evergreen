@@ -53,7 +53,7 @@ func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *restM
 }
 
 // IncludeSystemFailed is the resolver for the includeSystemFailed field.
-func (r *restartTasksOptionsResolver) IncludeSystemFailed(ctx context.Context, obj *model.RestartOptions, data bool) error {
+func (r *restartAdminTasksOptionsResolver) IncludeSystemFailed(ctx context.Context, obj *model.RestartOptions, data bool) error {
 	if obj == nil {
 		return InternalServerError.Send(ctx, "restart options object undefined")
 	}
@@ -75,13 +75,13 @@ func (r *Resolver) AdminSettingsInput() AdminSettingsInputResolver {
 	return &adminSettingsInputResolver{r}
 }
 
-// RestartTasksOptions returns RestartTasksOptionsResolver implementation.
-func (r *Resolver) RestartTasksOptions() RestartTasksOptionsResolver {
-	return &restartTasksOptionsResolver{r}
+// RestartAdminTasksOptions returns RestartAdminTasksOptionsResolver implementation.
+func (r *Resolver) RestartAdminTasksOptions() RestartAdminTasksOptionsResolver {
+	return &restartAdminTasksOptionsResolver{r}
 }
 
 type adminSettingsResolver struct{ *Resolver }
 type containerPoolResolver struct{ *Resolver }
 type spruceConfigResolver struct{ *Resolver }
 type adminSettingsInputResolver struct{ *Resolver }
-type restartTasksOptionsResolver struct{ *Resolver }
+type restartAdminTasksOptionsResolver struct{ *Resolver }

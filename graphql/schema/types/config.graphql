@@ -1,6 +1,6 @@
 ###### RESTART TASKS ######
 
-input RestartTasksOptions {
+input RestartAdminTasksOptions {
   startTime: Time!
   endTime: Time!
   includeTestFailed: Boolean!

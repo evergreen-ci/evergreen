@@ -37,7 +37,7 @@ type Mutation {
 
   # config
   saveAdminSettings(adminSettings: AdminSettingsInput!): AdminSettings! @requireAdmin
-  restartAdminTasks(opts: RestartTasksOptions!): RestartAdminTasksPayload! @requireAdmin
+  restartAdminTasks(opts: RestartAdminTasksOptions!): RestartAdminTasksPayload! @requireAdmin
 
   # distros
   deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload! # Has directive on DeleteDistroInput.

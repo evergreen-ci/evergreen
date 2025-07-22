@@ -84,7 +84,7 @@ type ResolverRoot interface {
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
-	RestartTasksOptions() RestartTasksOptionsResolver
+	RestartAdminTasksOptions() RestartAdminTasksOptionsResolver
 	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
@@ -2424,7 +2424,7 @@ type ProjectSettingsInputResolver interface {
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
 }
-type RestartTasksOptionsResolver interface {
+type RestartAdminTasksOptionsResolver interface {
 	IncludeSystemFailed(ctx context.Context, obj *model1.RestartOptions, data bool) error
 }
 type SleepScheduleInputResolver interface {
@@ -12305,7 +12305,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputRepotrackerConfigInput,
 		ec.unmarshalInputResourceLimitsInput,
-		ec.unmarshalInputRestartTasksOptions,
+		ec.unmarshalInputRestartAdminTasksOptions,
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
@@ -14361,7 +14361,7 @@ func (ec *executionContext) field_Mutation_restartAdminTasks_argsOpts(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
 	if tmp, ok := rawArgs["opts"]; ok {
-		return ec.unmarshalNRestartTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx, tmp)
+		return ec.unmarshalNRestartAdminTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx, tmp)
 	}
 
 	var zeroVal model1.RestartOptions
@@ -16155,7 +16155,7 @@ func (ec *executionContext) field_Query_adminTasksToRestart_argsOpts(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
 	if tmp, ok := rawArgs["opts"]; ok {
-		return ec.unmarshalNRestartTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx, tmp)
+		return ec.unmarshalNRestartAdminTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx, tmp)
 	}
 
 	var zeroVal model1.RestartOptions
@@ -94327,7 +94327,7 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputRestartTasksOptions(ctx context.Context, obj any) (model1.RestartOptions, error) {
+func (ec *executionContext) unmarshalInputRestartAdminTasksOptions(ctx context.Context, obj any) (model1.RestartOptions, error) {
 	var it model1.RestartOptions
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
@@ -94368,7 +94368,7 @@ func (ec *executionContext) unmarshalInputRestartTasksOptions(ctx context.Contex
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.RestartTasksOptions().IncludeSystemFailed(ctx, &it, data); err != nil {
+			if err = ec.resolvers.RestartAdminTasksOptions().IncludeSystemFailed(ctx, &it, data); err != nil {
 				return it, err
 			}
 		case "includeSetupFailed":
@@ -118926,6 +118926,11 @@ func (ec *executionContext) unmarshalNResourceLimitsInput2githubᚗcomᚋevergre
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNRestartAdminTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx context.Context, v any) (model1.RestartOptions, error) {
+	res, err := ec.unmarshalInputRestartAdminTasksOptions(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNRestartAdminTasksPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRestartAdminTasksPayload(ctx context.Context, sel ast.SelectionSet, v RestartAdminTasksPayload) graphql.Marshaler {
 	return ec._RestartAdminTasksPayload(ctx, sel, &v)
 }
@@ -118938,11 +118943,6 @@ func (ec *executionContext) marshalNRestartAdminTasksPayload2ᚖgithubᚗcomᚋe
 		return graphql.Null
 	}
 	return ec._RestartAdminTasksPayload(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNRestartTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx context.Context, v any) (model1.RestartOptions, error) {
-	res, err := ec.unmarshalInputRestartTasksOptions(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNRoundingRule2ᚖstring(ctx context.Context, v any) (*string, error) {

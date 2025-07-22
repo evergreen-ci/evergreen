@@ -180,8 +180,7 @@ func (r *mutationResolver) RestartAdminTasks(ctx context.Context, opts model.Res
 
 	// Actually restart the tasks by setting DryRun = false.
 	opts.DryRun = false
-	_, err = data.RestartFailedTasks(ctx, env.RemoteQueue(), opts)
-	if err != nil {
+	if _, err = data.RestartFailedTasks(ctx, env.RemoteQueue(), opts); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("restarting tasks: %s", err.Error()))
 	}
 	return &RestartAdminTasksPayload{
