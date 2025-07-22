@@ -722,7 +722,7 @@ command: shell.exec
     script: |
       if [ ${has_pyyaml_installed|false} = false ]; then
         echo "Using python version ${python_version!|3.8}"
-      ...
+        ...
 ```
 
 Likewise, the default argument of an expansion can be an expansion
