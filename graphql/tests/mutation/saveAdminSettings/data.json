@@ -30,45 +30,24 @@
     },
     {
       "_id": "auth",
-      "preferred_type": "naive",
+      "preferred_type": "",
       "naive": {
-        "users": [
-          {
-            "username": "admin",
-            "display_name": "Evergreen Admin",
-            "password": "password",
-            "email": ""
-          },
-          {
-            "username": "regular",
-            "display_name": "Regular User",
-            "password": "password",
-            "email": ""
-          },
-          {
-            "username": "privileged",
-            "display_name": "Privileged User",
-            "password": "password",
-            "email": ""
-          }
-        ]
+        "users": []
       },
       "github": {
-        "app_id": {
-          "$numberLong": "1234"
-        },
+        "app_id": 0,
         "client_id": "",
         "client_secret": "",
         "default_owner": "",
         "default_repo": "",
         "organization": "",
-        "users": null
+        "users": []
       },
-      "allow_service_users": false,
-      "background_reauth_minutes": 0,
       "kanopy": null,
       "multi": null,
-      "okta": null
+      "okta": null,
+      "allow_service_users": false,
+      "background_reauth_minutes": 0
     },
     {
       "_id": "global",

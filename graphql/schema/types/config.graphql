@@ -285,6 +285,7 @@ type TriggerConfig {
 input AdminSettingsInput {
   amboy: AmboyConfigInput
   amboyDB: AmboyDBConfigInput @redactSecrets
+  authConfig: AuthConfigInput
   banner: String
   bannerTheme: BannerTheme
   cedar: CedarConfigInput
@@ -311,6 +312,7 @@ input AdminSettingsInput {
 type AdminSettings {
   amboy: AmboyConfig
   amboyDB: AmboyDBConfig
+  authConfig: AuthConfig
   banner: String
   bannerTheme: BannerTheme
   cedar: CedarConfig
