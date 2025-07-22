@@ -166,17 +166,19 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 
 // RestartAdminTasks is the resolver for the restartAdminTasks field.
 func (r *mutationResolver) RestartAdminTasks(ctx context.Context, opts model.RestartOptions) (*RestartAdminTasksPayload, error) {
+	env := evergreen.GetEnvironment()
 	usr := mustHaveUser(ctx)
 	opts.User = usr.Username()
-	opts.DryRun = true
 
-	env := evergreen.GetEnvironment()
+	// Start with DryRun = true to get the list of tasks that will be restarted.
+	opts.DryRun = true
 	results, err := data.RestartFailedTasks(ctx, env.RemoteQueue(), opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching restart tasks: %s", err.Error()))
 	}
 	numRestartedTasks := len(results.ItemsRestarted)
 
+	// Actually restart the tasks by setting DryRun = false.
 	opts.DryRun = false
 	_, err = data.RestartFailedTasks(ctx, env.RemoteQueue(), opts)
 	if err != nil {

@@ -93,11 +93,12 @@ func (r *queryResolver) AdminSettings(ctx context.Context) (*restModel.APIAdminS
 
 // AdminTasksToRestart is the resolver for the adminTasksToRestart field.
 func (r *queryResolver) AdminTasksToRestart(ctx context.Context, opts model.RestartOptions) (*AdminTasksToRestartPayload, error) {
+	env := evergreen.GetEnvironment()
 	usr := mustHaveUser(ctx)
 	opts.User = usr.Username()
-	opts.DryRun = true // Set DryRun to true so that we fetch a list of tasks to restart.
 
-	env := evergreen.GetEnvironment()
+	// Set DryRun = true so that we fetch a list of tasks to restart.
+	opts.DryRun = true
 	results, err := data.RestartFailedTasks(ctx, env.RemoteQueue(), opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching restart tasks: %s", err.Error()))

@@ -490,7 +490,7 @@ type UIConfig {
   fileStreamingContentTypes: [String!]!
   loginDomain: String
   userVoice: String
-  csrfKey: String
+  csrfKey: String @requireAdmin
   cacheTemplates: Boolean
   stagingEnvironment: String
 }
