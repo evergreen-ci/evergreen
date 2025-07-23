@@ -341,7 +341,6 @@ func (settings *Settings) Validate() error {
 		valPointer := reflect.Indirect(reflect.New(propVal.Type()))
 		valPointer.Set(propVal)
 
-		// convert the pointer to that struct to an empty interface
 		propInterface := valPointer.Addr().Interface()
 
 		// type assert to the ConfigSection interface
