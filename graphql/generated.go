@@ -1152,7 +1152,8 @@ type ComplexityRoot struct {
 		GitTagAuthorizedUsers              func(childComplexity int) int
 		GitTagVersionsEnabled              func(childComplexity int) int
 		GithubChecksEnabled                func(childComplexity int) int
-		GithubTriggerAliases               func(childComplexity int) int
+		GithubMQTriggerAliases             func(childComplexity int) int
+		GithubPRTriggerAliases             func(childComplexity int) int
 		Hidden                             func(childComplexity int) int
 		Id                                 func(childComplexity int) int
 		Identifier                         func(childComplexity int) int
@@ -1340,7 +1341,8 @@ type ComplexityRoot struct {
 		GitTagAuthorizedUsers              func(childComplexity int) int
 		GitTagVersionsEnabled              func(childComplexity int) int
 		GithubChecksEnabled                func(childComplexity int) int
-		GithubTriggerAliases               func(childComplexity int) int
+		GithubMQTriggerAliases             func(childComplexity int) int
+		GithubPRTriggerAliases             func(childComplexity int) int
 		Id                                 func(childComplexity int) int
 		ManualPRTestingEnabled             func(childComplexity int) int
 		NotifyOnBuildFailure               func(childComplexity int) int
@@ -7560,12 +7562,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Project.GithubChecksEnabled(childComplexity), true
 
-	case "Project.githubTriggerAliases":
-		if e.complexity.Project.GithubTriggerAliases == nil {
+	case "Project.githubMQTriggerAliases":
+		if e.complexity.Project.GithubMQTriggerAliases == nil {
 			break
 		}
 
-		return e.complexity.Project.GithubTriggerAliases(childComplexity), true
+		return e.complexity.Project.GithubMQTriggerAliases(childComplexity), true
+
+	case "Project.githubPRTriggerAliases":
+		if e.complexity.Project.GithubPRTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.Project.GithubPRTriggerAliases(childComplexity), true
 
 	case "Project.hidden":
 		if e.complexity.Project.Hidden == nil {
@@ -8731,12 +8740,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RepoRef.GithubChecksEnabled(childComplexity), true
 
-	case "RepoRef.githubTriggerAliases":
-		if e.complexity.RepoRef.GithubTriggerAliases == nil {
+	case "RepoRef.githubMQTriggerAliases":
+		if e.complexity.RepoRef.GithubMQTriggerAliases == nil {
 			break
 		}
 
-		return e.complexity.RepoRef.GithubTriggerAliases(childComplexity), true
+		return e.complexity.RepoRef.GithubMQTriggerAliases(childComplexity), true
+
+	case "RepoRef.githubPRTriggerAliases":
+		if e.complexity.RepoRef.GithubPRTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GithubPRTriggerAliases(childComplexity), true
 
 	case "RepoRef.id":
 		if e.complexity.RepoRef.Id == nil {
@@ -31930,8 +31946,10 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -32067,8 +32085,10 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_RepoRef_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_RepoRef_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -41908,8 +41928,10 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -42065,8 +42087,10 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -42222,8 +42246,10 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -42379,8 +42405,10 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -42754,8 +42782,10 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -45350,8 +45380,10 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -45667,8 +45699,10 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -49483,8 +49517,10 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -54210,8 +54246,8 @@ func (ec *executionContext) fieldContext_Project_githubPermissionGroupByRequeste
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_githubTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+func (ec *executionContext) _Project_githubPRTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -54238,7 +54274,48 @@ func (ec *executionContext) _Project_githubTriggerAliases(ctx context.Context, f
 	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Project_githubTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Project_githubPRTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_githubMQTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubMQTriggerAliases, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_githubMQTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Project",
 		Field:      field,
@@ -56783,8 +56860,10 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -57396,8 +57475,10 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -59571,8 +59652,10 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -62577,8 +62660,8 @@ func (ec *executionContext) fieldContext_RepoRef_githubPermissionGroupByRequeste
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
+func (ec *executionContext) _RepoRef_githubPRTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -62605,7 +62688,48 @@ func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, f
 	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RepoRef_githubTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RepoRef_githubPRTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoRef_githubMQTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubMQTriggerAliases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubMQTriggerAliases, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubMQTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoRef",
 		Field:      field,
@@ -64063,8 +64187,10 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_RepoRef_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_RepoRef_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -73543,8 +73669,10 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -84851,8 +84979,10 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
-			case "githubTriggerAliases":
-				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -94995,7 +95125,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -95121,13 +95251,20 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.GitHubPermissionGroupByRequester = data
-		case "githubTriggerAliases":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubTriggerAliases"))
+		case "githubPRTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPRTriggerAliases"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.GithubPRTriggerAliases = data
+		case "githubMQTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubMQTriggerAliases"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GithubMQTriggerAliases = data
 		case "gitTagAuthorizedTeams":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitTagAuthorizedTeams"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -95675,7 +95812,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -95780,13 +95917,20 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.GitHubPermissionGroupByRequester = data
-		case "githubTriggerAliases":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubTriggerAliases"))
+		case "githubPRTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPRTriggerAliases"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.GithubPRTriggerAliases = data
+		case "githubMQTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubMQTriggerAliases"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GithubMQTriggerAliases = data
 		case "gitTagAuthorizedTeams":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitTagAuthorizedTeams"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -107689,8 +107833,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "githubPermissionGroupByRequester":
 			out.Values[i] = ec._Project_githubPermissionGroupByRequester(ctx, field, obj)
-		case "githubTriggerAliases":
-			out.Values[i] = ec._Project_githubTriggerAliases(ctx, field, obj)
+		case "githubPRTriggerAliases":
+			out.Values[i] = ec._Project_githubPRTriggerAliases(ctx, field, obj)
+		case "githubMQTriggerAliases":
+			out.Values[i] = ec._Project_githubMQTriggerAliases(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
 			out.Values[i] = ec._Project_gitTagAuthorizedTeams(ctx, field, obj)
 		case "gitTagAuthorizedUsers":
@@ -109853,8 +109999,10 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "githubPermissionGroupByRequester":
 			out.Values[i] = ec._RepoRef_githubPermissionGroupByRequester(ctx, field, obj)
-		case "githubTriggerAliases":
-			out.Values[i] = ec._RepoRef_githubTriggerAliases(ctx, field, obj)
+		case "githubPRTriggerAliases":
+			out.Values[i] = ec._RepoRef_githubPRTriggerAliases(ctx, field, obj)
+		case "githubMQTriggerAliases":
+			out.Values[i] = ec._RepoRef_githubMQTriggerAliases(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
 			out.Values[i] = ec._RepoRef_gitTagAuthorizedTeams(ctx, field, obj)
 		case "gitTagAuthorizedUsers":
