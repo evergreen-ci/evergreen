@@ -122,15 +122,8 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 		}
 	case reflect.Slice, reflect.Array:
 		// Check each element in slice/array.
-		elemType := typ.Elem()
 		for i := 0; i < value.Len(); i++ {
-			storeAdminSecrets(ctx, paramMgr, value.Index(i), elemType, path, catcher)
-		}
-	case reflect.Map:
-		// Check each value in the map.
-		valueType := typ.Elem()
-		for _, key := range value.MapKeys() {
-			storeAdminSecrets(ctx, paramMgr, value.MapIndex(key), valueType, path, catcher)
+			storeAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
 		}
 	}
 }
