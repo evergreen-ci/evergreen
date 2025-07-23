@@ -1600,39 +1600,56 @@ func updateVersionStatus(ctx context.Context, v *Version) (versionStatus string,
 	return versionStatus, statusChanged, nil
 }
 
-// UpdatePatchStatus updates the status of a patch.
-func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error {
+type patchStatusUpdate struct {
+	patchStatusChanged                  bool
+	isPatchFamilyDone                   bool
+	parentPatch                         *patch.Patch
+	patchFamilyFinishedCollectiveStatus string
+}
+
+// updatePatchStatus updates the status of a patch. It returns information about
+// the patch status. If the patch status changed, it also includes patch family
+// information.
+func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (patchStatusUpdate, error) {
+	var psu patchStatusUpdate
 	if status == p.Status {
-		return nil
+		return psu, nil
 	}
 
-	event.LogPatchStateChangeEvent(ctx, p.Version, status)
-
-	if evergreen.IsFinishedVersionStatus(status) {
-		if err := p.MarkFinished(ctx, status, time.Now()); err != nil {
-			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), status)
-		}
-	} else if err := p.UpdateStatus(ctx, status); err != nil {
-		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
-	}
-
-	isDone, parentPatch, err := p.GetFamilyInformation(ctx)
+	statusChanged, err := p.UpdateStatus(ctx, status)
 	if err != nil {
-		return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
-	}
-	if isDone {
-		collectiveStatus, err := p.CollectiveStatus(ctx)
-		if err != nil {
-			return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
-		}
-		if parentPatch != nil {
-			event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
-		} else {
-			event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
-		}
+		return psu, errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
 	}
 
-	return nil
+	if statusChanged {
+		psu.patchStatusChanged = true
+
+		event.LogPatchStateChangeEvent(ctx, p.Version, status)
+
+		isDone, parentPatch, err := p.GetFamilyInformation(ctx)
+		if err != nil {
+			return psu, errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
+		}
+
+		psu.parentPatch = parentPatch
+		psu.isPatchFamilyDone = isDone
+
+		if isDone {
+			collectiveStatus, err := p.CollectiveStatus(ctx)
+			if err != nil {
+				return psu, errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+			}
+			if parentPatch != nil {
+				event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
+			} else {
+				event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
+			}
+			psu.patchFamilyFinishedCollectiveStatus = collectiveStatus
+		}
+
+	}
+
+	return psu, nil
 }
 
 // UpdateBuildAndVersionStatusForTask updates the status of the task's build based on all the tasks in the build
@@ -1699,35 +1716,26 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
+		psu, err := updatePatchStatus(ctx, p, newVersionStatus)
+		if err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
-		isDone, parentPatch, err := p.GetFamilyInformation(ctx)
-		if err != nil {
-			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
-		}
-		if isDone {
-			versionStatus, err := p.CollectiveStatus(ctx)
-			if err != nil {
-				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+		if psu.patchStatusChanged && psu.isPatchFamilyDone {
+			rootPatch := p
+			if psu.parentPatch != nil {
+				rootPatch = psu.parentPatch
 			}
-			if parentPatch != nil {
-				event.LogVersionChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
-			} else {
-				event.LogVersionChildrenCompletionEvent(ctx, p.Id.Hex(), versionStatus, p.Author)
-			}
-			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
-				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
-			}
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, p)
+
+			event.LogVersionChildrenCompletionEvent(ctx, rootPatch.Id.Hex(), psu.patchFamilyFinishedCollectiveStatus, rootPatch.Author)
+
+			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, rootPatch)
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 		}
-
 	}
 
 	return nil
@@ -1783,7 +1791,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
+			if _, err = updatePatchStatus(ctx, p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
