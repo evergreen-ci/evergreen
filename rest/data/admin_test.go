@@ -214,10 +214,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	secret, err = paramMgr.Get(ctx, "Settings/JiraConfig/PersonalAccessToken")
 	s.NoError(err)
 	s.Equal(testSettings.Jira.PersonalAccessToken, secret[0].Value)
-	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig/EC2Key/Key")
+	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig[0]/EC2Key/Key")
 	s.NoError(err)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, secret[0].Value)
-	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig/EC2Key/Secret")
+	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig[0]/EC2Key/Secret")
 	s.NoError(err)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Secret, secret[0].Value)
 	secret, err = paramMgr.Get(ctx, "Settings/SlackConfig/Token")
@@ -226,6 +226,18 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	secret, err = paramMgr.Get(ctx, "Settings/Expansions[k2]")
 	s.NoError(err)
 	s.Equal(testSettings.Expansions["k2"], secret[0].Value)
+
+	// Read the settings from parameter manager and spot check secrets.
+	paramSettings, err := evergreen.GetConfig(ctx)
+	s.Require().NoError(err)
+	s.Equal(testSettings.AuthConfig.Okta.ClientID, paramSettings.AuthConfig.Okta.ClientID)
+	s.Equal(testSettings.Buckets.Credentials.Key, paramSettings.Buckets.Credentials.Key)
+	s.Equal(testSettings.Buckets.Credentials.Secret, paramSettings.Buckets.Credentials.Secret)
+	s.Equal(testSettings.Jira.PersonalAccessToken, paramSettings.Jira.PersonalAccessToken)
+	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, paramSettings.Providers.AWS.EC2Keys[0].Key)
+	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Secret, paramSettings.Providers.AWS.EC2Keys[0].Secret)
+	s.Equal(testSettings.Slack.Token, paramSettings.Slack.Token)
+	s.Equal(testSettings.Expansions["k2"], paramSettings.Expansions["k2"])
 
 	// spot check events in the event log
 	events, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1000))

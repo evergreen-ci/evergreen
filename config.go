@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
@@ -260,10 +261,104 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 		propVal.Set(sectionVal)
 	}
 
+	// If the admin parameter store is not disabled, we need to read secrets from it.
+	// If it fails, log the error and ignore changes made from the parameter store.
+	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled {
+		paramConfig := baseConfig
+		paramMgr := GetEnvironment().ParameterManager()
+		settingsValue := reflect.ValueOf(&paramConfig).Elem()
+		settingsType := reflect.TypeOf(paramConfig)
+		adminCatcher := grip.NewBasicCatcher()
+		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
+		if adminCatcher.HasErrors() {
+			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
+		} else {
+			baseConfig = paramConfig
+		}
+	}
+
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return baseConfig, nil
+}
+
+func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
+	if paramMgr == nil {
+		catcher.Add(errors.New("parameter manager is nil"))
+		return
+	}
+	// Handle different kinds of values
+	switch value.Kind() {
+	case reflect.Struct:
+		structName := typ.Name()
+		currentPath := path
+		if structName != "" {
+			if currentPath != "" {
+				currentPath = currentPath + "/" + structName
+			} else {
+				currentPath = structName
+			}
+		}
+
+		// Iterate through all fields in the struct.
+		for i := 0; i < value.NumField(); i++ {
+			field := typ.Field(i)
+			fieldValue := value.Field(i)
+
+			fieldPath := currentPath
+			if fieldPath != "" {
+				fieldPath = fieldPath + "/" + field.Name
+			} else {
+				fieldPath = field.Name
+			}
+
+			// Check if this field has the secret:"true" tag.
+			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
+				// If the field is a string, store in parameter manager and update struct with path.
+				if fieldValue.Kind() == reflect.String {
+					param, err := paramMgr.Get(ctx, fieldPath)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath))
+					} else if !(param == nil || len(param) == 0) {
+						// Update the value with the path from the parameter store if it exists.
+						fieldValue.SetString(param[0].Value)
+					}
+					// if the field is a map[string]string, store each key-value pair individually
+				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
+					// Create a new map to store the paths
+					newMap := reflect.MakeMap(fieldValue.Type())
+					for _, key := range fieldValue.MapKeys() {
+						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
+						param, err := paramMgr.Get(ctx, mapFieldPath)
+						if err != nil {
+							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							continue
+						}
+						if !(param == nil || len(param) == 0) {
+							// Set the map value to the parameter store value
+							newMap.SetMapIndex(key, reflect.ValueOf(param[0].Value))
+						}
+					}
+					// Update the struct field with the new map containing paths
+					fieldValue.Set(newMap)
+				}
+			}
+
+			// Recursively check nested structs, pointers, slices, and maps.
+			readAdminSecrets(ctx, paramMgr, fieldValue, field.Type, currentPath, catcher)
+		}
+	case reflect.Ptr:
+		// Dereference pointer if not nil.
+		if !value.IsNil() {
+			readAdminSecrets(ctx, paramMgr, value.Elem(), typ.Elem(), path, catcher)
+		}
+	case reflect.Slice, reflect.Array:
+		// Check each element in slice/array.
+		for i := 0; i < value.Len(); i++ {
+			readAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+		}
+	}
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
