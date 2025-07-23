@@ -684,7 +684,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	buildsToInsert := build.Builds{}
 	tasksToInsert := task.Tasks{}
-	buildsToSendSuccessMessageFor := []string{}
 	for _, vt := range p.VariantsTasks {
 		if _, ok := variantsProcessed[vt.Variant]; ok {
 			continue
@@ -708,14 +707,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			DisplayNames:     displayNames,
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
-		}
-		// When a GitHub PR patch is finalized with the PR alias, all of the
-		// tasks selected by the alias must finish in order for the
-		// build/version to be finished, excluding any variants that are
-		// ignored due to files changed.
-		if requester == evergreen.GithubPRRequester {
-			buildCreationArgs.ActivatedTasksAreEssentialToSucceed = true
-			buildCreationArgs.ChangedFiles = p.FilesChanged()
+			// When a GitHub PR patch is finalized with the PR alias, all of the
+			// tasks selected by the alias must finish in order for the
+			// build/version to be finished.
+			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
 		}
 		var build *build.Build
 		var tasks task.Tasks
@@ -730,16 +725,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 				"version": patchVersion.Id,
 			})
 			continue
-		}
-		if !build.Activated {
-			grip.Info(message.Fields{
-				"op":      "skipping deactivated build for patch version",
-				"variant": vt.Variant,
-				"version": patchVersion.Id,
-			})
-			buildsToSendSuccessMessageFor = append(buildsToSendSuccessMessageFor, vt.Variant)
-			continue
-
 		}
 
 		buildsToInsert = append(buildsToInsert, build)

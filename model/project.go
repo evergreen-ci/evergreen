@@ -2277,7 +2277,7 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 // If Paths is empty or no changed files are provided, it returns true (no path filtering).
 // If Paths is provided, it returns true only if at least one file matches.
 func (bv BuildVariant) ChangedFilesMatchPaths(changedFiles []string) bool {
-	// Run all tasks if there are no paths specified or no changedFiles to check.
+	// Schedule all tasks if there are no paths specified or no changedFiles to check.
 	if len(bv.Paths) == 0 || len(changedFiles) == 0 {
 		return true
 	}

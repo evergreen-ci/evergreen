@@ -926,6 +926,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
+		// Activate the build if the version is activated and the changed files match the variant's paths.
+		activateBuild := utility.FromBoolPtr(v.Activated) && buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
 		creationInfo := model.TaskCreationInfo{
 			Project:             projectInfo.Project,
 			ProjectRef:          projectInfo.Ref,
@@ -933,14 +935,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			TaskIDs:             taskIds,
 			TaskNames:           taskNames,
 			BuildVariantName:    buildvariant.Name,
-			ActivateBuild:       utility.FromBoolPtr(v.Activated),
+			ActivateBuild:       activateBuild,
 			SourceRev:           sourceRev,
 			DefinitionID:        metadata.TriggerDefinitionID,
 			Aliases:             aliases,
 			DistroAliases:       distroAliases,
 			TaskCreateTime:      v.CreateTime,
 			GithubChecksAliases: aliasesMatchingVariant,
-			ChangedFiles:        metadata.ChangedFiles,
 		}
 
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)
@@ -998,6 +999,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"project_identifier": projectInfo.Ref.Identifier,
 			"version":            v.Id,
 			"time":               activateVariantAt,
+			"matched_files":      buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles),
 			"runner":             RunnerName,
 		})
 		v.BuildIds = append(v.BuildIds, b.Id)
