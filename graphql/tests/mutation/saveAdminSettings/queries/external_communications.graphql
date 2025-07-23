@@ -1,0 +1,84 @@
+mutation {
+  saveAdminSettings(
+    adminSettings: {
+      jira: {
+        email: "jira@example.com"
+        host: "https://jira.exampleChanged.com"
+        personalAccessToken: "secretToken"
+      }
+      slack: {
+        options: {
+          channel: "#general"
+          hostname: "slack.example.com"
+          name: "EvergreenBot"
+          username: "evergreen"
+          basicMetadata: true
+          fields: true
+          allFields: true
+          fieldsSet: { field1: true, field2: false }
+        }
+        token: "slackToken"
+        level: EMERGENCY
+        name: "Slack Notifications"
+      }
+      splunk: {
+        splunkConnectionInfo: {
+          serverUrl: "https://splunk.example.com"
+          token: "SplunkToken"
+          channel: "#splunk-channel"
+        }
+      }
+      runtimeEnvironments: {
+        baseUrl: "https://runtime.example.com"
+        apiKey: "newApiKey"
+      }
+      testSelection: { url: "https://test-selection.example.com" }
+      fws: { url: "https://fws.example.com" }
+      cedar: {
+        dbUrl: "mongodb://localhost:27017",
+        dbName: "cedar"
+      }
+    }
+  ) {
+    jira {
+      email
+      host
+    }
+    slack {
+      options {
+        channel
+        hostname
+        name
+        username
+        basicMetadata
+        fields
+        allFields
+        fieldsSet
+      }
+      token
+      level
+      name
+    }
+    splunk {
+      splunkConnectionInfo {
+        serverUrl
+        token
+        channel
+      }
+    }
+    runtimeEnvironments {
+      baseUrl
+      apiKey
+    }
+    testSelection {
+      url
+    }
+    fws {
+      url
+    }
+    cedar {
+      dbName
+      dbUrl
+    }
+  }
+}

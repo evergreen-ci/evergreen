@@ -62,7 +62,7 @@
       "configdir": "../config",
       "domain_name": "localhost",
       "banner": "This is an important notification",
-      "banner_theme": "announcement",
+      "banner_theme": "IMPORTANT",
       "github_orgs": ["evergreen-ci"],
       "disabled_gql_queries": null
     },
@@ -128,6 +128,48 @@
       "max_exec_timeout_secs": 10000,
       "max_task_execution": 5,
       "max_daily_automatic_restarts": 0
+    },
+    {
+      "_id": "jira",
+      "host": "jira.example.com",
+      "default_project": "TEST-PROJECT",
+      "personal_access_token": "token",
+      "email": "user@example.com"
+    },
+    {
+      "_id": "slack",
+      "level": "emergency",
+      "name": "test-app",
+      "options": {
+        "channel": "#cabc123",
+        "hostname": "evergreen.example.com",
+        "name": "testName",
+        "username": "@testUser",
+        "icon_url": "https://example.com/icon.png",
+        "add_basic_metadata": true,
+        "use_fields": true,
+        "all_fields": true,
+        "fields": {
+          "field1": true,
+          "field2": false
+        }
+      },
+      "token": "123456"
+    },
+    {
+      "_id": "splunk",
+      "channel": "42",
+      "token": "testToken",
+      "url": "testServer"
+    },
+    {
+      "_id": "runtime_environments",
+      "api_key": "runtimeAPIKey",
+      "base_url": "https://example.com"
+    },
+    {
+      "_id": "test_selection",
+      "url": "https://example.com"
     },
     {
       "_id": "triggers",
@@ -224,6 +266,15 @@
       "help_url": "",
       "login_domain": "",
       "staging_environment": ""
+    },
+    {
+      "_id": "fws",
+      "url": "https://fws.example.com"
+    },
+    {
+      "_id": "cedar",
+      "db_name": "cedar",
+      "db_url": "mongodb://localhost:27017/cedar"
     }
   ]
 }

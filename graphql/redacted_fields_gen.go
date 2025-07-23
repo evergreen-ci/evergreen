@@ -3,10 +3,12 @@ package graphql
 
 var redactedFields = map[string]bool{
 	"amboyDB": true,
+	"apiKey": true,
 	"appId": true,
 	"clientId": true,
 	"clientSecret": true,
 	"csrfKey": true,
+	"dbUrl": true,
 	"defaultOwner": true,
 	"defaultRepo": true,
 	"github": true,
@@ -19,10 +21,12 @@ var redactedFields = map[string]bool{
 	"naive": true,
 	"okta": true,
 	"organization": true,
+	"personalAccessToken": true,
 	"preferredType": true,
 	"publicKey": true,
 	"secret": true,
 	"senderAddress": true,
 	"servicePassword": true,
+	"token": true,
 	"vars": true,
 }

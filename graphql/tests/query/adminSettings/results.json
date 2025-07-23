@@ -24,7 +24,60 @@
         "data": {
           "adminSettings": {
             "banner": "This is an important notification",
-            "bannerTheme": "ANNOUNCEMENT"
+            "bannerTheme": "IMPORTANT"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "external_communications.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "jira": {
+              "email": "user@example.com",
+              "host": "jira.example.com",
+              "personalAccessToken": "token"
+            },
+            "slack": {
+              "options": {
+                "channel": "#cabc123",
+                "hostname": "evergreen.example.com",
+                "name": "testName",
+                "username": "@testUser",
+                "basicMetadata": true,
+                "fields": true,
+                "allFields": true,
+                "fieldsSet": {
+                  "field1": true,
+                  "field2": false
+                }
+              },
+              "token": "123456",
+              "level": "EMERGENCY",
+              "name": "test-app"
+            },
+            "splunk": {
+              "splunkConnectionInfo": { 
+                "serverUrl": "testServer",
+                "token": "testToken",
+                "channel": "42"
+              }
+            },
+            "runtimeEnvironments": {
+              "baseUrl": "https://example.com",
+              "apiKey": "runtimeAPIKey"
+            },
+            "testSelection": {
+              "url": "https://example.com"
+            },
+            "fws": {
+              "url": "https://fws.example.com"
+            },
+            "cedar": {
+              "dbName": "cedar",
+              "dbUrl": "mongodb://localhost:27017/cedar"
+            }
           }
         }
       }
