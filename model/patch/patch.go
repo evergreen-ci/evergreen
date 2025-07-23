@@ -447,7 +447,8 @@ func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (modified bo
 		StatusKey: newStatus,
 	}
 	finishTime := time.Now()
-	if evergreen.IsFinishedVersionStatus(newStatus) {
+	isFinished := evergreen.IsFinishedVersionStatus(newStatus)
+	if isFinished {
 		setFields[FinishTimeKey] = finishTime
 	}
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
@@ -461,7 +462,7 @@ func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (modified bo
 	}
 
 	p.Status = newStatus
-	if evergreen.IsFinishedVersionStatus(newStatus) {
+	if isFinished {
 		p.FinishTime = finishTime
 	}
 
