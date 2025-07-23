@@ -54224,7 +54224,7 @@ func (ec *executionContext) _Project_githubTriggerAliases(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GithubTriggerAliases, nil
+		return obj.GithubPRTriggerAliases, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -62591,7 +62591,7 @@ func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GithubTriggerAliases, nil
+		return obj.GithubPRTriggerAliases, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -95127,7 +95127,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
-			it.GithubTriggerAliases = data
+			it.GithubPRTriggerAliases = data
 		case "gitTagAuthorizedTeams":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitTagAuthorizedTeams"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -95786,7 +95786,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 			if err != nil {
 				return it, err
 			}
-			it.GithubTriggerAliases = data
+			it.GithubPRTriggerAliases = data
 		case "gitTagAuthorizedTeams":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitTagAuthorizedTeams"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)

@@ -70,10 +70,13 @@ type ProjectRef struct {
 	DeactivatePrevious     *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
 	NotifyOnBuildFailure   *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
 	Triggers               []TriggerDefinition `bson:"triggers" json:"triggers"`
-	// all aliases defined for the project
+	// PatchTriggerAliases contains all aliases defined for the project.
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
-	// all PatchTriggerAliases applied to github patch intents
-	GithubTriggerAliases []string `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	// GithubPRTriggerAliases are aliases attached to GitHub PR patch intents.
+	// The struct tags use the old name for backwards compatibility.
+	GithubPRTriggerAliases []string `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	// GitHubMQTriggerAliases are aliases attached to GitHub MQ patch intents.
+	GithubMQTriggerAliases []string `bson:"github_mq_trigger_aliases" json:"github_mq_trigger_aliases"`
 	// OldestAllowedMergeBase is the commit hash of the oldest merge base on the target branch
 	// that PR patches can be created from.
 	OldestAllowedMergeBase string                    `bson:"oldest_allowed_merge_base" json:"oldest_allowed_merge_base"`
@@ -489,7 +492,8 @@ var (
 	projectRefSpawnHostScriptPathKey                = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
 	projectRefTriggersKey                           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPatchTriggerAliasesKey                = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
-	projectRefGithubTriggerAliasesKey               = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
+	projectRefGithubPRTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubPRTriggerAliases")
+	projectRefGithubMQTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubMQTriggerAliases")
 	projectRefPeriodicBuildsKey                     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefOldestAllowedMergeBaseKey             = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
 	projectRefWorkstationConfigKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
@@ -727,7 +731,8 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
-			GithubTriggerAliases:     projectConfig.GithubTriggerAliases,
+			GithubPRTriggerAliases:   projectConfig.GithubPRTriggerAliases,
+			GithubMQTriggerAliases:   projectConfig.GithubMQTriggerAliases,
 			ContainerSizeDefinitions: projectConfig.ContainerSizeDefinitions,
 		}
 		if projectConfig.WorkstationConfig != nil {
@@ -2293,8 +2298,9 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPatchTriggerAliasesKey:  p.PatchTriggerAliases,
-					projectRefGithubTriggerAliasesKey: p.GithubTriggerAliases,
+					projectRefPatchTriggerAliasesKey:    p.PatchTriggerAliases,
+					projectRefGithubPRTriggerAliasesKey: p.GithubPRTriggerAliases,
+					projectRefGithubMQTriggerAliasesKey: p.GithubMQTriggerAliases,
 				},
 			})
 	case ProjectPagePeriodicBuildsSection:
