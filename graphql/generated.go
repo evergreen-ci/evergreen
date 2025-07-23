@@ -164,6 +164,10 @@ type ComplexityRoot struct {
 		Ui                  func(childComplexity int) int
 	}
 
+	AdminTasksToRestartPayload struct {
+		TasksToRestart func(childComplexity int) int
+	}
+
 	AmboyConfig struct {
 		GroupBackgroundCreateFrequencyMinutes func(childComplexity int) int
 		GroupDefaultWorkers                   func(childComplexity int) int
@@ -878,6 +882,7 @@ type ComplexityRoot struct {
 		RemovePublicKey               func(childComplexity int, keyName string) int
 		RemoveVolume                  func(childComplexity int, volumeID string) int
 		ReprovisionToNew              func(childComplexity int, hostIds []string) int
+		RestartAdminTasks             func(childComplexity int, opts model1.RestartOptions) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
@@ -1260,6 +1265,7 @@ type ComplexityRoot struct {
 		AWSRegions               func(childComplexity int) int
 		AdminEvents              func(childComplexity int, opts AdminEventsInput) int
 		AdminSettings            func(childComplexity int) int
+		AdminTasksToRestart      func(childComplexity int, opts model1.RestartOptions) int
 		BbGetCreatedTickets      func(childComplexity int, taskID string) int
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
 		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
@@ -1392,6 +1398,10 @@ type ComplexityRoot struct {
 		NumProcesses    func(childComplexity int) int
 		NumTasks        func(childComplexity int) int
 		VirtualMemoryKB func(childComplexity int) int
+	}
+
+	RestartAdminTasksPayload struct {
+		NumRestartedTasks func(childComplexity int) int
 	}
 
 	RuntimeEnvironmentConfig struct {
@@ -2148,6 +2158,7 @@ type MutationResolver interface {
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	SaveAdminSettings(ctx context.Context, adminSettings model.APIAdminSettings) (*model.APIAdminSettings, error)
+	RestartAdminTasks(ctx context.Context, opts model1.RestartOptions) (*RestartAdminTasksPayload, error)
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts model.CopyDistroOpts) (*NewDistroPayload, error)
 	CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error)
@@ -2265,6 +2276,7 @@ type QueryResolver interface {
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
 	AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error)
 	AdminSettings(ctx context.Context) (*model.APIAdminSettings, error)
+	AdminTasksToRestart(ctx context.Context, opts model1.RestartOptions) (*AdminTasksToRestartPayload, error)
 	AWSRegions(ctx context.Context) ([]string, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	InstanceTypes(ctx context.Context) ([]string, error)
@@ -2787,6 +2799,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Ui(childComplexity), true
+
+	case "AdminTasksToRestartPayload.tasksToRestart":
+		if e.complexity.AdminTasksToRestartPayload.TasksToRestart == nil {
+			break
+		}
+
+		return e.complexity.AdminTasksToRestartPayload.TasksToRestart(childComplexity), true
 
 	case "AmboyConfig.groupBackgroundCreateFrequencyMinutes":
 		if e.complexity.AmboyConfig.GroupBackgroundCreateFrequencyMinutes == nil {
@@ -6074,6 +6093,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ReprovisionToNew(childComplexity, args["hostIds"].([]string)), true
 
+	case "Mutation.restartAdminTasks":
+		if e.complexity.Mutation.RestartAdminTasks == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_restartAdminTasks_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RestartAdminTasks(childComplexity, args["opts"].(model1.RestartOptions)), true
+
 	case "Mutation.restartJasper":
 		if e.complexity.Mutation.RestartJasper == nil {
 			break
@@ -8078,6 +8109,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.AdminSettings(childComplexity), true
 
+	case "Query.adminTasksToRestart":
+		if e.complexity.Query.AdminTasksToRestart == nil {
+			break
+		}
+
+		args, err := ec.field_Query_adminTasksToRestart_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AdminTasksToRestart(childComplexity, args["opts"].(model1.RestartOptions)), true
+
 	case "Query.bbGetCreatedTickets":
 		if e.complexity.Query.BbGetCreatedTickets == nil {
 			break
@@ -8988,6 +9031,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ResourceLimits.VirtualMemoryKB(childComplexity), true
+
+	case "RestartAdminTasksPayload.numRestartedTasks":
+		if e.complexity.RestartAdminTasksPayload.NumRestartedTasks == nil {
+			break
+		}
+
+		return e.complexity.RestartAdminTasksPayload.NumRestartedTasks(childComplexity), true
 
 	case "RuntimeEnvironmentConfig.apiKey":
 		if e.complexity.RuntimeEnvironmentConfig.APIKey == nil {
@@ -12507,6 +12557,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputRepotrackerConfigInput,
 		ec.unmarshalInputResourceLimitsInput,
+		ec.unmarshalInputRestartAdminTasksOptions,
 		ec.unmarshalInputRuntimeEnvironmentConfigInput,
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSaveAdminSettingsInput,
@@ -14548,6 +14599,34 @@ func (ec *executionContext) field_Mutation_reprovisionToNew_argsHostIds(
 	}
 }
 
+func (ec *executionContext) field_Mutation_restartAdminTasks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_restartAdminTasks_argsOpts(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["opts"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_restartAdminTasks_argsOpts(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model1.RestartOptions, error) {
+	if _, ok := rawArgs["opts"]; !ok {
+		var zeroVal model1.RestartOptions
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+	if tmp, ok := rawArgs["opts"]; ok {
+		return ec.unmarshalNRestartAdminTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx, tmp)
+	}
+
+	var zeroVal model1.RestartOptions
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_restartJasper_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -16311,6 +16390,34 @@ func (ec *executionContext) field_Query_adminEvents_argsOpts(
 	}
 
 	var zeroVal AdminEventsInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_adminTasksToRestart_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_adminTasksToRestart_argsOpts(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["opts"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_adminTasksToRestart_argsOpts(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model1.RestartOptions, error) {
+	if _, ok := rawArgs["opts"]; !ok {
+		var zeroVal model1.RestartOptions
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+	if tmp, ok := rawArgs["opts"]; ok {
+		return ec.unmarshalNRestartAdminTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx, tmp)
+	}
+
+	var zeroVal model1.RestartOptions
 	return zeroVal, nil
 }
 
@@ -20700,6 +20807,204 @@ func (ec *executionContext) fieldContext_AdminSettings_triggers(_ context.Contex
 				return ec.fieldContext_TriggerConfig_generateTaskDistro(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TriggerConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminTasksToRestartPayload_tasksToRestart(ctx context.Context, field graphql.CollectedField, obj *AdminTasksToRestartPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminTasksToRestartPayload_tasksToRestart(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TasksToRestart, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APITask)
+	fc.Result = res
+	return ec.marshalNTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToRestart(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminTasksToRestartPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "containerAllocatedTime":
+				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
 	}
 	return fc, nil
@@ -40804,6 +41109,87 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_restartAdminTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_restartAdminTasks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().RestartAdminTasks(rctx, fc.Args["opts"].(model1.RestartOptions))
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *RestartAdminTasksPayload
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*RestartAdminTasksPayload); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/graphql.RestartAdminTasksPayload`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*RestartAdminTasksPayload)
+	fc.Result = res
+	return ec.marshalNRestartAdminTasksPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRestartAdminTasksPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_restartAdminTasks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "numRestartedTasks":
+				return ec.fieldContext_RestartAdminTasksPayload_numRestartedTasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RestartAdminTasksPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_restartAdminTasks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_deleteDistro(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_deleteDistro(ctx, field)
 	if err != nil {
@@ -57860,6 +58246,87 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_adminTasksToRestart(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_adminTasksToRestart(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().AdminTasksToRestart(rctx, fc.Args["opts"].(model1.RestartOptions))
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *AdminTasksToRestartPayload
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*AdminTasksToRestartPayload); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/graphql.AdminTasksToRestartPayload`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*AdminTasksToRestartPayload)
+	fc.Result = res
+	return ec.marshalNAdminTasksToRestartPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminTasksToRestartPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_adminTasksToRestart(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "tasksToRestart":
+				return ec.fieldContext_AdminTasksToRestartPayload_tasksToRestart(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminTasksToRestartPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_adminTasksToRestart_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_awsRegions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_awsRegions(ctx, field)
 	if err != nil {
@@ -64321,6 +64788,50 @@ func (ec *executionContext) _ResourceLimits_virtualMemoryKb(ctx context.Context,
 func (ec *executionContext) fieldContext_ResourceLimits_virtualMemoryKb(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ResourceLimits",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RestartAdminTasksPayload_numRestartedTasks(ctx context.Context, field graphql.CollectedField, obj *RestartAdminTasksPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RestartAdminTasksPayload_numRestartedTasks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumRestartedTasks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RestartAdminTasksPayload_numRestartedTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RestartAdminTasksPayload",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -80678,8 +81189,30 @@ func (ec *executionContext) _UIConfig_csrfKey(ctx context.Context, field graphql
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CsrfKey, nil
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.CsrfKey, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -95668,6 +96201,61 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRestartAdminTasksOptions(ctx context.Context, obj any) (model1.RestartOptions, error) {
+	var it model1.RestartOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"startTime", "endTime", "includeTestFailed", "includeSystemFailed", "includeSetupFailed"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "startTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startTime"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartTime = data
+		case "endTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endTime"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EndTime = data
+		case "includeTestFailed":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeTestFailed"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeTestFailed = data
+		case "includeSystemFailed":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeSystemFailed"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeSysFailed = data
+		case "includeSetupFailed":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeSetupFailed"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeSetupFailed = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx context.Context, obj any) (model.APIRuntimeEnvironmentsConfig, error) {
 	var it model.APIRuntimeEnvironmentsConfig
 	asMap := map[string]any{}
@@ -99020,6 +99608,45 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_loggerConfig(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._AdminSettings_triggers(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var adminTasksToRestartPayloadImplementors = []string{"AdminTasksToRestartPayload"}
+
+func (ec *executionContext) _AdminTasksToRestartPayload(ctx context.Context, sel ast.SelectionSet, obj *AdminTasksToRestartPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminTasksToRestartPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminTasksToRestartPayload")
+		case "tasksToRestart":
+			out.Values[i] = ec._AdminTasksToRestartPayload_tasksToRestart(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -104419,6 +105046,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "restartAdminTasks":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_restartAdminTasks(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "deleteDistro":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteDistro(ctx, field)
@@ -108110,6 +108744,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "adminTasksToRestart":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_adminTasksToRestart(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "awsRegions":
 			field := field
 
@@ -109698,6 +110354,45 @@ func (ec *executionContext) _ResourceLimits(ctx context.Context, sel ast.Selecti
 			}
 		case "virtualMemoryKb":
 			out.Values[i] = ec._ResourceLimits_virtualMemoryKb(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var restartAdminTasksPayloadImplementors = []string{"RestartAdminTasksPayload"}
+
+func (ec *executionContext) _RestartAdminTasksPayload(ctx context.Context, sel ast.SelectionSet, obj *RestartAdminTasksPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, restartAdminTasksPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RestartAdminTasksPayload")
+		case "numRestartedTasks":
+			out.Values[i] = ec._RestartAdminTasksPayload_numRestartedTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -116752,6 +117447,20 @@ func (ec *executionContext) unmarshalNAdminSettingsInput2ᚖgithubᚗcomᚋeverg
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNAdminTasksToRestartPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminTasksToRestartPayload(ctx context.Context, sel ast.SelectionSet, v AdminTasksToRestartPayload) graphql.Marshaler {
+	return ec._AdminTasksToRestartPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAdminTasksToRestartPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAdminTasksToRestartPayload(ctx context.Context, sel ast.SelectionSet, v *AdminTasksToRestartPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminTasksToRestartPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNAmboyNamedQueueConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAmboyNamedQueueConfig(ctx context.Context, sel ast.SelectionSet, v model.APIAmboyNamedQueueConfig) graphql.Marshaler {
 	return ec._AmboyNamedQueueConfig(ctx, sel, &v)
 }
@@ -120714,6 +121423,25 @@ func (ec *executionContext) marshalNResourceLimits2githubᚗcomᚋevergreenᚑci
 func (ec *executionContext) unmarshalNResourceLimitsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIResourceLimits(ctx context.Context, v any) (model.APIResourceLimits, error) {
 	res, err := ec.unmarshalInputResourceLimitsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNRestartAdminTasksOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐRestartOptions(ctx context.Context, v any) (model1.RestartOptions, error) {
+	res, err := ec.unmarshalInputRestartAdminTasksOptions(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRestartAdminTasksPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRestartAdminTasksPayload(ctx context.Context, sel ast.SelectionSet, v RestartAdminTasksPayload) graphql.Marshaler {
+	return ec._RestartAdminTasksPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRestartAdminTasksPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRestartAdminTasksPayload(ctx context.Context, sel ast.SelectionSet, v *RestartAdminTasksPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RestartAdminTasksPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRoundingRule2ᚖstring(ctx context.Context, v any) (*string, error) {
