@@ -715,7 +715,7 @@ Expansions can also take default arguments, in the form of
 
 ```yaml
 command: shell.exec
-   params:
+  params:
      working_dir: src
      script: |
        if [ ${has_pyyaml_installed|false} = false ]; then
@@ -764,11 +764,11 @@ file a ticket or issues. That's a bug.
 Every task has some expansions available by default:
 
 - `${activated_by}` is username of the user who caused the task to run
-- `${author}` is the patch author's username for patch tasks or the
-  git commit author for git tasks
-- `${author_email}` is the email address associated with the patch's Evergreen user.
+- `${author}` is the Evergreen user associated with the patch.
   If the patch is from a pull request and that pull request is not linked to an Evergreen
   user, this will default to the string 'github_pull_request'.
+- `${author_email}` is the email of the Evergreen user associated with the patch
+  for patch tasks or the git commit author for git tasks
 - `${build_id}` is the id of the build the task belongs to
 - `${branch_name}` is the name of the branch tracked by the
   project
