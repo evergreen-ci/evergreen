@@ -85,7 +85,6 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					grip.Infof("Storing secret field '%s' with value '%s'", fieldPath, secretValue)
 					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
 					if err != nil {
 						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
@@ -100,7 +99,6 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapValue := fieldValue.MapIndex(key)
 						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
 						secretValue := mapValue.String()
-						grip.Infof("Storing secret map field '%s' with value '%s'", mapFieldPath, secretValue)
 						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
 						if err != nil {
 							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
