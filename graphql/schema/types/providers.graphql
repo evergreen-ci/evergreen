@@ -1,0 +1,236 @@
+input AWSAccountRoleMappingInput {
+    account: String! @redactSecrets
+    role: String! @redactSecrets
+}
+
+type AWSAccountRoleMapping {
+    account: String! @requireAdmin
+    role: String! @requireAdmin
+}
+
+input AWSConfigInput {
+    ec2Keys: [EC2KeyInput]
+    subnets: [SubnetInput]	
+    parserProject: ParserProjectS3ConfigInput
+    persistentDNS: PersistentDNSConfigInput
+    defaultSecurityGroup: String
+    allowedInstanceTypes: [String!]!
+    alertableInstanceTypes: [String!]!
+    allowedRegions: [String!]!
+    maxVolumeSizePerUser: Int!
+    pod: AWSPodConfigInput!
+    accountRoles: [AWSAccountRoleMappingInput]
+    IPAMPoolID: String!
+    elasticIPUsageRate: Float!
+}
+
+type AWSConfig {
+    ec2Keys: [EC2Key]
+	subnets: [Subnet]	
+	parserProject: ParserProjectS3Config
+	persistentDNS: PersistentDNSConfig
+	defaultSecurityGroup: String
+	allowedInstanceTypes: [String!]!
+	alertableInstanceTypes: [String!]!
+	allowedRegions: [String!]!
+	maxVolumeSizePerUser: Int!
+	pod: AWSPodConfig!
+	accountRoles: [AWSAccountRoleMapping]
+	IPAMPoolID: String!
+	elasticIPUsageRate: Float!
+}
+
+input AWSPodConfigInput {
+    role: String @redactSecrets
+    region: String
+    ecs: ECSConfigInput
+    secretsManager: SecretsManagerConfigInput
+}
+
+type AWSPodConfig {
+    role: String @requireAdmin
+    region: String
+    ecs: ECSConfig
+    secretsManager: SecretsManagerConfig
+}
+
+input AWSVPCConfigInput {
+    subnets: [String]
+    securityGroups: [String] @redactSecrets
+}
+
+type AWSVPCConfig {
+    subnets: [String]
+    securityGroups: [String] @requireAdmin
+}
+
+input CloudProvidersInput {
+    aws: AWSConfigInput
+    docker: DockerConfigInput
+}
+
+type CloudProviders {
+    aws: AWSConfig
+    docker: DockerConfig
+}
+
+input ContainerPoolInput {
+  id: String!
+  distro: String!
+  maxContainers: Int!
+  port: Int!
+}
+
+type ContainerPool {
+  id: String!
+  distro: String!
+  maxContainers: Int!
+  port: Int!
+}
+
+
+input ContainerPoolsConfigInput {
+    pools: [ContainerPoolInput]
+}
+
+type ContainerPoolsConfig {
+    pools: [ContainerPool]
+}
+
+input DockerConfigInput {
+    apiVersion: String
+}
+
+type DockerConfig {
+    apiVersion: String
+}
+
+input EC2KeyInput {
+    name: String!
+    region: String!
+    key: String! @redactSecrets
+    secret: String! @redactSecrets
+}
+
+type EC2Key {
+    name: String!
+    region: String!
+    key: String! @requireAdmin
+    secret: String! @requireAdmin
+}
+
+input ECSConfigInput {
+    maxCPU: Int
+    maxMemoryMb: Int
+    taskDefinitionPrefix: String
+    taskRole: String
+    executionRole: String
+    logRegion: String
+    logGroup: String
+    logStreamPrefix: String
+    AWSVPC: AWSVPCConfigInput
+    clusters: [ECSClusterConfigInput]
+    capacityProviders: [ECSCapacityProviderInput]
+    allowedImages: [String]
+}
+
+type ECSConfig {
+    maxCPU: Int
+    maxMemoryMb: Int
+    taskDefinitionPrefix: String
+    taskRole: String
+    executionRole: String
+    logRegion: String
+    logGroup: String
+    logStreamPrefix: String
+    AWSVPC: AWSVPCConfig
+    clusters: [ECSClusterConfig]
+    capacityProviders: [ECSCapacityProvider]
+    allowedImages: [String]
+}
+
+input ECSCapacityProviderInput {
+    name: String
+    os: String
+    arch: String
+    windowsVersion: String
+}
+
+type ECSCapacityProvider {
+    name: String
+    os: String
+    arch: String
+    windowsVersion: String
+}
+
+input ECSClusterConfigInput {
+    name: String
+    os: String
+}
+
+type ECSClusterConfig{
+    name: String
+    os: String
+}
+
+input OwnerRepoInput {
+    owner: String!
+    repo: String!
+}
+
+type OwnerRepo {
+    owner: String!
+    repo: String!
+}
+
+input ParserProjectS3ConfigInput {
+    key: String @redactSecrets
+    secret: String! @redactSecrets
+    bucket: String
+    prefix: String
+    generatedJSONPrefix: String
+}
+
+type ParserProjectS3Config {
+    key: String @requireAdmin
+    secret: String! @requireAdmin
+    bucket: String
+    prefix: String
+    generatedJSONPrefix: String
+}
+
+input PersistentDNSConfigInput {
+    hostedZoneID: String
+    domain: String
+}
+
+type PersistentDNSConfig {
+    hostedZoneID: String
+    domain: String
+}
+
+input ProjectCreationConfigInput {
+    repoExceptions: [OwnerRepoInput]
+}
+
+type ProjectCreationConfig {
+    repoExceptions: [OwnerRepo]
+}
+
+input SecretsManagerConfigInput {
+    secretPrefix: String @redactSecrets
+}
+
+type SecretsManagerConfig {
+    secretPrefix: String @requireAdmin
+}
+
+input SubnetInput {
+    az: String!
+    subnetId: String!
+}
+
+type Subnet {
+    az: String!
+    subnetId: String!
+}

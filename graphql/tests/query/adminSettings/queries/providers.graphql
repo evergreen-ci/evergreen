@@ -1,0 +1,86 @@
+query Providers {
+  adminSettings {
+    containerPools {
+      pools {
+        id
+        distro
+        maxContainers
+        port
+      }
+    }
+    projectCreation {
+      repoExceptions {
+        owner
+        repo
+      }
+    }
+    providers {
+      aws {
+        ec2Keys {
+          name
+          region
+          key
+          secret
+        }
+        subnets {
+          az
+          subnetId
+        }
+        parserProject {
+          key
+          secret
+          bucket
+          generatedJSONPrefix
+        }
+        persistentDNS {
+          hostedZoneID
+          domain
+        }
+        defaultSecurityGroup
+        allowedInstanceTypes
+        alertableInstanceTypes
+        allowedRegions
+        maxVolumeSizePerUser
+        pod {
+          role
+          region
+          ecs {
+            maxCPU
+            maxMemoryMb
+            taskDefinitionPrefix
+            taskRole
+            executionRole
+            logRegion
+            logGroup
+            logStreamPrefix
+            AWSVPC {
+              subnets
+              securityGroups
+            }
+            clusters {
+              name
+              os
+            }
+            capacityProviders {
+              name
+              os
+              arch
+              windowsVersion
+            }
+            allowedImages
+          }
+        }
+        accountRoles {
+          account
+          role
+        }
+        IPAMPoolID
+        elasticIPUsageRate
+      }
+      docker {
+        apiVersion
+      }
+    }
+
+  }
+}
