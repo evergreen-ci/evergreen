@@ -91,6 +91,40 @@ func (r *queryResolver) AdminSettings(ctx context.Context) (*restModel.APIAdminS
 	return adminSettings, nil
 }
 
+// AdminTasksToRestart is the resolver for the adminTasksToRestart field.
+func (r *queryResolver) AdminTasksToRestart(ctx context.Context, opts model.RestartOptions) (*AdminTasksToRestartPayload, error) {
+	env := evergreen.GetEnvironment()
+	usr := mustHaveUser(ctx)
+	opts.User = usr.Username()
+
+	// Set DryRun = true so that we fetch a list of tasks to restart.
+	opts.DryRun = true
+	results, err := data.RestartFailedTasks(ctx, env.RemoteQueue(), opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching restart tasks: %s", err.Error()))
+	}
+
+	tasksToRestart := []*restModel.APITask{}
+	for _, taskID := range results.ItemsRestarted {
+		t, err := task.FindOneId(ctx, taskID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+		}
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+		}
+		apiTask := &restModel.APITask{}
+		if err = apiTask.BuildFromService(ctx, t, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", taskID, err.Error()))
+		}
+		tasksToRestart = append(tasksToRestart, apiTask)
+	}
+
+	return &AdminTasksToRestartPayload{
+		TasksToRestart: tasksToRestart,
+	}, nil
+}
+
 // AWSRegions is the resolver for the awsRegions field.
 func (r *queryResolver) AWSRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil

@@ -19,12 +19,11 @@ import (
 	"strings"
 )
 
-
 // MothraAPIService MothraAPI service
 type MothraAPIService service
 
 type ApiGetAllTeamsApiMothraAllTeamsGetRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *MothraAPIService
 }
 
@@ -37,24 +36,25 @@ GetAllTeamsApiMothraAllTeamsGet Get All Teams
 
 Get all teams from mothra.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiGetAllTeamsApiMothraAllTeamsGetRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiGetAllTeamsApiMothraAllTeamsGetRequest
 */
 func (a *MothraAPIService) GetAllTeamsApiMothraAllTeamsGet(ctx context.Context) ApiGetAllTeamsApiMothraAllTeamsGetRequest {
 	return ApiGetAllTeamsApiMothraAllTeamsGetRequest{
 		ApiService: a,
-		ctx: ctx,
+		ctx:        ctx,
 	}
 }
 
 // Execute executes the request
+//
 //	@return	[]TeamData
 func (a *MothraAPIService) GetAllTeamsApiMothraAllTeamsGetExecute(r ApiGetAllTeamsApiMothraAllTeamsGetRequest) ([]TeamData, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  []TeamData
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue []TeamData
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MothraAPIService.GetAllTeamsApiMothraAllTeamsGet")
@@ -123,10 +123,10 @@ func (a *MothraAPIService) GetAllTeamsApiMothraAllTeamsGetExecute(r ApiGetAllTea
 }
 
 type ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *MothraAPIService
-	name string
-	project string
+	name       string
+	project    string
 }
 
 func (r ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest) Execute() (*TeamData, *http.Response, error) {
@@ -138,28 +138,29 @@ GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet Get Team By N
 
 Get team by name and project from mothra.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param name
- @param project
- @return ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name
+	@param project
+	@return ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest
 */
 func (a *MothraAPIService) GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet(ctx context.Context, name string, project string) ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest {
 	return ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest{
 		ApiService: a,
-		ctx: ctx,
-		name: name,
-		project: project,
+		ctx:        ctx,
+		name:       name,
+		project:    project,
 	}
 }
 
 // Execute executes the request
+//
 //	@return	TeamData
 func (a *MothraAPIService) GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetExecute(r ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest) (*TeamData, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *TeamData
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *TeamData
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MothraAPIService.GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet")
@@ -221,8 +222,8 @@ func (a *MothraAPIService) GetTeamByNameAndProjectApiMothraTeamByNameAndProjectN
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-					newErr.model = v
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
@@ -240,9 +241,9 @@ func (a *MothraAPIService) GetTeamByNameAndProjectApiMothraTeamByNameAndProjectN
 }
 
 type ApiGetTeamByTagApiMothraTeamByTagTagGetRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *MothraAPIService
-	tag string
+	tag        string
 }
 
 func (r ApiGetTeamByTagApiMothraTeamByTagTagGetRequest) Execute() (*TeamData, *http.Response, error) {
@@ -254,26 +255,27 @@ GetTeamByTagApiMothraTeamByTagTagGet Get Team By Tag
 
 Get team by tag from mothra.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param tag
- @return ApiGetTeamByTagApiMothraTeamByTagTagGetRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param tag
+	@return ApiGetTeamByTagApiMothraTeamByTagTagGetRequest
 */
 func (a *MothraAPIService) GetTeamByTagApiMothraTeamByTagTagGet(ctx context.Context, tag string) ApiGetTeamByTagApiMothraTeamByTagTagGetRequest {
 	return ApiGetTeamByTagApiMothraTeamByTagTagGetRequest{
 		ApiService: a,
-		ctx: ctx,
-		tag: tag,
+		ctx:        ctx,
+		tag:        tag,
 	}
 }
 
 // Execute executes the request
+//
 //	@return	TeamData
 func (a *MothraAPIService) GetTeamByTagApiMothraTeamByTagTagGetExecute(r ApiGetTeamByTagApiMothraTeamByTagTagGetRequest) (*TeamData, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *TeamData
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *TeamData
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MothraAPIService.GetTeamByTagApiMothraTeamByTagTagGet")
@@ -334,8 +336,8 @@ func (a *MothraAPIService) GetTeamByTagApiMothraTeamByTagTagGetExecute(r ApiGetT
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-					newErr.model = v
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
@@ -353,9 +355,9 @@ func (a *MothraAPIService) GetTeamByTagApiMothraTeamByTagTagGetExecute(r ApiGetT
 }
 
 type ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *MothraAPIService
-	name string
+	name       string
 }
 
 func (r ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest) Execute() (*map[string]TeamData, *http.Response, error) {
@@ -367,26 +369,27 @@ GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGet Get Team Projects By Nam
 
 Get team projects by name from mothra.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param name
- @return ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param name
+	@return ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest
 */
 func (a *MothraAPIService) GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGet(ctx context.Context, name string) ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest {
 	return ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest{
 		ApiService: a,
-		ctx: ctx,
-		name: name,
+		ctx:        ctx,
+		name:       name,
 	}
 }
 
 // Execute executes the request
+//
 //	@return	map[string]TeamData
 func (a *MothraAPIService) GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetExecute(r ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest) (*map[string]TeamData, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *map[string]TeamData
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *map[string]TeamData
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MothraAPIService.GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGet")
@@ -447,8 +450,8 @@ func (a *MothraAPIService) GetTeamProjectsByNameApiMothraTeamProjectsByNameNameG
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-					newErr.model = v
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}

@@ -173,6 +173,60 @@
       }
     },
     {
+      "query_file": "auth.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "authConfig": {
+              "preferredType": "NAIVE",
+              "naive": {
+                "users": [
+                  {
+                    "username": "admin",
+                    "displayName": "password",
+                    "email": "admin@example.com"
+                  },
+                  {
+                    "username": "user",
+                    "displayName": "password",
+                    "email": "user@example.com"
+                  }
+                ]
+              },
+              "github": {
+                "appId": 0,
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "defaultOwner": "default_owner",
+                "defaultRepo": "default_repo",
+                "organization": "organization",
+                "users": ["user1", "user2"]
+              },
+              "kanopy": {
+                "headerName": "header_name",
+                "issuer": "issuer",
+                "keysetURL": "keyset_url"
+              },
+              "multi": {
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
+              },
+              "okta": {
+                "clientId": "",
+                "clientSecret": "client_secret",
+                "issuer": "issuer",
+                "scopes": ["scope1", "scope2"],
+                "userGroup": "user_group",
+                "expireAfterMinutes": 60
+              },
+              "allowServiceUsers": true,
+              "backgroundReauthMinutes": 30
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "background_processing.graphql",
       "result": {
         "data": {
@@ -221,8 +275,8 @@
                 "count": 1,
                 "incomingBufferFactor": 1
               },
-              "defaultLevel": "info",
-              "thresholdLevel": "info",
+              "defaultLevel": "INFO",
+              "thresholdLevel": "INFO",
               "logkeeperURL": "new-logkeeper-url",
               "redactKeys": ["new-redact-key"]
             },
