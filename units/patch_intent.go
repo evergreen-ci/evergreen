@@ -324,7 +324,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
-		j.sendGitHubSuccessMessages(ctx, patchDoc, pref, ignoredFiles)
+		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
 		return nil
 	}
 

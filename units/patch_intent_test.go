@@ -1793,8 +1793,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		}
 
 		j := &patchIntentProcessor{}
-		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
-		assert.NoError(t, err)
+		ignoredVariants := j.filterOutIgnoredVariants(patchDoc, project)
 		assert.Empty(t, ignoredVariants)
 		assert.Len(t, patchDoc.VariantsTasks, 2)
 		assert.Len(t, patchDoc.BuildVariants, 2)
@@ -1830,8 +1829,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		}
 
 		j := &patchIntentProcessor{}
-		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
-		assert.NoError(t, err)
+		ignoredVariants := j.filterOutIgnoredVariants(patchDoc, project)
 		assert.Empty(t, ignoredVariants)
 		assert.Len(t, patchDoc.VariantsTasks, 1)
 	})
@@ -1876,8 +1874,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		}
 
 		j := &patchIntentProcessor{}
-		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
-		assert.NoError(t, err)
+		ignoredVariants := j.filterOutIgnoredVariants(patchDoc, project)
 		assert.Empty(t, ignoredVariants)
 		assert.Len(t, patchDoc.VariantsTasks, 2)
 		assert.Len(t, patchDoc.BuildVariants, 2)
@@ -1927,8 +1924,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		}
 
 		j := &patchIntentProcessor{}
-		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
-		assert.NoError(t, err)
+		ignoredVariants := j.filterOutIgnoredVariants(patchDoc, project)
 		assert.Equal(t, []string{"frontend", "docs"}, ignoredVariants)
 		assert.Len(t, patchDoc.VariantsTasks, 1)
 		assert.Equal(t, "backend", patchDoc.VariantsTasks[0].Variant)
@@ -1976,8 +1972,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		}
 
 		j := &patchIntentProcessor{}
-		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
-		assert.NoError(t, err)
+		ignoredVariants := j.filterOutIgnoredVariants(patchDoc, project)
 		assert.Equal(t, []string{"frontend", "backend"}, ignoredVariants)
 		assert.Empty(t, patchDoc.VariantsTasks)
 		assert.Empty(t, patchDoc.BuildVariants)
@@ -2028,8 +2023,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		}
 
 		j := &patchIntentProcessor{}
-		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
-		assert.NoError(t, err)
+		ignoredVariants := j.filterOutIgnoredVariants(patchDoc, project)
 		assert.Empty(t, ignoredVariants)
 		assert.Len(t, patchDoc.VariantsTasks, 1)
 		assert.Equal(t, []string{"unit-test", "test-suite"}, patchDoc.Tasks)
@@ -2071,8 +2065,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		}
 
 		j := &patchIntentProcessor{}
-		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
-		assert.NoError(t, err)
+		ignoredVariants := j.filterOutIgnoredVariants(patchDoc, project)
 		assert.Empty(t, ignoredVariants)
 		assert.Len(t, patchDoc.VariantsTasks, 1)
 		assert.Equal(t, []string{"nonexistent"}, patchDoc.BuildVariants)
