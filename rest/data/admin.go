@@ -85,6 +85,7 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
+					grip.Infof("Storing secret field '%s' with value '%s'", fieldPath, secretValue)
 					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
 					if err != nil {
 						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
@@ -99,6 +100,7 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapValue := fieldValue.MapIndex(key)
 						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
 						secretValue := mapValue.String()
+						grip.Infof("Storing secret map field '%s' with value '%s'", mapFieldPath, secretValue)
 						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
 						if err != nil {
 							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
@@ -122,15 +124,8 @@ func storeAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 		}
 	case reflect.Slice, reflect.Array:
 		// Check each element in slice/array.
-		elemType := typ.Elem()
 		for i := 0; i < value.Len(); i++ {
-			storeAdminSecrets(ctx, paramMgr, value.Index(i), elemType, path, catcher)
-		}
-	case reflect.Map:
-		// Check each value in the map.
-		valueType := typ.Elem()
-		for _, key := range value.MapKeys() {
-			storeAdminSecrets(ctx, paramMgr, value.MapIndex(key), valueType, path, catcher)
+			storeAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
 		}
 	}
 }
