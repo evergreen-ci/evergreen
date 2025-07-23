@@ -14,7 +14,8 @@ input RepoRefInput {
   githubChecksEnabled: Boolean
   githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroupInput!]
   githubPermissionGroupByRequester: StringMap
-  githubTriggerAliases: [String!]
+  githubPRTriggerAliases: [String!]
+  githubMQTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]
   gitTagVersionsEnabled: Boolean
@@ -64,7 +65,8 @@ type RepoRef {
   githubChecksEnabled: Boolean!
   githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
   githubPermissionGroupByRequester: StringMap
-  githubTriggerAliases: [String!]
+  githubPRTriggerAliases: [String!]
+  githubMQTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]
   gitTagVersionsEnabled: Boolean!

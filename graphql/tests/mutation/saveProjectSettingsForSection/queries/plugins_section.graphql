@@ -5,7 +5,8 @@ mutation {
       projectRef: {
         id: "sandbox_project_id"
         patchTriggerAliases: []
-        githubTriggerAliases: []
+        githubPRTriggerAliases: []
+        githubMQTriggerAliases: []
         buildBaronSettings: {
           ticketCreateProject: ""
           ticketSearchProjects: []
