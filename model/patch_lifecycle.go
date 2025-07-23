@@ -707,10 +707,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			DisplayNames:     displayNames,
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
-			// When a GitHub PR patch is finalized with the PR alias, all of the
-			// tasks selected by the alias must finish in order for the
-			// build/version to be finished.
-			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
+		}
+		// When a GitHub PR patch is finalized with the PR alias, all of the
+		// tasks selected by the alias must finish in order for the
+		// build/version to be finished, excluding any variants that are
+		// ignored due to files changed.
+		if requester == evergreen.GithubPRRequester {
+			buildCreationArgs.ActivatedTasksAreEssentialToSucceed = true
+			buildCreationArgs.ChangedFiles = p.FilesChanged()
 		}
 		var build *build.Build
 		var tasks task.Tasks

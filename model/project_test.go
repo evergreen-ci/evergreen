@@ -2695,3 +2695,49 @@ patch_aliases:
 		s.NotEqual("other-variant", pair.Variant)
 	}
 }
+
+func (s *projectSuite) TestBuildVariantPathsMatchAny() {
+	Convey("With test BuildVariant.Paths setups and a list of .py, .yml, and .md files", s.T(), func() {
+		files := []string{
+			"src/cool/test.py",
+			"etc/other_config.yml",
+			"README.md",
+		}
+		Convey("a build variant with an empty paths field should always match", func() {
+			bv := &BuildVariant{Paths: []string{}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant with no paths field should always match", func() {
+			bv := &BuildVariant{}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that matches .py files should match", func() {
+			bv := &BuildVariant{Paths: []string{"*.py"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that matches .go files should not match", func() {
+			bv := &BuildVariant{Paths: []string{"*.go"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+		Convey("a build variant that matches multiple patterns should match if any match", func() {
+			bv := &BuildVariant{Paths: []string{"*.go", "*.py"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that matches specific files should match", func() {
+			bv := &BuildVariant{Paths: []string{"README.md"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that matches directory patterns should match", func() {
+			bv := &BuildVariant{Paths: []string{"src/*"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant with negations should work correctly", func() {
+			bv := &BuildVariant{Paths: []string{"!*.md"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue) // matches .py and .yml files
+		})
+		Convey("a build variant that excludes all files should not match", func() {
+			bv := &BuildVariant{Paths: []string{"!*"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+	})
+}

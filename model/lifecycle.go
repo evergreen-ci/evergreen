@@ -610,6 +610,10 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 		creationInfo.Version.CreateTime.Format(build.IdTimeLayout))
 
 	activatedTime := utility.ZeroTime
+	// If we're given changed files and they don't match the variants' specified paths (if any), don't activate the build.
+	if !buildVariant.ChangedFilesMatchPaths(creationInfo.ChangedFiles) {
+		creationInfo.ActivateBuild = false
+	}
 	if creationInfo.ActivateBuild {
 		activatedTime = time.Now()
 	}

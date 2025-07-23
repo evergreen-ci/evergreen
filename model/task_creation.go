@@ -30,6 +30,7 @@ type TaskCreationInfo struct {
 	DistroAliases       distro.AliasLookupTable // Map of distro aliases to names of distros
 	TaskCreateTime      time.Time               // Create time of tasks in the build
 	GithubChecksAliases ProjectAliases          // Project aliases to use to filter tasks to count towards the github checks, if any
+	ChangedFiles        []string                // ChangedFiles is used to determine if the variant should be deactivated based on changed files.
 	// ActivatedTasksAreEssentialToSucceed indicates whether or not all tasks
 	// that are being created and activated immediately are required to finish
 	// in order for the build/version to be finished. Tasks with specific
