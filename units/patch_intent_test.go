@@ -1767,3 +1767,386 @@ func TestMakeMergeQueueDescription(t *testing.T) {
 	mergeGroup := thirdparty.GithubMergeGroup{HeadSHA: "0e312ffabcdefghijklmnop", HeadCommit: "I'm a commit!"}
 	assert.Equal(t, "GitHub Merge Queue: I'm a commit! (0e312ff)", makeMergeQueueDescription(mergeGroup))
 }
+
+func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
+	s.T().Run("NonGitHubPRPatch", func(t *testing.T) {
+		// Test that non-GitHub PR patches are not filtered
+		patchDoc := &patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: s.project,
+			Author:  s.user,
+			Githash: s.hash,
+			VariantsTasks: []patch.VariantTasks{
+				{Variant: "variant1", Tasks: []string{"task1"}},
+				{Variant: "variant2", Tasks: []string{"task2"}},
+			},
+			BuildVariants: []string{"variant1", "variant2"},
+			Tasks:         []string{"task1", "task2"},
+		}
+
+		project := &model.Project{
+			Identifier: s.project,
+			BuildVariants: model.BuildVariants{
+				{Name: "variant1", Paths: []string{"src/**"}},
+				{Name: "variant2", Paths: []string{"docs/**"}},
+			},
+		}
+
+		j := &patchIntentProcessor{}
+		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
+		assert.NoError(t, err)
+		assert.Empty(t, ignoredVariants)
+		assert.Len(t, patchDoc.VariantsTasks, 2)
+		assert.Len(t, patchDoc.BuildVariants, 2)
+		assert.Len(t, patchDoc.Tasks, 2)
+	})
+
+	s.T().Run("NoChangedFiles", func(t *testing.T) {
+		// Test that patches with no changed files are not filtered
+		patchDoc := &patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: s.project,
+			Author:  s.user,
+			Githash: s.hash,
+			GithubPatchData: thirdparty.GithubPatch{
+				PRNumber:  123,
+				BaseOwner: "owner",
+				BaseRepo:  "repo",
+				HeadOwner: "contributor",
+				HeadRepo:  "repo",
+			},
+			VariantsTasks: []patch.VariantTasks{
+				{Variant: "variant1", Tasks: []string{"task1"}},
+			},
+			BuildVariants: []string{"variant1"},
+			Tasks:         []string{"task1"},
+		}
+
+		project := &model.Project{
+			Identifier: s.project,
+			BuildVariants: model.BuildVariants{
+				{Name: "variant1", Paths: []string{"src/**"}},
+			},
+		}
+
+		j := &patchIntentProcessor{}
+		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
+		assert.NoError(t, err)
+		assert.Empty(t, ignoredVariants)
+		assert.Len(t, patchDoc.VariantsTasks, 1)
+	})
+
+	s.T().Run("VariantsWithoutPaths", func(t *testing.T) {
+		// Test that variants without paths are never filtered
+		patchDoc := &patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: s.project,
+			Author:  s.user,
+			Githash: s.hash,
+			GithubPatchData: thirdparty.GithubPatch{
+				PRNumber:  123,
+				BaseOwner: "owner",
+				BaseRepo:  "repo",
+				HeadOwner: "contributor",
+				HeadRepo:  "repo",
+			},
+			Patches: []patch.ModulePatch{
+				{
+					PatchSet: patch.PatchSet{
+						Summary: []thirdparty.Summary{
+							{Name: "docs/README.md", Additions: 1, Deletions: 0},
+						},
+					},
+				},
+			},
+			VariantsTasks: []patch.VariantTasks{
+				{Variant: "variant1", Tasks: []string{"task1"}},
+				{Variant: "variant2", Tasks: []string{"task2"}},
+			},
+			BuildVariants: []string{"variant1", "variant2"},
+			Tasks:         []string{"task1", "task2"},
+		}
+
+		project := &model.Project{
+			Identifier: s.project,
+			BuildVariants: model.BuildVariants{
+				{Name: "variant1"}, // No paths specified
+				{Name: "variant2"}, // No paths specified
+			},
+		}
+
+		j := &patchIntentProcessor{}
+		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
+		assert.NoError(t, err)
+		assert.Empty(t, ignoredVariants)
+		assert.Len(t, patchDoc.VariantsTasks, 2)
+		assert.Len(t, patchDoc.BuildVariants, 2)
+		assert.Len(t, patchDoc.Tasks, 2)
+	})
+
+	s.T().Run("SomeVariantsFiltered", func(t *testing.T) {
+		// Test that some variants are filtered based on path patterns
+		patchDoc := &patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: s.project,
+			Author:  s.user,
+			Githash: s.hash,
+			GithubPatchData: thirdparty.GithubPatch{
+				PRNumber:  123,
+				BaseOwner: "owner",
+				BaseRepo:  "repo",
+				HeadOwner: "contributor",
+				HeadRepo:  "repo",
+			},
+			Patches: []patch.ModulePatch{
+				{
+					PatchSet: patch.PatchSet{
+						Summary: []thirdparty.Summary{
+							{Name: "src/main.go", Additions: 5, Deletions: 2},
+							{Name: "src/util.go", Additions: 3, Deletions: 1},
+						},
+					},
+				},
+			},
+			VariantsTasks: []patch.VariantTasks{
+				{Variant: "frontend", Tasks: []string{"frontend-test"}},
+				{Variant: "backend", Tasks: []string{"backend-test"}},
+				{Variant: "docs", Tasks: []string{"docs-build"}},
+			},
+			BuildVariants: []string{"frontend", "backend", "docs"},
+			Tasks:         []string{"frontend-test", "backend-test", "docs-build"},
+		}
+
+		project := &model.Project{
+			Identifier: s.project,
+			BuildVariants: model.BuildVariants{
+				{Name: "frontend", Paths: []string{"frontend/**", "shared/**"}},
+				{Name: "backend", Paths: []string{"src/**", "shared/**"}},
+				{Name: "docs", Paths: []string{"docs/**"}},
+			},
+		}
+
+		j := &patchIntentProcessor{}
+		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"frontend", "docs"}, ignoredVariants)
+		assert.Len(t, patchDoc.VariantsTasks, 1)
+		assert.Equal(t, "backend", patchDoc.VariantsTasks[0].Variant)
+		assert.Equal(t, []string{"backend"}, patchDoc.BuildVariants)
+		assert.Equal(t, []string{"backend-test"}, patchDoc.Tasks)
+	})
+
+	s.T().Run("AllVariantsFiltered", func(t *testing.T) {
+		// Test that all variants are filtered when no paths match
+		patchDoc := &patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: s.project,
+			Author:  s.user,
+			Githash: s.hash,
+			GithubPatchData: thirdparty.GithubPatch{
+				PRNumber:  123,
+				BaseOwner: "owner",
+				BaseRepo:  "repo",
+				HeadOwner: "contributor",
+				HeadRepo:  "repo",
+			},
+			Patches: []patch.ModulePatch{
+				{
+					PatchSet: patch.PatchSet{
+						Summary: []thirdparty.Summary{
+							{Name: "unrelated/file.txt", Additions: 1, Deletions: 0},
+						},
+					},
+				},
+			},
+			VariantsTasks: []patch.VariantTasks{
+				{Variant: "frontend", Tasks: []string{"frontend-test"}},
+				{Variant: "backend", Tasks: []string{"backend-test"}},
+			},
+			BuildVariants: []string{"frontend", "backend"},
+			Tasks:         []string{"frontend-test", "backend-test"},
+		}
+
+		project := &model.Project{
+			Identifier: s.project,
+			BuildVariants: model.BuildVariants{
+				{Name: "frontend", Paths: []string{"frontend/**"}},
+				{Name: "backend", Paths: []string{"src/**"}},
+			},
+		}
+
+		j := &patchIntentProcessor{}
+		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"frontend", "backend"}, ignoredVariants)
+		assert.Empty(t, patchDoc.VariantsTasks)
+		assert.Empty(t, patchDoc.BuildVariants)
+		assert.Empty(t, patchDoc.Tasks)
+	})
+
+	s.T().Run("WithDisplayTasks", func(t *testing.T) {
+		// Test that display tasks are properly handled
+		patchDoc := &patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: s.project,
+			Author:  s.user,
+			Githash: s.hash,
+			GithubPatchData: thirdparty.GithubPatch{
+				PRNumber:  123,
+				BaseOwner: "owner",
+				BaseRepo:  "repo",
+				HeadOwner: "contributor",
+				HeadRepo:  "repo",
+			},
+			Patches: []patch.ModulePatch{
+				{
+					PatchSet: patch.PatchSet{
+						Summary: []thirdparty.Summary{
+							{Name: "src/main.go", Additions: 5, Deletions: 2},
+						},
+					},
+				},
+			},
+			VariantsTasks: []patch.VariantTasks{
+				{
+					Variant: "backend",
+					Tasks:   []string{"unit-test"},
+					DisplayTasks: []patch.DisplayTask{
+						{Name: "test-suite", ExecTasks: []string{"unit-test", "integration-test"}},
+					},
+				},
+			},
+			BuildVariants: []string{"backend"},
+			Tasks:         []string{"unit-test", "test-suite"},
+		}
+
+		project := &model.Project{
+			Identifier: s.project,
+			BuildVariants: model.BuildVariants{
+				{Name: "backend", Paths: []string{"src/**"}},
+			},
+		}
+
+		j := &patchIntentProcessor{}
+		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
+		assert.NoError(t, err)
+		assert.Empty(t, ignoredVariants)
+		assert.Len(t, patchDoc.VariantsTasks, 1)
+		assert.Equal(t, []string{"unit-test", "test-suite"}, patchDoc.Tasks)
+	})
+
+	s.T().Run("MissingBuildVariant", func(t *testing.T) {
+		// Test that missing build variants are kept (not filtered)
+		patchDoc := &patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Project: s.project,
+			Author:  s.user,
+			Githash: s.hash,
+			GithubPatchData: thirdparty.GithubPatch{
+				PRNumber:  123,
+				BaseOwner: "owner",
+				BaseRepo:  "repo",
+				HeadOwner: "contributor",
+				HeadRepo:  "repo",
+			},
+			Patches: []patch.ModulePatch{
+				{
+					PatchSet: patch.PatchSet{
+						Summary: []thirdparty.Summary{
+							{Name: "docs/README.md", Additions: 1, Deletions: 0},
+						},
+					},
+				},
+			},
+			VariantsTasks: []patch.VariantTasks{
+				{Variant: "nonexistent", Tasks: []string{"task1"}},
+			},
+			BuildVariants: []string{"nonexistent"},
+			Tasks:         []string{"task1"},
+		}
+
+		project := &model.Project{
+			Identifier:    s.project,
+			BuildVariants: model.BuildVariants{}, // No build variants defined
+		}
+
+		j := &patchIntentProcessor{}
+		ignoredVariants, err := j.filterOutIgnoredVariants(s.ctx, patchDoc, project)
+		assert.NoError(t, err)
+		assert.Empty(t, ignoredVariants)
+		assert.Len(t, patchDoc.VariantsTasks, 1)
+		assert.Equal(t, []string{"nonexistent"}, patchDoc.BuildVariants)
+		assert.Equal(t, []string{"task1"}, patchDoc.Tasks)
+	})
+}
+
+func (s *PatchIntentUnitsSuite) TestPatchIntentWithIgnoredVariants() {
+	s.T().Run("AllVariantsIgnored", func(t *testing.T) {
+		// Test that when all variants are ignored, no patch is created and success messages are sent
+		s.NoError(db.ClearCollections(patch.Collection, patch.IntentCollection, model.ParserProjectCollection))
+
+		// Create a project with path-filtered variants
+		projectYAML := `
+buildvariants:
+- name: frontend
+  display_name: Frontend Tests
+  paths:
+    - "frontend/**"
+    - "ui/**"
+  run_on:
+    - ubuntu1604-test
+  tasks:
+    - name: frontend-test
+- name: backend
+  display_name: Backend Tests
+  paths:
+    - "src/**"
+    - "api/**"
+  run_on:
+    - ubuntu1604-test
+  tasks:
+    - name: backend-test
+tasks:
+- name: frontend-test
+- name: backend-test
+`
+
+		pp := &model.ParserProject{}
+		s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(projectYAML), pp))
+		pp.Id = "test-patch-id"
+		s.Require().NoError(pp.Insert(s.ctx))
+
+		// Create a GitHub intent with changes that don't match any variant paths
+		pr := testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "testuser", "Test PR")
+		intent, err := patch.NewGithubIntent(s.ctx, "test-intent", "", "", "", "", pr)
+		s.Require().NoError(err)
+		s.Require().NoError(intent.Insert(s.ctx))
+
+		// Mock the GitHub diff to return files that don't match any variant paths
+
+		patchID := mgobson.NewObjectId()
+		j := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
+		j.env = s.env
+
+		patchDoc := intent.NewPatch()
+		patchDoc.Patches = []patch.ModulePatch{
+			{
+				PatchSet: patch.PatchSet{
+					Summary: []thirdparty.Summary{
+						{Name: "docs/README.md", Additions: 1, Deletions: 0},
+						{Name: "config/settings.yml", Additions: 2, Deletions: 1},
+					},
+				},
+			},
+		}
+
+		// This should result in no patch being created since all variants are ignored
+		err = j.finishPatch(s.ctx, patchDoc)
+		s.NoError(err)
+
+		// Verify no patch was inserted
+		dbPatch, err := patch.FindOneId(s.ctx, patchID.Hex())
+		s.NoError(err)
+		s.Nil(dbPatch)
+	})
+}

@@ -1787,15 +1787,23 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 	var pairs TaskVariantPairs
-	for _, v := range bvs {
+	for _, bvName := range bvs {
+		//// TODO: One option is to put the skip in here.
+		//bv := p.FindBuildVariant(bvName)
+		//if bv == nil {
+		//	continue
+		//}
+		//if !bv.ChangedFilesMatchPaths(patchDoc.FilesChanged()) {
+		//	continue // but we need this list, so that we know to send a success status
+		//}
 		for _, t := range tasks {
-			if bvt := p.FindTaskForVariant(t, v); bvt != nil {
+			if bvt := p.FindTaskForVariant(t, bvName); bvt != nil {
 				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) {
 					continue
 				}
-				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
-			} else if p.GetDisplayTask(v, t) != nil {
-				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})
+				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: bvName, TaskName: t})
+			} else if p.GetDisplayTask(bvName, t) != nil {
+				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: bvName, TaskName: t})
 			}
 		}
 	}

@@ -411,6 +411,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.AllowForGitTag == nil &&
 		pbv.GitTagOnly == nil &&
 		len(pbv.AllowedRequesters) == 0 &&
+		len(pbv.Paths) == 0 &&
 		pbv.MatrixId == "" &&
 		pbv.MatrixVal == nil &&
 		pbv.Matrix == nil &&

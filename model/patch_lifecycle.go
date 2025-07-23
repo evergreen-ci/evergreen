@@ -684,6 +684,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	buildsToInsert := build.Builds{}
 	tasksToInsert := task.Tasks{}
+	buildsToSendSuccessMessageFor := []string{}
 	for _, vt := range p.VariantsTasks {
 		if _, ok := variantsProcessed[vt.Variant]; ok {
 			continue
@@ -729,6 +730,16 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 				"version": patchVersion.Id,
 			})
 			continue
+		}
+		if !build.Activated {
+			grip.Info(message.Fields{
+				"op":      "skipping deactivated build for patch version",
+				"variant": vt.Variant,
+				"version": patchVersion.Id,
+			})
+			buildsToSendSuccessMessageFor = append(buildsToSendSuccessMessageFor, vt.Variant)
+			continue
+
 		}
 
 		buildsToInsert = append(buildsToInsert, build)
