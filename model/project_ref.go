@@ -73,7 +73,6 @@ type ProjectRef struct {
 	// PatchTriggerAliases contains all aliases defined for the project.
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
 	// GithubPRTriggerAliases are aliases attached to GitHub PR patch intents.
-	// The struct tags use the old name for backwards compatibility.
 	GithubPRTriggerAliases []string `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
 	// GitHubMQTriggerAliases are aliases attached to GitHub MQ patch intents.
 	GithubMQTriggerAliases []string `bson:"github_mq_trigger_aliases" json:"github_mq_trigger_aliases"`
