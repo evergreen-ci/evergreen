@@ -9,8 +9,8 @@ type AWSAccountRoleMapping {
 }
 
 input AWSConfigInput {
-    ec2Keys: [EC2KeyInput]
-    subnets: [SubnetInput]	
+    ec2Keys: [EC2KeyInput!]!
+    subnets: [SubnetInput!]!	
     parserProject: ParserProjectS3ConfigInput
     persistentDNS: PersistentDNSConfigInput
     defaultSecurityGroup: String
@@ -19,14 +19,14 @@ input AWSConfigInput {
     allowedRegions: [String!]!
     maxVolumeSizePerUser: Int!
     pod: AWSPodConfigInput!
-    accountRoles: [AWSAccountRoleMappingInput]
+    accountRoles: [AWSAccountRoleMappingInput!]!
     IPAMPoolID: String!
     elasticIPUsageRate: Float!
 }
 
 type AWSConfig {
-    ec2Keys: [EC2Key]
-	subnets: [Subnet]	
+    ec2Keys: [EC2Key!]!
+	subnets: [Subnet!]!	
 	parserProject: ParserProjectS3Config
 	persistentDNS: PersistentDNSConfig
 	defaultSecurityGroup: String
@@ -35,7 +35,7 @@ type AWSConfig {
 	allowedRegions: [String!]!
 	maxVolumeSizePerUser: Int!
 	pod: AWSPodConfig!
-	accountRoles: [AWSAccountRoleMapping]
+	accountRoles: [AWSAccountRoleMapping!]!
 	IPAMPoolID: String!
 	elasticIPUsageRate: Float!
 }
@@ -55,13 +55,13 @@ type AWSPodConfig {
 }
 
 input AWSVPCConfigInput {
-    subnets: [String]
-    securityGroups: [String] @redactSecrets
+    subnets: [String!]!
+    securityGroups: [String!]! @redactSecrets
 }
 
 type AWSVPCConfig {
-    subnets: [String]
-    securityGroups: [String] @requireAdmin
+    subnets: [String!]!
+    securityGroups: [String!]! @requireAdmin
 }
 
 input CloudProvidersInput {
@@ -90,11 +90,11 @@ type ContainerPool {
 
 
 input ContainerPoolsConfigInput {
-    pools: [ContainerPoolInput]
+    pools: [ContainerPoolInput!]!
 }
 
 type ContainerPoolsConfig {
-    pools: [ContainerPool]
+    pools: [ContainerPool!]!
 }
 
 input DockerConfigInput {
@@ -107,14 +107,12 @@ type DockerConfig {
 
 input EC2KeyInput {
     name: String!
-    region: String!
     key: String! @redactSecrets
     secret: String! @redactSecrets
 }
 
 type EC2Key {
     name: String!
-    region: String!
     key: String! @requireAdmin
     secret: String! @requireAdmin
 }
@@ -129,9 +127,9 @@ input ECSConfigInput {
     logGroup: String
     logStreamPrefix: String
     AWSVPC: AWSVPCConfigInput
-    clusters: [ECSClusterConfigInput]
-    capacityProviders: [ECSCapacityProviderInput]
-    allowedImages: [String]
+    clusters: [ECSClusterConfigInput!]!
+    capacityProviders: [ECSCapacityProviderInput!]!
+    allowedImages: [String!]!
 }
 
 type ECSConfig {
@@ -144,23 +142,39 @@ type ECSConfig {
     logGroup: String
     logStreamPrefix: String
     AWSVPC: AWSVPCConfig
-    clusters: [ECSClusterConfig]
-    capacityProviders: [ECSCapacityProvider]
-    allowedImages: [String]
+    clusters: [ECSClusterConfig!]!
+    capacityProviders: [ECSCapacityProvider!]!
+    allowedImages: [String!]!
+}
+
+enum ECSOperatingSystem {
+    ECSOSLINUX
+    ECSOSWINDOWS
+}
+
+enum ECSArchitecture {
+    ECSARCHAMD64
+    ECSARCHARM64
+}
+
+enum ECSWindowsVersion {
+    ECSWINDOWSSERVER2016
+    ECSWINDOWSSERVER2019
+    ECSWINDOWSSERVER2022
 }
 
 input ECSCapacityProviderInput {
     name: String
-    os: String
-    arch: String
-    windowsVersion: String
+    os: ECSOperatingSystem
+    arch: ECSArchitecture
+    windowsVersion: ECSWindowsVersion
 }
 
 type ECSCapacityProvider {
     name: String
-    os: String
-    arch: String
-    windowsVersion: String
+    os: ECSOperatingSystem
+    arch: ECSArchitecture
+    windowsVersion: ECSWindowsVersion
 }
 
 input ECSClusterConfigInput {
@@ -210,11 +224,11 @@ type PersistentDNSConfig {
 }
 
 input ProjectCreationConfigInput {
-    repoExceptions: [OwnerRepoInput]
+    repoExceptions: [OwnerRepoInput!]!
 }
 
 type ProjectCreationConfig {
-    repoExceptions: [OwnerRepo]
+    repoExceptions: [OwnerRepo!]!
 }
 
 input SecretsManagerConfigInput {

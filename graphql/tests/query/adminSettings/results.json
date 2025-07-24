@@ -357,13 +357,11 @@
                 "ec2Keys": [
                   {
                     "name": "test-key-1",
-                    "region": "us-east-1",
                     "key": "21039487102938470912837",
                     "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
                   },
                   {
                     "name": "test-key-2",
-                    "region": "us-west-2",
                     "key": "120938471209384701298",
                     "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
                   }
@@ -422,14 +420,14 @@
                     "capacityProviders": [
                       {
                         "name": "FARGATE",
-                        "os": "linux",
-                        "arch": "amd64",
+                        "os": "ECSOSLINUX",
+                        "arch": "ECSARCHAMD64",
                         "windowsVersion": ""
                       },
                       {
                         "name": "EC2",
-                        "os": "linux",
-                        "arch": "arm64",
+                        "os": "ECSOSLINUX",
+                        "arch": "ECSARCHARM64",
                         "windowsVersion": ""
                       }
                     ],

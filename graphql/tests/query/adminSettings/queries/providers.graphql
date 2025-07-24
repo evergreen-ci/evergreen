@@ -18,7 +18,6 @@ query Providers {
       aws {
         ec2Keys {
           name
-          region
           key
           secret
         }

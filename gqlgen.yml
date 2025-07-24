@@ -207,6 +207,29 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIECSClusterConfig
   ECSClusterConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIECSClusterConfig
+  ECSArchitecture:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      ECSARCHAMD64:
+        value: github.com/evergreen-ci/evergreen.ECSArchAMD64
+      ECSARCHARM64:
+        value: github.com/evergreen-ci/evergreen.ECSArchARM64
+  ECSOperatingSystem:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      ECSOSLINUX:
+        value: github.com/evergreen-ci/evergreen.ECSOSLinux
+      ECSOSWINDOWS:
+        value: github.com/evergreen-ci/evergreen.ECSOSWindows
+  ECSWindowsVersion:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      ECSWINDOWSSERVER2016:
+        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2016
+      ECSWINDOWSSERVER2019:
+        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2019
+      ECSWINDOWSSERVER2022:
+        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2022
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
   EnvVarInput:

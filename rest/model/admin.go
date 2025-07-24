@@ -1459,7 +1459,6 @@ func (a *APIEC2Key) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
 		a.Name = utility.ToStringPtr(v.Name)
-		a.Region = utility.ToStringPtr(v.Region)
 		a.Key = utility.ToStringPtr(v.Key)
 		a.Secret = utility.ToStringPtr(v.Secret)
 	default:
