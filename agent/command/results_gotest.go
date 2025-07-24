@@ -104,7 +104,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	}
 
 	if !c.testsAreOptional && len(results) == 0 && len(logs) == 0 {
-		return errors.New("go test output files contained no results")
+		return nil
 	}
 
 	if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
