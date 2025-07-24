@@ -304,26 +304,27 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		// "Ignore" a version if all changes are to ignored files
 		var ignore bool
-		if len(pInfo.Project.Ignore) > 0 {
-			var filenames []string
-			filenames, err = repoTracker.GetChangedFiles(ctx, revision)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":            "error checking GitHub for ignored files",
-					"runner":             RunnerName,
-					"project":            ref.Id,
-					"project_identifier": ref.Identifier,
-					"revision":           revision,
-				}))
-				continue
-			}
-			if pInfo.Project.IgnoresAllFiles(filenames) {
-				ignore = true
-			}
+		var filenames []string
+
+		// Always get changed files for build variant filtering
+		filenames, err = repoTracker.GetChangedFiles(ctx, revision)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            "error checking GitHub for changed files",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+			}))
+			// Continue without changed files info rather than failing completely
+			filenames = nil
+		} else if len(pInfo.Project.Ignore) > 0 && pInfo.Project.IgnoresAllFiles(filenames) {
+			ignore = true
 		}
 
 		metadata := model.VersionMetadata{
-			Revision: revisions[i],
+			Revision:     revisions[i],
+			ChangedFiles: filenames,
 		}
 		projectInfo := &model.ProjectInfo{
 			Ref:                 ref,
@@ -818,6 +819,30 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		sourceRev = metadata.SourceVersion.Revision
 	}
 
+	//// Filter build variants based on changed files if paths are specified
+	//ignoredBuildVariants := []string{}
+	//for _, buildvariant := range projectInfo.Project.BuildVariants {
+	//	// If the build variant has no path patterns, don't ignore (default behavior)
+	//	if len(buildvariant.Paths) == 0 {
+	//		continue
+	//	}
+	//
+	//	// If we have changed files, check if any match the build variant's path patterns.
+	//	// If we don't have changed files but the variant has path patterns,
+	//	// skip ignore to maintain existing behavior.
+	//	if len(metadata.ChangedFiles) > 0 && !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles) {
+	//		grip.Debug(message.Fields{
+	//			"message":       "build variant skipped due to path filtering",
+	//			"variant":       buildvariant.Name,
+	//			"paths":         buildvariant.Paths,
+	//			"changed_files": metadata.ChangedFiles,
+	//			"project":       projectInfo.Project.Identifier,
+	//			"version":       v.Id,
+	//		})
+	//		ignoredBuildVariants = append(ignoredBuildVariants, buildvariant.Name)
+	//	}
+	//}
+
 	// create all builds for the version
 	buildsToCreate := []any{}
 	tasksToCreate := task.Tasks{}
@@ -901,6 +926,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
+		// Activate the build if the version is activated and the changed files match the variant's paths.
+		activateBuild := utility.FromBoolPtr(v.Activated) && buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
 		creationInfo := model.TaskCreationInfo{
 			Project:             projectInfo.Project,
 			ProjectRef:          projectInfo.Ref,
@@ -908,7 +935,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			TaskIDs:             taskIds,
 			TaskNames:           taskNames,
 			BuildVariantName:    buildvariant.Name,
-			ActivateBuild:       utility.FromBoolPtr(v.Activated),
+			ActivateBuild:       activateBuild,
 			SourceRev:           sourceRev,
 			DefinitionID:        metadata.TriggerDefinitionID,
 			Aliases:             aliases,
@@ -972,6 +999,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"project_identifier": projectInfo.Ref.Identifier,
 			"version":            v.Id,
 			"time":               activateVariantAt,
+			"matched_files":      buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles),
 			"runner":             RunnerName,
 		})
 		v.BuildIds = append(v.BuildIds, b.Id)

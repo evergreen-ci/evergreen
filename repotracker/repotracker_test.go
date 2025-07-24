@@ -1890,3 +1890,165 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.Equal(t, usr.DisplayName(), v.Author)
 	assert.Equal(t, usr.Email(), v.AuthorEmail)
 }
+
+func TestCreateVersionItemsPathFiltering(t *testing.T) {
+	testCases := []struct {
+		name             string
+		metadata         model.VersionMetadata
+		expectedVariants []string
+	}{
+		{
+			name: "FrontendFilesOnly",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"frontend/src/app.js", "frontend/package.json"},
+			},
+			expectedVariants: []string{"frontend", "all_files", "non_docs"},
+		},
+		{
+			name: "BackendFilesOnly",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"backend/src/server.go", "backend/config.yml"},
+			},
+			expectedVariants: []string{"backend", "all_files", "non_docs"},
+		},
+		{
+			name: "SharedFiles",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"shared/utils.js", "shared/constants.go"},
+			},
+			expectedVariants: []string{"frontend", "backend", "all_files", "non_docs"},
+		},
+		{
+			name: "NoChangedFiles",
+			metadata: model.VersionMetadata{
+				ChangedFiles: nil,
+			},
+			expectedVariants: []string{"frontend", "backend", "all_files", "non_docs"},
+		},
+		{
+			name: "NonMatchingFiles",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"docs/README.md", "scripts/deploy.sh"},
+			},
+			expectedVariants: []string{"all_files", "non_docs"},
+		},
+		{
+			name: "GoFileInNonBackendLocation",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"tools/migrate/main.go", "scripts/deploy.go"},
+			},
+			expectedVariants: []string{"backend", "non_docs", "all_files"},
+		},
+		{
+			name: "MarkdownFileChanged",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"docs/README.md", "CHANGELOG.md"},
+			},
+			expectedVariants: []string{"all_files"},
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			// Clear collections before running tests
+			require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))
+
+			// Test configuration with build variants that have different path patterns
+			configYml := `
+buildvariants:
+- name: frontend
+  display_name: Frontend
+  run_on: d
+  paths:
+  - "frontend/**"
+  - "shared/**"
+  tasks:
+  - name: frontend_test
+- name: backend
+  display_name: Backend
+  run_on: d
+  paths:
+  - "backend/**"
+  - "shared/**"
+  - "**/*.go"
+  - "go.mod"
+  tasks:
+  - name: backend_test
+- name: non_docs
+  display_name: Non-Documentation
+  run_on: d
+  paths:
+  - "!**/*.md"
+  tasks:
+  - name: non_docs_test
+- name: all_files
+  display_name: All Files
+  run_on: d
+  # No paths specified - should always run
+  tasks:
+  - name: integration_test
+tasks:
+- name: frontend_test
+- name: backend_test
+- name: non_docs_test
+- name: integration_test
+`
+
+			projectRef := &model.ProjectRef{
+				Owner:      "evergreen-ci",
+				Repo:       "evergreen",
+				Branch:     "main",
+				Id:         "project1",
+				Identifier: "project1",
+			}
+
+			p := &model.Project{}
+			pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, projectRef.Id, p)
+			require.NoError(t, err)
+
+			projectInfo := &model.ProjectInfo{
+				Ref:                 projectRef,
+				IntermediateProject: pp,
+				Project:             p,
+			}
+
+			v := &model.Version{
+				Id:                  fmt.Sprintf("test_version_%s_%d", tc.name, time.Now().UnixNano()),
+				CreateTime:          time.Now(),
+				Revision:            fmt.Sprintf("rev%d", i+1),
+				Author:              "test_author",
+				Activated:           utility.TruePtr(),
+				RevisionOrderNumber: i + 1,
+				Owner:               "test_owner",
+				Repo:                "test_repo",
+				Branch:              "main",
+				Requester:           evergreen.RepotrackerVersionRequester,
+			}
+
+			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil)
+			require.NoError(t, err)
+
+			builds, err := build.Find(ctx, build.ByVersion(v.Id))
+			require.NoError(t, err)
+
+			activatedBVs := []string{}
+			for _, b := range builds {
+				if b.Activated {
+					activatedBVs = append(activatedBVs, b.BuildVariant)
+				}
+			}
+
+			// Verify that all expected variants are activated
+			for _, expectedVariant := range tc.expectedVariants {
+				assert.Contains(t, activatedBVs, expectedVariant, "Expected variant %s to be activated", expectedVariant)
+			}
+
+			// Verify that only expected variants are activated
+			assert.Len(t, activatedBVs, len(tc.expectedVariants), "Expected exactly %d variants to be activated, got %d", len(tc.expectedVariants), len(activatedBVs))
+		})
+	}
+
+}

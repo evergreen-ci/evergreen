@@ -36,6 +36,7 @@ const (
 	PatchingDisabled            = "patching was disabled"
 	mergeQueueDisabled          = "merge queue disabled for project"
 	ignoredFiles                = "all patched files are ignored"
+	ignoredFilesForVariant      = "variant ignored due to path filtering"
 	invalidAlias                = "alias not found"
 	NoTasksOrVariants           = "no tasks/variants were configured"
 	noChildPatchTasksOrVariants = "no tasks/variants were configured for child patch"

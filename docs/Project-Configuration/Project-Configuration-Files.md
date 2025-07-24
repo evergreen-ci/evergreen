@@ -67,7 +67,7 @@ Notice that tasks contain:
 Another useful feature is [task tags](#task-and-variant-tags),
 which allows grouping tasks to limit whether [those tasks should run on
 patches/git
-tags/etc.](#limiting-when-a-task-or-variant-will-run)
+tags/etc.](#controlling-when-tasks-and-variants-run)
 
 #### Commands
 
@@ -235,6 +235,15 @@ buildvariants:
     patchable: false
   - name: git_tag_release
     git_tag_only: true
+- name: frontend
+  display_name: Frontend Tests
+  paths:
+    - "frontend/**"
+    - "shared/**"
+  run_on:
+  - ubuntu1404-test
+  tasks:
+  - name: frontend_test
 ```
 
 Fields:
@@ -268,7 +277,7 @@ Fields:
 - `tasks`: a list of tasks to run, referenced either by task name or by tags.
   Tasks listed here can also include other task-level fields, such as
   `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, and `run_on`.
-  We can also [define when a task will run](#limiting-when-a-task-or-variant-will-run). If there are
+  We can also [define when a task will run](#controlling-when-tasks-and-variants-run). If there are
   conflicting settings definitions at different levels, the order of priority
   is defined [here](#task-fields-override-hierarchy).
 - `activate`: by default, we'll activate if the whole mainline commit is
@@ -295,7 +304,11 @@ Fields:
   inactive, Evergreen will activate it. In this way, cron is tied more closely
   to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
 - `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
-- Build variants support [all options that limit when a task will run](#limiting-when-a-task-or-variant-will-run)
+- `paths`: optional list of gitignore-style patterns that define which files should trigger
+  this build variant when changed. If provided, the build variant will only run if at least
+  one changed file matches one of these patterns. If no paths are specified, the variant
+  will always run (default behavior). See [Build Variant Path Filtering](#build-variant-path-filtering) for more details.
+- Build variants support [all options that limit when a task will run](#controlling-when-tasks-and-variants-run)
   (`allowed_requesters`, `patch_only`, `patchable`, `disable`, etc.). If set for the
   build variant, it will apply to all tasks under the build variant.
 
@@ -593,7 +606,11 @@ tasks:
           sleep 1000
 ```
 
-### Limiting When a Task or Variant Will Run
+### Controlling When Tasks and Variants Run
+
+You can control when tasks and build variants run using several different mechanisms:
+
+#### Limiting by Requester Type
 
 To limit the conditions when a task will run, the following settings can be
 added to a task definition, to a build variant definition, or to a specific task
@@ -637,7 +654,6 @@ tasks:
   - name: only-run-for-manual-patches-and-git-tag-versions
     allowed_requesters: ["patch", "github_tag"]
 ```
-
 The valid requester values are:
 
 - `patch`: manual patches.
@@ -679,6 +695,69 @@ buildvariants:
       - name: only_commit_queue
         allowed_requesters: ["github_pr"]
 ```
+
+### Filtering by Changed Files
+
+You can control when tasks and build variants run based on which files have changed in a commit or patch. This is useful for optimizing CI/CD pipelines by only running relevant tests when specific parts of your codebase change. For both options here, this filtering applies to mainline versions and PR testing (so this won't prevent required merge queue testing, for example).
+
+For mainline version, we will not automatically run tasks if they are filtered out, and we will not create PR patches/tasks if filtered out, but instead send a successful status for all required
+checks as well as the base `evergreen` check.
+
+##### Project-Level File Ignoring
+
+Some commits to your repository don't need to be tested. The obvious
+examples here would be documentation or configuration files for other
+Evergreen projects---changes to README.md don't need to trigger your
+builds.
+
+To address this, project files can define a top-level `ignore`
+list of gitignore-style globs which tell Evergreen to not automatically
+run tasks for commits that only change ignored files, and we will not
+create PR patches but instead send a successful status for all required
+checks as well as the base `evergreen` check.
+
+```yaml
+ignore:
+  - "version.json" ## don't schedule tests for changes to this specific file
+  - "*.md" ## don't schedule tests for changes to any markdown files
+  - "*.txt" ## don't schedule tests for changes to any txt files
+  - "!testdata/sample.txt" ## EXCEPT for changes to this txt file that's part of a test suite
+```
+
+In the above example, a commit that only changes `README.md` would not
+be automatically scheduled, since `*.md` is ignored. A commit that
+changes both `README.md` and `important_file.cpp` _would_ schedule
+tasks, since only some of the commit's changed files are ignored.
+
+##### Build Variant Path Filtering
+
+Build variants can specify `paths` patterns to define which files should trigger the variant when changed. This is the opposite of ignoring - it defines what files the variant cares about.
+
+```yaml
+buildvariants:
+- name: frontend
+  display_name: Frontend Tests
+  paths:
+    - "frontend/**"
+    - "shared/**"
+  run_on:
+    - ubuntu1604-test
+  tasks:
+    - name: frontend_test
+```
+
+When a build variant has `paths` defined:
+- The variant will only run if at least one changed file matches one of the path patterns
+- If no changed files match any path pattern, the variant will not run
+- If no paths or changed files are specified, the variant will always run (default behavior)
+
+**This is not respected for variants that are generated.** We expect the generated tasks logic itself to handle this.
+
+Full gitignore syntax is explained
+[here](https://git-scm.com/docs/gitignore). Ignored variants may still
+be scheduled manually, and their tasks will still be scheduled on
+failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
+
 
 ### Expansions
 
@@ -1636,36 +1715,7 @@ can also be used to define dependencies.
     - "!.favorite !.other" ## runs all tasks that don't match these tags
 ```
 
-### Ignoring Changes to Certain Files
 
-Some commits to your repository don't need to be tested. The obvious
-examples here would be documentation or configuration files for other
-Evergreen projects---changes to README.md don't need to trigger your
-builds.
-
-To address this, project files can define a top-level `ignore`
-list of gitignore-style globs which tell Evergreen to not automatically
-run tasks for commits that only change ignored files, and we will not
-create PR patches but instead send a successful status for all required
-checks as well as the base `evergreen` check.
-
-```yaml
-ignore:
-  - "version.json" ## don't schedule tests for changes to this specific file
-  - "*.md" ## don't schedule tests for changes to any markdown files
-  - "*.txt" ## don't schedule tests for changes to any txt files
-  - "!testdata/sample.txt" ## EXCEPT for changes to this txt file that's part of a test suite
-```
-
-In the above example, a commit that only changes `README.md` would not
-be automatically scheduled, since `*.md` is ignored. A commit that
-changes both `README.md` and `important_file.cpp` _would_ schedule
-tasks, since only some of the commit's changed files are ignored.
-
-Full gitignore syntax is explained
-[here](https://git-scm.com/docs/gitignore). Ignored versions may still
-be scheduled manually, and their tasks will still be scheduled on
-failure stepback.
 
 ### Auto restarting tasks upon failure
 
