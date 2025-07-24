@@ -342,6 +342,105 @@
           }
         }
       }
+    },
+    {
+      "query_file": "other.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "configDir": "/test/config",
+            "domainName": "test.example.com",
+            "githubPRCreatorOrg": "test-org",
+            "shutdownWaitSeconds": 10,
+            "githubWebhookSecret": "test-secret",
+            "pprofPort": "8080",
+            "logPath": "/test/logs",
+            "githubOrgs": ["test-org1", "test-org2"],
+            "singleTaskDistro": {
+              "projectTasksPairs": [
+                {
+                  "projectId": "test-project",
+                  "allowedTasks": ["test-task1", "test-task2"],
+                  "allowedBVs": ["test-bv1", "test-bv2"]
+                }
+              ]
+            },
+            "buckets": {
+              "internalBuckets": [],
+              "logBucket": {
+                "name": "mutation-log-bucket",
+                "testResultsPrefix": null,
+                "roleARN": null
+              },
+              "testResultsBucket": {
+                "name": "mutation-test-bucket",
+                "testResultsPrefix": "mutation-test-results",
+                "roleARN": "test arn"
+              }
+            },
+            "ssh": {
+              "taskHostKey": {
+                "name": "mutation-task-key",
+                "secretARN": "test secret arn"
+              },
+              "spawnHostKey": {
+                "name": "mutation-spawn-key",
+                "secretARN": "test secret arn"
+              }
+            },
+            "expansions": {
+              "mutation_key": "mutation_expansion_value"
+            },
+            "hostJasper": {
+              "binaryName": "mutation-jasper",
+              "downloadFileName": "mutation-jasper.tar.gz",
+              "port": 3000,
+              "url": "https://mutation.example.com/jasper",
+              "version": "v2.0.0"
+            },
+            "jiraNotifications": {
+              "customFields": {
+                "ANOTHER_PROJECT": {
+                  "components": ["another-component"],
+                  "labels": ["another-label"]
+                },
+                "MUTATION_PROJECT": {
+                  "components": ["mutation-component"],
+                  "labels": ["mutation-label"]
+                }
+              }
+            },
+            "spawnhost": {
+              "unexpirableHostsPerUser": 5,
+              "unexpirableVolumesPerUser": 3,
+              "spawnHostsPerUser": 10
+            },
+            "sleepSchedule": {
+              "permanentlyExemptHosts": ["host1", "host2"]
+            },
+            "tracer": {
+              "enabled": true,
+              "collectorEndpoint": "https://collector.example.com",
+              "collectorInternalEndpoint": "https://internal-collector.example.com",
+              "collectorAPIKey": "test-api-key"
+            },
+            "projectCreation": {
+              "totalProjectLimit": 100,
+              "repoProjectLimit": 50,
+              "repoExceptions": [
+                {
+                  "owner": "test-owner",
+                  "repo": "test-repo"
+                }
+              ],
+              "jiraProject": "TEST"
+            },
+            "githubCheckRun": {
+              "checkRunLimit": 10
+            }
+          }
+        }
+      }
     }
   ]
 }

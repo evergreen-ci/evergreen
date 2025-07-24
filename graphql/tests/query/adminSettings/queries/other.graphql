@@ -1,0 +1,78 @@
+query Other {
+    adminSettings {
+        configDir
+        domainName
+        githubPRCreatorOrg
+        shutdownWaitSeconds
+        githubWebhookSecret
+        pprofPort
+        logPath
+        githubOrgs
+        singleTaskDistro {
+            projectTasksPairs {
+                projectId
+                allowedTasks
+                allowedBVs
+            }
+        }
+        buckets {
+            logBucket {
+                name
+                testResultsPrefix
+                roleARN
+            }
+            testResultsBucket {
+                name
+                testResultsPrefix
+                roleARN
+            }
+        }
+        ssh {
+            taskHostKey {
+                name
+                secretARN
+            }
+            spawnHostKey {
+                name
+                secretARN
+            }
+        }
+        expansions
+        hostJasper {
+            binaryName
+            downloadFileName
+            port
+            url
+            version
+        }
+        jiraNotifications {
+            customFields
+        }
+        spawnhost {
+            unexpirableHostsPerUser
+            unexpirableVolumesPerUser
+            spawnHostsPerUser
+        }
+        sleepSchedule {
+            permanentlyExemptHosts
+        }
+        tracer {
+            enabled
+            collectorEndpoint
+            collectorInternalEndpoint
+            collectorAPIKey
+        }
+        projectCreation {
+            totalProjectLimit
+            repoProjectLimit
+            repoExceptions {
+                owner
+                repo
+            }
+            jiraProject
+        }
+        githubCheckRun {
+            checkRunLimit
+        }
+    }
+}

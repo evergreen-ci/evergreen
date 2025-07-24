@@ -58,7 +58,7 @@
               "name": "test-app"
             },
             "splunk": {
-              "splunkConnectionInfo": { 
+              "splunkConnectionInfo": {
                 "serverUrl": "testServer",
                 "token": "testToken",
                 "channel": "42"
@@ -314,6 +314,101 @@
             },
             "triggers": {
               "generateTaskDistro": "archlinux-test"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "other.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "configDir": "../config",
+            "domainName": "localhost",
+            "githubPRCreatorOrg": "evergreen-ci",
+            "shutdownWaitSeconds": 0,
+            "githubWebhookSecret": "webhook_secret",
+            "pprofPort": "6660",
+            "logPath": "/var/log/evergreen",
+            "githubOrgs": ["evergreen-ci"],
+            "singleTaskDistro": {
+              "projectTasksPairs": [
+                {
+                  "projectId": "evergreen",
+                  "allowedTasks": ["compile", "test"],
+                  "allowedBVs": ["windows", "ubuntu1604"]
+                },
+                {
+                  "projectId": "spruce",
+                  "allowedTasks": ["lint", "storybook"],
+                  "allowedBVs": []
+                }
+              ]
+            },
+            "buckets": {
+              "logBucket": {
+                "name": "s3 bucket",
+                "testResultsPrefix": null,
+                "roleARN": null
+              },
+              "testResultsBucket": {
+                "name": "test bucket",
+                "testResultsPrefix": "all",
+                "roleARN": ""
+              }
+            },
+            "ssh": {
+              "taskHostKey": {
+                "name": "task host key",
+                "secretARN": "\u003csecret_arn\u003e"
+              },
+              "spawnHostKey": {
+                "name": "spawn host key",
+                "secretARN": "\u003csecret_arn\u003e"
+              }
+            },
+            "expansions": {
+              "github_app_key": "someKey"
+            },
+            "hostJasper": {
+              "binaryName": "binary",
+              "downloadFileName": "download",
+              "port": 2385,
+              "url": "http://localhost:9090",
+              "version": "1123"
+            },
+            "jiraNotifications": {
+              "customFields": {
+                "CUSTOM PROJECT": {
+                  "components": ["component"],
+                  "labels": ["label"]
+                },
+                "OTHER PROJECT": {}
+              }
+            },
+            "spawnhost": {
+              "unexpirableHostsPerUser": 2,
+              "unexpirableVolumesPerUser": 1,
+              "spawnHostsPerUser": 6
+            },
+            "sleepSchedule": {
+              "permanentlyExemptHosts": ["1135"]
+            },
+            "tracer": {
+              "enabled": false,
+              "collectorEndpoint": "\u003ccollector_endpoint\u003e",
+              "collectorInternalEndpoint": "\u003ccollector_internal_endpoint\u003e",
+              "collectorAPIKey": "\u003ccollector_api_key\u003e"
+            },
+            "projectCreation": {
+              "totalProjectLimit": 10,
+              "repoProjectLimit": 2,
+              "repoExceptions": [],
+              "jiraProject": ""
+            },
+            "githubCheckRun": {
+              "checkRunLimit": 0
             }
           }
         }

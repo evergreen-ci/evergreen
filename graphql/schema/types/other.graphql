@@ -1,0 +1,182 @@
+input BucketConfigInput {
+  name: String
+  testResultsPrefix: String
+  roleARN: String @redactSecrets
+}
+
+type BucketConfig {
+    name: String
+    testResultsPrefix: String
+    roleARN: String @requireAdmin
+}
+
+input BucketsConfigInput {
+    logBucket: BucketConfigInput
+    testResultsBucket: BucketConfigInput
+    internalBuckets: [String!]!
+    credentials: S3CredentialsInput
+}
+
+type BucketsConfig {
+    logBucket: BucketConfig
+    testResultsBucket: BucketConfig
+    internalBuckets: [String!]!
+    credentials: S3Credentials
+}
+
+input GitHubCheckRunConfigInput {
+    checkRunLimit: Int @redactSecrets
+}
+
+type GitHubCheckRunConfig {
+    checkRunLimit: Int @requireAdmin
+}
+
+input HostJasperConfigInput {
+    binaryName: String
+    downloadFileName: String
+    port: Int
+    url: String
+    version: String
+}
+
+type HostJasperConfig {
+    binaryName: String
+    downloadFileName: String
+    port: Int
+    url: String
+    version: String
+}
+
+input JiraNotificationsProjectInput {
+  fields: StringMap
+  components: [String!]
+  labels: [String!]
+}
+
+
+type JiraNotificationsProject {
+  fields: StringMap
+  components: [String!]
+  labels: [String!]
+}
+
+input JiraNotificationsConfigInput {
+  customFields: JIRANotificationsProjectMap
+}
+
+type JiraNotificationsConfig {
+  customFields: JIRANotificationsProjectMap
+}
+
+input OwnerRepoInput {
+    owner: String
+    repo: String
+}
+
+type OwnerRepo {
+    owner: String
+    repo: String
+}
+
+input ProjectCreationConfigInput {
+    totalProjectLimit: Int
+    repoProjectLimit: Int
+    repoExceptions: [OwnerRepoInput!]!
+    jiraProject: String
+}
+
+type ProjectCreationConfig {
+    totalProjectLimit: Int
+    repoProjectLimit: Int
+    repoExceptions: [OwnerRepo!]!
+    jiraProject: String
+}
+
+input S3CredentialsInput {
+    key: String @redactSecrets
+    secret: String @redactSecrets
+    bucket: String
+}
+
+type S3Credentials {
+    key: String @requireAdmin
+    secret: String @requireAdmin
+    bucket: String
+}
+
+input SleepScheduleConfigInput {
+    permanentlyExemptHosts: [String!]!
+}
+
+type SleepScheduleConfig {
+    permanentlyExemptHosts: [String!]!
+}
+
+input SSHConfigInput {
+    taskHostKey: SSHKeyPairInput
+    spawnHostKey: SSHKeyPairInput
+}
+
+type SSHConfig {
+    taskHostKey: SSHKeyPair
+    spawnHostKey: SSHKeyPair
+}
+
+input SSHKeyPairInput {
+    name: String
+    secretARN: String @redactSecrets
+}
+
+type SSHKeyPair {
+    name: String
+    secretARN: String @requireAdmin
+}
+
+input SpawnHostConfigInput {
+    unexpirableHostsPerUser: Int
+    unexpirableVolumesPerUser: Int
+    spawnHostsPerUser: Int
+}
+
+type SpawnHostConfig {
+    unexpirableHostsPerUser: Int
+    unexpirableVolumesPerUser: Int
+    spawnHostsPerUser: Int
+}
+
+input ProjectTasksPairInput {
+    projectID: String!
+    allowedTasks: [String!]!
+    allowedBVs: [String!]!
+}
+
+type ProjectTasksPair {
+    projectId: String!
+    allowedTasks: [String!]!
+    allowedBVs: [String!]!
+}
+
+input SingleTaskDistroConfigInput {
+    projectTasksPairs: [ProjectTasksPairInput!]!
+}
+
+type SingleTaskDistroConfig {
+    projectTasksPairs: [ProjectTasksPair!]!
+}
+
+input TracerSettingsInput {
+    enabled: Boolean
+    collectorEndpoint: String
+    collectorInternalEndpoint: String
+    collectorAPIKey: String @redactSecrets
+}
+
+type TracerSettings {
+    enabled: Boolean
+    collectorEndpoint: String
+    collectorInternalEndpoint: String
+    collectorAPIKey: String @requireAdmin
+}
+
+scalar JIRANotificationsProjectMap

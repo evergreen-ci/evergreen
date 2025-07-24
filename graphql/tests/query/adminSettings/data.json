@@ -64,7 +64,14 @@
       "banner": "This is an important notification",
       "banner_theme": "IMPORTANT",
       "github_orgs": ["evergreen-ci"],
-      "disabled_gql_queries": null
+      "disabled_gql_queries": null,
+      "github_pr_creator_org": "evergreen-ci",
+      "github_webhook_secret": "webhook_secret",
+      "pprof_port": "6660",
+      "log_path": "/var/log/evergreen",
+      "expansions": {
+        "github_app_key": "someKey"
+      }
     },
     {
       "_id": "notify",
@@ -275,6 +282,106 @@
       "_id": "cedar",
       "db_name": "cedar",
       "db_url": "mongodb://localhost:27017/cedar"
+    },
+    {
+      "_id": "single_task_distro",
+      "project_tasks_pairs": [
+        {
+          "project_id": "evergreen",
+          "allowed_tasks": ["compile", "test"],
+          "allowed_bvs": ["windows", "ubuntu1604"]
+        },
+        {
+          "project_id": "spruce",
+          "allowed_tasks": ["lint", "storybook"],
+          "allowed_bvs": null
+        }
+      ]
+    },
+    {
+      "_id": "buckets",
+      "credentials": {
+        "key": "2118927364",
+        "secret": "alskhrp2342",
+        "bucket": "bucket-credentials"
+      },
+      "log_bucket": {
+        "name": "s3 bucket",
+        "type": "s3",
+        "db_name": "mongodb",
+        "test_results_prefix": "all",
+        "role_arn": ""
+      },
+      "test_results_bucket": {
+        "name": "test bucket",
+        "type": "s3",
+        "db_name": "mongodb",
+        "test_results_prefix": "all",
+        "role_arn": ""
+      }
+    },
+    {
+      "_id": "ssh",
+      "spawn_host_key": {
+        "name": "spawn host key",
+        "secret_arn": "<secret_arn>"
+      },
+      "task_host_key": {
+        "name": "task host key",
+        "secret_arn": "<secret_arn>"
+      }
+    },
+    {
+      "_id": "sleep_schedule",
+      "permanently_exempt_hosts": ["1135"]
+    },
+    {
+      "_id": "host_jasper",
+      "binary_name": "binary",
+      "download_file_name": "download",
+      "port": 2385,
+      "url": "http://localhost:9090",
+      "version": "1123"
+    },
+
+    {
+      "_id": "jira_notifications",
+      "custom_fields": [
+        {
+          "project": "CUSTOM PROJECT",
+          "fields": null,
+          "components": ["component"],
+          "labels": ["label"]
+        },
+        {
+          "project": "OTHER PROJECT",
+          "fields": null,
+          "components": [],
+          "labels": []
+        }
+      ]
+    },
+    {
+      "_id": "spawnhost",
+      "unexpirable_hosts_per_user": 2,
+      "unexpirable_volumes_per_user": 1,
+      "spawn_hosts_per_user": 6
+    },
+    {
+      "_id": "tracer",
+      "collector_api_key": "<collector_api_key>",
+      "collector_endpoint": "<collector_endpoint>",
+      "collector_internal_endpoint": "<collector_internal_endpoint>",
+      "enabled": false
+    },
+    {
+      "_id": "project_creation",
+      "total_project_limit": 10,
+      "repo_project_limit": 2
+    },
+    {
+      "_id": "github_check_run",
+      "check_run_limit": 0
     }
   ]
 }
