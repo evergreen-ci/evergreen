@@ -1,77 +1,77 @@
 input AWSAccountRoleMappingInput {
-    account: String! @redactSecrets
-    role: String! @redactSecrets
+  account: String! @redactSecrets
+  role: String! @redactSecrets
 }
 
 type AWSAccountRoleMapping {
-    account: String! @requireAdmin
-    role: String! @requireAdmin
+  account: String! @requireAdmin
+  role: String! @requireAdmin
 }
 
 input AWSConfigInput {
-    ec2Keys: [EC2KeyInput!]!
-    subnets: [SubnetInput!]!	
-    parserProject: ParserProjectS3ConfigInput
-    persistentDNS: PersistentDNSConfigInput
-    defaultSecurityGroup: String
-    allowedInstanceTypes: [String!]!
-    alertableInstanceTypes: [String!]!
-    allowedRegions: [String!]!
-    maxVolumeSizePerUser: Int!
-    pod: AWSPodConfigInput!
-    accountRoles: [AWSAccountRoleMappingInput!]!
-    IPAMPoolID: String!
-    elasticIPUsageRate: Float!
+  ec2Keys: [EC2KeyInput!]!
+  subnets: [SubnetInput!]!
+  parserProject: ParserProjectS3ConfigInput
+  persistentDNS: PersistentDNSConfigInput
+  defaultSecurityGroup: String
+  allowedInstanceTypes: [String!]!
+  alertableInstanceTypes: [String!]!
+  allowedRegions: [String!]!
+  maxVolumeSizePerUser: Int!
+  pod: AWSPodConfigInput!
+  accountRoles: [AWSAccountRoleMappingInput!]!
+  IPAMPoolID: String!
+  elasticIPUsageRate: Float!
 }
 
 type AWSConfig {
-    ec2Keys: [EC2Key!]!
-	subnets: [Subnet!]!	
-	parserProject: ParserProjectS3Config
-	persistentDNS: PersistentDNSConfig
-	defaultSecurityGroup: String
-	allowedInstanceTypes: [String!]!
-	alertableInstanceTypes: [String!]!
-	allowedRegions: [String!]!
-	maxVolumeSizePerUser: Int!
-	pod: AWSPodConfig!
-	accountRoles: [AWSAccountRoleMapping!]!
-	IPAMPoolID: String!
-	elasticIPUsageRate: Float!
+  ec2Keys: [EC2Key!]!
+  subnets: [Subnet!]!
+  parserProject: ParserProjectS3Config
+  persistentDNS: PersistentDNSConfig
+  defaultSecurityGroup: String
+  allowedInstanceTypes: [String!]!
+  alertableInstanceTypes: [String!]!
+  allowedRegions: [String!]!
+  maxVolumeSizePerUser: Int!
+  pod: AWSPodConfig!
+  accountRoles: [AWSAccountRoleMapping!]!
+  IPAMPoolID: String!
+  elasticIPUsageRate: Float!
 }
 
 input AWSPodConfigInput {
-    role: String @redactSecrets
-    region: String
-    ecs: ECSConfigInput
-    secretsManager: SecretsManagerConfigInput
+  role: String @redactSecrets
+  region: String
+  ecs: ECSConfigInput
+  secretsManager: SecretsManagerConfigInput
 }
 
 type AWSPodConfig {
-    role: String @requireAdmin
-    region: String
-    ecs: ECSConfig
-    secretsManager: SecretsManagerConfig
+  role: String @requireAdmin
+  region: String
+  ecs: ECSConfig
+  secretsManager: SecretsManagerConfig
 }
 
 input AWSVPCConfigInput {
-    subnets: [String!]!
-    securityGroups: [String!]! @redactSecrets
+  subnets: [String!]!
+  securityGroups: [String!]! @redactSecrets
 }
 
 type AWSVPCConfig {
-    subnets: [String!]!
-    securityGroups: [String!]! @requireAdmin
+  subnets: [String!]!
+  securityGroups: [String!]! @requireAdmin
 }
 
 input CloudProvidersInput {
-    aws: AWSConfigInput
-    docker: DockerConfigInput
+  aws: AWSConfigInput
+  docker: DockerConfigInput
 }
 
 type CloudProviders {
-    aws: AWSConfig
-    docker: DockerConfig
+  aws: AWSConfig
+  docker: DockerConfig
 }
 
 input ContainerPoolInput {
@@ -88,163 +88,162 @@ type ContainerPool {
   port: Int!
 }
 
-
 input ContainerPoolsConfigInput {
-    pools: [ContainerPoolInput!]!
+  pools: [ContainerPoolInput!]!
 }
 
 type ContainerPoolsConfig {
-    pools: [ContainerPool!]!
+  pools: [ContainerPool!]!
 }
 
 input DockerConfigInput {
-    apiVersion: String
+  apiVersion: String
 }
 
 type DockerConfig {
-    apiVersion: String
+  apiVersion: String
 }
 
 input EC2KeyInput {
-    name: String!
-    key: String! @redactSecrets
-    secret: String! @redactSecrets
+  name: String!
+  key: String! @redactSecrets
+  secret: String! @redactSecrets
 }
 
 type EC2Key {
-    name: String!
-    key: String! @requireAdmin
-    secret: String! @requireAdmin
+  name: String!
+  key: String! @requireAdmin
+  secret: String! @requireAdmin
 }
 
 input ECSConfigInput {
-    maxCPU: Int
-    maxMemoryMb: Int
-    taskDefinitionPrefix: String
-    taskRole: String
-    executionRole: String
-    logRegion: String
-    logGroup: String
-    logStreamPrefix: String
-    AWSVPC: AWSVPCConfigInput
-    clusters: [ECSClusterConfigInput!]!
-    capacityProviders: [ECSCapacityProviderInput!]!
-    allowedImages: [String!]!
+  maxCPU: Int
+  maxMemoryMb: Int
+  taskDefinitionPrefix: String
+  taskRole: String
+  executionRole: String
+  logRegion: String
+  logGroup: String
+  logStreamPrefix: String
+  AWSVPC: AWSVPCConfigInput
+  clusters: [ECSClusterConfigInput!]!
+  capacityProviders: [ECSCapacityProviderInput!]!
+  allowedImages: [String!]!
 }
 
 type ECSConfig {
-    maxCPU: Int
-    maxMemoryMb: Int
-    taskDefinitionPrefix: String
-    taskRole: String
-    executionRole: String
-    logRegion: String
-    logGroup: String
-    logStreamPrefix: String
-    AWSVPC: AWSVPCConfig
-    clusters: [ECSClusterConfig!]!
-    capacityProviders: [ECSCapacityProvider!]!
-    allowedImages: [String!]!
+  maxCPU: Int
+  maxMemoryMb: Int
+  taskDefinitionPrefix: String
+  taskRole: String
+  executionRole: String
+  logRegion: String
+  logGroup: String
+  logStreamPrefix: String
+  AWSVPC: AWSVPCConfig
+  clusters: [ECSClusterConfig!]!
+  capacityProviders: [ECSCapacityProvider!]!
+  allowedImages: [String!]!
 }
 
 enum ECSOperatingSystem {
-    ECSOSLINUX
-    ECSOSWINDOWS
+  ECSOSLINUX
+  ECSOSWINDOWS
 }
 
 enum ECSArchitecture {
-    ECSARCHAMD64
-    ECSARCHARM64
+  ECSARCHAMD64
+  ECSARCHARM64
 }
 
 enum ECSWindowsVersion {
-    ECSWINDOWSSERVER2016
-    ECSWINDOWSSERVER2019
-    ECSWINDOWSSERVER2022
+  ECSWINDOWSSERVER2016
+  ECSWINDOWSSERVER2019
+  ECSWINDOWSSERVER2022
 }
 
 input ECSCapacityProviderInput {
-    name: String
-    os: ECSOperatingSystem
-    arch: ECSArchitecture
-    windowsVersion: ECSWindowsVersion
+  name: String
+  os: ECSOperatingSystem
+  arch: ECSArchitecture
+  windowsVersion: ECSWindowsVersion
 }
 
 type ECSCapacityProvider {
-    name: String
-    os: ECSOperatingSystem
-    arch: ECSArchitecture
-    windowsVersion: ECSWindowsVersion
+  name: String
+  os: ECSOperatingSystem
+  arch: ECSArchitecture
+  windowsVersion: ECSWindowsVersion
 }
 
 input ECSClusterConfigInput {
-    name: String
-    os: String
+  name: String
+  os: String
 }
 
-type ECSClusterConfig{
-    name: String
-    os: String
+type ECSClusterConfig {
+  name: String
+  os: String
 }
 
 input OwnerRepoInput {
-    owner: String!
-    repo: String!
+  owner: String!
+  repo: String!
 }
 
 type OwnerRepo {
-    owner: String!
-    repo: String!
+  owner: String!
+  repo: String!
 }
 
 input ParserProjectS3ConfigInput {
-    key: String @redactSecrets
-    secret: String! @redactSecrets
-    bucket: String
-    prefix: String
-    generatedJSONPrefix: String
+  key: String @redactSecrets
+  secret: String! @redactSecrets
+  bucket: String
+  prefix: String
+  generatedJSONPrefix: String
 }
 
 type ParserProjectS3Config {
-    key: String @requireAdmin
-    secret: String! @requireAdmin
-    bucket: String
-    prefix: String
-    generatedJSONPrefix: String
+  key: String @requireAdmin
+  secret: String! @requireAdmin
+  bucket: String
+  prefix: String
+  generatedJSONPrefix: String
 }
 
 input PersistentDNSConfigInput {
-    hostedZoneID: String
-    domain: String
+  hostedZoneID: String
+  domain: String
 }
 
 type PersistentDNSConfig {
-    hostedZoneID: String
-    domain: String
+  hostedZoneID: String
+  domain: String
 }
 
 input ProjectCreationConfigInput {
-    repoExceptions: [OwnerRepoInput!]!
+  repoExceptions: [OwnerRepoInput!]!
 }
 
 type ProjectCreationConfig {
-    repoExceptions: [OwnerRepo!]!
+  repoExceptions: [OwnerRepo!]!
 }
 
 input SecretsManagerConfigInput {
-    secretPrefix: String @redactSecrets
+  secretPrefix: String @redactSecrets
 }
 
 type SecretsManagerConfig {
-    secretPrefix: String @requireAdmin
+  secretPrefix: String @requireAdmin
 }
 
 input SubnetInput {
-    az: String!
-    subnetId: String!
+  az: String!
+  subnetId: String!
 }
 
 type Subnet {
-    az: String!
-    subnetId: String!
+  az: String!
+  subnetId: String!
 }
