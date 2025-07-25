@@ -103,7 +103,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return errors.Wrap(err, "parsing output results")
 	}
 
-	if !c.testsAreOptional && len(results) == 0 && len(logs) == 0 {
+	if c.testsAreOptional && len(results) == 0 {
 		return nil
 	}
 
