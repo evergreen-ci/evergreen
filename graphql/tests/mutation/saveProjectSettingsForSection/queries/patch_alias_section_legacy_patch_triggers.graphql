@@ -6,7 +6,6 @@ mutation {
         id: "sandbox_project_id"
         patchTriggerAliases: []
         githubTriggerAliases: ["test"]
-        githubPRTriggerAliases: []
         githubMQTriggerAliases: ["test2"]
       }
       aliases: [
