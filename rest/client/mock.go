@@ -267,6 +267,14 @@ func (c *Mock) GetRecentVersionsForProject(context.Context, string, string) ([]r
 	return nil, nil
 }
 
+func (c *Mock) GetBuildsForVersion(ctx context.Context, versionID string) ([]restmodel.APIBuild, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetTasksForBuild(ctx context.Context, buildID string) ([]restmodel.APITask, error) {
+	return nil, nil
+}
+
 func (c *Mock) GetDistroByName(context.Context, string) (*model.APIDistro, error) {
 	return nil, nil
 }

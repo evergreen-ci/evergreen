@@ -55,6 +55,7 @@ func buildApp() *cli.App {
 		operations.Validate(),
 		operations.List(),
 		operations.LastGreen(),
+		operations.LastRevision(),
 		operations.Subscriptions(),
 		operations.Client(),
 

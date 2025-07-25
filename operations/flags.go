@@ -135,6 +135,13 @@ func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
+func addVariantsRegexpFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringSliceFlag{
+		Name:  joinFlagNames(regexVariantsFlagName, "rv"),
+		Usage: "regexps for build variant names",
+	})
+}
+
 func addPatchIDFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  joinFlagNames(patchIDFlagName, "id", "i"),
