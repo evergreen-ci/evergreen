@@ -10,6 +10,11 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// GithubTriggerAliases is the resolver for the githubTriggerAliases field.
+func (r *projectResolver) GithubTriggerAliases(ctx context.Context, obj *restModel.APIProjectRef) ([]string, error) {
+	return utility.FromStringPtrSlice(obj.GithubPRTriggerAliases), nil
+}
+
 // IsFavorite is the resolver for the isFavorite field.
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
 	projectIdentifier := utility.FromStringPtr(obj.Identifier)
