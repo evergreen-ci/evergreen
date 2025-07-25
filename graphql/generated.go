@@ -66,6 +66,7 @@ type ResolverRoot interface {
 	ProjectSettings() ProjectSettingsResolver
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
+	RepoRef() RepoRefResolver
 	RepoSettings() RepoSettingsResolver
 	SleepSchedule() SleepScheduleResolver
 	SpruceConfig() SpruceConfigResolver
@@ -1346,6 +1347,7 @@ type ComplexityRoot struct {
 		GithubChecksEnabled                func(childComplexity int) int
 		GithubMQTriggerAliases             func(childComplexity int) int
 		GithubPRTriggerAliases             func(childComplexity int) int
+		GithubTriggerAliases               func(childComplexity int) int
 		Id                                 func(childComplexity int) int
 		ManualPRTestingEnabled             func(childComplexity int) int
 		NotifyOnBuildFailure               func(childComplexity int) int
@@ -2326,6 +2328,9 @@ type QueryResolver interface {
 	Version(ctx context.Context, versionID string) (*model.APIVersion, error)
 	Image(ctx context.Context, imageID string) (*model.APIImage, error)
 	Images(ctx context.Context) ([]string, error)
+}
+type RepoRefResolver interface {
+	GithubTriggerAliases(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -8771,6 +8776,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.GithubPRTriggerAliases(childComplexity), true
+
+	case "RepoRef.githubTriggerAliases":
+		if e.complexity.RepoRef.GithubTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GithubTriggerAliases(childComplexity), true
 
 	case "RepoRef.id":
 		if e.complexity.RepoRef.Id == nil {
@@ -32105,6 +32117,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
+			case "githubTriggerAliases":
+				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
 			case "githubPRTriggerAliases":
 				return ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
 			case "githubMQTriggerAliases":
@@ -62743,6 +62757,47 @@ func (ec *executionContext) fieldContext_RepoRef_githubPermissionGroupByRequeste
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RepoRef().GithubTriggerAliases(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_githubPRTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
 	if err != nil {
@@ -64270,6 +64325,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
 			case "githubPermissionGroupByRequester":
 				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
+			case "githubTriggerAliases":
+				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
 			case "githubPRTriggerAliases":
 				return ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
 			case "githubMQTriggerAliases":
@@ -110076,67 +110133,100 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "id":
 			out.Values[i] = ec._RepoRef_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "admins":
 			out.Values[i] = ec._RepoRef_admins(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "batchTime":
 			out.Values[i] = ec._RepoRef_batchTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "buildBaronSettings":
 			out.Values[i] = ec._RepoRef_buildBaronSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "commitQueue":
 			out.Values[i] = ec._RepoRef_commitQueue(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "containerSizeDefinitions":
 			out.Values[i] = ec._RepoRef_containerSizeDefinitions(ctx, field, obj)
 		case "deactivatePrevious":
 			out.Values[i] = ec._RepoRef_deactivatePrevious(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "disabledStatsCache":
 			out.Values[i] = ec._RepoRef_disabledStatsCache(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "dispatchingDisabled":
 			out.Values[i] = ec._RepoRef_dispatchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "displayName":
 			out.Values[i] = ec._RepoRef_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "enabled":
 			out.Values[i] = ec._RepoRef_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "githubChecksEnabled":
 			out.Values[i] = ec._RepoRef_githubChecksEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "githubDynamicTokenPermissionGroups":
 			out.Values[i] = ec._RepoRef_githubDynamicTokenPermissionGroups(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "githubPermissionGroupByRequester":
 			out.Values[i] = ec._RepoRef_githubPermissionGroupByRequester(ctx, field, obj)
+		case "githubTriggerAliases":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RepoRef_githubTriggerAliases(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "githubPRTriggerAliases":
 			out.Values[i] = ec._RepoRef_githubPRTriggerAliases(ctx, field, obj)
 		case "githubMQTriggerAliases":
@@ -110148,105 +110238,105 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "gitTagVersionsEnabled":
 			out.Values[i] = ec._RepoRef_gitTagVersionsEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "manualPrTestingEnabled":
 			out.Values[i] = ec._RepoRef_manualPrTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "notifyOnBuildFailure":
 			out.Values[i] = ec._RepoRef_notifyOnBuildFailure(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "oldestAllowedMergeBase":
 			out.Values[i] = ec._RepoRef_oldestAllowedMergeBase(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "owner":
 			out.Values[i] = ec._RepoRef_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "parsleyFilters":
 			out.Values[i] = ec._RepoRef_parsleyFilters(ctx, field, obj)
 		case "patchingDisabled":
 			out.Values[i] = ec._RepoRef_patchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "patchTriggerAliases":
 			out.Values[i] = ec._RepoRef_patchTriggerAliases(ctx, field, obj)
 		case "perfEnabled":
 			out.Values[i] = ec._RepoRef_perfEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "periodicBuilds":
 			out.Values[i] = ec._RepoRef_periodicBuilds(ctx, field, obj)
 		case "prTestingEnabled":
 			out.Values[i] = ec._RepoRef_prTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "remotePath":
 			out.Values[i] = ec._RepoRef_remotePath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "repo":
 			out.Values[i] = ec._RepoRef_repo(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "repotrackerDisabled":
 			out.Values[i] = ec._RepoRef_repotrackerDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "restricted":
 			out.Values[i] = ec._RepoRef_restricted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "spawnHostScriptPath":
 			out.Values[i] = ec._RepoRef_spawnHostScriptPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "stepbackDisabled":
 			out.Values[i] = ec._RepoRef_stepbackDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "stepbackBisect":
 			out.Values[i] = ec._RepoRef_stepbackBisect(ctx, field, obj)
 		case "taskAnnotationSettings":
 			out.Values[i] = ec._RepoRef_taskAnnotationSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "tracksPushEvents":
 			out.Values[i] = ec._RepoRef_tracksPushEvents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "triggers":
 			out.Values[i] = ec._RepoRef_triggers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "versionControlEnabled":
 			out.Values[i] = ec._RepoRef_versionControlEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "workstationConfig":
 			out.Values[i] = ec._RepoRef_workstationConfig(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "externalLinks":
 			out.Values[i] = ec._RepoRef_externalLinks(ctx, field, obj)
