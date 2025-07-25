@@ -58,6 +58,12 @@ func (r *projectSettingsResolver) Vars(ctx context.Context, obj *restModel.APIPr
 	return getRedactedAPIVarsForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 }
 
+// GithubTriggerAliases is the resolver for the githubTriggerAliases field.
+func (r *projectInputResolver) GithubTriggerAliases(ctx context.Context, obj *restModel.APIProjectRef, data []string) error {
+	obj.GithubPRTriggerAliases = utility.ToStringPtrSlice(data)
+	return nil
+}
+
 // ProjectID is the resolver for the projectId field.
 func (r *projectSettingsInputResolver) ProjectID(ctx context.Context, obj *restModel.APIProjectSettings, data string) error {
 	obj.Id = utility.ToStringPtr(data)
@@ -67,10 +73,14 @@ func (r *projectSettingsInputResolver) ProjectID(ctx context.Context, obj *restM
 // ProjectSettings returns ProjectSettingsResolver implementation.
 func (r *Resolver) ProjectSettings() ProjectSettingsResolver { return &projectSettingsResolver{r} }
 
+// ProjectInput returns ProjectInputResolver implementation.
+func (r *Resolver) ProjectInput() ProjectInputResolver { return &projectInputResolver{r} }
+
 // ProjectSettingsInput returns ProjectSettingsInputResolver implementation.
 func (r *Resolver) ProjectSettingsInput() ProjectSettingsInputResolver {
 	return &projectSettingsInputResolver{r}
 }
 
 type projectSettingsResolver struct{ *Resolver }
+type projectInputResolver struct{ *Resolver }
 type projectSettingsInputResolver struct{ *Resolver }

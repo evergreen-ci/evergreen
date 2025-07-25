@@ -52,6 +52,7 @@ input ProjectInput {
   githubChecksEnabled: Boolean
   githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroupInput!]
   githubPermissionGroupByRequester: StringMap
+  githubTriggerAliases: [String!]
   githubPRTriggerAliases: [String!]
   githubMQTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
