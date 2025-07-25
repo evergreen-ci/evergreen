@@ -904,7 +904,7 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	ctx, span := tracer.Start(ctx, "associateIPAddressForHost")
 	defer span.End()
 
-	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
+	assocAddrOut, err := c.AssociateAddress(ctx, h, &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(h.Id),
 		AllocationId: aws.String(h.IPAllocationID),
 		// Explicitly allowed an elastic IP to be reassociated to a different
