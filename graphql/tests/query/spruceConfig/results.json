@@ -105,6 +105,7 @@
         "data": {
           "spruceConfig": {
             "secretFields": [
+              "account",
               "amboyDB",
               "apiKey",
               "appId",
@@ -119,6 +120,7 @@
               "headerName",
               "issuer",
               "kanopy",
+              "key",
               "keysetURL",
               "multi",
               "naive",
@@ -127,7 +129,10 @@
               "personalAccessToken",
               "preferredType",
               "publicKey",
+              "role",
               "secret",
+              "secretPrefix",
+              "securityGroups",
               "senderAddress",
               "servicePassword",
               "token",

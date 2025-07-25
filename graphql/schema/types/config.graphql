@@ -307,6 +307,7 @@ input AdminSettingsInput {
   banner: String
   bannerTheme: BannerTheme
   cedar: CedarConfigInput
+  containerPools: ContainerPoolsConfigInput
   fws: FWSConfigInput
   jira: JiraConfigInput
   slack: SlackConfigInput
@@ -318,6 +319,8 @@ input AdminSettingsInput {
   taskLimits: TaskLimitsConfigInput
   hostInit: HostInitConfigInput
   podLifecycle: PodLifecycleConfigInput
+  projectCreation: ProjectCreationConfigInput
+  providers: CloudProvidersInput
   scheduler: SchedulerConfigInput
   repotracker: RepotrackerConfigInput
   api: APIConfigInput
@@ -334,6 +337,7 @@ type AdminSettings {
   banner: String
   bannerTheme: BannerTheme
   cedar: CedarConfig
+  containerPools: ContainerPoolsConfig
   fws: FWSConfig
   jira: JiraConfig
   slack: SlackConfig
@@ -345,6 +349,8 @@ type AdminSettings {
   taskLimits: TaskLimitsConfig
   hostInit: HostInitConfig
   podLifecycle: PodLifecycleConfig
+  projectCreation: ProjectCreationConfig
+  providers: CloudProviders
   scheduler: SchedulerConfig
   repotracker: RepotrackerConfig
   api: APIConfig
@@ -364,7 +370,7 @@ type SpruceConfig {
   containerPools: ContainerPoolsConfig
   githubOrgs: [String!]!
   jira: JiraConfig
-  providers: CloudProviderConfig
+  providers: CloudProviders
   secretFields: [String!]!
   singleTaskDistro: SingleTaskDistroConfig
   slack: SlackConfig
@@ -450,17 +456,6 @@ type ServiceFlags {
   githubStatusAPIDisabled: Boolean!
 }
 
-type ContainerPoolsConfig {
-  pools: [ContainerPool!]!
-}
-
-type ContainerPool {
-  id: String!
-  distro: String!
-  maxContainers: Int!
-  port: Int!
-}
-
 input APIConfigInput {
   httpListenAddr: String!
   url: String!
@@ -507,25 +502,6 @@ type UIConfig {
   csrfKey: String @requireAdmin
   cacheTemplates: Boolean
   stagingEnvironment: String
-}
-
-
-type CloudProviderConfig {
-  aws: AWSConfig
-}
-
-type AWSConfig {
-  maxVolumeSizePerUser: Int
-  pod: AWSPodConfig
-}
-
-type AWSPodConfig {
-  ecs: ECSConfig
-}
-
-type ECSConfig {
-  maxCPU: Int!
-  maxMemoryMb: Int!
 }
 
 type SpawnHostConfig {

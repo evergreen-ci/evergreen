@@ -2,6 +2,7 @@
 package graphql
 
 var redactedFields = map[string]bool{
+	"account": true,
 	"amboyDB": true,
 	"apiKey": true,
 	"appId": true,
@@ -16,6 +17,7 @@ var redactedFields = map[string]bool{
 	"headerName": true,
 	"issuer": true,
 	"kanopy": true,
+	"key": true,
 	"keysetURL": true,
 	"multi": true,
 	"naive": true,
@@ -24,7 +26,10 @@ var redactedFields = map[string]bool{
 	"personalAccessToken": true,
 	"preferredType": true,
 	"publicKey": true,
+	"role": true,
 	"secret": true,
+	"secretPrefix": true,
+	"securityGroups": true,
 	"senderAddress": true,
 	"servicePassword": true,
 	"token": true,
