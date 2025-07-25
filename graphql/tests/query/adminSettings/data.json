@@ -286,7 +286,7 @@
             "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
           },
           {
-            "name": "test-key-2", 
+            "name": "test-key-2",
             "key": "120938471209384701298",
             "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
           }
@@ -297,7 +297,7 @@
             "subnet_id": "subnet-12345678"
           },
           {
-            "az": "us-east-1b", 
+            "az": "us-east-1b",
             "subnet_id": "subnet-87654321"
           }
         ],
@@ -326,7 +326,7 @@
             "task_definition_prefix": "evergreen-",
             "task_role": "arn:aws:iam::123456789012:role/ECSTaskRole",
             "execution_role": "arn:aws:iam::123456789012:role/ECSExecutionRole",
-            "log_region": "us-east-1", 
+            "log_region": "us-east-1",
             "log_group": "/evergreen/ecs",
             "log_stream_prefix": "evergreen-task-",
             "awsvpc": {
@@ -339,7 +339,7 @@
                 "os": "linux"
               },
               {
-                "name": "evergreen-cluster-2", 
+                "name": "evergreen-cluster-2",
                 "os": "windows"
               }
             ],
@@ -351,15 +351,11 @@
               },
               {
                 "name": "EC2",
-                "os": "linux", 
+                "os": "linux",
                 "arch": "arm64"
               }
             ],
-            "allowed_images": [
-              "amazonlinux:latest",
-              "ubuntu:20.04",
-              "centos:8"
-            ]
+            "allowed_images": ["amazonlinux:latest", "ubuntu:20.04", "centos:8"]
           },
           "secrets_manager": {
             "secret_prefix": "evergreen/"
@@ -371,7 +367,7 @@
             "role": "arn:aws:iam::123456789012:role/EvergreenCrossAccountRole"
           },
           {
-            "account": "987654321098", 
+            "account": "987654321098",
             "role": "arn:aws:iam::987654321098:role/EvergreenCrossAccountRole"
           }
         ],
@@ -392,7 +388,7 @@
           "repo": "evergreen"
         },
         {
-          "owner": "mongodb", 
+          "owner": "mongodb",
           "repo": "mongo"
         }
       ],
