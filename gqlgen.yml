@@ -103,6 +103,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBootstrapSettings
   BootstrapSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBootstrapSettings
+  BucketConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBucketConfig
+  BucketsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBucketsConfig
+  BucketsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBucketsConfig
+  BucketConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBucketConfig
   Build:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuild
   BuildBaronSettings:
@@ -227,6 +235,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig
   GitHubAuthConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAuthConfig
+  GitHubCheckRunConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubCheckRunConfig
+  GitHubCheckRunConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubCheckRunConfig
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GitHubDynamicTokenPermissionGroupInput:
@@ -339,6 +351,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostInitConfig
   HostInitConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostInitConfig
+  HostJasperConfig: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHostJasperConfig
+  HostJasperConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIHostJasperConfig
   IceCreamSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   IceCreamSettingsInput:
@@ -361,6 +377,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
   IssueLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
+  JIRANotificationsProjectMap:
+    model: github.com/evergreen-ci/evergreen/graphql.JIRANotificationsProjectMap
   JiraConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
   JiraConfigInput:
@@ -369,6 +387,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
   JiraIssueSubscriberInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
+  JiraNotificationsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRANotificationsConfig
+  JiraNotificationsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRANotificationsConfig
+  JiraNotificationsProject:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRANotificationsProject
+  JiraNotificationsProjectInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJIRANotificationsProject
   JiraStatus:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraStatus
   JiraTicket:
@@ -438,6 +464,10 @@ models:
         value: github.com/evergreen-ci/evergreen.HostsOverallocatedIgnore
       DEFAULT:
         value: github.com/evergreen-ci/evergreen.HostsOverallocatedUseDefault
+  OwnerRepo: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOwnerRepo
+  OwnerRepoInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOwnerRepo
   Package:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPackage
   PackageOpts:
@@ -538,6 +568,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectBanner
   ProjectBannerInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectBanner
+  ProjectCreationConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectCreationConfig
+  ProjectCreationConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectCreationConfig
   ProjectEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectEvent
   ProjectEventSettings:
@@ -562,6 +596,8 @@ models:
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
   ProjectTasksPair:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectTasksPair
+  ProjectTasksPairInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectTasksPair
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
@@ -640,6 +676,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
   RuntimeEnvironmentConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
+  S3Credentials:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
+  S3CredentialsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
   SchedulerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
   SchedulerConfigInput:
@@ -660,15 +700,31 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
   SingleTaskDistroConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
+  SingleTaskDistroConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SiteBanner:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
   SleepSchedule:
     model: github.com/evergreen-ci/evergreen/model/host.SleepScheduleInfo
   SleepScheduleInput:
     model: github.com/evergreen-ci/evergreen/model/host.SleepScheduleInfo
+  SleepScheduleConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISleepScheduleConfig
+  SleepScheduleConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISleepScheduleConfig
   Source:
     model: github.com/evergreen-ci/evergreen/rest/model.APISource
+  SlackConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISlackConfig
+  SlackConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISlackConfig
+  SlackOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISlackOptions
+  SlackOptionsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISlackOptions
   SpawnHostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
+  SpawnHostConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
   SplunkConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISplunkConfig
@@ -680,14 +736,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISplunkConnectionInfo
   SpruceConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
-  SlackConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISlackConfig
-  SlackConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISlackConfig
-  SlackOptions:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISlackOptions
-  SlackOptionsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISlackOptions
+  SSHConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISSHConfig
+  SSHConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISSHConfig
+  SSHKeyPair:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISSHKeyPair
+  SSHKeyPairInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISSHKeyPair
   StatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.StatusCount
   StepbackInfo:
@@ -790,6 +846,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIToolchain
   ToolchainOpts:
     model: github.com/evergreen-ci/evergreen/thirdparty.ToolchainFilterOptions
+  TracerSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITracerSettings
+  TracerSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITracerSettings
   TriggerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerConfig
   TriggerConfigInput:
