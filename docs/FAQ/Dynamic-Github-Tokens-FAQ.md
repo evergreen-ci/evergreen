@@ -2,7 +2,7 @@
 
 ## What should I do if I do not have a Github app?
 
-If you do not have a Github app, request one [here](https://jira.mongodb.org/plugins/servlet/desk/portal/81/create/1328). 
+If you do not have a Github app, request one [here](https://jira.mongodb.org/plugins/servlet/desk/portal/81/create/1328).
 
 ## Which permissions should the Github app have?
 
