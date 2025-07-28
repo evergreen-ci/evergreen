@@ -43,7 +43,7 @@ func LastRevision() cli.Command {
 		}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
-			criteria, err := newLastRevisionCriteria(c.String(projectFlagName), c.StringSlice(variantsFlagName), c.Float64(minSuccessProportionFlagName))
+			criteria, err := newLastRevisionCriteria(c.String(projectFlagName), c.StringSlice(regexpVariantsFlagName), c.Float64(minSuccessProportionFlagName))
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
 			}
@@ -62,18 +62,17 @@ func LastRevision() cli.Command {
 			}
 			defer client.Close()
 
-			// GET /projects/{project_id}/versions
 			latestVersions, err := client.GetRecentVersionsForProject(ctx, c.String(projectFlagName), evergreen.RepotrackerVersionRequester, defaultLastRevisionLookbackLimit)
 			if err != nil {
 				return errors.Wrap(err, "getting latest versions for project")
 			}
 
-			revisionInfo, err := findLatestMatchingRevision(ctx, client, latestVersions, *criteria)
+			matchingVersion, err := findLatestMatchingVersion(ctx, client, latestVersions, *criteria)
 			if err != nil {
 				return errors.Wrap(err, "finding latest matching revision")
 			}
 
-			grip.Infof("Latest revision that matches criteria: %s\n", revisionInfo.revision)
+			grip.Infof("Latest version that matches criteria: %s\nRevision: %s\n", utility.FromStringPtr(matchingVersion.Id), utility.FromStringPtr(matchingVersion.Revision))
 
 			return nil
 		},
@@ -83,6 +82,8 @@ func LastRevision() cli.Command {
 // lastRevisionBuildInfo includes information needed to determine if a build
 // passes a set of criteria.
 type lastRevisionBuildInfo struct {
+	buildID            string
+	versionID          string
 	buildVariant       string
 	numTasks           int
 	numSuccessfulTasks int
@@ -96,7 +97,9 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) last
 		}
 	}
 	return lastRevisionBuildInfo{
+		buildID:            utility.FromStringPtr(b.Id),
 		buildVariant:       utility.FromStringPtr(b.BuildVariant),
+		versionID:          utility.FromStringPtr(b.Version),
 		numTasks:           len(buildTasks),
 		numSuccessfulTasks: numSuccessfulTasks,
 	}
@@ -121,16 +124,20 @@ type lastRevisionCriteria struct {
 }
 
 func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccessProportion float64) (*lastRevisionCriteria, error) {
+	if len(bvRegexpsAsStr) == 0 {
+		return nil, errors.New("must specify at least one build variant regexp for criteria")
+	}
+	if minSuccessProportion < 0 || minSuccessProportion > 1 {
+		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
+	}
+
 	bvRegexps := make([]regexp.Regexp, 0, len(bvRegexpsAsStr))
 	for _, bvRegexpStr := range bvRegexpsAsStr {
 		bvRegexp, err := regexp.Compile(bvRegexpStr)
 		if err != nil {
-			return nil, errors.Wrap(err, "compiling build variant regexp")
+			return nil, errors.Wrapf(err, "compiling build variant regexp '%s'", bvRegexpStr)
 		}
 		bvRegexps = append(bvRegexps, *bvRegexp)
-	}
-	if minSuccessProportion < 0 || minSuccessProportion > 1 {
-		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
 	}
 
 	return &lastRevisionCriteria{
@@ -170,6 +177,8 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 	if info.successProportion() < c.minSuccessProportion {
 		grip.Debug(message.Fields{
 			"message":                "build does not meet minimum success proportion",
+			"version_id":             info.versionID,
+			"build_id":               info.buildID,
 			"build_variant":          info.buildVariant,
 			"min_success_proportion": c.minSuccessProportion,
 			"success_proportion":     info.successProportion(),
@@ -180,15 +189,7 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 	return true
 }
 
-type lastRevisionInfo struct {
-	// revision is the latest revision that matches the criteria.
-	revision string
-}
-
-func findLatestMatchingRevision(ctx context.Context, c client.Communicator, latestVersions []model.APIVersion, criteria lastRevisionCriteria) (*lastRevisionInfo, error) {
-	// GET /versions/{version_id}/builds
-	// kim: TODO: figure out if latestVersions is ordered most to least
-	// recent.
+func findLatestMatchingVersion(ctx context.Context, c client.Communicator, latestVersions []model.APIVersion, criteria lastRevisionCriteria) (*model.APIVersion, error) {
 	for _, v := range latestVersions {
 		grip.Debug(message.Fields{
 			"message":    "checking version",
@@ -243,9 +244,7 @@ func findLatestMatchingRevision(ctx context.Context, c client.Communicator, late
 			continue
 		}
 
-		return &lastRevisionInfo{
-			revision: utility.FromStringPtr(v.Revision),
-		}, nil
+		return &v, nil
 	}
 
 	return nil, errors.New("no matching revision found")
@@ -258,9 +257,9 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 
 	grip.Debug(message.Fields{
 		"message":       "checking build for last revision criteria",
-		"build_id":      b.Id,
-		"build_variant": b.BuildVariant,
-		"version":       b.Version,
+		"build_id":      utility.FromStringPtr(b.Id),
+		"build_variant": utility.FromStringPtr(b.BuildVariant),
+		"version":       utility.FromStringPtr(b.Version),
 	})
 
 	tasks, err := c.GetTasksForBuild(ctx, utility.FromStringPtr(b.Id))
