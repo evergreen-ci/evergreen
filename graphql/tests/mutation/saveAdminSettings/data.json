@@ -67,6 +67,8 @@
       "github_webhook_secret": "",
       "kanopy_ssh_key_path": "",
       "log_path": "LOCAL",
+      "perf_monitoring_kanopy_url": "https://kanopy.example.com",
+      "perf_monitoring_url": "https://perf.example.com",
       "plugins": {},
       "plugins_new": null,
       "pprof_port": "",
@@ -394,6 +396,12 @@
     {
       "_id": "github_check_run",
       "check_run_limit": 0
+    },
+    {
+      "_id": "release_mode",
+      "distro_max_hosts_factor": 0,
+      "idle_time_seconds_override": 0,
+      "target_time_seconds_override": 0
     }
   ]
 }

@@ -326,12 +326,14 @@
           "adminSettings": {
             "configDir": "../config",
             "domainName": "localhost",
-            "githubPRCreatorOrg": "evergreen-ci",
-            "shutdownWaitSeconds": 0,
-            "githubWebhookSecret": "webhook_secret",
-            "pprofPort": "6660",
-            "logPath": "/var/log/evergreen",
             "githubOrgs": ["evergreen-ci"],
+            "githubPRCreatorOrg": "evergreen-ci",
+            "githubWebhookSecret": "webhook_secret",
+            "logPath": "/var/log/evergreen",
+            "perfMonitoringKanopyURL": "https://kanopy.example.com",
+            "perfMonitoringURL": "https://perf.example.com",
+            "pprofPort": "6660",
+            "shutdownWaitSeconds": 0,
             "singleTaskDistro": {
               "projectTasksPairs": [
                 {
@@ -379,13 +381,20 @@
               "version": "1123"
             },
             "jiraNotifications": {
-              "customFields": {
-                "CUSTOM PROJECT": {
+              "customFields": [
+                {
+                  "project": "CUSTOM PROJECT",
+                  "fields": {},
                   "components": ["component"],
                   "labels": ["label"]
                 },
-                "OTHER PROJECT": {}
-              }
+                {
+                  "project": "OTHER PROJECT",
+                  "fields": {},
+                  "components": [],
+                  "labels": []
+                }
+              ]
             },
             "spawnhost": {
               "unexpirableHostsPerUser": 2,
@@ -409,6 +418,11 @@
             },
             "githubCheckRun": {
               "checkRunLimit": 0
+            },
+            "releaseMode": {
+              "distroMaxHostsFactor": 1,
+              "targetTimeSecondsOverride": 0,
+              "idleTimeSecondsOverride": 0
             }
           }
         }

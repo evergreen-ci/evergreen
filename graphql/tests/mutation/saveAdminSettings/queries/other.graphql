@@ -5,6 +5,8 @@ mutation SaveAdminSettingsOther {
         githubPRCreatorOrg: "test-org"
         shutdownWaitSeconds: 10
         githubWebhookSecret: "test-secret"
+        perfMonitoringKanopyURL: "https://perf.kanopy.example.com"
+        perfMonitoringURL: "https://perf.mutation.com"
         pprofPort: "8080"
         logPath: "/test/logs"
         githubOrgs: ["test-org1", "test-org2"]
@@ -49,16 +51,21 @@ mutation SaveAdminSettingsOther {
             version: "v2.0.0"
         }
         jiraNotifications: {
-            customFields: {
-                MUTATION_PROJECT: {
+            customFields: [
+                {
+                  project: "mutation-project"
+                  fields: {
+                    key1: "value1"
+                  }
                   components: ["mutation-component"],
                   labels: ["mutation-label"]
                 },
-                ANOTHER_PROJECT: {
+                {
+                  project: "another-project"
                   components: ["another-component"],
                   labels: ["another-label"]
                 }
-              }
+            ]
         }
         spawnhost: {
             unexpirableHostsPerUser: 5
@@ -86,12 +93,19 @@ mutation SaveAdminSettingsOther {
         githubCheckRun: {
             checkRunLimit: 10
         }
+        releaseMode: {
+            distroMaxHostsFactor: 1.5
+            targetTimeSecondsOverride: 300
+            idleTimeSecondsOverride: 60
+        }
     }) {
         configDir
         domainName
         githubPRCreatorOrg
         shutdownWaitSeconds
         githubWebhookSecret
+        perfMonitoringKanopyURL
+        perfMonitoringURL
         pprofPort
         logPath
         githubOrgs
@@ -134,7 +148,12 @@ mutation SaveAdminSettingsOther {
             version
         }
         jiraNotifications {
-            customFields
+            customFields {
+                project
+                fields
+                components
+                labels
+            }
         }
         spawnhost {
             unexpirableHostsPerUser
@@ -161,6 +180,11 @@ mutation SaveAdminSettingsOther {
         }
         githubCheckRun {
             checkRunLimit
+        }
+        releaseMode {
+            distroMaxHostsFactor
+            targetTimeSecondsOverride
+            idleTimeSecondsOverride
         }
     }
 }

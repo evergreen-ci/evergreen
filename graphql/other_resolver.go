@@ -7,19 +7,43 @@ import (
 )
 
 // CustomFields is the resolver for the customFields field.
-func (r *jiraNotificationsConfigResolver) CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig) (JIRANotificationsProjectMap, error) {
+func (r *jiraNotificationsConfigResolver) CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig) ([]*JiraNotificationsProjectEntry, error) {
 	if obj == nil || obj.CustomFields == nil {
-		return JIRANotificationsProjectMap{}, nil
+		return []*JiraNotificationsProjectEntry{}, nil
 	}
-	return JIRANotificationsProjectMap(obj.CustomFields), nil
+
+	var entries []*JiraNotificationsProjectEntry
+	for projectName, project := range obj.CustomFields {
+		entry := &JiraNotificationsProjectEntry{
+			Project:    projectName,
+			Fields:     project.Fields,
+			Components: project.Components,
+			Labels:     project.Labels,
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 // CustomFields is the resolver for the customFields field.
-func (r *jiraNotificationsConfigInputResolver) CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig, data JIRANotificationsProjectMap) error {
+func (r *jiraNotificationsConfigInputResolver) CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig, data []*JiraNotificationsProjectEntryInput) error {
 	if obj == nil {
 		return nil
 	}
-	obj.CustomFields = map[string]model.APIJIRANotificationsProject(data)
+
+	if obj.CustomFields == nil {
+		obj.CustomFields = make(map[string]model.APIJIRANotificationsProject)
+	}
+
+	for _, entry := range data {
+		if entry != nil {
+			obj.CustomFields[entry.Project] = model.APIJIRANotificationsProject{
+				Fields:     entry.Fields,
+				Components: entry.Components,
+				Labels:     entry.Labels,
+			}
+		}
+	}
 	return nil
 }
 

@@ -377,8 +377,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
   IssueLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
-  JIRANotificationsProjectMap:
-    model: github.com/evergreen-ci/evergreen/graphql.JIRANotificationsProjectMap
   JiraConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
   JiraConfigInput:
@@ -621,6 +619,10 @@ models:
         value: github.com/evergreen-ci/evergreen.ProviderNameStatic
   PublicKey:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPubKey
+  ReleaseModeConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIReleaseModeConfig
+  ReleaseModeConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIReleaseModeConfig
   RepoCommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   RepoEventLogEntry:

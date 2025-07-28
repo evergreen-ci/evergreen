@@ -326,9 +326,12 @@ input AdminSettingsInput {
   logPath: String
   loggerConfig: LoggerConfigInput
   notify: NotifyConfigInput
+  perfMonitoringKanopyURL: String
+  perfMonitoringURL: String
   podLifecycle: PodLifecycleConfigInput
   pprofPort: String
   projectCreation: ProjectCreationConfigInput
+  releaseMode: ReleaseModeConfigInput
   repotracker: RepotrackerConfigInput
   runtimeEnvironments: RuntimeEnvironmentConfigInput
   scheduler: SchedulerConfigInput
@@ -373,10 +376,13 @@ type AdminSettings {
   logPath: String
   loggerConfig: LoggerConfig
   notify: NotifyConfig
+  perfMonitoringKanopyURL: String
+  perfMonitoringURL: String
   podLifecycle: PodLifecycleConfig
   pprofPort: String
   projectCreation: ProjectCreationConfig
   repotracker: RepotrackerConfig
+  releaseMode: ReleaseModeConfig
   runtimeEnvironments: RuntimeEnvironmentConfig
   scheduler: SchedulerConfig
   serviceFlags: ServiceFlags

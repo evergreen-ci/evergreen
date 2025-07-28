@@ -353,6 +353,8 @@
             "githubPRCreatorOrg": "test-org",
             "shutdownWaitSeconds": 10,
             "githubWebhookSecret": "test-secret",
+            "perfMonitoringKanopyURL": "https://perf.kanopy.example.com",
+            "perfMonitoringURL": "https://perf.mutation.com",
             "pprofPort": "8080",
             "logPath": "/test/logs",
             "githubOrgs": ["test-org1", "test-org2"],
@@ -399,16 +401,22 @@
               "version": "v2.0.0"
             },
             "jiraNotifications": {
-              "customFields": {
-                "ANOTHER_PROJECT": {
-                  "components": ["another-component"],
-                  "labels": ["another-label"]
-                },
-                "MUTATION_PROJECT": {
+              "customFields": [
+                {
+                  "project": "mutation-project",
+                  "fields": {
+                    "key1": "value1"
+                  },
                   "components": ["mutation-component"],
                   "labels": ["mutation-label"]
+                },
+                {
+                  "project": "another-project",
+                  "fields": {},
+                  "components": ["another-component"],
+                  "labels": ["another-label"]
                 }
-              }
+              ]
             },
             "spawnhost": {
               "unexpirableHostsPerUser": 5,
@@ -437,6 +445,11 @@
             },
             "githubCheckRun": {
               "checkRunLimit": 10
+            },
+            "releaseMode": {
+              "distroMaxHostsFactor": 1.5,
+              "targetTimeSecondsOverride": 300,
+              "idleTimeSecondsOverride": 60
             }
           }
         }

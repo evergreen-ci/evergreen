@@ -2,12 +2,14 @@ query Other {
     adminSettings {
         configDir
         domainName
-        githubPRCreatorOrg
-        shutdownWaitSeconds
-        githubWebhookSecret
-        pprofPort
-        logPath
         githubOrgs
+        githubPRCreatorOrg
+        githubWebhookSecret
+        logPath
+        perfMonitoringKanopyURL
+        perfMonitoringURL
+        pprofPort
+        shutdownWaitSeconds
         singleTaskDistro {
             projectTasksPairs {
                 projectId
@@ -46,7 +48,12 @@ query Other {
             version
         }
         jiraNotifications {
-            customFields
+            customFields {
+                    project
+                    fields
+                    components
+                    labels
+            }
         }
         spawnhost {
             unexpirableHostsPerUser
@@ -73,6 +80,11 @@ query Other {
         }
         githubCheckRun {
             checkRunLimit
+        }
+        releaseMode {
+            distroMaxHostsFactor
+            targetTimeSecondsOverride
+            idleTimeSecondsOverride
         }
     }
 }

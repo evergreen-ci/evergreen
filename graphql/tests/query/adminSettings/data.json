@@ -67,6 +67,8 @@
       "disabled_gql_queries": null,
       "github_pr_creator_org": "evergreen-ci",
       "github_webhook_secret": "webhook_secret",
+      "perf_monitoring_kanopy_url": "https://kanopy.example.com",
+      "perf_monitoring_url": "https://perf.example.com",
       "pprof_port": "6660",
       "log_path": "/var/log/evergreen",
       "expansions": {
@@ -382,6 +384,12 @@
     {
       "_id": "github_check_run",
       "check_run_limit": 0
+    },
+    {
+      "_id": "release_mode",
+      "distro_max_hosts_factor": 1,
+      "idle_time_seconds_override": 0,
+      "target_time_seconds_override": 0
     }
   ]
 }

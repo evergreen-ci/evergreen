@@ -14,22 +14,22 @@ input BucketsConfigInput {
     logBucket: BucketConfigInput
     testResultsBucket: BucketConfigInput
     internalBuckets: [String!]!
-    credentials: S3CredentialsInput
+    credentials: S3CredentialsInput @redactSecrets
 }
 
 type BucketsConfig {
     logBucket: BucketConfig
     testResultsBucket: BucketConfig
     internalBuckets: [String!]!
-    credentials: S3Credentials
+    credentials: S3Credentials @requireAdmin
 }
 
 input GitHubCheckRunConfigInput {
-    checkRunLimit: Int @redactSecrets
+    checkRunLimit: Int 
 }
 
 type GitHubCheckRunConfig {
-    checkRunLimit: Int @requireAdmin
+    checkRunLimit: Int 
 }
 
 input HostJasperConfigInput {
@@ -50,23 +50,37 @@ type HostJasperConfig {
 
 input JiraNotificationsProjectInput {
   fields: StringMap
-  components: [String!]
-  labels: [String!]
+  components: [String!]!
+  labels: [String!]!
 }
 
 
 type JiraNotificationsProject {
   fields: StringMap
-  components: [String!]
-  labels: [String!]
+  components: [String!]!
+  labels: [String!]!
+}
+
+input JiraNotificationsProjectEntryInput {
+  project: String!
+  fields: StringMap
+  components: [String!]!
+  labels: [String!]!
+}
+
+type JiraNotificationsProjectEntry {
+  project: String!
+  fields: StringMap
+  components: [String!]!
+  labels: [String!]!
 }
 
 input JiraNotificationsConfigInput {
-  customFields: JIRANotificationsProjectMap
+  customFields: [JiraNotificationsProjectEntryInput!]!
 }
 
 type JiraNotificationsConfig {
-  customFields: JIRANotificationsProjectMap
+  customFields: [JiraNotificationsProjectEntry!]!
 }
 
 input OwnerRepoInput {
@@ -156,6 +170,16 @@ type ProjectTasksPair {
     allowedTasks: [String!]!
     allowedBVs: [String!]!
 }
+input ReleaseModeConfigInput {
+    distroMaxHostsFactor: Float
+    targetTimeSecondsOverride: Int
+    idleTimeSecondsOverride: Int
+}
+type ReleaseModeConfig {
+    distroMaxHostsFactor: Float
+    targetTimeSecondsOverride: Int
+    idleTimeSecondsOverride: Int
+}
 
 input SingleTaskDistroConfigInput {
     projectTasksPairs: [ProjectTasksPairInput!]!
@@ -173,10 +197,8 @@ input TracerSettingsInput {
 }
 
 type TracerSettings {
-    enabled: Boolean
+    enabled: Boolean!
     collectorEndpoint: String
     collectorInternalEndpoint: String
     collectorAPIKey: String @requireAdmin
 }
-
-scalar JIRANotificationsProjectMap
