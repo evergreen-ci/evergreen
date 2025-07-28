@@ -115,7 +115,7 @@ type AWSClient interface {
 	// AllocateAddress is a wrapper for ec2.AllocateAddress.
 	AllocateAddress(context.Context, *ec2.AllocateAddressInput) (*ec2.AllocateAddressOutput, error)
 	// AssociateAddress is a wrapper for ec2.AssociateAddress.
-	AssociateAddress(context.Context, *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error)
+	AssociateAddress(context.Context, *host.Host, *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error)
 	// DisassociateAddress is a wrapper for ec2.DisassociateAddress.
 	DisassociateAddress(context.Context, *ec2.DisassociateAddressInput) (*ec2.DisassociateAddressOutput, error)
 	// ReleaseAddress is a wrapper for ec2.ReleaseAddress.
@@ -1001,7 +1001,27 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 	return output, nil
 }
 
-func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+func (c *awsClientImpl) AssociateAddress(ctx context.Context, h *host.Host, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+	const thresholdTimeToWaitForHostStarting = 10 * time.Second
+	if !utility.IsZeroTime(h.StartTime) && time.Since(h.StartTime) < thresholdTimeToWaitForHostStarting {
+		// The instance must already be in a "running" state in AWS for
+		// AssociateAddress to succeed. Unfortunately, Evergreen doesn't know
+		// the current instance state in AWS and also needs to avoid making
+		// unnecessary calls to AWS since that can stress the rate limit. If
+		// this call is being made too soon since the host started, the host is
+		// most likely not running yet, so the call will fail and need to retry
+		// anyways. To avoid unnecessarily making a call that will likely fail,
+		// wait a few seconds before attempting the first AssociateAddress call.
+		// From empirical data, AWS instances are never "running" before 5
+		// seconds and the median/average is 10-15 seconds.
+		timer := time.NewTimer(thresholdTimeToWaitForHostStarting - time.Since(h.StartTime))
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+
 	retryOpts := awsClientDefaultRetryOptions()
 	// If the initial request fails, initiate retries after a longer delay than
 	// usual because the host has to be in the "running" state for this to
@@ -1539,7 +1559,7 @@ func (c *awsClientMock) AllocateAddress(ctx context.Context, input *ec2.Allocate
 	return c.AllocateAddressOutput, nil
 }
 
-func (c *awsClientMock) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+func (c *awsClientMock) AssociateAddress(_ context.Context, _ *host.Host, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	c.AssociateAddressInput = input
 	return c.AssociateAddressOutput, nil
 }

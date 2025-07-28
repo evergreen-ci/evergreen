@@ -106,12 +106,31 @@
           "spruceConfig": {
             "secretFields": [
               "amboyDB",
+              "apiKey",
+              "appId",
+              "clientId",
+              "clientSecret",
               "csrfKey",
+              "dbUrl",
+              "defaultOwner",
+              "defaultRepo",
+              "github",
               "githubAppAuth",
+              "headerName",
+              "issuer",
+              "kanopy",
+              "keysetURL",
+              "multi",
+              "naive",
+              "okta",
+              "organization",
+              "personalAccessToken",
+              "preferredType",
               "publicKey",
               "secret",
               "senderAddress",
               "servicePassword",
+              "token",
               "vars"
             ]
           }

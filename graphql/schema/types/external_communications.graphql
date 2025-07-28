@@ -1,0 +1,101 @@
+input CedarConfigInput {
+  dbUrl: String! @redactSecrets
+  dbName: String!
+}
+
+type CedarConfig {
+  dbUrl: String! @requireAdmin
+  dbName: String!
+}
+
+input JiraConfigInput {
+  email: String
+  host: String
+  personalAccessToken: String @redactSecrets
+}
+
+type JiraConfig {
+  email: String
+  host: String
+  personalAccessToken: String @requireAdmin
+}
+
+input RuntimeEnvironmentConfigInput {
+    baseUrl: String!
+    apiKey: String @redactSecrets
+}
+type RuntimeEnvironmentConfig {
+    baseUrl: String!
+    apiKey: String @requireAdmin
+}
+
+input SlackConfigInput {
+  options: SlackOptionsInput
+  token: String! @redactSecrets
+  level: PriorityLevel!
+  name: String!
+}
+
+type SlackConfig {
+  options: SlackOptions
+  token: String @requireAdmin
+  level: PriorityLevel
+  name: String
+}
+
+input SlackOptionsInput {
+  channel: String
+  hostname: String
+  name: String
+  username: String
+  basicMetadata: Boolean
+  fields: Boolean
+  allFields: Boolean
+  fieldsSet: BooleanMap
+}
+
+type SlackOptions {
+    channel: String
+    hostname: String
+    name: String
+    username: String
+    basicMetadata: Boolean
+    fields: Boolean
+    allFields: Boolean
+    fieldsSet: BooleanMap
+}
+
+input SplunkConfigInput {
+    splunkConnectionInfo: SplunkConnectionInfoInput!
+}
+
+type SplunkConfig {
+    splunkConnectionInfo: SplunkConnectionInfo!
+}
+
+input SplunkConnectionInfoInput {
+    serverUrl: String!
+    token: String! @redactSecrets
+    channel: String!
+}
+type SplunkConnectionInfo {
+    serverUrl: String!
+    token: String! @requireAdmin
+    channel: String!
+}
+
+input TestSelectionConfigInput {
+    url: String!
+}
+
+type TestSelectionConfig {
+    url: String!
+}
+
+input FWSConfigInput {
+  url: String!
+}
+
+type FWSConfig {
+  url: String!
+}

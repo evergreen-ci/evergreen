@@ -1,0 +1,113 @@
+enum PreferredAuthType {
+  OKTA
+  NAIVE
+  GITHUB
+  MULTI
+  KANOPY
+}
+
+type AuthConfig {
+  okta: OktaConfig @requireAdmin
+  naive: NaiveAuthConfig @requireAdmin
+  github: GitHubAuthConfig @requireAdmin
+  multi: MultiAuthConfig @requireAdmin
+  kanopy: KanopyAuthConfig @requireAdmin
+  preferredType: PreferredAuthType @requireAdmin
+  backgroundReauthMinutes: Int
+  allowServiceUsers: Boolean
+}
+
+type OktaConfig {
+  clientId: String @requireAdmin
+  clientSecret: String @requireAdmin
+  issuer: String  @requireAdmin
+  scopes: [String!]!
+  userGroup: String
+  expireAfterMinutes: Int
+}
+
+type NaiveAuthConfig {
+  users: [AuthUser!]!
+}
+
+type AuthUser {
+  username: String
+  displayName: String
+  password: String
+  email: String
+}
+
+type GitHubAuthConfig {
+  appId: Int @requireAdmin
+  clientId: String @requireAdmin
+  clientSecret: String @requireAdmin
+  defaultOwner: String @requireAdmin
+  defaultRepo: String @requireAdmin
+  organization: String @requireAdmin
+  users: [String!]!
+}
+
+type MultiAuthConfig {
+  readWrite: [String!]!
+  readOnly: [String!]!
+}
+
+type KanopyAuthConfig {
+  headerName: String! @requireAdmin
+  issuer: String! @requireAdmin
+  keysetURL: String! @requireAdmin
+}
+
+
+input AuthConfigInput {
+  okta: OktaConfigInput @redactSecrets
+  naive: NaiveAuthConfigInput @redactSecrets
+  github: GitHubAuthConfigInput @redactSecrets
+  multi: MultiAuthConfigInput @redactSecrets
+  kanopy: KanopyAuthConfigInput @redactSecrets
+  preferredType: PreferredAuthType @redactSecrets
+  backgroundReauthMinutes: Int
+  allowServiceUsers: Boolean
+}
+
+input OktaConfigInput {
+  clientId: String @redactSecrets
+  clientSecret: String @redactSecrets
+  issuer: String @redactSecrets
+  scopes: [String!]
+  userGroup: String
+  expireAfterMinutes: Int
+}
+
+input NaiveAuthConfigInput {
+  users: [AuthUserInput!]
+}
+
+input AuthUserInput {
+  username: String
+  displayName: String
+  password: String
+  email: String
+}
+
+input GitHubAuthConfigInput {
+  appId: Int @redactSecrets
+  clientId: String @redactSecrets
+  clientSecret: String @redactSecrets
+  defaultOwner: String @redactSecrets
+  defaultRepo: String @redactSecrets
+  organization: String @redactSecrets
+  users: [String!]!
+}
+
+input MultiAuthConfigInput {
+  readWrite: [String!]
+  readOnly: [String!]
+}
+
+input KanopyAuthConfigInput {
+  headerName: String! @redactSecrets
+  issuer: String! @redactSecrets
+  keysetURL: String! @redactSecrets
+}
+

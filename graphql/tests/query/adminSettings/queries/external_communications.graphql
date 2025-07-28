@@ -1,0 +1,45 @@
+query ExternalCommunications {
+  adminSettings {
+    jira {
+      email
+      host
+      personalAccessToken
+    }
+    slack {
+      options {
+        channel
+        hostname
+        name
+        username
+        basicMetadata
+        fields
+        allFields
+        fieldsSet
+      }
+      token
+      level
+      name
+    }
+    splunk {
+      splunkConnectionInfo {
+        serverUrl
+        token
+        channel
+      }
+    }
+    runtimeEnvironments {
+      baseUrl
+      apiKey
+    }
+    testSelection {
+      url
+    }
+    fws {
+      url
+    }
+    cedar {
+      dbName
+      dbUrl
+    }
+  }
+}

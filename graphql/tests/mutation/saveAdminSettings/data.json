@@ -30,45 +30,24 @@
     },
     {
       "_id": "auth",
-      "preferred_type": "naive",
+      "preferred_type": "",
       "naive": {
-        "users": [
-          {
-            "username": "admin",
-            "display_name": "Evergreen Admin",
-            "password": "password",
-            "email": ""
-          },
-          {
-            "username": "regular",
-            "display_name": "Regular User",
-            "password": "password",
-            "email": ""
-          },
-          {
-            "username": "privileged",
-            "display_name": "Privileged User",
-            "password": "password",
-            "email": ""
-          }
-        ]
+        "users": []
       },
       "github": {
-        "app_id": {
-          "$numberLong": "1234"
-        },
+        "app_id": 0,
         "client_id": "",
         "client_secret": "",
         "default_owner": "",
         "default_repo": "",
         "organization": "",
-        "users": null
+        "users": []
       },
-      "allow_service_users": false,
-      "background_reauth_minutes": 0,
       "kanopy": null,
       "multi": null,
-      "okta": null
+      "okta": null,
+      "allow_service_users": false,
+      "background_reauth_minutes": 0
     },
     {
       "_id": "global",
@@ -226,6 +205,49 @@
       "max_daily_automatic_restarts": 0
     },
     {
+      "_id": "jira",
+      "host": "jira.example.com",
+      "default_project": "TEST-PROJECT",
+      "personal_access_token": "token",
+      "email": "user@example.com"
+    },
+    {
+      "_id": "slack",
+      "level": "Trace",
+      "name": "test-app",
+      "options": {
+        "channel": "#cabc123",
+        "hostname": "evergreen.example.com",
+        "name": "testName",
+        "username": "@testUser",
+        "icon_url": "https://example.com/icon.png",
+        "add_basic_metadata": true,
+        "use_fields": true,
+        "all_fields": true,
+        "fields": {}
+      },
+      "token": "123456"
+    },
+    {
+      "_id": "splunk",
+      "channel": "42",
+      "token": "testToken",
+      "url": "testServer"
+    },
+    {
+      "_id": "runtime_environments",
+      "api_key": "runtimeAPIKey",
+      "base_url": "https://example.com"
+    },
+    {
+      "_id": "test_selection",
+      "url": "https://example.com"
+    },
+    {
+      "_id": "fws",
+      "url": ""
+    },
+    {
       "_id": "amboy",
       "name": "amboy-config",
       "database": "amboy",
@@ -267,6 +289,11 @@
       },
       "logkeeper_url": "logkeeper-url",
       "redact_keys": ["secret", "password"]
+    },
+    {
+      "_id": "cedar",
+      "db_name": "cedar",
+      "db_url": "mongodb://localhost:8000"
     }
   ]
 }

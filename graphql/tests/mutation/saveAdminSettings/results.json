@@ -173,6 +173,112 @@
       }
     },
     {
+      "query_file": "external_communications.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "jira": {
+              "email": "jira@example.com",
+              "host": "https://jira.exampleChanged.com"
+            },
+            "slack": {
+              "options": {
+                "channel": "#general",
+                "hostname": "slack.example.com",
+                "name": "EvergreenBot",
+                "username": "evergreen",
+                "basicMetadata": true,
+                "fields": true,
+                "allFields": true,
+                "fieldsSet": {
+                  "field1": true,
+                  "field2": false
+                }
+              },
+              "token": "slackToken",
+              "level": "EMERGENCY",
+              "name": "Slack Notifications"
+            },
+            "splunk": {
+              "splunkConnectionInfo": {
+                "serverUrl": "https://splunk.example.com",
+                "token": "SplunkToken",
+                "channel": "#splunk-channel"
+              }
+            },
+            "runtimeEnvironments": {
+              "baseUrl": "https://runtime.example.com",
+              "apiKey": "newApiKey"
+            },
+            "testSelection": {
+              "url": "https://test-selection.example.com"
+            },
+            "fws": {
+              "url": "https://fws.example.com"
+            },
+            "cedar": {
+              "dbUrl": "mongodb://localhost:27017",
+              "dbName": "cedar"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "auth.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "authConfig": {
+              "preferredType": "NAIVE",
+              "naive": {
+                "users": [
+                  {
+                    "username": "admin",
+                    "displayName": "password",
+                    "email": "admin@example.com"
+                  },
+                  {
+                    "username": "user",
+                    "displayName": "password",
+                    "email": "user@example.com"
+                  }
+                ]
+              },
+              "github": {
+                "appId": 0,
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "defaultOwner": "default_owner",
+                "defaultRepo": "default_repo",
+                "organization": "organization",
+                "users": ["user1", "user2"]
+              },
+              "kanopy": {
+                "headerName": "header_name",
+                "issuer": "issuer",
+                "keysetURL": "keyset_url"
+              },
+              "multi": {
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
+              },
+              "okta": {
+                "clientId": "",
+                "clientSecret": "client_secret",
+                "issuer": "issuer",
+                "scopes": ["scope1", "scope2"],
+                "userGroup": "user_group",
+                "expireAfterMinutes": 60
+              },
+              "allowServiceUsers": true,
+              "backgroundReauthMinutes": 30
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "background_processing.graphql",
       "result": {
         "data": {

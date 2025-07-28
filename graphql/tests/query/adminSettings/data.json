@@ -1,12 +1,68 @@
 {
   "admin": [
     {
+      "_id": "auth",
+      "preferred_type": "naive",
+      "naive": {
+        "users": [
+          {
+            "username": "admin",
+            "display_name": "Evergreen Admin",
+            "password": "password",
+            "email": ""
+          },
+          {
+            "username": "regular",
+            "display_name": "Regular User",
+            "password": "password",
+            "email": ""
+          },
+          {
+            "username": "privileged",
+            "display_name": "Privileged User",
+            "password": "password",
+            "email": ""
+          }
+        ]
+      },
+      "github": {
+        "app_id": {
+          "$numberLong": "1234"
+        },
+        "client_id": "client_id",
+        "client_secret": "client_secret",
+        "default_owner": "default_owner",
+        "default_repo": "default_repo",
+        "organization": "organization",
+        "users": null
+      },
+      "kanopy": {
+        "headerName": "X-Kanopy-Token",
+        "issuer": "https://kanopy.com",
+        "keyset_url": "https://kanopy.com/keyset"
+      },
+      "multi": {
+        "read_write": ["admin", "privileged"],
+        "read_only": ["admin", "privileged", "regular"]
+      },
+      "okta": {
+        "client_id": "client_id",
+        "client_secret": "client_secret",
+        "issuer": "issuer",
+        "scopes": ["option1", "option2"],
+        "user_group": "user_group",
+        "expireAfterMinutes": 60
+      },
+      "allow_service_users": false,
+      "background_reauth_minutes": 0
+    },
+    {
       "_id": "global",
       "uiv2_url": "http://localhost:3000",
       "configdir": "../config",
       "domain_name": "localhost",
       "banner": "This is an important notification",
-      "banner_theme": "announcement",
+      "banner_theme": "IMPORTANT",
       "github_orgs": ["evergreen-ci"],
       "disabled_gql_queries": null
     },
@@ -72,6 +128,48 @@
       "max_exec_timeout_secs": 10000,
       "max_task_execution": 5,
       "max_daily_automatic_restarts": 0
+    },
+    {
+      "_id": "jira",
+      "host": "jira.example.com",
+      "default_project": "TEST-PROJECT",
+      "personal_access_token": "token",
+      "email": "user@example.com"
+    },
+    {
+      "_id": "slack",
+      "level": "emergency",
+      "name": "test-app",
+      "options": {
+        "channel": "#cabc123",
+        "hostname": "evergreen.example.com",
+        "name": "testName",
+        "username": "@testUser",
+        "icon_url": "https://example.com/icon.png",
+        "add_basic_metadata": true,
+        "use_fields": true,
+        "all_fields": true,
+        "fields": {
+          "field1": true,
+          "field2": false
+        }
+      },
+      "token": "123456"
+    },
+    {
+      "_id": "splunk",
+      "channel": "42",
+      "token": "testToken",
+      "url": "testServer"
+    },
+    {
+      "_id": "runtime_environments",
+      "api_key": "runtimeAPIKey",
+      "base_url": "https://example.com"
+    },
+    {
+      "_id": "test_selection",
+      "url": "https://example.com"
     },
     {
       "_id": "triggers",
@@ -168,6 +266,15 @@
       "help_url": "",
       "login_domain": "",
       "staging_environment": ""
+    },
+    {
+      "_id": "fws",
+      "url": "https://fws.example.com"
+    },
+    {
+      "_id": "cedar",
+      "db_name": "cedar",
+      "db_url": "mongodb://localhost:27017/cedar"
     }
   ]
 }

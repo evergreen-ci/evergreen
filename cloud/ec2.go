@@ -81,9 +81,6 @@ type EC2ProviderSettings struct {
 	// data upload.
 	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts,omitempty" bson:"merge_user_data_parts,omitempty"`
 
-	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
-	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options" bson:"fleet_options,omitempty"`
-
 	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
 	// IP addresses.
 	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled,omitempty" bson:"elastic_ips_enabled,omitempty"`
@@ -120,8 +117,6 @@ func (s *EC2ProviderSettings) Validate() error {
 		_, err = parseUserData(s.UserData)
 		catcher.Wrap(err, "user data is malformed")
 	}
-
-	catcher.Wrap(s.FleetOptions.validate(), "invalid fleet options")
 
 	return catcher.Resolve()
 }
@@ -167,40 +162,6 @@ func (s *EC2ProviderSettings) getRegion() string {
 		return s.Region
 	}
 	return evergreen.DefaultEC2Region
-}
-
-// FleetConfig specifies how the EC2 Fleet manager should spawn hosts.
-type FleetConfig struct {
-	// UseOnDemand will cause Fleet to use on-demand instances to instantiate hosts. Defaults to spot instances.
-	UseOnDemand bool `mapstructure:"use_on_demand" json:"use_on_demand,omitempty" bson:"use_on_demand,omitempty"`
-
-	// UseCapacityOptimized will cause Fleet to use the capacity-optimized allocation strategy for spawning hosts. Defaults to the AWS default (lowest-cost).
-	// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-allocation-strategy.html for more information about Fleet allocation strategies.
-	UseCapacityOptimized bool `mapstructure:"use_capacity_optimized" json:"use_capacity_optimized,omitempty" bson:"use_capacity_optimized,omitempty"`
-}
-
-func (f *FleetConfig) awsTargetCapacityType() types.DefaultTargetCapacityType {
-	if f.UseOnDemand {
-		return types.DefaultTargetCapacityTypeOnDemand
-	}
-
-	return types.DefaultTargetCapacityTypeSpot
-}
-
-func (f *FleetConfig) awsAllocationStrategy() types.SpotAllocationStrategy {
-	if !f.UseOnDemand && f.UseCapacityOptimized {
-		return types.SpotAllocationStrategyCapacityOptimized
-	}
-
-	return ""
-}
-
-func (f *FleetConfig) validate() error {
-	if f.UseOnDemand && f.UseCapacityOptimized {
-		return errors.New("on-demand instances can't use the capacity-optimized allocation strategy")
-	}
-
-	return nil
 }
 
 const (
