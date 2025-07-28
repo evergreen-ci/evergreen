@@ -119,7 +119,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		}
 
 		fileSize := fileInfo.Size()
-		fileSizes = append(fileSizes, int(fileSize))
+		fileSizes = append(fileSizes, fileSize)
 		if fileSize > 10e6 {
 			filesOverTenMB++
 		}
