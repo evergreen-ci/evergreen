@@ -19,19 +19,34 @@ import (
 const defaultLastRevisionLookbackLimit = 50
 
 func LastRevision() cli.Command {
+	const (
+		regexpVariantsFlagName       = "regex-variants"
+		minSuccessProportionFlagName = "min-success"
+	)
 	return cli.Command{
-		Name:   "last-revision",
-		Usage:  "return the latest revision that shouldApply a set of criteria",
-		Flags:  addProjectFlag(addVariantsRegexpFlag()...),
-		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requireVariantsFlag),
+		Name:  "last-revision",
+		Usage: "return the latest revision that matches a set of criteria",
+		Flags: addProjectFlag(
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(regexpVariantsFlagName, "rv"),
+				Usage: "regexps for build variant names",
+			}, cli.Float64Flag{
+				Name:  joinFlagNames(minSuccessProportionFlagName),
+				Usage: "minimum proportion of successful tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
+				Value: 1,
+			}),
+		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, func(c *cli.Context) error {
+			if len(c.StringSlice(regexpVariantsFlagName)) == 0 {
+				return errors.New("must specify at least one build variant regexp")
+			}
+			return nil
+		}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
-			criteria, err := newLastRevisionCriteria(c.String(projectFlagName), c.StringSlice(variantsFlagName))
+			criteria, err := newLastRevisionCriteria(c.String(projectFlagName), c.StringSlice(variantsFlagName), c.Float64(minSuccessProportionFlagName))
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
 			}
-
-			grip.Debugf("Criteria: %s\n", criteria.String())
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -105,7 +120,7 @@ type lastRevisionCriteria struct {
 	minSuccessProportion float64
 }
 
-func newLastRevisionCriteria(project string, bvRegexpsAsStr []string) (*lastRevisionCriteria, error) {
+func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccessProportion float64) (*lastRevisionCriteria, error) {
 	bvRegexps := make([]regexp.Regexp, 0, len(bvRegexpsAsStr))
 	for _, bvRegexpStr := range bvRegexpsAsStr {
 		bvRegexp, err := regexp.Compile(bvRegexpStr)
@@ -114,13 +129,20 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr []string) (*lastRevi
 		}
 		bvRegexps = append(bvRegexps, *bvRegexp)
 	}
+	if minSuccessProportion < 0 || minSuccessProportion > 1 {
+		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
+	}
+
 	return &lastRevisionCriteria{
-		project:            project,
-		buildVariantRegexp: bvRegexps,
+		project:              project,
+		buildVariantRegexp:   bvRegexps,
+		minSuccessProportion: minSuccessProportion,
 	}, nil
 }
 
 func (c *lastRevisionCriteria) String() string {
+	// kim: TODO: probably don't make this the String method, just print it
+	// manually.
 	bvRegexps := make([]string, 0, len(c.buildVariantRegexp))
 	for _, re := range c.buildVariantRegexp {
 		bvRegexps = append(bvRegexps, re.String())
@@ -168,12 +190,16 @@ func findLatestMatchingRevision(ctx context.Context, c client.Communicator, late
 	// kim: TODO: figure out if latestVersions is ordered most to least
 	// recent.
 	for _, v := range latestVersions {
+		grip.Debug(message.Fields{
+			"message":    "checking version",
+			"version_id": utility.FromStringPtr(v.Id),
+			"revision":   utility.FromStringPtr(v.Revision),
+			"project":    utility.FromStringPtr(v.Project),
+		})
 		builds, err := c.GetBuildsForVersion(ctx, utility.FromStringPtr(v.Id))
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting builds for version '%s'", utility.FromStringPtr(v.Id))
 		}
-		// kim: TODO: eventually make goroutines to parallel check all
-		// the builds.
 
 		type buildResult struct {
 			passesCriteria bool
@@ -183,24 +209,13 @@ func findLatestMatchingRevision(ctx context.Context, c client.Communicator, late
 		buildResults := make(chan buildResult, len(builds))
 		wg := sync.WaitGroup{}
 		for _, b := range builds {
-			if !criteria.shouldApply(utility.FromStringPtr(b.BuildVariant)) {
-				continue
-			}
-
-			grip.Debug(message.Fields{
-				"message":       "checking build for last revision criteria",
-				"build_id":      b.Id,
-				"build_variant": b.BuildVariant,
-				"version":       b.Version,
-			})
-
 			wg.Add(1)
 
 			go func() {
 				defer wg.Done()
 
 				res := buildResult{}
-				res.passesCriteria, res.err = checkBuildMatchesCriteria(ctx, c, b, criteria)
+				res.passesCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, criteria)
 				select {
 				case <-ctx.Done():
 				case buildResults <- res:
@@ -209,6 +224,7 @@ func findLatestMatchingRevision(ctx context.Context, c client.Communicator, late
 		}
 
 		wg.Wait()
+		close(buildResults)
 
 		catcher := grip.NewBasicCatcher()
 		allBuildsPassedCriteria := true
@@ -235,10 +251,17 @@ func findLatestMatchingRevision(ctx context.Context, c client.Communicator, late
 	return nil, errors.New("no matching revision found")
 }
 
-func checkBuildMatchesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
+func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
 	if !criteria.shouldApply(utility.FromStringPtr(b.BuildVariant)) {
-		return false, nil // criteria does not apply to this build variant
+		return true, nil
 	}
+
+	grip.Debug(message.Fields{
+		"message":       "checking build for last revision criteria",
+		"build_id":      b.Id,
+		"build_variant": b.BuildVariant,
+		"version":       b.Version,
+	})
 
 	tasks, err := c.GetTasksForBuild(ctx, utility.FromStringPtr(b.Id))
 	if err != nil {
