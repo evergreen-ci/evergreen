@@ -93,7 +93,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	}
 	var fileChunks []fileChunk
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
-	fileSizes := []int{}
+	fileSizes := []int64{}
 	filesOverTenMB := 0
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
