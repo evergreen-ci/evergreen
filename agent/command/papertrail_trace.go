@@ -60,6 +60,10 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 			Submitter: task.ActivatedBy,
 		}
 
+		if args.Submitter == "" {
+			args.Submitter = "Unknown"
+		}
+
 		if err := pclient.Trace(ctx, args); err != nil {
 			return errors.Wrap(err, "running trace")
 		}
