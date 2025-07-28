@@ -171,7 +171,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 
 	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
 	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_chunks_count", Value: attribute.IntValue(len(fileChunks))})
-	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_sizes", Value: attribute.IntSliceValue(fileSizes)})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_sizes", Value: attribute.Int64SliceValue(fileSizes)})
 	span.SetAttributes(attribute.KeyValue{Key: "test_log_files_over_ten_mb", Value: attribute.IntValue(filesOverTenMB)})
 	return err
 }
