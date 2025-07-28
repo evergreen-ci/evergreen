@@ -768,11 +768,12 @@ file a ticket or issues. That's a bug.
 Every task has some expansions available by default:
 
 - `${activated_by}` is username of the user who caused the task to run
-- `${author}` is the Evergreen user associated with the patch.
-  If the patch is from a pull request and that pull request is not linked to an Evergreen
-  user, this will default to the string 'github_pull_request'.
-- `${author_email}` is the email of the Evergreen user associated with the patch
-  for patch tasks or the git commit author for git tasks
+- `${author}` is the Evergreen user associated with the commit.
+  If the commit is originates from a pull request and that pull
+  request is not linked to an Evergreen user, this will default to
+  the string 'github_pull_request'.
+- `${author_email}` the email associated with the author, if one
+  is available.
 - `${build_id}` is the id of the build the task belongs to
 - `${branch_name}` is the name of the branch tracked by the
   project
