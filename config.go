@@ -266,10 +266,19 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled {
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
-		settingsValue := reflect.ValueOf(&paramConfig).Elem()
-		settingsType := reflect.TypeOf(paramConfig)
+		settingsValue := reflect.ValueOf(paramConfig).Elem()
+		settingsType := reflect.TypeOf(*paramConfig)
 		adminCatcher := grip.NewBasicCatcher()
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
+		grip.Info(message.Fields{
+			"bynnbynn":       "successfully read admin settings from parameter store",
+			"count":          settingsValue.NumField(),
+			"config":         fmt.Sprintf("%+v", paramConfig),
+			"base_config":    fmt.Sprintf("%+v", baseConfig),
+			"settings_type":  settingsType,
+			"settings_value": fmt.Sprintf("%+v", settingsValue),
+			"admin_catcher":  adminCatcher.Resolve(),
+		})
 		if adminCatcher.HasErrors() {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {
@@ -320,7 +329,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					param, err := paramMgr.Get(ctx, fieldPath)
 					if err != nil {
 						catcher.Add(errors.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath))
-					} else if !(param == nil || len(param) == 0) {
+					} else if len(param) > 0 {
 						// Update the value with the path from the parameter store if it exists.
 						fieldValue.SetString(param[0].Value)
 					}
@@ -335,7 +344,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
 							continue
 						}
-						if !(param == nil || len(param) == 0) {
+						if len(param) > 0 {
 							// Set the map value to the parameter store value
 							newMap.SetMapIndex(key, reflect.ValueOf(param[0].Value))
 						}
