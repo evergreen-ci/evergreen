@@ -17,6 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	unknownSubmitter = "unknown"
+)
+
 type papertrailTrace struct {
 	Address   string   `mapstructure:"address" plugin:"expand"`
 	KeyID     string   `mapstructure:"key_id" plugin:"expand"`
@@ -61,7 +65,7 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 		}
 
 		if args.Submitter == "" {
-			args.Submitter = "Unknown"
+			args.Submitter = unknownSubmitter
 		}
 
 		if err := pclient.Trace(ctx, args); err != nil {
