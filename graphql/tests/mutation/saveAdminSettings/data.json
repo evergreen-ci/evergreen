@@ -431,6 +431,10 @@
           "maximages": 0
         }
       ]
+    },
+    {
+      "_id": "parameter_store",
+      "prefix": "store"
     }
   ]
 }

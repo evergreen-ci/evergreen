@@ -403,7 +403,7 @@
                     "logRegion": "us-east-1",
                     "logGroup": "/evergreen/ecs",
                     "logStreamPrefix": "evergreen-task-",
-                    "AWSVPC": {
+                    "awsVPC": {
                       "subnets": ["subnet-12345678", "subnet-87654321"],
                       "securityGroups": ["sg-12345678", "sg-87654321"]
                     },
@@ -420,14 +420,14 @@
                     "capacityProviders": [
                       {
                         "name": "FARGATE",
-                        "os": "ECSOSLINUX",
-                        "arch": "ECSARCHAMD64",
+                        "os": "ECS_OS_LINUX",
+                        "arch": "ECS_ARCH_AMD64",
                         "windowsVersion": ""
                       },
                       {
                         "name": "EC2",
-                        "os": "ECSOSLINUX",
-                        "arch": "ECSARCHARM64",
+                        "os": "ECS_OS_LINUX",
+                        "arch": "ECS_ARCH_ARM64",
                         "windowsVersion": ""
                       }
                     ],
@@ -448,12 +448,15 @@
                     "role": "arn:aws:iam::987654321098:role/EvergreenCrossAccountRole"
                   }
                 ],
-                "IPAMPoolID": "ipam-pool-12345678",
+                "ipamPoolID": "ipam-pool-12345678",
                 "elasticIPUsageRate": 0.8
               },
               "docker": {
                 "apiVersion": "1.40"
               }
+            },
+            "parameterStore": {
+              "prefix": "store"
             }
           }
         }

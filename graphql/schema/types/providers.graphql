@@ -10,34 +10,34 @@ type AWSAccountRoleMapping {
 
 input AWSConfigInput {
   ec2Keys: [EC2KeyInput!]!
-  subnets: [SubnetInput!]!
+  subnets: [SubnetInput!]!	
   parserProject: ParserProjectS3ConfigInput
   persistentDNS: PersistentDNSConfigInput
-  defaultSecurityGroup: String
+  defaultSecurityGroup: String @redactSecrets
   allowedInstanceTypes: [String!]!
   alertableInstanceTypes: [String!]!
   allowedRegions: [String!]!
   maxVolumeSizePerUser: Int!
   pod: AWSPodConfigInput!
-  accountRoles: [AWSAccountRoleMappingInput!]!
-  IPAMPoolID: String!
+  accountRoles: [AWSAccountRoleMappingInput!]! @redactSecrets
+  ipamPoolID: String!
   elasticIPUsageRate: Float!
 }
 
 type AWSConfig {
   ec2Keys: [EC2Key!]!
-  subnets: [Subnet!]!
-  parserProject: ParserProjectS3Config
-  persistentDNS: PersistentDNSConfig
-  defaultSecurityGroup: String
-  allowedInstanceTypes: [String!]!
-  alertableInstanceTypes: [String!]!
-  allowedRegions: [String!]!
-  maxVolumeSizePerUser: Int!
-  pod: AWSPodConfig!
-  accountRoles: [AWSAccountRoleMapping!]!
-  IPAMPoolID: String!
-  elasticIPUsageRate: Float!
+	subnets: [Subnet!]!	
+	parserProject: ParserProjectS3Config
+	persistentDNS: PersistentDNSConfig
+	defaultSecurityGroup: String @requireAdmin
+	allowedInstanceTypes: [String!]!
+	alertableInstanceTypes: [String!]!
+	allowedRegions: [String!]!
+	maxVolumeSizePerUser: Int!
+	pod: AWSPodConfig!
+	accountRoles: [AWSAccountRoleMapping!]! @requireAdmin
+	ipamPoolID: String!
+	elasticIPUsageRate: Float!
 }
 
 input AWSPodConfigInput {
@@ -117,49 +117,49 @@ type EC2Key {
 }
 
 input ECSConfigInput {
-  maxCPU: Int
-  maxMemoryMb: Int
-  taskDefinitionPrefix: String
-  taskRole: String
-  executionRole: String
-  logRegion: String
-  logGroup: String
-  logStreamPrefix: String
-  AWSVPC: AWSVPCConfigInput
-  clusters: [ECSClusterConfigInput!]!
-  capacityProviders: [ECSCapacityProviderInput!]!
-  allowedImages: [String!]!
+    maxCPU: Int
+    maxMemoryMb: Int
+    taskDefinitionPrefix: String
+    taskRole: String
+    executionRole: String
+    logRegion: String
+    logGroup: String
+    logStreamPrefix: String
+    awsVPC: AWSVPCConfigInput
+    clusters: [ECSClusterConfigInput!]!
+    capacityProviders: [ECSCapacityProviderInput!]!
+    allowedImages: [String!]!
 }
 
 type ECSConfig {
-  maxCPU: Int
-  maxMemoryMb: Int
-  taskDefinitionPrefix: String
-  taskRole: String
-  executionRole: String
-  logRegion: String
-  logGroup: String
-  logStreamPrefix: String
-  AWSVPC: AWSVPCConfig
-  clusters: [ECSClusterConfig!]!
-  capacityProviders: [ECSCapacityProvider!]!
-  allowedImages: [String!]!
+    maxCPU: Int
+    maxMemoryMb: Int
+    taskDefinitionPrefix: String
+    taskRole: String
+    executionRole: String
+    logRegion: String
+    logGroup: String
+    logStreamPrefix: String
+    awsVPC: AWSVPCConfig
+    clusters: [ECSClusterConfig!]!
+    capacityProviders: [ECSCapacityProvider!]!
+    allowedImages: [String!]!
 }
 
 enum ECSOperatingSystem {
-  ECSOSLINUX
-  ECSOSWINDOWS
+    ECS_OS_LINUX
+    ECS_OS_WINDOWS
 }
 
 enum ECSArchitecture {
-  ECSARCHAMD64
-  ECSARCHARM64
+    ECS_ARCH_AMD64
+    ECS_ARCH_ARM64
 }
 
 enum ECSWindowsVersion {
-  ECSWINDOWSSERVER2016
-  ECSWINDOWSSERVER2019
-  ECSWINDOWSSERVER2022
+    ECS_WINDOWS_SERVER_2016
+    ECS_WINDOWS_SERVER_2019
+    ECS_WINDOWS_SERVER_2022
 }
 
 input ECSCapacityProviderInput {
@@ -195,6 +195,15 @@ type OwnerRepo {
   owner: String!
   repo: String!
 }
+
+input ParameterStoreConfigInput {
+    prefix: String
+}
+
+type ParameterStoreConfig {
+    prefix: String
+}
+
 
 input ParserProjectS3ConfigInput {
   key: String @redactSecrets

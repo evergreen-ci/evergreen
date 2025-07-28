@@ -210,25 +210,25 @@ models:
   ECSArchitecture:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      ECSARCHAMD64:
+      ECS_ARCH_AMD64:
         value: github.com/evergreen-ci/evergreen.ECSArchAMD64
-      ECSARCHARM64:
+      ECS_ARCH_ARM64:
         value: github.com/evergreen-ci/evergreen.ECSArchARM64
   ECSOperatingSystem:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      ECSOSLINUX:
+      ECS_OS_LINUX:
         value: github.com/evergreen-ci/evergreen.ECSOSLinux
-      ECSOSWINDOWS:
+      ECS_OS_WINDOWS:
         value: github.com/evergreen-ci/evergreen.ECSOSWindows
   ECSWindowsVersion:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      ECSWINDOWSSERVER2016:
+      ECS_WINDOWS_SERVER_2016:
         value: github.com/evergreen-ci/evergreen.ECSWindowsServer2016
-      ECSWINDOWSSERVER2019:
+      ECS_WINDOWS_SERVER_2019:
         value: github.com/evergreen-ci/evergreen.ECSWindowsServer2019
-      ECSWINDOWSSERVER2022:
+      ECS_WINDOWS_SERVER_2022:
         value: github.com/evergreen-ci/evergreen.ECSWindowsServer2022
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
@@ -509,6 +509,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
+  ParameterStoreConfig: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameterStoreConfig
+  ParameterStoreConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameterStoreConfig
   ParserProjectS3Config:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParserProjectS3Config
   ParserProjectS3ConfigInput:

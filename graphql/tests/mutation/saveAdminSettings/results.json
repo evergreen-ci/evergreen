@@ -400,7 +400,7 @@
                     "logRegion": "us-east-1",
                     "logGroup": "/evergreen/ecs",
                     "logStreamPrefix": "evergreen-task-",
-                    "AWSVPC": {
+                    "awsVPC": {
                       "subnets": ["subnet-12345678", "subnet-87654321"],
                       "securityGroups": ["sg-12345678", "sg-87654321"]
                     },
@@ -417,13 +417,13 @@
                     "capacityProviders": [
                       {
                         "name": "FARGATE",
-                        "os": "ECSOSLINUX",
-                        "arch": "ECSARCHARM64"
+                        "os": "ECS_OS_LINUX",
+                        "arch": "ECS_ARCH_ARM64"
                       },
                       {
                         "name": "EC2",
-                        "os": "ECSOSLINUX",
-                        "arch": "ECSARCHARM64"
+                        "os": "ECS_OS_LINUX",
+                        "arch": "ECS_ARCH_ARM64"
                       }
                     ],
                     "allowedImages": [
@@ -433,21 +433,17 @@
                     ]
                   },
                   "secretsManager": {
-                    "secretPrefix": "evergreen/"
+                    "secretPrefix": ""
                   }
                 },
                 "accountRoles": [
                   {
-                    "account": "123456789012",
-                    "role": "arn:aws:iam::123456789012:role/EvergreenCrossAccountRole"
-                  },
-                  {
-                    "account": "987654321098",
-                    "role": "arn:aws:iam::987654321098:role/EvergreenCrossAccountRole"
+                    "account": "evgUser",
+                    "role": "super"
                   }
                 ],
-                "IPAMPoolID": "ipam-pool-12345678",
-                "elasticIPUsageRate": 0.8
+                "ipamPoolID": "pool-id",
+                "elasticIPUsageRate": 0.5
               },
               "docker": {
                 "apiVersion": "1.40"
@@ -480,6 +476,9 @@
                   "port": 4649
                 }
               ]
+            },
+            "parameterStore": {
+              "prefix": "mutant"
             }
           }
         }

@@ -3,6 +3,7 @@ package graphql
 
 var redactedFields = map[string]bool{
 	"account": true,
+	"accountRoles": true,
 	"amboyDB": true,
 	"apiKey": true,
 	"appId": true,
@@ -12,6 +13,7 @@ var redactedFields = map[string]bool{
 	"dbUrl": true,
 	"defaultOwner": true,
 	"defaultRepo": true,
+	"defaultSecurityGroup": true,
 	"github": true,
 	"githubAppAuth": true,
 	"headerName": true,

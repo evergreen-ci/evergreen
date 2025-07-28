@@ -52,7 +52,7 @@ query Providers {
             logRegion
             logGroup
             logStreamPrefix
-            AWSVPC {
+            awsVPC {
               subnets
               securityGroups
             }
@@ -73,12 +73,15 @@ query Providers {
           account
           role
         }
-        IPAMPoolID
+        ipamPoolID
         elasticIPUsageRate
       }
       docker {
         apiVersion
       }
+    }
+    parameterStore {
+      prefix
     }
   }
 }

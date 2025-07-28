@@ -318,6 +318,7 @@ input AdminSettingsInput {
   notify: NotifyConfigInput
   taskLimits: TaskLimitsConfigInput
   hostInit: HostInitConfigInput
+  parameterStore: ParameterStoreConfigInput
   podLifecycle: PodLifecycleConfigInput
   projectCreation: ProjectCreationConfigInput
   providers: CloudProvidersInput
@@ -348,6 +349,7 @@ type AdminSettings {
   notify: NotifyConfig
   taskLimits: TaskLimitsConfig
   hostInit: HostInitConfig
+  parameterStore: ParameterStoreConfig
   podLifecycle: PodLifecycleConfig
   projectCreation: ProjectCreationConfig
   providers: CloudProviders
