@@ -87,22 +87,31 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 
 func TestLastRevisionCheckVersions(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, c *client.Mock){
-		"PassesCriteriaWithBuildSuccessRateAboveThreshold": func(t *testing.T, c *client.Mock) {
-			builds := []model.APIBuild{
+		"ReturnsVersionWithMatchingBuildSuccessRateAboveThreshold": func(t *testing.T, c *client.Mock) {
+			versions := []model.APIVersion{
+				{
+					Id:      utility.ToStringPtr("v1"),
+					Project: utility.ToStringPtr("test_project"),
+				},
+			}
+			c.GetBuildsForVersionResult = []model.APIBuild{
 				{
 					Id:           utility.ToStringPtr("b1"),
+					Version:      utility.ToStringPtr("v1"),
 					BuildVariant: utility.ToStringPtr("bv1"),
 				},
 			}
 			c.GetTasksForBuildResult = []model.APITask{
 				{
 					Id:           utility.ToStringPtr("t1"),
+					Version:      utility.ToStringPtr("v1"),
 					BuildId:      utility.ToStringPtr("b1"),
 					BuildVariant: utility.ToStringPtr("bv1"),
 					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
 				},
 				{
 					Id:           utility.ToStringPtr("t2"),
+					Version:      utility.ToStringPtr("v1"),
 					BuildId:      utility.ToStringPtr("b1"),
 					BuildVariant: utility.ToStringPtr("bv1"),
 					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
@@ -115,26 +124,36 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 				minSuccessProportion: 0.5,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			v, err := findLatestMatchingVersion(t.Context(), c, versions, criteria)
 			require.NoError(t, err)
-			assert.True(t, passesCriteria)
+			require.NotNil(t, v)
+			assert.Equal(t, "v1", utility.FromStringPtr(v.Id))
 		},
-		"DoesNotPassCriteriaWithBuildSuccessRateBelowThreshold": func(t *testing.T, c *client.Mock) {
-			builds := []model.APIBuild{
+		"DoesNotReturnVersionWithBuildSuccessRateBelowThreshold": func(t *testing.T, c *client.Mock) {
+			versions := []model.APIVersion{
+				{
+					Id:      utility.ToStringPtr("v1"),
+					Project: utility.ToStringPtr("test_project"),
+				},
+			}
+			c.GetBuildsForVersionResult = []model.APIBuild{
 				{
 					Id:           utility.ToStringPtr("b1"),
+					Version:      utility.ToStringPtr("v1"),
 					BuildVariant: utility.ToStringPtr("bv1"),
 				},
 			}
 			c.GetTasksForBuildResult = []model.APITask{
 				{
 					Id:           utility.ToStringPtr("t1"),
+					Version:      utility.ToStringPtr("v1"),
 					BuildId:      utility.ToStringPtr("b1"),
 					BuildVariant: utility.ToStringPtr("bv1"),
 					Status:       utility.ToStringPtr(evergreen.TaskFailed),
 				},
 				{
 					Id:           utility.ToStringPtr("t2"),
+					Version:      utility.ToStringPtr("v1"),
 					BuildId:      utility.ToStringPtr("b1"),
 					BuildVariant: utility.ToStringPtr("bv1"),
 					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
@@ -147,9 +166,9 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 				minSuccessProportion: 1,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
-			require.NoError(t, err)
-			assert.False(t, passesCriteria)
+			v, err := findLatestMatchingVersion(t.Context(), c, versions, criteria)
+			assert.NoError(t, err)
+			assert.Nil(t, v)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

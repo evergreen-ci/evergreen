@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"sync"
 
@@ -70,6 +69,9 @@ func LastRevision() cli.Command {
 			matchingVersion, err := findLatestMatchingVersion(ctx, client, latestVersions, *criteria)
 			if err != nil {
 				return errors.Wrap(err, "finding latest matching revision")
+			}
+			if matchingVersion == nil {
+				return errors.New("no matching version found")
 			}
 
 			grip.Infof("Latest version that matches criteria: %s\nRevision: %s\n", utility.FromStringPtr(matchingVersion.Id), utility.FromStringPtr(matchingVersion.Revision))
@@ -147,16 +149,6 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccess
 	}, nil
 }
 
-func (c *lastRevisionCriteria) String() string {
-	// kim: TODO: probably don't make this the String method, just print it
-	// manually.
-	bvRegexps := make([]string, 0, len(c.buildVariantRegexp))
-	for _, re := range c.buildVariantRegexp {
-		bvRegexps = append(bvRegexps, re.String())
-	}
-	return fmt.Sprintf("Project: %s\nBuild Variant Regexps: %v\nMin Success Proportion: %f", c.project, bvRegexps, c.minSuccessProportion)
-}
-
 // shouldApply returns whether the criteria applies to this build variant.
 func (c *lastRevisionCriteria) shouldApply(bv string) bool {
 	for _, bvRegexp := range c.buildVariantRegexp {
@@ -207,14 +199,14 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 		if err != nil {
 			return nil, err
 		}
-		if passesCriteria {
+		if !passesCriteria {
 			continue
 		}
 
 		return &v, nil
 	}
 
-	return nil, errors.New("no matching revision found")
+	return nil, nil
 }
 
 func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
@@ -253,10 +245,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 			allBuildsPassedCriteria = false
 		}
 	}
-	if catcher.HasErrors() {
-		return false, catcher.Resolve()
-	}
-	return allBuildsPassedCriteria, nil
+	return allBuildsPassedCriteria, catcher.Resolve()
 }
 
 func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
