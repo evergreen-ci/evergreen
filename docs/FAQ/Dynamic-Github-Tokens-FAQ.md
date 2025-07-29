@@ -1,12 +1,16 @@
 # Dynamic Github Access Tokens FAQ
 
-## Which permissions should the github app have?
+## What should I do if I do not have a Github app?
+
+If you do not have a Github app, request one [here](https://jira.mongodb.org/plugins/servlet/desk/portal/81/create/1328).
+
+## Which permissions should the Github app have?
 
 The permissions for you app should be limited to only what is necessary. The permissions that are necessary will depend on how you plan to use the generated tokens.
 
-- **contents:read**: To use the app to `git clone`, using [shell.exec](Project-Configuration/Project-Commands/shellexec) or [subprocess.exec](Project-Configuration/Project-Commands/subprocessexec), request `contents:read` under repository permissions. This also applies if you plan to use the token to pass it into [git.get_project](Project-Configuration/Project-Commands/gitget_project).
+- **contents:read**: To use the app to `git clone`, using [shell.exec](../Project-Configuration/Project-Commands/shellexec) or [subprocess.exec](../Project-Configuration/Project-Commands/subprocessexec), request `contents:read` under repository permissions. This also applies if you plan to use the token to pass it into [git.get_project](../Project-Configuration/Project-Commands/gitget_project).
 - **contents:write**: To use the app to `git push`, request `contents:write` under repository permissions.
-- **checks:write**: To use the app to generate a token to pass into [github check runs](Project-Configuration/Github-Integrations/github-check-runs) (this is not available yet but will be soon), request `checks:write` under repository permissions.
+- **checks:write**: To use the app to generate a token to pass into [github check runs](../Project-Configuration/Github-Integrations/github-check-runs) (this is not available yet but will be soon), request `checks:write` under repository permissions.
 
 ## Can more than one app be associated with my project?
 
@@ -14,7 +18,7 @@ No, only one app per project is supported.
 
 ## Why am I seeing `HTTP status code 401: 401 (Unauthorized): requester does not have permission to create a token` error when I try to clone with a generated token?
 
-It is possible that the token is being generated with permissions being fully restricted to `No Permissions` in the project settings. Double check that the [project settings](Github-Integrations#dynamic-github-access-tokens) did not restrict this requester to `No Permissions`.
+It is possible that the token is being generated with permissions being fully restricted to `No Permissions` in the project settings. Double check that the [project settings](../Project-Configuration/Github-Integrations#dynamic-github-access-tokens) did not restrict this requester to `No Permissions`.
 
 ## Why am I seeing a `Remote: Repository not found` error when I try to clone with a generated token?
 
@@ -22,7 +26,7 @@ A few things may cause this issue:
 
 - The GitHub app associated with the project does not have permission to clone this repo.
 - The token is being generated with _restricted permissions_. Double check that _both_ the project settings and the command, if they specify restricted permissions, include `contents:read`.
-- In some cases, you may need to specify the owner and repo using the [github.generate_token command](Project-Configuration/Project-Commands#githubgenerate_token) parameters when generating a token, especially if the repository you want to clone has a different owner than your Evergreen project.
+- In some cases, you may need to specify the owner and repo using the [github.generate_token command](../Project-Configuration/Project-Commands#githubgenerate_token) parameters when generating a token, especially if the repository you want to clone has a different owner than your Evergreen project.
 
 ## Why am I seeing `the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token`?
 
@@ -55,8 +59,8 @@ After using the github.generate_token command to generate a token, you can then 
 Below is a recommended order for debugging steps:
 
 - [Check if GitHub is down](https://www.githubstatus.com).
-- If your current setup involves multiple steps or scripts, create a task that isolates the problem by only generating a token and immediately using it to do the operation you are trying to do. You can model it after the example [here](Project-Configuration/Project-Commands#githubgenerate_token). If it works in this isolated setting, debug efforts can be focused on yaml syntax and [token lifespan and scope](Project-Configuration/Project-Commands#token-lifespan).
+- If your current setup involves multiple steps or scripts, create a task that isolates the problem by only generating a token and immediately using it to do the operation you are trying to do. You can model it after the example [here](../Project-Configuration/Project-Commands#githubgenerate_token). If it works in this isolated setting, debug efforts can be focused on yaml syntax and [token lifespan and scope](../Project-Configuration/Project-Commands#token-lifespan).
 - Double check the app permissions on the [project settings](Github-Integrations#dynamic-github-access-tokens) page to make sure that what you are trying to do is not restricted.
-- Double check the permissions you specified in your project yaml when [generating the token](Project-Configuration/Project-Commands#githubgenerate_token) to make sure that what you are trying to do is not restricted.
-- Use a script like [shell.exec](Project-Configuration/Project-Commands/shellexec) to print the length of the generated token to make sure it's not 0. If it is, delete your github app in [project settings](Github-Integrations#dynamic-github-access-tokens) and save it again to make sure that it was saved correctly. Make sure that you are saving github app ID or the github app key and not the Client ID.
+- Double check the permissions you specified in your project yaml when [generating the token](../Project-Configuration/Project-Commands#githubgenerate_token) to make sure that what you are trying to do is not restricted.
+- Use a script like [shell.exec](../Project-Configuration/Project-Commands/shellexec) to print the length of the generated token to make sure it's not 0. If it is, delete your github app in [project settings](Github-Integrations#dynamic-github-access-tokens) and save it again to make sure that it was saved correctly. Make sure that you are saving github app ID or the github app key and not the Client ID.
 - Test your app outside of Evergreen by generating a token and then using that token with the operation that doesn't work to make sure that a token generated by your app is powerful enough. While this is not officially supported by Evergreen, [Zack created a helpful script](https://github.com/10gen/employees/tree/master/home/zackary.santana/utils/github_dynamic_tokens) that can be used to generate a token on your machine. If you fail at this step, read the [github documentation](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps?apiVersion=2022-11-28) to figure out what permissions are needed for the thing you are trying to do and check in with the team that created the github app for you to double check that your app has those permissions. You can see all the available permissions [here](https://github.com/settings/apps/new). If your app has the right permissions but your token can't do the operation you expect on your machine, you may need to reach out to github for support.
