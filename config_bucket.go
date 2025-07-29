@@ -31,8 +31,10 @@ func (b BucketType) validate() error {
 // BucketsConfig represents the admin config section for interally-owned
 // Evergreen data bucket storage.
 type BucketsConfig struct {
-	// LogBucket is the bucket information for logs.
+	// LogBucket is the defualt bucket information for logs.
 	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
+	// LogBucketLongRetention is the bucket information for logs with extended retention.
+	LogBucketLongRetention BucketConfig `bson:"log_bucket_long_retention" json:"log_bucket_long_retention" yaml:"log_bucket_long_retention"`
 	// TestResultsBucket is the bucket information for test results.
 	TestResultsBucket BucketConfig `bson:"test_results_bucket" json:"test_results_bucket" yaml:"test_results_bucket"`
 	// Credentials for accessing the LogBucket.
@@ -40,9 +42,10 @@ type BucketsConfig struct {
 }
 
 var (
-	bucketsConfigLogBucketKey         = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
-	bucketsConfigTestResultsBucketKey = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
-	bucketsConfigCredentialsKey       = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	bucketsConfigLogBucketKey              = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	bucketsConfigLogBucketLongRetentionKey = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
+	bucketsConfigTestResultsBucketKey      = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
+	bucketsConfigCredentialsKey            = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -75,13 +78,17 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			bucketsConfigLogBucketKey:         c.LogBucket,
-			bucketsConfigTestResultsBucketKey: c.TestResultsBucket,
-			bucketsConfigCredentialsKey:       c.Credentials,
+			bucketsConfigLogBucketKey:              c.LogBucket,
+			bucketsConfigLogBucketLongRetentionKey: c.LogBucketLongRetention,
+			bucketsConfigTestResultsBucketKey:      c.TestResultsBucket,
+			bucketsConfigCredentialsKey:            c.Credentials,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
 
 func (c *BucketsConfig) ValidateAndDefault() error {
-	return c.LogBucket.validate()
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(c.LogBucket.validate())
+	catcher.Add(c.LogBucketLongRetention.validate())
+	return catcher.Resolve()
 }

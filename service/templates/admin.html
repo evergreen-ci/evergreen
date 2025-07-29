@@ -2272,8 +2272,12 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>Log Bucket</label>
+										<label>Default Log Bucket</label>
 										<input type="text" ng-model="Settings.buckets.log_bucket.name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Long Retention Log Bucket </label>
+										<input type="text" ng-model="Settings.buckets.log_bucket_long_retention.name">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Test Results Bucket</label>
