@@ -5,11 +5,13 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,4 +84,13 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 	testSettings.GithubPRCreatorOrg = integrationSettings.GithubPRCreatorOrg
 	testSettings.Slack = integrationSettings.Slack
 	testSettings.ShutdownWaitSeconds = integrationSettings.ShutdownWaitSeconds
+
+	err = evergreen.UpdateConfig(context.Background(), testSettings)
+	require.NoError(t, err, "Error updating settings in DB")
+	catcher := grip.NewBasicCatcher()
+	evergreen.StoreAdminSecrets(context.Background(),
+		evergreen.GetEnvironment().ParameterManager(),
+		reflect.ValueOf(testSettings).Elem(),
+		reflect.TypeOf(*testSettings), "", catcher)
+	require.NoError(t, catcher.Resolve(), "Error storing admin secrets in parameter store")
 }

@@ -704,3 +704,89 @@ func IsValidBannerTheme(input string) (bool, BannerTheme) {
 		return false, ""
 	}
 }
+
+// StoreAdminSecrets recursively finds all fields tagged with "secret:true"
+// and stores them in the parameter manager
+// The function has section commented out because all the functionality does not currently exist.
+// It is currently only uncommented during the testing to ensure that the function works as expected.
+// Those sections will be uncommented/deleted when the functionality is implemented.
+func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
+	if paramMgr == nil {
+		catcher.Add(errors.New("parameter manager is nil"))
+		return
+	}
+	// Handle different kinds of values
+	switch value.Kind() {
+	case reflect.Struct:
+		structName := typ.Name()
+		currentPath := path
+		if structName != "" {
+			if currentPath != "" {
+				currentPath = currentPath + "/" + structName
+			} else {
+				currentPath = structName
+			}
+		}
+
+		// Iterate through all fields in the struct.
+		for i := 0; i < value.NumField(); i++ {
+			field := typ.Field(i)
+			fieldValue := value.Field(i)
+
+			fieldPath := currentPath
+			if fieldPath != "" {
+				fieldPath = fieldPath + "/" + field.Name
+			} else {
+				fieldPath = field.Name
+			}
+
+			// Check if this field has the secret:"true" tag.
+			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
+				// If the field is a string, store in parameter manager and update struct with path.
+				if fieldValue.Kind() == reflect.String {
+					secretValue := fieldValue.String()
+					if secretValue == "" {
+						continue
+					}
+					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
+					}
+					// // TODO DEVPROD-18236: Update the struct field to store the path instead of the secret value
+					// fieldValue.SetString(fieldPath)
+					// if the field is a map[string]string, store each key-value pair individually
+				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
+					// // Create a new map to store the paths
+					// newMap := reflect.MakeMap(fieldValue.Type())
+					for _, key := range fieldValue.MapKeys() {
+						mapValue := fieldValue.MapIndex(key)
+						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
+						secretValue := mapValue.String()
+						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
+						if err != nil {
+							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							continue
+						}
+						// // TODO DEVPROD-18236: Replace the secret value with the path
+						// newMap.SetMapIndex(key, reflect.ValueOf(mapFieldPath))
+					}
+					// // Update the struct field with the new map containing paths
+					// fieldValue.Set(newMap)
+				}
+			}
+
+			// Recursively check nested structs, pointers, slices, and maps.
+			StoreAdminSecrets(ctx, paramMgr, fieldValue, field.Type, currentPath, catcher)
+		}
+	case reflect.Ptr:
+		// Dereference pointer if not nil.
+		if !value.IsNil() {
+			StoreAdminSecrets(ctx, paramMgr, value.Elem(), typ.Elem(), path, catcher)
+		}
+	case reflect.Slice, reflect.Array:
+		// Check each element in slice/array.
+		for i := 0; i < value.Len(); i++ {
+			StoreAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+		}
+	}
+}

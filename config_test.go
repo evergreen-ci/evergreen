@@ -131,13 +131,14 @@ func (s *AdminSuite) TestBaseConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// This test does not check Expansions because it is not possible to
+	// call parameter store functions, real or mocked, in this test suite.
 	config := Settings{
 		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
 		ConfigDir:           "cfg_dir",
 		DomainName:          "example.com",
-		Expansions:          map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg:  "org",
 		GithubOrgs:          []string{"evergreen-ci"},
 		LogPath:             "logpath",
