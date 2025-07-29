@@ -859,6 +859,7 @@ func (s *AdminSuite) TestBucketsConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Test basic bucket config
 	config := BucketsConfig{
 		LogBucket: BucketConfig{
 			Name: "logs",
@@ -880,4 +881,30 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Buckets)
+
+	// Test long retention bucket and projects
+	config.LogBucketLongRetention = BucketConfig{
+		Name: "logs-long-retention",
+		Type: "s3",
+	}
+	config.LongRetentionProjects = []string{"project1", "project2"}
+
+	err = config.Set(ctx)
+	s.NoError(err)
+
+	settings, err = GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Buckets)
+	s.Len(settings.Buckets.LongRetentionProjects, 2)
+
+	// Test validation
+	err = config.ValidateAndDefault()
+	s.NoError(err)
+
+	// Test invalid bucket type
+	config.LogBucketLongRetention.Type = "invalid"
+	err = config.ValidateAndDefault()
+	s.Error(err)
+	s.Contains(err.Error(), "unrecognized bucket type 'invalid'")
 }
