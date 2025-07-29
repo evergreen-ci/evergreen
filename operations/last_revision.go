@@ -197,50 +197,17 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 			"revision":   utility.FromStringPtr(v.Revision),
 			"project":    utility.FromStringPtr(v.Project),
 		})
+
 		builds, err := c.GetBuildsForVersion(ctx, utility.FromStringPtr(v.Id))
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting builds for version '%s'", utility.FromStringPtr(v.Id))
 		}
 
-		type buildResult struct {
-			passesCriteria bool
-			err            error
+		passesCriteria, err := checkBuildsPassCriteria(ctx, c, builds, criteria)
+		if err != nil {
+			return nil, err
 		}
-
-		buildResults := make(chan buildResult, len(builds))
-		wg := sync.WaitGroup{}
-		for _, b := range builds {
-			wg.Add(1)
-
-			go func() {
-				defer wg.Done()
-
-				res := buildResult{}
-				res.passesCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, criteria)
-				select {
-				case <-ctx.Done():
-				case buildResults <- res:
-				}
-			}()
-		}
-
-		wg.Wait()
-		close(buildResults)
-
-		catcher := grip.NewBasicCatcher()
-		allBuildsPassedCriteria := true
-		for res := range buildResults {
-			if res.err != nil {
-				catcher.Add(errors.Wrapf(res.err, "checking build '%s' for last revision criteria", utility.FromStringPtr(v.Id)))
-			}
-			if !res.passesCriteria {
-				allBuildsPassedCriteria = false
-			}
-		}
-		if catcher.HasErrors() {
-			return nil, catcher.Resolve()
-		}
-		if !allBuildsPassedCriteria {
+		if passesCriteria {
 			continue
 		}
 
@@ -248,6 +215,48 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 	}
 
 	return nil, errors.New("no matching revision found")
+}
+
+func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
+	type buildResult struct {
+		passesCriteria bool
+		err            error
+	}
+
+	buildResults := make(chan buildResult, len(builds))
+	wg := sync.WaitGroup{}
+	for _, b := range builds {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			res := buildResult{}
+			res.passesCriteria, res.err = checkBuildPassesCriteria(ctx, c, b, criteria)
+			select {
+			case <-ctx.Done():
+			case buildResults <- res:
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(buildResults)
+
+	catcher := grip.NewBasicCatcher()
+	allBuildsPassedCriteria := true
+	for res := range buildResults {
+		if res.err != nil {
+			catcher.Add(res.err)
+		}
+		if !res.passesCriteria {
+			allBuildsPassedCriteria = false
+		}
+	}
+	if catcher.HasErrors() {
+		return false, catcher.Resolve()
+	}
+	return allBuildsPassedCriteria, nil
 }
 
 func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
