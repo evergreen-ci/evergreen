@@ -29,11 +29,6 @@ type goTestResults struct {
 	OptionalOutput   string `mapstructure:"optional_output" plugin:"expand"`
 	outputIsOptional bool
 
-	// Optional, when set to true, causes this command to be skipped over without an error when
-	// no test output contains no tests
-	OptionalTests    string `mapstructure:"optional_tests" plugin:"expand"`
-	testsAreOptional bool
-
 	base
 }
 
@@ -52,13 +47,6 @@ func (c *goTestResults) ParseParams(params map[string]any) error {
 		c.outputIsOptional, err = strconv.ParseBool(c.OptionalOutput)
 		if err != nil {
 			return errors.Wrap(err, "parsing optional output parameter as a boolean")
-		}
-	}
-
-	if c.OptionalTests != "" {
-		c.testsAreOptional, err = strconv.ParseBool(c.OptionalTests)
-		if err != nil {
-			return errors.Wrap(err, "parsing optional tests parameter as a boolean")
 		}
 	}
 
@@ -103,7 +91,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return errors.Wrap(err, "parsing output results")
 	}
 
-	if c.testsAreOptional && len(results) == 0 {
+	if !conf.Task.MustHaveResults && len(results) == 0 {
 		return nil
 	}
 
