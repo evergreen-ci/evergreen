@@ -1,0 +1,83 @@
+mutation {
+  saveAdminSettings(
+    adminSettings: {
+      serviceFlags: {
+        adminParameterStoreDisabled: true
+        agentStartDisabled: true
+        alertsDisabled: true
+        backgroundReauthDisabled: true
+        backgroundStatsDisabled: true
+        cacheStatsEndpointDisabled: true
+        cacheStatsJobDisabled: true
+        checkBlockedTasksDisabled: true
+        cliUpdatesDisabled: true
+        cloudCleanupDisabled: true
+        degradedModeDisabled: true
+        elasticIPsDisabled: true
+        emailNotificationsDisabled: true
+        eventProcessingDisabled: true
+        githubPRTestingDisabled: true
+        githubStatusAPIDisabled: true
+        hostAllocatorDisabled: true
+        hostInitDisabled: true
+        jiraNotificationsDisabled: true
+        jwtTokenForCLIDisabled: true
+        largeParserProjectsDisabled: true
+        monitorDisabled: true
+        podAllocatorDisabled: true
+        podInitDisabled: true
+        releaseModeDisabled: true
+        repotrackerDisabled: true
+        schedulerDisabled: true
+        slackNotificationsDisabled: true
+        sleepScheduleDisabled: true
+        staticAPIKeysDisabled: true
+        systemFailedTaskRestartDisabled: true
+        taskDispatchDisabled: true
+        taskLoggingDisabled: true
+        taskReliabilityDisabled: true
+        unrecognizedPodCleanupDisabled: true
+        webhookNotificationsDisabled: true
+      }
+    }
+  ) {
+    serviceFlags {
+      adminParameterStoreDisabled
+      agentStartDisabled
+      alertsDisabled
+      backgroundReauthDisabled
+      backgroundStatsDisabled
+      cacheStatsEndpointDisabled
+      cacheStatsJobDisabled
+      checkBlockedTasksDisabled
+      cliUpdatesDisabled
+      cloudCleanupDisabled
+      degradedModeDisabled
+      elasticIPsDisabled
+      emailNotificationsDisabled
+      eventProcessingDisabled
+      githubPRTestingDisabled
+      githubStatusAPIDisabled
+      hostAllocatorDisabled
+      hostInitDisabled
+      jiraNotificationsDisabled
+      jwtTokenForCLIDisabled
+      largeParserProjectsDisabled
+      monitorDisabled
+      podAllocatorDisabled
+      podInitDisabled
+      releaseModeDisabled
+      repotrackerDisabled
+      schedulerDisabled
+      slackNotificationsDisabled
+      sleepScheduleDisabled
+      staticAPIKeysDisabled
+      systemFailedTaskRestartDisabled
+      taskDispatchDisabled
+      taskLoggingDisabled
+      taskReliabilityDisabled
+      unrecognizedPodCleanupDisabled
+      webhookNotificationsDisabled
+    }
+  }
+}

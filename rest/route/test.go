@@ -49,7 +49,7 @@ func makeFetchTestsForTask(env evergreen.Environment, sc data.Connector) gimlet.
 //	@Router			/tasks/{task_id}/tests [get]
 //	@Security		Api-User || Api-Key
 //	@Param			task_id		path	string	true	"task ID"
-//	@Param			start_at	query	string	false	"The identifier of the test to start at in the pagination"
+//	@Param			start_at	query	int		false	"The page number to start at in the pagination"
 //	@Param			limit		query	int		false	"The number of tests to be returned per page of pagination. Defaults to 100"
 //	@Param			status		query	string	false	"A status of test to limit the results to."
 //	@Param			execution	query	int		false	"The 0-based number corresponding to the execution of the task. Defaults to 0, meaning the first time the task was run."
@@ -134,7 +134,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 	results, err := tgh.task.GetTestResults(
 		ctx,
 		tgh.env,
-		&testresult.FilterOptions{
+		&task.FilterOptions{
 			TestName: tgh.testName,
 			Statuses: tgh.testStatus,
 			Limit:    tgh.limit,

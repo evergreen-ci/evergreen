@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -233,27 +232,27 @@ func (thi *taskHistoryIterator) GetFailedTests(tasks []task.Task) (map[string][]
 	ctx, cancel := env.Context()
 	defer cancel()
 
-	var allTaskOpts []testresult.TaskOptions
+	var allTasks []task.Task
 	taskIDsToDisplay := map[string]string{}
 	for _, tsk := range tasks {
-		taskOpts, err := tsk.CreateTestResultsTaskOptions(ctx)
+		dbTasks, err := tsk.GetTestResultsTasks(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating test results task options")
 		}
 
-		allTaskOpts = append(allTaskOpts, taskOpts...)
-		for _, opts := range taskOpts {
-			taskIDsToDisplay[opts.TaskID] = tsk.Id
+		allTasks = append(allTasks, dbTasks...)
+		for _, opts := range dbTasks {
+			taskIDsToDisplay[opts.Id] = tsk.Id
 		}
 	}
-	if len(allTaskOpts) == 0 {
+	if len(allTasks) == 0 {
 		// This is an added hack to make tests pass when transitioning
 		// between Mongo drivers.
 		return map[string][]string{}, nil
 	}
-	results, err := testresult.GetFailedTestSamples(ctx, env, allTaskOpts, nil)
+	results, err := task.GetFailedTestSamples(ctx, env, allTasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting failed test results samples from Cedar")
+		return nil, errors.Wrap(err, "getting failed test results samples")
 	}
 
 	failedTestsMap := map[string][]string{}

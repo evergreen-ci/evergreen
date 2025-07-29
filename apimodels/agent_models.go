@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -14,19 +15,18 @@ import (
 )
 
 const (
-	ScopeTask                       = "task"
-	ScopeBuild                      = "build"
-	DefaultSetupTimeoutSecs         = 600
-	DefaultTeardownTimeoutSecs      = 21600
-	DefaultContainerWaitTimeoutSecs = 600
-	DefaultPollFrequency            = 30
-	DefaultRetries                  = 2
+	ScopeTask                  = "task"
+	ScopeBuild                 = "build"
+	DefaultSetupTimeoutSecs    = 600
+	DefaultTeardownTimeoutSecs = 21600
+	DefaultRetries             = 2
 )
 
 // TaskStartRequest holds information sent by the agent to the
 // API server at the beginning of each task run.
 type TaskStartRequest struct {
-	Pid string `json:"pid"`
+	TraceID     string   `json:"trace_id,omitempty"`
+	DiskDevices []string `json:"disk_devices,omitempty"`
 }
 
 // HeartbeatResponse is sent by the API server in response to
@@ -45,8 +45,16 @@ type CheckMergeRequest struct {
 // TaskTestResultsInfo contains metadata related to test results persisted for
 // a given task.
 type TaskTestResultsInfo struct {
-	Service string `json:"service"`
-	Failed  bool   `json:"failed"`
+	Failed bool `json:"failed"`
+}
+
+// AttachTestResultsRequest contains information necessary to send in
+// the request by the agent to attach test results.
+type AttachTestResultsRequest struct {
+	Info         testresult.TestResultsInfo      `json:"info"`
+	Stats        testresult.TaskTestResultsStats `json:"stats"`
+	FailedSample []string                        `json:"failed_sample"`
+	CreatedAt    time.Time                       `json:"created_at"`
 }
 
 // TaskEndDetail contains data sent from the agent to the API server after each task run.
@@ -67,7 +75,7 @@ type TaskEndDetail struct {
 	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
 	OOMTracker           *OOMTrackerInfo  `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
-	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules,omitempty"`
+	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules"`
 	TraceID              string           `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string         `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 }
@@ -208,6 +216,10 @@ type AWSCredentials struct {
 	SecretAccessKey string `json:"secret_access_key"`
 	SessionToken    string `json:"session_token"`
 	Expiration      string `json:"expiration"`
+
+	// ExternalID is the external ID used to assume the role
+	// if available.
+	ExternalID string `json:"external_id"`
 }
 
 // S3CredentialsRequest contains the s3 bucket to access.

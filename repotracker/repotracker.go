@@ -184,6 +184,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			return errors.WithStack(err)
 		}
 	}
+
 	ok, err := model.DoProjectActivation(ctx, projectRef.Id, time.Now())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -339,6 +340,9 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project_identifier": ref.Identifier,
 				"revision":           revision,
 			}))
+			// If the version errored during creation, skip the remaining
+			// version logic because the version may not exist or it may exist
+			// in a half-broken state.
 			continue
 		}
 		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
@@ -348,8 +352,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
 				"revision":           revision,
+				"version":            v.Id,
 			}))
-			continue
 		}
 		if ref.IsGithubChecksEnabled() {
 			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
@@ -359,6 +363,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					"project":            ref.Id,
 					"project_identifier": ref.Identifier,
 					"revision":           revision,
+					"version":            v.Id,
 				}))
 			}
 		}
@@ -371,8 +376,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
 				"revision":           revision,
+				"version":            v.Id,
 			}))
-			continue
 		}
 
 		newestVersion = v
@@ -385,6 +390,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
 				"runner":             RunnerName,
+				"version":            newestVersion.Id,
+				"revision":           newestVersion.Revision,
 			}))
 			return errors.WithStack(err)
 		}
@@ -1016,8 +1023,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	v.ProjectStorageMethod = ppStorageMethod
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
-		// sessCtx := mongo.SessionFromContext(ctx)
-
 		err := sessCtx.StartTransaction()
 		if err != nil {
 			return errors.Wrap(err, "starting transaction")

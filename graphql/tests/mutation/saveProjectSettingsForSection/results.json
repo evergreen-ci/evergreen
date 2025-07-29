@@ -109,11 +109,13 @@
               "id": "sandbox_project_id",
               "parsleyFilters": [
                 {
+                  "description": "",
                   "expression": "filter_one",
                   "caseSensitive": true,
                   "exactMatch": false
                 },
                 {
+                  "description": "the second filter",
                   "expression": "filter_two",
                   "caseSensitive": false,
                   "exactMatch": false
@@ -130,6 +132,11 @@
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
+            "projectRef": {
+              "githubTriggerAliases": ["test"],
+              "githubPRTriggerAliases": ["test"],
+              "githubMQTriggerAliases": ["test2"]
+            },
             "aliases": [
               {
                 "id": "5ffe393097b1d3759dd3c1aa",
@@ -147,6 +154,85 @@
                 "id": "64c80057d1d6f12b0d4c69d0",
                 "alias": "test",
                 "description": "alias",
+                "variant": "",
+                "variantTags": [".*"],
+                "task": "",
+                "taskTags": [".*"],
+                "gitTag": "",
+                "remotePath": "",
+                "parameters": [
+                  {
+                    "key": "test",
+                    "value": "thing"
+                  }
+                ]
+              },
+              {
+                "id": "65c80057d1d6f12b0d4c69d0",
+                "alias": "test2",
+                "description": "second alias",
+                "variant": "",
+                "variantTags": [".*"],
+                "task": "",
+                "taskTags": [".*"],
+                "gitTag": "",
+                "remotePath": "",
+                "parameters": [
+                  {
+                    "key": "test",
+                    "value": "thing"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch_alias_section_legacy_patch_triggers.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "githubTriggerAliases": ["test"],
+              "githubPRTriggerAliases": ["test"],
+              "githubMQTriggerAliases": ["test2"]
+            },
+            "aliases": [
+              {
+                "id": "5ffe393097b1d3759dd3c1aa",
+                "alias": "__commit_queue",
+                "description": "",
+                "variant": "ubuntu1604",
+                "variantTags": [],
+                "task": "unit_tests",
+                "taskTags": [],
+                "gitTag": "",
+                "remotePath": "",
+                "parameters": []
+              },
+              {
+                "id": "64c80057d1d6f12b0d4c69d0",
+                "alias": "test",
+                "description": "alias",
+                "variant": "",
+                "variantTags": [".*"],
+                "task": "",
+                "taskTags": [".*"],
+                "gitTag": "",
+                "remotePath": "",
+                "parameters": [
+                  {
+                    "key": "test",
+                    "value": "thing"
+                  }
+                ]
+              },
+              {
+                "id": "65c80057d1d6f12b0d4c69d0",
+                "alias": "test2",
+                "description": "second alias",
                 "variant": "",
                 "variantTags": [".*"],
                 "task": "",

@@ -69,6 +69,7 @@ type APIHostAllocatorSettings struct {
 	Version                *string     `json:"version"`
 	MinimumHosts           int         `json:"minimum_hosts"`
 	MaximumHosts           int         `json:"maximum_hosts"`
+	AutoTuneMaximumHosts   bool        `json:"auto_tune_maximum_hosts"`
 	RoundingRule           *string     `json:"rounding_rule"`
 	FeedbackRule           *string     `json:"feedback_rule"`
 	HostsOverallocatedRule *string     `json:"hosts_overallocated_rule"`
@@ -85,6 +86,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(settings distro.HostAllocato
 	}
 	s.MinimumHosts = settings.MinimumHosts
 	s.MaximumHosts = settings.MaximumHosts
+	s.AutoTuneMaximumHosts = settings.AutoTuneMaximumHosts
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.RoundingRule = utility.ToStringPtr(settings.RoundingRule)
 	s.FeedbackRule = utility.ToStringPtr(settings.FeedbackRule)
@@ -102,6 +104,7 @@ func (s *APIHostAllocatorSettings) ToService() distro.HostAllocatorSettings {
 	}
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
+	settings.AutoTuneMaximumHosts = s.AutoTuneMaximumHosts
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.RoundingRule = utility.FromStringPtr(s.RoundingRule)
 	settings.FeedbackRule = utility.FromStringPtr(s.FeedbackRule)
@@ -342,6 +345,7 @@ type APIDistro struct {
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
 	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object"`
+	ProviderAccount       *string                  `json:"provider_account"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
@@ -379,6 +383,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = utility.ToStringPtr(d.Provider)
 	apiDistro.ProviderSettingsList = d.ProviderSettingsList
+	apiDistro.ProviderAccount = utility.ToStringPtr(d.ProviderAccount)
 	apiDistro.Arch = utility.ToStringPtr(d.Arch)
 	apiDistro.WorkDir = utility.ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
@@ -446,6 +451,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.WorkDir = utility.FromStringPtr(apiDistro.WorkDir)
 	d.Provider = utility.FromStringPtr(apiDistro.Provider)
 	d.ProviderSettingsList = apiDistro.ProviderSettingsList
+	d.ProviderAccount = utility.FromStringPtr(apiDistro.ProviderAccount)
 	d.SetupAsSudo = apiDistro.SetupAsSudo
 	d.Setup = utility.FromStringPtr(apiDistro.Setup)
 	d.User = utility.FromStringPtr(apiDistro.User)

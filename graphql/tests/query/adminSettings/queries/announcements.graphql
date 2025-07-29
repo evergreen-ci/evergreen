@@ -1,0 +1,6 @@
+query Announcements {
+  adminSettings {
+    banner
+    bannerTheme
+  }
+}

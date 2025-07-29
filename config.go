@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
@@ -31,11 +32,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-04-22"
+	ClientVersion = "2025-07-16c"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-04-24"
+	AgentVersion = "2025-07-29-a"
 )
 
 const (
@@ -73,8 +74,9 @@ type Settings struct {
 	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
-	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
+	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions" secret:"true"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	FWS                 FWSConfig               `yaml:"fws" bson:"fws" json:"fws" id:"fws"`
 	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
@@ -85,34 +87,37 @@ type Settings struct {
 	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 	// TODO (DEVPROD-15898): remove this key path.
-	KanopySSHKeyPath    string                    `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
-	LoggerConfig        LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
-	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
-	Overrides           OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
-	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
-	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
-	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
-	PodLifecycle        PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
-	PprofPort           string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
-	ProjectCreation     ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
-	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
-	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
-	RuntimeEnvironments RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
-	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
-	ServiceFlags        ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
-	ShutdownWaitSeconds int                       `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
-	SingleTaskDistro    SingleTaskDistroConfig    `yaml:"single_task_distro" bson:"single_task_distro" json:"single_task_distro" id:"single_task_distro"`
-	Slack               SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
-	SleepSchedule       SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
-	Spawnhost           SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
-	Splunk              SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
-	SSH                 SSHConfig                 `yaml:"ssh" bson:"ssh" json:"ssh" id:"ssh"`
-	TaskLimits          TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
-	TestSelection       TestSelectionConfig       `yaml:"test_selection" bson:"test_selection" json:"test_selection" id:"test_selection"`
-	Tracer              TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
-	Triggers            TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
-	Ui                  UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	KanopySSHKeyPath        string                    `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
+	LoggerConfig            LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
+	LogPath                 string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
+	Notify                  NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	Overrides               OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
+	ParameterStore          ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
+	PerfMonitoringURL       string                    `yaml:"perf_monitoring_url" bson:"perf_monitoring_url" json:"perf_monitoring_url"`
+	PerfMonitoringKanopyURL string                    `yaml:"perf_monitoring_kanopy_url" bson:"perf_monitoring_kanopy_url" json:"perf_monitoring_kanopy_url"`
+	Plugins                 PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
+	PluginsNew              util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
+	PodLifecycle            PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
+	PprofPort               string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	ProjectCreation         ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
+	Providers               CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	ReleaseMode             ReleaseModeConfig         `yaml:"release_mode" bson:"release_mode" json:"release_mode" id:"release_mode"`
+	RepoTracker             RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
+	RuntimeEnvironments     RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
+	Scheduler               SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
+	ServiceFlags            ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
+	ShutdownWaitSeconds     int                       `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
+	SingleTaskDistro        SingleTaskDistroConfig    `yaml:"single_task_distro" bson:"single_task_distro" json:"single_task_distro" id:"single_task_distro"`
+	Slack                   SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
+	SleepSchedule           SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
+	Spawnhost               SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
+	Splunk                  SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	SSH                     SSHConfig                 `yaml:"ssh" bson:"ssh" json:"ssh" id:"ssh"`
+	TaskLimits              TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
+	TestSelection           TestSelectionConfig       `yaml:"test_selection" bson:"test_selection" json:"test_selection" id:"test_selection"`
+	Tracer                  TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
+	Ui                      UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -126,26 +131,28 @@ func (c *Settings) Get(ctx context.Context) error {
 func (c *Settings) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			awsInstanceRoleKey:     c.AWSInstanceRole,
-			bannerKey:              c.Banner,
-			bannerThemeKey:         c.BannerTheme,
-			configDirKey:           c.ConfigDir,
-			domainNameKey:          c.DomainName,
-			expansionsKey:          c.Expansions,
-			expansionsNewKey:       c.ExpansionsNew,
-			githubPRCreatorOrgKey:  c.GithubPRCreatorOrg,
-			githubOrgsKey:          c.GithubOrgs,
-			githubWebhookSecretKey: c.GithubWebhookSecret,
-			disabledGQLQueriesKey:  c.DisabledGQLQueries,
-			kanopySSHKeyPathKey:    c.KanopySSHKeyPath,
-			logPathKey:             c.LogPath,
-			pprofPortKey:           c.PprofPort,
-			pluginsKey:             c.Plugins,
-			pluginsNewKey:          c.PluginsNew,
-			splunkKey:              c.Splunk,
-			sshKey:                 c.SSH,
-			spawnhostKey:           c.Spawnhost,
-			shutdownWaitKey:        c.ShutdownWaitSeconds,
+			awsInstanceRoleKey:         c.AWSInstanceRole,
+			bannerKey:                  c.Banner,
+			bannerThemeKey:             c.BannerTheme,
+			configDirKey:               c.ConfigDir,
+			domainNameKey:              c.DomainName,
+			expansionsKey:              c.Expansions,
+			expansionsNewKey:           c.ExpansionsNew,
+			githubPRCreatorOrgKey:      c.GithubPRCreatorOrg,
+			githubOrgsKey:              c.GithubOrgs,
+			githubWebhookSecretKey:     c.GithubWebhookSecret,
+			disabledGQLQueriesKey:      c.DisabledGQLQueries,
+			kanopySSHKeyPathKey:        c.KanopySSHKeyPath,
+			logPathKey:                 c.LogPath,
+			perfMonitoringURLKey:       c.PerfMonitoringURL,
+			perfMonitoringKanopyURLKey: c.PerfMonitoringKanopyURL,
+			pprofPortKey:               c.PprofPort,
+			pluginsKey:                 c.Plugins,
+			pluginsNewKey:              c.PluginsNew,
+			splunkKey:                  c.Splunk,
+			sshKey:                     c.SSH,
+			spawnhostKey:               c.Spawnhost,
+			shutdownWaitKey:            c.ShutdownWaitSeconds,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -254,10 +261,109 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 		propVal.Set(sectionVal)
 	}
 
+	// If the admin parameter store is not disabled, we need to read secrets from it.
+	// If it fails, log the error and ignore changes made from the parameter store.
+	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled {
+		paramConfig := baseConfig
+		paramMgr := GetEnvironment().ParameterManager()
+		settingsValue := reflect.ValueOf(paramConfig).Elem()
+		settingsType := reflect.TypeOf(*paramConfig)
+		adminCatcher := grip.NewBasicCatcher()
+		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
+		if adminCatcher.HasErrors() {
+			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
+		} else {
+			baseConfig = paramConfig
+		}
+	}
+
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return baseConfig, nil
+}
+
+func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
+	if paramMgr == nil {
+		catcher.Add(errors.New("parameter manager is nil"))
+		return
+	}
+	// Handle different kinds of values
+	switch value.Kind() {
+	case reflect.Struct:
+		structName := typ.Name()
+		currentPath := path
+		if structName != "" {
+			if currentPath != "" {
+				currentPath = currentPath + "/" + structName
+			} else {
+				currentPath = structName
+			}
+		}
+
+		// Iterate through all fields in the struct.
+		for i := 0; i < value.NumField(); i++ {
+			field := typ.Field(i)
+			fieldValue := value.Field(i)
+
+			fieldPath := currentPath
+			if fieldPath != "" {
+				fieldPath = fieldPath + "/" + field.Name
+			} else {
+				fieldPath = field.Name
+			}
+
+			// Check if this field has the secret:"true" tag.
+			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
+				// If the field is a string, store in parameter manager and update struct with path.
+				if fieldValue.Kind() == reflect.String {
+					param, err := paramMgr.Get(ctx, fieldPath)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath))
+					} else if len(param) > 0 {
+						// Update the value with the path from the parameter store if it exists.
+						fieldValue.SetString(param[0].Value)
+					}
+					// if the field is a map[string]string, store each key-value pair individually
+				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
+					// Create a new map to store the paths
+					newMap := reflect.MakeMap(fieldValue.Type())
+					for _, key := range fieldValue.MapKeys() {
+						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
+						param, err := paramMgr.Get(ctx, mapFieldPath)
+						if err != nil {
+							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							continue
+						} else if len(param) > 0 {
+							// Set the map value to the parameter store value
+							newMap.SetMapIndex(key, reflect.ValueOf(param[0].Value))
+						} else {
+							catcher.Add(errors.Errorf("no value found for map key '%s' in parameter store", mapFieldPath))
+						}
+					}
+					// Update the struct field with the new map containing paths
+					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
+						fieldValue.Set(newMap)
+					} else {
+						catcher.Add(errors.New("not all map keys were found in parameter store"))
+					}
+				}
+			}
+
+			// Recursively check nested structs, pointers, slices, and maps.
+			readAdminSecrets(ctx, paramMgr, fieldValue, field.Type, currentPath, catcher)
+		}
+	case reflect.Ptr:
+		// Dereference pointer if not nil.
+		if !value.IsNil() {
+			readAdminSecrets(ctx, paramMgr, value.Elem(), typ.Elem(), path, catcher)
+		}
+	case reflect.Slice, reflect.Array:
+		// Check each element in slice/array.
+		for i := 0; i < value.Len(); i++ {
+			readAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+		}
+	}
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
@@ -346,7 +452,7 @@ func (settings *Settings) Validate() error {
 		}
 		err := section.ValidateAndDefault()
 		if err != nil {
-			catcher.Add(err)
+			catcher.Add(fmt.Errorf("validation failed for section '%s' (field '%s'): %w", sectionId, propName, err))
 			continue
 		}
 
@@ -576,7 +682,6 @@ const (
 	Information  BannerTheme = "INFORMATION"
 	Warning      BannerTheme = "WARNING"
 	Important    BannerTheme = "IMPORTANT"
-	Empty        BannerTheme = ""
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {
@@ -593,5 +698,91 @@ func IsValidBannerTheme(input string) (bool, BannerTheme) {
 		return true, Important
 	default:
 		return false, ""
+	}
+}
+
+// StoreAdminSecrets recursively finds all fields tagged with "secret:true"
+// and stores them in the parameter manager
+// The function has section commented out because all the functionality does not currently exist.
+// It is currently only uncommented during the testing to ensure that the function works as expected.
+// Those sections will be uncommented/deleted when the functionality is implemented.
+func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
+	if paramMgr == nil {
+		catcher.Add(errors.New("parameter manager is nil"))
+		return
+	}
+	// Handle different kinds of values
+	switch value.Kind() {
+	case reflect.Struct:
+		structName := typ.Name()
+		currentPath := path
+		if structName != "" {
+			if currentPath != "" {
+				currentPath = currentPath + "/" + structName
+			} else {
+				currentPath = structName
+			}
+		}
+
+		// Iterate through all fields in the struct.
+		for i := 0; i < value.NumField(); i++ {
+			field := typ.Field(i)
+			fieldValue := value.Field(i)
+
+			fieldPath := currentPath
+			if fieldPath != "" {
+				fieldPath = fieldPath + "/" + field.Name
+			} else {
+				fieldPath = field.Name
+			}
+
+			// Check if this field has the secret:"true" tag.
+			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
+				// If the field is a string, store in parameter manager and update struct with path.
+				if fieldValue.Kind() == reflect.String {
+					secretValue := fieldValue.String()
+					if secretValue == "" {
+						continue
+					}
+					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
+					}
+					// // TODO DEVPROD-18236: Update the struct field to store the path instead of the secret value
+					// fieldValue.SetString(fieldPath)
+					// if the field is a map[string]string, store each key-value pair individually
+				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
+					// // Create a new map to store the paths
+					// newMap := reflect.MakeMap(fieldValue.Type())
+					for _, key := range fieldValue.MapKeys() {
+						mapValue := fieldValue.MapIndex(key)
+						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
+						secretValue := mapValue.String()
+						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
+						if err != nil {
+							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							continue
+						}
+						// // TODO DEVPROD-18236: Replace the secret value with the path
+						// newMap.SetMapIndex(key, reflect.ValueOf(mapFieldPath))
+					}
+					// // Update the struct field with the new map containing paths
+					// fieldValue.Set(newMap)
+				}
+			}
+
+			// Recursively check nested structs, pointers, slices, and maps.
+			StoreAdminSecrets(ctx, paramMgr, fieldValue, field.Type, currentPath, catcher)
+		}
+	case reflect.Ptr:
+		// Dereference pointer if not nil.
+		if !value.IsNil() {
+			StoreAdminSecrets(ctx, paramMgr, value.Elem(), typ.Elem(), path, catcher)
+		}
+	case reflect.Slice, reflect.Array:
+		// Check each element in slice/array.
+		for i := 0; i < value.Len(); i++ {
+			StoreAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+		}
 	}
 }

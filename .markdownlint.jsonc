@@ -1,0 +1,8 @@
+{
+  // See https://github.com/markdownlint/markdownlint/blob/main/docs/RULES.md for the full list of rules.
+  "default": true, // Enable all rules by default. Disable rules below.
+  "MD013": false, // Don't remove line length limit. This is an old markdown rule that is tyipcally ignored.
+  "MD024": false, // We deliberately use multiple headings with the same name, like "Request".
+  "MD046": false, // TODO We use indented code blocks a bunch in older docs, and it's a lot of work to fix this, so these are excluded for now.
+  "MD059": false // TODO This is the classic "don't link to 'here'" rule. We violate this a lot.
+}

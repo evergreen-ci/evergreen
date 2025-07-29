@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -22,10 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/juniper/gopb"
-	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -34,17 +29,15 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
 // baseCommunicator provides common methods for Communicator functionality but
 // does not implement the entire interface.
 type baseCommunicator struct {
-	serverURL       string
-	retry           utility.RetryOptions
-	httpClient      *http.Client
-	reqHeaders      map[string]string
-	cedarGRPCClient *grpc.ClientConn
+	serverURL  string
+	retry      utility.RetryOptions
+	httpClient *http.Client
+	reqHeaders map[string]string
 
 	lastMessageSent time.Time
 	mutex           sync.RWMutex
@@ -108,45 +101,6 @@ func (c *baseCommunicator) resetClient() {
 
 	c.httpClient = utility.GetDefaultHTTPRetryableClient()
 	c.httpClient.Timeout = heartbeatTimeout
-}
-
-func (c *baseCommunicator) createCedarGRPCConn(ctx context.Context) error {
-	if c.cedarGRPCClient == nil {
-		cc, err := c.GetCedarConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting Cedar config")
-		}
-
-		if cc.GRPCBaseURL == "" && cc.BaseURL == "" {
-			// No cedar URLs probably means we are running
-			// evergreen locally or in some testing mode.
-			return nil
-		} else if cc.GRPCBaseURL == "" {
-			// Default the GRPC url to the HTTP base url if it's unpopulated
-			cc.GRPCBaseURL = cc.BaseURL
-		}
-
-		dialOpts := timber.DialCedarOptions{
-			BaseAddress: cc.GRPCBaseURL,
-			RPCPort:     cc.RPCPort,
-			Username:    cc.Username,
-			APIKey:      cc.APIKey,
-			// Insecure should always be set to false except when
-			// running Cedar locally, e.g. with our smoke tests.
-			Insecure: cc.Insecure,
-			Retries:  10,
-		}
-		c.cedarGRPCClient, err = timber.DialCedar(ctx, c.httpClient, dialOpts)
-		if err != nil {
-			return errors.Wrap(err, "creating Cedar gRPC client connection")
-		}
-	}
-
-	// We should always check the health of the conn as a sanity check,
-	// this way we can fail the agent early and avoid task system failures.
-	healthClient := gopb.NewHealthClient(c.cedarGRPCClient)
-	_, err := healthClient.Check(ctx, &gopb.HealthCheckRequest{})
-	return errors.Wrap(err, "checking Cedar gRPC health")
 }
 
 // GetProjectRef loads the task's project.
@@ -370,15 +324,6 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	return "", nil
 }
 
-// GetCedarGRPCConn returns the client connection to cedar if it exists, or
-// creates it if it doesn't exist.
-func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	if err := c.createCedarGRPCConn(ctx); err != nil {
-		return nil, errors.Wrap(err, "setting up Cedar gRPC connection")
-	}
-	return c.cedarGRPCClient, nil
-}
-
 func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task, config *LoggerConfig) (LoggerProducer, error) {
 	if config == nil {
 		config = &LoggerConfig{
@@ -388,27 +333,27 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 		}
 	}
 
-	exec, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeAgent)
+	exec, err := c.makeSender(ctx, tsk, config, task.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
-	task, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeTask)
+	sender, err := c.makeSender(ctx, tsk, config, task.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
-	system, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeSystem)
+	system, err := c.makeSender(ctx, tsk, config, task.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
 
 	return &logHarness{
 		execution: logging.MakeGrip(exec),
-		task:      logging.MakeGrip(task),
+		task:      logging.MakeGrip(sender),
 		system:    logging.MakeGrip(system),
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, config *LoggerConfig, logType taskoutput.TaskLogType) (send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, config *LoggerConfig, logType task.TaskLogType) (send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if config.SendToGlobalSender {
@@ -418,22 +363,17 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 	var sender send.Sender
 	var err error
 
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: tsk.Project,
-		TaskID:    tsk.Id,
-		Execution: tsk.Execution,
-	}
-	senderOpts := taskoutput.EvergreenSenderOptions{
+	senderOpts := task.EvergreenSenderOptions{
 		LevelInfo:     levelInfo,
 		FlushInterval: time.Minute,
 	}
-	sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
+	sender, err = task.NewTaskLogSender(ctx, *tsk, senderOpts, logType)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating Evergreen task log sender")
 	}
 
 	sender = redactor.NewRedactingSender(sender, config.RedactorOpts)
-	if logType == taskoutput.TaskLogTypeTask {
+	if logType == task.TaskLogTypeTask {
 		sender = makeTimeoutLogSender(sender, c)
 	}
 	senders = append(senders, sender)
@@ -444,22 +384,18 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure. If patchId is not specified, the task's
 // patch is returned.
-func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
-	patch := patchmodel.Patch{}
+func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData) (*patchmodel.Patch, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
-	suffix := "patch"
-	if patchId != "" {
-		suffix = fmt.Sprintf("%s?patch=%s", suffix, patchId)
-	}
-	info.setTaskPathSuffix(suffix)
+	info.setTaskPathSuffix("patch")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, util.RespError(resp, errors.Wrapf(err, "getting patch '%s' for task", patchId).Error())
+		return nil, util.RespError(resp, errors.Wrapf(err, "getting patch for task").Error())
 	}
 
+	patch := patchmodel.Patch{}
 	if err = utility.ReadJSON(resp.Body, &patch); err != nil {
 		return nil, errors.Wrap(err, "reading patch for task from response")
 	}
@@ -475,8 +411,7 @@ func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
-	suffix := "version"
-	info.setTaskPathSuffix(suffix)
+	info.setTaskPathSuffix("version")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting version for task").Error())
@@ -490,24 +425,22 @@ func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData
 	return &version, nil
 }
 
-// GetCedarConfig returns the Cedar service configuration.
-func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
+// GetPerfMonitoringURL returns the url of the Performance Monitoring API.
+func (c *baseCommunicator) GetPerfMonitoringURL(ctx context.Context) (string, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   "agent/cedar_config",
+		path:   "agent/perf_monitoring_url",
 	}
-
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, util.RespError(resp, errors.Wrap(err, "getting the Cedar config").Error())
+		return "", util.RespError(resp, errors.Wrap(err, "getting the performance monitoring URL").Error())
 	}
-
-	config := &apimodels.CedarConfig{}
-	if err := utility.ReadJSON(resp.Body, config); err != nil {
-		return nil, errors.Wrap(err, "reading the Cedar config from response")
+	defer resp.Body.Close()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "reading performance monitoring URL from response")
 	}
-
-	return config, nil
+	return string(out), nil
 }
 
 func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData, error) {
@@ -581,30 +514,32 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 }
 
 // SendTestResults sends test result metadata to the app servers for persistent DB storage.
-func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult) error {
-	if len(testResults) == 0 {
-		return nil
-	}
-
+func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, tr *testresult.DbTaskTestResults) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
+	body := apimodels.AttachTestResultsRequest{
+		Info:         tr.Info,
+		CreatedAt:    tr.CreatedAt,
+		Stats:        tr.Stats,
+		FailedSample: tr.FailedTestsSample,
+	}
 	info.setTaskPathSuffix("test_results")
-	resp, err := c.retryRequest(ctx, info, testResults)
+	resp, err := c.retryRequest(ctx, info, &body)
 	if err != nil {
 		return util.RespError(resp, errors.Wrap(err, "sending test results").Error())
 	}
 	return nil
 }
 
-func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, service string, failed bool) error {
+func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, failed bool) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
 	info.path = fmt.Sprintf("task/%s/set_results_info", taskData.ID)
-	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Service: service, Failed: failed})
+	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Failed: failed})
 	if err != nil {
 		return util.RespError(resp, errors.Wrap(err, "setting results info").Error())
 	}
@@ -822,14 +757,16 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 }
 
-// StartTask marks the task as started.
-func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) error {
+// StartTask marks the task as started, and sends traceId and diskDevices to be stored with the task.
+func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData, traceID string, diskDevices []string) error {
 	grip.Info(message.Fields{
 		"message": "started StartTask",
 		"task_id": taskData.ID,
 	})
-	pidStr := strconv.Itoa(os.Getpid())
-	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
+	taskStartRequest := &apimodels.TaskStartRequest{
+		TraceID:     traceID,
+		DiskDevices: diskDevices,
+	}
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
@@ -899,7 +836,7 @@ func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, 
 		path:     fmt.Sprintf("task/%s/installation_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
 	}
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating installation token to clone '%s/%s'", owner, repo)
 	}
@@ -921,7 +858,7 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
 	}
-	resp, err := c.request(ctx, info, permissions)
+	resp, err := c.retryRequest(ctx, info, permissions)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
 	}

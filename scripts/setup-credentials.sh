@@ -38,11 +38,6 @@ notify:
 jira:
   host: "$JIRA_SERVER"
   personal_access_token: "$JIRA_PERSONAL_ACCESS_TOKEN"
-  oauth1:
-    private_key: $JIRA_PRIVATE_KEY
-    access_token: "$JIRA_ACCESS_TOKEN"
-    token_secret: "$JIRA_TOKEN_SECRET"
-    consumer_key: "$JIRA_CONSUMER_KEY"
 
 providers:
   aws:

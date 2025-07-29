@@ -103,9 +103,10 @@ type Parameter struct {
 }
 
 type GitMetadata struct {
-	Username   string `bson:"username" json:"username"`
-	Email      string `bson:"email" json:"email"`
-	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+	Username    string `bson:"username" json:"username"`
+	Email       string `bson:"email" json:"email"`
+	GitVersion  string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+	LocalBranch string `bson:"local_branch,omitempty" json:"local_branch,omitempty"`
 }
 
 type LocalModuleInclude struct {
@@ -141,6 +142,12 @@ type Patch struct {
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.
 	Activated bool `bson:"activated"`
+	// IsReconfigured indicates whether this patch was finalized with an initial
+	// set of tasks, then later reconfigured to add more tasks to run.
+	// This doesn't take into account if existing tasks were
+	// scheduled/unscheduled, it's only considered reconfigured if new tasks
+	// were created after the patch was finalized.
+	IsReconfigured bool `bson:"is_reconfigured,omitempty"`
 	// Project contains the project ID for the patch. The bson tag here is `branch` due to legacy usage.
 	Project string `bson:"branch"`
 	// Branch contains the branch that the project tracks. The tag `branch_name` is
@@ -431,31 +438,35 @@ func (p *Patch) Insert(ctx context.Context) error {
 	return db.Insert(ctx, Collection, p)
 }
 
-func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) error {
+func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (modified bool, err error) {
 	if p.Status == newStatus {
-		return nil
+		return false, nil
+	}
+
+	setFields := bson.M{
+		StatusKey: newStatus,
+	}
+	finishTime := time.Now()
+	isFinished := evergreen.IsFinishedVersionStatus(newStatus)
+	if isFinished {
+		setFields[FinishTimeKey] = finishTime
+	}
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:     p.Id,
+		StatusKey: bson.M{"$ne": newStatus},
+	}, bson.M{
+		"$set": setFields,
+	})
+	if err != nil {
+		return false, err
 	}
 
 	p.Status = newStatus
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey: newStatus,
-		},
+	if isFinished {
+		p.FinishTime = finishTime
 	}
-	return UpdateOne(ctx, bson.M{IdKey: p.Id}, update)
-}
 
-func (p *Patch) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
-	p.Status = status
-	p.FinishTime = finishTime
-	return UpdateOne(
-		ctx,
-		bson.M{IdKey: p.Id},
-		bson.M{"$set": bson.M{
-			FinishTimeKey: finishTime,
-			StatusKey:     status,
-		}},
-	)
+	return res.ModifiedCount > 0, nil
 }
 
 // ConfigChanged looks through the parts of the patch and returns true if the
@@ -652,9 +663,9 @@ func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }
 
-// CollectiveStatus returns the aggregate status of all tasks and child patches.
+// CollectiveStatus returns the aggregate display status of all tasks and child patches.
 // If this is meant for display on the UI, we should also consider the display status aborted.
-// NOTE that the result of this should not be compared against version statuses, as those can be different.
+// NOTE that the result of this should not be compared against version statuses, because this can return display statuses.
 func (p *Patch) CollectiveStatus(ctx context.Context) (string, error) {
 	parentPatch := p
 	if p.IsChild() {
@@ -782,6 +793,7 @@ func (p *Patch) GetPatchFamily(ctx context.Context) ([]string, *Patch, error) {
 	var parentPatch *Patch
 	var err error
 	if p.IsParent() {
+		parentPatch = p
 		childrenOrSiblings = p.Triggers.ChildPatches
 	}
 	if p.IsChild() {
@@ -816,6 +828,25 @@ func (p *Patch) SetParametersFromParent(ctx context.Context) (*Patch, error) {
 		}
 	}
 	return parentPatch, nil
+}
+
+// SetIsReconfigured sets whether the patch was reconfigured after it was
+// already finalized.
+func (p *Patch) SetIsReconfigured(ctx context.Context, isReconfigured bool) error {
+	if p.IsReconfigured == isReconfigured {
+		return nil
+	}
+
+	if err := UpdateOne(ctx, bson.M{IdKey: p.Id}, bson.M{
+		"$set": bson.M{
+			IsReconfiguredKey: isReconfigured,
+		},
+	}); err != nil {
+		return err
+	}
+
+	p.IsReconfigured = isReconfigured
+	return nil
 }
 
 func (p *Patch) GetRequester() string {

@@ -302,11 +302,20 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting current roles for user '%s'", u.Username()))
 	}
 	rolesToCheck := []gimlet.Role{}
-	// We don't check basic/superuser access since those are internally maintained.
 	for _, r := range roles {
-		if !utility.StringSliceContains(evergreen.GeneralAccessRoles, r.ID) {
-			rolesToCheck = append(rolesToCheck, r)
+		if serviceModel.IsAdminRepoRole(r.ID) {
+			// Do not delete admin repo roles. Repo admin permissions are
+			// maintained solely by the repo ref's admin list, so this route
+			// cannot modify the repo admins.
+			continue
 		}
+		if utility.StringSliceContains(evergreen.GeneralAccessRoles, r.ID) {
+			// Don't check basic/superuser access since those are internally
+			// maintained.
+			continue
+		}
+
+		rolesToCheck = append(rolesToCheck, r)
 	}
 	if len(rolesToCheck) == 0 {
 		return gimlet.NewJSONResponse(struct{}{})

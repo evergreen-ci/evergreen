@@ -320,11 +320,21 @@ func ByAdminGuid(guid string) db.Q {
 func AdminEventsBefore(before time.Time, n int) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeAdmin)
 	filter[ResourceIdKey] = ""
-	filter[TimestampKey] = bson.M{
-		"$lt": before,
+	if !utility.IsZeroTime(before) {
+		filter[TimestampKey] = bson.M{
+			"$lt": before,
+		}
 	}
-
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
+// FindLatestAdminEvents return the n most recent admin events before the given timestamp.
+func FindLatestAdminEvents(ctx context.Context, n int, before time.Time) ([]EventLogEntry, error) {
+	events, err := FindAdmin(ctx, AdminEventsBefore(before, n))
+	if err != nil {
+		return nil, err
+	}
+	return events, err
 }
 
 func FindAllByResourceID(ctx context.Context, resourceID string) ([]EventLogEntry, error) {

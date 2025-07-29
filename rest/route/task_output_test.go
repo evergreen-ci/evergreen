@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -241,7 +240,7 @@ func TestGetTaskLogsHandlerParse(t *testing.T) {
 		{
 			name: "DefaulParameters",
 			expected: &getTaskLogsHandler{
-				logType:                      taskoutput.TaskLogTypeAll,
+				logType:                      task.TaskLogTypeAll,
 				getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{tsk: tsk},
 			},
 		},
@@ -250,7 +249,7 @@ func TestGetTaskLogsHandlerParse(t *testing.T) {
 			name:     "ValidParameters",
 			urlQuery: "type=agent_log&line_limit=100&print_time=true&print_priority=true",
 			expected: &getTaskLogsHandler{
-				logType: taskoutput.TaskLogTypeAgent,
+				logType: task.TaskLogTypeAgent,
 				getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{
 					tsk:           tsk,
 					lineLimit:     100,

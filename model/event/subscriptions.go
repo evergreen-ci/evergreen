@@ -91,6 +91,7 @@ const (
 	TriggerTaskFirstFailureInVersion = "first-failure-in-version"
 	TriggerTaskStarted               = "task-started"
 	TriggerSpawnHostIdle             = "spawn-host-idle"
+	TriggerAlertableInstanceType     = "alertable-instance-type"
 )
 
 type Subscription struct {
@@ -812,12 +813,6 @@ func NewExpiringPatchChildOutcomeSubscription(id string, sub Subscriber) Subscri
 	return subscription
 }
 
-func NewExpiringPatchSuccessSubscription(id string, sub Subscriber) Subscription {
-	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerSuccess, id, sub)
-	subscription.LastUpdated = time.Now()
-	return subscription
-}
-
 func NewParentPatchSubscription(id string, sub Subscriber) Subscription {
 	subscription := NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
 	subscription.LastUpdated = time.Now()
@@ -837,6 +832,23 @@ func NewSpawnHostIdleWarningSubscription(hostId string, sub Subscriber) Subscrip
 	const notificationIDFormat = "idle-warning-%s"
 	subscription := NewSubscriptionByID(ResourceTypeHost, TriggerSpawnHostIdle, hostId, sub)
 	// Use hostID in the ID (as opposed to a random hash) to avoid having multiple idle subscriptions on the same host.
+	subscription.ID = fmt.Sprintf(notificationIDFormat, hostId)
+	return subscription
+}
+
+// NewAlertableInstanceTypeWarningSubscription returns a subscription for the spawn host using an alertable instance type.
+func NewAlertableInstanceTypeWarningSubscription(hostId string, sub Subscriber) Subscription {
+	var notificationIDFormat string
+	switch sub.Type {
+	case EmailSubscriberType:
+		notificationIDFormat = "alertable-instance-type-email-%s"
+	case SlackSubscriberType:
+		notificationIDFormat = "alertable-instance-type-slack-%s"
+	default:
+		notificationIDFormat = "alertable-instance-type-%s"
+	}
+	subscription := NewSubscriptionByID(ResourceTypeHost, TriggerAlertableInstanceType, hostId, sub)
+	// Use hostID and subscriber type in the ID to allow both email and slack subscriptions for the same host.
 	subscription.ID = fmt.Sprintf(notificationIDFormat, hostId)
 	return subscription
 }

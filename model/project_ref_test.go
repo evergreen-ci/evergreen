@@ -391,7 +391,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	disabled1.Enabled = true
 	original, err := FindMergedProjectRef(t.Context(), disabled1.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err := ValidateEnabledProjectsLimit(t.Context(), disabled1.Id, &settings, original, disabled1)
+	statusCode, err := ValidateEnabledProjectsLimit(t.Context(), &settings, original, disabled1)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -404,7 +404,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	}
 	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
-	_, err = ValidateEnabledProjectsLimit(t.Context(), enabled1.Id, &settings, original, exception)
+	_, err = ValidateEnabledProjectsLimit(t.Context(), &settings, original, exception)
 	assert.NoError(t, err)
 
 	// Should error if owner/repo is not part of exception.
@@ -416,7 +416,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	}
 	original, err = FindMergedProjectRef(t.Context(), notException.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), notException.Id, &settings, original, notException)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), &settings, original, notException)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -427,7 +427,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.NoError(t, err)
 	original, err = FindMergedProjectRef(t.Context(), disabledByRepo.Id, "", false)
 	assert.NoError(t, err)
-	_, err = ValidateEnabledProjectsLimit(t.Context(), disabledByRepo.Id, &settings, original, mergedRef)
+	_, err = ValidateEnabledProjectsLimit(t.Context(), &settings, original, mergedRef)
 	assert.NoError(t, err)
 
 	// Should error on enabled if you try to change owner/repo past limit.
@@ -435,7 +435,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	enabled2.Repo = "mci"
 	original, err = FindMergedProjectRef(t.Context(), enabled2.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), enabled2.Id, &settings, original, enabled2)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), &settings, original, enabled2)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -443,7 +443,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	settings.ProjectCreation.TotalProjectLimit = 2
 	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), exception.Id, &settings, original, exception)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), &settings, original, exception)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 }
@@ -1019,6 +1019,28 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert(t.Context()))
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
+
+	// Try attaching with project admin but not repo admin.
+	pRef = ProjectRef{
+		Id:      "myThirdProject",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
+		Admins:  []string{"nonRepoAdmin"},
+		Enabled: true,
+	}
+	assert.NoError(t, pRef.Insert(t.Context()))
+
+	nonRepoAdmin := &user.DBUser{
+		Id:          "nonRepoAdmin",
+		SystemRoles: []string{GetProjectAdminRole(pRef.Id)},
+	}
+
+	hasRepoPermission, err := UserHasRepoViewPermission(t.Context(), nonRepoAdmin, pRef.RepoRefId)
+	assert.NoError(t, err)
+	assert.False(t, hasRepoPermission)
+
+	assert.Error(t, pRef.AttachToRepo(ctx, nonRepoAdmin))
 }
 
 func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
@@ -1064,7 +1086,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NotNil(t, pRefFromDB.GitTagVersionsEnabled)
 			assert.True(t, pRefFromDB.IsGitTagVersionsEnabled())
 			assert.True(t, pRefFromDB.IsGithubChecksEnabled())
-			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubTriggerAliases)
+			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubPRTriggerAliases)
 			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
 			dbUser, err = user.FindOneByIdContext(t.Context(), "me")
@@ -1219,12 +1241,10 @@ func TestDetachFromRepo(t *testing.T) {
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
-				Id:        "myProject",
-				Owner:     "evergreen-ci",
-				Repo:      "evergreen",
-				Admins:    []string{"me"},
-				RepoRefId: "myRepo",
-
+				Id:                    "myProject",
+				Owner:                 "evergreen-ci",
+				Repo:                  "evergreen",
+				RepoRefId:             "myRepo",
 				PeriodicBuilds:        []PeriodicBuildDefinition{}, // also shouldn't be overwritten
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
@@ -1233,14 +1253,15 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.Insert(t.Context()))
 
 			repoRef := RepoRef{ProjectRef{
-				Id:                    pRef.RepoRefId,
-				Owner:                 pRef.Owner,
-				Repo:                  pRef.Repo,
-				TracksPushEvents:      utility.TruePtr(),
-				PRTestingEnabled:      utility.TruePtr(),
-				GitTagVersionsEnabled: utility.FalsePtr(),
-				GithubChecksEnabled:   utility.TruePtr(),
-				GithubTriggerAliases:  []string{"my_trigger"},
+				Id:                     pRef.RepoRefId,
+				Owner:                  pRef.Owner,
+				Repo:                   pRef.Repo,
+				TracksPushEvents:       utility.TruePtr(),
+				PRTestingEnabled:       utility.TruePtr(),
+				GitTagVersionsEnabled:  utility.FalsePtr(),
+				GithubChecksEnabled:    utility.TruePtr(),
+				GithubPRTriggerAliases: []string{"my_trigger"},
+				Admins:                 []string{"me"},
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
@@ -1285,6 +1306,8 @@ func TestDetachFromRepo(t *testing.T) {
 				Id: "me",
 			}
 			assert.NoError(t, u.Insert(t.Context()))
+			assert.NoError(t, repoRef.addPermissions(t.Context(), u))
+
 			test(t, pRef, u)
 		})
 	}
@@ -1769,6 +1792,12 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
+			require.NoError(t, p.SetGithubAppCredentials(t.Context(), 0, []byte("")))
+			app, err = githubapp.FindOneGitHubAppAuth(t.Context(), p.Id)
+			require.NoError(t, err)
+			assert.Nil(t, app)
+
+			// Attempting to remove credentials again should not error.
 			require.NoError(t, p.SetGithubAppCredentials(t.Context(), 0, []byte("")))
 			app, err = githubapp.FindOneGitHubAppAuth(t.Context(), p.Id)
 			require.NoError(t, err)
@@ -3746,7 +3775,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			},
-			GithubTriggerAliases: []string{"one", "two"},
+			GithubPRTriggerAliases: []string{"one", "two"},
+			GithubMQTriggerAliases: []string{"three", "four"},
 		},
 	}
 	assert.NoError(t, projectRef.Insert(t.Context()))
@@ -3766,7 +3796,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
 	assert.Equal(t, "Bug", projectRef.BuildBaronSettings.TicketCreateIssueType)
 	assert.Equal(t, []string{"BF", "BFG"}, projectRef.BuildBaronSettings.TicketSearchProjects)
-	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
+	assert.Equal(t, []string{"one", "two"}, projectRef.GithubPRTriggerAliases)
+	assert.Equal(t, []string{"three", "four"}, projectRef.GithubMQTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
 	assert.Equal(t, 1, projectRef.ContainerSizeDefinitions[0].CPU)
 	assert.Equal(t, 2, projectRef.ContainerSizeDefinitions[1].CPU)
@@ -4127,6 +4158,63 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	assert.NoError(err)
 	assert.NotZero(activationTime)
 	assert.Equal(activationTime, versionCreatedAt)
+}
+
+func TestActivationTimeWithDuplicate(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection))
+
+	now := time.Date(2025, time.May, 7, 0, 1, 0, 0, time.UTC)                    // 5/7 12:01 AM
+	versionCreateTime := time.Date(2025, time.May, 6, 23, 59, 0, 0, time.UTC)    // 5/6 11:59 PM
+	prevVersionCreateTime := time.Date(2025, time.May, 6, 16, 0, 0, 0, time.UTC) // 5/6 4:00 PM
+	midnightActivateTime := time.Date(2025, time.May, 7, 0, 0, 0, 0, time.UTC)   // 5/7 12:00 AM
+
+	// Set up project
+	projectRef := &ProjectRef{
+		Id:         "myproj",
+		Identifier: "myproj",
+		Enabled:    true,
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	// A previous version created at 4pm with activation time at midnight
+	prevVersion := &Version{
+		Id:                  "prev",
+		Identifier:          "myproj",
+		CreateTime:          prevVersionCreateTime,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "bv",
+				ActivationStatus: ActivationStatus{
+					Activated:  false,
+					ActivateAt: midnightActivateTime, // scheduled to run at midnight
+				},
+			},
+		},
+	}
+	require.NoError(t, prevVersion.Insert(t.Context()))
+
+	// Create build variant with midnight cron
+	bv := BuildVariant{
+		Name:          "bv",
+		CronBatchTime: "0 0 * * *", // midnight every day
+	}
+
+	activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &bv, versionCreateTime, now)
+	require.NoError(t, err)
+
+	// get the previous version to check the activation time
+	dbVersion, err := VersionFindOneId(t.Context(), prevVersion.Id)
+	// Check if the version was found
+	require.NoError(t, err)
+	require.NotNil(t, dbVersion)
+
+	// Since the previous version is scheduled to run at midnight and our new version was created at 11:59pm,
+	// because it's within the five minute window, it should be scheduled for the next midnight instead of
+	// this midnight.
+	nextMidnight := midnightActivateTime.Add(24 * time.Hour)
+	assert.Equal(t, nextMidnight, activationTime)
 }
 
 func TestUserHasRepoViewPermission(t *testing.T) {

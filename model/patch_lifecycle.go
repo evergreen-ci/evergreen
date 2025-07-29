@@ -86,20 +86,31 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
-func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo, caller string) error {
+func addNewTasksAndBuildsForPatch(ctx context.Context, p *patch.Patch, creationInfo TaskCreationInfo, caller string) error {
 	existingBuilds, err := build.Find(ctx, build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
 	}
-	_, _, err = addNewBuilds(ctx, creationInfo, existingBuilds)
+	activatedTasks, activatedDeps, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, _, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
+	activatedTasksInExistingBuilds, activatedDepsInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds, caller)
+	totalActivatedTasks := len(activatedTasks) + len(activatedTasksInExistingBuilds) + len(activatedDeps) + len(activatedDepsInExistingBuilds)
+	if totalActivatedTasks > 0 {
+		// It's necessary to check if new tasks were actually created because
+		// it's valid for a user to reconfigure a patch without changing the
+		// patch's tasks at all (e.g. if they just updated the patch
+		// description). A patch is only considered reconfigured if new tasks
+		// were added.
+		if err := p.SetIsReconfigured(ctx, true); err != nil {
+			return errors.Wrap(err, "marking patch as reconfigured")
+		}
+	}
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
@@ -171,7 +182,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 				ActivationInfo: specificActivationInfo{},
 				GeneratedBy:    "",
 			}
-			err = addNewTasksAndBuildsForPatch(ctx, creationInfo, patchUpdateReq.Caller)
+			err = addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 			}
@@ -321,7 +332,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 // GetPatchedProjectConfig returns the project configuration by fetching the
 // latest commit information from GitHub and applying the patch to the latest
 // remote configuration. The error returned can be a validation error.
-func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (string, error) {
+func GetPatchedProjectConfig(ctx context.Context, p *patch.Patch) (string, error) {
 	if p.Version != "" {
 		return "", errors.Errorf("patch '%s' already finalized", p.Version)
 	}
@@ -738,7 +749,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			numActivatedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 

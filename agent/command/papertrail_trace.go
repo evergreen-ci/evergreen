@@ -17,6 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	unknownSubmitter = "unknown"
+)
+
 type papertrailTrace struct {
 	Address   string   `mapstructure:"address" plugin:"expand"`
 	KeyID     string   `mapstructure:"key_id" plugin:"expand"`
@@ -30,7 +34,7 @@ type papertrailTrace struct {
 
 // This command is owned by the Dev Prod Release Infrastructure team
 func (t *papertrailTrace) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	_ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(t, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
@@ -58,6 +62,10 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 			Product:   t.Product,
 			Version:   t.Version,
 			Submitter: task.ActivatedBy,
+		}
+
+		if args.Submitter == "" {
+			args.Submitter = unknownSubmitter
 		}
 
 		if err := pclient.Trace(ctx, args); err != nil {

@@ -47,9 +47,8 @@ func (c *CloudProviders) ValidateAndDefault() error {
 // EC2Key links a region with a corresponding key and secret
 type EC2Key struct {
 	Name   string `bson:"name" json:"name" yaml:"name"`
-	Region string `bson:"region" json:"region" yaml:"region"` // this can be removed after EVG-8284 is merged
-	Key    string `bson:"key" json:"key" yaml:"key"`
-	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+	Key    string `bson:"key" json:"key" yaml:"key" secret:"true"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret" secret:"true"`
 }
 
 type Subnet struct {
@@ -75,7 +74,9 @@ type AWSConfig struct {
 	AllowedRegions []string `bson:"allowed_regions" json:"allowed_regions" yaml:"allowed_regions"`
 	// EC2 instance types for spawn hosts
 	AllowedInstanceTypes []string `bson:"allowed_instance_types" json:"allowed_instance_types" yaml:"allowed_instance_types"`
-	MaxVolumeSizePerUser int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
+	// EC2 instance types that should trigger alerts when used by spawn hosts
+	AlertableInstanceTypes []string `bson:"alertable_instance_types" json:"alertable_instance_types" yaml:"alertable_instance_types"`
+	MaxVolumeSizePerUser   int      `bson:"max_volume_size" json:"max_volume_size" yaml:"max_volume_size"`
 
 	// Pod represents configuration for using pods in AWS.
 	Pod AWSPodConfig `bson:"pod" json:"pod" yaml:"pod"`
@@ -84,6 +85,9 @@ type AWSConfig struct {
 
 	// IPAMPoolID is the ID for the IP address management (IPAM) pool in AWS.
 	IPAMPoolID string `bson:"ipam_pool_id" json:"ipam_pool_id" yaml:"ipam_pool_id"`
+	// ElasticIPUsageRate is the probability (out of 1) of a host that has
+	// elastic IPs enabled being assigned an elastic IP address.
+	ElasticIPUsageRate float64 `bson:"elastic_ip_usage_rate" json:"elastic_ip_usage_rate" yaml:"elastic_ip_usage_rate"`
 }
 
 // AccountRoleMapping is a mapping of an AWS account to the role that needs to
@@ -103,8 +107,8 @@ func (m *AWSAccountRoleMapping) Validate() error {
 }
 
 type S3Credentials struct {
-	Key    string `bson:"key" json:"key" yaml:"key"`
-	Secret string `bson:"secret" json:"secret" yaml:"secret"`
+	Key    string `bson:"key" json:"key" yaml:"key" secret:"true"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret" secret:"true"`
 	Bucket string `bson:"bucket" json:"bucket" yaml:"bucket"`
 }
 

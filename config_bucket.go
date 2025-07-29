@@ -12,9 +12,11 @@ import (
 type BucketType string
 
 const (
-	BucketTypeGridFS BucketType = "gridfs"
-	BucketTypeLocal  BucketType = "local"
-	BucketTypeS3     BucketType = "s3"
+	BucketTypeGridFS    BucketType = "gridfs"
+	BucketTypeLocal     BucketType = "local"
+	BucketTypeS3        BucketType = "s3"
+	DefaultS3Region                = "us-east-1"
+	DefaultS3MaxRetries            = 10
 )
 
 func (b BucketType) validate() error {
@@ -26,43 +28,30 @@ func (b BucketType) validate() error {
 	}
 }
 
-// ProjectToPrefixMapping relates a project to a bucket path prefix.
-type ProjectToPrefixMapping struct {
-	// ProjectID is the project's ID.
-	ProjectID string `yaml:"project_id" bson:"project_id" json:"project_id"`
-	// Prefix is the bucket path prefix that the project should have access to.
-	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
-}
-
-// ProjectToBucketMapping relates a project to a bucket.
-type ProjectToBucketMapping struct {
-	// ProjectID is the project's ID.
-	ProjectID string `yaml:"project_id" bson:"project_id" json:"project_id"`
-	// Bucket is the bucket that the project should have access to.
-	Bucket string `yaml:"bucket" bson:"bucket" json:"bucket"`
-	// Prefix is an optional bucket path prefix that the project should have access to.
-	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
-}
-
 // BucketsConfig represents the admin config section for interally-owned
 // Evergreen data bucket storage.
 type BucketsConfig struct {
 	// LogBucket is the bucket information for logs.
 	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
+	// TestResultsBucket is the bucket information for test results.
+	TestResultsBucket BucketConfig `bson:"test_results_bucket" json:"test_results_bucket" yaml:"test_results_bucket"`
 	// Credentials for accessing the LogBucket.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 }
 
 var (
-	bucketsConfigLogBucketKey   = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
-	bucketsConfigCredentialsKey = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	bucketsConfigLogBucketKey         = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	bucketsConfigTestResultsBucketKey = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
+	bucketsConfigCredentialsKey       = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
 type BucketConfig struct {
-	Name   string     `bson:"name" json:"name" yaml:"name"`
-	Type   BucketType `bson:"type" json:"type" yaml:"type"`
-	DBName string     `bson:"db_name" json:"db_name" yaml:"db_name"`
+	Name              string     `bson:"name" json:"name" yaml:"name"`
+	Type              BucketType `bson:"type" json:"type" yaml:"type"`
+	DBName            string     `bson:"db_name" json:"db_name" yaml:"db_name"`
+	TestResultsPrefix string     `bson:"test_results_prefix" json:"test_results_prefix" yaml:"test_results_prefix"`
+	RoleARN           string     `bson:"role_arn" json:"role_arn" yaml:"role_arn"`
 }
 
 func (c *BucketConfig) validate() error {
@@ -86,8 +75,9 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			bucketsConfigLogBucketKey:   c.LogBucket,
-			bucketsConfigCredentialsKey: c.Credentials,
+			bucketsConfigLogBucketKey:         c.LogBucket,
+			bucketsConfigTestResultsBucketKey: c.TestResultsBucket,
+			bucketsConfigCredentialsKey:       c.Credentials,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

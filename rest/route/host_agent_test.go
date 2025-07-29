@@ -187,6 +187,7 @@ func TestHostNextTask(t *testing.T) {
 					h.NeedsReprovision = ""
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = h
+					rh.hostID = h.Id
 					rh.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
@@ -312,6 +313,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, nonLegacyHost.SetProvisionedNotRunning(ctx))
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					rh.host = nonLegacyHost
+					rh.hostID = nonLegacyHost.Id
 					rh.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 					resp := rh.Run(ctx)
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
@@ -333,6 +335,7 @@ func TestHostNextTask(t *testing.T) {
 
 					// next task action
 					rh.host = dbHost
+					rh.hostID = dbHost.Id
 					resp := rh.Run(ctx)
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
@@ -343,6 +346,7 @@ func TestHostNextTask(t *testing.T) {
 					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
 					rh.host = nonLegacyHost
+					rh.hostID = nonLegacyHost.Id
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := rh.Run(ctx)
 					assert.Equal(t, http.StatusOK, resp.Status())
@@ -401,6 +405,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, err)
 					require.NotZero(t, h2)
 					rh.host = h2
+					rh.hostID = h2.Id
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, http.StatusOK, resp.Status())
@@ -437,6 +442,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, anotherHost.Insert(ctx))
 
 					rh.host = &anotherHost
+					rh.hostID = anotherHost.Id
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, http.StatusInternalServerError, resp.Status())
@@ -472,6 +478,7 @@ func TestHostNextTask(t *testing.T) {
 					require.NoError(t, anotherHost.Insert(ctx))
 
 					rh.host = &anotherHost
+					rh.hostID = anotherHost.Id
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
 					assert.Equal(t, http.StatusOK, resp.Status())
@@ -627,6 +634,7 @@ func TestHostNextTask(t *testing.T) {
 			require.True(t, ok)
 
 			r.host = &sampleHost
+			r.hostID = sampleHost.Id
 			r.details = &apimodels.GetNextTaskDetails{}
 			r.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 			tCase(ctx, t, r)
@@ -735,6 +743,7 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 	require.True(t, ok)
 
 	r.host = &sampleHost
+	r.hostID = sampleHost.Id
 	r.details = &apimodels.GetNextTaskDetails{}
 	r.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 

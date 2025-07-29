@@ -356,6 +356,7 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	s.Empty(owner)
 	s.Empty(repo)
+	s.Require().NotNil(err)
 	s.Contains(err.Error(), "pull request data is malformed")
 
 	now := github.Timestamp{
@@ -437,21 +438,20 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-	settings := testutil.MockConfig()
-	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
+	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true)
 	s.NoError(err)
 	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
-	err = SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
+	err = SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false)
 	s.NoError(err)
 	p, err = FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.False(p.Activated)
 
-	err = SetPatchActivated(context.Background(), "aabbcccceeee001122334456", "user1", true, settings)
+	err = SetPatchActivated(context.Background(), "aabbcccceeee001122334456", "user1", true)
 	s.Error(err)
 	s.Contains(err.Error(), "could not find patch")
 }

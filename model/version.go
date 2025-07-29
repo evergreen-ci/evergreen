@@ -22,20 +22,27 @@ import (
 )
 
 type Version struct {
-	Id                  string    `bson:"_id" json:"id,omitempty"`
-	CreateTime          time.Time `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision            string    `bson:"gitspec" json:"revision,omitempty"`
-	Author              string    `bson:"author" json:"author,omitempty"`
-	AuthorEmail         string    `bson:"author_email" json:"author_email,omitempty"`
-	Message             string    `bson:"message" json:"message,omitempty"`
-	Status              string    `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int       `bson:"order,omitempty" json:"order,omitempty"`
-	Ignored             bool      `bson:"ignored" json:"ignored"`
-	Owner               string    `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string    `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string    `bson:"branch_name" json:"branch_name,omitempty"`
+	Id         string    `bson:"_id" json:"id,omitempty"`
+	CreateTime time.Time `bson:"create_time" json:"create_time,omitempty"`
+	StartTime  time.Time `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime time.Time `bson:"finish_time" json:"finish_time,omitempty"`
+	Revision   string    `bson:"gitspec" json:"revision,omitempty"`
+	// Author is a reference to the Evergreen user that authored
+	// this commit, if they can be identified. This may refer to the user's
+	// ID or their display name.
+	Author string `bson:"author" json:"author,omitempty"`
+	// AuthorID is an optional reference to the Evergreen user that authored
+	// this commit, if they can be identified. This always refers to the user's
+	// ID.
+	AuthorID            string `bson:"author_id,omitempty" json:"author_id,omitempty"`
+	AuthorEmail         string `bson:"author_email" json:"author_email,omitempty"`
+	Message             string `bson:"message" json:"message,omitempty"`
+	Status              string `bson:"status" json:"status,omitempty"`
+	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
+	Ignored             bool   `bson:"ignored" json:"ignored"`
+	Owner               string `bson:"owner_name" json:"owner_name,omitempty"`
+	Repo                string `bson:"repo_name" json:"repo_name,omitempty"`
+	Branch              string `bson:"branch_name" json:"branch_name,omitempty"`
 	// BuildVariants contains information about build variant activation. This
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
@@ -49,7 +56,7 @@ type Version struct {
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
 	GitTags           []GitTag `bson:"git_tags,omitempty" json:"git_tags,omitempty"`
-	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag,omitempty"`
+	TriggeredByGitTag GitTag   `bson:"triggered_by_git_tag,omitempty" json:"triggered_by_git_tag"`
 
 	// Parameters stores user-defined parameters
 	Parameters []patch.Parameter `bson:"parameters,omitempty" json:"parameters,omitempty"`
@@ -76,16 +83,14 @@ type Version struct {
 	Errors   []string `bson:"errors,omitempty" json:"errors,omitempty"`
 	Warnings []string `bson:"warnings,omitempty" json:"warnings,omitempty"`
 
-	// AuthorID is an optional reference to the Evergreen user that authored
-	// this comment, if they can be identified
-	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
-
 	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
+
 	// Fields set if triggered by an upstream build
-	// TriggerID is the ID of the entity that triggered the downstream version. Depending on the trigger type, this
-	// could be a build ID, a task ID, or a project ID, for build, task, and push triggers respectively.
-	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
-	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	// TriggerID is the ID of the entity that triggered the downstream version.
+	TriggerID string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
+	// TriggerType is the type of entity that triggered the downstream version.
+	TriggerType string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	// TriggerEvent is the event ID that triggered the downstream version.
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 	// TriggerSHA is the SHA of the untracked commit that triggered the downstream version,
 	// this field is only populated for push level triggers.
@@ -199,23 +204,42 @@ func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) 
 	return errors.Wrap(AddSatisfiedTrigger(ctx, v.Id, definitionID), "adding satisfied trigger")
 }
 
-func (v *Version) UpdateStatus(ctx context.Context, newStatus string) error {
+func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified bool, err error) {
 	if v.Status == newStatus {
-		return nil
+		return false, nil
+	}
+
+	modified, err = setVersionStatus(ctx, v.Id, newStatus)
+	if err != nil {
+		return false, errors.Wrapf(err, "updating status for version '%s'", v.Id)
 	}
 
 	v.Status = newStatus
-	return setVersionStatus(ctx, v.Id, newStatus)
+	if evergreen.IsFinishedVersionStatus(newStatus) {
+		v.FinishTime = time.Now()
+	}
+
+	return modified, nil
 }
 
-func setVersionStatus(ctx context.Context, versionId, newStatus string) error {
-	return VersionUpdateOne(
-		ctx,
-		bson.M{VersionIdKey: versionId},
-		bson.M{"$set": bson.M{
-			VersionStatusKey: newStatus,
-		}},
-	)
+func setVersionStatus(ctx context.Context, versionId, newStatus string) (modified bool, err error) {
+	setFields := bson.M{VersionStatusKey: newStatus}
+	if evergreen.IsFinishedVersionStatus(newStatus) {
+		setFields[VersionFinishTimeKey] = time.Now()
+	}
+	update := bson.M{
+		"$set": setFields,
+	}
+
+	res, err := evergreen.GetEnvironment().DB().Collection(VersionCollection).UpdateOne(ctx, bson.M{
+		VersionIdKey:     versionId,
+		VersionStatusKey: bson.M{"$ne": newStatus},
+	}, update)
+	if err != nil {
+		return false, err
+	}
+
+	return res.ModifiedCount > 0, nil
 }
 
 // GetTimeSpent returns the total time_taken and makespan of a version for
@@ -233,19 +257,6 @@ func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duratio
 
 	timeTaken, makespan := task.GetTimeSpent(tasks)
 	return timeTaken, makespan, nil
-}
-
-func (v *Version) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
-	v.Status = status
-	v.FinishTime = finishTime
-	return VersionUpdateOne(
-		ctx,
-		bson.M{VersionIdKey: v.Id},
-		bson.M{"$set": bson.M{
-			VersionFinishTimeKey: finishTime,
-			VersionStatusKey:     status,
-		}},
-	)
 }
 
 // UpdateProjectStorageMethod updates the version's parser project storage

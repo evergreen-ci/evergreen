@@ -20,6 +20,7 @@ func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostExpirationWarningSent, makeHostTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostTemporaryExemptionExpirationWarningSent, makeHostTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventSpawnHostIdleNotification, makeHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventAlertableInstanceTypeWarningSent, makeHostTriggers)
 
 }
 
@@ -37,8 +38,13 @@ const (
 
 	idleHostEmailSubject     = `{{.Distro}} idle stopped host notice`
 	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle for at least three months.
-In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs), 
+In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs),
 please consider terminating from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
+
+	alertableInstanceTypeEmailSubject         = `Large instance type reminder`
+	alertableInstanceTypeEmailBody            = `Your host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development to reduce costs. Visit the <a href={{.URL}}>spawnhost page</a> to modify your host.`
+	alertableInstanceTypeSlackBody            = `Your host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development to reduce costs. Visit the <{{.URL}}|spawnhost page> to modify your host.`
+	alertableInstanceTypeSlackAttachmentTitle = "Spawn Host Page"
 )
 
 type hostBase struct {
@@ -88,13 +94,15 @@ type hostTemplateData struct {
 	Distro         string
 	ExpirationTime string
 	URL            string
+	InstanceType   string
 }
 
 func makeHostTriggers() eventHandler {
 	t := &hostTriggers{}
 	t.hostBase.base.triggers = map[string]trigger{
-		event.TriggerExpiration:    t.hostExpiration,
-		event.TriggerSpawnHostIdle: t.spawnHostIdle,
+		event.TriggerExpiration:            t.hostExpiration,
+		event.TriggerSpawnHostIdle:         t.spawnHostIdle,
+		event.TriggerAlertableInstanceType: t.alertableInstanceType,
 	}
 
 	return t
@@ -113,10 +121,11 @@ func (t *hostTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 	}
 
 	t.templateData = hostTemplateData{
-		ID:     t.host.Id,
-		Name:   t.host.DisplayName,
-		Distro: t.host.Distro.Id,
-		URL:    fmt.Sprintf("%s/spawn/host", t.uiConfig.UIv2Url),
+		ID:           t.host.Id,
+		Name:         t.host.DisplayName,
+		Distro:       t.host.Distro.Id,
+		URL:          fmt.Sprintf("%s/spawn/host", t.uiConfig.UIv2Url),
+		InstanceType: t.host.InstanceType,
 	}
 	if t.host.DisplayName == "" {
 		t.templateData.Name = t.host.Id
@@ -166,6 +175,24 @@ func (t *hostTriggers) generateIdleSpawnHost(sub *event.Subscription, body strin
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating idle spawn host template for host '%s'", sub.ID)
 	}
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func (t *hostTriggers) generateAlertableInstanceType(sub *event.Subscription) (*notification.Notification, error) {
+	var payload any
+	var err error
+	switch sub.Subscriber.Type {
+	case event.EmailSubscriberType:
+		payload, err = t.templateData.hostEmailPayload(alertableInstanceTypeEmailSubject, alertableInstanceTypeEmailBody, t.Attributes())
+	case event.SlackSubscriberType:
+		payload, err = t.templateData.hostSlackPayload(alertableInstanceTypeSlackBody, alertableInstanceTypeSlackAttachmentTitle)
+	default:
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "creating template for event type '%s'", sub.Subscriber.Type)
+	}
+
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
@@ -272,4 +299,8 @@ func (t *hostTriggers) spawnHostIdle(ctx context.Context, sub *event.Subscriptio
 		return nil, nil
 	}
 	return t.generateIdleSpawnHost(sub, idleStoppedHostEmailBody)
+}
+
+func (t *hostTriggers) alertableInstanceType(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
+	return t.generateAlertableInstanceType(sub)
 }

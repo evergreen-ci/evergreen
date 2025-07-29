@@ -91,23 +91,18 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 	// Calculate the window of time within which we would like to check for
 	// stats to update, starting with ProcessedTasksUntil (the time before
 	// which all finished tasks have been processed for this project) up
-	// until now. This size of this window is capped at 24 hours to prevent
-	// long-running jobs and overwhelming the database.
-	update_window_start := statsStatus.ProcessedTasksUntil
-	update_window_end := time.Now()
-	if max := update_window_start.Add(24 * time.Hour); update_window_end.After(max) {
-		update_window_end = max
-	}
-	timingMsg["stats_update_window_start"] = update_window_start
-	timingMsg["stats_update_window_end"] = update_window_end
+	// until now.
+	updateWindowStart, updateWindowEnd := statsStatus.GetUpdateWindow()
+	timingMsg["stats_update_window_start"] = updateWindowStart
+	timingMsg["stats_update_window_end"] = updateWindowEnd
 
 	var statsToUpdate []taskstats.StatsToUpdate
 	timingMsg["find_task_stats_to_update"] = reportTiming(func() {
 		statsToUpdate, err = taskstats.FindStatsToUpdate(ctx, taskstats.FindStatsToUpdateOptions{
 			ProjectID:  j.ProjectID,
 			Requesters: j.Requesters,
-			Start:      update_window_start,
-			End:        update_window_end,
+			Start:      updateWindowStart,
+			End:        updateWindowEnd,
 		})
 		j.AddError(errors.Wrap(err, "finding daily task stats to update"))
 	}).Seconds()
@@ -149,7 +144,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 	}
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
-		j.AddError(errors.Wrap(taskstats.UpdateStatsStatus(ctx, j.ProjectID, startAt, update_window_end, time.Since(startAt)), "updating daily task stats status"))
+		j.AddError(errors.Wrap(taskstats.UpdateStatsStatus(ctx, j.ProjectID, startAt, updateWindowEnd, time.Since(startAt)), "updating daily task stats status"))
 	}).Seconds()
 }
 

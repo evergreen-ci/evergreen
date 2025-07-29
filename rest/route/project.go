@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -35,8 +36,8 @@ type projectGetHandler struct {
 	url   string
 }
 
-func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
-	return &projectGetHandler{url: url}
+func makeFetchProjectsRoute() gimlet.RouteHandler {
+	return &projectGetHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -50,13 +51,14 @@ func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
 //	@Param			limit		query	int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Success		200			{array}	model.APIProjectRef
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
-	return &projectGetHandler{url: p.url}
+	return &projectGetHandler{}
 }
 
 func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.user, _ = gimlet.GetUser(ctx).(*user.DBUser)
 
 	vals := r.URL.Query()
+	p.url = util.HttpsUrl(r.Host)
 
 	p.key = vals.Get("start_at")
 	var err error
@@ -175,88 +177,6 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(versions)
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// POST /rest/v2/projects/{project_id}/attach_to_repo
-
-type attachProjectToRepoHandler struct {
-	project *dbModel.ProjectRef
-	user    *user.DBUser
-}
-
-func makeAttachProjectToRepoHandler() gimlet.RouteHandler {
-	return &attachProjectToRepoHandler{}
-}
-
-func (h *attachProjectToRepoHandler) Factory() gimlet.RouteHandler {
-	return &attachProjectToRepoHandler{}
-}
-
-// Parse fetches the project's identifier from the http request.
-func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request) error {
-	projectIdentifier := gimlet.GetVars(r)["project_id"]
-	h.user = MustHaveUser(ctx)
-
-	var err error
-	h.project, err = data.FindProjectById(ctx, projectIdentifier, false, false)
-	if err != nil {
-		return errors.Wrapf(err, "finding project '%s'", projectIdentifier)
-	}
-	if h.project.UseRepoSettings() {
-		return errors.New("project is already attached to repo")
-	}
-	return nil
-}
-
-func (h *attachProjectToRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.AttachToRepo(ctx, h.user); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "attaching repo to project"))
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// POST /rest/v2/projects/{project_id}/detach_from_repo
-
-type detachProjectFromRepoHandler struct {
-	project *dbModel.ProjectRef
-	user    *user.DBUser
-}
-
-func makeDetachProjectFromRepoHandler() gimlet.RouteHandler {
-	return &detachProjectFromRepoHandler{}
-}
-
-func (h *detachProjectFromRepoHandler) Factory() gimlet.RouteHandler {
-	return &detachProjectFromRepoHandler{}
-}
-
-// Parse fetches the project's identifier from the http request.
-func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Request) error {
-	projectIdentifier := gimlet.GetVars(r)["project_id"]
-	h.user = MustHaveUser(ctx)
-
-	var err error
-	h.project, err = data.FindProjectById(ctx, projectIdentifier, false, false)
-	if err != nil {
-		return errors.Wrapf(err, "finding project '%s'", projectIdentifier)
-	}
-	if !h.project.UseRepoSettings() {
-		return errors.New("project isn't attached to a repo")
-	}
-	return nil
-}
-
-func (h *detachProjectFromRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.DetachFromRepo(ctx, h.user); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "detaching repo from project"))
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -391,7 +311,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
 		}
-		_, err = dbModel.ValidateEnabledProjectsLimit(ctx, h.newProjectRef.Id, settings, h.originalProject, mergedProjectRef)
+		_, err = dbModel.ValidateEnabledProjectsLimit(ctx, settings, h.originalProject, mergedProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
 		}
@@ -883,8 +803,8 @@ type getProjectVersionsHandler struct {
 	url         string
 }
 
-func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
-	return &getProjectVersionsHandler{url: url}
+func makeGetProjectVersionsHandler() gimlet.RouteHandler {
+	return &getProjectVersionsHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -906,12 +826,13 @@ func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
 //	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
 //	@Success		200					{array}	model.APIVersion
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
-	return &getProjectVersionsHandler{url: h.url}
+	return &getProjectVersionsHandler{}
 }
 
 func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	params := r.URL.Query()
+	h.url = util.HttpsUrl(r.Host)
 
 	// body is optional
 	b, _ := io.ReadAll(r.Body)
@@ -1116,7 +1037,7 @@ type getProjectTasksHandler struct {
 	taskName    string
 	url         string
 
-	opts dbModel.GetProjectTasksOpts
+	opts model.GetProjectTasksOpts
 }
 
 func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
@@ -1130,12 +1051,10 @@ func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
 //	@Tags			tasks
 //	@Router			/projects/{project_id}/tasks/{task_name} [get]
 //	@Security		Api-User || Api-Key
-//	@Param			project_id		path	string	true	"the project ID"
-//	@Param			task_name		path	string	true	"the task name"
-//	@Param			num_versions	body	int		false	"The number of latest versions to be searched. Defaults to 20."
-//	@Param			start_at		body	int		false	"The version order number to start returning results after."
-//	@Param			build_variant	body	string	false	"If set, will only include tasks that have run on this build variant."
-//	@Success		200				{array}	model.APITask
+//	@Param			project_id	path	string						true	"the project ID"
+//	@Param			task_name	path	string						true	"the task name"
+//	@Param			{object}	body	model.GetProjectTasksOpts	false	"parameters"
+//	@Success		200			{array}	model.APITask
 func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTasksHandler{url: h.url}
 }
@@ -1169,7 +1088,12 @@ func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *getProjectTasksHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, h.opts)
+	tasks, err := data.GetProjectTasksWithOptions(ctx, h.projectName, h.taskName, dbModel.GetProjectTasksOpts{
+		Limit:        h.opts.Limit,
+		BuildVariant: h.opts.BuildVariant,
+		StartAt:      h.opts.StartAt,
+		Requesters:   h.opts.Requesters,
+	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting tasks for project '%s' and task '%s'", h.projectName, h.taskName))
 	}

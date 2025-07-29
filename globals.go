@@ -175,10 +175,8 @@ const (
 
 	HostTypeStatic = "static"
 
-	MergeTestStarted   = "started"
 	MergeTestSucceeded = "succeeded"
 	MergeTestFailed    = "failed"
-	EnqueueFailed      = "failed to enqueue"
 
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
@@ -205,6 +203,7 @@ const (
 	EvergreenVersionID      = "EVG_VERSION_ID"
 	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
 	TraceEndpoint           = "TRACE_ENDPOINT"
+	SettingsOverride        = "SETTINGS_OVERRIDE"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
@@ -216,8 +215,6 @@ const (
 	// disableLocalLoggingEnvVar is an environment variable to disable all local application logging
 	// besides for fallback logging to stderr.
 	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
-	// AWSRoleARNEnvVar is an environment variable injected by IRSA that provides the role ARN.
-	AWSRoleARNEnvVar = "AWS_ROLE_ARN"
 
 	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
@@ -251,10 +248,6 @@ const (
 	// and disabling tasks older than the task.UnschedulableThreshold from
 	// their distro queue.
 	UnderwaterTaskUnscheduler = "underwater-task-unscheduler"
-
-	// Restart Types
-	RestartVersions = "versions"
-	RestartTasks    = "tasks"
 
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
@@ -369,6 +362,9 @@ const (
 	// PRTasksRunningDescription is the description for a GitHub PR status
 	// indicating that there are still running tasks.
 	PRTasksRunningDescription = "tasks are running"
+
+	// ResmokeRenderingType is name used for the resmoke rendering type when rendering logs.
+	ResmokeRenderingType = "resmoke"
 
 	// RedactedValue is the value that is shown in the REST API and UI for redacted values.
 	RedactedValue       = "{REDACTED}"
@@ -490,12 +486,18 @@ const (
 
 	OtelAttributeMaxLength = 10000
 	// task otel attributes
-	TaskIDOtelAttribute          = "evergreen.task.id"
-	TaskNameOtelAttribute        = "evergreen.task.name"
-	TaskExecutionOtelAttribute   = "evergreen.task.execution"
-	TaskStatusOtelAttribute      = "evergreen.task.status"
-	TaskFailureTypeOtelAttribute = "evergreen.task.failure_type"
-	TaskTagsOtelAttribute        = "evergreen.task.tags"
+	TaskIDOtelAttribute             = "evergreen.task.id"
+	TaskNameOtelAttribute           = "evergreen.task.name"
+	TaskExecutionOtelAttribute      = "evergreen.task.execution"
+	TaskStatusOtelAttribute         = "evergreen.task.status"
+	TaskFailureTypeOtelAttribute    = "evergreen.task.failure_type"
+	TaskFailingCommandOtelAttribute = "evergreen.task.failing_command"
+	TaskDescriptionOtelAttribute    = "evergreen.task.description"
+	TaskTagsOtelAttribute           = "evergreen.task.tags"
+
+	// task otel attributes
+	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
+	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
 
 	// version otel attributes
 	VersionIDOtelAttribute               = "evergreen.version.id"
@@ -510,6 +512,9 @@ const (
 	VersionTimeTakenSecondsOtelAttribute = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute            = "evergreen.version.pr_num"
 	VersionDescriptionOtelAttribute      = "evergreen.version.description"
+
+	// patch otel attributes
+	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"
@@ -564,6 +569,7 @@ const (
 	ContentLengthHeader = "Content-Length"
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
+	KanopyTokenHeader   = "X-Kanopy-Authorization"
 	EnvironmentHeader   = "X-Evergreen-Environment"
 )
 
@@ -837,6 +843,18 @@ var DevProdJiraServiceField = map[string]string{
 	"id":    devProdServiceId,
 	"value": devProdServiceValue,
 }
+
+const (
+	PriorityLevelEmergency = "emergency"
+	PriorityLevelAlert     = "alert"
+	PriorityLevelCritical  = "critical"
+	PriorityLevelError     = "error"
+	PriorityLevelWarning   = "warning"
+	PriorityLevelNotice    = "notice"
+	PriorityLevelInfo      = "info"
+	PriorityLevelDebug     = "debug"
+	PriorityLevelTrace     = "trace"
+)
 
 const (
 	DevProdServiceFieldName = "customfield_24158"

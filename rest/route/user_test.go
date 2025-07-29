@@ -157,8 +157,7 @@ type userPermissionPostSuite struct {
 
 func TestPostUserPermissionSuite(t *testing.T) {
 	s := &userPermissionPostSuite{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	s.env = testutil.NewEnvironment(ctx, t)
 	suite.Run(t, s)
 }
@@ -209,8 +208,7 @@ func (s *userPermissionPostSuite) TestInvalidPermissions() {
 
 func (s *userPermissionPostSuite) TestValidInput() {
 	// valid input that should create a new role + scope
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := s.T().Context()
 	validBody := `{ "resource_type": "project", "resources": ["foo"], "permissions": {"project_tasks": 10} }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
 	request = gimlet.SetURLVars(request, map[string]string{"user_id": s.u.Id})
@@ -265,8 +263,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection,
 		model.ProjectRefCollection, model.RepoRefCollection))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	rm := env.RoleManager()
 
@@ -322,24 +319,25 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 }
 
 func TestDeleteUserPermissions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	rm := env.RoleManager()
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role1", "role2", "role3", evergreen.BasicProjectAccessRole},
+		SystemRoles: []string{"role1", "role2", "role3", "admin_repo_role4", evergreen.BasicProjectAccessRole},
 	}
 	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "distro"}))
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope4", Resources: []string{"resource1", "admin_repo_resource4"}, Type: "distro"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: evergreen.AllProjectsScope, Resources: []string{"resource1", "resource2"}, Type: "project"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role2", Scope: "scope2"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role3", Scope: "scope3"}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "admin_repo_role4", Scope: "scope4"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: evergreen.BasicProjectAccessRole, Scope: evergreen.AllProjectsScope}))
 	handler := userPermissionsDeleteHandler{rm: rm, userID: u.Id}
 
@@ -352,8 +350,9 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	require.NoError(t, err)
-	assert.Len(t, dbUser.SystemRoles, 3)
+	assert.Len(t, dbUser.SystemRoles, 4)
 	assert.NotContains(t, dbUser.SystemRoles, "role1")
+	assert.Contains(t, dbUser.SystemRoles, "admin_repo_role4", "should not delete the admin repo role even if it gives permissions to the resource because repo admins are maintained in the repo ref admin list")
 	assert.Contains(t, dbUser.SystemRoles, evergreen.BasicProjectAccessRole)
 
 	body = `{ "resource_type": "all" }`
@@ -369,9 +368,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 }
 
 func TestGetUserPermissions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, model.ProjectRefCollection))
 	rm := env.RoleManager()
@@ -423,9 +420,8 @@ func TestPostUserRoles(t *testing.T) {
 	}
 	require.NoError(t, u.Insert(t.Context()))
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := t.Context()
 	ctx = gimlet.AttachUser(ctx, &u)
-	defer cancel()
 
 	env := testutil.NewEnvironment(ctx, t)
 	env.SetUserManager(serviceutil.MockUserManager{})
@@ -496,8 +492,7 @@ func TestPostUserRoles(t *testing.T) {
 }
 
 func TestServiceUserOperations(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.Clear(user.Collection))
 
 	body := `{ "user_id": "foo", "display_name": "service", "roles": ["one", "two"], "email_address":"myemail@mailplace.com" }`
@@ -555,8 +550,7 @@ func TestServiceUserOperations(t *testing.T) {
 }
 
 func TestGetUsersForRole(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	require.NoError(t, db.Clear(user.Collection))
 
 	u1 := user.DBUser{
@@ -658,8 +652,7 @@ func TestRemoveHiddenProjects(t *testing.T) {
 }
 
 func TestGetUsersForResourceId(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	rm := env.RoleManager()
@@ -823,8 +816,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 
 func TestRenameUser(t *testing.T) {
 	body := []byte(`{"email": "me@awesome.com", "new_email":"new_me@still_awesome.com"}`)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
 
 	for testName, testCase := range map[string]func(t *testing.T){
@@ -986,8 +978,7 @@ func TestRenameUser(t *testing.T) {
 }
 
 func TestOffboardUserHandlerHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, user.Collection))
 	h0 := host.Host{
@@ -1086,8 +1077,7 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 	assert.NoError(t, projectRef1.Insert(t.Context()))
 
 	offboardedUser := "user0"
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 	userManager := env.UserManager()
@@ -1116,8 +1106,7 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 }
 
 func TestGetUserHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	usrToRetrieve := user.DBUser{
 		Id:           "beep.boop",

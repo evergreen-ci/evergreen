@@ -306,8 +306,8 @@ func (s *notificationSuite) TestEmailPayload() {
 	s.n.Subscriber.Target = &email
 	s.n.Payload = &message.Email{
 		Headers: map[string][]string{
-			"8":  []string{"9"},
-			"10": []string{"11"},
+			"8":  {"9"},
+			"10": {"11"},
 		},
 		Subject:    "subject",
 		Body:       "body",

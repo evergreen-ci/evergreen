@@ -1,0 +1,43 @@
+{
+    "tests": [
+        {
+            "query_file": "task_count_default.graphql",
+            "result": {
+                "data": {
+                    "taskCountMainlineCommit": {
+                            "taskCount": 2
+                    },
+                    "taskCountPatch": {
+                            "taskCount": 1
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "task_count_include_never_activated_tasks_true.graphql",
+            "result": {
+                "data": {
+                    "taskCountIncludeNeverActivatedTasksTrueMainlineCommit": {
+                            "taskCount": 2
+                    },
+                    "taskCountIncludeNeverActivatedTasksTruePatch": {
+                            "taskCount": 2
+                    }
+                }
+            }
+        },
+        {
+            "query_file": "task_count_include_never_activated_tasks_false.graphql",
+            "result": {
+                "data": {
+                    "taskCountIncludeNeverActivatedTasksFalseMainlineCommit": {
+                            "taskCount": 1
+                    },
+                    "taskCountIncludeNeverActivatedTasksFalsePatch": {
+                            "taskCount": 1
+                    }
+                }
+            }
+        }
+    ]
+}

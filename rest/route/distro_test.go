@@ -191,6 +191,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 				Version:                evergreen.HostAllocatorUtilization,
 				MinimumHosts:           5,
 				MaximumHosts:           10,
+				AutoTuneMaximumHosts:   true,
 				AcceptableHostIdleTime: 10000000000,
 			},
 			FinderSettings: distro.FinderSettings{
@@ -235,6 +236,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 
 	s.Equal(5, d.HostAllocatorSettings.MinimumHosts)
 	s.Equal(10, d.HostAllocatorSettings.MaximumHosts)
+	s.True(d.HostAllocatorSettings.AutoTuneMaximumHosts)
 	s.Equal(restModel.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
 	s.Equal(restModel.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
@@ -334,7 +336,7 @@ func (s *DistroPutSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(db.ClearCollections(distro.Collection))
+	s.NoError(db.ClearCollections(distro.Collection, evergreen.RoleCollection, user.Collection))
 	distros := []*distro.Distro{
 		{
 			Id: "distro1",
@@ -353,6 +355,13 @@ func (s *DistroPutSuite) SetupTest() {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
+
+	u := &user.DBUser{
+		Id: "user",
+	}
+	err := u.Insert(ctx)
+	s.NoError(err)
+
 	s.rm = makePutDistro()
 }
 
@@ -395,6 +404,18 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusCreated, resp.Status())
+
+	dbDistro, err := distro.FindOneId(ctx, h.distroID)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbDistro)
+	s.Equal(h.distroID, dbDistro.Id)
+	s.True(dbDistro.HostAllocatorSettings.AutoTuneMaximumHosts)
+
+	dbUser, err := user.FindOneById("user")
+	s.NoError(err)
+	s.Require().NotNil(dbUser)
+	s.Require().Len(dbUser.Roles(), 1)
+	s.Equal("admin_distro_distro5", dbUser.Roles()[0])
 }
 
 func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {

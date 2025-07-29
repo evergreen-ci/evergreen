@@ -14,9 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -1488,7 +1486,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 
 	// Usually, the midway task will be found- but if what would be the midway
 	// task is from a version (like periodic builds) that does not have the task
-	// we should get the task from earlier versions.
+	// we should Get the task from earlier versions.
 	t.Run("MissingTasks", func(t *testing.T) {
 		assert.NoError(db.ClearCollections(Collection))
 		// tasks 7-13 are missing.
@@ -3952,8 +3950,7 @@ func TestAbortVersionTasks(t *testing.T) {
 }
 
 func TestArchive(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
@@ -4029,17 +4026,49 @@ func TestArchive(t *testing.T) {
 		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
 			tsk.ExecutionPlatform = ExecutionPlatformContainer
-			require.NoError(t, tsk.Insert(t.Context()))
+			require.NoError(t, tsk.Insert(ctx))
 
 			require.NoError(t, tsk.Archive(ctx))
 			checkTaskIsArchived(t, archivedTaskID)
+		},
+		"ArchivingIncompleteTaskIsANoop": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskUndispatched
+			require.NoError(t, tsk.Insert(ctx))
+
+			require.NoError(t, tsk.Archive(ctx))
+
+			dbOldTask, err := FindOneOldByIdAndExecution(ctx, tsk.Id, tsk.Execution)
+			require.NoError(t, err)
+			assert.Zero(t, dbOldTask, "should not archive an incomplete task")
+		},
+		"MultipleArchivesOnSameTaskIsIdempotent": func(t *testing.T, tsk Task) {
+			originalExecution := tsk.Execution
+			require.NoError(t, tsk.Insert(ctx))
+
+			require.NoError(t, tsk.Archive(ctx))
+
+			checkTaskIsArchived(t, MakeOldID(tsk.Id, originalExecution))
+
+			dbTask, err := FindOneId(ctx, tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, originalExecution+1, dbTask.Execution, "execution number should be incremented after archiving")
+
+			require.NoError(t, dbTask.Archive(ctx))
+
+			checkTaskIsArchived(t, MakeOldID(tsk.Id, originalExecution))
+
+			dbNextTaskExecution, err := FindOneOldByIdAndExecution(ctx, tsk.Id, originalExecution+1)
+			require.NoError(t, err)
+			assert.Zero(t, dbNextTaskExecution, "should not archive the task again when it's already been archived and is in the process of restarting")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 			tsk := Task{
-				Id:     "taskID",
-				Status: evergreen.TaskSucceeded,
+				Id:        "taskID",
+				Status:    evergreen.TaskSucceeded,
+				Execution: 0,
 			}
 			tCase(t, tsk)
 		})
@@ -4166,6 +4195,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 			bson.M{"$set": bson.M{CanResetKey: false}},
 		)
 		require.NoError(t, err)
+		dt.CanReset = false
 		dt.ResetFailedWhenFinished = false
 		// Verifies the results from the last test as a basis (more on below comment)
 		require.Equal(t, 1, dt.Execution)
@@ -4185,7 +4215,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		event.LogHostRunningTaskSet(ctx, hostID, t1.Id, 1)
 		event.LogHostRunningTaskCleared(ctx, hostID, t1.Id, 1)
 
-		// Verifies the display task is archived after calling archive
+		// Verifies the display task is archived a second time after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.NoError(t, dt.Archive(ctx))
 		dt, err = FindOneId(ctx, dt.Id)
@@ -4729,18 +4759,10 @@ func TestHasResults(t *testing.T) {
 			tsk:  &Task{Id: "task"},
 		},
 		{
-			name: "RegularTaskLegacyCedarResultsFlag",
-			tsk: &Task{
-				Id:              "task",
-				HasCedarResults: true,
-			},
-			hasResults: true,
-		},
-		{
-			name: "RegularTaskResultsServicePopulated",
+			name: "RegularTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "task",
-				ResultsService: "some_service",
+				HasTestResults: true,
 			},
 			hasResults: true,
 		},
@@ -4757,35 +4779,21 @@ func TestHasResults(t *testing.T) {
 			},
 		},
 		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
+			name: "DisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
 				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", HasCedarResults: true},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			hasResults: true,
 		},
 		{
-			name: "DisplayTaskResultsServicePopulated",
-			tsk: &Task{
-				Id:             "display_task",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
-			},
-			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", ResultsService: "some_service"},
-				{Id: "exec_task2"},
-			},
-			hasResults: true,
-		},
-		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			name: "ArchivedDisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
@@ -4800,7 +4808,7 @@ func TestHasResults(t *testing.T) {
 			},
 			oldExecutionTasks: []Task{
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
 			hasResults: true,
 		},
@@ -4820,7 +4828,7 @@ func TestHasResults(t *testing.T) {
 			},
 			oldExecutionTasks: []Task{
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
 			hasResults: true,
 		},
@@ -4854,21 +4862,25 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		tsk               *Task
 		executionTasks    []Task
 		oldExecutionTasks []Task
-		expectedOpts      []testresult.TaskOptions
+		expectedOpts      []Task
 	}{
 		{
 			name: "RegularTaskNoResults",
 			tsk:  &Task{Id: "task"},
 		},
 		{
-			name: "RegularTaskResultsLegacyCedarResultsFlag",
+			name: "RegularTaskResultsLegacyResultsFlag",
 			tsk: &Task{
-				Id:              "task",
-				Execution:       1,
-				HasCedarResults: true,
+				Id:             "task",
+				Execution:      1,
+				HasTestResults: true,
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "task", Execution: 1},
+			expectedOpts: []Task{
+				{
+					Id:             "task",
+					Execution:      1,
+					HasTestResults: true,
+				},
 			},
 		},
 		{
@@ -4876,24 +4888,34 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			tsk: &Task{
 				Id:             "task",
 				Execution:      1,
-				ResultsService: "some_service",
+				HasTestResults: true,
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "task", Execution: 1, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{
+					Id:             "task",
+					Execution:      1,
+					HasTestResults: true,
+				},
 			},
 		},
 		{
 
-			name: "ArchivedRegularTaskResultsLegacyCedarResultsFlags",
+			name: "ArchivedRegularTaskResultsLegacyResultsFlags",
 			tsk: &Task{
-				Id:              "task_0",
-				OldTaskId:       "task",
-				Execution:       0,
-				HasCedarResults: true,
-				Archived:        true,
+				Id:             "task_0",
+				OldTaskId:      "task",
+				Execution:      0,
+				HasTestResults: true,
+				Archived:       true,
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "task", Execution: 0},
+			expectedOpts: []Task{
+				{
+					Id:             "task",
+					OldTaskId:      "task",
+					Execution:      0,
+					HasTestResults: true,
+					Archived:       true,
+				},
 			},
 		},
 		{
@@ -4902,11 +4924,17 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Id:             "task_0",
 				OldTaskId:      "task",
 				Execution:      0,
-				ResultsService: "some_service",
+				HasTestResults: true,
 				Archived:       true,
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "task", Execution: 0, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{
+					Id:             "task",
+					OldTaskId:      "task",
+					Execution:      0,
+					HasTestResults: true,
+					Archived:       true,
+				},
 			},
 		},
 		{
@@ -4922,7 +4950,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "DisplayTaskLegacyCedarResultsFlag",
+			name: "DisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				Execution:      1,
@@ -4930,13 +4958,13 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0"},
-				{TaskID: "exec_task1", Execution: 1},
+			expectedOpts: []Task{
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 			},
 		},
 		{
@@ -4948,17 +4976,17 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0", ResultsService: "some_service"},
-				{TaskID: "exec_task1", Execution: 1, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 			},
 		},
 		{
-			name: "ArchivedDisplayTaskLegacyCedarResultsFlag",
+			name: "ArchivedDisplayTaskLegacyResultsFlag",
 			tsk: &Task{
 				Id:             "display_task",
 				DisplayOnly:    true,
@@ -4967,20 +4995,20 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Archived:       true,
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", Execution: 2, HasCedarResults: true},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			oldExecutionTasks: []Task{
-				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasCedarResults: true},
-				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasCedarResults: true},
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasCedarResults: true},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasTestResults: true},
+				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasTestResults: true},
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasTestResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0"},
-				{TaskID: "exec_task1", Execution: 2},
-				{TaskID: "exec_task3", Execution: 1},
+			expectedOpts: []Task{
+				{Id: "exec_task0", Execution: 0, HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task3", OldTaskId: "exec_task3", Archived: true, Execution: 1, HasTestResults: true, DependsOn: []Dependency{}},
 			},
 		},
 		{
@@ -4993,20 +5021,20 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Archived:       true,
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 2, ResultsService: "some_service"},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			oldExecutionTasks: []Task{
-				{Id: "exec_task1_0", OldTaskId: "exec_task1", ResultsService: "some_service"},
-				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, ResultsService: "some_service"},
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, ResultsService: "some_service"},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasTestResults: true},
+				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasTestResults: true},
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasTestResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
-			expectedOpts: []testresult.TaskOptions{
-				{TaskID: "exec_task0", ResultsService: "some_service"},
-				{TaskID: "exec_task1", Execution: 2, ResultsService: "some_service"},
-				{TaskID: "exec_task3", Execution: 1, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{Id: "exec_task0", HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task3", OldTaskId: "exec_task3", Execution: 1, Archived: true, HasTestResults: true, DependsOn: []Dependency{}},
 			},
 		},
 	} {
@@ -5024,7 +5052,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			opts, err := test.tsk.CreateTestResultsTaskOptions(ctx)
+			opts, err := test.tsk.GetTestResultsTasks(ctx)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedOpts, opts)
 		})
@@ -5173,10 +5201,9 @@ func TestReset(t *testing.T) {
 			Id:                      "t0",
 			Status:                  evergreen.TaskSucceeded,
 			Details:                 apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
-			TaskOutputInfo:          &taskoutput.TaskOutput{TaskLogs: taskoutput.TaskLogOutput{Version: 1}},
-			ResultsService:          "r",
+			TaskOutputInfo:          &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
 			ResultsFailed:           true,
-			HasCedarResults:         true,
+			HasTestResults:          true,
 			ResetWhenFinished:       true,
 			IsAutomaticRestart:      true,
 			ResetFailedWhenFinished: true,
@@ -5195,7 +5222,7 @@ func TestReset(t *testing.T) {
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.ResultsFailed)
-		assert.False(t, dbTask.HasCedarResults)
+		assert.False(t, dbTask.HasTestResults)
 		assert.False(t, dbTask.ResetWhenFinished)
 		assert.False(t, dbTask.IsAutomaticRestart)
 		assert.False(t, dbTask.ResetFailedWhenFinished)

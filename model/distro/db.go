@@ -46,6 +46,9 @@ var (
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
 	ImageIDKey          = bsonutil.MustHaveTag(Distro{}, "ImageID")
 	SingleTaskDistroKey = bsonutil.MustHaveTag(Distro{}, "SingleTaskDistro")
+
+	hostAllocatorMaxHostsKey         = bsonutil.MustHaveTag(HostAllocatorSettings{}, "MaximumHosts")
+	hostAllocatorAutoTuneMaxHostsKey = bsonutil.MustHaveTag(HostAllocatorSettings{}, "AutoTuneMaximumHosts")
 )
 
 var (
@@ -215,4 +218,17 @@ func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error
 		d.ProviderSettingsList = []*birch.Document{providerSettings}
 	}
 	return d, nil
+}
+
+// FindByCanAutoTune finds all dynamically-allocated distros that can auto-tune
+// their maximum hosts.
+func FindByCanAutoTune(ctx context.Context) ([]Distro, error) {
+	autoTuneMaxHostsKey := bsonutil.GetDottedKeyName(HostAllocatorSettingsKey, hostAllocatorAutoTuneMaxHostsKey)
+	q := bson.M{
+		DisabledKey:         bson.M{"$ne": true},
+		ProviderKey:         bson.M{"$in": []string{evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2OnDemand}},
+		SingleTaskDistroKey: bson.M{"$ne": true},
+		autoTuneMaxHostsKey: true,
+	}
+	return Find(ctx, q)
 }

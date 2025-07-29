@@ -1,0 +1,299 @@
+{
+  "admin": [
+    {
+      "_id": "ui",
+      "default_project": "evergreen",
+      "url": "http://localhost:9090",
+      "http_listen_addr": ":9090",
+      "secret": "this is a secret",
+      "cors_origins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173"
+      ],
+      "file_streaming_content_types": [
+        "application/json",
+        "text/plain",
+        "text/csv"
+      ],
+      "userVoice": "https://uservoice.com",
+      "uiv2_url": "http://localhost:3000",
+      "parsley_url": "http://localhost:4173",
+      "beta_features": {
+        "spruce_waterfall_enabled": true
+      },
+      "cache_templates": false,
+      "csrf_key": "",
+      "help_url": "",
+      "login_domain": "",
+      "staging_environment": ""
+    },
+    {
+      "_id": "auth",
+      "preferred_type": "",
+      "naive": {
+        "users": []
+      },
+      "github": {
+        "app_id": 0,
+        "client_id": "",
+        "client_secret": "",
+        "default_owner": "",
+        "default_repo": "",
+        "organization": "",
+        "users": []
+      },
+      "kanopy": null,
+      "multi": null,
+      "okta": null,
+      "allow_service_users": false,
+      "background_reauth_minutes": 0
+    },
+    {
+      "_id": "global",
+      "uiv2_url": "http://localhost:3000",
+      "configdir": "../config",
+      "domain_name": "localhost",
+      "banner": "",
+      "banner_theme": "",
+      "github_orgs": ["evergreen-ci"],
+      "expansions": {
+        "github_app_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEAvel6JNTgiRewu1tquv5AWMUapaWt12345/O1uO+pXUekSZUy\nET2bKyKsv0Zk74bEknbdaKjvi7uNj5YhGc/ObRgWL9u0OP2Cw9EnzOtj18NqWQ1T\nrdY1swi6gyQB6rgn4EVN+29x1eSIFUSggdpXq8eurzb5moaHS+Th+PDNBObwOJNG\naxEXsGUoRtJ9jjCh3lSZgb2iyzn4jJByt8we9HNy4n0TfcBaJdvi0QIjKjk2a9bp\nTM3q/wGjeWkoQuZ6WkGPbAK1ThsONgm2RmMePC6k5/4qFQ3/E9pgzvwepsLfaW39\nD71ZxrLqNz/1WdsD6lv31eu3SyqaFIAy2sqjLwIDAQABAoIBAF1mAOsyQodJvmI2\nUGRMfIrrzPIga+VGuDDH39xnCY1VmYeSt3/hI3nwATECUjEB9LcYIGDa+P1xmYS\neI8AM05V5Tt+OsE412345AKI1Z6cfaX0Nu4shlZZeZjbUZIFJZ9XlkWNBpgh/4cu\nLB4QqsNRvihvygvkE5AQrc3HZ5z7uMajHLBE3PZkj3oW2Bj6Bv0+HtcQB6DWN3v6\nJHPb+ZVfO6Awo+6lbLY3tSNN7tmfvGeIyLmpPkakfQAeuRFIlxHnpi5M/K9TBn5/\ntcJSqSHz4FbYH69WQ9Iv8eCL8OIBjJw6pt3GmSaIyRvST31rrj0FCkmgr/24hzBk\n1aSsRiECgYEA8zCO5r7E7PxcW70wU3aRX7qR9lVyWkcLWLEK7gusOrKxtut1Cweq\n9nOv7XbgWtkn29t5BCqsTlxk/HNji4nyj1kt+NftcuY1oFt499QHtxKqOdXfQKpd\nIsC6/qdi9LtCiPTvvtYnLtLK+1uEUGRPPAvStsSwWPG7WSgOPCTrur8CgYEAx+p2\nnEfNdKW9yhwmM6gbKggUSY3zPcVeabPwM2ESKca36siauaLQVURaZXZyblqH4cUO\nkdG2SoRUE0DdBhDjhYJINSl9vMCN9T+J826UuLh0D94Ni3/BVRz2oxUBhuWtCLzj\ncJYC/aWRaJMoVE21TsUV7JuPwSMQG/F08SFyY5ECgYAEe4imyC1pEN3C8yHI6A6V\n7SJzn++TqmuTHvBMovpxuol8DasCoQmatehuFQuWIJbkxgP85lpeFqELLxQ/iHy\ncnpec9x0mbmzUvxP1SCvRzDMEB0lW/6LfXH077DrQehgDeO9aMUgH9KN/4nY0YCE\nYtNnewilGw+Q/SQGB8gwkQKBgD36hLdC04GceNCWFYniTjmjs5ZyOb0m2XRv4sIr\nEBR/lTlm5AE1Zt1oiZX3ONbZnlLyYuf2WkuT5vTpIRzmU4NqtrQ0ntTL5bbo8f3U\nhKsYFHNu5kgfXXLjvdslggmuXwzccq7O8zJsCD6hkNlCFjnLhFaMi+7WzgG7xAOV\n2P7hAoGAWC+w3m5ngpbkVp221OtszUteNjUNRbRqiVBc9J2jC98Glzj2EWISc0n6\nkVTxcle0XhUJjZTdMti6UBgxfBasx2Dxpcu2IE3A5xTXduIAmSewbE1c9+MM9k+a\npF0PxicFvnY4lJdYZfRyGQ195ktZ6sXnuTBu2pV4hg5Qe42vL8M=\n-----END RSA PRIVATE KEY-----"
+      },
+      "aws_instance_role": "",
+      "disabled_gql_queries": null,
+      "expansions_new": null,
+      "github_pr_creator_org": "",
+      "github_webhook_secret": "",
+      "kanopy_ssh_key_path": "",
+      "log_path": "LOCAL",
+      "plugins": {},
+      "plugins_new": null,
+      "pprof_port": "",
+      "shutdown_wait_seconds": 0,
+      "spawnhost": {
+        "unexpirable_hosts_per_user": 2,
+        "unexpirable_volumes_per_user": 1,
+        "spawn_hosts_per_user": 6
+      },
+      "splunk": {
+        "url": "",
+        "token": "",
+        "channel": ""
+      },
+      "ssh": {
+        "task_host_key": {
+          "name": "",
+          "secret_arn": ""
+        },
+        "spawn_host_key": {
+          "name": "",
+          "secret_arn": ""
+        }
+      }
+    },
+    {
+      "_id": "api",
+      "url": "http://localhost:8080",
+      "http_listen_addr": ":9090"
+    },
+    {
+      "_id": "service_flags",
+      "github_status_api_disabled": false,
+      "release_mode_disabled": false,
+      "alerts_disabled": false,
+      "repotracker_disabled": false,
+      "scheduler_disabled": false,
+      "check_blocked_tasks_disabled": false,
+      "github_pr_testing_disabled": false,
+      "repotracker_push_event_disabled": false,
+      "cli_updates_disabled": false,
+      "task_dispatch_disabled": false,
+      "s3_binary_downloads_disabled": false,
+      "large_parser_projects_disabled": false,
+      "monitor_disabled": false,
+      "notifications_disabled": false,
+      "taskrunner_disabled": false,
+      "background_stats_disabled": false,
+      "event_processing_disabled": false,
+      "webhook_notifications_disabled": false,
+      "jira_notifications_disabled": false,
+      "slack_notifications_disabled": false,
+      "email_notifications_disabled": false,
+      "task_logging_disabled": false,
+      "cache_stats_job_disabled": false,
+      "agent_start_disabled": false,
+      "host_init_disabled": false,
+      "pod_init_disabled": false,
+      "cache_stats_endpoint_disabled": false,
+      "host_allocator_disabled": false,
+      "pod_allocator_disabled": false,
+      "task_reliability_disabled": false,
+      "background_reauth_disabled": false,
+      "background_cleanup_disabled": false,
+      "cloud_cleanup_disabled": false,
+      "unrecognized_pod_cleanup_disabled": false,
+      "sleep_schedule_disabled": false,
+      "static_api_keys_disabled": false,
+      "jwt_token_for_cli_disabled": false,
+      "admin_parameter_store_disabled": false,
+      "cpu_degraded_mode_disabled": false,
+      "elastic_ips_disabled": false,
+      "system_failed_task_restart_disabled": false
+    },
+    {
+      "_id": "notify",
+      "ses": { "sender_address": "evg-sender@email.com" },
+      "buffer_target_per_interval": 0,
+      "buffer_interval_seconds": 0
+    },
+    {
+      "_id": "pod_lifecycle",
+      "max_parallel_pod_requests": 0,
+      "max_pod_definition_cleanup_rate": 0,
+      "max_secret_cleanup_rate": 0
+    },
+    {
+      "_id": "hostinit",
+      "cloud_batch_size": 0,
+      "host_throttle": 0,
+      "max_total_dynamic_hosts": 0,
+      "provisioning_throttle": 0
+    },
+    {
+      "_id": "repotracker",
+      "revs_to_fetch": 0,
+      "max_revs_to_search": 0,
+      "max_con_requests": 0
+    },
+    {
+      "_id": "scheduler",
+      "task_finder": "legacy",
+      "host_allocator": "utilization",
+      "acceptable_host_idle_time_seconds": 0,
+      "group_versions": true,
+      "patch_zipper_factor": 0,
+      "planner": "tunable",
+      "target_time_seconds": 0,
+      "cache_duration_seconds": 0,
+      "expected_runtime_factor": 0,
+      "time_in_queue_factor": 0,
+      "mainline_time_in_queue_factor": 0,
+      "patch_time_in_queue_factor": 0,
+      "commit_queue_factor": 0,
+      "generate_task_factor": 0,
+      "free_host_fraction": 0,
+      "host_allocator_rounding_rule": "round-down",
+      "host_allocator_feedback_rule": "no-feedback",
+      "hosts_overallocated_rule": "no-terminations-when-overallocated",
+      "stepback_task_factor": 0,
+      "num_dependents_factor": 0
+    },
+    {
+      "_id": "task_limits",
+      "max_tasks_per_version": 0,
+      "max_includes_per_version": 0,
+      "max_hourly_patch_tasks": 0,
+      "max_pending_generated_tasks": 0,
+      "max_generate_task_json_size": 0,
+      "max_concurrent_large_parser_project_tasks": 0,
+      "max_degraded_mode_parser_project_size": 0,
+      "max_parser_project_size": 0,
+      "max_degraded_mode_concurrent_large_parser_project_tasks": 0,
+      "max_exec_timeout_secs": 0,
+      "max_task_execution": 0,
+      "max_daily_automatic_restarts": 0
+    },
+    {
+      "_id": "jira",
+      "host": "jira.example.com",
+      "default_project": "TEST-PROJECT",
+      "personal_access_token": "token",
+      "email": "user@example.com"
+    },
+    {
+      "_id": "slack",
+      "level": "Trace",
+      "name": "test-app",
+      "options": {
+        "channel": "#cabc123",
+        "hostname": "evergreen.example.com",
+        "name": "testName",
+        "username": "@testUser",
+        "icon_url": "https://example.com/icon.png",
+        "add_basic_metadata": true,
+        "use_fields": true,
+        "all_fields": true,
+        "fields": {}
+      },
+      "token": "123456"
+    },
+    {
+      "_id": "splunk",
+      "channel": "42",
+      "token": "testToken",
+      "url": "testServer"
+    },
+    {
+      "_id": "runtime_environments",
+      "api_key": "runtimeAPIKey",
+      "base_url": "https://example.com"
+    },
+    {
+      "_id": "test_selection",
+      "url": "https://example.com"
+    },
+    {
+      "_id": "fws",
+      "url": ""
+    },
+    {
+      "_id": "amboy",
+      "name": "amboy-config",
+      "database": "amboy",
+      "pool_size_local": 0,
+      "pool_size_remote": 0,
+      "local_storage_size": 0,
+      "single_name": "amboy-single",
+      "group_background_create_frequency": 0,
+      "group_default_workers": 0,
+      "group_prune_frequency": 0,
+      "group_ttl": 0,
+      "require_remote_priority": false,
+      "lock_timeout_minutes": 0,
+      "retry": {
+        "num_workers": 0,
+        "max_capacity": 0,
+        "max_retry_attempts": 0,
+        "max_retry_time_seconds": 0,
+        "retry_backoff_seconds": 0,
+        "stale_retrying_monitor_interval_seconds": 0
+      },
+      "sample_size": 0,
+      "named_queues": []
+    },
+    {
+      "_id": "amboy_db",
+      "url": "amboy-db-connection-url",
+      "database": "amboy"
+    },
+    {
+      "_id": "logger_config",
+      "default_level": "info",
+      "threshold_level": "info",
+      "buffer": {
+        "use_async": true,
+        "duration_seconds": 0,
+        "count": 0,
+        "incoming_buffer_factor": 0
+      },
+      "logkeeper_url": "logkeeper-url",
+      "redact_keys": ["secret", "password"]
+    },
+    {
+      "_id": "cedar",
+      "db_name": "cedar",
+      "db_url": "mongodb://localhost:8000"
+    }
+  ]
+}

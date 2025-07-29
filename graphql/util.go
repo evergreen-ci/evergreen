@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -42,8 +41,7 @@ import (
 // This file should consist only of private utility functions that are specific to graphql resolver use cases.
 
 const (
-	minRevisionLength = 7
-	gitHashLength     = 40 // A git hash contains 40 characters.
+	gitHashLength = 40 // A git hash contains 40 characters.
 )
 
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -344,6 +342,10 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 			baseVersionID = baseVersion.Id
 		}
 	}
+	includeNeverActivatedTasks := buildVariantOpts.IncludeNeverActivatedTasks
+	if includeNeverActivatedTasks == nil {
+		includeNeverActivatedTasks = utility.ToBoolPtr(false)
+	}
 	opts := task.GetTasksByVersionOptions{
 		Statuses:      getValidTaskStatusesFilter(buildVariantOpts.Statuses),
 		Variants:      buildVariantOpts.Variants,
@@ -351,7 +353,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		Sorts:         defaultSort,
 		BaseVersionID: baseVersionID,
 		// Do not fetch inactive tasks for patches. This is because the UI does not display inactive tasks for patches.
-		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
+		IncludeNeverActivatedTasks: *includeNeverActivatedTasks || !evergreen.IsPatchRequester(requester),
 	}
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
@@ -900,7 +902,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 // Helper functions for task logs.
 //////////////////////////////////
 
-func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
+func getTaskLogs(ctx context.Context, obj *TaskLogs, logType task.TaskLogType) ([]*apimodels.LogMessage, error) {
 	dbTask, err := task.FindOneIdAndExecution(ctx, obj.TaskID, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", obj.TaskID, err.Error()))
@@ -909,7 +911,7 @@ func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogT
 		return []*apimodels.LogMessage{}, nil
 	}
 
-	it, err := dbTask.GetTaskLogs(ctx, taskoutput.TaskLogGetOptions{
+	it, err := dbTask.GetTaskLogs(ctx, task.TaskLogGetOptions{
 		LogType: logType,
 		TailN:   100,
 	})
@@ -929,7 +931,7 @@ func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogT
 // Helper functions for task test results.
 //////////////////////////////////////////
 
-func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *TestFilterOptions) (*testresult.FilterOptions, error) {
+func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *TestFilterOptions) (*task.FilterOptions, error) {
 	if opts == nil {
 		return nil, nil
 	}
@@ -939,7 +941,7 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 		return nil, err
 	}
 
-	return &testresult.FilterOptions{
+	return &task.FilterOptions{
 		TestName:            utility.FromStringPtr(opts.TestName),
 		ExcludeDisplayNames: utility.FromBoolPtr(opts.ExcludeDisplayNames),
 		Statuses:            opts.Statuses,
@@ -951,7 +953,7 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 	}, nil
 }
 
-func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) ([]testresult.SortBy, []testresult.TaskOptions, error) {
+func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) ([]testresult.SortBy, []task.Task, error) {
 	baseTaskOpts, err := getBaseTaskTestResultsOptions(ctx, dbTask)
 	if err != nil {
 		return nil, nil, err
@@ -985,10 +987,10 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 	return sort, baseTaskOpts, nil
 }
 
-func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]testresult.TaskOptions, error) {
+func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]task.Task, error) {
 	var (
 		baseTask *task.Task
-		taskOpts []testresult.TaskOptions
+		tasks    []task.Task
 		err      error
 	)
 
@@ -1001,14 +1003,14 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task '%s': %s", dbTask.Id, err.Error()))
 	}
 
-	if baseTask != nil && baseTask.ResultsService == dbTask.ResultsService {
-		taskOpts, err = baseTask.CreateTestResultsTaskOptions(ctx)
+	if baseTask != nil {
+		tasks, err = baseTask.GetTestResultsTasks(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for base task '%s': %s", baseTask.Id, err.Error()))
 		}
 	}
 
-	return taskOpts, nil
+	return tasks, nil
 }
 
 func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave DistroOnSaveOperation, userID string) (int, error) {
@@ -1118,6 +1120,31 @@ func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEve
 		Data:      legacyData,
 		Timestamp: entry.Timestamp,
 		User:      user,
+	}, nil
+}
+
+func makeAdminEvent(ctx context.Context, entry event.EventLogEntry) (*AdminEvent, error) {
+	data, ok := entry.Data.(*event.AdminEventData)
+	if !ok {
+		return nil, errors.New("casting admin event data")
+	}
+
+	after, err := interfaceToMap(ctx, data.Changes.After)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'after' field to map")
+	}
+
+	before, err := interfaceToMap(ctx, data.Changes.Before)
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting 'before' field to map")
+	}
+
+	return &AdminEvent{
+		After:     after,
+		Before:    before,
+		Section:   utility.ToStringPtr(data.Section),
+		Timestamp: entry.Timestamp,
+		User:      data.User,
 	}, nil
 }
 
@@ -1330,29 +1357,38 @@ func flattenOtelVariables(vars map[string]any) map[string]any {
 	return flattenedVars
 }
 
-func getRevisionOrder(ctx context.Context, revision string, projectId string, limit int) (int, error) {
-	if len(revision) < minRevisionLength {
-		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
+func setSingleTaskPriority(ctx context.Context, url string, taskID string, priority int) (*restModel.APITask, error) {
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	authUser := mustHaveUser(ctx)
+	if priority > evergreen.MaxTaskPriority {
+		requiredPermission := gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksAdmin.Value,
+		}
+		isTaskAdmin := authUser.HasPermission(requiredPermission)
+		if !isTaskAdmin {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
+		}
+	}
+	if err = model.SetTaskPriority(ctx, *t, int64(priority), authUser.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting task priority for '%s': %s", taskID, err.Error()))
 	}
 
-	found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndRevisionPrefix(projectId, revision).WithFields(model.VersionRevisionOrderNumberKey))
+	t, err = task.FindOneId(ctx, taskID)
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("finding version with revision '%s': %s", revision, err.Error()))
-	} else if found == nil {
-		return 0, errors.New(fmt.Sprintf("version with revision '%s' not found", revision))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}
-	// Offset the order number so the specified revision lands nearer to the center of the page.
-	return found.RevisionOrderNumber + limit/2 + 1, nil
-}
-
-func getDateOrder(ctx context.Context, date time.Time, projectId string) (int, error) {
-	// Use the end of the provided date to find the most recent version created on or before it.
-	eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
-	found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndCreateTime(projectId, eod).WithFields(model.VersionRevisionOrderNumberKey))
-	if err != nil {
-		return 0, errors.New(fmt.Sprintf("finding version on or before date '%s': %s", eod.Format(time.DateOnly), err.Error()))
-	} else if found == nil {
-		return 0, errors.New(fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly)))
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
-	return found.RevisionOrderNumber + 1, nil
+	apiTask, err := getAPITaskFromTask(ctx, url, *t)
+	return apiTask, err
 }

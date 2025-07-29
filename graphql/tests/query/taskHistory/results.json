@@ -66,6 +66,48 @@
       }
     },
     {
+      "query_file": "with_date.graphql",
+      "result": {
+        "data": {
+          "taskHistory": {
+            "tasks": [
+              { "id": "task_104", "order": 104 },
+              { "id": "task_103", "order": 103 },
+              { "id": "task_102", "order": 102 },
+              { "id": "task_101", "order": 101 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "with_date_unmatching.graphql",
+      "result": {
+        "data": {
+          "taskHistory": {
+            "tasks": [
+              { "id": "task_107", "order": 107 },
+              { "id": "task_106", "order": 106 },
+              { "id": "task_105", "order": 105 },
+              { "id": "task_104", "order": 104 },
+              { "id": "task_103", "order": 103 },
+              { "id": "task_102", "order": 102 },
+              { "id": "task_101", "order": 101 }
+            ]
+          }
+        },
+        "errors": [
+          {
+            "message": "task on or before date '2020-01-02' not found",
+            "path": ["taskHistory"],
+            "extensions": {
+              "code": "PARTIAL_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
       "query_file": "with_limit.graphql",
       "result": {
         "data": {

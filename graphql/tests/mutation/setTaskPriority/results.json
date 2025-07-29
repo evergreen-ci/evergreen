@@ -11,6 +11,23 @@
       }
     },
     {
+      "query_file": "set_priority_multiple.graphql",
+      "result": {
+        "data": {
+          "setTaskPriorities": [
+            {
+              "id": "task_id",
+              "priority": 30
+            },
+            {
+              "id": "task_id_2",
+              "priority": 10
+            }
+          ]
+        }
+      }
+    },
+    {
       "query_file": "set_priority_too_high_for_permission_level.graphql",
       "result": {
         "data": null,

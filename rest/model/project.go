@@ -660,8 +660,10 @@ type APIProjectRef struct {
 	Revision *string `json:"revision"`
 	// List of triggers for the project.
 	Triggers []APITriggerDefinition `json:"triggers"`
-	// List of GitHub trigger aliases.
-	GithubTriggerAliases []*string `json:"github_trigger_aliases"`
+	// List of GitHub pull request trigger aliases.
+	GithubPRTriggerAliases []*string `json:"github_trigger_aliases"`
+	// List of GitHub merge queue trigger aliases.
+	GithubMQTriggerAliases []*string `json:"github_merge_queue_trigger_aliases"`
 	// List of patch trigger aliases.
 	PatchTriggerAliases []APIPatchTriggerDefinition `json:"patch_trigger_aliases"`
 	// List of aliases for the project.
@@ -735,7 +737,8 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		Admins:                           utility.FromStringPtrSlice(p.Admins),
 		GitTagAuthorizedUsers:            utility.FromStringPtrSlice(p.GitTagAuthorizedUsers),
 		GitTagAuthorizedTeams:            utility.FromStringPtrSlice(p.GitTagAuthorizedTeams),
-		GithubTriggerAliases:             utility.FromStringPtrSlice(p.GithubTriggerAliases),
+		GithubPRTriggerAliases:           utility.FromStringPtrSlice(p.GithubPRTriggerAliases),
+		GithubMQTriggerAliases:           utility.FromStringPtrSlice(p.GithubMQTriggerAliases),
 		Banner:                           p.Banner.ToService(),
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
@@ -856,7 +859,8 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.OldestAllowedMergeBase = utility.ToStringPtr(projectRef.OldestAllowedMergeBase)
 	p.GitTagAuthorizedUsers = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedUsers)
 	p.GitTagAuthorizedTeams = utility.ToStringPtrSlice(projectRef.GitTagAuthorizedTeams)
-	p.GithubTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubTriggerAliases)
+	p.GithubPRTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubPRTriggerAliases)
+	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 
 	if projectRef.ProjectHealthView == "" {
@@ -1022,4 +1026,11 @@ type CopyProjectOpts struct {
 	ProjectIdToCopy      string
 	NewProjectIdentifier string
 	NewProjectId         string
+}
+
+type GetProjectTasksOpts struct {
+	Limit        int      `json:"num_versions"`
+	BuildVariant string   `json:"build_variant"`
+	StartAt      int      `json:"start_at"`
+	Requesters   []string `json:"requesters"`
 }

@@ -17,7 +17,7 @@ type TaskEventLogEntry {
   id: String!
   data: TaskEventLogData!
   eventType: String
-  processedAt: Time!
+  processedAt: Time
   resourceId: String!
   resourceType: String!
   timestamp: Time

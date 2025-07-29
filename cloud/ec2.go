@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // EC2ProviderSettings describes properties of managed instances.
@@ -80,9 +81,6 @@ type EC2ProviderSettings struct {
 	// data upload.
 	MergeUserDataParts bool `mapstructure:"merge_user_data_parts" json:"merge_user_data_parts,omitempty" bson:"merge_user_data_parts,omitempty"`
 
-	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
-	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
-
 	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
 	// IP addresses.
 	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled,omitempty" bson:"elastic_ips_enabled,omitempty"`
@@ -119,8 +117,6 @@ func (s *EC2ProviderSettings) Validate() error {
 		_, err = parseUserData(s.UserData)
 		catcher.Wrap(err, "user data is malformed")
 	}
-
-	catcher.Wrap(s.FleetOptions.validate(), "invalid fleet options")
 
 	return catcher.Resolve()
 }
@@ -166,40 +162,6 @@ func (s *EC2ProviderSettings) getRegion() string {
 		return s.Region
 	}
 	return evergreen.DefaultEC2Region
-}
-
-// FleetConfig specifies how the EC2 Fleet manager should spawn hosts.
-type FleetConfig struct {
-	// UseOnDemand will cause Fleet to use on-demand instances to instantiate hosts. Defaults to spot instances.
-	UseOnDemand bool `mapstructure:"use_on_demand" json:"use_on_demand,omitempty" bson:"use_on_demand,omitempty"`
-
-	// UseCapacityOptimized will cause Fleet to use the capacity-optimized allocation strategy for spawning hosts. Defaults to the AWS default (lowest-cost).
-	// See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-fleet-allocation-strategy.html for more information about Fleet allocation strategies.
-	UseCapacityOptimized bool `mapstructure:"use_capacity_optimized" json:"use_capacity_optimized,omitempty" bson:"use_capacity_optimized,omitempty"`
-}
-
-func (f *FleetConfig) awsTargetCapacityType() types.DefaultTargetCapacityType {
-	if f.UseOnDemand {
-		return types.DefaultTargetCapacityTypeOnDemand
-	}
-
-	return types.DefaultTargetCapacityTypeSpot
-}
-
-func (f *FleetConfig) awsAllocationStrategy() types.SpotAllocationStrategy {
-	if !f.UseOnDemand && f.UseCapacityOptimized {
-		return types.SpotAllocationStrategyCapacityOptimized
-	}
-
-	return ""
-}
-
-func (f *FleetConfig) validate() error {
-	if f.UseOnDemand && f.UseCapacityOptimized {
-		return errors.New("on-demand instances can't use the capacity-optimized allocation strategy")
-	}
-
-	return nil
 }
 
 const (
@@ -304,13 +266,17 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
-	useElasticIP := assignPublicIPv4 && canUseElasticIP(m.settings, ec2Settings, m.account, h)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+	useElasticIP := assignPublicIPv4 && canUseElasticIP(settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP
 		// address. Using an elastic IP address is a best-effort attempt to save
 		// money.
-		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
 			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))
@@ -430,24 +396,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	instance := reservation.Instances[0]
 	h.Id = *instance.InstanceId
-
-	if useElasticIP && h.IPAllocationID != "" {
-		// Associate the IP address that was allocated for this host. This is
-		// necessary for the host to be usable because otherwise, it has no IP
-		// address.
-		// Unfortunately, this step is prone to timing issues because EC2 only
-		// allows an IP address to be associated with the host after the
-		// EC2 instance reaches the "running" state. If AWS is slow at getting
-		// the host to "running", this could run out of attempts to associate
-		// the IP address and the host would end up unusable.
-		// TODO (DEVPROD-17136): consider making this step more resilient
-		// against AWS timing problems.
-		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
-			"message":       "host was created and allocated an elastic IP address but could not associate the host with the IP address; host will not be usable",
-			"host_id":       h.Id,
-			"allocation_id": h.IPAllocationID,
-		}))
-	}
 
 	return nil
 }
@@ -932,14 +880,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
-		"message":        "could not disassociate elastic IP address from host",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	}))
-
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -965,7 +905,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
-	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
 		"host_id":        h.Id,
@@ -1387,16 +1327,45 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
-// CleanupIP disassociates the IP address from the host's network interface and
-// releases the IP address back into the IPAM pool.
+// TODO (DEVPROD-17195): remove temporary method once all elastic IPs are
+// allocated into collection.
+func (m *ec2Manager) AllocateIP(ctx context.Context) (*host.IPAddress, error) {
+	if err := m.setupClient(ctx); err != nil {
+		return nil, errors.Wrap(err, "creating client")
+	}
+
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+	if flags.ElasticIPsDisabled {
+		return nil, errors.Errorf("elastic IP features are disabled, cannot allocate IP")
+	}
+	allocationID, err := allocateIPAddress(ctx, m.client, m.settings.Providers.AWS.IPAMPoolID)
+	if err != nil {
+		return nil, errors.Wrap(err, "allocating IP address")
+	}
+	ipAddr := &host.IPAddress{
+		ID:           primitive.NewObjectID().Hex(),
+		AllocationID: allocationID,
+	}
+
+	return ipAddr, nil
+}
+
+func (m *ec2Manager) AssociateIP(ctx context.Context, h *host.Host) error {
+	if h.IPAllocationID == "" {
+		return nil
+	}
+	if err := m.setupClient(ctx); err != nil {
+		return errors.Wrap(err, "creating client")
+	}
+	return errors.Wrapf(associateIPAddressForHost(ctx, m.client, h), "associating allocated IP address '%s' with host '%s'", h.IPAllocationID, h.Id)
+}
+
+// CleanupIP releases the host's IP address.
 func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
-	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
-		return err
-	}
-	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
-		return err
-	}
-	return nil
+	return releaseIPAddressForHost(ctx, h)
 }
 
 // Cleanup is a noop for the EC2 provider.

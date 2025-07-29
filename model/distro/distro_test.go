@@ -101,7 +101,7 @@ func TestIsParent(t *testing.T) {
 
 	conf := evergreen.ContainerPoolsConfig{
 		Pools: []evergreen.ContainerPool{
-			evergreen.ContainerPool{
+			{
 				Distro:        "distro-1",
 				Id:            "test-pool",
 				MaxContainers: 100,
@@ -171,17 +171,17 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 	testSettings := &evergreen.Settings{
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
+				{
 					Distro:        "valid-distro",
 					Id:            "test-pool-1",
 					MaxContainers: 100,
 				},
-				evergreen.ContainerPool{
+				{
 					Distro:        "invalid-distro",
 					Id:            "test-pool-2",
 					MaxContainers: 100,
 				},
-				evergreen.ContainerPool{
+				{
 					Distro:        "missing-distro",
 					Id:            "test-pool-3",
 					MaxContainers: 100,
@@ -191,6 +191,7 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 	}
 
 	err := ValidateContainerPoolDistros(ctx, testSettings)
+	require.NotNil(t, err)
 	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
 	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }
@@ -338,15 +339,21 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 	}
-
-	settings0 := &evergreen.Settings{Scheduler: config0}
+	releaseModeConfig := evergreen.ReleaseModeConfig{
+		DistroMaxHostsFactor:    2.0,
+		IdleTimeSecondsOverride: 300,
+	}
+	serviceFlags := evergreen.ServiceFlags{
+		ReleaseModeDisabled: true,
+	}
+	settings0 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseModeConfig, ServiceFlags: serviceFlags}
 
 	resolved0, err := d0.GetResolvedHostAllocatorSettings(settings0)
 	assert.NoError(t, err)
 	// Fallback to the SchedulerConfig.HostAllocator as HostAllocatorSettings.Version is an empty string.
 	assert.Equal(t, evergreen.HostAllocatorUtilization, resolved0.Version)
 	assert.Equal(t, 4, resolved0.MinimumHosts)
-	assert.Equal(t, 10, resolved0.MaximumHosts)
+	assert.Equal(t, 10, resolved0.MaximumHosts) // Ignore release mode when disabled.
 	assert.Equal(t, evergreen.HostAllocatorRoundDown, resolved0.RoundingRule)
 	assert.Equal(t, evergreen.HostAllocatorNoFeedback, resolved0.FeedbackRule)
 	assert.Equal(t, evergreen.HostsOverallocatedIgnore, resolved0.HostsOverallocatedRule)
@@ -368,6 +375,14 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostsOverallocatedTerminate, resolved0.HostsOverallocatedRule)
+
+	settings1 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseModeConfig}
+	resolved1, err := d0.GetResolvedHostAllocatorSettings(settings1)
+	assert.NoError(t, err)
+
+	// Factor in release mode when enabled.
+	assert.Equal(t, 20, resolved1.MaximumHosts)
+	assert.Equal(t, time.Duration(300)*time.Second, resolved1.AcceptableHostIdleTime)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {
@@ -403,12 +418,17 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		NumDependentsFactor:           10,
 		StepbackTaskFactor:            40,
 	}
+	releaseConfig := evergreen.ReleaseModeConfig{
+		TargetTimeSecondsOverride: 1200,
+	}
+	serviceFlags := evergreen.ServiceFlags{ReleaseModeDisabled: true}
 
-	settings0 := &evergreen.Settings{Scheduler: config0}
+	settings0 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseConfig, ServiceFlags: serviceFlags}
 
 	resolved0, err := d0.GetResolvedPlannerSettings(settings0)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.PlannerVersionTunable, resolved0.Version)
+	// Ignore release mode when disabled.
 	assert.Equal(t, time.Duration(112358)*time.Second, resolved0.TargetTime)
 	// Fallback to the SchedulerConfig.GroupVersions as PlannerSettings.GroupVersions is nil.
 	assert.False(t, *resolved0.GroupVersions)
@@ -459,13 +479,14 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		NumDependentsFactor:           0,
 	}
 
-	settings1 := &evergreen.Settings{Scheduler: config1}
+	settings1 := &evergreen.Settings{Scheduler: config1, ReleaseMode: releaseConfig}
 
 	// d1.PlannerSettings' field values are all set and valid, so there is no need to fallback on any SchedulerConfig field values
 	resolved1, err := d1.GetResolvedPlannerSettings(settings1)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.PlannerVersionTunable, resolved1.Version)
-	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
+	// Release mode value is used because release mode is enabled.
+	assert.Equal(t, time.Duration(1200)*time.Second, resolved1.TargetTime)
 	assert.True(t, *resolved1.GroupVersions)
 	assert.EqualValues(t, 25, resolved1.PatchFactor)
 	assert.EqualValues(t, 0, resolved1.PatchTimeInQueueFactor)

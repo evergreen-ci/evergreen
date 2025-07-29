@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
+	ghAppAuthModel "github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -637,31 +638,63 @@ func TestHideBranch(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert(t.Context()))
 
-	err := HideBranch(t.Context(), project.Id)
-	assert.NoError(t, err)
+	// Insert GitHub app and ensure it inserts a fake parameter.
+	var ghAppID int64 = 90
+	ghPrivateKey := []byte("secret")
+	require.NoError(t, project.SetGithubAppCredentials(t.Context(), ghAppID, ghPrivateKey))
 
-	hiddenProj, err := model.FindMergedProjectRef(t.Context(), project.Id, "", true)
-	assert.NoError(t, err)
-	skeletonProj := model.ProjectRef{
-		Id:        project.Id,
-		Owner:     repo.Owner,
-		Repo:      repo.Repo,
-		Branch:    project.Branch,
-		RepoRefId: repo.Id,
-		Enabled:   false,
-		Hidden:    utility.TruePtr(),
-	}
-	assert.Equal(t, skeletonProj, *hiddenProj)
+	oldGhAppAuth, err := ghAppAuthModel.FindOneGitHubAppAuth(t.Context(), project.Id)
+	require.NoError(t, err)
+	require.NotEmpty(t, oldGhAppAuth)
 
-	projAliases, err := model.FindAliasesForProjectFromDb(t.Context(), project.Id)
+	fakeParams, err := fakeparameter.FindByIDs(t.Context(), oldGhAppAuth.PrivateKeyParameter)
 	assert.NoError(t, err)
-	assert.Empty(t, projAliases)
+	require.Len(t, fakeParams, 1)
+	assert.Equal(t, string(ghPrivateKey), fakeParams[0].Value)
 
-	skeletonProjVars := model.ProjectVars{
-		Id:   project.Id,
-		Vars: map[string]string{},
-	}
-	projVars, err := model.FindOneProjectVars(t.Context(), project.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, skeletonProjVars, *projVars)
+	require.NoError(t, HideBranch(t.Context(), project.Id))
+
+	t.Run("MergedProjectRefStripped", func(t *testing.T) {
+		hiddenProj, err := model.FindMergedProjectRef(t.Context(), project.Id, "", true)
+		require.NoError(t, err)
+		skeletonProj := model.ProjectRef{
+			Id:        project.Id,
+			Owner:     repo.Owner,
+			Repo:      repo.Repo,
+			Branch:    project.Branch,
+			RepoRefId: repo.Id,
+			Enabled:   false,
+			Hidden:    utility.TruePtr(),
+		}
+		assert.Equal(t, skeletonProj, *hiddenProj)
+	})
+
+	t.Run("AliasesDeleted", func(t *testing.T) {
+		projAliases, err := model.FindAliasesForProjectFromDb(t.Context(), project.Id)
+		require.NoError(t, err)
+		assert.Empty(t, projAliases)
+	})
+
+	t.Run("VarsStripped", func(t *testing.T) {
+		skeletonProjVars := model.ProjectVars{
+			Id:   project.Id,
+			Vars: map[string]string{},
+		}
+		projVars, err := model.FindOneProjectVars(t.Context(), project.Id)
+		require.NoError(t, err)
+		assert.Equal(t, skeletonProjVars, *projVars)
+	})
+
+	t.Run("GitHubAppDeleted", func(t *testing.T) {
+		gh, err := ghAppAuthModel.FindOneGitHubAppAuth(t.Context(), project.Id)
+		require.NoError(t, err)
+		assert.Empty(t, gh)
+
+		t.Run("FakeParameterDeleted", func(t *testing.T) {
+			fakeParams, err := fakeparameter.FindByIDs(t.Context(), oldGhAppAuth.PrivateKeyParameter)
+			require.NoError(t, err)
+			assert.Empty(t, fakeParams)
+		})
+	})
+
 }

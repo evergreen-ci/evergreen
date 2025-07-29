@@ -150,6 +150,7 @@ func MockConfig() *evergreen.Settings {
 		Api: evergreen.APIConfig{
 			HttpListenAddr: "addr",
 			URL:            "api",
+			CorpURL:        "corp",
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
@@ -188,16 +189,14 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			TestResultsBucket: evergreen.BucketConfig{
+				Name: "test_results",
+				Type: evergreen.BucketTypeS3,
+			},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",
 			},
-		},
-		Cedar: evergreen.CedarConfig{
-			BaseURL: "url.com",
-			RPCPort: "7070",
-			User:    "cedar-user",
-			APIKey:  "cedar-key",
 		},
 		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
@@ -210,8 +209,11 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		DomainName:          "example.com",
-		Expansions:          map[string]string{"k2": "v2"},
+		DomainName: "example.com",
+		Expansions: map[string]string{"k2": "v2"},
+		FWS: evergreen.FWSConfig{
+			URL: "fws_url",
+		},
 		GithubPRCreatorOrg:  "org",
 		GithubWebhookSecret: "secret",
 		HostInit: evergreen.HostInitConfig{
@@ -230,10 +232,6 @@ func MockConfig() *evergreen.Settings {
 		Jira: evergreen.JiraConfig{
 			Host:                "host",
 			PersonalAccessToken: "personal_access_token",
-			BasicAuthConfig: evergreen.JiraBasicAuthConfig{
-				Username: "username",
-				Password: "password",
-			},
 		},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,
@@ -349,7 +347,8 @@ func MockConfig() *evergreen.Settings {
 						Role:    "role",
 					},
 				},
-				IPAMPoolID: "pool_id",
+				IPAMPoolID:         "pool_id",
+				ElasticIPUsageRate: 0.3,
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
@@ -359,6 +358,11 @@ func MockConfig() *evergreen.Settings {
 			NumNewRepoRevisionsToFetch: 10,
 			MaxRepoRevisionsToSearch:   20,
 			MaxConcurrentRequests:      30,
+		},
+		ReleaseMode: evergreen.ReleaseModeConfig{
+			DistroMaxHostsFactor:      2.0,
+			TargetTimeSecondsOverride: 60,
+			IdleTimeSecondsOverride:   120,
 		},
 		Scheduler: evergreen.SchedulerConfig{
 			TaskFinder: "legacy",
@@ -387,9 +391,15 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			SleepScheduleDisabled:           true,
+			StaticAPIKeysDisabled:           true,
+			JWTTokenForCLIDisabled:          true,
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
+			ReleaseModeDisabled:             true,
+			AdminParameterStoreDisabled:     false,
+			LegacyUITaskPageDisabled:        true,
+			LegacyUITaskHistoryPageDisabled: true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{

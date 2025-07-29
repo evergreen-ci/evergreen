@@ -3,6 +3,7 @@ package distro
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -54,7 +57,7 @@ type Distro struct {
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
-	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
+	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings" mapstructure:"icecream_settings,omitempty"`
 	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
 	// SingleTaskDistro is a bool that indicates whether the hosts with this distro will only be allowed to run one task.
 	SingleTaskDistro bool `bson:"single_task_distro,omitempty" json:"single_task_distro,omitempty" mapstructure:"single_task_distro,omitempty"`
@@ -105,7 +108,7 @@ type BootstrapSettings struct {
 
 	// Optional
 	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits,omitempty" mapstructure:"resource_limits,omitempty"`
+	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
 	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
@@ -240,9 +243,12 @@ func (d *Distro) ShellBinary() string {
 }
 
 type HostAllocatorSettings struct {
-	Version                string `bson:"version" json:"version" mapstructure:"version"`
-	MinimumHosts           int    `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
-	MaximumHosts           int    `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	Version      string `bson:"version" json:"version" mapstructure:"version"`
+	MinimumHosts int    `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
+	MaximumHosts int    `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	// AutoTuneMaximumHosts determines if Evergreen is allowed to automatically
+	// tune the distro's maximum hosts.
+	AutoTuneMaximumHosts   bool   `bson:"auto_tune_maximum_hosts" json:"auto_tune_maximum_hosts" mapstructure:"auto_tune_maximum_hosts"`
 	RoundingRule           string `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
 	FeedbackRule           string `bson:"feedback_rule" json:"feedback_rule" mapstructure:"feedback_rule"`
 	HostsOverallocatedRule string `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
@@ -647,6 +653,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		Version:                has.Version,
 		MinimumHosts:           has.MinimumHosts,
 		MaximumHosts:           has.MaximumHosts,
+		AutoTuneMaximumHosts:   has.AutoTuneMaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
 		RoundingRule:           has.RoundingRule,
 		FeedbackRule:           has.FeedbackRule,
@@ -665,9 +672,18 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		catcher.Errorf("'%s' is not a valid host allocator version", resolved.Version)
 	}
 
-	if resolved.AcceptableHostIdleTime == 0 {
+	// If release mode is enabled, multiply the distro max hosts by this factor.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.DistroMaxHostsFactor > 0 {
+		resolved.MaximumHosts = int(math.Ceil(float64(resolved.MaximumHosts) * s.ReleaseMode.DistroMaxHostsFactor))
+	}
+
+	// If enabled, release mode takes precedent over both distro and admin value.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.IdleTimeSecondsOverride > 0 {
+		resolved.AcceptableHostIdleTime = time.Duration(s.ReleaseMode.IdleTimeSecondsOverride) * time.Second
+	} else if resolved.AcceptableHostIdleTime == 0 { // Fallback to admin value if not set at the distro level.
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
+
 	if resolved.RoundingRule == evergreen.HostAllocatorRoundDefault {
 		resolved.RoundingRule = config.HostAllocatorRoundingRule
 	}
@@ -689,7 +705,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 }
 
 // GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
-// SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
+// SchedulerConfig and Settings and defaults to resolve and validate a canonical set of PlannerSettings' field values.
 func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSettings, error) {
 	config := s.Scheduler
 	ps := d.PlannerSettings
@@ -723,9 +739,14 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid planner version", resolved.Version)
 	}
-	if resolved.TargetTime == 0 {
+
+	// If enabled, release mode takes precedent over both distro and admin value.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.TargetTimeSecondsOverride > 0 {
+		resolved.TargetTime = time.Duration(s.ReleaseMode.TargetTimeSecondsOverride) * time.Second
+	} else if resolved.TargetTime == 0 { // Fallback to the admin value if not set at the distro level.
 		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
 	}
+
 	if resolved.GroupVersions == nil {
 		resolved.GroupVersions = &config.GroupVersions
 	}
@@ -785,19 +806,19 @@ func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error
 	if err := rm.AddScope(newScope); err != nil && !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "adding scope for distro '%s'", d.Id)
 	}
-	newRole := gimlet.Role{
-		ID:     fmt.Sprintf("admin_distro_%s", d.Id),
-		Owners: []string{creator.Id},
-		Scope:  newScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
-			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
-		},
-	}
-	if err := rm.UpdateRole(newRole); err != nil {
-		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
-	}
 	if creator != nil {
+		newRole := gimlet.Role{
+			ID:     fmt.Sprintf("admin_distro_%s", d.Id),
+			Owners: []string{creator.Id},
+			Scope:  newScope.ID,
+			Permissions: map[string]int{
+				evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
+				evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
+			},
+		}
+		if err := rm.UpdateRole(newRole); err != nil {
+			return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
+		}
 		if err := creator.AddRole(ctx, newRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
@@ -922,4 +943,30 @@ func GetImageIDFromDistro(ctx context.Context, distro string) (string, error) {
 		return "", nil
 	}
 	return d.ImageID, nil
+}
+
+func (d *Distro) SetMaxHosts(ctx context.Context, newMaxHosts int) error {
+	if newMaxHosts == d.HostAllocatorSettings.MaximumHosts {
+		return nil
+	}
+
+	distroMaxHostsKey := bsonutil.GetDottedKeyName(HostAllocatorSettingsKey, hostAllocatorMaxHostsKey)
+	res, err := distroDB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:             d.Id,
+		distroMaxHostsKey: d.HostAllocatorSettings.MaximumHosts,
+	}, bson.M{
+		"$set": bson.M{
+			distroMaxHostsKey: newMaxHosts,
+		},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "updating maximum hosts for distro '%s'", d.Id)
+	}
+	if res.MatchedCount == 0 {
+		return adb.ErrNotFound
+	}
+
+	d.HostAllocatorSettings.MaximumHosts = newMaxHosts
+
+	return nil
 }

@@ -73,7 +73,8 @@ func (s *TaskStatsSuite) TestParseStatsFilter() {
 func (s *TaskStatsSuite) TestRunTaskHandler() {
 	s.Require().NoError(db.ClearCollections(taskstats.DailyTaskStatsCollection))
 
-	handler := makeGetProjectTaskStats("https://example.net/task").(*taskStatsHandler)
+	handler := makeGetProjectTaskStats().(*taskStatsHandler)
+	handler.url = "https://example.net/task"
 
 	// 100 documents will be returned
 	s.insertTaskStats(handler, 100, 101)

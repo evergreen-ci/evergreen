@@ -69,16 +69,14 @@ type UserSettings struct {
 	GithubUser       GithubUser              `json:"github_user" bson:"github_user,omitempty"`
 	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
 	SlackMemberId    string                  `bson:"slack_member_id,omitempty" json:"slack_member_id,omitempty"`
-	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
+	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications"`
 	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options" bson:"use_spruce_options"`
 	DateFormat       string                  `json:"date_format" bson:"date_format"`
 	TimeFormat       string                  `json:"time_format" bson:"time_format"`
 }
 
 type UseSpruceOptions struct {
-	SpruceV1                     bool `json:"spruce_v1" bson:"spruce_v1"`                                               // represents users opted into the new Evergreen UI
-	HasUsedSpruceBefore          bool `json:"has_used_spruce_before" bson:"has_used_spruce_before"`                     // used to know whether or not to display spruce welcome modal
-	HasUsedMainlineCommitsBefore bool `json:"has_used_mainline_commits_before" bson:"has_used_mainline_commits_before"` // used to know whether or not to display spruce mainline commits modal
+	SpruceV1 bool `json:"spruce_v1" bson:"spruce_v1"` // represents users opted into the new Evergreen UI
 }
 
 type NotificationPreferences struct {

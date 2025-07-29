@@ -124,7 +124,7 @@ input DistroInput {
   disabled: Boolean!
   disableShallowClone: Boolean!
   dispatcherSettings: DispatcherSettingsInput!
-  execUser: String
+  execUser: String!
   expansions: [ExpansionInput!]!
   finderSettings: FinderSettingsInput!
   homeVolumeSettings: HomeVolumeSettingsInput!
@@ -133,11 +133,12 @@ input DistroInput {
   imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
-  mountpoints: [String!]
+  mountpoints: [String!]!
   name: String! @requireDistroAccess(access: EDIT)
   note: String!
   plannerSettings: PlannerSettingsInput!
   provider: Provider!
+  providerAccount: String!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -146,7 +147,7 @@ input DistroInput {
   user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
-  warningNote: String
+  warningNote: String!
   workDir: String!
 }
 
@@ -188,6 +189,7 @@ input HomeVolumeSettingsInput {
 
 input HostAllocatorSettingsInput {
   acceptableHostIdleTime: Int!
+  autoTuneMaximumHosts: Boolean!
   feedbackRule: FeedbackRule!
   futureHostFraction: Float!
   hostsOverallocatedRule: OverallocatedRule!
@@ -208,7 +210,7 @@ input PlannerSettingsInput {
   generateTaskFactor: Int!
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
-  numDependentsFactor: Float
+  numDependentsFactor: Float!
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Int!
@@ -272,6 +274,7 @@ type Distro {
   aliases: [String!]!
   arch: Arch!
   authorizedKeysFile: String!
+  availableRegions: [String!]!
   bootstrapSettings: BootstrapSettings!
   containerPool: String!
   disabled: Boolean!
@@ -291,6 +294,7 @@ type Distro {
   note: String!
   plannerSettings: PlannerSettings!
   provider: Provider!
+  providerAccount: String!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -341,6 +345,7 @@ type HomeVolumeSettings {
 
 type HostAllocatorSettings {
   acceptableHostIdleTime: Duration!
+  autoTuneMaximumHosts: Boolean!
   feedbackRule: FeedbackRule!
   futureHostFraction: Float!
   hostsOverallocatedRule: OverallocatedRule!
@@ -359,7 +364,7 @@ type PlannerSettings {
   commitQueueFactor: Int!
   expectedRuntimeFactor: Int!
   generateTaskFactor: Int!
-  numDependentsFactor: Float
+  numDependentsFactor: Float!
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
   patchFactor: Int!

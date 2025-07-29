@@ -254,21 +254,6 @@ func (a *Agent) loop(ctx context.Context) error {
 			grip.Info("Agent loop canceled.")
 			return nil
 		case <-timer.C:
-			// Check the cedar GRPC connection so we can fail early
-			// and avoid task system failures.
-			err := utility.Retry(ctx, func() (bool, error) {
-				_, err := a.comm.GetCedarGRPCConn(ctx)
-				return true, err
-			}, utility.RetryOptions{MaxAttempts: 5, MaxDelay: globals.MinAgentSleepInterval})
-			if err != nil {
-				if ctx.Err() != nil {
-					// We don't want to return an error if
-					// the agent loop is canceled.
-					return nil
-				}
-				return errors.Wrap(err, "connecting to Cedar")
-			}
-
 			var previousTaskGroup string
 			if tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
 				previousTaskGroup = tc.taskConfig.TaskGroup.Name
@@ -607,44 +592,60 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, *apimodels.ExpansionsAndVars, error) {
-	project, err := a.comm.GetProject(ctx, tc.task)
+type taskInfo struct {
+	project           *model.Project
+	task              *task.Task
+	displayTaskInfo   *apimodels.DisplayTaskInfo
+	expansionsAndVars *apimodels.ExpansionsAndVars
+}
+
+// fetchTaskInfo gets the Project, Task, ExpansionAndVars, and DisplayTaskInfo. It stores them inside
+// a TaskConfigOptions struct- it does not set any of its other fields.
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, error) {
+	opts := &taskInfo{}
+	var err error
+	opts.project, err = a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting project")
+		return nil, errors.Wrap(err, "getting project")
 	}
 
-	taskModel, err := a.comm.GetTask(ctx, tc.task)
+	opts.task, err = a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting task")
+		return nil, errors.Wrap(err, "getting task")
 	}
 
-	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
+	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+		return nil, errors.Wrap(err, "getting expansions and variables")
+	}
+
+	opts.displayTaskInfo, err = a.comm.GetDisplayTaskInfoFromExecution(ctx, tc.task)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting task's display task info")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
 	// parameters, so load them from the project.
-	for _, bv := range project.BuildVariants {
-		if bv.Name == taskModel.BuildVariant {
-			expAndVars.Expansions.Update(bv.Expansions)
+	for _, bv := range opts.project.BuildVariants {
+		if bv.Name == opts.task.BuildVariant {
+			opts.expansionsAndVars.Expansions.Update(bv.Expansions)
 			break
 		}
 	}
-	expAndVars.Expansions.Update(expAndVars.Vars)
-	for _, param := range project.Parameters {
+	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Vars)
+	for _, param := range opts.project.Parameters {
 		// If the key doesn't exist, the value will default to "" anyway; this
 		// prevents an un-specified project parameter from overwriting
 		// lower-priority expansions.
 		if param.Value != "" {
-			expAndVars.Expansions.Put(param.Key, param.Value)
+			opts.expansionsAndVars.Expansions.Put(param.Key, param.Value)
 		}
 	}
 	// Overwrite any empty values here since these parameters were explicitly
 	// user-specified.
-	expAndVars.Expansions.Update(expAndVars.Parameters)
+	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Parameters)
 
-	return taskModel, project, expAndVars, nil
+	return opts, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
@@ -793,7 +794,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-	if err := a.comm.StartTask(execTimeoutCtx, tc.task); err != nil {
+	if err := a.comm.StartTask(execTimeoutCtx, tc.task, tc.traceID, tc.diskDevices); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		return evergreen.TaskSystemFailed
 	}
@@ -1028,6 +1029,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 		detail.PostErrored = tc.getPostErrored()
 		detail.OtherFailingCommands = tc.getOtherFailingCommands()
+		updateEndTaskFailureDetailsForTestResults(tc, detail)
 
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
@@ -1112,6 +1114,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 	if detail.Type != "" {
 		span.SetAttributes(attribute.String(evergreen.TaskFailureTypeOtelAttribute, detail.Type))
+	}
+	if detail.FailingCommand != "" {
+		span.SetAttributes(attribute.String(evergreen.TaskFailingCommandOtelAttribute, detail.FailingCommand))
+	}
+	if detail.Description != "" {
+		span.SetAttributes(attribute.String(evergreen.TaskDescriptionOtelAttribute, detail.Description))
 	}
 
 	return resp, nil
@@ -1251,6 +1259,32 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		detail.TimedOut = tc.hadTimedOut()
 		detail.TimeoutType = string(tc.getTimeoutType())
 		detail.TimeoutDuration = tc.getTimeoutDuration()
+	}
+}
+
+// updateEndTaskFailureDetailsForTestResults checks and updates the task failure
+// details for missing or failed test results.
+func updateEndTaskFailureDetailsForTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if detail.Status == evergreen.TaskFailed {
+		// If the task has already failed for another reason, do not overwrite
+		// it with a test result-related failure. Test results failures are
+		// lower priority.
+		return
+	}
+
+	if tc.taskConfig.Task.MustHaveResults && !tc.taskConfig.HasTestResults {
+		tc.logger.Task().Info("Test results are missing and this task must have attached test results. Overall task status changed to FAILED.")
+		detail.Type = evergreen.CommandTypeTest
+		detail.Status = evergreen.TaskFailed
+		detail.Description = evergreen.TaskDescriptionNoResults
+		return
+	}
+
+	if tc.taskConfig.HasFailingTestResult {
+		tc.logger.Task().Info("Test results contain at least one failure. Overall task status changed to FAILED.")
+		detail.Type = evergreen.CommandTypeTest
+		detail.Status = evergreen.TaskFailed
+		detail.Description = evergreen.TaskDescriptionResultsFailed
 	}
 }
 

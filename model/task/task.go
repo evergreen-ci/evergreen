@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/tarjan"
 	"github.com/evergreen-ci/utility"
@@ -31,7 +30,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -100,7 +98,7 @@ type Task struct {
 	TaskGroupMaxHosts     int                   `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder        int                   `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	ResultsService        string                `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasCedarResults       bool                  `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	HasTestResults        bool                  `bson:"has_test_results,omitempty" json:"has_test_results,omitempty"`
 	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
 	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
@@ -126,7 +124,7 @@ type Task struct {
 	Container string `bson:"container,omitempty" json:"container,omitempty"`
 	// ContainerOpts contains the options to configure the container that will
 	// run the task.
-	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options,omitempty"`
+	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options"`
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
@@ -181,8 +179,8 @@ type Task struct {
 	//        field and should be initialized before the application can
 	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
-	// `Task.getTaskOutputSafe()`.
-	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
+	// `Task.GetTaskOutputSafe()`.
+	TaskOutputInfo *TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
@@ -315,7 +313,7 @@ type Task struct {
 	// EstimatedNumActivatedGeneratedTasks is the estimated number of tasks that this task will generate and activate.
 	EstimatedNumActivatedGeneratedTasks *int `bson:"estimated_num_activated_generated_tasks,omitempty" json:"estimated_num_activated_generated_tasks,omitempty"`
 
-	// Fields set if triggered by an upstream build
+	// Fields set if triggered by an upstream build.
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
@@ -994,7 +992,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 		set[TaskOutputInfoKey] = output
 	}
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, []bson.M{
-		bson.M{
+		{
 			"$set": set,
 		},
 		addDisplayStatusCache,
@@ -1062,10 +1060,10 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error
 		set[TaskOutputInfoKey] = output
 	}
 	if err := doUpdate([]bson.M{
-		bson.M{
+		{
 			"$set": set,
 		},
-		bson.M{
+		{
 			"$unset": []string{
 				AbortedKey,
 				AbortInfoKey,
@@ -1106,14 +1104,14 @@ func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergr
 
 func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) error) error {
 	update := []bson.M{
-		bson.M{
+		{
 			"$set": bson.M{
 				StatusKey:        evergreen.TaskUndispatched,
 				DispatchTimeKey:  utility.ZeroTime,
 				LastHeartbeatKey: utility.ZeroTime,
 			},
 		},
-		bson.M{
+		{
 			"$unset": bson.A{
 				HostIdKey,
 				AgentVersionKey,
@@ -1540,7 +1538,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 		return nil, errors.Wrap(err, "finding matching tasks")
 	}
 	update := []bson.M{
-		bson.M{
+		{
 			"$set": bson.M{
 				PriorityKey:  evergreen.DisabledTaskPriority,
 				ActivatedKey: false,
@@ -1652,7 +1650,7 @@ func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 			IdKey: t.Id,
 		},
 		[]bson.M{
-			bson.M{"$set": taskAbortUpdate(reason)},
+			{"$set": taskAbortUpdate(reason)},
 			addDisplayStatusCache,
 		},
 	)
@@ -1760,18 +1758,18 @@ func SetNextStepbackId(ctx context.Context, taskId string, s StepbackInfo) error
 // up-to-date configuration for the task run. Returns false if the task will
 // never have output. This function should only be used to set the task output
 // field upon task dispatch.
-func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.TaskOutput, bool) {
+func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*TaskOutput, bool) {
 	if t.DisplayOnly || t.Archived {
 		return nil, false
 	}
 
-	return taskoutput.InitializeTaskOutput(env), true
+	return InitializeTaskOutput(env), true
 }
 
-// getTaskOutputSafe returns an instantiation of the task output interface and
+// GetTaskOutputSafe returns an instantiation of the task output interface and
 // whether it is safe to fetch task output data. This function should always
 // be called to access task output data.
-func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
+func (t *Task) GetTaskOutputSafe() (*TaskOutput, bool) {
 	if t.DisplayOnly || t.Status == evergreen.TaskUndispatched {
 		return nil, false
 	}
@@ -1781,72 +1779,36 @@ func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 		// output metadata saved in the database. This is for backwards
 		// compatibility. We can safely assume version zero for each
 		// task output type.
-		return &taskoutput.TaskOutput{}, true
+		return &TaskOutput{}, true
 	}
 
 	return t.TaskOutputInfo, true
 }
 
-// GetTaskOutputInfoWithError is a convenience function to avoid panics when
-// accessing the task output data.
-func (t *Task) GetTaskOutputWithError() (*taskoutput.TaskOutput, error) {
-	if t.TaskOutputInfo == nil {
-		return nil, errors.New("programmatic error: task output info expected to be set but found nil")
-	}
-
-	return t.TaskOutputInfo, nil
-}
-
 // GetTaskLogs returns the task's task logs with the given options.
-func (t *Task) GetTaskLogs(ctx context.Context, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
+func (t *Task) GetTaskLogs(ctx context.Context, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot get task logs for a display task")
 	}
 
-	output, ok := t.getTaskOutputSafe()
-	if !ok {
-		// We know there task cannot have task output, likely because
-		// it has not run yet. Return an empty iterator.
-		return log.EmptyIterator(), nil
-	}
-
-	taskID := t.Id
+	tsk := t
 	if t.Archived {
-		taskID = t.OldTaskId
+		tsk.Id = t.OldTaskId
 	}
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: t.Project,
-		TaskID:    taskID,
-		Execution: t.Execution,
-	}
-
-	return output.TaskLogs.Get(ctx, taskOpts, getOpts)
+	return getTaskLogs(ctx, *tsk, getOpts)
 }
 
 // GetTestLogs returns the task's test logs with the specified options.
-func (t *Task) GetTestLogs(ctx context.Context, getOpts taskoutput.TestLogGetOptions) (log.LogIterator, error) {
+func (t *Task) GetTestLogs(ctx context.Context, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot get test logs for a display task")
 	}
 
-	output, ok := t.getTaskOutputSafe()
-	if !ok {
-		// We know there task cannot have task output, likely because
-		// it has not run yet. Return an empty iterator.
-		return log.EmptyIterator(), nil
-	}
-
-	taskID := t.Id
+	task := t
 	if t.Archived {
-		taskID = t.OldTaskId
+		task.Id = t.OldTaskId
 	}
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: t.Project,
-		TaskID:    taskID,
-		Execution: t.Execution,
-	}
-
-	return output.TestLogs.Get(ctx, taskOpts, getOpts)
+	return getTestLogs(ctx, *task, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.
@@ -1855,21 +1817,15 @@ func (t *Task) GetTestLogs(ctx context.Context, getOpts taskoutput.TestLogGetOpt
 // because in cases where multiple calls to attach test results are made for a
 // task, only one call needs to have a test failure for the ResultsFailed field
 // to be set to true.
-func (t *Task) SetResultsInfo(ctx context.Context, service string, failedResults bool) error {
+func (t *Task) SetResultsInfo(ctx context.Context, failedResults bool) error {
 	if t.DisplayOnly {
 		return errors.New("cannot set results info on a display task")
 	}
-	if t.ResultsService != "" {
-		if t.ResultsService != service {
-			return errors.New("cannot use more than one test results service for a task")
-		}
-		if !failedResults {
-			return nil
-		}
+	if t.HasTestResults && !failedResults {
+		return nil
 	}
-
-	t.ResultsService = service
-	set := bson.M{ResultsServiceKey: service}
+	t.HasTestResults = true
+	set := bson.M{HasTestResultsKey: true}
 	if failedResults {
 		t.ResultsFailed = true
 		set[ResultsFailedKey] = true
@@ -1881,7 +1837,7 @@ func (t *Task) SetResultsInfo(ctx context.Context, service string, failedResults
 // HasResults returns whether the task has test results or not.
 func (t *Task) HasResults(ctx context.Context) bool {
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
+		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasTestResultsKey: true}}
 		if t.Archived {
 			execTasks, err := FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 			if err != nil {
@@ -1905,7 +1861,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		}
 	}
 
-	return t.ResultsService != "" || t.HasCedarResults
+	return t.ResultsService != "" || t.HasTestResults
 }
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and
@@ -2029,7 +1985,7 @@ func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateD
 		return nil, nil, errors.WithStack(err)
 	}
 
-	// get dependencies we don't have yet and add them to a map
+	// Get dependencies we don't have yet and add them to a map
 	tasksToGet := []string{}
 	depTaskMap := make(map[string]bool)
 	for _, t := range sortedDependencies {
@@ -2517,7 +2473,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.TaskOutputInfo = nil
 		t.ResultsService = ""
 		t.ResultsFailed = false
-		t.HasCedarResults = false
+		t.HasTestResults = false
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -2531,7 +2487,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.DisplayStatusCache = t.DetermineDisplayStatus()
 	}
 	update := []bson.M{
-		bson.M{
+		{
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
@@ -2549,13 +2505,12 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				NumNextTaskDispatchesKey:       0,
 			},
 		},
-		bson.M{
+		{
 			"$unset": []string{
 				DetailsKey,
 				TaskOutputInfoKey,
-				ResultsServiceKey,
 				ResultsFailedKey,
-				HasCedarResultsKey,
+				HasTestResultsKey,
 				ResetWhenFinishedKey,
 				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,
@@ -2964,7 +2919,7 @@ func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
 		ctx,
 		ByIds(ids),
 		[]bson.M{
-			bson.M{"$set": taskAbortUpdate(reason)},
+			{"$set": taskAbortUpdate(reason)},
 			addDisplayStatusCache,
 		},
 	)
@@ -3007,42 +2962,48 @@ func (t *Task) Archive(ctx context.Context) error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 		return nil
 	}
+	if t.CanReset {
+		// For idempotency reasons, skip tasks that are currently waiting to
+		// reset. It prevents a race where the same task data can be
+		// archived for two consecutive task executions.
+		return nil
+	}
+
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		return errors.Wrapf(ArchiveMany(ctx, []Task{*t}), "archiving display task '%s'", t.Id)
-	} else {
-		// Archiving a single task.
-		archiveTask := t.makeArchivedTask()
-		err := db.Insert(ctx, OldCollection, archiveTask)
-		if err != nil && !db.IsDuplicateKey(err) {
-			return errors.Wrap(err, "inserting archived task into old tasks")
-		}
-		t.Aborted = false
-		err = UpdateOne(
-			ctx,
-			bson.M{
-				IdKey:     t.Id,
-				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-				"$or": []bson.M{
-					{
-						CanResetKey: bson.M{"$exists": false},
-					},
-					{
-						CanResetKey: false,
-					},
+	}
+
+	archiveTask := t.makeArchivedTask()
+	err := db.Insert(ctx, OldCollection, archiveTask)
+	if err != nil && !db.IsDuplicateKey(err) {
+		return errors.Wrap(err, "inserting archived task into old tasks")
+	}
+	t.Aborted = false
+	err = UpdateOne(
+		ctx,
+		bson.M{
+			IdKey:     t.Id,
+			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+			"$or": []bson.M{
+				{
+					CanResetKey: bson.M{"$exists": false},
+				},
+				{
+					CanResetKey: false,
 				},
 			},
-			[]bson.M{
-				updateDisplayTasksAndTasksSet,
-				updateDisplayTasksAndTasksUnset,
-				addDisplayStatusCache,
-			},
-		)
-		// Return nil if the task has already been archived
-		if adb.ResultsNotFound(err) {
-			return nil
-		}
-		return errors.Wrap(err, "updating task")
+		},
+		[]bson.M{
+			updateDisplayTasksAndTasksSet,
+			updateDisplayTasksAndTasksUnset,
+			addDisplayStatusCache,
+		},
+	)
+	// Return nil if the task has already been archived
+	if adb.ResultsNotFound(err) {
+		return nil
 	}
+	return errors.Wrap(err, "updating task")
 }
 
 // ArchiveMany accepts tasks and display tasks (no execution tasks). The function
@@ -3059,6 +3020,13 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 			continue
 		}
+		if t.CanReset {
+			// For idempotency reasons, skip tasks that are currently waiting to
+			// reset. It prevents a race where the same task data can be
+			// archived for two consecutive task executions.
+			continue
+		}
+
 		allTaskIds = append(allTaskIds, t.Id)
 		archivedTasks = append(archivedTasks, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
@@ -3215,98 +3183,74 @@ func (t *Task) PopulateTestResults(ctx context.Context) error {
 	return nil
 }
 
-// GetTestResults returns the task's test results filtered, sorted, and
-// paginated as specified by the optional filter options.
-func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
+// GetTestResults returns the merged test results filtered, sorted,
+// and paginated as specified by the optional filter options for the given
+// tasks.
+func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *FilterOptions) (testresult.TaskTestResults, error) {
+	taskOpts, err := t.GetTestResultsTasks(ctx)
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "creating test results task options")
 	}
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
 	}
-
-	return testresult.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
+	return getMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
 }
 
 // GetTestResultsStats returns basic statistics of the task's test results.
 func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environment) (testresult.TaskTestResultsStats, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
+	taskOpts, err := t.GetTestResultsTasks(ctx)
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "creating test results task options")
 	}
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResultsStats{}, nil
 	}
-
-	return testresult.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
+	return getTaskTestResultsStats(ctx, env, taskOpts)
 }
 
-// GetTestResultsStats returns a sample of test names (up to 10) that failed in
-// the task. If the task does not have any results or does not have any failing
-// tests, a nil slice is returned.
-func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environment) ([]string, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating test results task options")
-	}
-	if len(taskOpts) == 0 {
-		return nil, nil
-	}
-
-	return testresult.GetMergedFailedTestSample(ctx, env, taskOpts)
-}
-
-// CreateTestResultsTaskOptions returns the options required for fetching test
+// GetTestResultsTasks returns the options required for fetching test
 // results for the task.
 //
 // Calling this function explicitly is typically not necessary. In cases where
 // additional tasks are required for fetching test results, such as when
 // sorting results by some base status, using this function to populate those
 // task options is useful.
-func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.TaskOptions, error) {
-	var taskOpts []testresult.TaskOptions
+func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
+	var tasks []Task
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		var (
 			execTasksWithResults []Task
 			err                  error
 		)
-		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasCedarResultsKey: true}}
+		hasResults := []bson.M{{ResultsServiceKey: bson.M{"$exists": true}}, {HasTestResultsKey: true}}
 		if t.Archived {
 			execTasksWithResults, err = FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey)
+			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasTestResultsKey, TaskOutputInfoKey)
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")
 		}
 
 		for _, execTask := range execTasksWithResults {
-			taskID := execTask.Id
+			et := execTask
 			if execTask.Archived {
-				taskID = execTask.OldTaskId
+				et.Id = execTask.OldTaskId
 			}
-			taskOpts = append(taskOpts, testresult.TaskOptions{
-				TaskID:         taskID,
-				Execution:      execTask.Execution,
-				ResultsService: execTask.ResultsService,
-			})
+			tasks = append(tasks, et)
 		}
 	} else if t.HasResults(ctx) {
-		taskID := t.Id
+		task := t
 		if t.Archived {
-			taskID = t.OldTaskId
+			task.Id = t.OldTaskId
 		}
-		taskOpts = append(taskOpts, testresult.TaskOptions{
-			TaskID:         taskID,
-			Execution:      t.Execution,
-			ResultsService: t.ResultsService,
-		})
+		tasks = append(tasks, *task)
 	}
 
-	return taskOpts, nil
+	return tasks, nil
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
@@ -3576,6 +3520,12 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	}
 
 	if t.DisplayTaskId == nil {
+		grip.Info(message.Fields{
+			"message": "missing display task ID",
+			"task_id": t.Id,
+			"dt_id":   dtId,
+			"ticket":  "DEVPROD-13634",
+		})
 		// Cache display task ID for future use. If we couldn't find the display task,
 		// we cache the empty string to show that it doesn't exist.
 		grip.Error(message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
@@ -4006,7 +3956,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 			}},
 		},
 		[]bson.M{
-			bson.M{"$set": bson.M{
+			{"$set": bson.M{
 				DependsOnKey: bson.M{
 					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
 				},
@@ -4195,7 +4145,7 @@ const (
 // SetSortingValueBreakdownAttributes saves a full breakdown which compartmentalizes each factor that played a role in computing the
 // overall value used to sort it in the queue, and creates a honeycomb trace with this data to enable dashboards/analysis.
 func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown SortingValueBreakdown) {
-	_, span := tracer.Start(ctx, "queue-factor-breakdown", trace.WithNewRoot())
+	_, span := tracer.Start(ctx, "queue-factor-breakdown")
 	defer span.End()
 	span.SetAttributes(
 		attribute.String(evergreen.DistroIDOtelAttribute, t.DistroId),

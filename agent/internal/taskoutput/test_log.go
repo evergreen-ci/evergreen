@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -32,12 +31,7 @@ var defaultTestLogSequenceSize = int64(1e7)
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
 func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog) error {
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: tsk.Project,
-		TaskID:    tsk.Id,
-		Execution: tsk.Execution,
-	}
-	sender, err := tsk.TaskOutputInfo.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{}, testLog.Name, 0)
+	sender, err := task.NewTestLogSender(ctx, *tsk, task.EvergreenSenderOptions{}, testLog.Name, 0)
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
@@ -66,7 +60,7 @@ func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handle
 		logger: logger,
 	}
 	h.createSender = func(ctx context.Context, logPath string, sequence int) (send.Sender, error) {
-		evgSender, err := handlerOpts.output.TestLogs.NewSender(ctx, handlerOpts.taskOpts, taskoutput.EvergreenSenderOptions{
+		evgSender, err := task.NewTestLogSender(ctx, *handlerOpts.tsk, task.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
 			Parse: h.spec.getParser(),
 		}, logPath, sequence)
@@ -99,6 +93,8 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	}
 	var fileChunks []fileChunk
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
+	fileSizes := []int64{}
+	filesOverTenMB := 0
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
@@ -123,6 +119,10 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		}
 
 		fileSize := fileInfo.Size()
+		fileSizes = append(fileSizes, fileSize)
+		if fileSize > 10e6 {
+			filesOverTenMB++
+		}
 		var (
 			currentByte int64
 			sequence    int
@@ -170,7 +170,9 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	wg.Wait()
 
 	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
-
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_chunks_count", Value: attribute.IntValue(len(fileChunks))})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_sizes", Value: attribute.Int64SliceValue(fileSizes)})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_files_over_ten_mb", Value: attribute.IntValue(filesOverTenMB)})
 	return err
 }
 

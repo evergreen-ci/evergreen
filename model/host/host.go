@@ -138,6 +138,8 @@ type Host struct {
 	// InstanceType is the EC2 host's requested instance type. This is kept
 	// up-to-date even if the instance type is changed.
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
+	// LastInstanceEditTime tracks when the instance type was last modified
+	LastInstanceEditTime time.Time `bson:"last_instance_edit_time,omitempty" json:"last_instance_edit_time,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
@@ -158,10 +160,10 @@ type Host struct {
 	ContainerBuildAttempt int                      `bson:"container_build_attempt" json:"container_build_attempt"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
-	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options"`
 
 	// DockerOptions stores information for creating a container with a specific image and command
-	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
+	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options"`
 
 	// PortBindings is populated if PublishPorts is specified when creating docker container from task
 	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings,omitempty"`
@@ -181,7 +183,7 @@ type Host struct {
 	HomeVolumeID   string `bson:"home_volume_id" json:"home_volume_id"`
 
 	// SleepSchedule stores host sleep schedule information.
-	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule,omitempty"`
+	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
 }
 
 type Tag struct {
@@ -680,8 +682,12 @@ func (h *Host) IdleTime() time.Duration {
 		return 0
 	}
 
-	// If the host is currently tearing down a task group, it is not idle.
+	// If the host is currently tearing down a task group, it is only considered idle
+	// if the teardown time has exceeded the maximum allowed time.
 	if h.IsTearingDown() {
+		if h.TeardownTimeExceededMax() {
+			return time.Since(h.TaskGroupTeardownStartTime)
+		}
 		return 0
 	}
 
@@ -2819,7 +2825,7 @@ func getNumNewParentsAndHostsToSpawn(ctx context.Context, pool *evergreen.Contai
 	}
 
 	if !ignoreMaxHosts { // only want to spawn amount of parents allowed based on pool size
-		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents), pool); err != nil {
+		if numNewParentsToSpawn, err = parentCapacity(*parentDistro, numNewParentsToSpawn, len(existingParents)); err != nil {
 			return 0, 0, errors.Wrap(err, "calculating number of parents that need to spawn")
 		}
 	}
@@ -2862,7 +2868,7 @@ func containerCapacity(numParents, numCurrentContainers, numContainersToSpawn, m
 
 // parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
-func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
+func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int) (int, error) {
 	if parent.Provider == evergreen.ProviderNameStatic {
 		return 0, nil
 	}
@@ -3018,7 +3024,8 @@ func (h *Host) SetInstanceType(ctx context.Context, instanceType string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				InstanceTypeKey: instanceType,
+				InstanceTypeKey:         instanceType,
+				LastInstanceEditTimeKey: time.Now(),
 			},
 		},
 	)

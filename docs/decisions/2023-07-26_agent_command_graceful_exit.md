@@ -1,8 +1,8 @@
 # 2023-07-26 Agent Task Execution and Command Graceful Exit
 
-* status: accepted
-* date: 2023-07-26
-* authors: Kim Tao
+- status: accepted
+- date: 2023-07-26
+- authors: Kim Tao
 
 ## Context and Problem Statement
 
@@ -12,6 +12,7 @@ goroutine out of uncertainty about whether the pre and main blocks could hang fo
 making forward progress as it waits forever for them to finish.
 
 ## Decision Outcome
+
 The agent has been fixed over time to ensure that all logic does respect the context (or has other timeout mechanisms),
 so all logic to run a task does eventually return when the context errors. Therefore, pre and main no longer have the
 original risk of hanging forever as they once did, meaning it is possible to run the pre and main blocks in the

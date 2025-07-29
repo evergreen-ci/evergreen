@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -774,23 +775,12 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	const slowThreshold = time.Second
 
 	detailsCopy := *detail
-	if t.ResultsFailed && detailsCopy.Status != evergreen.TaskFailed {
-		detailsCopy.Type = evergreen.CommandTypeTest
-		detailsCopy.Status = evergreen.TaskFailed
-		detailsCopy.Description = evergreen.TaskDescriptionResultsFailed
-	}
-
 	if t.Status == detailsCopy.Status {
 		grip.Warning(message.Fields{
 			"message": "tried to mark task as finished twice",
 			"task":    t.Id,
 		})
 		return nil
-	}
-	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults(ctx) {
-		detailsCopy.Type = evergreen.CommandTypeTest
-		detailsCopy.Status = evergreen.TaskFailed
-		detailsCopy.Description = evergreen.TaskDescriptionNoResults
 	}
 
 	t.Details = detailsCopy
@@ -1039,7 +1029,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 }
 
 // getVersionCtxForTracing returns a context with version attributes for tracing
-func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (context.Context, error) {
+func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p *patch.Patch) (context.Context, error) {
 	if v == nil {
 		return nil, errors.New("version is nil")
 	}
@@ -1049,7 +1039,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		return nil, errors.Wrap(err, "getting time spent")
 	}
 
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, v.Requester),
 		attribute.String(evergreen.ProjectIDOtelAttribute, project),
@@ -1062,7 +1052,12 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		attribute.Int(evergreen.VersionMakespanSecondsOtelAttribute, int(makespan.Seconds())),
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
-	})
+	}
+	if p != nil && p.IsReconfigured {
+		attrs = append(attrs, attribute.Bool(evergreen.PatchIsReconfiguredOtelAttribute, true))
+	}
+
+	ctx = utility.ContextWithAttributes(ctx, attrs)
 
 	return ctx, nil
 }
@@ -1556,27 +1551,27 @@ func updateVersionGithubStatus(ctx context.Context, v *Version, builds []build.B
 // its constituent builds, as well as a boolean indicating if any of them have
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
-func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
+func updateVersionStatus(ctx context.Context, v *Version) (versionStatus string, statusChanged bool, err error) {
 	builds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
-		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
+		return "", false, errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
 
 	// Regardless of whether the overall version status has changed, the Github status subset may have changed.
 	if err = updateVersionGithubStatus(ctx, v, builds); err != nil {
-		return "", errors.Wrap(err, "updating version GitHub status")
+		return "", false, errors.Wrap(err, "updating version GitHub status")
 	}
 
 	versionActivated, versionStatus := getVersionActivationAndStatus(builds)
 	// If all the builds are unscheduled and nothing has run, set active to false
 	if versionStatus == evergreen.VersionCreated && !versionActivated {
 		if err = v.SetActivated(ctx, false); err != nil {
-			return "", errors.Wrapf(err, "setting version '%s' as inactive", v.Id)
+			return "", false, errors.Wrapf(err, "setting version '%s' as inactive", v.Id)
 		}
 	}
 
 	if versionStatus == v.Status {
-		return versionStatus, nil
+		return versionStatus, false, nil
 	}
 
 	// only need to check aborted if status has changed
@@ -1589,58 +1584,72 @@ func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
 	}
 	if isAborted != v.Aborted {
 		if err = v.SetAborted(ctx, isAborted); err != nil {
-			return "", errors.Wrapf(err, "setting version '%s' as aborted", v.Id)
+			return "", false, errors.Wrapf(err, "setting version '%s' as aborted", v.Id)
 		}
 	}
 
-	event.LogVersionStateChangeEvent(ctx, v.Id, versionStatus)
-
-	if evergreen.IsFinishedVersionStatus(versionStatus) {
-		if err = v.MarkFinished(ctx, versionStatus, time.Now()); err != nil {
-			return "", errors.Wrapf(err, "marking version '%s' as finished with status '%s'", v.Id, versionStatus)
-		}
-	} else {
-		if err = v.UpdateStatus(ctx, versionStatus); err != nil {
-			return "", errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
-		}
+	statusChanged, err = v.UpdateStatus(ctx, versionStatus)
+	if err != nil {
+		return "", false, errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
 	}
 
-	return versionStatus, nil
+	if statusChanged {
+		event.LogVersionStateChangeEvent(ctx, v.Id, versionStatus)
+	}
+
+	return versionStatus, statusChanged, nil
 }
 
-// UpdatePatchStatus updates the status of a patch.
-func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error {
+type patchStatusUpdate struct {
+	patchStatusChanged                  bool
+	isPatchFamilyDone                   bool
+	parentPatch                         *patch.Patch
+	patchFamilyFinishedCollectiveStatus string
+}
+
+// updatePatchStatus updates the status of a patch. It returns information about
+// the patch status. If the patch status changed, it also includes patch family
+// information.
+func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (patchStatusUpdate, error) {
+	var psu patchStatusUpdate
 	if status == p.Status {
-		return nil
+		return psu, nil
 	}
 
-	event.LogPatchStateChangeEvent(ctx, p.Version, status)
-
-	if evergreen.IsFinishedVersionStatus(status) {
-		if err := p.MarkFinished(ctx, status, time.Now()); err != nil {
-			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), status)
-		}
-	} else if err := p.UpdateStatus(ctx, status); err != nil {
-		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
-	}
-
-	isDone, parentPatch, err := p.GetFamilyInformation(ctx)
+	statusChanged, err := p.UpdateStatus(ctx, status)
 	if err != nil {
-		return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
-	}
-	if isDone {
-		collectiveStatus, err := p.CollectiveStatus(ctx)
-		if err != nil {
-			return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
-		}
-		if parentPatch != nil {
-			event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
-		} else {
-			event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
-		}
+		return psu, errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
 	}
 
-	return nil
+	if statusChanged {
+		psu.patchStatusChanged = true
+
+		event.LogPatchStateChangeEvent(ctx, p.Version, status)
+
+		isDone, parentPatch, err := p.GetFamilyInformation(ctx)
+		if err != nil {
+			return psu, errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
+		}
+
+		psu.parentPatch = parentPatch
+		psu.isPatchFamilyDone = isDone
+
+		if isDone {
+			collectiveStatus, err := p.CollectiveStatus(ctx)
+			if err != nil {
+				return psu, errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+			}
+			if parentPatch != nil {
+				event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
+			} else {
+				event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
+			}
+			psu.patchFamilyFinishedCollectiveStatus = collectiveStatus
+		}
+
+	}
+
+	return psu, nil
 }
 
 // UpdateBuildAndVersionStatusForTask updates the status of the task's build based on all the tasks in the build
@@ -1675,7 +1684,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
 	}
 
-	newVersionStatus, err := updateVersionStatus(ctx, taskVersion)
+	newVersionStatus, versionStatusChanged, err := updateVersionStatus(ctx, taskVersion)
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
 	}
@@ -1686,9 +1695,9 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		}
 	}
 
-	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
+	if versionStatusChanged && evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
 		// only add tracing for versions, patches need to wait for child patches
-		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
 		if err != nil {
 			return errors.Wrap(err, "getting context for tracing")
 		}
@@ -1707,35 +1716,26 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if p == nil {
 			return errors.Errorf("no patch found for version '%s'", taskVersion.Id)
 		}
-		if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
+		psu, err := updatePatchStatus(ctx, p, newVersionStatus)
+		if err != nil {
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
-		isDone, parentPatch, err := p.GetFamilyInformation(ctx)
-		if err != nil {
-			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
-		}
-		if isDone {
-			versionStatus, err := p.CollectiveStatus(ctx)
-			if err != nil {
-				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
+		if psu.patchStatusChanged && psu.isPatchFamilyDone {
+			rootPatch := p
+			if psu.parentPatch != nil {
+				rootPatch = psu.parentPatch
 			}
-			if parentPatch != nil {
-				event.LogVersionChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
-			} else {
-				event.LogVersionChildrenCompletionEvent(ctx, p.Id.Hex(), versionStatus, p.Author)
-			}
-			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
-				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
-			}
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+
+			event.LogVersionChildrenCompletionEvent(ctx, rootPatch.Id.Hex(), psu.patchFamilyFinishedCollectiveStatus, rootPatch.Author)
+
+			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, rootPatch)
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 		}
-
 	}
 
 	return nil
@@ -1772,9 +1772,15 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 		if buildVersion == nil {
 			return errors.Errorf("no version '%s' found", versionId)
 		}
-		newVersionStatus, err := updateVersionStatus(ctx, buildVersion)
+		newVersionStatus, versionStatusChanged, err := updateVersionStatus(ctx, buildVersion)
 		if err != nil {
 			return errors.Wrapf(err, "updating version '%s' status", buildVersion.Id)
+		}
+
+		if !versionStatusChanged {
+			// If the version stayed the same, then the patch status has also
+			// stayed the same.
+			continue
 		}
 
 		if evergreen.IsPatchRequester(buildVersion.Requester) {
@@ -1785,7 +1791,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 			if p == nil {
 				return errors.Errorf("no patch found for version '%s'", buildVersion.Id)
 			}
-			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
+			if _, err = updatePatchStatus(ctx, p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
 		}
@@ -2564,4 +2570,30 @@ func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, sta
 		return errors.WithStack(err)
 	}
 	return errors.WithStack(task.AbortVersionTasks(ctx, t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
+}
+
+// UpdateOtelMetadata is called to update the task's Details with DiskDevices and TraceID.
+// If there's an error here, we log but we don't return an error.
+func UpdateOtelMetadata(ctx context.Context, t *task.Task, diskDevices []string, traceID string) {
+	// Update the task's Details with DiskDevices and TraceID
+	update := bson.M{}
+	if len(diskDevices) > 0 {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailDiskDevicesKey)] = diskDevices
+	}
+	if traceID != "" {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailTraceIDKey)] = traceID
+	}
+
+	if len(update) > 0 {
+		err := task.UpdateOne(
+			ctx,
+			task.ById(t.Id),
+			bson.M{"$set": update},
+		)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem updating otel metadata",
+			"task_id": t.Id,
+			"update":  update,
+		}))
+	}
 }

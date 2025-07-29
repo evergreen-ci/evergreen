@@ -108,7 +108,6 @@ func TestCopyDistro(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
 		"Successfully copies distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
-
 			opts := restModel.CopyDistroOpts{
 				DistroIdToCopy: "distro",
 				NewDistroId:    "new-distro",
@@ -280,16 +279,13 @@ func TestUpdateDistro(t *testing.T) {
 }
 
 func TestCreateDistro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	for tName, tCase := range map[string]func(t *testing.T, u user.DBUser){
+		"SuccessfullyCreatesDistro": func(t *testing.T, u user.DBUser) {
+			assert.NoError(t, CreateDistro(t.Context(), &u, "new-distro", false))
 
-	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
-		"Successfully creates distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			assert.NoError(t, CreateDistro(ctx, &u, "new-distro", false))
-
-			newDistro, err := distro.FindOneId(ctx, "new-distro")
+			newDistro, err := distro.FindOneId(t.Context(), "new-distro")
 			assert.NoError(t, err)
-			assert.NotNil(t, newDistro)
+			require.NotNil(t, newDistro)
 
 			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
@@ -297,10 +293,10 @@ func TestCreateDistro(t *testing.T) {
 
 			assert.False(t, newDistro.SingleTaskDistro, "expected distro to not be a single task distro")
 		},
-		"Successfully creates single task distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			assert.NoError(t, CreateDistro(ctx, &u, "new-distro", true))
+		"SuccessfullyCreatesSingleTaskDistro": func(t *testing.T, u user.DBUser) {
+			assert.NoError(t, CreateDistro(t.Context(), &u, "new-distro", true))
 
-			newDistro, err := distro.FindOneId(ctx, "new-distro")
+			newDistro, err := distro.FindOneId(t.Context(), "new-distro")
 			assert.NoError(t, err)
 			assert.NotNil(t, newDistro)
 
@@ -310,8 +306,8 @@ func TestCreateDistro(t *testing.T) {
 
 			assert.True(t, newDistro.SingleTaskDistro, "expected distro to be a single task distro")
 		},
-		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			err := CreateDistro(ctx, &u, "distro", false)
+		"FailsWhenTheValidatorEncountersAnError": func(t *testing.T, u user.DBUser) {
+			err := CreateDistro(t.Context(), &u, "distro", false)
 			assert.Error(t, err)
 			assert.Equal(t, "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'", err.Error())
 
@@ -321,9 +317,6 @@ func TestCreateDistro(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithCancel(ctx)
-			defer tcancel()
-
 			assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection))
 
 			adminUser := user.DBUser{
@@ -354,9 +347,9 @@ func TestCreateDistro(t *testing.T) {
 				WorkDir:  "/tmp",
 				User:     "admin",
 			}
-			assert.NoError(t, d.Insert(tctx))
+			assert.NoError(t, d.Insert(t.Context()))
 
-			tCase(t, tctx, adminUser)
+			tCase(t, adminUser)
 		})
 	}
 }

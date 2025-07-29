@@ -23,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -56,7 +55,7 @@ type uiTaskData struct {
 	TaskEndDetails       apimodels.TaskEndDetail `json:"task_end_details"`
 	TestResults          []uiTestResult          `json:"test_results"`
 	Aborted              bool                    `json:"abort"`
-	AbortInfo            task.AbortInfo          `json:"abort_info,omitempty"`
+	AbortInfo            task.AbortInfo          `json:"abort_info"`
 	MinQueuePos          int                     `json:"min_queue_pos"`
 	DependsOn            []uiDep                 `json:"depends_on"`
 	AbortedByDisplay     *abortedByDisplay       `json:"aborted_by_display,omitempty"`
@@ -145,10 +144,16 @@ type abortedByDisplay struct {
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	flags, err := evergreen.GetServiceFlags(r.Context())
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		return
+	}
+
 	projCtx := MustHaveProjectContext(r)
 	executionStr := gimlet.GetVars(r)["execution"]
 	var execution int
-	var err error
 
 	if executionStr != "" {
 		execution, err = strconv.Atoi(executionStr)
@@ -163,7 +168,15 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)) {
+	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
+
+	// TODO: Delete all content in this file with the exception of this redirect.
+	if flags.LegacyUITaskPageDisabled {
+		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+		return
+	}
+
+	if RedirectSpruceUsers(w, r, spruceLink) {
 		return
 	}
 
@@ -415,7 +428,7 @@ func getAbortedBy(ctx context.Context, abortedByTaskId string) (*abortedByDispla
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy build")
 	}
-	if buildDisplay == nil || abortedTask == nil {
+	if buildDisplay == nil {
 		return nil, errors.New("problem getting abortBy display information")
 	}
 	abortedBy := &abortedByDisplay{
@@ -529,7 +542,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), taskoutput.TaskLogGetOptions{
+	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{
 		LogType: getTaskLogTypeMapping(logType),
 		TailN:   DefaultLogMessages,
 	})
@@ -577,7 +590,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), taskoutput.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
+	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -614,16 +627,16 @@ func getUserTimeZone(u *user.DBUser) *time.Location {
 	return loc
 }
 
-func getTaskLogTypeMapping(prefix string) taskoutput.TaskLogType {
+func getTaskLogTypeMapping(prefix string) task.TaskLogType {
 	switch prefix {
 	case apimodels.AgentLogPrefix:
-		return taskoutput.TaskLogTypeAgent
+		return task.TaskLogTypeAgent
 	case apimodels.SystemLogPrefix:
-		return taskoutput.TaskLogTypeSystem
+		return task.TaskLogTypeSystem
 	case apimodels.TaskLogPrefix:
-		return taskoutput.TaskLogTypeTask
+		return task.TaskLogTypeTask
 	default:
-		return taskoutput.TaskLogTypeAll
+		return task.TaskLogTypeAll
 	}
 }
 
@@ -869,7 +882,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	if testName == "" {
 		testName = vals.Get("test_name")
 	}
-	it, err := tsk.GetTestLogs(r.Context(), taskoutput.TestLogGetOptions{LogPaths: []string{testName}})
+	it, err := tsk.GetTestLogs(r.Context(), task.TestLogGetOptions{LogPaths: []string{testName}})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

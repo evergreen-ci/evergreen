@@ -267,6 +267,63 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			},
 		)
 
+		Convey("Should create build break notifications for project admins", func() {
+			u := user.DBUser{
+				Id:           "me",
+				EmailAddress: "me@example.com",
+				Settings: user.UserSettings{
+					Notifications: user.NotificationPreferences{
+						BuildBreak: user.PreferenceEmail,
+					},
+				},
+			}
+			So(u.Insert(t.Context()), ShouldBeNil)
+			pRef.NotifyOnBuildFailure = utility.TruePtr()
+			pRef.Admins = []string{u.Id}
+
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
+			So(err, ShouldBeNil)
+			So(v, ShouldNotBeNil)
+			So(len(v.BuildVariants), ShouldBeGreaterThan, 0)
+
+			subs, err := event.FindSubscriptionsByAttributes(ctx, event.ResourceTypeTask, event.Attributes{
+				Object:    []string{event.ObjectTask},
+				Project:   []string{pRef.Id},
+				Requester: []string{evergreen.RepotrackerVersionRequester},
+				InVersion: []string{v.Id},
+			})
+			So(err, ShouldBeNil)
+			So(len(subs), ShouldEqual, 1)
+		})
+
+		Convey("Should set the most recent created version as the latest revision even if there is error setting up build break notifications", func() {
+			pRef.NotifyOnBuildFailure = utility.TruePtr()
+			pRef.Admins = []string{"nonexistent_user"}
+
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
+			So(err, ShouldBeNil)
+			So(v, ShouldNotBeNil)
+			So(len(v.BuildVariants), ShouldBeGreaterThan, 0)
+
+			subs, err := event.FindSubscriptionsByAttributes(ctx, event.ResourceTypeTask, event.Attributes{
+				Object:    []string{event.ObjectTask},
+				Project:   []string{pRef.Id},
+				Requester: []string{evergreen.RepotrackerVersionRequester},
+				InVersion: []string{v.Id},
+			})
+			So(err, ShouldBeNil)
+			So(len(subs), ShouldEqual, 0)
+
+			repo, err := model.FindRepository(ctx, pRef.Id)
+			So(err, ShouldBeNil)
+			So(repo, ShouldNotBeNil)
+			So(repo.LastRevision, ShouldEqual, v.Revision)
+		})
+
 		Reset(func() {
 			dropTestDB(t)
 		})

@@ -30,7 +30,9 @@ mutation {
             security_group_ids: ["2"]
           }
         ]
+        providerAccount: "aws"
         user: "mci-exec"
+        execUser: "mci-exec"
         bootstrapSettings: {
           clientDir: "/home/mci-exec/evergreen_provisioning"
           communication: RPC
@@ -75,6 +77,7 @@ mutation {
         }
         dispatcherSettings: { version: REVISED_WITH_DEPENDENCIES }
         hostAllocatorSettings: {
+          autoTuneMaximumHosts: false
           acceptableHostIdleTime: 30000
           feedbackRule: DEFAULT
           futureHostFraction: 0

@@ -150,6 +150,14 @@ func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error
 	return errors.New("can't specify instance type with static provider")
 }
 
+func (staticMgr *staticManager) AllocateIP(context.Context) (*host.IPAddress, error) {
+	return nil, errors.New("can't allocate IP with static provider")
+}
+
+func (staticMgr *staticManager) AssociateIP(context.Context, *host.Host) error {
+	return errors.New("can't associate IP with static provider")
+}
+
 func (staticMgr *staticManager) CleanupIP(context.Context, *host.Host) error {
 	return nil
 }

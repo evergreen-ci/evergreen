@@ -110,7 +110,7 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 }
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
-func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool, settings *evergreen.Settings) error {
+func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool) error {
 	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int
 func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestEvent) error {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "verifying pull request event for abort")
 	}
 
 	if err = model.AbortPatchesWithGithubPatchData(ctx, event.PullRequest.GetClosedAt().Time, true, "", owner, repo, *event.Number); err != nil {

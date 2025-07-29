@@ -99,6 +99,7 @@
           "exact_match": false
         },
         {
+          "description": "the second filter",
           "expression": "filter2",
           "case_sensitive": true,
           "exact_match": true

@@ -1,0 +1,101 @@
+{
+  "events": [
+    {
+      "_id": "686eab070ae008e37c103cb9",
+      "r_type": "ADMIN",
+      "processed_at": { "$date": "2015-10-21T23:29:01.000Z" },
+      "ts": { "$date": "2025-07-09T17:40:47.296Z" },
+      "r_id": "",
+      "e_type": "CONFIG_VALUE_CHANGED",
+      "data": {
+        "guid": "99b1529462c9875a9dcbc5f40ec2f23d",
+        "user": "admin",
+        "section": "pod_lifecycle",
+        "changes": {
+          "before": {
+            "max_parallel_pod_requests": 100,
+            "max_pod_definition_cleanup_rate": 0,
+            "max_secret_cleanup_rate": 0
+          },
+          "after": {
+            "max_parallel_pod_requests": 2000,
+            "max_pod_definition_cleanup_rate": 0,
+            "max_secret_cleanup_rate": 0
+          }
+        }
+      }
+    },
+    {
+      "_id": "686eab070ae008e37c103cba",
+      "r_type": "ADMIN",
+      "processed_at": { "$date": "2015-10-21T23:29:01.000Z" },
+      "ts": { "$date": "2025-07-09T17:46:47.303Z" },
+      "r_id": "",
+      "e_type": "CONFIG_VALUE_CHANGED",
+      "data": {
+        "guid": "0a1a35c684085731353c415f67e11323",
+        "user": "admin",
+        "section": "scheduler",
+        "changes": {
+          "before": {
+            "task_finder": "legacy",
+            "host_allocator": "utilization",
+            "host_allocator_rounding_rule": "round-down",
+            "host_allocator_feedback_rule": "no-feedback",
+            "hosts_overallocated_rule": "no-terminations-when-overallocated",
+            "free_host_fraction": 0.1,
+            "cache_duration_seconds": 60,
+            "target_time_seconds": 60,
+            "acceptable_host_idle_time_seconds": 30,
+            "group_versions": true,
+            "patch_zipper_factor": { "$numberLong": "50" },
+            "patch_time_in_queue_factor": { "$numberLong": "20" },
+            "commit_queue_factor": { "$numberLong": "0" },
+            "mainline_time_in_queue_factor": { "$numberLong": "0" },
+            "expected_runtime_factor": { "$numberLong": "10" },
+            "generate_task_factor": { "$numberLong": "50" },
+            "num_dependents_factor": 5,
+            "stepback_task_factor": { "$numberLong": "10" }
+          },
+          "after": {
+            "task_finder": "legacy",
+            "host_allocator": "utilization",
+            "host_allocator_rounding_rule": "round-up",
+            "host_allocator_feedback_rule": "no-feedback",
+            "hosts_overallocated_rule": "no-terminations-when-overallocated",
+            "free_host_fraction": 0.1,
+            "cache_duration_seconds": 60,
+            "target_time_seconds": 60,
+            "acceptable_host_idle_time_seconds": 20,
+            "group_versions": true,
+            "patch_zipper_factor": { "$numberLong": "50" },
+            "patch_time_in_queue_factor": { "$numberLong": "20" },
+            "commit_queue_factor": { "$numberLong": "0" },
+            "mainline_time_in_queue_factor": { "$numberLong": "0" },
+            "expected_runtime_factor": { "$numberLong": "10" },
+            "generate_task_factor": { "$numberLong": "50" },
+            "num_dependents_factor": 5,
+            "stepback_task_factor": { "$numberLong": "10" }
+          }
+        }
+      }
+    },
+    {
+      "_id": "686eacaa0ae008e37c103cbd",
+      "r_type": "ADMIN",
+      "processed_at": { "$date": "2015-10-21T23:29:01.000Z" },
+      "ts": { "$date": "2025-07-09T17:53:46.312Z" },
+      "r_id": "",
+      "e_type": "CONFIG_VALUE_CHANGED",
+      "data": {
+        "guid": "b031a278e0692a3b313342af728ad374",
+        "user": "admin",
+        "section": "notify",
+        "changes": {
+          "before": { "ses": { "sender_address": "evg-sender@email.com" } },
+          "after": { "ses": { "sender_address": "new-email@email.com" } }
+        }
+      }
+    }
+  ]
+}

@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -26,6 +27,7 @@ const (
 	maxPollAttempts                       = 100
 	maxHostCreateAttempts                 = 6
 	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
+	maxHostCreateJobTime                  = 30 * time.Minute
 )
 
 func init() {
@@ -67,6 +69,7 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, buildIm
 	j.BuildImageStarted = buildImageStarted
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		DispatchBy: j.host.SpawnOptions.TimeoutSetup,
+		MaxTime:    maxHostCreateJobTime,
 	})
 	var wait time.Duration
 	var maxAttempts int
@@ -236,7 +239,12 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}()
 
-	j.AddRetryableError(j.createHost(ctx))
+	err = j.createHost(ctx)
+	if err != nil && strings.Contains(err.Error(), cloud.EC2InsufficientCapacity) {
+		j.AddRetryableError(err)
+	} else {
+		j.AddError(err)
+	}
 }
 
 func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.HostInitConfig) bool {
@@ -457,6 +465,20 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 	hostReplaced, err := j.tryHostReplacement(ctx, cloudMgr)
 	if err != nil {
 		return hostReplaced, errors.Wrap(err, "attempting host replacement")
+	}
+
+	if j.host.IPAllocationID != "" {
+		appCtx, _ := j.env.Context()
+		hostIPAssociationQueueGroup, _ := j.env.RemoteQueueGroup().Get(appCtx, hostIPAssociationQueueGroup)
+		if hostIPAssociationQueueGroup != nil {
+			if err := amboy.EnqueueUniqueJob(ctx, hostIPAssociationQueueGroup, NewHostIPAssociationJob(j.env, j.host, time.Now().Format(TSFormat))); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "could not enqueue host IP association job for host",
+					"host_id": j.host.Id,
+					"distro":  j.host.Distro.Id,
+				}))
+			}
+		}
 	}
 
 	if j.host.HasContainers {

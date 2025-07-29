@@ -289,7 +289,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// Get and validate patched config
 	var patchedProjectConfig string
 	if patchedParserProject != nil {
-		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, j.env.Settings(), patchDoc)
+		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, patchDoc)
 		if err != nil {
 			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project config")
 		}
@@ -900,8 +900,8 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
-	if len(projectRef.GithubTriggerAliases) > 0 {
-		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubTriggerAliases}
+	if len(projectRef.GithubPRTriggerAliases) > 0 {
+		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubPRTriggerAliases}
 	}
 
 	isMember, err := j.isUserAuthorized(ctx, patchDoc, mustBeMemberOfOrg,

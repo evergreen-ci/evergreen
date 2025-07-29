@@ -1,0 +1,471 @@
+openapi: 3.1.0
+info:
+  description: "Foliage web services, owner: DevProd Services & Integrations team"
+  title: Foliage Web Services
+  version: 1.0.0
+servers:
+- url: /
+paths:
+  /api/mothra/team_by_tag/{tag}:
+    get:
+      description: Get team by tag from mothra.
+      operationId: get_team_by_tag_api_mothra_team_by_tag__tag__get
+      parameters:
+      - explode: false
+        in: path
+        name: tag
+        required: true
+        schema:
+          title: Tag
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamData'
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Team By Tag
+      tags:
+      - mothra
+  /api/mothra/team_by_name_and_project/{name}/{project}:
+    get:
+      description: Get team by name and project from mothra.
+      operationId: get_team_by_name_and_project_api_mothra_team_by_name_and_project__name___project__get
+      parameters:
+      - explode: false
+        in: path
+        name: name
+        required: true
+        schema:
+          title: Name
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          title: Project
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamData'
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Team By Name And Project
+      tags:
+      - mothra
+  /api/mothra/team_projects_by_name/{name}:
+    get:
+      description: Get team projects by name from mothra.
+      operationId: get_team_projects_by_name_api_mothra_team_projects_by_name__name__get
+      parameters:
+      - explode: false
+        in: path
+        name: name
+        required: true
+        schema:
+          title: Name
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  $ref: '#/components/schemas/TeamData'
+                title: Response Get Team Projects By Name Api Mothra Team Projects
+                  By Name  Name  Get
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Team Projects By Name
+      tags:
+      - mothra
+  /api/mothra/all_teams:
+    get:
+      description: Get all teams from mothra.
+      operationId: get_all_teams_api_mothra_all_teams_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/TeamData'
+                type: array
+          description: Successful Response
+      summary: Get All Teams
+      tags:
+      - mothra
+  /api/owner/by_foliage_logic/{task_id}:
+    get:
+      description: |-
+        Get the owner of a task by foliage logic.
+
+        :param task_id: The task id.
+        :param test_file_name: The test file name.
+        :param offending_version_id: The offending version id.
+        :return: The owning team data according to the foliage logic.
+      operationId: by_foliage_logic_api_owner_by_foliage_logic__task_id__get
+      parameters:
+      - explode: false
+        in: path
+        name: task_id
+        required: true
+        schema:
+          title: Task Id
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: test_file_name
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: offending_version_id
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinalAssignmentResults'
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: By Foliage Logic
+      tags:
+      - owner
+  /api/owner/by_jira_key/{jira_key}:
+    get:
+      description: |-
+        Get the owner by a Jira key.
+
+        :param jira_key: The Jira key.
+        :param project_id: The project id, optional for avoiding getting bot user emails.
+        :return: The owning team data according to the Jira key.
+      operationId: by_jira_key_api_owner_by_jira_key__jira_key__get
+      parameters:
+      - explode: false
+        in: path
+        name: jira_key
+        required: true
+        schema:
+          title: Jira Key
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: project_id
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDataWithOwner'
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: By Jira Key
+      tags:
+      - owner
+  /api/owner/regex_by_project/{project_id}:
+    get:
+      description: |-
+        Get a mapping from a test file regular expression to the owning team
+
+        :param project_id: The project identifier.
+        :return: The mapping from test file regular expression to the owning team data.
+      operationId: get_regex_mapping_api_owner_regex_by_project__project_id__get
+      parameters:
+      - explode: false
+        in: path
+        name: project_id
+        required: true
+        schema:
+          title: Project Id
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  $ref: '#/components/schemas/get_regex_mapping_api_owner_regex_by_project__project_id__get_200_response_value'
+                nullable: true
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get Regex Mapping
+      tags:
+      - owner
+components:
+  schemas:
+    AssignmentResult:
+      description: Result for assignment.
+      example:
+        assignment_type: offending version id
+        team_data_with_owner:
+          team_data:
+            triage_team_name: triage_team_name
+            slack_channel_id: slack_channel_id
+            slack_group_id: slack_group_id
+            jira_project: jira_project
+            evergreen_tag_name: evergreen_tag_name
+            triaged_team_names:
+            - triaged_team_names
+            - triaged_team_names
+            team_name: team_name
+          owning_user: owning_user
+        messages: messages
+      properties:
+        assignment_type:
+          $ref: '#/components/schemas/AssignmentTypeEnum'
+        messages:
+          title: Messages
+          type: string
+        team_data_with_owner:
+          $ref: '#/components/schemas/TeamDataWithOwner'
+      required:
+      - assignment_type
+      - messages
+      title: AssignmentResult
+    AssignmentTypeEnum:
+      description: Enum for assignment types.
+      enum:
+      - offending version id
+      - failure metadata tag
+      - system and setup failure
+      - test file name
+      - task tag
+      - build variant tag
+      - task to team mapping
+      - default team
+      title: AssignmentTypeEnum
+      type: string
+    FinalAssignmentResults:
+      description: Results for multiple assignments.
+      example:
+        all_assignment_results:
+        - assignment_type: offending version id
+          team_data_with_owner:
+            team_data:
+              triage_team_name: triage_team_name
+              slack_channel_id: slack_channel_id
+              slack_group_id: slack_group_id
+              jira_project: jira_project
+              evergreen_tag_name: evergreen_tag_name
+              triaged_team_names:
+              - triaged_team_names
+              - triaged_team_names
+              team_name: team_name
+            owning_user: owning_user
+          messages: messages
+        - assignment_type: offending version id
+          team_data_with_owner:
+            team_data:
+              triage_team_name: triage_team_name
+              slack_channel_id: slack_channel_id
+              slack_group_id: slack_group_id
+              jira_project: jira_project
+              evergreen_tag_name: evergreen_tag_name
+              triaged_team_names:
+              - triaged_team_names
+              - triaged_team_names
+              team_name: team_name
+            owning_user: owning_user
+          messages: messages
+        selected_assignment:
+          assignment_type: offending version id
+          team_data_with_owner:
+            team_data:
+              triage_team_name: triage_team_name
+              slack_channel_id: slack_channel_id
+              slack_group_id: slack_group_id
+              jira_project: jira_project
+              evergreen_tag_name: evergreen_tag_name
+              triaged_team_names:
+              - triaged_team_names
+              - triaged_team_names
+              team_name: team_name
+            owning_user: owning_user
+          messages: messages
+        all_messages: all_messages
+      properties:
+        all_assignment_results:
+          items:
+            $ref: '#/components/schemas/AssignmentResult'
+          type: array
+        all_messages:
+          title: All Messages
+          type: string
+        selected_assignment:
+          $ref: '#/components/schemas/AssignmentResult'
+      required:
+      - all_assignment_results
+      - all_messages
+      - selected_assignment
+      title: FinalAssignmentResults
+    HTTPValidationError:
+      example:
+        detail:
+        - msg: msg
+          loc:
+          - ValidationError_loc_inner
+          - ValidationError_loc_inner
+          type: type
+        - msg: msg
+          loc:
+          - ValidationError_loc_inner
+          - ValidationError_loc_inner
+          type: type
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+      title: HTTPValidationError
+    TeamData:
+      description: This dataclass holds the team data for a specific team.
+      example:
+        triage_team_name: triage_team_name
+        slack_channel_id: slack_channel_id
+        slack_group_id: slack_group_id
+        jira_project: jira_project
+        evergreen_tag_name: evergreen_tag_name
+        triaged_team_names:
+        - triaged_team_names
+        - triaged_team_names
+        team_name: team_name
+      properties:
+        team_name:
+          title: Team Name
+          type: string
+        jira_project:
+          title: Jira Project
+          type: string
+        slack_channel_id:
+          nullable: true
+          type: string
+        evergreen_tag_name:
+          title: Evergreen Tag Name
+          type: string
+        triage_team_name:
+          nullable: true
+          type: string
+        slack_group_id:
+          nullable: true
+          type: string
+        triaged_team_names:
+          items:
+            type: string
+          type: array
+      required:
+      - evergreen_tag_name
+      - jira_project
+      - slack_channel_id
+      - team_name
+      title: TeamData
+    TeamDataWithOwner:
+      description: Team data with owner information.
+      example:
+        team_data:
+          triage_team_name: triage_team_name
+          slack_channel_id: slack_channel_id
+          slack_group_id: slack_group_id
+          jira_project: jira_project
+          evergreen_tag_name: evergreen_tag_name
+          triaged_team_names:
+          - triaged_team_names
+          - triaged_team_names
+          team_name: team_name
+        owning_user: owning_user
+      properties:
+        team_data:
+          $ref: '#/components/schemas/TeamData'
+        owning_user:
+          nullable: true
+          type: string
+      required:
+      - team_data
+      title: TeamDataWithOwner
+    ValidationError:
+      example:
+        msg: msg
+        loc:
+        - ValidationError_loc_inner
+        - ValidationError_loc_inner
+        type: type
+      properties:
+        loc:
+          items:
+            $ref: '#/components/schemas/ValidationError_loc_inner'
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    get_regex_mapping_api_owner_regex_by_project__project_id__get_200_response_value:
+      anyOf:
+      - $ref: '#/components/schemas/TeamData'
+      nullable: true
+    ValidationError_loc_inner:
+      anyOf:
+      - type: string
+      - type: integer

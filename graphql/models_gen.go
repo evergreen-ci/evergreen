@@ -3,6 +3,7 @@
 package graphql
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -27,6 +28,29 @@ type AddFavoriteProjectInput struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
+type AdminEvent struct {
+	Section   *string        `json:"section,omitempty"`
+	After     map[string]any `json:"after,omitempty"`
+	Before    map[string]any `json:"before,omitempty"`
+	Timestamp time.Time      `json:"timestamp"`
+	User      string         `json:"user"`
+}
+
+// AdminEventsInput is the input to the adminEvents query.
+type AdminEventsInput struct {
+	Before *time.Time `json:"before,omitempty"`
+	Limit  *int       `json:"limit,omitempty"`
+}
+
+type AdminEventsPayload struct {
+	Count           int           `json:"count"`
+	EventLogEntries []*AdminEvent `json:"eventLogEntries"`
+}
+
+type AdminTasksToRestartPayload struct {
+	TasksToRestart []*model.APITask `json:"tasksToRestart"`
+}
+
 // Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
 // This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
 // tickets from JIRA for a given task on a given execution.
@@ -39,10 +63,11 @@ type BuildBaron struct {
 // BuildVariantOptions is an input to the mainlineCommits query.
 // It stores values for statuses, tasks, and variants which are used to filter for matching versions.
 type BuildVariantOptions struct {
-	IncludeBaseTasks *bool    `json:"includeBaseTasks,omitempty"`
-	Statuses         []string `json:"statuses,omitempty"`
-	Tasks            []string `json:"tasks,omitempty"`
-	Variants         []string `json:"variants,omitempty"`
+	IncludeBaseTasks           *bool    `json:"includeBaseTasks,omitempty"`
+	IncludeNeverActivatedTasks *bool    `json:"includeNeverActivatedTasks,omitempty"`
+	Statuses                   []string `json:"statuses,omitempty"`
+	Tasks                      []string `json:"tasks,omitempty"`
+	Variants                   []string `json:"variants,omitempty"`
 }
 
 // CreateDistroInput is the input to the createDistro mutation.
@@ -392,6 +417,14 @@ type RepoPermissionsOptions struct {
 	RepoID string `json:"repoId"`
 }
 
+type RestartAdminTasksPayload struct {
+	NumRestartedTasks int `json:"numRestartedTasks"`
+}
+
+type SaveAdminSettingsInput struct {
+	AdminSettings *model.APIAdminSettings `json:"adminSettings"`
+}
+
 // SaveDistroInput is the input to the saveDistro mutation.
 type SaveDistroInput struct {
 	Distro *model.APIDistro      `json:"distro"`
@@ -463,6 +496,11 @@ type Subscriber struct {
 	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber,omitempty"`
 }
 
+// TaskCountOptions defines the parameters that are used when counting tasks from a Version.
+type TaskCountOptions struct {
+	IncludeNeverActivatedTasks *bool `json:"includeNeverActivatedTasks,omitempty"`
+}
+
 // TaskFiles is the return value for the taskFiles query.
 // Some tasks generate files which are represented by this type.
 type TaskFiles struct {
@@ -511,6 +549,20 @@ type TaskLogs struct {
 	SystemLogs []*apimodels.LogMessage       `json:"systemLogs"`
 	TaskID     string                        `json:"taskId"`
 	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
+}
+
+// TaskOwnerTeam is the return value for the taskOwnerTeam query.
+// It is used to identify the team that owns a task. Based on the FWS team assignment.
+type TaskOwnerTeam struct {
+	AssignmentType string `json:"assignmentType"`
+	Messages       string `json:"messages"`
+	TeamName       string `json:"teamName"`
+	JiraProject    string `json:"jiraProject"`
+}
+
+type TaskPriority struct {
+	TaskID   string `json:"taskId"`
+	Priority int    `json:"priority"`
 }
 
 // TaskQueueDistro[] is the return value for the taskQueueDistros query.
@@ -723,180 +775,18 @@ func (e AccessLevel) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type Arch string
-
-const (
-	ArchLinux64Bit    Arch = "LINUX_64_BIT"
-	ArchLinuxArm64Bit Arch = "LINUX_ARM_64_BIT"
-	ArchLinuxPpc64Bit Arch = "LINUX_PPC_64_BIT"
-	ArchLinuxZseries  Arch = "LINUX_ZSERIES"
-	ArchOsx64Bit      Arch = "OSX_64_BIT"
-	ArchOsxArm64Bit   Arch = "OSX_ARM_64_BIT"
-	ArchWindows64Bit  Arch = "WINDOWS_64_BIT"
-)
-
-var AllArch = []Arch{
-	ArchLinux64Bit,
-	ArchLinuxArm64Bit,
-	ArchLinuxPpc64Bit,
-	ArchLinuxZseries,
-	ArchOsx64Bit,
-	ArchOsxArm64Bit,
-	ArchWindows64Bit,
-}
-
-func (e Arch) IsValid() bool {
-	switch e {
-	case ArchLinux64Bit, ArchLinuxArm64Bit, ArchLinuxPpc64Bit, ArchLinuxZseries, ArchOsx64Bit, ArchOsxArm64Bit, ArchWindows64Bit:
-		return true
+func (e *AccessLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
 	}
-	return false
+	return e.UnmarshalGQL(s)
 }
 
-func (e Arch) String() string {
-	return string(e)
-}
-
-func (e *Arch) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = Arch(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid Arch", str)
-	}
-	return nil
-}
-
-func (e Arch) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type BootstrapMethod string
-
-const (
-	BootstrapMethodLegacySSH BootstrapMethod = "LEGACY_SSH"
-	BootstrapMethodSSH       BootstrapMethod = "SSH"
-	BootstrapMethodUserData  BootstrapMethod = "USER_DATA"
-)
-
-var AllBootstrapMethod = []BootstrapMethod{
-	BootstrapMethodLegacySSH,
-	BootstrapMethodSSH,
-	BootstrapMethodUserData,
-}
-
-func (e BootstrapMethod) IsValid() bool {
-	switch e {
-	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodUserData:
-		return true
-	}
-	return false
-}
-
-func (e BootstrapMethod) String() string {
-	return string(e)
-}
-
-func (e *BootstrapMethod) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = BootstrapMethod(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid BootstrapMethod", str)
-	}
-	return nil
-}
-
-func (e BootstrapMethod) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type CommunicationMethod string
-
-const (
-	CommunicationMethodLegacySSH CommunicationMethod = "LEGACY_SSH"
-	CommunicationMethodSSH       CommunicationMethod = "SSH"
-	CommunicationMethodRPC       CommunicationMethod = "RPC"
-)
-
-var AllCommunicationMethod = []CommunicationMethod{
-	CommunicationMethodLegacySSH,
-	CommunicationMethodSSH,
-	CommunicationMethodRPC,
-}
-
-func (e CommunicationMethod) IsValid() bool {
-	switch e {
-	case CommunicationMethodLegacySSH, CommunicationMethodSSH, CommunicationMethodRPC:
-		return true
-	}
-	return false
-}
-
-func (e CommunicationMethod) String() string {
-	return string(e)
-}
-
-func (e *CommunicationMethod) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = CommunicationMethod(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid CommunicationMethod", str)
-	}
-	return nil
-}
-
-func (e CommunicationMethod) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type DispatcherVersion string
-
-const (
-	DispatcherVersionRevisedWithDependencies DispatcherVersion = "REVISED_WITH_DEPENDENCIES"
-)
-
-var AllDispatcherVersion = []DispatcherVersion{
-	DispatcherVersionRevisedWithDependencies,
-}
-
-func (e DispatcherVersion) IsValid() bool {
-	switch e {
-	case DispatcherVersionRevisedWithDependencies:
-		return true
-	}
-	return false
-}
-
-func (e DispatcherVersion) String() string {
-	return string(e)
-}
-
-func (e *DispatcherVersion) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = DispatcherVersion(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid DispatcherVersion", str)
-	}
-	return nil
-}
-
-func (e DispatcherVersion) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+func (e AccessLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type DistroOnSaveOperation string
@@ -944,6 +834,20 @@ func (e DistroOnSaveOperation) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+func (e *DistroOnSaveOperation) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e DistroOnSaveOperation) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type DistroSettingsAccess string
 
 const (
@@ -989,92 +893,18 @@ func (e DistroSettingsAccess) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type FeedbackRule string
-
-const (
-	FeedbackRuleWaitsOverThresh FeedbackRule = "WAITS_OVER_THRESH"
-	FeedbackRuleNoFeedback      FeedbackRule = "NO_FEEDBACK"
-	FeedbackRuleDefault         FeedbackRule = "DEFAULT"
-)
-
-var AllFeedbackRule = []FeedbackRule{
-	FeedbackRuleWaitsOverThresh,
-	FeedbackRuleNoFeedback,
-	FeedbackRuleDefault,
-}
-
-func (e FeedbackRule) IsValid() bool {
-	switch e {
-	case FeedbackRuleWaitsOverThresh, FeedbackRuleNoFeedback, FeedbackRuleDefault:
-		return true
+func (e *DistroSettingsAccess) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
 	}
-	return false
+	return e.UnmarshalGQL(s)
 }
 
-func (e FeedbackRule) String() string {
-	return string(e)
-}
-
-func (e *FeedbackRule) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = FeedbackRule(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid FeedbackRule", str)
-	}
-	return nil
-}
-
-func (e FeedbackRule) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type FinderVersion string
-
-const (
-	FinderVersionLegacy    FinderVersion = "LEGACY"
-	FinderVersionParallel  FinderVersion = "PARALLEL"
-	FinderVersionPipeline  FinderVersion = "PIPELINE"
-	FinderVersionAlternate FinderVersion = "ALTERNATE"
-)
-
-var AllFinderVersion = []FinderVersion{
-	FinderVersionLegacy,
-	FinderVersionParallel,
-	FinderVersionPipeline,
-	FinderVersionAlternate,
-}
-
-func (e FinderVersion) IsValid() bool {
-	switch e {
-	case FinderVersionLegacy, FinderVersionParallel, FinderVersionPipeline, FinderVersionAlternate:
-		return true
-	}
-	return false
-}
-
-func (e FinderVersion) String() string {
-	return string(e)
-}
-
-func (e *FinderVersion) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = FinderVersion(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid FinderVersion", str)
-	}
-	return nil
-}
-
-func (e FinderVersion) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+func (e DistroSettingsAccess) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type HostAccessLevel string
@@ -1118,43 +948,18 @@ func (e HostAccessLevel) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type HostAllocatorVersion string
-
-const (
-	HostAllocatorVersionUtilization HostAllocatorVersion = "UTILIZATION"
-)
-
-var AllHostAllocatorVersion = []HostAllocatorVersion{
-	HostAllocatorVersionUtilization,
-}
-
-func (e HostAllocatorVersion) IsValid() bool {
-	switch e {
-	case HostAllocatorVersionUtilization:
-		return true
+func (e *HostAccessLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
 	}
-	return false
+	return e.UnmarshalGQL(s)
 }
 
-func (e HostAllocatorVersion) String() string {
-	return string(e)
-}
-
-func (e *HostAllocatorVersion) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = HostAllocatorVersion(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid HostAllocatorVersion", str)
-	}
-	return nil
-}
-
-func (e HostAllocatorVersion) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+func (e HostAccessLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type HostSortBy string
@@ -1210,6 +1015,20 @@ func (e HostSortBy) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+func (e *HostSortBy) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e HostSortBy) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type MetStatus string
 
 const (
@@ -1255,86 +1074,18 @@ func (e MetStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type OverallocatedRule string
-
-const (
-	OverallocatedRuleTerminate OverallocatedRule = "TERMINATE"
-	OverallocatedRuleIgnore    OverallocatedRule = "IGNORE"
-	OverallocatedRuleDefault   OverallocatedRule = "DEFAULT"
-)
-
-var AllOverallocatedRule = []OverallocatedRule{
-	OverallocatedRuleTerminate,
-	OverallocatedRuleIgnore,
-	OverallocatedRuleDefault,
-}
-
-func (e OverallocatedRule) IsValid() bool {
-	switch e {
-	case OverallocatedRuleTerminate, OverallocatedRuleIgnore, OverallocatedRuleDefault:
-		return true
+func (e *MetStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
 	}
-	return false
+	return e.UnmarshalGQL(s)
 }
 
-func (e OverallocatedRule) String() string {
-	return string(e)
-}
-
-func (e *OverallocatedRule) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = OverallocatedRule(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid OverallocatedRule", str)
-	}
-	return nil
-}
-
-func (e OverallocatedRule) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type PlannerVersion string
-
-const (
-	PlannerVersionTunable PlannerVersion = "TUNABLE"
-)
-
-var AllPlannerVersion = []PlannerVersion{
-	PlannerVersionTunable,
-}
-
-func (e PlannerVersion) IsValid() bool {
-	switch e {
-	case PlannerVersionTunable:
-		return true
-	}
-	return false
-}
-
-func (e PlannerVersion) String() string {
-	return string(e)
-}
-
-func (e *PlannerVersion) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = PlannerVersion(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid PlannerVersion", str)
-	}
-	return nil
-}
-
-func (e PlannerVersion) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+func (e MetStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type ProjectPermission string
@@ -1382,6 +1133,20 @@ func (e *ProjectPermission) UnmarshalGQL(v any) error {
 
 func (e ProjectPermission) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ProjectPermission) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ProjectPermission) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type ProjectSettingsSection string
@@ -1449,49 +1214,18 @@ func (e ProjectSettingsSection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type Provider string
-
-const (
-	ProviderDocker      Provider = "DOCKER"
-	ProviderEc2Fleet    Provider = "EC2_FLEET"
-	ProviderEc2OnDemand Provider = "EC2_ON_DEMAND"
-	ProviderStatic      Provider = "STATIC"
-)
-
-var AllProvider = []Provider{
-	ProviderDocker,
-	ProviderEc2Fleet,
-	ProviderEc2OnDemand,
-	ProviderStatic,
-}
-
-func (e Provider) IsValid() bool {
-	switch e {
-	case ProviderDocker, ProviderEc2Fleet, ProviderEc2OnDemand, ProviderStatic:
-		return true
+func (e *ProjectSettingsSection) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
 	}
-	return false
+	return e.UnmarshalGQL(s)
 }
 
-func (e Provider) String() string {
-	return string(e)
-}
-
-func (e *Provider) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = Provider(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid Provider", str)
-	}
-	return nil
-}
-
-func (e Provider) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+func (e ProjectSettingsSection) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type RequiredStatus string
@@ -1537,47 +1271,18 @@ func (e RequiredStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type RoundingRule string
-
-const (
-	RoundingRuleDown    RoundingRule = "DOWN"
-	RoundingRuleUp      RoundingRule = "UP"
-	RoundingRuleDefault RoundingRule = "DEFAULT"
-)
-
-var AllRoundingRule = []RoundingRule{
-	RoundingRuleDown,
-	RoundingRuleUp,
-	RoundingRuleDefault,
-}
-
-func (e RoundingRule) IsValid() bool {
-	switch e {
-	case RoundingRuleDown, RoundingRuleUp, RoundingRuleDefault:
-		return true
+func (e *RequiredStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
 	}
-	return false
+	return e.UnmarshalGQL(s)
 }
 
-func (e RoundingRule) String() string {
-	return string(e)
-}
-
-func (e *RoundingRule) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = RoundingRule(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid RoundingRule", str)
-	}
-	return nil
-}
-
-func (e RoundingRule) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+func (e RequiredStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type SortDirection string
@@ -1619,6 +1324,20 @@ func (e *SortDirection) UnmarshalGQL(v any) error {
 
 func (e SortDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SortDirection) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SortDirection) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type SpawnHostStatusActions string
@@ -1664,6 +1383,20 @@ func (e SpawnHostStatusActions) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+func (e *SpawnHostStatusActions) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SpawnHostStatusActions) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type TaskHistoryDirection string
 
 const (
@@ -1705,6 +1438,20 @@ func (e TaskHistoryDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+func (e *TaskHistoryDirection) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TaskHistoryDirection) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type TaskQueueItemType string
 
 const (
@@ -1744,6 +1491,20 @@ func (e *TaskQueueItemType) UnmarshalGQL(v any) error {
 
 func (e TaskQueueItemType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TaskQueueItemType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TaskQueueItemType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type TaskSortCategory string
@@ -1793,6 +1554,20 @@ func (e TaskSortCategory) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+func (e *TaskSortCategory) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TaskSortCategory) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type TestSortCategory string
 
 const (
@@ -1838,4 +1613,18 @@ func (e *TestSortCategory) UnmarshalGQL(v any) error {
 
 func (e TestSortCategory) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TestSortCategory) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TestSortCategory) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

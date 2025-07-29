@@ -2,11 +2,16 @@
   "distro": [
     {
       "_id": "rhel71-power8-large",
-      "aliases": ["rhel71-power8", "rhel71-power8-build"],
+      "aliases": [
+        "rhel71-power8",
+        "rhel71-power8-build"
+      ],
       "arch": "linux_ppc64le",
       "disabled": false,
       "work_dir": "/data/mci",
-      "mountpoints": ["/"],
+      "mountpoints": [
+        "/"
+      ],
       "provider": "static",
       "provider_settings": [
         {
@@ -20,6 +25,7 @@
           ]
         }
       ],
+      "provider_account": "aws",
       "user": "mci-exec",
       "bootstrap_settings": {
         "method": "legacy-ssh",
@@ -106,13 +112,20 @@
     {
       "_id": "host_1",
       "container_images": null,
-      "creation_time": { "$date": "2018-09-19T13:32:26.568Z" },
+      "creation_time": {
+        "$date": "2018-09-19T13:32:26.568Z"
+      },
       "distro": {
         "_id": "rhel71-power8-large",
-        "aliases": ["rhel71-power8", "rhel71-power8-build"],
+        "aliases": [
+          "rhel71-power8",
+          "rhel71-power8-build"
+        ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
-        "mountpoints": ["/"],
+        "mountpoints": [
+          "/"
+        ],
         "provider": "static",
         "provider_settings": [
           {
@@ -126,6 +139,7 @@
             ]
           }
         ],
+        "provider_account": "",
         "user": "mci-exec",
         "bootstrap_settings": {
           "method": "legacy-ssh",
@@ -161,32 +175,54 @@
             "value": "kill -- -$(ps opgid= %v)"
           }
         ],
-        "finder_settings": { "version": "legacy" },
+        "finder_settings": {
+          "version": "legacy"
+        },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
-        "dispatcher_settings": { "version": "revised-with-dependencies" },
+        "dispatcher_settings": {
+          "version": "revised-with-dependencies"
+        },
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "note": "",
         "is_virtual_workstation": false,
         "is_cluster": false,
-        "home_volume_settings": { "format_command": "" },
+        "home_volume_settings": {
+          "format_command": ""
+        },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "host_type": "static",
@@ -195,7 +231,9 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "running",
       "tag": "",
@@ -204,13 +242,20 @@
     {
       "_id": "host_2",
       "container_images": null,
-      "creation_time": { "$date": "2018-09-19T13:32:26.568Z" },
+      "creation_time": {
+        "$date": "2018-09-19T13:32:26.568Z"
+      },
       "distro": {
         "_id": "rhel71-power8-large",
-        "aliases": ["rhel71-power8", "rhel71-power8-build"],
+        "aliases": [
+          "rhel71-power8",
+          "rhel71-power8-build"
+        ],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
-        "mountpoints": ["/"],
+        "mountpoints": [
+          "/"
+        ],
         "provider": "static",
         "provider_settings": [
           {
@@ -224,6 +269,7 @@
             ]
           }
         ],
+        "provider_account": "",
         "user": "mci-exec",
         "bootstrap_settings": {
           "method": "legacy-ssh",
@@ -259,32 +305,54 @@
             "value": "kill -- -$(ps opgid= %v)"
           }
         ],
-        "finder_settings": { "version": "legacy" },
+        "finder_settings": {
+          "version": "legacy"
+        },
         "planner_settings": {
           "version": "tunable",
-          "target_time": { "$numberLong": "0" },
+          "target_time": {
+            "$numberLong": "0"
+          },
           "group_versions": false,
-          "patch_zipper_factor": { "$numberLong": "0" },
-          "patch_time_in_queue_factor": { "$numberLong": "0" },
-          "commit_queue_factor": { "$numberLong": "0" },
-          "mainline_time_in_queue_factor": { "$numberLong": "0" },
-          "expected_runtime_factor": { "$numberLong": "0" }
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          }
         },
-        "dispatcher_settings": { "version": "revised-with-dependencies" },
+        "dispatcher_settings": {
+          "version": "revised-with-dependencies"
+        },
         "host_allocator_settings": {
           "version": "utilization",
           "minimum_hosts": 0,
           "maximum_hosts": 0,
-          "acceptable_host_idle_time": { "$numberLong": "0" }
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          }
         },
         "disable_shallow_clone": false,
         "note": "",
         "is_virtual_workstation": false,
         "is_cluster": false,
-        "home_volume_settings": { "format_command": "" },
+        "home_volume_settings": {
+          "format_command": ""
+        },
         "icecream_settings": {}
       },
-      "expiration_time": { "$date": "0001-01-01T00:00:00Z" },
+      "expiration_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "has_containers": false,
       "host_id": "rhel71-ppc-1.pic.build.10gen.cc",
       "host_type": "static",
@@ -293,7 +361,9 @@
       "project": "",
       "provision_options": null,
       "provisioned": true,
-      "start_time": { "$date": "0001-01-01T00:00:00Z" },
+      "start_time": {
+        "$date": "0001-01-01T00:00:00Z"
+      },
       "started_by": "mci",
       "status": "running",
       "tag": "",

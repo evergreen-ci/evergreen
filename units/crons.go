@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -37,6 +38,7 @@ const (
 	podDefinitionCreationQueueGroup = "service.pod.definition.create"
 	podCreationQueueGroup           = "service.pod.create"
 	spawnHostModificationQueueGroup = "service.spawnhost.modify"
+	hostIPAssociationQueueGroup     = "service.host.ip.associate"
 )
 
 type cronJobFactory func(context.Context, evergreen.Environment, time.Time) ([]amboy.Job, error)
@@ -238,7 +240,7 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 		}
 		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
-			TerminationReason: "host is expired, decommissioned, or failed to provision",
+			TerminationReason: "host is expired, decommissioned, or failed to provision (this is not an error)",
 		}))
 	}
 
@@ -821,6 +823,7 @@ func periodicNotificationJobs(ctx context.Context, _ evergreen.Environment, ts t
 	return []amboy.Job{
 		NewSpawnhostExpirationWarningsJob(ts.Format(TSFormat)),
 		NewVolumeExpirationWarningsJob(ts.Format(TSFormat)),
+		NewAlertableInstanceTypeNotifyJob(ts.Format(TSFormat)),
 	}, nil
 }
 
@@ -1045,6 +1048,28 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
+func hostIPAssociationJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+
+	if flags.ElasticIPsDisabled {
+		return nil, nil
+	}
+
+	hosts, err := host.FindByNeedsIPAssociation(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding hosts that need to be associated with their IP address")
+	}
+
+	jobs := make([]amboy.Job, 0, len(hosts))
+	for _, h := range hosts {
+		jobs = append(jobs, NewHostIPAssociationJob(env, &h, ts.Format(TSFormat)))
+	}
+	return jobs, nil
+}
+
 // podAllocatorJobs returns the queue operation to enqueue jobs to
 // allocate pods to tasks and disable container tasks that exceed the stale
 // undispatched threshold.
@@ -1174,6 +1199,29 @@ func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.
 	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
 }
 
+func populateIPAddressAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewIPAddressAllocatorJob(env, utility.RoundPartOfMinute(0).Format(TSFormat)))
+	}
+}
+
+func PopulateDistroAutoTuneJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		distrosToAutoTune, err := distro.FindByCanAutoTune(ctx)
+		if err != nil {
+			return errors.Wrap(err, "finding distros that can be auto-tuned")
+		}
+		catcher := grip.NewBasicCatcher()
+		for _, d := range distrosToAutoTune {
+			ts := utility.RoundPartOfDay(0).Format(TSFormat)
+			if err := amboy.EnqueueUniqueJob(ctx, queue, NewDistroAutoTuneJob(d.Id, ts)); err != nil {
+				catcher.Wrapf(err, "enqueueing auto-tune job for distro '%s'", d.Id)
+			}
+		}
+		return catcher.Resolve()
+	}
+}
+
 func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
 	appCtx, _ := env.Context()
 	queueGroup, err := env.RemoteQueueGroup().Get(appCtx, queueGroupName)
@@ -1186,4 +1234,24 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 	}
 
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
+}
+
+func logGithubAPILimit() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		limit, err := thirdparty.CheckGithubAPILimit(ctx)
+		if err != nil {
+			return errors.Wrap(err, "checking GitHub API rate limit")
+		}
+
+		grip.Info(message.Fields{
+			"message":           "GitHub API rate limit",
+			"remaining":         limit.Core.Remaining,
+			"limit":             limit.Core.Limit,
+			"reset":             limit.Core.Reset.Time,
+			"minutes_remaining": time.Until(limit.Core.Reset.Time).Minutes(),
+			"percentage":        float32(limit.Core.Remaining) / float32(limit.Core.Limit),
+		})
+
+		return nil
+	}
 }

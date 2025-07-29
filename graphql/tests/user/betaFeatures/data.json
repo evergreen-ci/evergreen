@@ -12,9 +12,7 @@
           "last_known_as": "bob_smith_1"
         }
       },
-      "beta_features": {
-        "spruce_waterfall_enabled": true
-      }
+      "beta_features": {}
     },
     {
       "_id": "jane.smith",

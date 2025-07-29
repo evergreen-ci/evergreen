@@ -241,10 +241,6 @@ func statsToUpdatePipeline(projectID string, requester []string, start, end time
 			statsToUpdateDayKey:       bson.M{"$dateFromString": bson.M{"dateString": "$_id." + statsToUpdateDayKey, "format": "%Y-%m-%d"}},
 			statsToUpdateTasksKey:     1,
 		}},
-		{"$sort": bson.D{
-			{Key: statsToUpdateDayKey, Value: 1},
-			{Key: statsToUpdateRequesterKey, Value: 1},
-		}},
 	}
 }
 
@@ -574,11 +570,11 @@ func (pf PaginationField) GetNextExpression() bson.M {
 //////////////////////////////////////////////////////////////////
 
 // aggregateIntoCollection runs an aggregation pipeline on a collection and bulk upserts all the documents
-// into the target collection.
+// into the target collection, using the given hint.
 func aggregateIntoCollection(ctx context.Context, collection string, pipeline []bson.M, outputCollection string) error {
 	env := evergreen.GetEnvironment()
-
-	cursor, err := env.DB().Collection(collection, options.Collection().SetReadPreference(readpref.SecondaryPreferred())).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
+	opts := options.Aggregate().SetAllowDiskUse(true)
+	cursor, err := env.DB().Collection(collection, options.Collection().SetReadPreference(readpref.SecondaryPreferred())).Aggregate(ctx, pipeline, opts)
 	if err != nil {
 		return errors.Wrap(err, "running aggregation")
 	}

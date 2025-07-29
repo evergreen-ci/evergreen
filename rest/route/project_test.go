@@ -796,6 +796,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	defer cancel()
 	s.route.key = "projectC"
 	s.route.limit = 1
+	s.route.url = "http://evergreen.example.net/"
 
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
@@ -948,7 +949,7 @@ func TestGetProjectTasks(t *testing.T) {
 	h := getProjectTasksHandler{
 		projectName: "p1",
 		taskName:    "t1",
-		opts: serviceModel.GetProjectTasksOpts{
+		opts: model.GetProjectTasksOpts{
 			Limit: 10,
 		},
 	}
@@ -1146,140 +1147,6 @@ func TestDeleteProject(t *testing.T) {
 	pdh.projectName = nonTrackingProject.Id
 	resp = pdh.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-}
-
-func TestAttachProjectToRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
-		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, user.Collection,
-		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	u := &user.DBUser{Id: "me"}
-	assert.NoError(t, u.Insert(t.Context()))
-
-	pRef := serviceModel.ProjectRef{
-		Id:         "project1",
-		Identifier: "projectIdent",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "main",
-		RepoRefId:  "hello",
-		Enabled:    true,
-		Admins:     []string{"me"},
-	}
-	assert.NoError(t, pRef.Insert(t.Context()))
-	projVars := serviceModel.ProjectVars{
-		Id: "project1",
-	}
-	assert.NoError(t, projVars.Insert(t.Context()))
-
-	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/project1/attach_to_repo", nil)
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
-
-	h := attachProjectToRepoHandler{}
-	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId is populated
-
-	pRef.RepoRefId = ""
-	assert.NoError(t, pRef.Replace(t.Context()))
-	assert.NoError(t, h.Parse(ctx, req))
-
-	assert.NotNil(t, h.user)
-	assert.NotNil(t, h.project)
-	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(t.Context(), h.project.Owner, h.project.Repo)
-	assert.NoError(t, err)
-	assert.Nil(t, repoRef) // repo ref doesn't exist before running
-
-	resp := h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.NotNil(t, resp.Data())
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	p, err := serviceModel.FindMergedProjectRef(t.Context(), "projectIdent", "", false)
-	assert.NoError(t, err)
-	assert.NotNil(t, p)
-	assert.True(t, p.UseRepoSettings())
-	assert.NotEmpty(t, p.RepoRefId)
-	assert.Contains(t, p.Admins, "me")
-
-	u, err = user.FindOneByIdContext(t.Context(), "me")
-	assert.NoError(t, err)
-	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
-	hasPermission, err := serviceModel.UserHasRepoViewPermission(t.Context(), u, p.RepoRefId)
-	assert.NoError(t, err)
-	assert.True(t, hasPermission)
-
-	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(t.Context(), h.project.Owner, h.project.Repo)
-	assert.NoError(t, err)
-	assert.NotNil(t, repoRef)
-}
-
-func TestDetachProjectFromRepo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
-		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
-		evergreen.ScopeCollection, evergreen.RoleCollection))
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	u := &user.DBUser{Id: "me"}
-	assert.NoError(t, u.Insert(t.Context()))
-
-	pRef := serviceModel.ProjectRef{
-		Id:         "project1",
-		Identifier: "projectIdent",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "main",
-		Enabled:    true,
-		Admins:     []string{"me"},
-	}
-	assert.NoError(t, pRef.Insert(t.Context()))
-	projVars := serviceModel.ProjectVars{
-		Id: "project1",
-	}
-	assert.NoError(t, projVars.Insert(t.Context()))
-
-	repoRef := &serviceModel.RepoRef{ProjectRef: serviceModel.ProjectRef{
-		Id:                    "myRepo",
-		Owner:                 "evergreen-ci",
-		Repo:                  "evergreen",
-		GitTagVersionsEnabled: utility.TruePtr(),
-	}}
-	assert.NoError(t, repoRef.Add(t.Context(), u))
-	// assert that user _did_ have the right roles
-	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(repoRef.Id))
-
-	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/project1/detach_from_repo", nil)
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
-
-	h := detachProjectFromRepoHandler{}
-	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId isn't populated
-
-	pRef.RepoRefId = repoRef.Id
-	assert.NoError(t, pRef.Replace(t.Context()))
-	assert.NoError(t, h.Parse(ctx, req))
-
-	assert.NotNil(t, h.user)
-	assert.NotNil(t, h.project)
-
-	resp := h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.NotNil(t, resp.Data())
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	p, err := serviceModel.FindMergedProjectRef(t.Context(), "projectIdent", "", false)
-	assert.NoError(t, err)
-	assert.NotNil(t, p)
-	assert.False(t, p.UseRepoSettings())
-	assert.Empty(t, p.RepoRefId)
-	assert.Contains(t, p.Admins, "me")
-	assert.True(t, p.IsGitTagVersionsEnabled()) // saved from the repo before detaching
-
-	u, err = user.FindOneByIdContext(t.Context(), "me")
-	assert.NoError(t, err)
-	assert.NotNil(t, u)
-	assert.NotContains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
 }
 
 func TestGetProjectTaskExecutions(t *testing.T) {

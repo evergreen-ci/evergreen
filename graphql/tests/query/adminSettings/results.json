@@ -1,0 +1,323 @@
+{
+  "tests": [
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": {
+          "adminSettings": null
+        },
+        "errors": [
+          {
+            "message": "User 'regular_user' lacks required admin permissions",
+            "path": ["adminSettings"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "announcements.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "banner": "This is an important notification",
+            "bannerTheme": "IMPORTANT"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "external_communications.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "jira": {
+              "email": "user@example.com",
+              "host": "jira.example.com",
+              "personalAccessToken": "token"
+            },
+            "slack": {
+              "options": {
+                "channel": "#cabc123",
+                "hostname": "evergreen.example.com",
+                "name": "testName",
+                "username": "@testUser",
+                "basicMetadata": true,
+                "fields": true,
+                "allFields": true,
+                "fieldsSet": {
+                  "field1": true,
+                  "field2": false
+                }
+              },
+              "token": "123456",
+              "level": "EMERGENCY",
+              "name": "test-app"
+            },
+            "splunk": {
+              "splunkConnectionInfo": { 
+                "serverUrl": "testServer",
+                "token": "testToken",
+                "channel": "42"
+              }
+            },
+            "runtimeEnvironments": {
+              "baseUrl": "https://example.com",
+              "apiKey": "runtimeAPIKey"
+            },
+            "testSelection": {
+              "url": "https://example.com"
+            },
+            "fws": {
+              "url": "https://fws.example.com"
+            },
+            "cedar": {
+              "dbName": "cedar",
+              "dbUrl": "mongodb://localhost:27017/cedar"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "auth.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "authConfig": {
+              "okta": {
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "issuer": "issuer",
+                "scopes": ["option1", "option2"],
+                "userGroup": "user_group",
+                "expireAfterMinutes": 0
+              },
+              "naive": {
+                "users": [
+                  {
+                    "username": "admin",
+                    "displayName": "Evergreen Admin",
+                    "password": "password",
+                    "email": ""
+                  },
+                  {
+                    "username": "regular",
+                    "displayName": "Regular User",
+                    "password": "password",
+                    "email": ""
+                  },
+                  {
+                    "username": "privileged",
+                    "displayName": "Privileged User",
+                    "password": "password",
+                    "email": ""
+                  }
+                ]
+              },
+              "github": {
+                "appId": 1234,
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "defaultOwner": "default_owner",
+                "defaultRepo": "default_repo",
+                "organization": "organization",
+                "users": []
+              },
+              "multi": {
+                "readWrite": ["admin", "privileged"],
+                "readOnly": ["admin", "privileged", "regular"]
+              },
+              "kanopy": {
+                "headerName": "",
+                "issuer": "https://kanopy.com",
+                "keysetURL": "https://kanopy.com/keyset"
+              },
+              "preferredType": "NAIVE",
+              "backgroundReauthMinutes": 0,
+              "allowServiceUsers": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "runners.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "notify": {
+              "ses": {
+                "senderAddress": "evg-sender@email.com"
+              }
+            },
+            "hostInit": {
+              "hostThrottle": 32,
+              "provisioningThrottle": 100,
+              "cloudStatusBatchSize": 100,
+              "maxTotalDynamicHosts": 1000
+            },
+            "taskLimits": {
+              "maxTasksPerVersion": 500,
+              "maxTaskExecution": 5,
+              "maxDailyAutomaticRestarts": 0,
+              "maxIncludesPerVersion": 10,
+              "maxHourlyPatchTasks": 500,
+              "maxPendingGeneratedTasks": 0,
+              "maxGenerateTaskJSONSize": 5,
+              "maxConcurrentLargeParserProjectTasks": 1,
+              "maxDegradedModeConcurrentLargeParserProjectTasks": 1,
+              "maxDegradedModeParserProjectSize": 10,
+              "maxParserProjectSize": 0,
+              "maxExecTimeoutSecs": 10000
+            },
+            "scheduler": {
+              "taskFinder": "LEGACY",
+              "patchFactor": 50,
+              "patchTimeInQueueFactor": 20,
+              "commitQueueFactor": 0,
+              "mainlineTimeInQueueFactor": 0,
+              "expectedRuntimeFactor": 10,
+              "generateTaskFactor": 50,
+              "numDependentsFactor": 5,
+              "stepbackTaskFactor": 10,
+              "hostAllocator": "UTILIZATION",
+              "hostAllocatorRoundingRule": "DOWN",
+              "hostAllocatorFeedbackRule": "NO_FEEDBACK",
+              "hostsOverallocatedRule": "IGNORE",
+              "futureHostFraction": 0.5,
+              "cacheDurationSeconds": 60,
+              "targetTimeSeconds": 60,
+              "acceptableHostIdleTimeSeconds": 30,
+              "groupVersions": true
+            },
+            "repotracker": {
+              "numNewRepoRevisionsToFetch": 2,
+              "maxRepoRevisionsToSearch": 20,
+              "maxConcurrentRequests": 0
+            },
+            "podLifecycle": {
+              "maxParallelPodRequests": 100,
+              "maxPodDefinitionCleanupRate": 0,
+              "maxSecretCleanupRate": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "web.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "api": {
+              "httpListenAddr": "",
+              "url": "http://localhost:9090",
+              "corpUrl": ""
+            },
+            "ui": {
+              "url": "http://localhost:9090",
+              "helpUrl": "",
+              "uiv2Url": "http://localhost:3000",
+              "parsleyUrl": "http://localhost:4173",
+              "httpListenAddr": ":9090",
+              "secret": "this is a secret",
+              "defaultProject": "evergreen",
+              "corsOrigins": [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:4173"
+              ],
+              "fileStreamingContentTypes": [
+                "application/json",
+                "text/plain",
+                "text/csv"
+              ],
+              "loginDomain": "",
+              "userVoice": "https://uservoice.com",
+              "csrfKey": "",
+              "cacheTemplates": false,
+              "stagingEnvironment": "",
+              "betaFeatures": {
+                "spruceWaterfallEnabled": true
+              }
+            },
+            "disabledGQLQueries": []
+          }
+        }
+      }
+    },
+    {
+      "query_file": "background_processing.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "amboy": {
+              "name": "amboy-config",
+              "singleName": "amboy-single",
+              "poolSizeLocal": 10,
+              "poolSizeRemote": 10,
+              "localStorage": 100,
+              "groupDefaultWorkers": 1,
+              "groupBackgroundCreateFrequencyMinutes": 10,
+              "groupPruneFrequencyMinutes": 10,
+              "groupTTLMinutes": 100,
+              "lockTimeoutMinutes": 10,
+              "sampleSize": 100,
+              "retry": {
+                "numWorkers": 10,
+                "maxCapacity": -1,
+                "maxRetryAttempts": 10,
+                "maxRetryTimeSeconds": 30,
+                "retryBackoffSeconds": 30,
+                "staleRetryingMonitorIntervalSeconds": 30
+              },
+              "namedQueues": [
+                {
+                  "name": "amboy.queue.1",
+                  "regexp": "",
+                  "numWorkers": 2,
+                  "sampleSize": 10,
+                  "lockTimeoutSeconds": 0
+                },
+                {
+                  "name": "amboy.queue.2",
+                  "regexp": "",
+                  "numWorkers": 2,
+                  "sampleSize": 10,
+                  "lockTimeoutSeconds": 30
+                }
+              ]
+            },
+            "amboyDB": {
+              "database": "amboy",
+              "url": "amboy-db-connection-url"
+            },
+            "loggerConfig": {
+              "buffer": {
+                "useAsync": true,
+                "durationSeconds": 10,
+                "count": 20,
+                "incomingBufferFactor": 50
+              },
+              "defaultLevel": "INFO",
+              "thresholdLevel": "DEBUG",
+              "logkeeperURL": "logkeeper-url",
+              "redactKeys": ["secret", "password"]
+            },
+            "notify": {
+              "bufferIntervalSeconds": 30,
+              "bufferTargetPerInterval": 30
+            },
+            "triggers": {
+              "generateTaskDistro": "archlinux-test"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

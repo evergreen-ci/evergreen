@@ -27,3 +27,8 @@ func CheckURL(str string) error {
 	}
 	return nil
 }
+
+// HttpsUrl appends "https://" to the given URL string.
+func HttpsUrl(url string) string {
+	return "https://" + url
+}

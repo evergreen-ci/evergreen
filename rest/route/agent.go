@@ -32,36 +32,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GET /rest/v2/agent/cedar_config
-type agentCedarConfig struct {
-	config evergreen.CedarConfig
+// GET /rest/v2/agent/perf_monitoring_url
+type agentPerfURL struct {
+	perfURL string
 }
 
-func makeAgentCedarConfig(config evergreen.CedarConfig) *agentCedarConfig {
-	return &agentCedarConfig{
-		config: config,
+func makeGetPerfURL(perfURL string) *agentPerfURL {
+	return &agentPerfURL{
+		perfURL: perfURL,
 	}
 }
 
-func (h *agentCedarConfig) Factory() gimlet.RouteHandler {
-	return &agentCedarConfig{
-		config: h.config,
+func (h *agentPerfURL) Factory() gimlet.RouteHandler {
+	return &agentPerfURL{
+		perfURL: h.perfURL,
 	}
 }
 
-func (*agentCedarConfig) Parse(_ context.Context, _ *http.Request) error { return nil }
+func (*agentPerfURL) Parse(_ context.Context, _ *http.Request) error { return nil }
 
-func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
-	return gimlet.NewJSONResponse(apimodels.CedarConfig{
-		BaseURL:      h.config.BaseURL,
-		GRPCBaseURL:  h.config.GRPCBaseURL,
-		RPCPort:      h.config.RPCPort,
-		Username:     h.config.User,
-		APIKey:       h.config.APIKey,
-		Insecure:     h.config.Insecure,
-		SPSURL:       h.config.SPSURL,
-		SPSKanopyURL: h.config.SPSKanopyURL,
-	})
+func (h *agentPerfURL) Run(ctx context.Context) gimlet.Responder {
+	return gimlet.NewTextResponse(h.perfURL)
 }
 
 // GET /rest/v2/agent/setup
@@ -373,15 +364,8 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
-
-	const ghTokenLifetime = 50 * time.Minute
-	appToken, err := githubapp.CreateGitHubAppAuth(h.settings).CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating GitHub app token"))
-	}
-
 	knownHosts := h.settings.Expansions[evergreen.GithubKnownHosts]
-	e, err := model.PopulateExpansions(ctx, t, foundHost, appToken, knownHosts)
+	e, err := model.PopulateExpansions(ctx, t, foundHost, knownHosts)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
 	}
@@ -707,7 +691,7 @@ func (h *setTaskResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = t.SetResultsInfo(ctx, h.info.Service, h.info.Failed); err != nil {
+	if err = t.SetResultsInfo(ctx, h.info.Failed); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting results info for task '%s'", h.taskID))
 	}
 
@@ -790,20 +774,20 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /task/{task_id}/test_results
 type attachTestResultsHandler struct {
-	settings *evergreen.Settings
-	results  []testresult.TestResult
-	taskID   string
+	env    evergreen.Environment
+	body   apimodels.AttachTestResultsRequest
+	taskID string
 }
 
-func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
+func makeAttachTestResults(env evergreen.Environment) gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		settings: settings,
+		env: env,
 	}
 }
 
 func (h *attachTestResultsHandler) Factory() gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		settings: h.settings,
+		env: h.env,
 	}
 }
 
@@ -811,7 +795,7 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
-	err := utility.ReadJSON(r.Body, &h.results)
+	err := utility.ReadJSON(r.Body, &h.body)
 	if err != nil {
 		return errors.Wrap(err, "reading test results from JSON request body")
 	}
@@ -819,14 +803,37 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	flags, err := evergreen.GetServiceFlags(ctx)
+	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
 	}
-	if flags.EvergreenTestResultsDisabled {
-		return gimlet.NewJSONResponse(struct{}{})
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
 	}
-	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
+	var record testresult.DbTaskTestResults
+	if !t.HasTestResults {
+		record = testresult.DbTaskTestResults{
+			ID:        h.body.Info.ID(),
+			Info:      h.body.Info,
+			CreatedAt: h.body.CreatedAt,
+		}
+		_, err = h.env.CedarDB().Collection(testresult.Collection).InsertOne(ctx, record)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting test result record"))
+		}
+	} else {
+		err = h.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(h.body.Info.TaskID, h.body.Info.Execution)).Decode(&record)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding test result record"))
+		}
+	}
+	err = task.AppendTestResultMetadata(ctx, t, h.env, h.body.FailedSample, h.body.Stats.FailedCount, h.body.Stats.TotalCount, record)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
+	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -979,6 +986,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = model.MarkStart(ctx, t, &updates); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marking task '%s' started", t.Id))
 	}
+	model.UpdateOtelMetadata(ctx, t, h.taskStartInfo.DiskDevices, h.taskStartInfo.TraceID)
 
 	if len(updates.PatchNewStatus) != 0 {
 		event.LogPatchStateChangeEvent(ctx, t.Version, updates.PatchNewStatus)
@@ -1128,8 +1136,7 @@ func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
 
 // GET /task/{task_id}/patch
 type servePatchHandler struct {
-	taskID  string
-	patchID string
+	taskID string
 }
 
 func makeServePatch() gimlet.RouteHandler {
@@ -1144,35 +1151,29 @@ func (h *servePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
-	if patchParam, exists := r.URL.Query()["patch"]; exists {
-		h.patchID = patchParam[0]
-	}
 	return nil
 }
 
 func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	if h.patchID == "" {
-		t, err := task.FindOneId(ctx, h.taskID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-		}
-		if t == nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-			})
-		}
-		h.patchID = t.Version
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
 	}
 
-	p, err := patch.FindOne(ctx, patch.ByVersion(h.patchID))
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", h.patchID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", t.Version))
 	}
 	if p == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch with ID '%s' not found", h.patchID),
+			Message:    fmt.Sprintf("patch with ID '%s' not found", t.Version),
 		})
 	}
 
@@ -1847,5 +1848,6 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
 		Expiration:      creds.Expiration.Format(time.RFC3339),
+		ExternalID:      creds.ExternalID,
 	})
 }

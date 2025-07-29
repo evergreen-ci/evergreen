@@ -1,28 +1,43 @@
 {
-    "tests": [
-        {
-            "query_file": "spawn_host.graphql",
-            "result": {
-                "data": {
-                    "spawnHost": {
-                        "hostUrl": "",
-                        "id": "static",
-                        "noExpiration": true,
-                        "distro": {
-                            "id": "rhel71-power8-large"
-                        },
-                        "sleepSchedule": {
-                          "dailyStartTime": "",
-                          "dailyStopTime": "",
-                          "permanentlyExempt": false,
-                          "shouldKeepOff": false,
-                          "timeZone": "America/New_York",
-                          "temporarilyExemptUntil": null,
-                          "wholeWeekdaysOff": [0, 6]
-                        }
-                    }
-                }
+  "tests": [
+    {
+      "query_file": "spawn_host.graphql",
+      "result": {
+        "data": {
+          "spawnHost": {
+            "hostUrl": "",
+            "id": "static",
+            "noExpiration": true,
+            "distro": {
+              "id": "rhel71-power8-large"
+            },
+            "sleepSchedule": {
+              "dailyStartTime": "",
+              "dailyStopTime": "",
+              "permanentlyExempt": false,
+              "shouldKeepOff": false,
+              "timeZone": "America/New_York",
+              "temporarilyExemptUntil": null,
+              "wholeWeekdaysOff": [0, 6]
             }
+          }
         }
-    ]
+      }
+    },
+    {
+      "query_file": "unavailable_region.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "distro 'rhel71-power8-large' only supports spawn hosts in the following regions: us-east-1, eu-west-1",
+            "path": ["spawnHost"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
 }

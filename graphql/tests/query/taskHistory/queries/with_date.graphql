@@ -1,0 +1,21 @@
+query {
+  taskHistory(
+    options: {
+      projectIdentifier: "evergreen"
+      taskName: "test-graphql"
+      buildVariant: "ubuntu2204"
+      cursorParams: {
+        cursorId: "task_101"
+        direction: AFTER
+        includeCursor: true
+      }
+      # Date will take precedence over any other parameter.
+      date: "2025-01-02T04:00:03Z"
+    }
+  ) {
+    tasks {
+      id
+      order
+    }
+  }
+}

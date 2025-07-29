@@ -2,7 +2,7 @@ mutation {
   spawnHost(
     spawnHostInput: {
       distroId: "rhel71-power8-large"
-      region: ""
+      region: "us-east-1"
       isVirtualWorkStation: false
       publicKey: {
         key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCzj+xy4D9f2oOkyQS8B6OtIP6sFtzgAQuzU6zu5+UM9DJFO6T0W1g0Rb7L/L0y5e9h6HxY7fGc/hJluLGGwWvZjNi2I11oW6ap5MW59Z+PqkwI5RhQt50cg6wN7MTu7viS603uHOX9oA/60avr+DpgbpYG2vnN4ZlEAksO6VMmyqIX7m32fHUZB5cXKIzzUAElfJ4eRr44rWyo3kcbsSEaQUHv3mtp9BvLGvJwcNcxyc+kQwsm+/+mc5gm4ABe1C+9205orwE1gWHZ671Nsl/sRUUjqfAkH5kKAa8sye3d02SKLdXe2SeStKY26leD6Fv0Bsr9ZMfllAE2nFaKNfBS johndoe@Mohameds-MacBook-Pro.local"

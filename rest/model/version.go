@@ -38,7 +38,6 @@ type APIVersion struct {
 	Parameters []APIParameter `json:"parameters"`
 	// List of documents of the associated build variant and the build id
 	BuildVariantStatus []buildDetail `json:"build_variants_status"`
-	Builds             []APIBuild    `json:"builds,omitempty"`
 	// Version created by one of "patch_request", "github_pull_request",
 	// "gitter_request" (caused by git commit, aka the repotracker requester),
 	// "trigger_request" (Project Trigger versions) , "github_merge_request" (GitHub merge queue), "ad_hoc" (periodic builds)
@@ -93,11 +92,6 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 			BuildId:      utility.ToStringPtr(t.BuildId),
 		}
 		apiVersion.BuildVariantStatus = append(apiVersion.BuildVariantStatus, bd)
-	}
-	for _, bv := range v.Builds {
-		apiBuild := APIBuild{}
-		apiBuild.BuildFromService(ctx, bv, nil)
-		apiVersion.Builds = append(apiVersion.Builds, apiBuild)
 	}
 
 	for _, param := range v.Parameters {

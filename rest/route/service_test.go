@@ -1321,6 +1321,7 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []a
 	assert.True(t, pages.Next != nil || pages.Prev != nil)
 	assert.True(t, rpg.Next != nil || rpg.Prev != nil)
 	if pages.Next != nil {
+		assert.Equal(t, pages.Next.BaseURL, rpg.Next.BaseURL)
 		assert.Equal(t, pages.Next.Key, rpg.Next.Key)
 		assert.Equal(t, pages.Next.Limit, rpg.Next.Limit)
 		assert.Equal(t, pages.Next.Relation, rpg.Next.Relation)
@@ -1328,6 +1329,7 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []a
 		assert.Equal(t, pages.Prev.Key, rpg.Prev.Key)
 		assert.Equal(t, pages.Prev.Limit, rpg.Prev.Limit)
 		assert.Equal(t, pages.Prev.Relation, rpg.Prev.Relation)
+		assert.Equal(t, pages.Prev.BaseURL, rpg.Prev.BaseURL)
 	}
 
 	assert.EqualValues(t, pages, rpg)

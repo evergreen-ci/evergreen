@@ -70,10 +70,12 @@ type ProjectRef struct {
 	DeactivatePrevious     *bool               `bson:"deactivate_previous,omitempty" json:"deactivate_previous,omitempty" yaml:"deactivate_previous"`
 	NotifyOnBuildFailure   *bool               `bson:"notify_on_failure,omitempty" json:"notify_on_failure,omitempty"`
 	Triggers               []TriggerDefinition `bson:"triggers" json:"triggers"`
-	// all aliases defined for the project
+	// PatchTriggerAliases contains all aliases defined for the project.
 	PatchTriggerAliases []patch.PatchTriggerDefinition `bson:"patch_trigger_aliases" json:"patch_trigger_aliases"`
-	// all PatchTriggerAliases applied to github patch intents
-	GithubTriggerAliases []string `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	// GithubPRTriggerAliases are aliases attached to GitHub PR patch intents.
+	GithubPRTriggerAliases []string `bson:"github_trigger_aliases" json:"github_trigger_aliases"`
+	// GitHubMQTriggerAliases are aliases attached to GitHub MQ patch intents.
+	GithubMQTriggerAliases []string `bson:"github_mq_trigger_aliases" json:"github_mq_trigger_aliases"`
 	// OldestAllowedMergeBase is the commit hash of the oldest merge base on the target branch
 	// that PR patches can be created from.
 	OldestAllowedMergeBase string                    `bson:"oldest_allowed_merge_base" json:"oldest_allowed_merge_base"`
@@ -107,10 +109,10 @@ type ProjectRef struct {
 	WorkstationConfig WorkstationConfig `bson:"workstation_config" json:"workstation_config"`
 
 	// TaskAnnotationSettings holds settings for the file ticket button in the Task Annotations to call custom webhooks when clicked
-	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings,omitempty"`
+	TaskAnnotationSettings evergreen.AnnotationsSettings `bson:"task_annotation_settings,omitempty" json:"task_annotation_settings"`
 
 	// Plugin settings
-	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings,omitempty" yaml:"build_baron_settings,omitempty"`
+	BuildBaronSettings evergreen.BuildBaronSettings `bson:"build_baron_settings,omitempty" json:"build_baron_settings" yaml:"build_baron_settings,omitempty"`
 	PerfEnabled        *bool                        `bson:"perf_enabled,omitempty" json:"perf_enabled,omitempty" yaml:"perf_enabled,omitempty"`
 
 	// Container settings
@@ -125,7 +127,7 @@ type ProjectRef struct {
 	Hidden *bool `bson:"hidden,omitempty" json:"hidden,omitempty"`
 
 	ExternalLinks []ExternalLink `bson:"external_links,omitempty" json:"external_links,omitempty" yaml:"external_links,omitempty"`
-	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner,omitempty" yaml:"banner,omitempty"`
+	Banner        ProjectBanner  `bson:"banner,omitempty" json:"banner" yaml:"banner,omitempty"`
 
 	// Filter/view settings
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
@@ -148,7 +150,7 @@ type GitHubDynamicTokenPermissionGroup struct {
 	// Name is the name of the group.
 	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
-	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
+	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions" yaml:"permissions,omitempty"`
 	// AllPermissions is a flag that indicates that the group has all permissions.
 	// If this is set to true, the Permissions field is ignored.
 	// If this is set to false, the Permissions field is used (and may be
@@ -489,7 +491,8 @@ var (
 	projectRefSpawnHostScriptPathKey                = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
 	projectRefTriggersKey                           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPatchTriggerAliasesKey                = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
-	projectRefGithubTriggerAliasesKey               = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
+	projectRefGithubPRTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubPRTriggerAliases")
+	projectRefGithubMQTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubMQTriggerAliases")
 	projectRefPeriodicBuildsKey                     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefOldestAllowedMergeBaseKey             = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
 	projectRefWorkstationConfigKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
@@ -727,7 +730,8 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
-			GithubTriggerAliases:     projectConfig.GithubTriggerAliases,
+			GithubPRTriggerAliases:   projectConfig.GithubPRTriggerAliases,
+			GithubMQTriggerAliases:   projectConfig.GithubMQTriggerAliases,
 			ContainerSizeDefinitions: projectConfig.ContainerSizeDefinitions,
 		}
 		if projectConfig.WorkstationConfig != nil {
@@ -758,6 +762,8 @@ func (p *ProjectRef) SetGithubAppCredentials(ctx context.Context, appID int64, p
 		if ghApp != nil {
 			return githubapp.RemoveGitHubAppAuth(ctx, ghApp)
 		}
+		// If there's no github app to delete, we don't need to do anything.
+		return nil
 	}
 
 	if appID == 0 || len(privateKey) == 0 {
@@ -915,6 +921,24 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
+	// If repo project exists, only allow repo admins to attach to a project.
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
+	}
+	if repoRef != nil {
+		isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
+			Resource:      repoRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+
+		if !isRepoAdmin {
+			return errors.Errorf("user '%s' does not have permission to attach project '%s' to repo '%s'", u.Id, p.Id, p.Repo)
+		}
+	}
+
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
@@ -2273,8 +2297,9 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPatchTriggerAliasesKey:  p.PatchTriggerAliases,
-					projectRefGithubTriggerAliasesKey: p.GithubTriggerAliases,
+					projectRefPatchTriggerAliasesKey:    p.PatchTriggerAliases,
+					projectRefGithubPRTriggerAliasesKey: p.GithubPRTriggerAliases,
+					projectRefGithubMQTriggerAliasesKey: p.GithubMQTriggerAliases,
 				},
 			})
 	case ProjectPagePeriodicBuildsSection:
@@ -2548,11 +2573,12 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(ctx context.Context, maxDail
 	return errors.Wrap(db.UpdateContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
+const CronActiveRange = 5 * time.Minute
+
 // isActiveCronTimeRange checks that the proposed cron should activate now or
 // has already activated very recently.
 func (p *ProjectRef) isActiveCronTimeRange(proposedCron time.Time, now time.Time) bool {
-	const cronActiveRange = 5 * time.Minute
-	return !proposedCron.Before(now.Add(-cronActiveRange))
+	return !proposedCron.Before(now.Add(-CronActiveRange))
 }
 
 // isValidBVCron checks is a build variant cron is valid.
@@ -2729,7 +2755,7 @@ func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings,
 // ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
 // assuming the given project is going to be enabled.
 // Returns a status code and error if we are already at limit with enabled projects.
-func ValidateEnabledProjectsLimit(ctx context.Context, projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
+func ValidateEnabledProjectsLimit(ctx context.Context, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
 		return http.StatusOK, nil
 	}

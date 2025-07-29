@@ -24,20 +24,51 @@ func GetBanner(ctx context.Context) (string, string, error) {
 	return settings.Banner, string(settings.BannerTheme), nil
 }
 
+// GetNecessaryServiceFlags returns a specific set of necessary service flags from admin settings
+func GetNecessaryServiceFlags(ctx context.Context) (evergreen.ServiceFlags, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return evergreen.ServiceFlags{}, errors.Wrap(err, "getting service flags")
+	}
+
+	// we should only return the service flags that are necessary at the moment
+	// instead of returning all the service flags
+	neccessaryFlags := evergreen.ServiceFlags{
+		StaticAPIKeysDisabled:  flags.StaticAPIKeysDisabled,
+		JWTTokenForCLIDisabled: flags.JWTTokenForCLIDisabled,
+	}
+	return neccessaryFlags, nil
+}
+
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
+	if oldSettings.ServiceFlags.AdminParameterStoreDisabled {
+		return trySetEvergreenSettings(ctx, changes, oldSettings, u, persist, false)
+	} else {
+		settings, err := trySetEvergreenSettings(ctx, changes, oldSettings, u, persist, true)
+		if err != nil {
+			grip.Debug(errors.Wrap(err, "DEVPROD-8842: error trying to set evergreen settings with parameter store"))
+		}
+		if settings == nil {
+			grip.Debug(errors.New("DEVPROD-8842: settings returned nil after trying to set evergreen settings with parameter store"))
+		}
+		return trySetEvergreenSettings(ctx, changes, oldSettings, u, persist, false)
+	}
+}
 
+func trySetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
+	oldSettings *evergreen.Settings, u *user.DBUser, persist, useParameterStore bool) (*evergreen.Settings, error) {
 	settingsAPI := restModel.NewConfigModel()
 	err := settingsAPI.BuildFromService(oldSettings)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting existing settings to API model")
 	}
-	changesReflect := reflect.ValueOf(*changes)
-	settingsReflect := reflect.ValueOf(settingsAPI)
+	changesReflect := reflect.ValueOf(*changes)     // incoming changes
+	settingsReflect := reflect.ValueOf(settingsAPI) // old settings
 
 	//iterate over each field in the changes struct and apply any changes to the existing settings
-	for i := 0; i < changesReflect.NumField(); i++ {
+	for i := range changesReflect.NumField() {
 		// get the property name and find its value within the settings struct
 		propName := changesReflect.Type().Field(i).Name
 		changedVal := changesReflect.FieldByName(propName)
@@ -53,6 +84,20 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 		return nil, errors.Wrap(err, "converting settings to service model")
 	}
 	newSettings := i.(evergreen.Settings)
+
+	if useParameterStore {
+		paramMgr := evergreen.GetEnvironment().ParameterManager()
+		// Find and store all secret fields in the parameter store
+		// Use pointer to newSettings so we can modify the struct fields
+		settingsValue := reflect.ValueOf(&newSettings).Elem()
+		settingsType := reflect.TypeOf(newSettings)
+		catcher := grip.NewBasicCatcher()
+		evergreen.StoreAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", catcher)
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "storing admin settings in parameter store")
+		}
+	}
+
 	if persist {
 		// We have to call Validate before we attempt to persist it because the
 		// evergreen.Settings internally calls ValidateAndDefault to set the

@@ -1,0 +1,106 @@
+mutation BackgroundProcessing {
+  saveAdminSettings(
+    adminSettings: {
+      amboy: {
+        name: "new-amboy-name"
+        singleName: "new-amboy-single-name"
+        poolSizeLocal: 1
+        poolSizeRemote: 1
+        localStorage: 1
+        groupDefaultWorkers: 1
+        groupBackgroundCreateFrequencyMinutes: 1
+        groupPruneFrequencyMinutes: 1
+        groupTTLMinutes: 1
+        lockTimeoutMinutes: 1
+        sampleSize: 1
+        retry: {
+          numWorkers: 1
+          maxCapacity: 1
+          maxRetryAttempts: 1
+          maxRetryTimeSeconds: 1
+          retryBackoffSeconds: 1
+          staleRetryingMonitorIntervalSeconds: 1
+        }
+        namedQueues: [
+          {
+            name: "new-named-queue-1"
+            regexp: "new-regexp-1"
+            numWorkers: 1
+            sampleSize: 1
+            lockTimeoutSeconds: 1
+          }
+          {
+            name: "new-named-queue-2"
+            regexp: "new-regexp-2"
+            numWorkers: 1
+            sampleSize: 1
+            lockTimeoutSeconds: 1
+          }
+        ]
+      }
+      amboyDB: { url: "new-amboy-url", database: "new-amboy-database" }
+      loggerConfig: {
+        buffer: {
+          useAsync: false
+          durationSeconds: 1
+          count: 1
+          incomingBufferFactor: 1
+        }
+        defaultLevel: INFO
+        thresholdLevel: INFO
+        logkeeperURL: "new-logkeeper-url"
+        redactKeys: ["new-redact-key"]
+      }
+      notify: { bufferIntervalSeconds: 1, bufferTargetPerInterval: 1 }
+      triggers: { generateTaskDistro: "new-generate-task-distro" }
+    }
+  ) {
+    amboy {
+      name
+      singleName
+      poolSizeLocal
+      poolSizeRemote
+      localStorage
+      groupDefaultWorkers
+      groupBackgroundCreateFrequencyMinutes
+      groupPruneFrequencyMinutes
+      groupTTLMinutes
+      lockTimeoutMinutes
+      sampleSize
+      retry {
+        numWorkers
+        maxCapacity
+        maxRetryAttempts
+        maxRetryTimeSeconds
+        retryBackoffSeconds
+        staleRetryingMonitorIntervalSeconds
+      }
+      namedQueues {
+        name
+        regexp
+        numWorkers
+        sampleSize
+        lockTimeoutSeconds
+      }
+    }
+    loggerConfig {
+      buffer {
+        useAsync
+        durationSeconds
+        count
+        incomingBufferFactor
+      }
+      defaultLevel
+      thresholdLevel
+      logkeeperURL
+      redactKeys
+    }
+    notify {
+      bufferIntervalSeconds
+      bufferTargetPerInterval
+    }
+    triggers {
+      generateTaskDistro
+    }
+  }
+}

@@ -59,6 +59,7 @@ Admin Settings
 						<div>Degraded Mode</div>
 						<li class="link" ng-click="scrollTo('degraded')">Service Flags</li>
 						<li class="link" ng-click="scrollTo('announcements')">Announcements</li>
+						<li class="link" ng-click="scrollTo('release-mode')">Release Mode</li>
 						<div>Runners</div>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('task_limits')">Task Limits</li>
@@ -81,6 +82,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('slack')">Slack</li>
 						<li class="link" ng-click="scrollTo('splunk')">Splunk</li>
 						<li class="link" ng-click="scrollTo('cedar')">Cedar</li>
+						<li class="link" ng-click="scrollTo('fws')">FWS</li>
 						<li class="link" ng-click="scrollTo('runtime_environments')">Runtime Environments</li>
 						<li class="link" ng-click="scrollTo('test_selection')">Test Selection</li>
 						<div>Background Processing</div>
@@ -177,6 +179,26 @@ Admin Settings
 													<md-radio-group
 														data-ng-model="Settings.service_flags.pod_init_disabled"
 														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Release Mode Enabled</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.release_mode_disabled"
+															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Admin Parameter Store Enabled</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.admin_parameter_store_disabled" layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -337,17 +359,6 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Use Evergreen for Test Results Service</td>
-												<td colspan="2">
-													<md-radio-group
-															data-ng-model="Settings.service_flags.evergreen_test_results_disabled"
-															layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
 												<td>Host Allocator</td>
 												<td colspan="2">
 													<md-radio-group
@@ -430,6 +441,43 @@ Admin Settings
 													<md-radio-group
 														data-ng-model="Settings.service_flags.sleep_schedule_disabled"
 														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Allow Static API credentials for users</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.static_api_keys_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Use JWT token for CLI</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.jwt_token_for_cli_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+											<tr>
+												<td>Legacy UI Task Page</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.legacy_ui_task_page_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Legacy UI Task History Page</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.legacy_ui_task_history_page_disabled" layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -562,7 +610,30 @@ Admin Settings
 											</md-select>
 										</md-input-container>
 									</md-card-content>
-
+								</md-card>
+								<md-card flex=50 id="release-mode" style="height:300px">
+									<md-card-title>
+										<md-card-title-text>
+											<span>Release Mode Settings</span>
+										</md-card-title-text>
+									</md-card-title>
+									<md-card-content>
+										<md-input-container class="control" style="width:45%;">
+											<label>Distro Max Hosts Factor</label>
+											<div class="muted small" style="height:25px;">Multiply distro max hosts by this factor (default is 1 if unset).</div>
+											<input type="number" ng-model="Settings.release_mode.distro_max_hosts_factor">
+										</md-input-container>
+										<md-input-container class="control" style="width:45%; margin-left:50px;">
+											<label>Target Time Seconds Override</label>
+											<div class="muted small">Override for the target time to clear a task from the queue (ignored if 0).</div>
+											<input type="number" ng-model="Settings.release_mode.target_time_seconds_override">
+										</md-input-container>
+										<md-input-container class="control" style="width:45%;">
+											<label>Idle Time Seconds Override</label>
+											<div class="muted small">Override for the acceptable host idle time (ignored if 0).</div>
+											<input type="number" ng-model="Settings.release_mode.idle_time_seconds_override">
+										</md-input-container>
+									</md-card-content>
 								</md-card>
 							</section>
 						</section>
@@ -855,9 +926,13 @@ Admin Settings
 											<label>HTTP listener address</label>
 											<input type="text" ng-model="Settings.api.http_listen_addr">
 										</md-input-container>
-										<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<md-input-container class="control" style="width:45%;">
 											<label>Backend URL</label>
 											<input type="text" ng-model="Settings.api.url">
+										</md-input-container>
+										<md-input-container class="control" style="width:45%;">
+											<label>Corp URL</label>
+											<input type="text" ng-model="Settings.api.corp_url">
 										</md-input-container>
 									</md-card-content>
 								</md-card>
@@ -1257,49 +1332,6 @@ Admin Settings
 										<label>Personal Access Token</label>
 										<input type="text" ng-model="Settings.jira.personal_access_token">
 									</md-input-container>
-									<md-card>
-										<md-card-title>
-											<md-card-title-text>
-												<span>Basic Auth</span>
-											</md-card-title-text>
-										</md-card-title>
-										<md-card-content>
-											<md-input-container class="control" style="width:45%;">
-												<label>Username</label>
-												<input type="text" ng-model="Settings.jira.basic_auth.username">
-											</md-input-container>
-											<md-input-container class="control" style="width:45%; margin-left:50px;">
-												<label>Password</label>
-												<input type="text" ng-model="Settings.jira.basic_auth.password">
-											</md-input-container>
-										</md-card-content>
-									</md-card>
-									<md-card>
-										<md-card-title>
-											<md-card-title-text>
-												<span>OAuth 1.0</span>
-											</md-card-title-text>
-										</md-card-title>
-										<md-card-content>
-											<md-input-container class="control" style="width:45%;">
-												<label>Access Token</label>
-												<input type="text" ng-model="Settings.jira.oauth1.access_token">
-											</md-input-container>
-											<md-input-container class="control" style="width:45%; margin-left:50px;">
-												<label>Token Secret</label>
-												<input type="text" ng-model="Settings.jira.oauth1.token_secret">
-											</md-input-container>
-											<md-input-container class="control" style="width:45%;">
-												<label>Consumer Key</label>
-												<input type="text" ng-model="Settings.jira.oauth1.consumer_key">
-											</md-input-container>
-											<md-input-container class="control" style="width:45%; margin-left:50px;">
-												<label>Private Key (PEM format)</label>
-												<textarea ng-model="Settings.jira.oauth1.private_key" ng-trim="false"
-													rows="3" md-select-on-focus></textarea>
-											</md-input-container>
-										</md-card-content>
-									</md-card>
 								</md-card-content>
 							</md-card>
 						</section>
@@ -1403,32 +1435,12 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>HTTP Base URL</label>
-										<input type="text" ng-model="Settings.cedar.base_url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>GRPC Base URL</label>
-										<input type="text" ng-model="Settings.cedar.grpc_base_url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>RPC Port</label>
-										<input type="text" ng-model="Settings.cedar.rpc_port">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
 										<label>SPS URL (Vanity, for hosts only)</label>
-										<input type="text" ng-model="Settings.cedar.sps_url">
+										<input type="text" ng-model="Settings.perf_monitoring_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>SPS Kanopy URL (Kanopy internal DNS, for app servers only)</label>
-										<input type="text" ng-model="Settings.cedar.sps_kanopy_url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>User</label>
-										<input type="text" ng-model="Settings.cedar.user">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>API Key</label>
-										<input type="text" ng-model="Settings.cedar.api_key">
+										<input type="text" ng-model="Settings.perf_monitoring_kanopy_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>DB URL</label>
@@ -1483,7 +1495,24 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 						</section>
-
+						<section layout="row" flex>
+							<md-card flex=50 id="fws" style="height:auto">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Foliage Web Services</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('fws')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>URL</label>
+										<input type="text" ng-model="Settings.fws.url">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+						</section>
 						<section layout="row" flex>
 							<md-card flex=50 id="amboy">
 								<md-card-title>
@@ -1910,6 +1939,11 @@ Admin Settings
 											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left: 50px">
+										<label>Alertable Instance Types</label>
+										<textarea ng-model="Settings.providers.aws.alertable_instance_types"
+											ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Regions</label>
 										<textarea ng-model="Settings.providers.aws.allowed_regions" ng-list="&#10;"
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
@@ -1919,51 +1953,56 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.ipam_pool_id">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+										<label>Elastic IP Usage Rate</label>
+										<div class="muted small" style="height:25px;">Chance of a task host receiving an elastic IP address (between 0 and 1).</div>
+										<input type="number" ng-model="Settings.providers.aws.elastic_ip_usage_rate">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Container Images</label>
 										<textarea ng-model="Settings.providers.aws.pod.ecs.allowed_images" ng-list="&#10;" ng-trim="false" rows="3"
 											md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Max CPU Units Per Pod</label>
 										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_cpu">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Max Memory (MB) Per Pod</label>
 										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_memory_mb">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod Region</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.region">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod Secrets Manager Secret Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.secrets_manager.secret_prefix">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Task Definition Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_definition_prefix">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Task Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Execution Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.execution_role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Log Region</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_region">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Log Group Name</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Log Stream Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_stream_prefix">
 									</md-input-container>
@@ -2235,6 +2274,18 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Log Bucket</label>
 										<input type="text" ng-model="Settings.buckets.log_bucket.name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Test Results Bucket</label>
+										<input type="text" ng-model="Settings.buckets.test_results_bucket.name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Test Results Bucket</label>
+										<input type="text" ng-model="Settings.buckets.test_results_bucket.test_results_prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Test Results Bucket</label>
+										<input type="text" ng-model="Settings.buckets.test_results_bucket.role_arn">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>S3 Key</label>
@@ -2631,7 +2682,7 @@ Admin Settings
 													<md-input-container class="control" flex=25>
 														<input class="control" type="text" ng-model="new_owner_repo.owner" placeholder="Owner Name">
 													</md-input-container>
-	
+
 													<md-input-container class="control" flex=50>
 														<input class="control" type="text" ng-model="new_owner_repo.repo" placeholder="Repo Name">
 													</md-input-container>

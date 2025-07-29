@@ -67,15 +67,15 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 	c.addEvgData(report, conf)
 
-	cedarConfig, err := comm.GetCedarConfig(ctx)
+	perfURL, err := comm.GetPerfMonitoringURL(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting Cedar config for performance results")
+		return errors.Wrap(err, "getting performance URL")
 	}
 	opts := rpc.UploadReportOptions{
 		Report: report,
-		SPSURL: cedarConfig.SPSURL,
+		SPSURL: perfURL,
 	}
-	return errors.Wrap(rpc.UploadReport(ctx, opts), "uploading report to Cedar")
+	return errors.Wrap(rpc.UploadReport(ctx, opts), "uploading report")
 }
 
 func (c *perfSend) addEvgData(report *poplar.Report, conf *internal.TaskConfig) {

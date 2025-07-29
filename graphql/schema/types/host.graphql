@@ -37,6 +37,7 @@ enum HostEventType {
   HOST_EXPIRATION_WARNING_SENT
   HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT
   HOST_IDLE_NOTIFICATION
+  HOST_ALERTABLE_INSTANCE_TYPE_WARNING_SENT
   HOST_SCRIPT_EXECUTED
   HOST_SCRIPT_EXECUTE_FAILED
   SPAWN_HOST_CREATED_ERROR
@@ -157,7 +158,7 @@ type HostEventLogEntry {
   id: String!
   data: HostEventLogData!
   eventType: HostEventType
-  processedAt: Time!
+  processedAt: Time
   resourceId: String!
   resourceType: String!
   timestamp: Time

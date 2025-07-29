@@ -115,7 +115,7 @@ type AWSClient interface {
 	// AllocateAddress is a wrapper for ec2.AllocateAddress.
 	AllocateAddress(context.Context, *ec2.AllocateAddressInput) (*ec2.AllocateAddressOutput, error)
 	// AssociateAddress is a wrapper for ec2.AssociateAddress.
-	AssociateAddress(context.Context, *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error)
+	AssociateAddress(context.Context, *host.Host, *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error)
 	// DisassociateAddress is a wrapper for ec2.DisassociateAddress.
 	DisassociateAddress(context.Context, *ec2.DisassociateAddressInput) (*ec2.DisassociateAddressOutput, error)
 	// ReleaseAddress is a wrapper for ec2.ReleaseAddress.
@@ -785,6 +785,10 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
+				if strings.Contains(err.Error(), ec2TemplateNotFound) {
+					// The template does not exist, so it's already deleted.
+					return false, nil
+				}
 				return true, err
 			}
 			grip.Info(msg)
@@ -950,7 +954,8 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
-				if strings.Contains(apiErr.Error(), ec2InsufficientAddressCapacity) || strings.Contains(apiErr.Error(), ec2AddressLimitExceeded) {
+				errMsg := err.Error()
+				if strings.Contains(errMsg, EC2InsufficientAddressCapacity) || strings.Contains(errMsg, EC2AddressLimitExceeded) || strings.Contains(errMsg, ec2InsufficientFreeAddresses) {
 					return false, err
 				}
 				return true, err
@@ -965,6 +970,14 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 }
 
 func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
+	retryOpts := awsClientDefaultRetryOptions()
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the address may still be in use. This reduces the rate of
+	// requests that repeatedly fail due to waiting for the address to be
+	// disassociated from the host's network interface, which helps alleviate
+	// rate limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
+	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.ReleaseAddressOutput
 	var err error
 	err = utility.Retry(
@@ -981,14 +994,42 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientDefaultRetryOptions())
+		}, retryOpts)
 	if err != nil {
 		return nil, err
 	}
 	return output, nil
 }
 
-func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+func (c *awsClientImpl) AssociateAddress(ctx context.Context, h *host.Host, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+	const thresholdTimeToWaitForHostStarting = 10 * time.Second
+	if !utility.IsZeroTime(h.StartTime) && time.Since(h.StartTime) < thresholdTimeToWaitForHostStarting {
+		// The instance must already be in a "running" state in AWS for
+		// AssociateAddress to succeed. Unfortunately, Evergreen doesn't know
+		// the current instance state in AWS and also needs to avoid making
+		// unnecessary calls to AWS since that can stress the rate limit. If
+		// this call is being made too soon since the host started, the host is
+		// most likely not running yet, so the call will fail and need to retry
+		// anyways. To avoid unnecessarily making a call that will likely fail,
+		// wait a few seconds before attempting the first AssociateAddress call.
+		// From empirical data, AWS instances are never "running" before 5
+		// seconds and the median/average is 10-15 seconds.
+		timer := time.NewTimer(thresholdTimeToWaitForHostStarting - time.Since(h.StartTime))
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	retryOpts := awsClientDefaultRetryOptions()
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the host has to be in the "running" state for this to
+	// succeed. This reduces the rate of requests that repeatedly fail due to
+	// waiting for the host state to be "running", which helps alleviate rate
+	// limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
+	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.AssociateAddressOutput
 	var err error
 	err = utility.Retry(
@@ -1008,7 +1049,7 @@ func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.Associa
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientDefaultRetryOptions())
+		}, retryOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -1518,7 +1559,7 @@ func (c *awsClientMock) AllocateAddress(ctx context.Context, input *ec2.Allocate
 	return c.AllocateAddressOutput, nil
 }
 
-func (c *awsClientMock) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+func (c *awsClientMock) AssociateAddress(_ context.Context, _ *host.Host, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	c.AssociateAddressInput = input
 	return c.AssociateAddressOutput, nil
 }

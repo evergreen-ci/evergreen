@@ -6,8 +6,8 @@ batches pull requests to test them as a unit to increase throughput.
 
 Gating every merge on a green build means every commit on the tracked branch had a green build. This way:
 
-* No one bases their work on broken code.
-* Every commit on the mainline branch is potentially releasable/deployable.
+- No one bases their work on broken code.
+- Every commit on the mainline branch is potentially releasable/deployable.
 
 To turn it on, you must turn on Evergreen's merge queue integration, and then
 turn on the GitHub merge queue in GitHub.
@@ -65,7 +65,7 @@ so a given version has as many commits in it as there are PRs in it.
 
 The merge queue is not trying to merge individual PRs, but groups of PRs. This
 leads to some unintuitive behavior. Here is a typical sequence of events when a
-user adds 2 PRs to the merge queue.  In this case we assume "Minimum pull
+user adds 2 PRs to the merge queue. In this case we assume "Minimum pull
 requests to merge" is set to 1, "Maximum pull requests to merge" is set to 5,
 and "Maximum pull requests to build" ("Build concurrency") is set to 5.
 
@@ -94,16 +94,16 @@ sequenceDiagram
 There is some unintuitive behavior to be aware of:
 
 1. If main/pr-1 succeeds and main/pr-2 fails, only main/pr-1 will be merged.
-*But note that merging main/pr-1 waits for main/pr-2 to fail or for the timeout
-to be hit, because the "Maximum pull requests to merge" is set to 5. That is,
-GitHub conceptualizes the fundamental unit of work as the merge group, not the
-PR.*
+   _But note that merging main/pr-1 waits for main/pr-2 to fail or for the timeout
+   to be hit, because the "Maximum pull requests to merge" is set to 5. That is,
+   GitHub conceptualizes the fundamental unit of work as the merge group, not the
+   PR._
 2. If main/pr-1 fails and main/pr-2 succeeds, GitHub will remove pr-1 from the
-queue and re-run main/pr-2 (not rebased on pr-1). *This is conceptually similar
-to the above. GitHub is trying to merge a group of PRs, not individual PRs.*
-3. If both succeed, main/pr-2 (rebased on pr-1) will be merged. *But merging
-main/pr-1 waits for main/pr-2 to succeed, because the maximum pull requests to
-merge is set to 5, and, again, GitHub is testing the entire group.*
+   queue and re-run main/pr-2 (not rebased on pr-1). _This is conceptually similar
+   to the above. GitHub is trying to merge a group of PRs, not individual PRs._
+3. If both succeed, main/pr-2 (rebased on pr-1) will be merged. _But merging
+   main/pr-1 waits for main/pr-2 to succeed, because the maximum pull requests to
+   merge is set to 5, and, again, GitHub is testing the entire group._
 
 If, in the branch protection rules, "only merge non-failing pull requests" is
 checked, then the merge will not happen if any of the PRs fail. Otherwise, if
@@ -123,21 +123,21 @@ merge queue settings in the repo branch protection rules and in the rulesets are
 different, and the ones in the rulesets are more accurate. See the table below
 for a comparison.
 
-| Repo Setting | Repo Description | Ruleset Setting | Ruleset Description |
-| --- | --- | --- | --- |
-| Maximum pull requests to build | Limit the number of queued pull requests running at the same time | Build concurrency | Limit the number of queued pull requests requesting checks and workflow runs at the same time. |
-| Minimum pull requests to merge | no description | Minimum group size | The minimum number of PRs that will be merged together in a group. |
-| or after N minutes | no description | Wait time to meet minimum group size | The time merge queue should wait after the first PR is added to the queue for the minimum group size to be met. After this time has elapsed, the minimum group size will be ignored and a smaller group will be merged. |
-| Maximum pull requests to merge | no description | Maximum group size | The maximum number of PRs that will be merged together in a group. |
-| Status check timeout | Time a required status check must report a conclusion to not be considered failed. | Status check timeout | Maximum time for a required status check to report a conclusion. After this much time has elapsed, checks that have not reported a conclusion will be assumed to have failed. |
+| Repo Setting                   | Repo Description                                                                   | Ruleset Setting                      | Ruleset Description                                                                                                                                                                                                     |
+| ------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Maximum pull requests to build | Limit the number of queued pull requests running at the same time                  | Build concurrency                    | Limit the number of queued pull requests requesting checks and workflow runs at the same time.                                                                                                                          |
+| Minimum pull requests to merge | no description                                                                     | Minimum group size                   | The minimum number of PRs that will be merged together in a group.                                                                                                                                                      |
+| or after N minutes             | no description                                                                     | Wait time to meet minimum group size | The time merge queue should wait after the first PR is added to the queue for the minimum group size to be met. After this time has elapsed, the minimum group size will be ignored and a smaller group will be merged. |
+| Maximum pull requests to merge | no description                                                                     | Maximum group size                   | The maximum number of PRs that will be merged together in a group.                                                                                                                                                      |
+| Status check timeout           | Time a required status check must report a conclusion to not be considered failed. | Status check timeout                 | Maximum time for a required status check to report a conclusion. After this much time has elapsed, checks that have not reported a conclusion will be assumed to have failed.                                           |
 
 ## Useful Links for Troubleshooting
 
 Here are example links for the 10gen/mongo repository:
 
-* <https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D> : View the branch creations and deletions by clicking the Activity link on the repository main page under the About section.
-* <https://github.com/10gen/mongo/queue/master> : View the queue itself.
-* <https://github.com/10gen/mongo/branches/all?query=gh-readonly> : View the active merge queue branches.
+- <https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D> : View the branch creations and deletions by clicking the Activity link on the repository main page under the About section.
+- <https://github.com/10gen/mongo/queue/master> : View the queue itself.
+- <https://github.com/10gen/mongo/branches/all?query=gh-readonly> : View the active merge queue branches.
 
 ## FAQ
 
@@ -149,10 +149,10 @@ recent statuses. To get some statuses to choose from, you can retrigger tests on
 an existing PR by typing `evergreen retry`, open an empty PR, or commit an empty
 commit.
 
-**Q:** Is there a plan to have Evergreen send merge notifications? 
+**Q:** Is there a plan to have Evergreen send merge notifications?
 
 **A:** No. We believe it makes more sense for notifications to come from GitHub,
-since it manages the queue, and supports sending notifications. 
+since it manages the queue, and supports sending notifications.
 
 **Q:** Is it possible to attribute the merge queue patch to your Evergreen user?
 
@@ -183,19 +183,28 @@ send notifications for merges done by the GitHub merge queue.
 
 **A:** The same branch protection rules apply to PRs (which determine whether you can
 add the PR to the merge queue) and the merge queue itself (which determines
-whether or not GitHub will merge the PR).  Nevertheless, you can run different
+whether or not GitHub will merge the PR). Nevertheless, you can run different
 tasks in PRs and the merge queue with the separate settings on the GitHub &
 Merge Queue project settings page.
 
 Evergreen will post a status check called "evergreen" when the entire merge
 queue build has finished, and it will post a status for each variant that
-finishes called "evergreen/variant_name". Typically projects should set a branch
+finishes called "evergreen/<variant_name>". Typically projects should set a branch
 protection rule for "evergreen". However, it's also possible to instead to set a
-branch protection rule for one or more "evergreen/variant_name" statuses. You
+branch protection rule for one or more "evergreen/<variant_name>" statuses. You
 might wish to do this if you wish more variants to run in a PR than are actually
 required to merge. For example, there may be long-running tasks which users care
 about only some of the time, and you do not wish to block PRs or merges on those
 tasks, but you still wish them to run automatically.
+
+**Q:** How do I add a new branch protection rule for a new variant?
+
+**A:** If you rely on having branch protection rules for individual variants, then changes for this need to be made both
+in Evergreen and in GitHub. In Evergreen, at least one task from this variant needs to be added to both the PR aliases
+and the merge queue aliases (as mentioned above, these rules apply to both the PR and
+the merge queue). Ensure you've saved the page.
+
+In GitHub, you can now add a new branch protection rule for the "evergreen/<variant_name>" status check.
 
 **Q:** How can I turn off the merge queue to block users from merging?
 
@@ -219,14 +228,14 @@ a way, however, to map directly from a GitHub PR to its patches.
 
 **A:** There is a setting called "Status check timeout" in the branch protection rules
 or rulesets. This setting is the maximum time for a required status check to
-report succcess or failed. This is *not* the same as the makespan of an
+report succcess or failed. This is _not_ the same as the makespan of an
 Evergreen version, for two reasons:
 
 1. Makespan does not start until the version starts running, but there is time
-in between when GitHub sends a webhook and when the version starts running. If
-Evergreen is under load, it might not schedule the version for some time.
+   in between when GitHub sends a webhook and when the version starts running. If
+   Evergreen is under load, it might not schedule the version for some time.
 2. The status checks might be configured to listen for variant statuses, not
-version statuses.
+   version statuses.
 
 ## Additional Resources
 

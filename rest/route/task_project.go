@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -26,9 +27,8 @@ type tasksByProjectHandler struct {
 	parsleyURL   string
 }
 
-func makeTasksByProjectAndCommitHandler(parsleyURL, url string) gimlet.RouteHandler {
+func makeTasksByProjectAndCommitHandler(parsleyURL string) gimlet.RouteHandler {
 	return &tasksByProjectHandler{
-		url:        url,
 		parsleyURL: parsleyURL,
 	}
 }
@@ -51,7 +51,6 @@ func makeTasksByProjectAndCommitHandler(parsleyURL, url string) gimlet.RouteHand
 //	@Success		200				{array}	model.APITask
 func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
 	return &tasksByProjectHandler{
-		url:        tph.url,
 		parsleyURL: tph.parsleyURL}
 }
 
@@ -60,6 +59,7 @@ func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
 func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	vals := r.URL.Query()
+	tph.url = util.HttpsUrl(r.Host)
 
 	tph.project = vars["project_id"]
 	tph.commitHash = vars["commit_hash"]

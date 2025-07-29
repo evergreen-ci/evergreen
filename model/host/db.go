@@ -24,8 +24,9 @@ import (
 
 const (
 	// Collection is the name of the MongoDB collection that stores hosts.
-	Collection        = "hosts"
-	VolumesCollection = "volumes"
+	Collection          = "hosts"
+	VolumesCollection   = "volumes"
+	IPAddressCollection = "ip_addresses"
 )
 
 var (
@@ -75,6 +76,7 @@ var (
 	NeedsReprovisionKey                    = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
 	StartedByKey                           = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey                        = bsonutil.MustHaveTag(Host{}, "InstanceType")
+	LastInstanceEditTimeKey                = bsonutil.MustHaveTag(Host{}, "LastInstanceEditTime")
 	VolumesKey                             = bsonutil.MustHaveTag(Host{}, "Volumes")
 	LastCommunicationTimeKey               = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                            = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -122,6 +124,10 @@ var (
 	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
 	SleepScheduleTemporarilyExemptUntilKey = bsonutil.MustHaveTag(SleepScheduleInfo{}, "TemporarilyExemptUntil")
 	SleepScheduleShouldKeepOffKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
+
+	ipAddressIDKey           = bsonutil.MustHaveTag(IPAddress{}, "ID")
+	ipAddressAllocationIDKey = bsonutil.MustHaveTag(IPAddress{}, "AllocationID")
+	ipAddressHostTagKey      = bsonutil.MustHaveTag(IPAddress{}, "HostTag")
 )
 
 var (
@@ -171,6 +177,20 @@ func byCanOrWillRunTasks() bson.M {
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": evergreen.IsRunningOrWillRunStatuses},
 	}
+}
+
+// ByUnterminatedSpawnHostsWithInstanceTypes returns a query that finds all user spawn hosts that are not terminated
+// that have the given instance types, if provided.
+func ByUnterminatedSpawnHostsWithInstanceTypes(instanceTypes []string) bson.M {
+	query := bson.M{
+		UserHostKey:  true,
+		StartedByKey: bson.M{"$ne": evergreen.User},
+		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
+	}
+	if len(instanceTypes) > 0 {
+		query[InstanceTypeKey] = bson.M{"$in": instanceTypes}
+	}
+	return query
 }
 
 // ByUserWithUnterminatedStatus produces a query that returns all running hosts
@@ -1757,4 +1777,15 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	}
 
 	return catcher.Resolve()
+}
+
+// FindByNeedsIPAssociation finds all hosts that have an IP address allocated
+// but are not yet associated with that IP address.
+func FindByNeedsIPAssociation(ctx context.Context) ([]Host, error) {
+	q := bson.M{
+		StatusKey:          evergreen.HostStarting,
+		IPAllocationIDKey:  bson.M{"$exists": true},
+		IPAssociationIDKey: bson.M{"$exists": false},
+	}
+	return Find(ctx, q)
 }

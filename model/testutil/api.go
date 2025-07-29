@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -134,7 +133,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Secret:         "testTaskSecret",
 		Version:        "testVersionId",
 		Status:         evergreen.TaskDispatched,
-		TaskOutputInfo: &taskoutput.TaskOutput{},
+		TaskOutputInfo: &task.TaskOutput{},
 	}
 	if patchMode == NoPatch {
 		taskOne.Requester = evergreen.RepotrackerVersionRequester
@@ -161,7 +160,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Status:         evergreen.TaskUndispatched,
 		Requester:      evergreen.RepotrackerVersionRequester,
 		Activated:      true,
-		TaskOutputInfo: &taskoutput.TaskOutput{},
+		TaskOutputInfo: &task.TaskOutput{},
 	}
 	if err = taskTwo.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting taskTwo")

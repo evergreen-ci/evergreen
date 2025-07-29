@@ -356,6 +356,9 @@ func (t *taskTriggers) generate(ctx context.Context, sub *event.Subscription, pa
 		if err != nil {
 			return nil, errors.Wrap(err, "building notification")
 		}
+		if payload == nil {
+			return nil, nil
+		}
 	}
 	n, err := notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 	if err != nil {
@@ -930,6 +933,7 @@ type JiraIssueParameters struct {
 	SubID     string
 	Project   string
 	UiURL     string
+	UiV2URL   string
 	EventID   string
 	TestNames string
 	Mappings  *evergreen.JIRANotificationsConfig
@@ -974,6 +978,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 	data := jiraTemplateData{
 		Context:         ctx,
 		UIRoot:          params.UiURL,
+		UIv2Url:         params.UiV2URL,
 		SubscriptionID:  params.SubID,
 		EventID:         params.EventID,
 		Task:            params.Task,

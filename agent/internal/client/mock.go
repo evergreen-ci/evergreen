@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -30,7 +29,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
 // Mock mocks the Communicator for testing.
@@ -72,14 +70,15 @@ type Mock struct {
 	RevokeGitHubDynamicAccessTokenFail   bool
 	AssumeRoleResponse                   *apimodels.AWSCredentials
 	S3Response                           *apimodels.AWSCredentials
-
-	CedarGRPCConn *grpc.ClientConn
+	SendTaskDetailsShouldFail            bool
 
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
 	LocalTestResults []testresult.TestResult
-	ResultsService   string
+	HasTestResults   bool
 	ResultsFailed    bool
+	TestResultStats  testresult.TaskTestResultsStats
+	FailedTestSample []string
 	TestLogs         []*testlog.TestLog
 	TestLogCount     int
 
@@ -135,7 +134,7 @@ func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData
 	return &apimodels.AgentSetupData{}, nil
 }
 
-func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
+func (c *Mock) StartTask(ctx context.Context, td TaskData, _ string, _ []string) error {
 	if c.StartTaskShouldFail {
 		return errors.New("start task mock failure")
 	}
@@ -188,7 +187,7 @@ func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 		DisplayName:    "build",
 		Execution:      c.TaskExecution,
 		Version:        "mock_version_id",
-		TaskOutputInfo: &taskoutput.TaskOutput{},
+		TaskOutputInfo: &task.TaskOutput{},
 	}, nil
 }
 
@@ -321,22 +320,9 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}, nil
 }
 
-// GetCedarConfig returns a mock Cedar service configuration.
-func (c *Mock) GetCedarConfig(ctx context.Context) (*apimodels.CedarConfig, error) {
-	return &apimodels.CedarConfig{
-		BaseURL:  "base_url",
-		RPCPort:  "1000",
-		Username: "user",
-		APIKey:   "api_key",
-	}, nil
-}
-
-// GetCedarGRPCConn returns gRPC connection if it is set.
-func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
-	if c.CedarGRPCConn == nil {
-		return nil, nil
-	}
-	return c.CedarGRPCConn, nil
+// GetPerfMonitoringURL returns a mock performance URL.
+func (c *Mock) GetPerfMonitoringURL(ctx context.Context) (string, error) {
+	return "http://myurl.mongodb.com", nil
 }
 
 // GetLoggerProducer constructs a single channel log producer.
@@ -406,7 +392,7 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 	return out, nil
 }
 
-func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchModel.Patch, error) {
+func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchModel.Patch, error) {
 	if c.GetTaskPatchResponse != nil {
 		return c.GetTaskPatchResponse, nil
 	}
@@ -438,8 +424,8 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 	return mockHost, nil
 }
 
-func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, service string, failed bool) error {
-	c.ResultsService = service
+func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, failed bool) error {
+	c.HasTestResults = true
 	if failed {
 		c.ResultsFailed = true
 	}
@@ -485,8 +471,12 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *testlog.TestLo
 }
 
 // SendTestResults appends test results to the local list of test results.
-func (c *Mock) SendTestResults(ctx context.Context, td TaskData, testResults []testresult.TestResult) error {
-	c.LocalTestResults = append(c.LocalTestResults, testResults...)
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, tr *testresult.DbTaskTestResults) error {
+	if tr != nil {
+		c.ResultsFailed = tr.Stats.FailedCount > 0
+		c.TestResultStats = tr.Stats
+		c.FailedTestSample = tr.FailedTestsSample
+	}
 	return nil
 }
 

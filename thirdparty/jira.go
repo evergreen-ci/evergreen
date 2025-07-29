@@ -10,10 +10,7 @@ import (
 	"net/url"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -135,9 +132,6 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]any) (*JiraCreate
 		return nil, errors.Wrap(err, "unable to form create ticket request")
 	}
 	req.Header.Add("Content-Type", "application/json")
-	if jiraHandler.opts.BasicAuthOpts.Username != "" {
-		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
-	}
 	res, err := jiraHandler.client.Do(req)
 	if res != nil {
 		defer res.Body.Close()
@@ -145,7 +139,7 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]any) (*JiraCreate
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if res.StatusCode >= 300 || res.StatusCode < 200 {
+	if res != nil && (res.StatusCode >= 300 || res.StatusCode < 200) {
 		msg, _ := io.ReadAll(res.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}
@@ -172,9 +166,6 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]any) 
 		return errors.Wrap(err, "unable to form update ticket request")
 	}
 	req.Header.Add("Content-Type", "application/json")
-	if jiraHandler.opts.BasicAuthOpts.Username != "" {
-		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
-	}
 	res, err := jiraHandler.client.Do(req)
 	if res != nil {
 		defer res.Body.Close()
@@ -182,7 +173,7 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]any) 
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if res.StatusCode >= 300 || res.StatusCode < 200 {
+	if res != nil && (res.StatusCode >= 300 || res.StatusCode < 200) {
 		msg, _ := io.ReadAll(res.Body)
 		return errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}
@@ -196,9 +187,6 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to form get ticket request")
-	}
-	if jiraHandler.opts.BasicAuthOpts.Username != "" {
-		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
 	}
 	res, err := jiraHandler.client.Do(req)
 	if res != nil {
@@ -237,9 +225,6 @@ func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int)
 	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to form JQL request")
-	}
-	if jiraHandler.opts.BasicAuthOpts.Username != "" {
-		req.SetBasicAuth(jiraHandler.opts.BasicAuthOpts.Username, jiraHandler.opts.BasicAuthOpts.Password)
 	}
 	res, err := jiraHandler.client.Do(req)
 	if err != nil {
@@ -305,19 +290,6 @@ func NewJiraHandler(opts send.JiraOptions) JiraHandler {
 			Transport: httpClient.Transport,
 		}
 		httpClient = transport.Client()
-	} else if opts.Oauth1Opts.AccessToken != "" {
-		var err error
-		credentials := send.JiraOauthCredentials{
-			PrivateKey:  opts.Oauth1Opts.PrivateKey,
-			AccessToken: opts.Oauth1Opts.AccessToken,
-			TokenSecret: opts.Oauth1Opts.TokenSecret,
-			ConsumerKey: opts.Oauth1Opts.ConsumerKey,
-		}
-		ctx, _ := evergreen.GetEnvironment().Context()
-		httpClient, err = send.Oauth1Client(ctx, credentials)
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "unable to setup jira oauth client",
-		}))
 	}
 	return JiraHandler{
 		opts:   opts,

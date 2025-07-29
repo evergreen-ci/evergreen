@@ -73,7 +73,7 @@ func TestAdminSuite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	configFile := os.Getenv("SETTINGS_OVERRIDE")
+	configFile := os.Getenv(SettingsOverride)
 	if configFile == "" {
 		configFile = testConfigFile()
 	}
@@ -131,13 +131,14 @@ func (s *AdminSuite) TestBaseConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// This test does not check Expansions because it is not possible to
+	// call parameter store functions, real or mocked, in this test suite.
 	config := Settings{
 		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
 		ConfigDir:           "cfg_dir",
 		DomainName:          "example.com",
-		Expansions:          map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg:  "org",
 		GithubOrgs:          []string{"evergreen-ci"},
 		LogPath:             "logpath",
@@ -156,7 +157,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.DomainName, settings.DomainName)
-	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.GithubOrgs, settings.GithubOrgs)
 	s.Equal(config.LogPath, settings.LogPath)
@@ -316,15 +316,7 @@ func (s *AdminSuite) TestJiraConfig() {
 	defer cancel()
 
 	config := JiraConfig{
-		Host: "host",
-		BasicAuthConfig: JiraBasicAuthConfig{
-			Username: "username",
-			Password: "password",
-		},
-		OAuth1Config: JiraOAuth1Config{
-			PrivateKey:  "asdf",
-			AccessToken: "fdsa",
-		},
+		Host:                "host",
 		PersonalAccessToken: "personal_access_token",
 		Email:               "a@mail.com",
 	}
@@ -769,10 +761,8 @@ func (s *AdminSuite) TestCedarConfig() {
 	defer cancel()
 
 	config := CedarConfig{
-		BaseURL: "url.com",
-		RPCPort: "9090",
-		User:    "username",
-		APIKey:  "key",
+		DBURL:  "url.com",
+		DBName: "username",
 	}
 
 	err := config.Set(ctx)
@@ -782,7 +772,6 @@ func (s *AdminSuite) TestCedarConfig() {
 	s.NotNil(settings)
 	s.Equal(config, settings.Cedar)
 
-	config.RPCPort = "7070"
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig(ctx)

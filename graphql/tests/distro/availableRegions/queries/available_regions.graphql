@@ -1,0 +1,6 @@
+query AvailableRegions {
+  distro(distroId: "rhel71-power8-large") {
+    name
+    availableRegions
+  }
+}

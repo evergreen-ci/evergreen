@@ -35,6 +35,10 @@ type Mutation {
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
 
+  # config
+  saveAdminSettings(adminSettings: AdminSettingsInput!): AdminSettings! @requireAdmin
+  restartAdminTasks(opts: RestartAdminTasksOptions!): RestartAdminTasksPayload! @requireAdmin
+
   # distros
   deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload! # Has directive on DeleteDistroInput.
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
@@ -89,6 +93,7 @@ type Mutation {
   restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!): Task!
   scheduleTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), taskIds: [String!]!): [Task!]!
   setTaskPriority(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): Task!
+  setTaskPriorities(taskPriorities: [TaskPriority!]!): [Task!]!
   unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
 
   # user

@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "User 'regular_user' lacks required admin permissions",
+            "path": ["adminTasksToRestart"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "admin_tasks_to_restart.graphql",
+      "result": {
+        "data": {
+          "adminTasksToRestart": {
+            "tasksToRestart": [
+              { "id": "task_test_failed" },
+              { "id": "task_system_failed" },
+              { "id": "task_setup_failed" }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

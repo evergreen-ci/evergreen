@@ -6,16 +6,16 @@
       "url": "localhost:9090",
       "http_listen_addr": ":9090",
       "secret": "this is a secret",
-      "cors_origins": ["http://localhost:3000"],
+      "cors_origins": [
+        "http://localhost:3000"
+      ],
       "userVoice": "https://uservoice.com",
       "cache_templates": false,
       "csrf_key": "",
       "help_url": "",
       "login_domain": "",
       "uiv2_url": "",
-      "beta_features": {
-        "spruce_waterfall_enabled": true
-      }
+      "beta_features": {}
     },
     {
       "_id": "global",
@@ -56,34 +56,35 @@
     {
       "_id": "single_task_distro",
       "project_tasks_pairs": [
-          {
-            "project_id": "evergreen",
-            "allowed_tasks": ["compile", "test"],
-            "allowed_bvs": ["ubuntu1604", "windows"]
-
-          }, 
-          {
-            "project_id": "spruce",
-            "allowed_tasks": ["lint", "storybook"],
-            "allowed_bvs": ["macOS"]
-          }
-        ]
+        {
+          "project_id": "evergreen",
+          "allowed_tasks": [
+            "compile",
+            "test"
+          ],
+          "allowed_bvs": [
+            "ubuntu1604",
+            "windows"
+          ]
+        },
+        {
+          "project_id": "spruce",
+          "allowed_tasks": [
+            "lint",
+            "storybook"
+          ],
+          "allowed_bvs": [
+            "macOS"
+          ]
+        }
+      ]
     },
     {
       "_id": "jira",
-      "basic_auth": {
-        "username": "mohamed.khelif",
-        "password": "password"
-      },
       "default_project": "",
       "email": "evg-user@jira.mongodb.org",
       "host": "jira.mongodb.org",
-      "oauth1": {
-        "private_key": "",
-        "access_token": "",
-        "token_secret": "",
-        "consumer_key": ""
-      }
+      "personal_access_token": "token"
     },
     {
       "_id": "container_pools",

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"slices"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -764,8 +765,13 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 						for j, intermediateProjectDT := range intermediateProjectBV.DisplayTasks {
 							if intermediateProjectDT.Name == dt.Name {
 								foundExisting = true
-								// avoid adding duplicates
-								_, execTasksToAdd := utility.StringSliceSymmetricDifference(intermediateProjectDT.ExecutionTasks, dt.ExecutionTasks)
+								execTasksToAdd := []string{}
+								for _, generatedExecTask := range dt.ExecutionTasks {
+									// Avoid adding duplicate execution tasks to the display task.
+									if !slices.Contains(intermediateProjectDT.ExecutionTasks, generatedExecTask) {
+										execTasksToAdd = append(execTasksToAdd, generatedExecTask)
+									}
+								}
 								intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks = append(
 									intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks, execTasksToAdd...)
 								break
@@ -841,8 +847,10 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps) error {
 }
 
 func isNonZeroBV(bv parserBV) bool {
-	// TODO (DEVPROD-723): this omits activate from consideration, but it's
-	// unclear if it's intentional or not.
+	// Note that activate is purposefully not included in this list because it's common for
+	// users to specify specifically that activation is false when generating tasks.
+	// Even though it only really works if they add it for the individual tasks that they're adding,
+	// it's a common enough pattern that we should allow it rather than breaking generators.
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
 		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||

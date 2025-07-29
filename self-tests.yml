@@ -7,6 +7,7 @@ ignore:
 
 pre_error_fails_task: true
 pre:
+  # These credentials are used in integration tests.
   - func: assume-role
 
 post:
@@ -15,27 +16,25 @@ post:
     display_name: Upload smoke test's app server logs to S3
     type: system
     params:
-      aws_key: ${AWS_ACCESS_KEY_ID}
-      aws_secret: ${AWS_SECRET_ACCESS_KEY}
-      aws_session_token: ${AWS_SESSION_TOKEN}
+      role_arn: ${assume_role_arn}
       local_file: evergreen/app_server.log
       remote_file: evergreen/${task_id}/app_server.log
       bucket: mciuploads
       content_type: text/plain
       permissions: private
+      visibility: signed
       display_name: Evergreen smoke test application server logs
   - command: s3.put
     display_name: Upload smoke test agent logs to S3
     type: system
     params:
-      aws_key: ${AWS_ACCESS_KEY_ID}
-      aws_secret: ${AWS_SECRET_ACCESS_KEY}
-      aws_session_token: ${AWS_SESSION_TOKEN}
+      role_arn: ${assume_role_arn}
       local_files_include_filter: evergreen/smoke*.log
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
       content_type: text/plain
       permissions: private
+      visibility: signed
       display_name: (Evergreen smoke test agent logs)
 
 #######################################
@@ -125,14 +124,13 @@ variables:
       - command: s3.put
         type: system
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${assume_role_arn}
           local_file: evergreen/bin/generate-lint.json
           remote_file: evergreen/${build_id}-${build_variant}/bin/generate-lint.json
           bucket: mciuploads
           content_type: application/json
-          permissions: public-read
+          permissions: private
+          visibility: signed
           display_name: generate-lint.json
       - command: generate.tasks
         params:
@@ -145,14 +143,9 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "${task_name}" }
-      - func: assume-role
-        vars:
-          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${client_assume_role_arn}
           local_files_include_filter_prefix: evergreen/clients
           local_files_include_filter: "*_*/evergreen*"
           remote_file: evergreen/clients/${version_id}/
@@ -166,14 +159,9 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "bin/static_assets.tgz" }
-      - func: assume-role
-        vars:
-          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${client_assume_role_arn}
           local_file: evergreen/bin/static_assets.tgz
           remote_file: evergreen/clients/${version_id}/static_assets.tgz
           content_type: application/gzip
@@ -282,10 +270,7 @@ functions:
           CROWD_SERVER: ${crowdserver}
           PARSER_PROJECT_S3_PREFIX: ${task_id}/parser-projects
           GENERATED_JSON_S3_PREFIX: ${task_id}/generated-json
-          JIRA_PRIVATE_KEY: ${jira_private_key}
-          JIRA_ACCESS_TOKEN: ${jira_access_token}
-          JIRA_TOKEN_SECRET: ${jira_token_secret}
-          JIRA_CONSUMER_KEY: ${jira_consumer_key}
+          JIRA_PERSONAL_ACCESS_TOKEN: ${jira_personal_access_token}
           PAPERTRAIL_KEY_ID: ${papertrail_key_id}
           PAPERTRAIL_SECRET_KEY: ${papertrail_secret_key}
           RUNTIME_ENVIRONMENTS_BASE_URL: ${staging_runtime_environments_base_url}
@@ -527,9 +512,6 @@ tasks:
     name: test-evergreen
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-taskoutput
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -612,25 +594,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-  - name: test-repotracker
+  - <<: *run-go-test-suite-with-mongodb
+    name: test-repotracker
     tags: ["db", "test"]
-    commands:
-      - command: github.generate_token
-        params:
-          expansion_name: github_token
-          permissions:
-            contents: read
-      - command: git.get_project
-        type: setup
-        params:
-          directory: evergreen
-          token: ${github_token}
-          # The test-repotracker relies on HEAD~100
-          clone_depth: 110
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "test-repotracker" }
   - name: verify-swaggo-fmt
     tags: ["linter"]
     commands:
@@ -697,6 +663,25 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
+  - name: lint-markdown
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: npm
+          args: ["install", "--save-dev", "markdownlint-cli", "prettier"]
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: npx
+          args: ["markdownlint-cli", "docs/**/*.md"]
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: npx
+          args: ["prettier", "--check", "docs/**/*.md"]
   - name: generate-api-docs
     commands:
       - func: get-project-and-modules
@@ -721,11 +706,9 @@ tasks:
             $GOPATH/bin/swag init -g service/service.go
       - command: s3.get
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${assume_role_arn}
           local_file: evergreen/docs/swagger.old.sum
-          remote_file: evergreen/latest/swagger.sum
+          remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
           content_type: text/plain
           optional: true
@@ -738,11 +721,11 @@ tasks:
             SWAGGER_JSON_FILE: docs/swagger.json
             SWAGGER_OLD_SUM_FILE: docs/swagger.old.sum
             OUTPUT_SUM_FILE: docs/swagger.sum
+            environment: ${environment}
+            environment-suffix: ${environment-suffix}
       - command: s3.put
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${assume_role_arn}
           local_file: evergreen/docs/swagger.json
           remote_file: evergreen/${task_id}/${execution}/swagger.json
           bucket: mciuploads
@@ -751,11 +734,9 @@ tasks:
           display_name: swagger.json
       - command: s3.put
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${assume_role_arn}
           local_file: evergreen/docs/swagger.json
-          remote_file: evergreen/latest/swagger.json
+          remote_file: evergreen/latest/swagger${environment-suffix}.json
           bucket: mciuploads
           content_type: application/json
           permissions: public-read
@@ -763,11 +744,9 @@ tasks:
           patchable: false
       - command: s3.put
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${assume_role_arn}
           local_file: evergreen/docs/swagger.sum
-          remote_file: evergreen/latest/swagger.sum
+          remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
           content_type: text/plain
           permissions: public-read
@@ -791,9 +770,7 @@ tasks:
             graphql/schema/*.graphql > docs/merged-schema.graphql
       - command: s3.put
         params:
-          aws_key: ${AWS_ACCESS_KEY_ID}
-          aws_secret: ${AWS_SECRET_ACCESS_KEY}
-          aws_session_token: ${AWS_SESSION_TOKEN}
+          role_arn: ${assume_role_arn}
           local_file: evergreen/docs/merged-schema.graphql
           remote_file: evergreen/latest/merged-schema.graphql
           bucket: mciuploads
@@ -867,7 +844,6 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
-      - name: push-api-docs
       - name: write-downstream-expansions-for-pine
       - name: generate-graphql-merged-schema
 

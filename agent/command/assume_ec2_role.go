@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -79,9 +80,17 @@ func (r *ec2AssumeRole) Execute(ctx context.Context, comm client.Communicator, l
 	conf.NewExpansions.PutAndRedact(globals.AWSSessionToken, creds.SessionToken)
 	conf.NewExpansions.Put(globals.AWSRoleExpiration, creds.Expiration)
 
-	// Store the role ARN in the task config, so s3 operations can identify the corresponding
+	// Store the AssumeRoleInformation in the task config, so s3 operations can identify the corresponding
 	// role ARN that the credentials are associated with.
-	conf.AssumeRoleRoles[creds.SessionToken] = request.RoleARN
+	expiration, err := time.Parse(time.RFC3339, creds.Expiration)
+	if err == nil {
+		conf.AssumeRoleInformation[creds.SessionToken] = internal.AssumeRoleInformation{
+			RoleARN:    r.RoleARN,
+			Expiration: expiration,
+		}
+	} else {
+		logger.Task().Warningf("Error parsing expiration time '%s' to determine if credentials can be cached: '%s'. Future operations will re-call AssumeRole.", creds.Expiration, err.Error())
+	}
 
 	return nil
 }

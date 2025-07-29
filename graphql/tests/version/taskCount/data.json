@@ -1,0 +1,115 @@
+{
+  "versions": [
+    {
+      "_id": "mainline_commit",
+      "create_time": {
+        "$date": "2025-02-21T15:13:48.801Z"
+      },
+      "start_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      },
+      "finish_time": {
+        "$date": "2025-02-21T15:29:54.869Z"
+      },
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "author": "mohamed.khelif",
+      "author_email": "",
+      "status": "failed",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true
+    },
+    {
+        "_id": "patch",
+        "create_time": {
+            "$date": "2025-02-21T15:13:48.801Z"
+        },
+        "start_time": {
+            "$date": "2025-02-21T15:15:38.261Z"
+        },
+        "finish_time": {
+            "$date": "2025-02-21T15:29:54.869Z"
+        },
+        "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+        "author": "mohamed.khelif",
+        "author_email": "",
+        "status": "failed",
+        "identifier": "spruce",
+        "r": "github_pull_request",
+        "activated": false
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "1_mainline_commit_activated",
+      "version": "mainline_commit",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "display_name": "test-thirdparty-docker",
+      "r": "github_pull_request",
+      "status": "success",
+      "branch": "evergreen",
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": "",
+      "activated": true,
+      "activated_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      }
+    },
+    {
+      "_id": "2_mainline_commit_never_activated",
+      "version": "mainline_commit",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "ubuntu1604",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "display_name": "test-cloud",
+      "r": "github_pull_request",
+      "status": "failed",
+      "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": "",
+      "activated": false,
+      "activated_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "3_patch_activated",
+      "version": "patch",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "lint",
+      "build_variant_display_name": "Lint",
+      "display_name": "generate-lint",
+      "r": "github_pull_request",
+      "status": "success",
+      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": "",
+      "activated": true,
+      "activated_time": {
+        "$date": "2025-02-21T15:15:38.261Z"
+      }
+    },
+    {
+      "_id": "4_patch_never_activated",
+      "version": "patch",
+      "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+      "build_variant": "lint",
+      "build_variant_display_name": "Lint",
+      "display_name": "lint-service",
+      "r": "github_pull_request",
+      "status": "failed",
+      "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "display_task_id": "",
+      "activated": false,
+      "activated_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

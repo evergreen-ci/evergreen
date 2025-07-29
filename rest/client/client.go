@@ -27,6 +27,7 @@ type communicatorImpl struct {
 	// these fields have setters
 	apiUser string
 	apiKey  string
+	jwt     string
 
 	hostID     string
 	hostSecret string
@@ -86,6 +87,16 @@ func (c *communicatorImpl) SetAPIUser(apiUser string) {
 // SetAPIKey sets the API key.
 func (c *communicatorImpl) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
+}
+
+// SetJWT sets the JWT for authentication.
+func (c *communicatorImpl) SetJWT(jwt string) {
+	c.jwt = jwt
+}
+
+// SetAPIServerHost sets the API server host.
+func (c *communicatorImpl) SetAPIServerHost(serverURL string) {
+	c.serverURL = serverURL
 }
 
 // SetHostID sets the host ID for authentication using host credentials instead

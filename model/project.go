@@ -1014,7 +1014,7 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToken, knownHosts string) (util.Expansions, error) {
+func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHosts string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1033,6 +1033,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
+	expansions.Put("activated_by", t.ActivatedBy)
 	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier)

@@ -9,7 +9,7 @@ will log command-line arguments. You can use the `silent` parameter in
 
 ## Task Directory
 
-Evergreen creates a temporary task directory for each task. Commands by default execute in that directory. Evergreen will clean up that directory in between tasks unless explicit configured not to. Please don't write outside this directory, as Evergreen won't be able to delete the data your task has written.
+Evergreen creates a temporary task directory for each task (aka the [expansion](./Project-Configuration-Files.md#expansions) `${workdir}`). Commands by default execute in that directory. Evergreen will clean up that directory in between tasks unless explicit configured not to. Please don't write outside this directory, as Evergreen won't be able to delete the data your task has written.
 
 ## subprocess.exec
 

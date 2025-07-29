@@ -11,7 +11,7 @@ import (
 
 type SlackConfig struct {
 	Options *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
-	Token   string             `bson:"token" json:"token" yaml:"token"`
+	Token   string             `bson:"token" json:"token" yaml:"token" secret:"true"`
 	Level   string             `bson:"level" json:"level" yaml:"level"`
 	Name    string             `bson:"name" json:"name" yaml:"name"`
 }

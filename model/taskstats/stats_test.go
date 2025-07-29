@@ -10,6 +10,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -164,6 +165,32 @@ func (s *statsSuite) TestGenerateStats() {
 	s.WithinDuration(time.Now(), doc.LastUpdate, time.Minute)
 }
 
+func TestGetUpdateWindow(t *testing.T) {
+	startTime := time.Now()
+
+	t.Run("Within12HourWindow", func(t *testing.T) {
+		processedTasksUntil := startTime.Add(-10 * time.Hour)
+		status := StatsStatus{ProcessedTasksUntil: processedTasksUntil}
+		start, end := status.GetUpdateWindow()
+		assert.WithinDuration(t, processedTasksUntil, start, time.Minute)
+		assert.WithinDuration(t, time.Now(), end, time.Minute)
+	})
+	t.Run("24HourWindowShouldBeCapped", func(t *testing.T) {
+		processedTasksUntil := startTime.Add(-24 * time.Hour)
+		status := StatsStatus{ProcessedTasksUntil: processedTasksUntil}
+		start, end := status.GetUpdateWindow()
+		assert.WithinDuration(t, processedTasksUntil, start, time.Minute)
+		assert.WithinDuration(t, processedTasksUntil.Add(12*time.Hour), end, time.Minute)
+	})
+	t.Run("2DayWindowShouldBeCapped", func(t *testing.T) {
+		processedTasksUntil := startTime.Add(-2 * 24 * time.Hour)
+		status := StatsStatus{ProcessedTasksUntil: processedTasksUntil}
+		start, end := status.GetUpdateWindow()
+		assert.WithinDuration(t, processedTasksUntil, start, time.Minute)
+		assert.WithinDuration(t, processedTasksUntil.Add(12*time.Hour), end, time.Minute)
+	})
+}
+
 func (s *statsSuite) TestFindStatsToUpdate() {
 	// Insert task docs.
 	s.initTasksToUpdate()
@@ -191,10 +218,20 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	s.Require().NoError(err)
 	s.Require().Len(statsList, 2)
 
-	// The results are sorted so we know the order.
-	s.Equal("r1", statsList[0].Requester)
-	s.Equal(utility.GetUTCDay(commit1), statsList[0].Day)
-	s.Equal([]string{"task1"}, statsList[0].Tasks)
+	// The results are not sorted so we can't make any assumptions about the order.
+	for _, stats := range statsList {
+		if stats.Requester == "r1" {
+			s.Equal(utility.GetUTCDay(commit1), stats.Day)
+			s.Equal([]string{"task1"}, stats.Tasks)
+		} else if stats.Requester == "r2" {
+			s.Equal(utility.GetUTCDay(commit2), stats.Day)
+			s.Require().Len(stats.Tasks, 2)
+			s.Contains(stats.Tasks, "task2")
+			s.Contains(stats.Tasks, "task2bis")
+		} else {
+			s.Fail("Unexpected requester")
+		}
+	}
 
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
@@ -202,15 +239,21 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Require().Len(statsList, 2)
-	// The results are sorted so we know the order
-	s.Equal("r1", statsList[0].Requester)
-	s.Equal(utility.GetUTCDay(commit1), statsList[0].Day)
-	s.Equal([]string{"task1"}, statsList[0].Tasks)
-	s.Equal("r2", statsList[1].Requester)
-	s.Equal(utility.GetUTCDay(commit2), statsList[1].Day)
-	s.Require().Len(statsList[1].Tasks, 2)
-	s.Contains(statsList[1].Tasks, "task2")
-	s.Contains(statsList[1].Tasks, "task2bis")
+
+	// The results are not sorted so we can't make any assumptions about the order.
+	for _, stats := range statsList {
+		if stats.Requester == "r1" {
+			s.Equal(utility.GetUTCDay(commit1), stats.Day)
+			s.Equal([]string{"task1"}, stats.Tasks)
+		} else if stats.Requester == "r2" {
+			s.Equal(utility.GetUTCDay(commit2), stats.Day)
+			s.Require().Len(stats.Tasks, 2)
+			s.Contains(stats.Tasks, "task2")
+			s.Contains(stats.Tasks, "task2bis")
+		} else {
+			s.Fail("Unexpected requester")
+		}
+	}
 }
 
 /////////////////////////////////////////

@@ -90,7 +90,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  "monitor",
 				"id":      j.ID(),
-				"message": "Error queuing alert",
+				"message": "error queuing alert",
 				"host_id": h.Id,
 			}))
 		}

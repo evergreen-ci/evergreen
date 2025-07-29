@@ -1,16 +1,9 @@
 ui:
-  "/":
-    - "logkeeper"
-    - "Waterfall"
-  "/waterfall/logkeeper":
-    - "logkeeper"
-    - "Waterfall"
   ? "/task/logkeeper_ubuntu_test_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58/0"
   : - "Added .docker-test.yaml for docker testing"
     - "edd78"
     - "logkeeper"
     - "logkeeper"
-    - "Waterfall"
   ? "/build/logkeeper_ubuntu_edd78c1d581bf757a880777b00685321685a8e67_16_10_20_21_58_58"
   : - "Build History"
     - "Build"
@@ -23,8 +16,6 @@ ui:
     - "edd78"
     - "edd78"
     - "logkeeper"
-  "/waterfall/performance":
-    - "not authorized for this action"
   "/hosts":
     - "localhost"
   "/host/localhost":

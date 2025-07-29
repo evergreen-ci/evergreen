@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -24,10 +25,9 @@ type tasksByBuildHandler struct {
 	parsleyURL string
 }
 
-func makeFetchTasksByBuild(parsleyURL, url string) gimlet.RouteHandler {
+func makeFetchTasksByBuild(parsleyURL string) gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit:      defaultLimit,
-		url:        url,
 		parsleyURL: parsleyURL,
 	}
 }
@@ -48,13 +48,13 @@ func makeFetchTasksByBuild(parsleyURL, url string) gimlet.RouteHandler {
 func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 	return &tasksByBuildHandler{
 		limit:      tbh.limit,
-		url:        tbh.url,
 		parsleyURL: tbh.parsleyURL,
 	}
 }
 
 func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
+	tbh.url = util.HttpsUrl(r.Host)
 	tbh.buildId = gimlet.GetVars(r)["build_id"]
 	if tbh.buildId == "" {
 		return errors.New("build ID cannot be empty")

@@ -10,11 +10,16 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "github_pull_request",
       "branch": "spruce",
-      "results_service": "local",
-      "results_failed": true
+      "has_test_results": true,
+      "results_failed": true,
+      "task_output_info": {
+        "test_results": {
+          "version": 2
+        }
+      }
     }
   ],
-  "testresults": [
+  "test_results": [
     {
       "_id": {
         "task_id": "1",

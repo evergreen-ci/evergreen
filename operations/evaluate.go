@@ -35,6 +35,10 @@ func Evaluate() cli.Command {
 				Name:  diffableFlagName,
 				Usage: "show the project configuration in an ordered, diff-friendly format",
 			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(localModulesFlagName, "lm"),
+				Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
+			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),
 		Action: func(c *cli.Context) error {
@@ -42,6 +46,11 @@ func Evaluate() cli.Command {
 			showTasks := c.Bool(taskFlagName)
 			showVariants := c.Bool(variantsFlagName)
 			diffable := c.Bool(diffableFlagName)
+			localModulePaths := c.StringSlice(localModulesFlagName)
+			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
+			if err != nil {
+				return err
+			}
 
 			configBytes, err := os.ReadFile(path)
 			if err != nil {
@@ -51,6 +60,7 @@ func Evaluate() cli.Command {
 			p := &model.Project{}
 			ctx := context.Background()
 			opts := &model.GetProjectOpts{
+				LocalModules: localModuleMap,
 				ReadFileFrom: model.ReadFromLocal,
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)

@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -244,4 +245,9 @@ func GetRepoAdminScope(repoId string) string {
 // GetRepoAdminRole returns the repo admin role ID for the given repo.
 func GetRepoAdminRole(repoId string) string {
 	return fmt.Sprintf("admin_repo_%s", repoId)
+}
+
+// IsAdminRepoRole returns whether or not the role ID is for an admin repo role.
+func IsAdminRepoRole(roleID string) bool {
+	return strings.HasPrefix(roleID, "admin_repo_")
 }

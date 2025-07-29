@@ -208,7 +208,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				So(patchConfig.PatchedParserProject, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+					projectConfig, err := GetPatchedProjectConfig(ctx, configPatch)
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -232,7 +232,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 					So(patchConfigFromPatchAndDB.PatchedProjectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 
 					Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, configPatch)
 						So(err, ShouldBeNil)
 						So(projectConfigFromPatch, ShouldEqual, patchConfig.PatchedProjectConfig)
 					})
@@ -247,7 +247,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				So(project, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+					projectConfig, err := GetPatchedProjectConfig(ctx, configPatch)
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -267,7 +267,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				So(project, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch)
+					projectConfig, err := GetPatchedProjectConfig(ctx, configPatch)
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -781,7 +781,8 @@ func TestAddNewPatch(t *testing.T) {
 		Revision:   "1234",
 		Requester:  evergreen.PatchVersionRequester,
 		CreateTime: time.Now(),
-		Author:     "test.user",
+		Author:     "Test User",
+		AuthorID:   "test.user",
 	}
 	baseCommitTime := time.Date(2018, time.July, 15, 16, 45, 0, 0, time.UTC)
 	baseVersion := &Version{
@@ -1056,50 +1057,144 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 	}
 }
 
-func TestConfigurePatchWithOnlyUpdatedDescription(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(patch.Collection), ParserProjectCollection)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	id := mgobson.NewObjectId()
-	p := &patch.Patch{
-		Id:                   id,
-		Status:               evergreen.VersionCreated,
-		Activated:            false,
-		Project:              "project",
-		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
-		CreateTime:           time.Now().Add(-time.Hour),
-		GithubPatchData: thirdparty.GithubPatch{
-			BaseOwner: "owner",
-			BaseRepo:  "repo",
-			PRNumber:  12345,
-		},
-		Tasks: []string{"my_task"},
-		VariantsTasks: []patch.VariantTasks{
-			{
-				Variant: "my_variant",
-				Tasks:   []string{"my_task"},
-			},
-		},
-	}
-	assert.NoError(t, p.Insert(t.Context()))
-	pRef := &ProjectRef{
-		Id: mgobson.NewObjectId().Hex(),
-	}
-	req := PatchUpdate{
-		Description: "updating the description only!",
-	}
-	pp := ParserProject{
-		Id: id.Hex(),
-	}
-	assert.NoError(t, pp.Insert(t.Context()))
-	_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
-	assert.NoError(t, err)
+func TestConfigurePatch(t *testing.T) {
+	defer func() {
+		require.NoError(t, db.ClearCollections(patch.Collection, ParserProjectCollection, ProjectRefCollection, VersionCollection, build.Collection, task.Collection))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p *patch.Patch, v *Version, pRef *ProjectRef){
+		"UpdatesJustDescription": func(ctx context.Context, t *testing.T, p *patch.Patch, v *Version, pRef *ProjectRef) {
+			require.NoError(t, p.Insert(ctx))
 
-	p, err = patch.FindOneId(t.Context(), id.Hex())
-	assert.NoError(t, err)
-	require.NotNil(t, p)
-	assert.Equal(t, p.Description, req.Description)
-	assert.NotEmpty(t, p.VariantsTasks)
-	assert.NotEmpty(t, p.Tasks)
-	assert.False(t, p.Activated)
+			req := PatchUpdate{
+				Description: "updating the description only!",
+			}
+			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
+			assert.NoError(t, err)
+
+			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())
+			assert.NoError(t, err)
+			require.NotNil(t, p)
+			assert.Equal(t, req.Description, p.Description)
+			assert.Len(t, dbPatch.VariantsTasks, 1)
+			require.Len(t, dbPatch.VariantsTasks, len(p.VariantsTasks))
+			assert.ElementsMatch(t, p.VariantsTasks[0].Tasks, dbPatch.VariantsTasks[0].Tasks)
+			assert.Equal(t, p.VariantsTasks[0].Variant, dbPatch.VariantsTasks[0].Variant)
+			assert.ElementsMatch(t, dbPatch.Tasks, p.Tasks)
+			assert.False(t, p.IsReconfigured)
+		},
+		"AddsNewTasksToAlreadyFinalizedPatch": func(ctx context.Context, t *testing.T, p *patch.Patch, v *Version, pRef *ProjectRef) {
+			p.Activated = true
+			p.Version = v.Id
+			require.NoError(t, p.Insert(ctx))
+
+			req := PatchUpdate{
+				VariantsTasks: []patch.VariantTasks{
+					{
+						Variant: "my_variant",
+						Tasks:   []string{"my_task"},
+					},
+					{
+						Variant: "new_bv",
+						Tasks:   []string{"new_task"},
+					},
+				},
+			}
+			expectedVarsTasks := map[string]patch.VariantTasks{}
+			for _, vt := range req.VariantsTasks {
+				expectedVarsTasks[vt.Variant] = vt
+			}
+			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req)
+			assert.NoError(t, err)
+
+			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())
+			assert.NoError(t, err)
+			require.NotNil(t, p)
+			assert.Len(t, dbPatch.VariantsTasks, len(req.VariantsTasks))
+			for _, vt := range dbPatch.VariantsTasks {
+				expected, ok := expectedVarsTasks[vt.Variant]
+				if !assert.True(t, ok, "expected variant tasks not found for variant '%s'", vt.Variant) {
+					continue
+				}
+				assert.ElementsMatch(t, expected.Tasks, vt.Tasks)
+			}
+			assert.True(t, p.Activated)
+			assert.True(t, p.IsReconfigured)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(patch.Collection, ParserProjectCollection, ProjectRefCollection, VersionCollection, build.Collection, task.Collection))
+
+			ctx := t.Context()
+			id := mgobson.NewObjectId()
+			buildID := "build_id"
+			v := &Version{
+				Id:        id.Hex(),
+				BuildIds:  []string{buildID},
+				Activated: utility.TruePtr(),
+			}
+			require.NoError(t, v.Insert(ctx))
+			p := &patch.Patch{
+				Id:                   id,
+				Status:               evergreen.VersionCreated,
+				Activated:            true,
+				Project:              "project",
+				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+				CreateTime:           time.Now().Add(-time.Hour),
+				GithubPatchData: thirdparty.GithubPatch{
+					BaseOwner: "owner",
+					BaseRepo:  "repo",
+					PRNumber:  12345,
+				},
+				Tasks: []string{"my_task"},
+				VariantsTasks: []patch.VariantTasks{
+					{
+						Variant: "my_variant",
+						Tasks:   []string{"my_task"},
+					},
+				},
+			}
+			pRef := &ProjectRef{
+				Id: mgobson.NewObjectId().Hex(),
+			}
+			require.NoError(t, pRef.Insert(ctx))
+			proj := &Project{}
+
+			projYAML := `
+tasks:
+- name: my_task
+- name: new_task
+
+buildvariants:
+- name: my_variant
+  run_on:
+    - distro
+  tasks:
+    - my_task
+- name: new_bv
+  run_on:
+    - distro
+  tasks:
+    - new_task
+`
+			pp, err := LoadProjectInto(ctx, []byte(projYAML), nil, pRef.Id, proj)
+			require.NoError(t, err)
+			pp.Id = v.Id
+			require.NoError(t, pp.Insert(ctx))
+			b := &build.Build{
+				Id:          buildID,
+				DisplayName: "my_variant",
+				Version:     v.Id,
+				Project:     pRef.Id,
+			}
+			require.NoError(t, b.Insert(ctx))
+			tsk := &task.Task{
+				Id:          "task_id",
+				DisplayName: "my_task",
+				BuildId:     buildID,
+				Version:     v.Id,
+			}
+			require.NoError(t, tsk.Insert(ctx))
+			tCase(ctx, t, p, v, pRef)
+		})
+	}
 }

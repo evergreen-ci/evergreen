@@ -55,18 +55,9 @@
         },
         {
             "_id": "jira",
-            "basic_auth": {
-                "username": "mohamed.khelif",
-                "password": "password"
-            },
             "default_project": "",
             "host": "jira.mongodb.org",
-            "oauth1": {
-                "private_key": "",
-                "access_token": "",
-                "token_secret": "",
-                "consumer_key": ""
-            }
+            "personal_access_token": "token"
         }
     ]
 }

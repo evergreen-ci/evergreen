@@ -366,6 +366,10 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 }
 
 func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUser) error {
+	if isSpiffeMonitoringUser(u.Id) {
+		// don't set slack information for spiffe monitoring users
+		return nil
+	}
 	if u.Settings.SlackMemberId != "" {
 		// user already has a slack member id set
 		return nil
@@ -404,6 +408,14 @@ func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUs
 
 	return nil
 
+}
+
+const spiffeMonitoringRoute = "spiffe://cluster.local/ns/monitoring"
+
+// isSpiffeServiceUser checks if the user is a spiffe monitoring user by checking
+// if it starts with spiffe://cluster.local/ns/monitoring
+func isSpiffeMonitoringUser(userId string) bool {
+	return strings.HasPrefix(userId, spiffeMonitoringRoute)
 }
 
 // FindNeedsReauthorization finds all users that need to be reauthorized after

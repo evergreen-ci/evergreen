@@ -30,9 +30,6 @@ auth:
 jira:
   host: jira.mongodb.org
   personal_access_token: token
-  basic_auth:
-    username: xgen-mci-user
-    password: Bu1Ld5
 
 keys:
   mci: "/data/home/etc/mci.pem"

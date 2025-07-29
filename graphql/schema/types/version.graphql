@@ -23,6 +23,13 @@ input TaskFilterOptions {
 }
 
 """
+TaskCountOptions defines the parameters that are used when counting tasks from a Version.
+"""
+input TaskCountOptions {
+  includeNeverActivatedTasks: Boolean
+}
+
+"""
 SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
 """
 input SortOrder {
@@ -67,7 +74,7 @@ type Version {
   revision: String!
   startTime: Time
   status: String!
-  taskCount: Int
+  taskCount(options: TaskCountOptions): Int
   tasks(options: TaskFilterOptions!): VersionTasks!
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats

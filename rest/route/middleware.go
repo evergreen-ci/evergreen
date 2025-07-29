@@ -737,14 +737,6 @@ func getSNSPayload(ctx context.Context) sns.Payload {
 func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requester := r.Header.Get("Origin")
-		grip.DebugWhen(requester != "", message.Fields{
-			"op":              "addCORSHeaders",
-			"requester":       requester,
-			"allowed_origins": allowedOrigins,
-			"adding_headers":  utility.StringMatchesAnyRegex(requester, allowedOrigins),
-			"settings_is_nil": evergreen.GetEnvironment().Settings() == nil,
-			"headers":         r.Header,
-		})
 		if len(allowedOrigins) > 0 {
 			// Requests from a GQL client include this header, which must be added to the response to enable CORS
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")

@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "query_file": "available_regions.graphql",
+      "result": {
+        "data": {
+          "distro": {
+            "name": "rhel71-power8-large",
+            "availableRegions": ["us-east-1", "eu-west-1"]
+          }
+        }
+      }
+    }
+  ]
+}

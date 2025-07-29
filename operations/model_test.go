@@ -5,7 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/rest/client"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -153,7 +156,7 @@ projects:
 				Tasks:   []string{"all"},
 				Alias:   "some-variants",
 				LocalAliases: []model.ProjectAlias{
-					model.ProjectAlias{
+					{
 						Alias:   "bynn",
 						Task:    ".*",
 						Variant: ".*",
@@ -204,7 +207,7 @@ projects_for_directory:
 				Tasks:    []string{"all"},
 				Variants: []string{"all"},
 				LocalAliases: []model.ProjectAlias{
-					model.ProjectAlias{
+					{
 						Alias:   "other one",
 						Task:    ".*",
 						Variant: ".*",
@@ -242,4 +245,46 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 	require.NoError(err)
 
 	assert.False(conf.UncommittedChanges)
+}
+
+func TestShouldGenerateJWT(t *testing.T) {
+	tests := []struct {
+		name           string
+		settings       *ClientSettings
+		serviceFlags   evergreen.ServiceFlags
+		flagsErr       error
+		expectedResult bool
+	}{
+		{
+			name:           "DoNotRunKanopyOIDC",
+			settings:       &ClientSettings{DoNotRunKanopyOIDC: true},
+			expectedResult: false,
+		},
+		{
+			name:           "NoAPIKey",
+			settings:       &ClientSettings{APIKey: ""},
+			expectedResult: true,
+		},
+		{
+			name:     "JWTTokenForCLIDisabled",
+			settings: &ClientSettings{APIKey: "key"},
+			serviceFlags: evergreen.ServiceFlags{
+				JWTTokenForCLIDisabled: true,
+			},
+			expectedResult: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mock := &client.Mock{
+				MockServiceFlags: &restmodel.APIServiceFlags{
+					JWTTokenForCLIDisabled: test.serviceFlags.JWTTokenForCLIDisabled,
+				},
+				MockServiceFlagErr: test.flagsErr,
+			}
+			result, _ := test.settings.shouldGenerateJWT(t.Context(), mock)
+			assert.Equal(t, test.expectedResult, result)
+		})
+	}
 }

@@ -10,7 +10,7 @@ import (
 
 type RuntimeEnvironmentsConfig struct {
 	BaseURL string `yaml:"base_url" bson:"base_url" json:"base_url"`
-	APIKey  string `yaml:"api_key" bson:"api_key" json:"api_key"`
+	APIKey  string `yaml:"api_key" bson:"api_key" json:"api_key" secret:"true"`
 }
 
 var (

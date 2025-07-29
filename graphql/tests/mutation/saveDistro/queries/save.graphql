@@ -13,6 +13,7 @@ mutation {
         workDir: "/data/mci"
         mountpoints: ["/"]
         provider: EC2_ON_DEMAND
+        providerAccount: "aws"
         providerSettingsList: [
           {
             ami: "who-ami"
@@ -31,6 +32,7 @@ mutation {
           }
         ]
         user: "mci-exec"
+        execUser: "mci-exec"
         bootstrapSettings: {
           clientDir: "/home/mci-exec/evergreen_provisioning"
           communication: RPC
@@ -75,6 +77,7 @@ mutation {
         }
         dispatcherSettings: { version: REVISED_WITH_DEPENDENCIES }
         hostAllocatorSettings: {
+          autoTuneMaximumHosts: false
           acceptableHostIdleTime: 30000
           feedbackRule: DEFAULT
           futureHostFraction: 0

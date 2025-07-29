@@ -1,0 +1,347 @@
+{
+  "tests": [
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "User 'regular_user' lacks required admin permissions",
+            "path": ["saveAdminSettings"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "announcements.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "banner": "New Banner",
+            "bannerTheme": "ANNOUNCEMENT"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "service_flags.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "serviceFlags": {
+              "adminParameterStoreDisabled": true,
+              "agentStartDisabled": true,
+              "alertsDisabled": true,
+              "backgroundReauthDisabled": true,
+              "backgroundStatsDisabled": true,
+              "cacheStatsEndpointDisabled": true,
+              "cacheStatsJobDisabled": true,
+              "checkBlockedTasksDisabled": true,
+              "cliUpdatesDisabled": true,
+              "cloudCleanupDisabled": true,
+              "degradedModeDisabled": true,
+              "elasticIPsDisabled": true,
+              "emailNotificationsDisabled": true,
+              "eventProcessingDisabled": true,
+              "githubPRTestingDisabled": true,
+              "githubStatusAPIDisabled": true,
+              "hostAllocatorDisabled": true,
+              "hostInitDisabled": true,
+              "jiraNotificationsDisabled": true,
+              "jwtTokenForCLIDisabled": true,
+              "largeParserProjectsDisabled": true,
+              "monitorDisabled": true,
+              "podAllocatorDisabled": true,
+              "podInitDisabled": true,
+              "releaseModeDisabled": true,
+              "repotrackerDisabled": true,
+              "schedulerDisabled": true,
+              "slackNotificationsDisabled": true,
+              "sleepScheduleDisabled": true,
+              "staticAPIKeysDisabled": true,
+              "systemFailedTaskRestartDisabled": true,
+              "taskDispatchDisabled": true,
+              "taskLoggingDisabled": true,
+              "taskReliabilityDisabled": true,
+              "unrecognizedPodCleanupDisabled": true,
+              "webhookNotificationsDisabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "runners.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "notify": {
+              "ses": {
+                "senderAddress": "my-email"
+              }
+            },
+            "hostInit": {
+              "cloudStatusBatchSize": 1,
+              "hostThrottle": 1,
+              "maxTotalDynamicHosts": 1,
+              "provisioningThrottle": 1
+            },
+            "taskLimits": {
+              "maxConcurrentLargeParserProjectTasks": 1,
+              "maxDailyAutomaticRestarts": 1,
+              "maxDegradedModeConcurrentLargeParserProjectTasks": 1,
+              "maxDegradedModeParserProjectSize": 1,
+              "maxExecTimeoutSecs": 1,
+              "maxGenerateTaskJSONSize": 1,
+              "maxHourlyPatchTasks": 1,
+              "maxIncludesPerVersion": 1,
+              "maxParserProjectSize": 1,
+              "maxPendingGeneratedTasks": 1,
+              "maxTaskExecution": 1,
+              "maxTasksPerVersion": 1
+            },
+            "repotracker": {
+              "maxConcurrentRequests": 1,
+              "maxRepoRevisionsToSearch": 1,
+              "numNewRepoRevisionsToFetch": 1
+            },
+            "podLifecycle": {
+              "maxParallelPodRequests": 1,
+              "maxPodDefinitionCleanupRate": 1,
+              "maxSecretCleanupRate": 1
+            },
+            "scheduler": {
+              "acceptableHostIdleTimeSeconds": 1,
+              "cacheDurationSeconds": 1,
+              "commitQueueFactor": 1,
+              "expectedRuntimeFactor": 1,
+              "futureHostFraction": 0.1,
+              "generateTaskFactor": 1,
+              "groupVersions": false,
+              "hostAllocator": "UTILIZATION",
+              "hostAllocatorFeedbackRule": "WAITS_OVER_THRESH",
+              "hostAllocatorRoundingRule": "UP",
+              "hostsOverallocatedRule": "TERMINATE",
+              "mainlineTimeInQueueFactor": 1,
+              "numDependentsFactor": 1,
+              "patchFactor": 1,
+              "patchTimeInQueueFactor": 1,
+              "stepbackTaskFactor": 1,
+              "targetTimeSeconds": 1,
+              "taskFinder": "PARALLEL"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "web.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "api": {
+              "httpListenAddr": ":9090",
+              "url": "http://localhost:8080",
+              "corpUrl": "https://evergreen-staging.corp.mongodb.com"
+            },
+            "ui": {
+              "url": "http://localhost:600",
+              "helpUrl": "https://help.example.com",
+              "uiv2Url": "http://localhost:3000",
+              "parsleyUrl": "http://localhost:4173",
+              "httpListenAddr": ":3000",
+              "secret": "test-secret",
+              "defaultProject": "evergreen",
+              "corsOrigins": ["http://localhost:3000", "http://localhost:5173"],
+              "fileStreamingContentTypes": ["text/plain", "application/json"],
+              "loginDomain": "localhost",
+              "userVoice": "https://uservoice.com",
+              "csrfKey": "12345678901234567890123456789012",
+              "cacheTemplates": true,
+              "stagingEnvironment": "not-staging",
+              "betaFeatures": {
+                "spruceWaterfallEnabled": false
+              }
+            },
+            "disabledGQLQueries": ["query1", "query2", "query3", "query4"]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "external_communications.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "jira": {
+              "email": "jira@example.com",
+              "host": "https://jira.exampleChanged.com"
+            },
+            "slack": {
+              "options": {
+                "channel": "#general",
+                "hostname": "slack.example.com",
+                "name": "EvergreenBot",
+                "username": "evergreen",
+                "basicMetadata": true,
+                "fields": true,
+                "allFields": true,
+                "fieldsSet": {
+                  "field1": true,
+                  "field2": false
+                }
+              },
+              "token": "slackToken",
+              "level": "EMERGENCY",
+              "name": "Slack Notifications"
+            },
+            "splunk": {
+              "splunkConnectionInfo": {
+                "serverUrl": "https://splunk.example.com",
+                "token": "SplunkToken",
+                "channel": "#splunk-channel"
+              }
+            },
+            "runtimeEnvironments": {
+              "baseUrl": "https://runtime.example.com",
+              "apiKey": "newApiKey"
+            },
+            "testSelection": {
+              "url": "https://test-selection.example.com"
+            },
+            "fws": {
+              "url": "https://fws.example.com"
+            },
+            "cedar": {
+              "dbUrl": "mongodb://localhost:27017",
+              "dbName": "cedar"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "auth.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "authConfig": {
+              "preferredType": "NAIVE",
+              "naive": {
+                "users": [
+                  {
+                    "username": "admin",
+                    "displayName": "password",
+                    "email": "admin@example.com"
+                  },
+                  {
+                    "username": "user",
+                    "displayName": "password",
+                    "email": "user@example.com"
+                  }
+                ]
+              },
+              "github": {
+                "appId": 0,
+                "clientId": "client_id",
+                "clientSecret": "client_secret",
+                "defaultOwner": "default_owner",
+                "defaultRepo": "default_repo",
+                "organization": "organization",
+                "users": ["user1", "user2"]
+              },
+              "kanopy": {
+                "headerName": "header_name",
+                "issuer": "issuer",
+                "keysetURL": "keyset_url"
+              },
+              "multi": {
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
+              },
+              "okta": {
+                "clientId": "",
+                "clientSecret": "client_secret",
+                "issuer": "issuer",
+                "scopes": ["scope1", "scope2"],
+                "userGroup": "user_group",
+                "expireAfterMinutes": 60
+              },
+              "allowServiceUsers": true,
+              "backgroundReauthMinutes": 30
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "background_processing.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "amboy": {
+              "name": "new-amboy-name",
+              "singleName": "new-amboy-single-name",
+              "poolSizeLocal": 1,
+              "poolSizeRemote": 1,
+              "localStorage": 1,
+              "groupDefaultWorkers": 1,
+              "groupBackgroundCreateFrequencyMinutes": 1,
+              "groupPruneFrequencyMinutes": 1,
+              "groupTTLMinutes": 1,
+              "lockTimeoutMinutes": 1,
+              "sampleSize": 1,
+              "retry": {
+                "numWorkers": 1,
+                "maxCapacity": 1,
+                "maxRetryAttempts": 1,
+                "maxRetryTimeSeconds": 1,
+                "retryBackoffSeconds": 1,
+                "staleRetryingMonitorIntervalSeconds": 1
+              },
+              "namedQueues": [
+                {
+                  "name": "new-named-queue-1",
+                  "regexp": "new-regexp-1",
+                  "numWorkers": 1,
+                  "sampleSize": 1,
+                  "lockTimeoutSeconds": 1
+                },
+                {
+                  "name": "new-named-queue-2",
+                  "regexp": "new-regexp-2",
+                  "numWorkers": 1,
+                  "sampleSize": 1,
+                  "lockTimeoutSeconds": 1
+                }
+              ]
+            },
+            "loggerConfig": {
+              "buffer": {
+                "useAsync": false,
+                "durationSeconds": 1,
+                "count": 1,
+                "incomingBufferFactor": 1
+              },
+              "defaultLevel": "INFO",
+              "thresholdLevel": "INFO",
+              "logkeeperURL": "new-logkeeper-url",
+              "redactKeys": ["new-redact-key"]
+            },
+            "notify": {
+              "bufferIntervalSeconds": 1,
+              "bufferTargetPerInterval": 1
+            },
+            "triggers": {
+              "generateTaskDistro": "new-generate-task-distro"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -182,8 +182,30 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
-	// if there is already a task assigned to the host send back that task
-	if h.host.RunningTask != "" {
+	// Get the latest host from the database to ensure we have the latest information.
+	updatedHost, err := host.FindOneId(ctx, h.hostID)
+	if err != nil {
+		err = errors.Wrapf(err, "finding host '%s'", h.hostID)
+		grip.Error(err)
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if updatedHost == nil {
+		err = errors.Errorf("host '%s' not found", h.hostID)
+		grip.Error(err)
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	// If there is already a task assigned to the host send back that task.
+	if h.host.RunningTask != "" || updatedHost.RunningTask != "" {
+		if updatedHost.RunningTask != h.host.RunningTask {
+			grip.Warning(
+				message.Fields{
+					"message":          "running task changed while waiting for next task",
+					"host":             h.host.Id,
+					"old_running_task": h.host.RunningTask,
+					"new_running_task": updatedHost.RunningTask,
+				},
+			)
+		}
 		return sendBackRunningTask(ctx, h.env, h.host, nextTaskResponse)
 	}
 
@@ -489,7 +511,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		if currentHost.Distro.SingleTaskDistro {
 			// If next task exists and the distro is a single task distro, check if the task is allowed on the distro.
-			singleTaskDistroWhitelist, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
+			singleTaskDistroAllowlist, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project, env.Settings())
 			if err != nil {
 				errMsg = message.Fields{
 					"message":    "could not find allowed single task disto tasks for project",
@@ -503,7 +525,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				grip.Error(message.WrapError(err, errMsg))
 				return nil, false, errors.Wrapf(err, "could not find allowed single task disto tasks for project '%s'", nextTask.Project)
 			}
-			matched, err := validateSingleTaskDistro(singleTaskDistroWhitelist, nextTask)
+			matched, err := validateSingleTaskDistro(singleTaskDistroAllowlist, nextTask)
 			if err != nil {
 				errMsg = message.Fields{
 					"message":            "could not validate single task distro task",
@@ -652,14 +674,14 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	return nil, false, nil
 }
 
-func validateSingleTaskDistro(singleTaskDistroWhitelist evergreen.ProjectTasksPair, nextTask *task.Task) (bool, error) {
+func validateSingleTaskDistro(singleTaskDistroAllowlist evergreen.ProjectTasksPair, nextTask *task.Task) (bool, error) {
 	// Skip single task distro validation if the project allows every task.
-	if singleTaskDistroWhitelist.AllowAll() {
+	if singleTaskDistroAllowlist.AllowAll() {
 		return true, nil
 	}
 
 	// Check if the buildvariant is allowed on the distro.
-	for _, allowedBV := range singleTaskDistroWhitelist.AllowedBVs {
+	for _, allowedBV := range singleTaskDistroAllowlist.AllowedBVs {
 		matched, err := regexp.MatchString(allowedBV, nextTask.BuildVariant)
 		if err != nil {
 			return false, errors.Wrapf(err, "could not process bv regex '%s'", allowedBV)
@@ -670,7 +692,7 @@ func validateSingleTaskDistro(singleTaskDistroWhitelist evergreen.ProjectTasksPa
 	}
 
 	// Check if the task is allowed on the distro.
-	for _, allowedTask := range singleTaskDistroWhitelist.AllowedTasks {
+	for _, allowedTask := range singleTaskDistroAllowlist.AllowedTasks {
 		matched, err := regexp.MatchString(allowedTask, nextTask.DisplayName)
 		if err != nil {
 			return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
@@ -993,6 +1015,8 @@ func setAgentFirstContactTime(ctx context.Context, h *host.Host) {
 		"host_id":                             h.Id,
 		"distro":                              h.Distro.Id,
 		"provisioning":                        h.Distro.BootstrapSettings.Method,
+		"ip_allocation_id":                    h.IPAllocationID,
+		"ip_association_id":                   h.IPAssociationID,
 		"agent_start_duration_secs":           time.Since(h.CreationTime).Seconds(),
 		"agent_start_from_billing_start_secs": time.Since(h.BillingStartTime).Seconds(),
 		"agent_start_from_requested_secs":     time.Since(h.StartTime).Seconds(),

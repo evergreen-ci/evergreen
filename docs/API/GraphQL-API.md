@@ -2,7 +2,7 @@
 
 Welcome to the beta version of the Evergreen GraphQL API! This API provides read
 and write access to various pieces of data found in Evergreen. You can use the
-GraphQL Playground, which can be found at https://evergreen.mongodb.com/graphql,
+GraphQL Playground, which can be found at <https://evergreen.mongodb.com/graphql>,
 to experiment with and explore the available data.
 
 ⚠️ Please note that the Evergreen GraphQL API is currently in beta and is not
@@ -58,9 +58,15 @@ be accomplished in a single declarative request.
 
 ```graphql
 # Query with variables defined
-query ($options: MainlineCommitsOptions!, $buildVariantOptions: BuildVariantOptions!) {
+query (
+  $options: MainlineCommitsOptions!
+  $buildVariantOptions: BuildVariantOptions!
+) {
   # Pass in the options to the mainlineCommits query
-  mainlineCommits(options: $options, buildVariantOptions: $buildVariantOptions) {
+  mainlineCommits(
+    options: $options
+    buildVariantOptions: $buildVariantOptions
+  ) {
     versions {
       version {
         id
@@ -110,13 +116,13 @@ application requesting the data.
 
 ```graphql
 {
-  task(taskId:"<task_id>", execution:0){
+  task(taskId: "<task_id>", execution: 0) {
     id
     status
     execution
     displayName
     baseTask {
-      id 
+      id
       execution
       status
       displayName

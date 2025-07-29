@@ -29,7 +29,7 @@ type PodEventLogEntry {
   id: String!
   data: PodEventLogData!
   eventType: String
-  processedAt: Time!
+  processedAt: Time
   resourceId: String!
   resourceType: String!
   timestamp: Time

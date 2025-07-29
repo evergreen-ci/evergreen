@@ -519,12 +519,12 @@ func makeRandomTasks() []task.Task {
 		})
 	}
 
-	subTasks := [][]task.Task{makeRandomSubTasks(statuses, &tasks)}
+	subTasks := [][]task.Task{makeRandomSubTasks(&tasks)}
 
 	depth := rand.Intn(6) + 1
 
 	for i := 0; i < depth; i++ {
-		subTasks = append(subTasks, makeRandomSubTasks(statuses, &subTasks[i]))
+		subTasks = append(subTasks, makeRandomSubTasks(&subTasks[i]))
 	}
 
 	for i := range subTasks {
@@ -553,7 +553,7 @@ func pickSubtaskStatus(dependsOn []task.Dependency) string {
 }
 
 // Add random set of dependencies to each task in parentTasks
-func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task {
+func makeRandomSubTasks(parentTasks *[]task.Task) []task.Task {
 	depTasks := []task.Task{}
 	for i, parentTask := range *parentTasks {
 		dependsOn := []task.Dependency{

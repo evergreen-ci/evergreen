@@ -5,16 +5,14 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	EnvOverride = "SETTINGS_OVERRIDE"
 )
 
 // path to an mci settings file containing sensitive information
@@ -37,9 +35,9 @@ func GetDirectoryOfFile() string {
 // an error parsing the settings
 func GetIntegrationFile(t *testing.T) *evergreen.Settings {
 	if (*settingsOverride) == "" {
-		require.NotZero(t, os.Getenv(EnvOverride), "Integration tests need a settings override file to be provided")
+		require.NotZero(t, os.Getenv(evergreen.SettingsOverride), "Integration tests need a settings override file to be provided")
 
-		*settingsOverride = os.Getenv(EnvOverride)
+		*settingsOverride = os.Getenv(evergreen.SettingsOverride)
 	}
 
 	if !filepath.IsAbs(*settingsOverride) {
@@ -72,6 +70,15 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 	err = testSettings.Set(context.Background())
 	require.NoError(t, err, "Error updating admin settings in DB")
 
+	// err = evergreen.UpdateConfig(context.Background(), testSettings)
+	// require.NoError(t, err, "Error updating settings in DB")
+	catcher := grip.NewBasicCatcher()
+	evergreen.StoreAdminSecrets(context.Background(),
+		evergreen.GetEnvironment().ParameterManager(),
+		reflect.ValueOf(testSettings).Elem(),
+		reflect.TypeOf(*testSettings), "", catcher)
+	require.NoError(t, catcher.Resolve(), "Error storing admin secrets in parameter store")
+
 	// Don't clobber allowed images if it doesn't exist in the override
 	// A longer-term fix will be in DEVPROD-745
 	allowedImages := testSettings.Providers.AWS.Pod.ECS.AllowedImages
@@ -86,4 +93,5 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 	testSettings.GithubPRCreatorOrg = integrationSettings.GithubPRCreatorOrg
 	testSettings.Slack = integrationSettings.Slack
 	testSettings.ShutdownWaitSeconds = integrationSettings.ShutdownWaitSeconds
+
 }

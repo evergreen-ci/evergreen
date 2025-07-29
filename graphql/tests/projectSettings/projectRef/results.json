@@ -44,11 +44,13 @@
               "projectHealthView": "FAILED",
               "parsleyFilters": [
                 {
+                  "description": "",
                   "expression": "filter1",
                   "caseSensitive": false,
                   "exactMatch": false
                 },
                 {
+                  "description": "the second filter",
                   "expression": "filter2",
                   "caseSensitive": true,
                   "exactMatch": true

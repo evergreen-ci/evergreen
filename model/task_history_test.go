@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -645,4 +646,100 @@ func TestGetOlderActiveMainlineTask(t *testing.T) {
 	require.NotNil(t, olderActiveTask)
 	assert.Equal(t, "t_2", olderActiveTask.Id)
 	assert.Equal(t, 99, olderActiveTask.RevisionOrderNumber)
+}
+
+func TestGetTaskOrderByDate(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
+		"returns correct task order on or before given date": func(t *testing.T, ctx context.Context) {
+			order, err := GetTaskOrderByDate(t.Context(), time.Date(2024, time.August, 13, 0, 0, 0, 0, time.UTC), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, 100, order)
+		},
+		"errors when no task is found on or before given date": func(t *testing.T, ctx context.Context) {
+			order, err := GetTaskOrderByDate(t.Context(), time.Date(2020, time.August, 0, 0, 0, 0, 0, time.UTC), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+			})
+			assert.Error(t, err)
+			assert.Equal(t, 0, order)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(task.Collection))
+			t1 := task.Task{
+				Id:                  "t_1",
+				Requester:           evergreen.TriggerRequester,
+				RevisionOrderNumber: 98,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+				CreateTime:          time.Date(2024, time.June, 12, 12, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(t, t1.Insert(t.Context()))
+
+			t2 := task.Task{
+				Id:                  "t_2",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 99,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+				CreateTime:          time.Date(2024, time.July, 12, 12, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(t, t2.Insert(t.Context()))
+
+			t3 := task.Task{
+				Id:                  "t_3",
+				Requester:           evergreen.AdHocRequester,
+				RevisionOrderNumber: 100,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+				CreateTime:          time.Date(2024, time.August, 12, 12, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(t, t3.Insert(t.Context()))
+
+			t4 := task.Task{
+				Id:                  "t_4",
+				Requester:           evergreen.GitTagRequester,
+				RevisionOrderNumber: 101,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+				CreateTime:          time.Date(2024, time.September, 12, 12, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(t, t4.Insert(t.Context()))
+
+			t5 := task.Task{
+				Id:                  "t_5",
+				Requester:           evergreen.GitTagRequester,
+				RevisionOrderNumber: 102,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+				CreateTime:          time.Date(2024, time.October, 12, 12, 0, 0, 0, time.UTC),
+			}
+			assert.NoError(t, t5.Insert(t.Context()))
+
+			tCase(t, t.Context())
+		})
+	}
 }

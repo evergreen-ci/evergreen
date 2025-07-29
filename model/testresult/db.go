@@ -1,55 +1,60 @@
 package testresult
 
 import (
-	"context"
+	"crypto/sha1"
+	"fmt"
+	"io"
+	"time"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const Collection = "testresults"
+const (
+	Collection        = "test_results"
+	parquetDateFormat = "2006-01-02"
+)
 
-type dbTaskTestResults struct {
-	ID      dbTaskTestResultsID  `bson:"_id"`
-	Stats   TaskTestResultsStats `bson:"stats"`
-	Results []TestResult         `bson:"results"`
+type DbTaskTestResults struct {
+	ID          string               `bson:"_id"`
+	Stats       TaskTestResultsStats `bson:"stats"`
+	Info        TestResultsInfo      `bson:"info"`
+	CreatedAt   time.Time            `bson:"created_at"`
+	CompletedAt time.Time            `bson:"completed_at"`
+	// FailedTestsSample is the first X failing tests of the test Results.
+	// This is an optimization for Evergreen's UI features that display a
+	// limited number of failing tests for a task.
+	FailedTestsSample []string     `bson:"failed_tests_sample"`
+	Results           []TestResult `bson:"-"`
 }
 
-type dbTaskTestResultsID struct {
-	TaskID    string `bson:"task_id"`
-	Execution int    `bson:"execution"`
+// ID creates a unique hash for a TestResultsInfo.
+func (t *TestResultsInfo) ID() string {
+	hash := sha1.New()
+	_, _ = io.WriteString(hash, t.Project)
+	_, _ = io.WriteString(hash, t.Version)
+	_, _ = io.WriteString(hash, t.Variant)
+	_, _ = io.WriteString(hash, t.TaskName)
+	_, _ = io.WriteString(hash, t.DisplayTaskName)
+	_, _ = io.WriteString(hash, t.TaskID)
+	_, _ = io.WriteString(hash, t.DisplayTaskID)
+	_, _ = io.WriteString(hash, fmt.Sprint(t.Execution))
+	_, _ = io.WriteString(hash, t.Requester)
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+// PartitionKey returns the partition key for the S3 bucket in Presto.
+func PartitionKey(createdAt time.Time, project string, id string) string {
+	return fmt.Sprintf("task_create_iso=%s/project=%s/%s", createdAt.UTC().Format(parquetDateFormat), project, id)
 }
 
 var (
-	idKey      = bsonutil.MustHaveTag(dbTaskTestResults{}, "ID")
-	statsKey   = bsonutil.MustHaveTag(dbTaskTestResults{}, "Stats")
-	resultsKey = bsonutil.MustHaveTag(dbTaskTestResults{}, "Results")
-
-	taskIDKey    = bsonutil.MustHaveTag(dbTaskTestResultsID{}, "TaskID")
-	executionKey = bsonutil.MustHaveTag(dbTaskTestResultsID{}, "Execution")
-
-	totalCountKey  = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
-	failedCountKey = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
+	IdKey                           = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
+	StatsKey                        = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
+	TotalCountKey                   = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
+	FailedCountKey                  = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
+	TestResultsInfoKey              = bsonutil.MustHaveTag(DbTaskTestResults{}, "Info")
+	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
+	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
+	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
 )
-
-func (s *localService) appendResults(ctx context.Context, results []TestResult, id dbTaskTestResultsID) error {
-	var failedCount int
-	for _, result := range results {
-		if result.Status == evergreen.TestFailedStatus {
-			failedCount++
-		}
-	}
-
-	update := bson.M{
-		"$push": bson.M{resultsKey: bson.M{"$each": results}},
-		"$inc": bson.M{
-			bsonutil.GetDottedKeyName(statsKey, totalCountKey):  len(results),
-			bsonutil.GetDottedKeyName(statsKey, failedCountKey): failedCount,
-		},
-	}
-	_, err := s.env.DB().Collection(Collection).UpdateOne(ctx, bson.M{idKey: id}, update, options.Update().SetUpsert(true))
-	return errors.Wrap(err, "appending DB test results")
-}

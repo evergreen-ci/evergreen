@@ -120,18 +120,17 @@ type APITask struct {
 	Requester         *string         `json:"requester"`
 	TestResults       []APITest       `json:"test_results"`
 	Aborted           bool            `json:"aborted"`
-	AbortInfo         APIAbortInfo    `json:"abort_info,omitempty"`
+	AbortInfo         APIAbortInfo    `json:"abort_info"`
 	AMI               *string         `json:"ami"`
 	MustHaveResults   bool            `json:"must_have_test_results"`
 	BaseTask          APIBaseTaskInfo `json:"base_task"`
 	ResetWhenFinished bool            `json:"reset_when_finished"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
-	OverrideDependencies bool   `json:"-"`
-	Archived             bool   `json:"archived"`
-	ResultsService       string `json:"-"`
-	HasCedarResults      bool   `json:"-"`
-	ResultsFailed        bool   `json:"-"`
+	OverrideDependencies bool `json:"-"`
+	Archived             bool `json:"archived"`
+	HasTestResults       bool `json:"-"`
+	ResultsFailed        bool `json:"-"`
 }
 
 type APIStepbackInfo struct {
@@ -348,8 +347,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Blocked:                     t.Blocked(),
 		Requester:                   utility.ToStringPtr(t.Requester),
 		Aborted:                     t.Aborted,
-		ResultsService:              t.ResultsService,
-		HasCedarResults:             t.HasCedarResults,
+		HasTestResults:              t.HasTestResults,
 		ResultsFailed:               t.ResultsFailed,
 		MustHaveResults:             t.MustHaveResults,
 		ResetWhenFinished:           t.ResetWhenFinished,
@@ -543,8 +541,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 		GeneratedBy:                 at.GeneratedBy,
 		DisplayOnly:                 at.DisplayOnly,
 		Requester:                   utility.FromStringPtr(at.Requester),
-		ResultsService:              at.ResultsService,
-		HasCedarResults:             at.HasCedarResults,
+		HasTestResults:              at.HasTestResults,
 		ResultsFailed:               at.ResultsFailed,
 		MustHaveResults:             at.MustHaveResults,
 		BaseTask: task.BaseTaskInfo{

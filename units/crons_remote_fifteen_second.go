@@ -71,6 +71,8 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 	}
 	catcher.Wrap(amboy.EnqueueManyUniqueJobs(ctx, j.env.RemoteQueue(), allJobs), "populating main queue")
 
+	catcher.Add(populateQueueGroup(ctx, j.env, hostIPAssociationQueueGroup, hostIPAssociationJobs, ts))
+
 	// Create dedicated queues for pod allocation.
 	catcher.Add(populateQueueGroup(ctx, j.env, podAllocationQueueGroup, podAllocatorJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, podDefinitionCreationQueueGroup, podDefinitionCreationJobs, ts))

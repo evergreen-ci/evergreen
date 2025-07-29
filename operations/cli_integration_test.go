@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -112,10 +113,11 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 
 	// create a settings file for the command line client
 	settings := ClientSettings{
-		APIServerHost: testServer.URL + "/api",
-		UIServerHost:  "http://dev-evg.mongodb.com",
-		APIKey:        "testapikey",
-		User:          "testuser",
+		APIServerHost:      testServer.URL + "/api",
+		UIServerHost:       "http://dev-evg.mongodb.com",
+		APIKey:             "testapikey",
+		User:               "testuser",
+		DoNotRunKanopyOIDC: true,
 	}
 	settingsFile, err := os.CreateTemp("", "settings")
 	So(err, ShouldBeNil)
@@ -286,10 +288,10 @@ func TestCLITestHistory(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection))
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, task.ClearTestResults(ctx, env))
 	}()
 	testutil.ConfigureIntegrationTest(t, testConfig)
-	svc := testresult.NewLocalService(env)
+	svc := task.NewTestResultService(env)
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
@@ -325,14 +327,13 @@ func TestCLITestHistory(t *testing.T) {
 			// create tasks with three different display names that start and finish at various times
 			for i := 0; i < 10; i++ {
 				tsk := task.Task{
-					Id:             fmt.Sprintf("task_%v", i),
-					Project:        project,
-					DisplayName:    fmt.Sprintf("testTask_%v", i%3),
-					Revision:       fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
-					Version:        fmt.Sprintf("version%v", i%3),
-					BuildVariant:   "osx",
-					Status:         evergreen.TaskFailed,
-					ResultsService: testresult.TestResultsServiceLocal,
+					Id:           fmt.Sprintf("task_%v", i),
+					Project:      project,
+					DisplayName:  fmt.Sprintf("testTask_%v", i%3),
+					Revision:     fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
+					Version:      fmt.Sprintf("version%v", i%3),
+					BuildVariant: "osx",
+					Status:       evergreen.TaskFailed,
 				}
 				So(tsk.Insert(ctx), ShouldBeNil)
 
@@ -352,7 +353,7 @@ func TestCLITestHistory(t *testing.T) {
 					TestStartTime: startTime,
 					TestEndTime:   endTime,
 				}
-				require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{passingResult, failedResult}))
+				require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, []testresult.TestResult{passingResult, failedResult}, "")))
 			}
 		})
 	})

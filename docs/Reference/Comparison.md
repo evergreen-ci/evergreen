@@ -2,16 +2,16 @@
 
 ## Terminology
 
-| GitHub Actions | CircleCI | Evergreen |
-| -------------- | -------- | --------- |
-| None - With GitHub Actions each Workflow lives in its own YAML file. | Pipeline | Project |
-| Workflow | Workflow | Build Variant (see below for more details) |
-| Job | Job | Task |
-| Step | Step | Function or Command |
-| Action | Orb | Function or Command |
-| Matrix | Matrix Job | None, but see below |
-| Variable | Variable | Expansion |
-| PR / Workflow Run | PR / Pipeline Run | Version (but you will also see people call these a Patch - see below for more details) |
+| GitHub Actions                                                       | CircleCI          | Evergreen                                                                              |
+| -------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------- |
+| None - With GitHub Actions each Workflow lives in its own YAML file. | Pipeline          | Project                                                                                |
+| Workflow                                                             | Workflow          | Build Variant (see below for more details)                                             |
+| Job                                                                  | Job               | Task                                                                                   |
+| Step                                                                 | Step              | Function or Command                                                                    |
+| Action                                                               | Orb               | Function or Command                                                                    |
+| Matrix                                                               | Matrix Job        | None, but see below                                                                    |
+| Variable                                                             | Variable          | Expansion                                                                              |
+| PR / Workflow Run                                                    | PR / Pipeline Run | Version (but you will also see people call these a Patch - see below for more details) |
 
 In Evergreen, all of the config for a Project lives in a single YAML file (but you can use [includes](../Project-Configuration/Project-Configuration-Files#include) to break things up). This is like a CircleCI Pipeline. With GitHub Actions (GHA), the project’s config is split into multiple files, one per workflow.
 
@@ -40,6 +40,6 @@ This is roughly equivalent to the set of GHA Workflows or CircleCI Pipelines run
 
 - Pushing a tag to a repo with an Evergreen project.
 - Scheduled version runs based on a cron schedule. This is configured in the Evergreen project settings.
-- Manually using the evergreen [CLI tool](../CLI)’s `evergreen patch` command. When you run this, the set of changes being tested is based on your **local checkout’s commits, not just a PR**. You can  even include uncommitted changes in the patch.
+- Manually using the evergreen [CLI tool](../CLI)’s `evergreen patch` command. When you run this, the set of changes being tested is based on your **local checkout’s commits, not just a PR**. You can even include uncommitted changes in the patch.
 - Triggered because of inter-project dependencies.
 - And several more.

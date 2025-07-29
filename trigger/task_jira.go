@@ -27,7 +27,7 @@ import (
 const descriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
 {{if isHostTask .}}Host: {{host .}}{{end}}{{if isContainerTask .}}Pod: {{pod .}}{{end}}
-Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Id}}?redirect_spruce_users=true]
+Project: [{{.Project.DisplayName}}|{{.UIv2Url}}/project/{{.Project.Id}}/waterfall]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] {{if (eq .DisplayTaskId "") }} |[History|{{.HistoryURL}}]{{end}}
@@ -184,6 +184,7 @@ type jiraBuilder struct {
 type jiraTemplateData struct {
 	Context            context.Context
 	UIRoot             string
+	UIv2Url            string
 	SubscriptionID     string
 	EventID            string
 	Task               *task.Task

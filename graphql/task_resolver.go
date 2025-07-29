@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"go.mongodb.org/mongo-driver/bson"
@@ -368,9 +369,13 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 
 // FailedTestCount is the resolver for the failedTestCount field.
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	dbTask, err := obj.ToService()
+	taskID := utility.FromStringPtr(obj.Id)
+	dbTask, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if dbTask == nil {
+		return 0, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
@@ -458,17 +463,16 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 		return false, nil
 	}
 	opts := apimodels.GetPerfCountOptions{
-		SPSBaseURL:   evergreen.GetEnvironment().Settings().Cedar.SPSKanopyURL,
-		TaskID:       utility.FromStringPtr(obj.Id),
-		Execution:    obj.Execution,
-		CedarBaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
+		SPSBaseURL: evergreen.GetEnvironment().Settings().PerfMonitoringKanopyURL,
+		TaskID:     utility.FromStringPtr(obj.Id),
+		Execution:  obj.Execution,
 	}
-	if opts.SPSBaseURL == "" && opts.CedarBaseURL == "" {
+	if opts.SPSBaseURL == "" {
 		return false, nil
 	}
 	result, err := apimodels.PerfResultsCount(ctx, opts)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("requesting perf data from Cedar: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("requesting perf data: %s", err.Error()))
 	}
 	if result.NumberOfResults == 0 {
 		return false, nil
@@ -578,10 +582,48 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	return &TaskLogs{TaskID: utility.FromStringPtr(obj.Id), Execution: obj.Execution}, nil
 }
 
+// TaskOwnerTeam is the resolver for the taskOwnerTeam field.
+func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
+	fwsBaseURL := evergreen.GetEnvironment().Settings().FWS.URL
+	if fwsBaseURL == "" {
+		return nil, InternalServerError.Send(ctx, "Foliage Web Services URL not set")
+	}
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+
+	cfg := fws.NewConfiguration()
+	cfg.HTTPClient = httpClient
+	cfg.Servers = fws.ServerConfigurations{
+		fws.ServerConfiguration{
+			Description: "Foliage Web Services",
+			URL:         fwsBaseURL,
+		},
+	}
+	cfg.UserAgent = "evergreen"
+
+	client := fws.NewAPIClient(cfg)
+	req := client.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, *obj.Id)
+	results, resp, err := req.Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task owner team: %s", err.Error()))
+	}
+	teamName := results.SelectedAssignment.GetTeamDataWithOwner().TeamData.TeamName
+	return &TaskOwnerTeam{
+		TeamName:       teamName,
+		AssignmentType: string(results.SelectedAssignment.GetAssignmentType()),
+		Messages:       results.SelectedAssignment.GetMessages(),
+	}, nil
+}
+
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
 	// Return early if it is known that there are no test results to return.
-	if opts != nil && len(opts.Statuses) > 0 {
+	// Display tasks cannot take advantage of this optimization since they
+	// don't populate ResultsFailed.
+	if opts != nil && !obj.DisplayOnly && len(opts.Statuses) > 0 {
 		diffFailureStatuses := utility.GetSetDifference(opts.Statuses, evergreen.TestFailureStatuses)
 		if len(diffFailureStatuses) == 0 && !obj.ResultsFailed {
 			return &TaskTestResult{
@@ -629,11 +671,14 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 
 // TotalTestCount is the resolver for the totalTestCount field.
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	dbTask, err := obj.ToService()
+	taskID := utility.FromStringPtr(obj.Id)
+	dbTask, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}
-
+	if dbTask == nil {
+		return 0, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err.Error()))

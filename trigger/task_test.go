@@ -16,16 +16,31 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	goparquet "github.com/fraugster/parquet-go"
+	"github.com/fraugster/parquet-go/floor"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+var output = task.TaskOutput{
+	TestResults: task.TestResultOutput{
+		Version: task.TestResultServiceEvergreen,
+		BucketConfig: evergreen.BucketConfig{
+			Type:              evergreen.BucketTypeLocal,
+			TestResultsPrefix: "test-results",
+		},
+	},
+}
 
 func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -170,7 +185,7 @@ func (s *taskSuite) TearDownSuite() {
 		build.Collection,
 		model.ProjectRefCollection,
 	))
-	s.NoError(testresult.ClearLocal(ctx, s.env))
+	s.NoError(task.ClearTestResults(ctx, s.env))
 }
 
 func (s *taskSuite) SetupTest() {
@@ -187,7 +202,7 @@ func (s *taskSuite) SetupTest() {
 		build.Collection,
 		model.ProjectRefCollection,
 	))
-	s.Require().NoError(testresult.ClearLocal(s.ctx, s.env))
+	s.Require().NoError(task.ClearTestResults(s.ctx, s.env))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -202,6 +217,7 @@ func (s *taskSuite) SetupTest() {
 		FinishTime:          startTime.Add(20 * time.Minute),
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		TaskOutputInfo:      &task.TaskOutput{TestResults: task.TestResultOutput{Version: task.TestResultServiceEvergreen}},
 	}
 	s.NoError(s.task.Insert(s.ctx))
 
@@ -814,10 +830,12 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 	s.task.BuildId = fmt.Sprintf("build_id_%d", n)
 	s.task.RevisionOrderNumber = n
 	s.task.Status = taskStatus
-	s.task.ResultsService = ""
+	s.task.HasTestResults = true
 	s.task.ResultsFailed = false
 	s.data.Status = taskStatus
 	s.event.ResourceId = s.task.Id
+	output.TestResults.BucketConfig.Name = s.T().TempDir()
+	s.task.TaskOutputInfo = &output
 	s.Require().NoError(s.task.Insert(s.ctx))
 	v := model.Version{
 		Id: s.task.Version,
@@ -832,15 +850,18 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	if len(testName) == 0 {
 		testName = "test_0"
 	}
-	svc := testresult.NewLocalService(s.env)
+	svc := task.NewTestResultService(s.env)
 
-	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{
+	results := []testresult.TestResult{{
 		TestName:  testName,
 		TaskID:    s.task.Id,
 		Execution: s.task.Execution,
 		Status:    testStatus,
-	}}))
-	s.Require().NoError(s.task.SetResultsInfo(ctx, testresult.TestResultsServiceLocal, testStatus == evergreen.TestFailedStatus))
+	}}
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
+	s.Require().NoError(err)
+	saveTestResults(s.T(), ctx, testBucket, svc, &s.task, 1, results)
+	s.Require().NoError(s.task.SetResultsInfo(ctx, testStatus == evergreen.TestFailedStatus))
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
@@ -1070,6 +1091,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	}
 	s.NoError(v1.Insert(s.ctx))
 
+	output.TestResults.BucketConfig.Name = s.T().TempDir()
 	t1 := task.Task{
 		Id:             "t1",
 		Requester:      evergreen.RepotrackerVersionRequester,
@@ -1078,8 +1100,9 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Version:        "v1",
 		BuildId:        "test_build_id",
 		Project:        "myproj",
-		ResultsService: "local",
+		HasTestResults: true,
 		ResultsFailed:  true,
+		TaskOutputInfo: &output,
 	}
 	s.NoError(t1.Insert(s.ctx))
 	t2 := task.Task{
@@ -1090,12 +1113,25 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Version:        "v1",
 		BuildId:        "test_build_id",
 		Project:        "myproj",
-		ResultsService: "local",
+		HasTestResults: true,
 		ResultsFailed:  true,
+		TaskOutputInfo: &output,
 	}
 	s.NoError(t2.Insert(s.ctx))
-	svc := testresult.NewLocalService(s.env)
-	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus}, {TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "something", Status: evergreen.TestFailedStatus}}))
+	svc := task.NewTestResultService(s.env)
+
+	results1 := []testresult.TestResult{
+		{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus},
+		{TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus},
+	}
+	results2 := []testresult.TestResult{
+		{TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus},
+		{TaskID: "t2", TestName: "something", Status: evergreen.TestFailedStatus},
+	}
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
+	s.Require().NoError(err)
+	saveTestResults(s.T(), ctx, testBucket, svc, &t1, 4, results1)
+	saveTestResults(s.T(), ctx, testBucket, svc, &t2, 4, results2)
 
 	ref := model.ProjectRef{
 		Id: "myproj",
@@ -1352,12 +1388,11 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	defer cancel()
 	env := evergreen.GetEnvironment()
 	require.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
-	require.NoError(t, testresult.ClearLocal(ctx, env))
+	require.NoError(t, task.ClearTestResults(ctx, env))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, task.ClearTestResults(ctx, env))
 	}()
-	svc := testresult.NewLocalService(env)
 
 	b := build.Build{Id: "b0"}
 	require.NoError(t, b.Insert(t.Context()))
@@ -1365,6 +1400,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	require.NoError(t, projectRef.Insert(t.Context()))
 	v := model.Version{Id: "v0", Revision: "abcdef01"}
 	require.NoError(t, v.Insert(t.Context()))
+	output.TestResults.BucketConfig.Name = t.TempDir()
 
 	tasks := []task.Task{
 		{
@@ -1380,17 +1416,20 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			FinishTime:          time.Now(),
 			DisplayOnly:         true,
+			TaskOutputInfo:      &output,
 		},
 		{
 			Id:             "et0_0",
 			DisplayName:    "et0",
-			ResultsService: testresult.TestResultsServiceLocal,
+			HasTestResults: true,
 			ResultsFailed:  true,
+			TaskOutputInfo: &output,
 		},
 		{
 			Id:             "et1_0",
 			DisplayName:    "et1",
-			ResultsService: testresult.TestResultsServiceLocal,
+			HasTestResults: true,
+			TaskOutputInfo: &output,
 		},
 		{
 			Id:                  "dt0_1",
@@ -1406,20 +1445,28 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			DisplayOnly:         true,
 		},
 		{
-			Id:          "et0_1",
-			DisplayName: "et0",
+			Id:             "et0_1",
+			DisplayName:    "et0",
+			HasTestResults: true,
+			TaskOutputInfo: &output,
 		},
 		{
 			Id:             "et1_1",
 			DisplayName:    "et1",
-			ResultsService: testresult.TestResultsServiceLocal,
+			HasTestResults: true,
 			ResultsFailed:  true,
+			TaskOutputInfo: &output,
 		},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}, {TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus}, {TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus}}))
+	svc := task.NewTestResultService(env)
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.Name})
+	require.NoError(t, err)
+	saveTestResults(t, ctx, testBucket, svc, &tasks[1], 1, []testresult.TestResult{{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}})
+	saveTestResults(t, ctx, testBucket, svc, &tasks[2], 1, []testresult.TestResult{{TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus}})
+	saveTestResults(t, ctx, testBucket, svc, &tasks[5], 1, []testresult.TestResult{{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus}})
 
 	tr := taskTriggers{event: &event.EventLogEntry{ID: "e0"}, jiraMappings: &evergreen.JIRANotificationsConfig{}}
 	subscriber := event.Subscriber{Type: event.JIRAIssueSubscriberType, Target: &event.JIRAIssueSubscriber{}}
@@ -1439,12 +1486,12 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 
 	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
 	tr.task = &tasks[3]
-	require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{{
+	saveTestResults(t, ctx, testBucket, svc, &tasks[4], 1, []testresult.TestResult{{
 		TaskID:   "et0_1",
 		TestName: "f1",
 		Status:   evergreen.TestFailedStatus,
-	}}))
-	require.NoError(t, tasks[4].SetResultsInfo(ctx, testresult.TestResultsServiceLocal, true))
+	}})
+	require.NoError(t, tasks[4].SetResultsInfo(ctx, true))
 	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)
@@ -1454,4 +1501,76 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	assert.Nil(t, notification)
+}
+
+func getTestResults() *testresult.DbTaskTestResults {
+	info := testresult.TestResultsInfo{
+		Project:   utility.RandomString(),
+		Version:   utility.RandomString(),
+		Variant:   utility.RandomString(),
+		TaskName:  utility.RandomString(),
+		TaskID:    utility.RandomString(),
+		Execution: rand.Intn(5),
+		Requester: utility.RandomString(),
+	}
+	// Optional fields, we should test that we handle them properly when
+	// they are populated and when they do not.
+	if sometimes.Half() {
+		info.DisplayTaskName = utility.RandomString()
+		info.DisplayTaskID = utility.RandomString()
+	}
+
+	return &testresult.DbTaskTestResults{
+		ID:          info.ID(),
+		Info:        info,
+		CreatedAt:   time.Now().Add(-time.Hour).UTC().Round(time.Millisecond),
+		CompletedAt: time.Now().UTC().Round(time.Millisecond),
+	}
+}
+
+func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, svc task.TestResultsService, tsk *task.Task, length int, savedResults []testresult.TestResult) []testresult.TestResult {
+	tr := getTestResults()
+	tr.Info.TaskID = tsk.Id
+	tr.Info.Execution = tsk.Execution
+	savedParquet := testresult.ParquetTestResults{
+		Version:   tr.Info.Version,
+		Variant:   tr.Info.Variant,
+		TaskName:  tr.Info.TaskName,
+		TaskID:    tr.Info.TaskID,
+		Execution: int32(tr.Info.Execution),
+		Requester: tr.Info.Requester,
+		CreatedAt: tr.CreatedAt.UTC(),
+		Results:   make([]testresult.ParquetTestResult, length),
+	}
+
+	for i := 0; i < len(savedResults); i++ {
+		savedParquet.Results[i] = testresult.ParquetTestResult{
+			TestName:       savedResults[i].TestName,
+			GroupID:        utility.ToStringPtr(savedResults[i].GroupID),
+			Status:         savedResults[i].Status,
+			LogInfo:        savedResults[i].LogInfo,
+			TaskCreateTime: savedResults[i].TaskCreateTime.UTC(),
+			TestStartTime:  savedResults[i].TestStartTime.UTC(),
+			TestEndTime:    savedResults[i].TestEndTime.UTC(),
+		}
+		if savedResults[i].DisplayTestName != "" {
+			savedParquet.Results[i].DisplayTestName = utility.ToStringPtr(savedResults[i].DisplayTestName)
+			savedParquet.Results[i].GroupID = utility.ToStringPtr(savedResults[i].GroupID)
+			savedParquet.Results[i].LogTestName = utility.ToStringPtr(savedResults[i].LogTestName)
+			savedParquet.Results[i].LogURL = utility.ToStringPtr(savedResults[i].LogURL)
+			savedParquet.Results[i].RawLogURL = utility.ToStringPtr(savedResults[i].RawLogURL)
+			savedParquet.Results[i].LineNum = utility.ToInt32Ptr(int32(savedResults[i].LineNum))
+		}
+	}
+
+	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, testresult.PartitionKey(tr.CreatedAt, tr.Info.Project, tr.ID)))
+	require.NoError(t, err)
+	defer func() { assert.NoError(t, w.Close()) }()
+
+	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
+	require.NoError(t, pw.Write(savedParquet))
+	require.NoError(t, pw.Close())
+	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
+	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
+	return savedResults
 }

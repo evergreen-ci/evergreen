@@ -89,6 +89,7 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 type APIConfig struct {
 	HttpListenAddr string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	URL            string `bson:"url" json:"url" yaml:"url"`
+	CorpURL        string `bson:"corp_url" json:"corp_url" yaml:"corp_url"`
 }
 
 func (c *APIConfig) SectionId() string { return "api" }
@@ -100,6 +101,7 @@ func (c *APIConfig) Get(ctx context.Context) error {
 var (
 	httpListenAddrKey = bsonutil.MustHaveTag(APIConfig{}, "HttpListenAddr")
 	urlKey            = bsonutil.MustHaveTag(APIConfig{}, "URL")
+	corpURLKey        = bsonutil.MustHaveTag(APIConfig{}, "CorpURL")
 )
 
 func (c *APIConfig) Set(ctx context.Context) error {
@@ -107,6 +109,7 @@ func (c *APIConfig) Set(ctx context.Context) error {
 		"$set": bson.M{
 			httpListenAddrKey: c.HttpListenAddr,
 			urlKey:            c.URL,
+			corpURLKey:        c.CorpURL,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

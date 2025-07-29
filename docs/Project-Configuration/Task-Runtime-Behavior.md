@@ -16,6 +16,7 @@ is not directly configurable by users, any failures caused by `setup.initial`
 are issues on Evergreen's end.
 
 ## Command Block Execution
+
 ### Command Block Order
 
 Once the task is set up, the command blocks will run their commands. For a
@@ -149,20 +150,19 @@ a task group, it will keep the task directory as long as it is running tasks
 in the same task group. Once all the task group tasks have finished, it will
 clean up the task directory.
 
-
 ### Global File Cleanup
 
 **Evergreen will only accept requests to clean up global files with clear security implications.**
 
 Right now, we delete the .git-credentials, .gitconfig, and .netrc files from the home directory.
-For tasks not in a task group, this is done at the end of the task after all commands 
-have finished running. For task groups, the deletion will occur after 
+For tasks not in a task group, this is done at the end of the task after all commands
+have finished running. For task groups, the deletion will occur after
 all the tasks in the task group have finished.
 
 ## Task Timeouts
 
 Tasks are not allowed to run forever, so all commands that run for a task are
-subject to (configurable) timeouts. However, tasks cannot be configured to have a timeout 
+subject to (configurable) timeouts. However, tasks cannot be configured to have a timeout
 greater than 86400 seconds (24 hours). If a command hits a timeout, that command
 will stop with an error. Furthermore, if that command can cause the task to fail
 and that command is in `pre`, `setup_task`, `setup_group`, or the main task
@@ -232,7 +232,7 @@ abruptly exits. Only use this if the default task status does not suit your
 needs.
 
 Note: This route must be called before the final task status has been set.
-For example, calling the route in a `teardown_group` will not work because 
+For example, calling the route in a `teardown_group` will not work because
 teardown groups run outside the context of their tasks. This also applies
 to the `post`, `timeout`, and `teardown_task` blocks.
 
@@ -244,7 +244,7 @@ is set.
     POST localhost:2285/task_status
 
 | Name                      | Type     | Description                                                                                                                                                                                                                                                    |
-|---------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | status                    | string   | Required. The overall task status. This can be "success" or "failed". If this is configured incorrectly, the task will system fail.                                                                                                                            |
 | type                      | string   | The failure type. This can be "setup", "system", or "test" (see [project configuration files](Project-Configuration-Files#command-failure-colors) for corresponding colors). If not specified, will default to the failure type of the last command that runs. |
 | desc                      | string   | Provide details on the task failure. This is limited to 500 characters. If not specified or the message is too long, it will default to the display name of the last command that runs.                                                                        |
@@ -253,7 +253,7 @@ is set.
 
 Example in a command:
 
-``` yaml
+```yaml
 - command: shell.exec
      params:
         shell: bash
@@ -266,7 +266,7 @@ Example in a command:
 
 The following endpoint was created as a workaround to the above `/task_status`
 agent endpoint for tasks that want to append extra metadata tags to a task after
-the final task status has already been set, such as in the `post`, `timeout`, 
+the final task status has already been set, such as in the `post`, `timeout`,
 or `teardown_task` blocks. This endpoint may be called in any command block, and will
 append metadata tags to the existing list of task metadata tags. It can be used in
 conjunction with the `/task_status` endpoint and the `failure_metadata_tags` YAML field.
@@ -276,13 +276,12 @@ that were added previously.
     POST localhost:2285/failure_metadata_tag
 
 | Name                      | Type     | Description                                                                                                                                                                          |
-|---------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-                                                                                               |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | add_failure_metadata_tags | []string | If set, then additional metadata tags will be associated with the failing command. See [here](Project-Commands#basic-command-structure) for more details on `failure_metadata_tags`. |
 
 Example in a command:
 
-``` yaml
+```yaml
 - command: shell.exec
      params:
         shell: bash

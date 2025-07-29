@@ -39,12 +39,16 @@ input TestFilter {
   testStatus: String!
 }
 
+input TaskPriority {
+  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  priority: Int!
+}
+
 ###### TYPES ######
 """
 Task models a task, the simplest unit of execution for Evergreen.
 """
 type Task {
-  id: String!
   aborted: Boolean!
   abortInfo: AbortInfo
   activated: Boolean!
@@ -52,6 +56,7 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
+  id: String!
   """
   This is a base task's display status.
   """
@@ -78,8 +83,8 @@ type Task {
   """
   This is a task's display status and is what is commonly used on the UI.
   """
-  displayStatus: String!
   displayOnly: Boolean
+  displayStatus: String!
   displayTask: Task
   distroId: String!
   estimatedStart: Duration
@@ -88,12 +93,12 @@ type Task {
   executionTasksFull: [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
-  finishTime: Time
   files: TaskFiles!
+  finishTime: Time
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
-  hasCedarResults: Boolean!
+  hasTestResults: Boolean!
   hostId: String
   imageId: String!
   ingestTime: Time
@@ -125,12 +130,13 @@ type Task {
   """
   taskLogs returns the tail 100 lines of the task's logs.
   """
+  stepbackInfo: StepbackInfo
   taskLogs: TaskLogs!
+  taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
-  stepbackInfo: StepbackInfo
 }
 
 type AbortInfo {
@@ -163,16 +169,23 @@ enum RequiredStatus {
   MUST_SUCCEED
 }
 
+type FailingCommand {
+  fullDisplayName: String!
+  failureMetadataTags: [String!]!
+}
+
 type TaskEndDetail {
   description: String
+  diskDevices: [String!]!
   failingCommand: String
+  failureMetadataTags: [String!]!
   oomTracker: OomTrackerInfo!
+  otherFailingCommands: [FailingCommand!]!
   status: String!
   timedOut: Boolean
   timeoutType: String
-  type: String!
   traceID: String
-  diskDevices: [String!]!
+  type: String!
 }
 
 type OomTrackerInfo {
@@ -262,4 +275,15 @@ type TaskTestResultSample {
   matchingFailedTestNames: [String!]!
   taskId: String!
   totalTestCount: Int!
+}
+
+"""
+TaskOwnerTeam is the return value for the taskOwnerTeam query.
+It is used to identify the team that owns a task. Based on the FWS team assignment.
+"""
+type TaskOwnerTeam {
+  assignmentType: String!
+  messages: String!
+  teamName: String!
+  jiraProject: String!
 }

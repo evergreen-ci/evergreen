@@ -363,59 +363,6 @@ func TestMarkTaskForReset(t *testing.T) {
 	}
 }
 
-func TestAgentCedarConfig(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentCedarConfig, c evergreen.CedarConfig){
-		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentCedarConfig, c evergreen.CedarConfig) {
-			copied := rh.Factory()
-			assert.NotZero(t, copied)
-			_, ok := copied.(*agentCedarConfig)
-			assert.True(t, ok)
-		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *agentCedarConfig, c evergreen.CedarConfig) {
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/agent/cedar_config", nil)
-			require.NoError(t, err)
-			assert.NoError(t, rh.Parse(ctx, req))
-		},
-		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *agentCedarConfig, c evergreen.CedarConfig) {
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			data, ok := resp.Data().(apimodels.CedarConfig)
-			require.True(t, ok)
-			assert.Equal(t, data.BaseURL, c.BaseURL)
-			assert.Equal(t, data.RPCPort, c.RPCPort)
-			assert.Equal(t, data.Username, c.User)
-			assert.Equal(t, data.APIKey, c.APIKey)
-		},
-		"ReturnsEmpty": func(ctx context.Context, t *testing.T, rh *agentCedarConfig, _ evergreen.CedarConfig) {
-			rh.config = evergreen.CedarConfig{}
-			resp := rh.Run(ctx)
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-
-			data, ok := resp.Data().(apimodels.CedarConfig)
-			require.True(t, ok)
-			assert.Zero(t, data)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			c := evergreen.CedarConfig{
-				BaseURL: "url.com",
-				RPCPort: "9090",
-				User:    "user",
-				APIKey:  "key",
-			}
-			r := makeAgentCedarConfig(c)
-
-			tCase(ctx, t, r, c)
-		})
-	}
-}
-
 func TestAgentSetup(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings){
 		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings) {
@@ -469,7 +416,6 @@ func TestAgentSetup(t *testing.T) {
 						EC2Keys: []evergreen.EC2Key{
 							{
 								Name:   "ec2-key",
-								Region: "us-east-1",
 								Key:    "key",
 								Secret: "secret",
 							},
@@ -954,6 +900,7 @@ func TestAWSAssumeRole(t *testing.T) {
 				assert.NotEmpty(t, data.SecretAccessKey)
 				assert.NotEmpty(t, data.SessionToken)
 				assert.NotEmpty(t, data.Expiration)
+				assert.NotEmpty(t, data.ExternalID)
 			})
 		},
 	} {
@@ -972,4 +919,95 @@ func TestAWSAssumeRole(t *testing.T) {
 		})
 	}
 
+}
+
+func TestStartTaskWithOtelMetadata(t *testing.T) {
+	testCases := []struct {
+		name          string
+		diskDevices   []string
+		traceID       string
+		expectedDisk  []string
+		expectedTrace string
+	}{
+		{
+			name:          "BothDiskDevicesAndTraceID",
+			diskDevices:   []string{"sda1", "sdb1"},
+			traceID:       "test-trace-id-123",
+			expectedDisk:  []string{"sda1", "sdb1"},
+			expectedTrace: "test-trace-id-123",
+		},
+		{
+			name:          "JustTraceID",
+			diskDevices:   nil,
+			traceID:       "test-trace-id-456",
+			expectedDisk:  nil,
+			expectedTrace: "test-trace-id-456",
+		},
+		{
+			name:          "JustDiskDevices",
+			diskDevices:   []string{"nvme0n1", "nvme1n1"},
+			traceID:       "",
+			expectedDisk:  []string{"nvme0n1", "nvme1n1"},
+			expectedTrace: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
+
+			// Create a test task
+			testTask := task.Task{
+				Id:      "test-task-id",
+				Project: "test-project",
+				Version: "test-version",
+				Status:  evergreen.TaskUndispatched,
+			}
+			require.NoError(t, testTask.Insert(ctx))
+
+			// Create a test host
+			testHost := host.Host{
+				Id:          "test-host-id",
+				Status:      evergreen.HostRunning,
+				RunningTask: testTask.Id,
+			}
+			require.NoError(t, testHost.Insert(ctx))
+
+			// Create the request body using TaskStartRequest
+			requestBody := apimodels.TaskStartRequest{
+				TraceID:     tc.traceID,
+				DiskDevices: tc.diskDevices,
+			}
+			bodyBytes, err := json.Marshal(requestBody)
+			require.NoError(t, err)
+
+			// Create the HTTP request
+			req, err := http.NewRequest(http.MethodPost, "/task/test-task-id/start", bytes.NewReader(bodyBytes))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "test-task-id"})
+			req.Header.Set(evergreen.HostHeader, "test-host-id")
+
+			// Create and test the handler
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			handler := makeStartTask(env).(*startTaskHandler)
+			require.NoError(t, handler.Parse(ctx, req))
+
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			// Verify the task was updated with the correct details
+			updatedTask, err := task.FindOneId(ctx, "test-task-id")
+			require.NoError(t, err)
+			require.NotNil(t, updatedTask)
+
+			// Check that the task details were stored correctly
+			assert.Equal(t, tc.expectedTrace, updatedTask.Details.TraceID)
+			assert.Equal(t, tc.expectedDisk, updatedTask.Details.DiskDevices)
+		})
+	}
 }

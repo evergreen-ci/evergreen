@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -51,8 +50,6 @@ type AssumeRoleOptions struct {
 	// DurationSeconds is an optional field of the duration of the role session.
 	// It defaults to 15 minutes.
 	DurationSeconds *int32
-	// CanCache signals whether to cache the credentials.
-	CanCache bool
 }
 
 // AssumeRoleCredentials are the credentials to be returned from
@@ -62,16 +59,10 @@ type AssumeRoleCredentials struct {
 	SecretAccessKey string
 	SessionToken    string
 	Expiration      time.Time
+
+	// ExternalID is the external ID used to assume the role.
+	ExternalID string
 }
-
-// assumeRoleCache holds AWSCredentials for assumed roles.
-var assumeRoleCache = ttlcache.WithOtel(ttlcache.NewInMemory[AssumeRoleCredentials](), "aws-assume-role")
-
-// minAssumeRoleCacheLifetime is the minimum lifetime of an assumed role
-// when retrieved from the cache. This can be used in situations where it's
-// known that the credentials don't need to be used for a long time. Such as
-// S3 operations that only need valid credentials at the beginning of the operations.
-const minAssumeRoleCacheLifetime = 2 * time.Minute
 
 // AssumeRole gets the credentials for a role as the given task. It handles
 // the AWS API call and generating the ExternalID for the request.
@@ -87,15 +78,6 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 		return AssumeRoleCredentials{}, errors.New("task not found")
 	}
 	externalID := createExternalID(t)
-	cacheID := externalID
-	if opts.Policy != nil {
-		cacheID += *opts.Policy
-	}
-	if opts.CanCache {
-		if output, found := assumeRoleCache.Get(ctx, cacheID, minAssumeRoleCacheLifetime); found {
-			return output, nil
-		}
-	}
 	output, err := s.client.AssumeRole(ctx, &sts.AssumeRoleInput{
 		RoleArn:         &opts.RoleARN,
 		Policy:          opts.Policy,
@@ -114,9 +96,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 		SecretAccessKey: *output.Credentials.SecretAccessKey,
 		SessionToken:    *output.Credentials.SessionToken,
 		Expiration:      *output.Credentials.Expiration,
-	}
-	if opts.CanCache {
-		assumeRoleCache.Put(ctx, cacheID, creds, creds.Expiration)
+		ExternalID:      externalID,
 	}
 	return creds, nil
 }

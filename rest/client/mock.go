@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -27,6 +29,8 @@ type Mock struct {
 
 	// mock behavior
 	GetSubscriptionsFail bool
+	MockServiceFlags     *model.APIServiceFlags
+	MockServiceFlagErr   error
 }
 
 func (c *Mock) Close() {}
@@ -70,7 +74,7 @@ func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	return errors.New("(*Mock) TerminateSpawnHost is not implemented")
 }
 
-func (*Mock) StopSpawnHost(context.Context, string, string, bool) error {
+func (*Mock) StopSpawnHost(ctx context.Context, hostID string, subscriptionType string, shouldKeepOff, wait bool) error {
 	return errors.New("(*Mock) StopSpawnHost is not implemented")
 }
 
@@ -82,8 +86,8 @@ func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
 	return errors.New("(*Mock) ChangeSpawnHostPassword is not implemented")
 }
 
-func (*Mock) FindHostByIpAddress(context.Context, string) error {
-	return errors.New("(*Mock) FindHostByIpAddress is not implemented")
+func (*Mock) FindHostByIpAddress(ctx context.Context, ip string) (*model.APIHost, error) {
+	return nil, errors.New("(*Mock) FindHostByIpAddress is not implemented")
 }
 
 func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
@@ -135,9 +139,16 @@ func (c *Mock) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model
 func (c *Mock) SetBannerMessage(ctx context.Context, m string, t evergreen.BannerTheme) error {
 	return nil
 }
-func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                  { return "", nil }
-func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error   { return nil }
-func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error)   { return nil, nil }
+func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                { return "", nil }
+func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error { return nil }
+
+func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
+	if c.MockServiceFlagErr != nil {
+		return c.MockServiceFlags, c.MockServiceFlagErr
+	}
+	return c.MockServiceFlags, nil
+}
+
 func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) error { return nil }
 func (c *Mock) GetSettings(ctx context.Context) (*evergreen.Settings, error)          { return nil, nil }
 func (c *Mock) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
@@ -183,7 +194,7 @@ func (c *Mock) DeletePublicKey(ctx context.Context, keyName string) error {
 	return errors.New("(c *Mock) DeletePublicKey not implemented")
 }
 
-func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.ProjectAlias, error) {
+func (c *Mock) ListAliases(ctx context.Context, project string, includeProjectConfig bool) ([]serviceModel.ProjectAlias, error) {
 	return nil, errors.New("(c *Mock) ListAliases not implemented")
 }
 
@@ -274,13 +285,13 @@ func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
 	return []string{"https://example.com"}, nil
 }
 
-func (c *Mock) PostHostIsUp(ctx context.Context, hostID, hostSecret, instanceID string) (*restmodel.APIHost, error) {
+func (c *Mock) PostHostIsUp(ctx context.Context, ec2InstanceID, hostname string) (*restmodel.APIHost, error) {
 	return &restmodel.APIHost{
 		Id: utility.ToStringPtr("mock_host_id"),
 	}, nil
 }
 
-func (c *Mock) GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error) {
+func (c *Mock) GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHostProvisioningOptions, error) {
 	return &restmodel.APIHostProvisioningOptions{
 		Content: "echo hello world",
 	}, nil
@@ -289,3 +300,37 @@ func (c *Mock) GetHostProvisioningOptions(ctx context.Context, hostID, hostSecre
 func (c *Mock) GetRawPatchWithModules(context.Context, string) (*restmodel.APIRawPatch, error) {
 	return nil, nil
 }
+
+func (c *Mock) GetEstimatedGeneratedTasks(ctx context.Context, patchId string, tvPairs []serviceModel.TVPair) (int, error) {
+	return 0, nil
+}
+
+func (c *Mock) GetTaskLogs(ctx context.Context, opts GetTaskLogsOptions) (io.ReadCloser, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetTestLogs(ctx context.Context, opts GetTestLogsOptions) (io.ReadCloser, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetUiV2URL(ctx context.Context) (string, error) {
+	return "https://example.com", nil
+}
+
+func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
+	return nil, nil
+}
+
+func (c *Mock) RevokeGitHubDynamicAccessTokens(ctx context.Context, taskId string, tokens []string) error {
+	return nil
+}
+
+func (c *Mock) SetHostID(hostID string) {}
+
+func (c *Mock) SetHostSecret(hostSecret string) {}
+
+func (c *Mock) SetJWT(jwt string) {}
+
+func (c *Mock) SetAPIServerHost(serverURL string) {}
+
+func (c *Mock) IsServiceUser(context.Context, string) (bool, error) { return false, nil }

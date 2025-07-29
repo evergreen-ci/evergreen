@@ -172,6 +172,27 @@
       }
     },
     {
+      "query_file": "display_task_fail_filter.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "im_a_display_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                },
+                {
+                  "taskId": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "execution_task_group_id.graphql",
       "result": {
         "data": {

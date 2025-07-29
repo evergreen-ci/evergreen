@@ -5,6 +5,12 @@ database:
   write_concern:
     wmode: "majority"
 
+cedar:
+  db_url: "mongodb://localhost:27017"
+  db_name: "mci_test"
+
+perf_monitoring_url: "https://performance-monitoring-local.corp.mongodb.com"
+
 buckets:
   log_bucket:
     name: "logs"

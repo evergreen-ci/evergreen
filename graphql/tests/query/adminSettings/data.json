@@ -1,0 +1,280 @@
+{
+  "admin": [
+    {
+      "_id": "auth",
+      "preferred_type": "naive",
+      "naive": {
+        "users": [
+          {
+            "username": "admin",
+            "display_name": "Evergreen Admin",
+            "password": "password",
+            "email": ""
+          },
+          {
+            "username": "regular",
+            "display_name": "Regular User",
+            "password": "password",
+            "email": ""
+          },
+          {
+            "username": "privileged",
+            "display_name": "Privileged User",
+            "password": "password",
+            "email": ""
+          }
+        ]
+      },
+      "github": {
+        "app_id": {
+          "$numberLong": "1234"
+        },
+        "client_id": "client_id",
+        "client_secret": "client_secret",
+        "default_owner": "default_owner",
+        "default_repo": "default_repo",
+        "organization": "organization",
+        "users": null
+      },
+      "kanopy": {
+        "headerName": "X-Kanopy-Token",
+        "issuer": "https://kanopy.com",
+        "keyset_url": "https://kanopy.com/keyset"
+      },
+      "multi": {
+        "read_write": ["admin", "privileged"],
+        "read_only": ["admin", "privileged", "regular"]
+      },
+      "okta": {
+        "client_id": "client_id",
+        "client_secret": "client_secret",
+        "issuer": "issuer",
+        "scopes": ["option1", "option2"],
+        "user_group": "user_group",
+        "expireAfterMinutes": 60
+      },
+      "allow_service_users": false,
+      "background_reauth_minutes": 0
+    },
+    {
+      "_id": "global",
+      "uiv2_url": "http://localhost:3000",
+      "configdir": "../config",
+      "domain_name": "localhost",
+      "banner": "This is an important notification",
+      "banner_theme": "IMPORTANT",
+      "github_orgs": ["evergreen-ci"],
+      "disabled_gql_queries": null
+    },
+    {
+      "_id": "notify",
+      "ses": { "sender_address": "evg-sender@email.com" },
+      "buffer_target_per_interval": 30,
+      "buffer_interval_seconds": 30
+    },
+    {
+      "_id": "pod_lifecycle",
+      "max_parallel_pod_requests": 100,
+      "max_pod_definition_cleanup_rate": 0,
+      "max_secret_cleanup_rate": 0
+    },
+    {
+      "_id": "hostinit",
+      "cloud_batch_size": 100,
+      "host_throttle": 32,
+      "max_total_dynamic_hosts": 1000,
+      "provisioning_throttle": 100
+    },
+    {
+      "_id": "repotracker",
+      "revs_to_fetch": 2,
+      "max_revs_to_search": 20,
+      "max_con_requests": 0
+    },
+    {
+      "_id": "scheduler",
+      "task_finder": "legacy",
+      "host_allocator": "utilization",
+      "acceptable_host_idle_time_seconds": 30,
+      "group_versions": true,
+      "patch_zipper_factor": 50,
+      "planner": "tunable",
+      "target_time_seconds": 60,
+      "cache_duration_seconds": 60,
+      "expected_runtime_factor": 10,
+      "time_in_queue_factor": 10,
+      "mainline_time_in_queue_factor": 0,
+      "patch_time_in_queue_factor": 20,
+      "commit_queue_factor": 0,
+      "generate_task_factor": 50,
+      "free_host_fraction": 0.5,
+      "host_allocator_rounding_rule": "round-down",
+      "host_allocator_feedback_rule": "no-feedback",
+      "hosts_overallocated_rule": "no-terminations-when-overallocated",
+      "stepback_task_factor": 10,
+      "num_dependents_factor": 5
+    },
+    {
+      "_id": "task_limits",
+      "max_tasks_per_version": 500,
+      "max_includes_per_version": 10,
+      "max_hourly_patch_tasks": 500,
+      "max_pending_generated_tasks": 0,
+      "max_generate_task_json_size": 5,
+      "max_concurrent_large_parser_project_tasks": 1,
+      "max_degraded_mode_parser_project_size": 10,
+      "max_parser_project_size": 0,
+      "max_degraded_mode_concurrent_large_parser_project_tasks": 1,
+      "max_exec_timeout_secs": 10000,
+      "max_task_execution": 5,
+      "max_daily_automatic_restarts": 0
+    },
+    {
+      "_id": "jira",
+      "host": "jira.example.com",
+      "default_project": "TEST-PROJECT",
+      "personal_access_token": "token",
+      "email": "user@example.com"
+    },
+    {
+      "_id": "slack",
+      "level": "emergency",
+      "name": "test-app",
+      "options": {
+        "channel": "#cabc123",
+        "hostname": "evergreen.example.com",
+        "name": "testName",
+        "username": "@testUser",
+        "icon_url": "https://example.com/icon.png",
+        "add_basic_metadata": true,
+        "use_fields": true,
+        "all_fields": true,
+        "fields": {
+          "field1": true,
+          "field2": false
+        }
+      },
+      "token": "123456"
+    },
+    {
+      "_id": "splunk",
+      "channel": "42",
+      "token": "testToken",
+      "url": "testServer"
+    },
+    {
+      "_id": "runtime_environments",
+      "api_key": "runtimeAPIKey",
+      "base_url": "https://example.com"
+    },
+    {
+      "_id": "test_selection",
+      "url": "https://example.com"
+    },
+    {
+      "_id": "triggers",
+      "generate_distro": "archlinux-test"
+    },
+    {
+      "_id": "amboy",
+      "name": "amboy-config",
+      "database": "amboy",
+      "pool_size_local": 10,
+      "pool_size_remote": 10,
+      "local_storage_size": 100,
+      "single_name": "amboy-single",
+      "group_background_create_frequency": 10,
+      "group_default_workers": 1,
+      "group_prune_frequency": 10,
+      "group_ttl": 100,
+      "require_remote_priority": false,
+      "lock_timeout_minutes": 10,
+      "retry": {
+        "num_workers": 10,
+        "max_capacity": -1,
+        "max_retry_attempts": 10,
+        "max_retry_time_seconds": 30,
+        "retry_backoff_seconds": 30,
+        "stale_retrying_monitor_interval_seconds": 30
+      },
+      "sample_size": 100,
+      "named_queues": [
+        {
+          "name": "amboy.queue.1",
+          "regexp": "",
+          "num_workers": 2,
+          "sample_size": 10,
+          "lock_timeout_seconds": 0
+        },
+        {
+          "name": "amboy.queue.2",
+          "regexp": "",
+          "num_workers": 2,
+          "sample_size": 10,
+          "lock_timeout_seconds": 30
+        }
+      ]
+    },
+    {
+      "_id": "amboy_db",
+      "url": "amboy-db-connection-url",
+      "database": "amboy"
+    },
+    {
+      "_id": "logger_config",
+      "default_level": "info",
+      "threshold_level": "debug",
+      "buffer": {
+        "use_async": true,
+        "duration_seconds": 10,
+        "count": 20,
+        "incoming_buffer_factor": 50
+      },
+      "logkeeper_url": "logkeeper-url",
+      "redact_keys": ["secret", "password"]
+    },
+    {
+      "_id": "api",
+      "url": "http://localhost:9090",
+      "corp_url": "",
+      "http_listen_addr": ""
+    },
+    {
+      "_id": "ui",
+      "default_project": "evergreen",
+      "url": "http://localhost:9090",
+      "http_listen_addr": ":9090",
+      "secret": "this is a secret",
+      "cors_origins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173"
+      ],
+      "file_streaming_content_types": [
+        "application/json",
+        "text/plain",
+        "text/csv"
+      ],
+      "userVoice": "https://uservoice.com",
+      "uiv2_url": "http://localhost:3000",
+      "parsley_url": "http://localhost:4173",
+      "beta_features": {
+        "spruce_waterfall_enabled": true
+      },
+      "cache_templates": false,
+      "csrf_key": "",
+      "help_url": "",
+      "login_domain": "",
+      "staging_environment": ""
+    },
+    {
+      "_id": "fws",
+      "url": "https://fws.example.com"
+    },
+    {
+      "_id": "cedar",
+      "db_name": "cedar",
+      "db_url": "mongodb://localhost:27017/cedar"
+    }
+  ]
+}

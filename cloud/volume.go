@@ -31,13 +31,16 @@ func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.V
 
 func GetEC2ManagerForVolume(ctx context.Context, vol *host.Volume) (Manager, error) {
 	provider := evergreen.ProviderNameEc2OnDemand
-	if os.Getenv("SETTINGS_OVERRIDE") != "" {
+	// WARNING: We unfortunately have to hard-code variables for E2E testing.
+	// Note that this should be avoided when possible, but is necessary in this case.
+	if os.Getenv(evergreen.SettingsOverride) != "" {
 		// Use the mock manager during integration tests
 		provider = evergreen.ProviderNameMock
 		// Set a host that will be utilized during Spruce e2e tests in spawn/volume.ts.
 		// A host is required to be set in order to unmount or delete a volume.
 		mockState := GetMockProvider()
-		mockState.Set("7f909d47566126bd39a05c1a5bd5d111c2e68de3830a8be414c18c231a47f4fc", MockInstance{})
+		mockHostID := "7f909d47566126bd39a05c1a5bd5d111c2e68de3830a8be414c18c231a47f4fc"
+		mockState.Set(mockHostID, MockInstance{})
 	}
 	mgrOpts := ManagerOpts{
 		Provider: provider,

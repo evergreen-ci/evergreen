@@ -39,7 +39,6 @@ func TestAssumeRole(t *testing.T) {
 				RoleARN:         roleARN,
 				Policy:          &policy,
 				DurationSeconds: aws.Int32(int32(time.Hour.Seconds())),
-				CanCache:        true,
 			})
 			require.NoError(t, err)
 			// Return credentials
@@ -52,29 +51,6 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
-
-			oldExpiration := creds.Expiration
-
-			t.Run("NotCached", func(t *testing.T) {
-				creds, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
-					RoleARN: roleARN,
-					Policy:  &policy,
-				})
-				require.NoError(t, err)
-				// Return new credentials
-				assert.NotEqual(t, oldExpiration, creds.Expiration)
-			})
-
-			t.Run("Cached", func(t *testing.T) {
-				creds, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
-					RoleARN:  roleARN,
-					Policy:   &policy,
-					CanCache: true,
-				})
-				require.NoError(t, err)
-				// Return cached credentials
-				assert.Equal(t, oldExpiration, creds.Expiration)
-			})
 		},
 	}
 	for tName, tCase := range testCases {

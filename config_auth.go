@@ -36,7 +36,7 @@ type NaiveAuthConfig struct {
 
 type OktaConfig struct {
 	ClientID           string   `bson:"client_id" json:"client_id" yaml:"client_id"`
-	ClientSecret       string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
+	ClientSecret       string   `bson:"client_secret" json:"client_secret" yaml:"client_secret" secret:"true"`
 	Issuer             string   `bson:"issuer" json:"issuer" yaml:"issuer"`
 	Scopes             []string `bson:"scopes" json:"scopes" yaml:"scopes"`
 	UserGroup          string   `bson:"user_group" json:"user_group" yaml:"user_group"`

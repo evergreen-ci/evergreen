@@ -260,21 +260,8 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		h.FetchJasperCommand(settings.HostJasper),
-		h.removeSplunkTokenFileCommand(),
 		h.ForceReinstallJasperCommand(settings),
 	}, " && ")
-}
-
-// removeSplunkTokenFileCommand returns commands to clean up the Splunk token
-// file from file a host.
-// DEVPROD-14912: this is a best-effort attempt to clean up the Splunk token
-// file when Jasper is reinstalled on the host (e.g. when static hosts are
-// re-added to the host pool). The file is not used anymore, but still exists on
-// long-lived static hosts.
-// TODO (DEVPROD-15116): remove this cleanup function after some time has
-// passed.
-func (h *Host) removeSplunkTokenFileCommand() string {
-	return fmt.Sprintf("rm -f %s", h.splunkTokenFilePath())
 }
 
 const jasperServicePasswordEnvVarName = "JASPER_USER_PASSWORD"
@@ -453,10 +440,6 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 	makeJasperDirs := h.MakeJasperDirsCommand()
 
 	markDone := h.MarkUserDataProvisioningDoneCommand()
-	if err != nil {
-		return "", errors.Wrap(err, "creating command to mark when user data is done")
-	}
-
 	fixJasperDirsOwner := h.ChangeJasperDirsOwnerCommand()
 
 	setupScriptCmds, err := h.setupScriptCommands(settings)
@@ -668,13 +651,6 @@ func (h *Host) WriteJasperCredentialsFilesCommands(creds *certdepot.Credentials)
 	}
 
 	return strings.Join(cmds, " && "), nil
-}
-
-func (h *Host) splunkTokenFilePath() string {
-	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
-		return ""
-	}
-	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // WriteJasperPreconditionScriptsCommands returns the command to write the

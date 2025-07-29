@@ -119,7 +119,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 	// Always warn because created projects are never enabled.
 	warningCatcher := grip.NewBasicCatcher()
-	statusCode, err := model.ValidateEnabledProjectsLimit(ctx, projectRef.Id, env.Settings(), nil, projectRef)
+	statusCode, err := model.ValidateEnabledProjectsLimit(ctx, env.Settings(), nil, projectRef)
 	if err != nil {
 		if statusCode != http.StatusBadRequest {
 			return false, gimlet.ErrorResponse{
@@ -468,6 +468,10 @@ func HideBranch(ctx context.Context, projectID string) error {
 	}
 	if _, err := skeletonProjVars.Upsert(ctx); err != nil {
 		return errors.Wrapf(err, "updating vars for project '%s'", pRef.Id)
+	}
+
+	if err = pRef.SetGithubAppCredentials(ctx, 0, nil); err != nil {
+		return errors.Wrapf(err, "removing GitHub app credentials for project '%s'", pRef.Id)
 	}
 
 	return nil

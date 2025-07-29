@@ -1,7 +1,6 @@
 package command
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -88,5 +88,15 @@ func getAssumedRoleARN(conf *internal.TaskConfig, sessionToken string) string {
 		return ""
 	}
 
-	return conf.AssumeRoleRoles[sessionToken]
+	return conf.AssumeRoleInformation[sessionToken].RoleARN
+}
+
+// getAssumedRoleExpiration checks if the provided session token
+// is associated with an assumed role. If it is, it returns
+// the expiration time of the role.
+func getAssumedRoleExpiration(conf *internal.TaskConfig, sessionToken string) (time.Time, bool) {
+	if sessionToken == "" {
+		return time.Time{}, false
+	}
+	return conf.AssumeRoleInformation[sessionToken].Expiration, true
 }

@@ -34,6 +34,9 @@ func TestDistroBuildFromService(t *testing.T) {
 		Mountpoints:      []string{"/", "/data"},
 		ExecUser:         "exec_user",
 		SingleTaskDistro: true,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			AutoTuneMaximumHosts: true,
+		},
 	}
 	apiDistro := &APIDistro{}
 	apiDistro.BuildFromService(d)
@@ -52,6 +55,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.Mountpoints, apiDistro.Mountpoints)
 	assert.Equal(t, d.SingleTaskDistro, apiDistro.SingleTaskDistro)
 	assert.Equal(t, d.ExecUser, utility.FromStringPtr(apiDistro.ExecUser))
+	assert.True(t, apiDistro.HostAllocatorSettings.AutoTuneMaximumHosts)
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -102,6 +106,9 @@ func TestDistroToService(t *testing.T) {
 		},
 		Mountpoints: []string{"/", "/data"},
 		ExecUser:    utility.ToStringPtr("exec_user"),
+		HostAllocatorSettings: APIHostAllocatorSettings{
+			AutoTuneMaximumHosts: true,
+		},
 	}
 
 	d := apiDistro.ToService()
@@ -130,6 +137,7 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath), d.IceCreamSettings.ConfigPath)
 	assert.Equal(t, apiDistro.Mountpoints, d.Mountpoints)
 	assert.Equal(t, utility.FromStringPtr(apiDistro.ExecUser), d.ExecUser)
+	assert.True(t, d.HostAllocatorSettings.AutoTuneMaximumHosts)
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

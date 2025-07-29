@@ -7,10 +7,7 @@
           "spruceConfig": {
             "ui": {
               "defaultProject": "evergreen",
-              "userVoice": "https://uservoice.com",
-              "betaFeatures": {
-                "spruceWaterfallEnabled": true
-              }
+              "userVoice": "https://uservoice.com"
             }
           }
         }
@@ -63,24 +60,13 @@
               "projectTasksPairs": [
                 {
                   "projectId": "evergreen",
-                  "allowedTasks": [
-                    "compile",
-                    "test"
-                  ],
-                  "allowedBVs": [
-                    "ubuntu1604",
-                    "windows"
-                  ]
+                  "allowedTasks": ["compile", "test"],
+                  "allowedBVs": ["ubuntu1604", "windows"]
                 },
                 {
                   "projectId": "spruce",
-                  "allowedTasks": [
-                    "lint",
-                    "storybook"
-                  ],
-                  "allowedBVs": [
-                    "macOS"
-                  ]
+                  "allowedTasks": ["lint", "storybook"],
+                  "allowedBVs": ["macOS"]
                 }
               ]
             }
@@ -114,15 +100,37 @@
       }
     },
     {
-      "query_file": "secretFields.graphql",
+      "query_file": "secret_fields.graphql",
       "result": {
         "data": {
           "spruceConfig": {
             "secretFields": [
+              "amboyDB",
+              "apiKey",
+              "appId",
+              "clientId",
+              "clientSecret",
+              "csrfKey",
+              "dbUrl",
+              "defaultOwner",
+              "defaultRepo",
+              "github",
               "githubAppAuth",
+              "headerName",
+              "issuer",
+              "kanopy",
+              "keysetURL",
+              "multi",
+              "naive",
+              "okta",
+              "organization",
+              "personalAccessToken",
+              "preferredType",
               "publicKey",
               "secret",
+              "senderAddress",
               "servicePassword",
+              "token",
               "vars"
             ]
           }

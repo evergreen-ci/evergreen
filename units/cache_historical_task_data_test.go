@@ -95,7 +95,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 			},
 		},
 		{
-			name: "UpdateWindowNoMoreThan24Hours",
+			name: "UpdateWindowNoMoreThan12Hours",
 			pre: func(ctx context.Context, t *testing.T) {
 				for _, tsk := range []task.Task{
 					{
@@ -151,7 +151,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				status, err := taskstats.GetStatsStatus(t.Context(), "p0")
 				require.NoError(t, err)
 				assert.WithinDuration(t, time.Now(), status.LastJobRun, time.Minute)
-				assert.WithinDuration(t, t0.Add(22*time.Hour), status.ProcessedTasksUntil, time.Minute)
+				assert.WithinDuration(t, t0.Add(10*time.Hour), status.ProcessedTasksUntil, time.Minute)
 			},
 		},
 		{

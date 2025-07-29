@@ -1,20 +1,34 @@
 # Legacy API
-----------
 
-*Note*: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage).
+---
 
-## A note on authentication
+_Note_: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage).
+
+## Authentication
 
 The V2 REST routes will return a 404 if no authentication headers are sent, or if the user is invalid.
 
-The simplest way to do this is to use your `user` and `api_key` fields from the Settings page.
+### Personal Access Tokens
+
+_Note_: This is only available for human users, [service users](../Project-Configuration/Project-and-Distro-Settings#service-users), should use [Static API Keys](#static-api-keys).
+
+Fore instructions, please see [here](<https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/384992097/Kanopy+Auth+On+Evergreen#KanopyAuthOnEvergreen-RESTAPI(V1andV2)>).
+
+### Static API Keys
+
+_Note_: This will soon be deprecated for human users (everyone except [service users](../Project-Configuration/Project-and-Distro-Settings#service-users)), who should use [personal access tokens instead](#personal-access-tokens).
+
+Use the `user` and `api_key` fields from the Settings page.
 Authenticated REST access requires setting two headers, `Api-User` and `Api-Key`.
 
-### Example
+Static api keys can only be used when authenticating for evergreen.mongodb.com, it cannot be used with evergreen.corp.mongodb.com.
+
+#### Example
 
 ```bash
-    curl -H Api-User:my.name -H Api-Key:21312mykey12312 https://evergreen.example.com/rest/v1/projects/my_private_project
+    curl -H Api-User:my.name -H Api-Key:21312mykey12312 https://evergreen.mongodb.com/rest/v1/projects/my_private_project
 ```
+
 ## Retrieve a list of active project IDs
 
     GET /rest/v1/projects
@@ -27,11 +41,7 @@ Authenticated REST access requires setting two headers, `Api-User` and `Api-Key`
 
 ```json
 {
-  "projects": [
-    "mci",
-    "mongodb-mongo-master-sanitize",
-    "mongo-c-driver"
-  ]
+  "projects": ["mci", "mongodb-mongo-master-sanitize", "mongo-c-driver"]
 }
 ```
 
@@ -128,13 +138,10 @@ At least one variant is required.
 The project's most recent version for which the variants provided in the query string are completely successful (i.e. "green").
 The response contains the [entire version document](#retrieve-info-on-a-particular-version).
 
-
-
-
 ## Retrieve info on a particular version by its revision
 
     GET /rest/v1/projects/{project_id}/revisions/{revision}
-     
+
      or
 
     GET /rest/v1/projects/{project_id}/revisions/{revision}
@@ -186,7 +193,7 @@ _Note that the revision is equivalent to the git hash._
 ## Retrieve info on a particular version
 
     GET /rest/v1/versions/{version_id}
-      
+
 ### Request
 
     curl https://evergreen.example.com/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652
@@ -229,7 +236,7 @@ _Note that the revision is equivalent to the git hash._
 }
 ```
 
-## Retrieve the YAML configuration for a specific version 
+## Retrieve the YAML configuration for a specific version
 
     GET /rest/v1/versions/{version_id}/config
 
@@ -242,16 +249,15 @@ _Note that the revision is equivalent to the git hash._
 The contents of the YAML config for the specified version will be sent back in the body of the request, using
 the header `Content-Type: application/x-yaml`.
 
-
 ## Activate a particular version
 
     PATCH /rest/v1/versions/{version_id}
 
 ### Input
 
-Name      | Type | Description
---------- | ---- | -----------
-activated | bool | **Optional**. Activates the version when `true`, and deactivates the version when `false`. Does nothing if the field is omitted.
+| Name      | Type | Description                                                                                                                      |
+| --------- | ---- | -------------------------------------------------------------------------------------------------------------------------------- |
+| activated | bool | **Optional**. Activates the version when `true`, and deactivates the version when `false`. Does nothing if the field is omitted. |
 
 ### Request
 
@@ -301,10 +307,9 @@ activated | bool | **Optional**. Activates the version when `true`, and deactiva
 
 ### Parameters
 
-Name    | Type   | Default | Description
-------- | ------ | ------- | -----------
-groupby | string | tasks   | Determines how to key into the task status. For `tasks` use `task_name.build_variant`, and for `builds` use `build_variant.task_name`.
-
+| Name    | Type   | Default | Description                                                                                                                            |
+| ------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| groupby | string | tasks   | Determines how to key into the task status. For `tasks` use `task_name.build_variant`, and for `builds` use `build_variant.task_name`. |
 
 ### Request
 

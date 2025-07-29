@@ -1,0 +1,113 @@
+mutation Runners {
+  saveAdminSettings(
+    adminSettings: {
+      notify: { ses: { senderAddress: "my-email" } }
+      hostInit: {
+        cloudStatusBatchSize: 1
+        hostThrottle: 1
+        maxTotalDynamicHosts: 1
+        provisioningThrottle: 1
+      }
+      taskLimits: {
+        maxConcurrentLargeParserProjectTasks: 1
+        maxDailyAutomaticRestarts: 1
+        maxDegradedModeConcurrentLargeParserProjectTasks: 1
+        maxDegradedModeParserProjectSize: 1
+        maxExecTimeoutSecs: 1
+        maxGenerateTaskJSONSize: 1
+        maxHourlyPatchTasks: 1
+        maxIncludesPerVersion: 1
+        maxParserProjectSize: 1
+        maxPendingGeneratedTasks: 1
+        maxTaskExecution: 1
+        maxTasksPerVersion: 1
+      }
+      repotracker: {
+        maxConcurrentRequests: 1
+        maxRepoRevisionsToSearch: 1
+        numNewRepoRevisionsToFetch: 1
+      }
+      podLifecycle: {
+        maxParallelPodRequests: 1
+        maxPodDefinitionCleanupRate: 1
+        maxSecretCleanupRate: 1
+      }
+      scheduler: {
+        acceptableHostIdleTimeSeconds: 1
+        cacheDurationSeconds: 1
+        commitQueueFactor: 1
+        expectedRuntimeFactor: 1
+        futureHostFraction: 0.1
+        generateTaskFactor: 1
+        groupVersions: false
+        hostAllocator: UTILIZATION
+        hostAllocatorFeedbackRule: WAITS_OVER_THRESH
+        hostAllocatorRoundingRule: UP
+        hostsOverallocatedRule: TERMINATE
+        mainlineTimeInQueueFactor: 1
+        numDependentsFactor: 1
+        patchFactor: 1
+        patchTimeInQueueFactor: 1
+        stepbackTaskFactor: 1
+        targetTimeSeconds: 1
+        taskFinder: PARALLEL
+      }
+    }
+  ) {
+    notify {
+      ses {
+        senderAddress
+      }
+    }
+    hostInit {
+      cloudStatusBatchSize
+      hostThrottle
+      maxTotalDynamicHosts
+      provisioningThrottle
+    }
+    taskLimits {
+      maxConcurrentLargeParserProjectTasks
+      maxDailyAutomaticRestarts
+      maxDegradedModeConcurrentLargeParserProjectTasks
+      maxDegradedModeParserProjectSize
+      maxExecTimeoutSecs
+      maxGenerateTaskJSONSize
+      maxHourlyPatchTasks
+      maxIncludesPerVersion
+      maxParserProjectSize
+      maxPendingGeneratedTasks
+      maxTaskExecution
+      maxTasksPerVersion
+    }
+    repotracker {
+      maxConcurrentRequests
+      maxRepoRevisionsToSearch
+      numNewRepoRevisionsToFetch
+    }
+    podLifecycle {
+      maxParallelPodRequests
+      maxPodDefinitionCleanupRate
+      maxSecretCleanupRate
+    }
+    scheduler {
+      acceptableHostIdleTimeSeconds
+      cacheDurationSeconds
+      commitQueueFactor
+      expectedRuntimeFactor
+      futureHostFraction
+      generateTaskFactor
+      groupVersions
+      hostAllocator
+      hostAllocatorFeedbackRule
+      hostAllocatorRoundingRule
+      hostsOverallocatedRule
+      mainlineTimeInQueueFactor
+      numDependentsFactor
+      patchFactor
+      patchTimeInQueueFactor
+      stepbackTaskFactor
+      targetTimeSeconds
+      taskFinder
+    }
+  }
+}

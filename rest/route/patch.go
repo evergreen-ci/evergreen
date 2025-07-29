@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -94,7 +95,7 @@ func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	if p.Activated != nil {
 		ctx, cancel := p.env.Context()
 		defer cancel()
-		if err := data.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated, p.env.Settings()); err != nil {
+		if err := data.SetPatchActivated(ctx, p.patchId, user.Username(), *p.Activated); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting patch activation"))
 		}
 	}
@@ -252,8 +253,8 @@ type patchesByUserHandler struct {
 	url   string
 }
 
-func makeUserPatchHandler(url string) gimlet.RouteHandler {
-	return &patchesByUserHandler{url: url}
+func makeUserPatchHandler() gimlet.RouteHandler {
+	return &patchesByUserHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -268,12 +269,13 @@ func makeUserPatchHandler(url string) gimlet.RouteHandler {
 //	@Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
 //	@Success		200			{array}	model.APIPatch
 func (p *patchesByUserHandler) Factory() gimlet.RouteHandler {
-	return &patchesByUserHandler{url: p.url}
+	return &patchesByUserHandler{}
 }
 
 func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.user = gimlet.GetVars(r)["user_id"]
 	vals := r.URL.Query()
+	p.url = util.HttpsUrl(r.Host)
 
 	var err error
 	if vals.Get("start_at") == "" {
@@ -340,8 +342,8 @@ type patchesByProjectHandler struct {
 	url       string
 }
 
-func makePatchesByProjectRoute(url string) gimlet.RouteHandler {
-	return &patchesByProjectHandler{url: url}
+func makePatchesByProjectRoute() gimlet.RouteHandler {
+	return &patchesByProjectHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -356,21 +358,23 @@ func makePatchesByProjectRoute(url string) gimlet.RouteHandler {
 //	@Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
 //	@Success		200			{array}	model.APIPatch
 func (p *patchesByProjectHandler) Factory() gimlet.RouteHandler {
-	return &patchesByProjectHandler{url: p.url}
+	return &patchesByProjectHandler{}
 }
 
 func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.projectId = gimlet.GetVars(r)["project_id"]
 
 	vals := r.URL.Query()
+	p.url = util.HttpsUrl(r.Host)
 
 	var err error
-	if vals.Get("start_at") == "" {
+	startAt := vals.Get("start_at")
+	if startAt == "" {
 		p.key = time.Now()
 	} else {
-		p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+		p.key, err = model.ParseTime(startAt)
 		if err != nil {
-			return errors.Wrapf(err, "parsing 'start at' time %s", p.key)
+			return errors.Wrapf(err, "parsing start_at '%s'", startAt)
 		}
 	}
 

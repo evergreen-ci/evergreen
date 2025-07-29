@@ -9,13 +9,16 @@ query {
       }
     }
     execUser
+    hostAllocatorSettings {
+      autoTuneMaximumHosts
+    }
     name
     plannerSettings {
       mainlineTimeInQueueFactor
     }
     provider
     providerSettingsList
-    user
     singleTaskDistro
+    user
   }
 }

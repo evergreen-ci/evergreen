@@ -141,6 +141,7 @@ func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *
 	payload, err := trigger.JIRATaskPayload(ctx, trigger.JiraIssueParameters{
 		Project:  jiraOpts.project,
 		UiURL:    settings.Ui.Url,
+		UiV2URL:  settings.Ui.UIv2Url,
 		Mappings: mappings,
 		Task:     t,
 	})

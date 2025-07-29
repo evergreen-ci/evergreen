@@ -306,6 +306,45 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 	return getVolumesResp, nil
 }
 
+// getUser gets information about a user by their user ID.
+func (c *communicatorImpl) getUser(ctx context.Context, userID string) (*model.APIDBUser, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("users/%s", userID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error sending request to get user '%s'", userID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("HTTP request returned unexpected status: %d", resp.StatusCode)
+	}
+
+	user := &model.APIDBUser{}
+	if err = utility.ReadJSON(resp.Body, user); err != nil {
+		return nil, errors.Wrap(err, "error reading JSON response body")
+	}
+
+	return user, nil
+}
+
+// IsServiceUser checks if the given user is a service user (has OnlyApi flag set).
+func (c *communicatorImpl) IsServiceUser(ctx context.Context, userID string) (bool, error) {
+	user, err := c.getUser(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+
+	if user == nil {
+		return false, errors.Errorf("user '%s' not found", userID)
+	}
+
+	return user.OnlyApi, nil
+}
+
 func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
 	info := requestInfo{
 		method: http.MethodPost,
@@ -598,21 +637,25 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   "admin",
+		path:   "admin/service_flags",
 	}
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "sending request to get service flags")
+		return nil, errors.Wrap(err, "error sending request to get service flags")
 	}
 	defer resp.Body.Close()
 
-	settings := model.APIAdminSettings{}
-	if err = utility.ReadJSON(resp.Body, &settings); err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("HTTP request returned unexpected status: %d", resp.StatusCode)
 	}
 
-	return settings.ServiceFlags, nil
+	flags := &model.APIServiceFlags{}
+	if err = utility.ReadJSON(resp.Body, flags); err != nil {
+		return nil, errors.Wrap(err, "error reading JSON response body")
+	}
+
+	return flags, nil
 }
 
 func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endAt time.Time) error {
@@ -814,6 +857,13 @@ func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistr
 		return nil, errors.Wrap(err, "sending request to get distros")
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "getting all distros")
+	}
 
 	distros := []model.APIDistro{}
 
@@ -1436,6 +1486,9 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 	header := make(http.Header)
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
+	if c.jwt != "" {
+		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
 
@@ -1488,6 +1541,9 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	header := make(http.Header)
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
+	if c.jwt != "" {
+		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
 

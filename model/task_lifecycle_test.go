@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -1348,6 +1347,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			}
 			p := &patch.Patch{
 				Id:        patch.NewId(v.Id),
+				Version:   v.Id,
 				Status:    evergreen.VersionCreated,
 				Activated: true,
 			}
@@ -1375,13 +1375,51 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 
 			v, err = VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
+			require.NotZero(t, v)
 			assert.Equal(t, test.expectedVersionStatus, v.Status)
 			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(v.Activated))
+			if evergreen.IsFinishedVersionStatus(test.expectedVersionStatus) {
+				events, err := event.FindAllByResourceID(t.Context(), v.Id)
+				require.NoError(t, err)
+				var numVersionFinishedEvents int
+				for _, e := range events {
+					if e.ResourceType != event.ResourceTypeVersion {
+						continue
+					}
+					if e.EventType != event.VersionStateChange {
+						continue
+					}
+					data, ok := e.Data.(*event.VersionEventData)
+					require.True(t, ok)
+					assert.Equal(t, test.expectedVersionStatus, data.Status)
+					numVersionFinishedEvents++
+				}
+				assert.Equal(t, 1, numVersionFinishedEvents, "expected to find exactly one version finished event")
+			}
 
 			p, err = patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
+			require.NotZero(t, p)
 			assert.Equal(t, test.expectedPatchStatus, p.Status)
 			assert.Equal(t, test.expectedPatchActivation, p.Activated)
+			if evergreen.IsFinishedVersionStatus(test.expectedPatchStatus) {
+				events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+				require.NoError(t, err)
+				var numPatchFinishedEvents int
+				for _, e := range events {
+					if e.ResourceType != event.ResourceTypePatch {
+						continue
+					}
+					if e.EventType != event.PatchStateChange {
+						continue
+					}
+					data, ok := e.Data.(*event.PatchEventData)
+					require.True(t, ok)
+					assert.Equal(t, test.expectedPatchStatus, data.Status)
+					numPatchFinishedEvents++
+				}
+				assert.Equal(t, 1, numPatchFinishedEvents, "expected to find exactly one patch finished event")
+			}
 		})
 	}
 }
@@ -1544,9 +1582,10 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 		Status: evergreen.VersionStarted,
 	}
 	assert.NoError(t, v1.Insert(t.Context()))
-	versionStatus, err := updateVersionStatus(t.Context(), &v1)
+	versionStatus, statusChanged, err := updateVersionStatus(t.Context(), &v1)
 	assert.NoError(t, err)
 	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
+	assert.False(t, statusChanged)
 
 	events, err := event.FindAllByResourceID(t.Context(), "v1")
 	assert.NoError(t, err)
@@ -1555,12 +1594,14 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 }
 
 func TestUpdateVersionStatus(t *testing.T) {
+	colls := []string{task.Collection, build.Collection, VersionCollection, event.EventCollection}
 	type testCase struct {
 		builds []build.Build
 
-		expectedVersionStatus     string
-		expectedVersionAborted    bool
-		expectedVersionActivation bool
+		expectedVersionStatus        string
+		expectedVersionAborted       bool
+		expectedVersionActivation    bool
+		expectedVersionStatusChanged bool
 	}
 
 	for name, test := range map[string]testCase{
@@ -1569,58 +1610,64 @@ func TestUpdateVersionStatus(t *testing.T) {
 				{Status: evergreen.BuildCreated},
 				{Status: evergreen.BuildCreated},
 			},
-			expectedVersionStatus:     evergreen.VersionCreated,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: false,
+			expectedVersionStatus:        evergreen.VersionCreated,
+			expectedVersionStatusChanged: false,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    false,
 		},
 		"VersionStartedForMixOfSucceededBuildAndBuildWithUnfinishedEssentialTasks": {
 			builds: []build.Build{
 				{Status: evergreen.BuildCreated, Activated: true, HasUnfinishedEssentialTask: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionStarted,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionStarted,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 		"VersionStartedForMixOfFailedBuildAndBuildWithUnfinishedEssentialTasks": {
 			builds: []build.Build{
 				{Status: evergreen.BuildCreated, HasUnfinishedEssentialTask: true},
 				{Status: evergreen.BuildFailed, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionFailed,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionFailed,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 		"VersionStartedForMixOfFinishedAndUnfinishedBuilds": {
 			builds: []build.Build{
 				{Status: evergreen.BuildStarted, Activated: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionStarted,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionStarted,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 		"VersionAbortedForAbortedBuild": {
 			builds: []build.Build{
 				{Status: evergreen.BuildFailed, Activated: true, Aborted: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionFailed,
-			expectedVersionAborted:    true,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionFailed,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       true,
+			expectedVersionActivation:    true,
 		},
 		"VersionFinishedForAllFinishedBuilds": {
 			builds: []build.Build{
 				{Status: evergreen.BuildFailed, Activated: true},
 				{Status: evergreen.BuildSucceeded, Activated: true},
 			},
-			expectedVersionStatus:     evergreen.VersionFailed,
-			expectedVersionAborted:    false,
-			expectedVersionActivation: true,
+			expectedVersionStatus:        evergreen.VersionFailed,
+			expectedVersionStatusChanged: true,
+			expectedVersionAborted:       false,
+			expectedVersionActivation:    true,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(colls...))
 			v := &Version{
 				Id:        primitive.NewObjectID().Hex(),
 				Status:    evergreen.VersionCreated,
@@ -1633,15 +1680,254 @@ func TestUpdateVersionStatus(t *testing.T) {
 				require.NoError(t, b.Insert(t.Context()))
 			}
 
-			status, err := updateVersionStatus(t.Context(), v)
+			status, statusChanged, err := updateVersionStatus(t.Context(), v)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedVersionStatus, status)
+			assert.Equal(t, test.expectedVersionStatusChanged, statusChanged)
+			if statusChanged {
+				events, err := event.FindAllByResourceID(t.Context(), v.Id)
+				require.NoError(t, err)
+				require.Len(t, events, 1)
+				assert.Equal(t, event.VersionStateChange, events[0].EventType, "should log version event if the version status has changed")
+			} else {
+				events, err := event.FindAllByResourceID(t.Context(), v.Id)
+				require.NoError(t, err)
+				assert.Empty(t, events, "should not log any version events if the version status hasn't changed")
+			}
 
 			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedVersionStatus, dbVersion.Status)
 			assert.Equal(t, test.expectedVersionAborted, dbVersion.Aborted)
 			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(dbVersion.Activated))
+		})
+	}
+
+	t.Run("ReturnsStatusNotChangedForMarkingSuccessOnVersionAlreadyMarkedSuccessful", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(colls...))
+		v := &Version{
+			Id:        primitive.NewObjectID().Hex(),
+			Status:    evergreen.VersionSucceeded,
+			Activated: utility.TruePtr(),
+		}
+		require.NoError(t, v.Insert(t.Context()))
+
+		b := build.Build{
+			Id:      "b",
+			Version: v.Id,
+			Status:  evergreen.VersionSucceeded,
+		}
+		require.NoError(t, b.Insert(t.Context()))
+
+		status, statusChanged, err := updateVersionStatus(t.Context(), v)
+		require.NoError(t, err)
+		assert.Equal(t, evergreen.VersionSucceeded, status)
+		assert.False(t, statusChanged, "status was already success so it should not change the status")
+
+		events, err := event.FindAllByResourceID(t.Context(), v.Id)
+		require.NoError(t, err)
+		assert.Empty(t, events, "should not log any version events if the version status hasn't changed")
+
+		dbVersion, err := VersionFindOneId(t.Context(), v.Id)
+		require.NoError(t, err)
+		assert.Equal(t, evergreen.VersionSucceeded, dbVersion.Status)
+	})
+}
+
+func TestUpdatePatchStatus(t *testing.T) {
+	type eventTypeAndData struct {
+		eventType string
+		data      any
+	}
+	checkPatchEvents := func(t *testing.T, p *patch.Patch, expectedEvents []eventTypeAndData) {
+		events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+		require.NoError(t, err)
+		assert.Len(t, events, len(expectedEvents))
+		for _, e := range events {
+			for _, expected := range expectedEvents {
+				if e.EventType != expected.eventType {
+					continue
+				}
+				assert.EqualValues(t, expected.data, e.Data)
+			}
+		}
+	}
+	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch){
+		"UpdatesPatchToStarted": func(t *testing.T, p *patch.Patch) {
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionStarted
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.False(t, psu.isPatchFamilyDone)
+			assert.Zero(t, psu.parentPatch)
+			assert.Empty(t, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.Zero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+			})
+		},
+		"UpdatesParentPatchToStarted": func(t *testing.T, p *patch.Patch) {
+			childPatch := &patch.Patch{
+				Id:     patch.NewId(primitive.NewObjectID().Hex()),
+				Status: evergreen.VersionCreated,
+				Triggers: patch.TriggerInfo{
+					ParentPatch: p.Id.Hex(),
+				},
+			}
+			require.NoError(t, childPatch.Insert(t.Context()))
+			p.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionStarted
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.False(t, psu.isPatchFamilyDone)
+			require.NotZero(t, psu.parentPatch)
+			assert.Equal(t, p.Id.Hex(), psu.parentPatch.Id.Hex())
+			assert.Empty(t, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.Zero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+			})
+		},
+		"UpdatesParentPatchToSuccessButChildFailed": func(t *testing.T, p *patch.Patch) {
+			childPatch := &patch.Patch{
+				Id:     patch.NewId(primitive.NewObjectID().Hex()),
+				Status: evergreen.VersionFailed,
+				Triggers: patch.TriggerInfo{
+					ParentPatch: p.Id.Hex(),
+				},
+			}
+			require.NoError(t, childPatch.Insert(t.Context()))
+			p.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionSucceeded
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.True(t, psu.isPatchFamilyDone)
+			require.NotZero(t, psu.parentPatch)
+			assert.Equal(t, p.Id.Hex(), psu.parentPatch.Id.Hex())
+			assert.Equal(t, evergreen.VersionFailed, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+				{
+					eventType: event.PatchChildrenCompletion,
+					data: &event.PatchEventData{
+						Author: p.Author,
+						Status: evergreen.VersionFailed,
+					},
+				},
+			})
+		},
+		"UpdatesPatchToFinished": func(t *testing.T, p *patch.Patch) {
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionSucceeded
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.True(t, psu.isPatchFamilyDone)
+			assert.Zero(t, psu.parentPatch)
+			assert.Equal(t, newStatus, psu.patchFamilyFinishedCollectiveStatus)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
+
+			checkPatchEvents(t, p, []eventTypeAndData{
+				{
+					eventType: event.PatchStateChange,
+					data: &event.PatchEventData{
+						Status: newStatus,
+					},
+				},
+				{
+					eventType: event.PatchChildrenCompletion,
+					data: &event.PatchEventData{
+						Status: newStatus,
+						Author: p.Author,
+					},
+				},
+			})
+		},
+		"NoopsForUpdatingFinishedPatchToSameStatus": func(t *testing.T, p *patch.Patch) {
+			p.Status = evergreen.VersionSucceeded
+			p.FinishTime = time.Now()
+			require.NoError(t, p.Insert(t.Context()))
+
+			const newStatus = evergreen.VersionSucceeded
+			psu, err := updatePatchStatus(t.Context(), p, newStatus)
+			require.NoError(t, err)
+
+			assert.False(t, psu.patchStatusChanged, "patch status should not change")
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.Equal(t, newStatus, dbPatch.Status)
+			assert.NotZero(t, dbPatch.FinishTime)
+
+			events, err := event.FindAllByResourceID(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			assert.Empty(t, events, "should not log new patch/vesion finished events when the patch is already finished")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(patch.Collection, event.EventCollection))
+
+			patchID := primitive.NewObjectID().Hex()
+			p := &patch.Patch{
+				Id:      patch.NewId(patchID),
+				Status:  evergreen.VersionCreated,
+				Version: patchID,
+			}
+
+			tCase(t, p)
 		})
 	}
 }
@@ -1928,132 +2214,6 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 	e, err := event.FindUnprocessedEvents(t.Context(), -1)
 	assert.NoError(t, err)
 	require.Len(t, e, 1)
-}
-
-func TestTaskStatusImpactedByFailedTest(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NoError(t, db.Clear(ProjectRefCollection))
-	projRef := &ProjectRef{
-		Id: "p1",
-	}
-	assert.NoError(t, projRef.Insert(t.Context()))
-	settings := testutil.TestConfig()
-	Convey("With a successful task one failed test should result in a task failure", t, func() {
-		displayName := "testName"
-
-		var (
-			b        *build.Build
-			v        *Version
-			testTask *task.Task
-			detail   *apimodels.TaskEndDetail
-		)
-
-		reset := func() {
-			b = &build.Build{
-				Id:        "buildtest",
-				Version:   "abc",
-				Activated: true,
-			}
-			v = &Version{
-				Id:         b.Version,
-				Identifier: "p1",
-				Status:     evergreen.VersionStarted,
-			}
-			testTask = &task.Task{
-				Id:          "testone",
-				DisplayName: displayName,
-				Activated:   false,
-				BuildId:     b.Id,
-				Project:     "p1",
-				Version:     b.Version,
-				HostId:      "myHost",
-			}
-			taskHost := &host.Host{
-				Id:          "myHost",
-				RunningTask: testTask.Id,
-			}
-			pp := &ParserProject{
-				Id:         b.Version,
-				Identifier: utility.ToStringPtr("p1"),
-			}
-			detail = &apimodels.TaskEndDetail{
-				Status: evergreen.TaskSucceeded,
-			}
-			pRef := ProjectRef{Id: "p1"}
-			pConfig := ProjectConfig{Id: "p1"}
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, host.Collection,
-				ProjectRefCollection, ProjectConfigCollection, ParserProjectCollection))
-			So(pRef.Insert(t.Context()), ShouldBeNil)
-			So(pConfig.Insert(t.Context()), ShouldBeNil)
-			So(b.Insert(t.Context()), ShouldBeNil)
-			So(testTask.Insert(t.Context()), ShouldBeNil)
-			So(v.Insert(t.Context()), ShouldBeNil)
-			So(pp.Insert(t.Context()), ShouldBeNil)
-			So(taskHost.Insert(ctx), ShouldBeNil)
-		}
-
-		Convey("task should not fail if there are no failed test", func() {
-			reset()
-			testTask.ResultsService = testresult.TestResultsServiceLocal
-			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
-
-			v, err := VersionFindOneId(t.Context(), v.Id)
-			So(err, ShouldBeNil)
-			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
-
-			b, err := build.FindOneId(t.Context(), b.Id)
-			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
-
-			taskData, err := task.FindOne(ctx, db.Query(task.ById(testTask.Id)))
-			So(err, ShouldBeNil)
-			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
-		})
-
-		Convey("task should fail if there are failing tests", func() {
-			reset()
-			testTask.ResultsService = testresult.TestResultsServiceLocal
-			testTask.ResultsFailed = true
-			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
-
-			v, err := VersionFindOneId(t.Context(), v.Id)
-			So(err, ShouldBeNil)
-			So(v.Status, ShouldEqual, evergreen.VersionFailed)
-
-			b, err := build.FindOneId(t.Context(), b.Id)
-			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, evergreen.BuildFailed)
-
-			taskData, err := task.FindOne(ctx, db.Query(task.ById(testTask.Id)))
-			So(err, ShouldBeNil)
-			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
-			So(taskData.Details.Type, ShouldEqual, evergreen.CommandTypeTest)
-			So(taskData.Details.Description, ShouldEqual, evergreen.TaskDescriptionResultsFailed)
-		})
-
-		Convey("incomplete versions report updates", func() {
-			reset()
-			b2 := &build.Build{
-				Id:        "buildtest2",
-				Version:   "abc",
-				Activated: false,
-				Status:    evergreen.BuildCreated,
-			}
-			So(b2.Insert(t.Context()), ShouldBeNil)
-			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
-
-			v, err := VersionFindOneId(t.Context(), v.Id)
-			So(err, ShouldBeNil)
-			So(v.Status, ShouldEqual, evergreen.VersionFailed)
-
-			b, err := build.FindOneId(t.Context(), b.Id)
-			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, evergreen.BuildFailed)
-		})
-	})
 }
 
 func TestMarkEnd(t *testing.T) {
@@ -5297,76 +5457,6 @@ func TestResetStaleTask(t *testing.T) {
 	}
 }
 
-func TestMarkEndWithNoResults(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, event.EventCollection, ParserProjectCollection))
-
-	testTask1 := task.Task{
-		Id:              "t1",
-		Status:          evergreen.TaskStarted,
-		Activated:       true,
-		ActivatedTime:   time.Now(),
-		BuildId:         "b",
-		Version:         "v",
-		MustHaveResults: true,
-		HostId:          "hostId",
-	}
-	assert.NoError(t, testTask1.Insert(t.Context()))
-	taskHost := host.Host{
-		Id:          "hostId",
-		RunningTask: testTask1.Id,
-	}
-	assert.NoError(t, taskHost.Insert(ctx))
-	testTask2 := task.Task{
-		Id:              "t2",
-		Status:          evergreen.TaskStarted,
-		Activated:       true,
-		ActivatedTime:   time.Now(),
-		BuildId:         "b",
-		Version:         "v",
-		MustHaveResults: true,
-		ResultsService:  testresult.TestResultsServiceLocal,
-		HostId:          "hostId",
-	}
-	assert.NoError(t, testTask2.Insert(t.Context()))
-	b := build.Build{
-		Id:      "b",
-		Version: "v",
-	}
-	assert.NoError(t, b.Insert(t.Context()))
-	v := &Version{
-		Id:        "v",
-		Requester: evergreen.RepotrackerVersionRequester,
-		Status:    evergreen.VersionStarted,
-	}
-	assert.NoError(t, v.Insert(t.Context()))
-	pp := ParserProject{
-		Id:         v.Id,
-		Identifier: utility.ToStringPtr("sample"),
-	}
-	assert.NoError(t, pp.Insert(t.Context()))
-	details := &apimodels.TaskEndDetail{
-		Status: evergreen.TaskSucceeded,
-		Type:   "test",
-	}
-
-	settings := testutil.TestConfig()
-	err := MarkEnd(ctx, settings, &testTask1, "", time.Now(), details)
-	assert.NoError(t, err)
-	dbTask, err := task.FindOneId(ctx, testTask1.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
-	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
-
-	err = MarkEnd(ctx, settings, &testTask2, "", time.Now(), details)
-	assert.NoError(t, err)
-	dbTask, err = task.FindOneId(ctx, testTask2.Id)
-	assert.NoError(t, err)
-	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
-}
-
 func TestDisplayTaskUpdates(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -5792,7 +5882,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, host.Collection, build.Collection, VersionCollection))
+	require.NoError(t, db.ClearCollections(ParserProjectCollection, task.Collection, task.OldCollection, host.Collection, build.Collection, VersionCollection))
 	task1 := task.Task{
 		Id:                "task1",
 		BuildId:           "b",

@@ -1,0 +1,6 @@
+query AdminSettingsNoPermissions {
+  adminSettings {
+    banner
+    bannerTheme
+  }
+}

@@ -91,6 +91,10 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return errors.Wrap(err, "parsing output results")
 	}
 
+	if !conf.Task.MustHaveResults && len(results) == 0 {
+		return nil
+	}
+
 	if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
 		return errors.Wrap(err, "sending test logs and test results")
 	}
@@ -176,10 +180,6 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, con
 
 		allResults = append(allResults, results...)
 		logs = append(logs, log)
-	}
-
-	if len(allResults) == 0 && len(logs) == 0 {
-		return nil, nil, errors.New("go test output files contained no results")
 	}
 
 	return logs, allResults, nil

@@ -186,7 +186,7 @@ tarReaderLoop:
 		}
 		if linkname != "" {
 			if err := validateRelativePath(linkname, rootPath); err != nil {
-				return errors.Wrapf(err, "artifact path link name '%s' should be relative to the root path", name)
+				return errors.Wrapf(err, "artifact path link name '%s' should be relative to the root path", linkname)
 			}
 		}
 

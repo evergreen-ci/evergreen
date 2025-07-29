@@ -21,6 +21,10 @@ import (
 )
 
 const localConfigPath = ".evergreen.local.yml"
+const stagingCorpHost = "https://evergreen.staging.corp.mongodb.com/api"
+const stagingNonCorpHost = "https://evergreen-staging.corp.mongodb.com/api"
+const prodCorpHost = "https://evergreen.corp.mongodb.com/api"
+const prodNonCorpHost = "https://evergreen.mongodb.com/api"
 
 type ClientProjectConf struct {
 	Name           string               `json:"name" yaml:"name,omitempty"`
@@ -78,8 +82,10 @@ type ClientSettings struct {
 	UIServerHost          string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
 	User                  string              `json:"user" yaml:"user,omitempty"`
+	JWT                   string              `json:"jwt" yaml:"jwt,omitempty"`
 	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI        bool                `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
+	DoNotRunKanopyOIDC    bool                `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
 	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
 	LoadedFrom            string              `json:"-" yaml:"-"`
@@ -155,7 +161,95 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
+
+	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
+	if shouldGenerate {
+		if s.JWT, err = runKanopyOIDCLogin(reason); err != nil {
+			grip.Warningf("Failed to get JWT token: %s", err)
+			return c, err
+		}
+
+		c.SetJWT(s.JWT)
+		// in order to use the JWT token, we need to set the API server host to the corp api server host
+		c.SetAPIServerHost(s.getApiServerHost(true))
+
+	} else {
+		if reason != "" {
+			grip.Info(reason)
+		}
+	}
+
 	return c, nil
+}
+
+func printKanopyAuthHeader(start bool) {
+	title := strings.Repeat("*", 23)
+	if start {
+		title = " Kanopy Authentication "
+	}
+	grip.Info("\n" + strings.Repeat("*", 40) + title + strings.Repeat("*", 40) + "\n")
+}
+
+func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) (bool, string) {
+	if s.DoNotRunKanopyOIDC {
+		return false, ""
+	}
+
+	if s.APIKey == "" {
+		return true, "No API key found in local Evergreen YAML, defaulting to a JWT token."
+	}
+
+	// always use the non-corp url for getting the service flags
+	// because the corp url needs a JWT token which we haven't generated yet
+	originalAPIServerHost := s.APIServerHost
+	c.SetAPIServerHost(s.getApiServerHost(false))
+
+	isServiceUser, err := c.IsServiceUser(ctx, s.User)
+
+	if err != nil {
+		errorMsg := "Failed to check if user is a service user"
+		isUnauthorizedErr := strings.Contains(err.Error(), "401")
+		if isUnauthorizedErr {
+			// if we get a 401, the api key is likely invalid, so we should try to generate a token
+			// because otherwise subsequent api requests will likely fail too.
+			return true, fmt.Sprintf("%s, will try to generate a token: %s", errorMsg, err)
+		}
+		return false, fmt.Sprintf("%s: %s", errorMsg, err)
+	}
+	if isServiceUser {
+		return false, ""
+	}
+
+	flags, err := c.GetServiceFlags(ctx)
+	// reset the api server host to the original value once we have the flags
+	c.SetAPIServerHost(originalAPIServerHost)
+
+	if err == nil && !flags.JWTTokenForCLIDisabled {
+		return true, ""
+	}
+
+	return false, ""
+}
+
+// getApiServerHost returns the API server host based on the APIServerHost and the useCorp parameter.
+func (s *ClientSettings) getApiServerHost(useCorp bool) string {
+	if useCorp {
+		if s.APIServerHost == stagingNonCorpHost {
+			return stagingCorpHost
+		}
+		if s.APIServerHost == prodNonCorpHost {
+			return prodCorpHost
+		}
+	} else {
+		if s.APIServerHost == stagingCorpHost {
+			return stagingNonCorpHost
+		}
+		if s.APIServerHost == prodCorpHost {
+			return prodNonCorpHost
+		}
+	}
+
+	return s.APIServerHost
 }
 
 // printUserMessages prints any available info messages.
@@ -190,11 +284,13 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		return nil, nil, errors.Wrap(err, "parsing API server URL from settings file")
 	}
 
+	root := s.getApiServerHost(s.JWT != "")
 	ac := &legacyClient{
-		APIRoot:            s.APIServerHost,
-		APIRootV2:          s.APIServerHost + "/rest/v2",
+		APIRoot:            root,
+		APIRootV2:          root + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
+		JWT:                s.JWT,
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
@@ -204,6 +300,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
+		JWT:                s.JWT,
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}

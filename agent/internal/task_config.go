@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
@@ -20,12 +21,13 @@ import (
 )
 
 type TaskConfig struct {
-	Distro       *apimodels.DistroView
-	Host         *apimodels.HostView
-	ProjectRef   model.ProjectRef
-	Project      model.Project
-	Task         task.Task
-	BuildVariant model.BuildVariant
+	Distro          *apimodels.DistroView
+	Host            *apimodels.HostView
+	ProjectRef      model.ProjectRef
+	Project         model.Project
+	Task            task.Task
+	DisplayTaskInfo *apimodels.DisplayTaskInfo
+	BuildVariant    model.BuildVariant
 
 	// Expansions store the fundamental expansions set by Evergreen.
 	// e.g. execution, project_id, task_id, etc. It also stores
@@ -40,9 +42,11 @@ type TaskConfig struct {
 	// and should persist throughout the task's execution.
 	DynamicExpansions util.Expansions
 
-	// AssumeRoleRoles holds the session tokens and role ARNs that have
-	// been assumed by the agent during the task's execution.
-	AssumeRoleRoles map[string]string
+	// AssumeRoleInformation holds the session tokens with their corresponding
+	// expiration and role ARNs that have been assumed by the agent during the task's execution.
+	// User's don't pass in their expiration, so we need to keep track of it when
+	// we want to use their passed in credentials.
+	AssumeRoleInformation map[string]AssumeRoleInformation
 
 	ProjectVars map[string]string
 	Redacted    []string
@@ -60,10 +64,14 @@ type TaskConfig struct {
 	Timeout            Timeout
 	TaskOutput         evergreen.S3Credentials
 	ModulePaths        map[string]string
-	CedarTestResultsID string
-	TaskGroup          *model.TaskGroup
-	CommandCleanups    []CommandCleanup
-	MaxExecTimeoutSecs int
+	// HasTestResults is true if the task has sent at least one test result.
+	HasTestResults bool
+	// HasFailingTestResult is true if the task has sent at least one test
+	// result and at least one of those tests failed.
+	HasFailingTestResult bool
+	TaskGroup            *model.TaskGroup
+	CommandCleanups      []CommandCleanup
+	MaxExecTimeoutSecs   int
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
@@ -82,6 +90,11 @@ type CommandCleanup struct {
 	Command string
 	// Run is the function that is called when the task is finished.
 	Run func(context.Context) error
+}
+
+type AssumeRoleInformation struct {
+	RoleARN    string
+	Expiration time.Time
 }
 
 // AddCommandCleanup adds a cleanup function to the TaskConfig.
@@ -151,6 +164,7 @@ type TaskConfigOptions struct {
 	Host              *apimodels.HostView
 	Project           *model.Project
 	Task              *task.Task
+	DisplayTaskInfo   *apimodels.DisplayTaskInfo
 	ProjectRef        *model.ProjectRef
 	Patch             *patch.Patch
 	Version           *model.Version
@@ -215,27 +229,28 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	}
 
 	taskConfig := &TaskConfig{
-		Distro:             opts.Distro,
-		Host:               opts.Host,
-		ProjectRef:         *opts.ProjectRef,
-		Project:            *opts.Project,
-		Task:               *opts.Task,
-		BuildVariant:       *bv,
-		Expansions:         opts.ExpansionsAndVars.Expansions,
-		NewExpansions:      agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
-		DynamicExpansions:  util.Expansions{},
-		AssumeRoleRoles:    map[string]string{},
-		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
-		ProjectVars:        opts.ExpansionsAndVars.Vars,
-		Redacted:           redacted,
-		WorkDir:            opts.WorkDir,
-		TaskGroup:          taskGroup,
+		Distro:                opts.Distro,
+		Host:                  opts.Host,
+		ProjectRef:            *opts.ProjectRef,
+		Project:               *opts.Project,
+		Task:                  *opts.Task,
+		DisplayTaskInfo:       opts.DisplayTaskInfo,
+		BuildVariant:          *bv,
+		Expansions:            opts.ExpansionsAndVars.Expansions,
+		NewExpansions:         agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
+		DynamicExpansions:     util.Expansions{},
+		AssumeRoleInformation: map[string]AssumeRoleInformation{},
+		InternalRedactions:    agentutil.NewDynamicExpansions(internalRedactions),
+		ProjectVars:           opts.ExpansionsAndVars.Vars,
+		Redacted:              redacted,
+		WorkDir:               opts.WorkDir,
+		TaskGroup:             taskGroup,
 	}
 	if opts.Patch != nil {
 		taskConfig.GithubPatchData = opts.Patch.GithubPatchData
 		taskConfig.GithubMergeData = opts.Patch.GithubMergeData
 		taskConfig.PatchOrVersionDescription = opts.Patch.Description
-	} else if opts.Patch != nil {
+	} else if opts.Version != nil {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message
 	}
 
@@ -264,6 +279,10 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	}
 	if tc.Host != nil && tc.Host.Hostname != "" {
 		attributes[evergreen.HostnameOtelAttribute] = tc.Host.Hostname
+	}
+	if tc.DisplayTaskInfo != nil {
+		attributes[evergreen.DisplayTaskIDOtelAttribute] = tc.DisplayTaskInfo.ID
+		attributes[evergreen.DisplayTaskNameOtelAttribute] = tc.DisplayTaskInfo.Name
 	}
 	return attributes
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -51,6 +50,78 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution
 		SearchReturnInfo:        searchReturnInfo,
 		BuildBaronConfigured:    bbConfig.ProjectFound && bbConfig.SearchConfigured,
 		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
+	}, nil
+}
+
+// AdminEvents is the resolver for the adminEvents field.
+func (r *queryResolver) AdminEvents(ctx context.Context, opts AdminEventsInput) (*AdminEventsPayload, error) {
+	before := utility.FromTimePtr(opts.Before)
+	limit := utility.FromIntPtr(opts.Limit)
+
+	events, err := event.FindLatestAdminEvents(ctx, limit, before)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving admin events: %s", err.Error()))
+	}
+
+	eventLogEntries := []*AdminEvent{}
+	for _, e := range events {
+		entry, err := makeAdminEvent(ctx, e)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, err.Error())
+		}
+		eventLogEntries = append(eventLogEntries, entry)
+	}
+
+	return &AdminEventsPayload{
+		EventLogEntries: eventLogEntries,
+		Count:           len(eventLogEntries),
+	}, nil
+}
+
+// AdminSettings is the resolver for the adminSettings field.
+func (r *queryResolver) AdminSettings(ctx context.Context) (*restModel.APIAdminSettings, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	adminSettings := restModel.NewConfigModel()
+	if err = adminSettings.BuildFromService(config); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API admin settings from service: %s", err.Error()))
+	}
+	return adminSettings, nil
+}
+
+// AdminTasksToRestart is the resolver for the adminTasksToRestart field.
+func (r *queryResolver) AdminTasksToRestart(ctx context.Context, opts model.RestartOptions) (*AdminTasksToRestartPayload, error) {
+	env := evergreen.GetEnvironment()
+	usr := mustHaveUser(ctx)
+	opts.User = usr.Username()
+
+	// Set DryRun = true so that we fetch a list of tasks to restart.
+	opts.DryRun = true
+	results, err := data.RestartFailedTasks(ctx, env.RemoteQueue(), opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching restart tasks: %s", err.Error()))
+	}
+
+	tasksToRestart := []*restModel.APITask{}
+	for _, taskID := range results.ItemsRestarted {
+		t, err := task.FindOneId(ctx, taskID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+		}
+		if t == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+		}
+		apiTask := &restModel.APITask{}
+		if err = apiTask.BuildFromService(ctx, t, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", taskID, err.Error()))
+		}
+		tasksToRestart = append(tasksToRestart, apiTask)
+	}
+
+	return &AdminTasksToRestartPayload{
+		TasksToRestart: tasksToRestart,
 	}, nil
 }
 
@@ -673,27 +744,27 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		failingTests = append(failingTests, f.TestName)
 	}
 
-	var allTaskOpts []testresult.TaskOptions
+	var allTasks []task.Task
 	apiSamples := make([]*TaskTestResultSample, len(dbTasks))
 	apiSamplesByTaskID := map[string]*TaskTestResultSample{}
 	for i, dbTask := range dbTasks {
 		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
 		}
-		taskOpts, err := dbTask.CreateTestResultsTaskOptions(ctx)
+		tasks, err := dbTask.GetTestResultsTasks(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
 		}
 
 		apiSamples[i] = &TaskTestResultSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
-		for _, o := range taskOpts {
-			apiSamplesByTaskID[o.TaskID] = apiSamples[i]
+		for _, o := range tasks {
+			apiSamplesByTaskID[o.Id] = apiSamples[i]
 		}
-		allTaskOpts = append(allTaskOpts, taskOpts...)
+		allTasks = append(allTasks, tasks...)
 	}
 
-	if len(allTaskOpts) > 0 {
-		samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
+	if len(allTasks) > 0 {
+		samples, err := task.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err.Error()))
 		}
@@ -788,7 +859,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	revision := utility.FromStringPtr(options.Revision)
 
 	if options.SkipOrderNumber == nil && options.Revision != nil {
-		order, err := getRevisionOrder(ctx, revision, projectId, limit)
+		order, err := model.GetOffsetVersionOrderByRevision(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -957,7 +1028,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	if options.Revision != nil {
 		revision := utility.FromStringPtr(options.Revision)
-		order, err := getRevisionOrder(ctx, revision, projectId, limit)
+		order, err := model.GetOffsetVersionOrderByRevision(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -965,7 +1036,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	} else if options.Date != nil {
 		date := utility.FromTimePtr(options.Date)
-		order, err := getDateOrder(ctx, date, projectId)
+		order, err := model.GetOffsetVersionOrderByDate(ctx, date, projectId)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -1151,6 +1222,17 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 			opts.LowerBound = utility.ToIntPtr(taskOrder)
 		} else {
 			opts.LowerBound = utility.ToIntPtr(taskOrder + 1)
+		}
+	}
+
+	if options.Date != nil {
+		date := utility.FromTimePtr(options.Date)
+		order, err := model.GetTaskOrderByDate(ctx, date, opts)
+		if err != nil {
+			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
+		} else {
+			opts.UpperBound = utility.ToIntPtr(order)
+			opts.LowerBound = nil
 		}
 	}
 

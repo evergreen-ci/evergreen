@@ -88,9 +88,10 @@ input ExternalLinkInput {
 }
 
 input ParsleyFilterInput {
-  expression: String!
   caseSensitive: Boolean!
+  description: String
   exactMatch: Boolean!
+  expression: String!
 }
 
 input ProjectBannerInput {
@@ -258,6 +259,8 @@ type Project {
   githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
   githubPermissionGroupByRequester: StringMap
   githubTriggerAliases: [String!]
+  githubPRTriggerAliases: [String!]
+  githubMQTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]
   gitTagVersionsEnabled: Boolean
@@ -326,9 +329,10 @@ type ProjectBanner {
 }
 
 type ParsleyFilter {
-  expression: String!
   caseSensitive: Boolean!
+  description: String!
   exactMatch: Boolean!
+  expression: String!
 }
 
 type GithubAppAuth {
