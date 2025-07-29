@@ -29,6 +29,11 @@ type goTestResults struct {
 	OptionalOutput   string `mapstructure:"optional_output" plugin:"expand"`
 	outputIsOptional bool
 
+	// Optional, when set to true, causes this command to be skipped over without an error when
+	// no test output contains no tests
+	OptionalTests    string `mapstructure:"optional_tests" plugin:"expand"`
+	testsAreOptional bool
+
 	base
 }
 
@@ -47,6 +52,13 @@ func (c *goTestResults) ParseParams(params map[string]any) error {
 		c.outputIsOptional, err = strconv.ParseBool(c.OptionalOutput)
 		if err != nil {
 			return errors.Wrap(err, "parsing optional output parameter as a boolean")
+		}
+	}
+
+	if c.OptionalTests != "" {
+		c.testsAreOptional, err = strconv.ParseBool(c.OptionalTests)
+		if err != nil {
+			return errors.Wrap(err, "parsing optional tests parameter as a boolean")
 		}
 	}
 
@@ -89,6 +101,10 @@ func (c *goTestResults) Execute(ctx context.Context,
 	logs, results, err := parseTestOutputFiles(ctx, logger, conf, outputFiles)
 	if err != nil {
 		return errors.Wrap(err, "parsing output results")
+	}
+
+	if c.testsAreOptional && len(results) == 0 {
+		return nil
 	}
 
 	if err := sendTestLogsAndResults(ctx, comm, logger, conf, logs, results); err != nil {
@@ -176,10 +192,6 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, con
 
 		allResults = append(allResults, results...)
 		logs = append(logs, log)
-	}
-
-	if len(allResults) == 0 && len(logs) == 0 {
-		return nil, nil, errors.New("go test output files contained no results")
 	}
 
 	return logs, allResults, nil
