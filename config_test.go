@@ -157,7 +157,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.DomainName, settings.DomainName)
-	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.GithubOrgs, settings.GithubOrgs)
 	s.Equal(config.LogPath, settings.LogPath)

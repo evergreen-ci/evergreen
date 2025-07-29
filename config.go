@@ -343,14 +343,19 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 						if err != nil {
 							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
 							continue
-						}
-						if len(param) > 0 {
+						} else if len(param) > 0 {
 							// Set the map value to the parameter store value
 							newMap.SetMapIndex(key, reflect.ValueOf(param[0].Value))
+						} else {
+							catcher.Add(errors.Errorf("no value found for map key '%s' in parameter store", mapFieldPath))
 						}
 					}
 					// Update the struct field with the new map containing paths
-					fieldValue.Set(newMap)
+					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
+						fieldValue.Set(newMap)
+					} else {
+						catcher.Add(errors.New("not all map keys were found in parameter store"))
+					}
 				}
 			}
 
