@@ -88,6 +88,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
   BetaFeaturesInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
+  BooleanMap:
+    model: github.com/evergreen-ci/evergreen/graphql.BooleanMap
   BootstrapMethod:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
@@ -109,6 +111,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBuildBaronSettings
   BuildVariantTuple:
     model: github.com/evergreen-ci/evergreen/model/task.BuildVariantTuple
+  CedarConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICedarConfig
+  CedarConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICedarConfig
   ChildPatch:
     model: github.com/evergreen-ci/evergreen/rest/model.ChildPatch
   ChildPatchAlias:
@@ -207,6 +213,10 @@ models:
         value: github.com/evergreen-ci/evergreen.FinderVersionPipeline
       ALTERNATE: 
         value: github.com/evergreen-ci/evergreen.FinderVersionAlternate
+  FWSConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFWSConfig
+  FWSConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIFWSConfig
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubAppAuth:
@@ -352,6 +362,8 @@ models:
   IssueLinkInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
   JiraConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
+  JiraConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
   JiraIssueSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
@@ -610,6 +622,11 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
   ResourceLimitsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIResourceLimits
+  RestartAdminTasksOptions:
+    model: github.com/evergreen-ci/evergreen/model.RestartOptions
+    fields:
+      includeSystemFailed:
+        fieldName: includeSysFailed
   RoundingRule:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
@@ -619,6 +636,10 @@ models:
         value: github.com/evergreen-ci/evergreen.HostAllocatorRoundDown
       DEFAULT:
         value: github.com/evergreen-ci/evergreen.HostAllocatorRoundDefault
+  RuntimeEnvironmentConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
+  RuntimeEnvironmentConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
   SchedulerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
   SchedulerConfigInput:
@@ -649,10 +670,24 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISource
   SpawnHostConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISpawnHostConfig
+  SplunkConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISplunkConfig
+  SplunkConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISplunkConfig
+  SplunkConnectionInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISplunkConnectionInfo
+  SplunkConnectionInfoInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISplunkConnectionInfo
   SpruceConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   SlackConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISlackConfig
+  SlackConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISlackConfig
+  SlackOptions:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISlackOptions
+  SlackOptionsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISlackOptions
   StatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.StatusCount
   StepbackInfo:
@@ -715,6 +750,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskAPIEventLogEntry
   TaskInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.TaskInfo
+  TestSelectionConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionConfig
+  TestSelectionConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionConfig
   TaskLimitsConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskLimitsConfig
   TaskLimitsConfigInput:

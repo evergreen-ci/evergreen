@@ -201,6 +201,11 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting slack config to API model")
 		}
 		as.Slack = &slackConfig
+		splunkConfig := APISplunkConfig{}
+		if err = splunkConfig.BuildFromService(v.Splunk); err != nil {
+			return errors.Wrap(err, "converting splunk config to API model")
+		}
+		as.Splunk = &splunkConfig
 		containerPoolsConfig := APIContainerPoolsConfig{}
 		if err = containerPoolsConfig.BuildFromService(v.ContainerPools); err != nil {
 			return errors.Wrap(err, "converting container pools config to API model")
@@ -214,6 +219,10 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		releaseModeConfig := APIReleaseModeConfig{}
 		if err = releaseModeConfig.BuildFromService(v.ReleaseMode); err != nil {
 			return errors.Wrap(err, "converting release mode config to API model")
+		}
+		as.Cedar = &APICedarConfig{}
+		if err = as.Cedar.BuildFromService(v.Cedar); err != nil {
+			return errors.Wrap(err, "converting cedar config to API model")
 		}
 		as.ReleaseMode = &releaseModeConfig
 	default:

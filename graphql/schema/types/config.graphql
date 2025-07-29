@@ -1,3 +1,21 @@
+###### RESTART TASKS ######
+
+input RestartAdminTasksOptions {
+  startTime: Time!
+  endTime: Time!
+  includeTestFailed: Boolean!
+  includeSystemFailed: Boolean!
+  includeSetupFailed: Boolean!
+}
+
+type AdminTasksToRestartPayload {
+  tasksToRestart: [Task!]!
+}
+
+type RestartAdminTasksPayload {
+  numRestartedTasks: Int!
+}
+
 ###### ADMIN EVENTS ######
 
 enum PriorityLevel {
@@ -288,6 +306,13 @@ input AdminSettingsInput {
   authConfig: AuthConfigInput
   banner: String
   bannerTheme: BannerTheme
+  cedar: CedarConfigInput
+  fws: FWSConfigInput
+  jira: JiraConfigInput
+  slack: SlackConfigInput
+  splunk: SplunkConfigInput
+  runtimeEnvironments: RuntimeEnvironmentConfigInput
+  testSelection: TestSelectionConfigInput
   serviceFlags: ServiceFlagsInput
   notify: NotifyConfigInput
   taskLimits: TaskLimitsConfigInput
@@ -308,6 +333,13 @@ type AdminSettings {
   authConfig: AuthConfig
   banner: String
   bannerTheme: BannerTheme
+  cedar: CedarConfig
+  fws: FWSConfig
+  jira: JiraConfig
+  slack: SlackConfig
+  splunk: SplunkConfig
+  runtimeEnvironments: RuntimeEnvironmentConfig
+  testSelection: TestSelectionConfig
   serviceFlags: ServiceFlags
   notify: NotifyConfig
   taskLimits: TaskLimitsConfig
@@ -472,19 +504,11 @@ type UIConfig {
   fileStreamingContentTypes: [String!]!
   loginDomain: String
   userVoice: String
-  csrfKey: String
+  csrfKey: String @requireAdmin
   cacheTemplates: Boolean
   stagingEnvironment: String
 }
 
-type SlackConfig {
-  name: String
-}
-
-type JiraConfig {
-  email: String
-  host: String
-}
 
 type CloudProviderConfig {
   aws: AWSConfig
