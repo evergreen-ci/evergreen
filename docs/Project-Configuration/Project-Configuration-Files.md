@@ -785,21 +785,24 @@ expansion whose value uses another expansion.
 
 ```yaml
 command: s3.get
-   params:
-     aws_key: ${aws_key}
-     aws_secret: ${aws_secret}
+  params:
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
 ```
 
-Expansions can also take default arguments, in the form of
-`${key_name|default}`.
+Expansions can be provided a default when the expansion is undefined,
+in the form of `${key_name|default}`. To provide a default
+when the expansion is either undefined or defined but empty,
+use the form `${key_name!|default}`.
 
 ```yaml
 command: shell.exec
-   params:
-     working_dir: src
-     script: |
-       if [ ${has_pyyaml_installed|false} = false ]; then
-       ...
+  params:
+    working_dir: src
+    script: |
+      if [ ${has_pyyaml_installed|false} = false ]; then
+        echo "Using python version ${python_version!|3.8}"
+        ...
 ```
 
 Likewise, the default argument of an expansion can be an expansion
@@ -808,9 +811,10 @@ expansion value of the default value, rather than the hard coded string.
 
 ```yaml
 command: shell.exec
-   params:
+  params:
     script: |
       VERSION=${use_version|*use_version_default} ./foo.sh
+      YAML=${yaml_file!|*yaml_file_default} ./bar.sh
 ```
 
 If an expansion is used in your project file, but is unset, it will be
@@ -823,10 +827,10 @@ Expansions are also case-sensitive.
 
 ```yaml
 command: shell.exec
-   params:
-      working_dir: src
-     script: |
-       echo ${HelloWorld}
+  params:
+    working_dir: src
+    script: |
+      echo ${HelloWorld}
 ```
 
 #### Usage

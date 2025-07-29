@@ -438,31 +438,35 @@ func (p *Patch) Insert(ctx context.Context) error {
 	return db.Insert(ctx, Collection, p)
 }
 
-func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) error {
+func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) (modified bool, err error) {
 	if p.Status == newStatus {
-		return nil
+		return false, nil
+	}
+
+	setFields := bson.M{
+		StatusKey: newStatus,
+	}
+	finishTime := time.Now()
+	isFinished := evergreen.IsFinishedVersionStatus(newStatus)
+	if isFinished {
+		setFields[FinishTimeKey] = finishTime
+	}
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{
+		IdKey:     p.Id,
+		StatusKey: bson.M{"$ne": newStatus},
+	}, bson.M{
+		"$set": setFields,
+	})
+	if err != nil {
+		return false, err
 	}
 
 	p.Status = newStatus
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey: newStatus,
-		},
+	if isFinished {
+		p.FinishTime = finishTime
 	}
-	return UpdateOne(ctx, bson.M{IdKey: p.Id}, update)
-}
 
-func (p *Patch) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
-	p.Status = status
-	p.FinishTime = finishTime
-	return UpdateOne(
-		ctx,
-		bson.M{IdKey: p.Id},
-		bson.M{"$set": bson.M{
-			FinishTimeKey: finishTime,
-			StatusKey:     status,
-		}},
-	)
+	return res.ModifiedCount > 0, nil
 }
 
 // ConfigChanged looks through the parts of the patch and returns true if the
@@ -659,9 +663,9 @@ func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
 }
 
-// CollectiveStatus returns the aggregate status of all tasks and child patches.
+// CollectiveStatus returns the aggregate display status of all tasks and child patches.
 // If this is meant for display on the UI, we should also consider the display status aborted.
-// NOTE that the result of this should not be compared against version statuses, as those can be different.
+// NOTE that the result of this should not be compared against version statuses, because this can return display statuses.
 func (p *Patch) CollectiveStatus(ctx context.Context) (string, error) {
 	parentPatch := p
 	if p.IsChild() {
@@ -789,6 +793,7 @@ func (p *Patch) GetPatchFamily(ctx context.Context) ([]string, *Patch, error) {
 	var parentPatch *Patch
 	var err error
 	if p.IsParent() {
+		parentPatch = p
 		childrenOrSiblings = p.Triggers.ChildPatches
 	}
 	if p.IsChild() {

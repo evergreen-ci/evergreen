@@ -66,6 +66,7 @@ type ResolverRoot interface {
 	ProjectSettings() ProjectSettingsResolver
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
+	RepoRef() RepoRefResolver
 	RepoSettings() RepoSettingsResolver
 	SleepSchedule() SleepScheduleResolver
 	SpruceConfig() SpruceConfigResolver
@@ -82,7 +83,9 @@ type ResolverRoot interface {
 	DistroInput() DistroInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
+	ProjectInput() ProjectInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
+	RepoRefInput() RepoRefInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
 	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
@@ -138,23 +141,30 @@ type ComplexityRoot struct {
 	}
 
 	AdminSettings struct {
-		Amboy              func(childComplexity int) int
-		AmboyDB            func(childComplexity int) int
-		Api                func(childComplexity int) int
-		AuthConfig         func(childComplexity int) int
-		Banner             func(childComplexity int) int
-		BannerTheme        func(childComplexity int) int
-		DisabledGQLQueries func(childComplexity int) int
-		HostInit           func(childComplexity int) int
-		LoggerConfig       func(childComplexity int) int
-		Notify             func(childComplexity int) int
-		PodLifecycle       func(childComplexity int) int
-		RepoTracker        func(childComplexity int) int
-		Scheduler          func(childComplexity int) int
-		ServiceFlags       func(childComplexity int) int
-		TaskLimits         func(childComplexity int) int
-		Triggers           func(childComplexity int) int
-		Ui                 func(childComplexity int) int
+		Amboy               func(childComplexity int) int
+		AmboyDB             func(childComplexity int) int
+		Api                 func(childComplexity int) int
+		AuthConfig          func(childComplexity int) int
+		Banner              func(childComplexity int) int
+		BannerTheme         func(childComplexity int) int
+		Cedar               func(childComplexity int) int
+		DisabledGQLQueries  func(childComplexity int) int
+		FWS                 func(childComplexity int) int
+		HostInit            func(childComplexity int) int
+		Jira                func(childComplexity int) int
+		LoggerConfig        func(childComplexity int) int
+		Notify              func(childComplexity int) int
+		PodLifecycle        func(childComplexity int) int
+		RepoTracker         func(childComplexity int) int
+		RuntimeEnvironments func(childComplexity int) int
+		Scheduler           func(childComplexity int) int
+		ServiceFlags        func(childComplexity int) int
+		Slack               func(childComplexity int) int
+		Splunk              func(childComplexity int) int
+		TaskLimits          func(childComplexity int) int
+		TestSelection       func(childComplexity int) int
+		Triggers            func(childComplexity int) int
+		Ui                  func(childComplexity int) int
 	}
 
 	AdminTasksToRestartPayload struct {
@@ -275,6 +285,11 @@ type ComplexityRoot struct {
 	BuildVariantTuple struct {
 		BuildVariant func(childComplexity int) int
 		DisplayName  func(childComplexity int) int
+	}
+
+	CedarConfig struct {
+		DBName func(childComplexity int) int
+		DBURL  func(childComplexity int) int
 	}
 
 	ChildPatchAlias struct {
@@ -431,6 +446,10 @@ type ComplexityRoot struct {
 	ExternalLinkForMetadata struct {
 		DisplayName func(childComplexity int) int
 		URL         func(childComplexity int) int
+	}
+
+	FWSConfig struct {
+		URL func(childComplexity int) int
 	}
 
 	FailingCommand struct {
@@ -724,8 +743,9 @@ type ComplexityRoot struct {
 	}
 
 	JiraConfig struct {
-		Email func(childComplexity int) int
-		Host  func(childComplexity int) int
+		Email               func(childComplexity int) int
+		Host                func(childComplexity int) int
+		PersonalAccessToken func(childComplexity int) int
 	}
 
 	JiraIssueSubscriber struct {
@@ -1135,6 +1155,8 @@ type ComplexityRoot struct {
 		GitTagAuthorizedUsers              func(childComplexity int) int
 		GitTagVersionsEnabled              func(childComplexity int) int
 		GithubChecksEnabled                func(childComplexity int) int
+		GithubMQTriggerAliases             func(childComplexity int) int
+		GithubPRTriggerAliases             func(childComplexity int) int
 		GithubTriggerAliases               func(childComplexity int) int
 		Hidden                             func(childComplexity int) int
 		Id                                 func(childComplexity int) int
@@ -1323,6 +1345,8 @@ type ComplexityRoot struct {
 		GitTagAuthorizedUsers              func(childComplexity int) int
 		GitTagVersionsEnabled              func(childComplexity int) int
 		GithubChecksEnabled                func(childComplexity int) int
+		GithubMQTriggerAliases             func(childComplexity int) int
+		GithubPRTriggerAliases             func(childComplexity int) int
 		GithubTriggerAliases               func(childComplexity int) int
 		Id                                 func(childComplexity int) int
 		ManualPRTestingEnabled             func(childComplexity int) int
@@ -1385,6 +1409,11 @@ type ComplexityRoot struct {
 
 	RestartAdminTasksPayload struct {
 		NumRestartedTasks func(childComplexity int) int
+	}
+
+	RuntimeEnvironmentConfig struct {
+		APIKey  func(childComplexity int) int
+		BaseURL func(childComplexity int) int
 	}
 
 	SESConfig struct {
@@ -1477,7 +1506,21 @@ type ComplexityRoot struct {
 	}
 
 	SlackConfig struct {
-		Name func(childComplexity int) int
+		Level   func(childComplexity int) int
+		Name    func(childComplexity int) int
+		Options func(childComplexity int) int
+		Token   func(childComplexity int) int
+	}
+
+	SlackOptions struct {
+		AllFields     func(childComplexity int) int
+		BasicMetadata func(childComplexity int) int
+		Channel       func(childComplexity int) int
+		Fields        func(childComplexity int) int
+		FieldsSet     func(childComplexity int) int
+		Hostname      func(childComplexity int) int
+		Name          func(childComplexity int) int
+		Username      func(childComplexity int) int
 	}
 
 	SleepSchedule struct {
@@ -1502,6 +1545,16 @@ type ComplexityRoot struct {
 		SpawnHostsPerUser         func(childComplexity int) int
 		UnexpirableHostsPerUser   func(childComplexity int) int
 		UnexpirableVolumesPerUser func(childComplexity int) int
+	}
+
+	SplunkConfig struct {
+		SplunkConnectionInfo func(childComplexity int) int
+	}
+
+	SplunkConnectionInfo struct {
+		Channel   func(childComplexity int) int
+		ServerURL func(childComplexity int) int
+		Token     func(childComplexity int) int
 	}
 
 	SpruceConfig struct {
@@ -1799,6 +1852,10 @@ type ComplexityRoot struct {
 		Status     func(childComplexity int) int
 		TaskID     func(childComplexity int) int
 		TestFile   func(childComplexity int) int
+	}
+
+	TestSelectionConfig struct {
+		URL func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -2205,6 +2262,8 @@ type PodEventLogDataResolver interface {
 	Task(ctx context.Context, obj *model.PodAPIEventData) (*model.APITask, error)
 }
 type ProjectResolver interface {
+	GithubTriggerAliases(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
+
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
 
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
@@ -2269,6 +2328,9 @@ type QueryResolver interface {
 	Version(ctx context.Context, versionID string) (*model.APIVersion, error)
 	Image(ctx context.Context, imageID string) (*model.APIImage, error)
 	Images(ctx context.Context) ([]string, error)
+}
+type RepoRefResolver interface {
+	GithubTriggerAliases(ctx context.Context, obj *model.APIProjectRef) ([]string, error)
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
@@ -2417,8 +2479,14 @@ type HostAllocatorSettingsInputResolver interface {
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
 }
+type ProjectInputResolver interface {
+	GithubTriggerAliases(ctx context.Context, obj *model.APIProjectRef, data []string) error
+}
 type ProjectSettingsInputResolver interface {
 	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data string) error
+}
+type RepoRefInputResolver interface {
+	GithubTriggerAliases(ctx context.Context, obj *model.APIProjectRef, data []string) error
 }
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
@@ -2624,6 +2692,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.BannerTheme(childComplexity), true
 
+	case "AdminSettings.cedar":
+		if e.complexity.AdminSettings.Cedar == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Cedar(childComplexity), true
+
 	case "AdminSettings.disabledGQLQueries":
 		if e.complexity.AdminSettings.DisabledGQLQueries == nil {
 			break
@@ -2631,12 +2706,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.DisabledGQLQueries(childComplexity), true
 
+	case "AdminSettings.fws":
+		if e.complexity.AdminSettings.FWS == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.FWS(childComplexity), true
+
 	case "AdminSettings.hostInit":
 		if e.complexity.AdminSettings.HostInit == nil {
 			break
 		}
 
 		return e.complexity.AdminSettings.HostInit(childComplexity), true
+
+	case "AdminSettings.jira":
+		if e.complexity.AdminSettings.Jira == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Jira(childComplexity), true
 
 	case "AdminSettings.loggerConfig":
 		if e.complexity.AdminSettings.LoggerConfig == nil {
@@ -2666,6 +2755,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.RepoTracker(childComplexity), true
 
+	case "AdminSettings.runtimeEnvironments":
+		if e.complexity.AdminSettings.RuntimeEnvironments == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.RuntimeEnvironments(childComplexity), true
+
 	case "AdminSettings.scheduler":
 		if e.complexity.AdminSettings.Scheduler == nil {
 			break
@@ -2680,12 +2776,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminSettings.ServiceFlags(childComplexity), true
 
+	case "AdminSettings.slack":
+		if e.complexity.AdminSettings.Slack == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Slack(childComplexity), true
+
+	case "AdminSettings.splunk":
+		if e.complexity.AdminSettings.Splunk == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Splunk(childComplexity), true
+
 	case "AdminSettings.taskLimits":
 		if e.complexity.AdminSettings.TaskLimits == nil {
 			break
 		}
 
 		return e.complexity.AdminSettings.TaskLimits(childComplexity), true
+
+	case "AdminSettings.testSelection":
+		if e.complexity.AdminSettings.TestSelection == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.TestSelection(childComplexity), true
 
 	case "AdminSettings.triggers":
 		if e.complexity.AdminSettings.Triggers == nil {
@@ -3246,6 +3363,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BuildVariantTuple.DisplayName(childComplexity), true
+
+	case "CedarConfig.dbName":
+		if e.complexity.CedarConfig.DBName == nil {
+			break
+		}
+
+		return e.complexity.CedarConfig.DBName(childComplexity), true
+
+	case "CedarConfig.dbUrl":
+		if e.complexity.CedarConfig.DBURL == nil {
+			break
+		}
+
+		return e.complexity.CedarConfig.DBURL(childComplexity), true
 
 	case "ChildPatchAlias.alias":
 		if e.complexity.ChildPatchAlias.Alias == nil {
@@ -3876,6 +4007,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExternalLinkForMetadata.URL(childComplexity), true
+
+	case "FWSConfig.url":
+		if e.complexity.FWSConfig.URL == nil {
+			break
+		}
+
+		return e.complexity.FWSConfig.URL(childComplexity), true
 
 	case "FailingCommand.failureMetadataTags":
 		if e.complexity.FailingCommand.FailureMetadataTags == nil {
@@ -5168,6 +5306,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.JiraConfig.Host(childComplexity), true
+
+	case "JiraConfig.personalAccessToken":
+		if e.complexity.JiraConfig.PersonalAccessToken == nil {
+			break
+		}
+
+		return e.complexity.JiraConfig.PersonalAccessToken(childComplexity), true
 
 	case "JiraIssueSubscriber.issueType":
 		if e.complexity.JiraIssueSubscriber.IssueType == nil {
@@ -7433,6 +7578,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Project.GithubChecksEnabled(childComplexity), true
 
+	case "Project.githubMQTriggerAliases":
+		if e.complexity.Project.GithubMQTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.Project.GithubMQTriggerAliases(childComplexity), true
+
+	case "Project.githubPRTriggerAliases":
+		if e.complexity.Project.GithubPRTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.Project.GithubPRTriggerAliases(childComplexity), true
+
 	case "Project.githubTriggerAliases":
 		if e.complexity.Project.GithubTriggerAliases == nil {
 			break
@@ -8604,6 +8763,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RepoRef.GithubChecksEnabled(childComplexity), true
 
+	case "RepoRef.githubMQTriggerAliases":
+		if e.complexity.RepoRef.GithubMQTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GithubMQTriggerAliases(childComplexity), true
+
+	case "RepoRef.githubPRTriggerAliases":
+		if e.complexity.RepoRef.GithubPRTriggerAliases == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GithubPRTriggerAliases(childComplexity), true
+
 	case "RepoRef.githubTriggerAliases":
 		if e.complexity.RepoRef.GithubTriggerAliases == nil {
 			break
@@ -8911,6 +9084,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RestartAdminTasksPayload.NumRestartedTasks(childComplexity), true
+
+	case "RuntimeEnvironmentConfig.apiKey":
+		if e.complexity.RuntimeEnvironmentConfig.APIKey == nil {
+			break
+		}
+
+		return e.complexity.RuntimeEnvironmentConfig.APIKey(childComplexity), true
+
+	case "RuntimeEnvironmentConfig.baseUrl":
+		if e.complexity.RuntimeEnvironmentConfig.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.RuntimeEnvironmentConfig.BaseURL(childComplexity), true
 
 	case "SESConfig.senderAddress":
 		if e.complexity.SESConfig.SenderAddress == nil {
@@ -9367,12 +9554,89 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SingleTaskDistroConfig.ProjectTasksPairs(childComplexity), true
 
+	case "SlackConfig.level":
+		if e.complexity.SlackConfig.Level == nil {
+			break
+		}
+
+		return e.complexity.SlackConfig.Level(childComplexity), true
+
 	case "SlackConfig.name":
 		if e.complexity.SlackConfig.Name == nil {
 			break
 		}
 
 		return e.complexity.SlackConfig.Name(childComplexity), true
+
+	case "SlackConfig.options":
+		if e.complexity.SlackConfig.Options == nil {
+			break
+		}
+
+		return e.complexity.SlackConfig.Options(childComplexity), true
+
+	case "SlackConfig.token":
+		if e.complexity.SlackConfig.Token == nil {
+			break
+		}
+
+		return e.complexity.SlackConfig.Token(childComplexity), true
+
+	case "SlackOptions.allFields":
+		if e.complexity.SlackOptions.AllFields == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.AllFields(childComplexity), true
+
+	case "SlackOptions.basicMetadata":
+		if e.complexity.SlackOptions.BasicMetadata == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.BasicMetadata(childComplexity), true
+
+	case "SlackOptions.channel":
+		if e.complexity.SlackOptions.Channel == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Channel(childComplexity), true
+
+	case "SlackOptions.fields":
+		if e.complexity.SlackOptions.Fields == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Fields(childComplexity), true
+
+	case "SlackOptions.fieldsSet":
+		if e.complexity.SlackOptions.FieldsSet == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.FieldsSet(childComplexity), true
+
+	case "SlackOptions.hostname":
+		if e.complexity.SlackOptions.Hostname == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Hostname(childComplexity), true
+
+	case "SlackOptions.name":
+		if e.complexity.SlackOptions.Name == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Name(childComplexity), true
+
+	case "SlackOptions.username":
+		if e.complexity.SlackOptions.Username == nil {
+			break
+		}
+
+		return e.complexity.SlackOptions.Username(childComplexity), true
 
 	case "SleepSchedule.dailyStartTime":
 		if e.complexity.SleepSchedule.DailyStartTime == nil {
@@ -9478,6 +9742,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SpawnHostConfig.UnexpirableVolumesPerUser(childComplexity), true
+
+	case "SplunkConfig.splunkConnectionInfo":
+		if e.complexity.SplunkConfig.SplunkConnectionInfo == nil {
+			break
+		}
+
+		return e.complexity.SplunkConfig.SplunkConnectionInfo(childComplexity), true
+
+	case "SplunkConnectionInfo.channel":
+		if e.complexity.SplunkConnectionInfo.Channel == nil {
+			break
+		}
+
+		return e.complexity.SplunkConnectionInfo.Channel(childComplexity), true
+
+	case "SplunkConnectionInfo.serverUrl":
+		if e.complexity.SplunkConnectionInfo.ServerURL == nil {
+			break
+		}
+
+		return e.complexity.SplunkConnectionInfo.ServerURL(childComplexity), true
+
+	case "SplunkConnectionInfo.token":
+		if e.complexity.SplunkConnectionInfo.Token == nil {
+			break
+		}
+
+		return e.complexity.SplunkConnectionInfo.Token(childComplexity), true
 
 	case "SpruceConfig.banner":
 		if e.complexity.SpruceConfig.Banner == nil {
@@ -10996,6 +11288,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TestResult.TestFile(childComplexity), true
 
+	case "TestSelectionConfig.url":
+		if e.complexity.TestSelectionConfig.URL == nil {
+			break
+		}
+
+		return e.complexity.TestSelectionConfig.URL(childComplexity), true
+
 	case "TicketFields.assignedTeam":
 		if e.complexity.TicketFields.AssignedTeam == nil {
 			break
@@ -12231,6 +12530,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
 		ec.unmarshalInputBuildVariantOptions,
+		ec.unmarshalInputCedarConfigInput,
 		ec.unmarshalInputCommitQueueParamsInput,
 		ec.unmarshalInputContainerResourcesInput,
 		ec.unmarshalInputCopyDistroInput,
@@ -12251,6 +12551,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputEnvVarInput,
 		ec.unmarshalInputExpansionInput,
 		ec.unmarshalInputExternalLinkInput,
+		ec.unmarshalInputFWSConfigInput,
 		ec.unmarshalInputFinderSettingsInput,
 		ec.unmarshalInputGitHubAuthConfigInput,
 		ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput,
@@ -12263,6 +12564,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputIceCreamSettingsInput,
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
+		ec.unmarshalInputJiraConfigInput,
 		ec.unmarshalInputJiraIssueSubscriberInput,
 		ec.unmarshalInputKanopyAuthConfigInput,
 		ec.unmarshalInputLogBufferingInput,
@@ -12302,6 +12604,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepotrackerConfigInput,
 		ec.unmarshalInputResourceLimitsInput,
 		ec.unmarshalInputRestartAdminTasksOptions,
+		ec.unmarshalInputRuntimeEnvironmentConfigInput,
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
@@ -12309,10 +12612,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputServiceFlagsInput,
 		ec.unmarshalInputSetLastRevisionInput,
+		ec.unmarshalInputSlackConfigInput,
+		ec.unmarshalInputSlackOptionsInput,
 		ec.unmarshalInputSleepScheduleInput,
 		ec.unmarshalInputSortOrder,
 		ec.unmarshalInputSpawnHostInput,
 		ec.unmarshalInputSpawnVolumeInput,
+		ec.unmarshalInputSplunkConfigInput,
+		ec.unmarshalInputSplunkConnectionInfoInput,
 		ec.unmarshalInputSubscriberInput,
 		ec.unmarshalInputSubscriptionInput,
 		ec.unmarshalInputTaskAnnotationSettingsInput,
@@ -12324,6 +12631,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskSpecifierInput,
 		ec.unmarshalInputTestFilter,
 		ec.unmarshalInputTestFilterOptions,
+		ec.unmarshalInputTestSelectionConfigInput,
 		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputToolchainOpts,
 		ec.unmarshalInputTriggerAliasInput,
@@ -12440,7 +12748,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/auth.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/annotation.graphql" "schema/types/auth.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/external_communications.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_subscriber.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -12460,6 +12768,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/auth.graphql", Input: sourceData("schema/types/auth.graphql"), BuiltIn: false},
 	{Name: "schema/types/config.graphql", Input: sourceData("schema/types/config.graphql"), BuiltIn: false},
 	{Name: "schema/types/distro.graphql", Input: sourceData("schema/types/distro.graphql"), BuiltIn: false},
+	{Name: "schema/types/external_communications.graphql", Input: sourceData("schema/types/external_communications.graphql"), BuiltIn: false},
 	{Name: "schema/types/host.graphql", Input: sourceData("schema/types/host.graphql"), BuiltIn: false},
 	{Name: "schema/types/image.graphql", Input: sourceData("schema/types/image.graphql"), BuiltIn: false},
 	{Name: "schema/types/issue_link.graphql", Input: sourceData("schema/types/issue_link.graphql"), BuiltIn: false},
@@ -19497,6 +19806,335 @@ func (ec *executionContext) fieldContext_AdminSettings_bannerTheme(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_cedar(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_cedar(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cedar, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APICedarConfig)
+	fc.Result = res
+	return ec.marshalOCedarConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_cedar(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dbUrl":
+				return ec.fieldContext_CedarConfig_dbUrl(ctx, field)
+			case "dbName":
+				return ec.fieldContext_CedarConfig_dbName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CedarConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_fws(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_fws(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FWS, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIFWSConfig)
+	fc.Result = res
+	return ec.marshalOFWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_fws(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_FWSConfig_url(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FWSConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_jira(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_jira(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Jira, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIJiraConfig)
+	fc.Result = res
+	return ec.marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_jira(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_JiraConfig_email(ctx, field)
+			case "host":
+				return ec.fieldContext_JiraConfig_host(ctx, field)
+			case "personalAccessToken":
+				return ec.fieldContext_JiraConfig_personalAccessToken(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type JiraConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_slack(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_slack(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slack, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISlackConfig)
+	fc.Result = res
+	return ec.marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_slack(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "options":
+				return ec.fieldContext_SlackConfig_options(ctx, field)
+			case "token":
+				return ec.fieldContext_SlackConfig_token(ctx, field)
+			case "level":
+				return ec.fieldContext_SlackConfig_level(ctx, field)
+			case "name":
+				return ec.fieldContext_SlackConfig_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SlackConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_splunk(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_splunk(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Splunk, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISplunkConfig)
+	fc.Result = res
+	return ec.marshalOSplunkConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_splunk(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "splunkConnectionInfo":
+				return ec.fieldContext_SplunkConfig_splunkConnectionInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SplunkConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_runtimeEnvironments(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RuntimeEnvironments, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIRuntimeEnvironmentsConfig)
+	fc.Result = res
+	return ec.marshalORuntimeEnvironmentConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_runtimeEnvironments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "baseUrl":
+				return ec.fieldContext_RuntimeEnvironmentConfig_baseUrl(ctx, field)
+			case "apiKey":
+				return ec.fieldContext_RuntimeEnvironmentConfig_apiKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RuntimeEnvironmentConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_testSelection(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_testSelection(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TestSelection, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITestSelectionConfig)
+	fc.Result = res
+	return ec.marshalOTestSelectionConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_testSelection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "url":
+				return ec.fieldContext_TestSelectionConfig_url(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TestSelectionConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_serviceFlags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
 	if err != nil {
@@ -23993,6 +24631,116 @@ func (ec *executionContext) fieldContext_BuildVariantTuple_displayName(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _CedarConfig_dbUrl(ctx context.Context, field graphql.CollectedField, obj *model.APICedarConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CedarConfig_dbUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.DBURL, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CedarConfig_dbUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CedarConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CedarConfig_dbName(ctx context.Context, field graphql.CollectedField, obj *model.APICedarConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CedarConfig_dbName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DBName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CedarConfig_dbName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CedarConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChildPatchAlias_alias(ctx context.Context, field graphql.CollectedField, obj *model.APIChildPatchAlias) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ChildPatchAlias_alias(ctx, field)
 	if err != nil {
@@ -28030,6 +28778,50 @@ func (ec *executionContext) fieldContext_ExternalLinkForMetadata_displayName(_ c
 	return fc, nil
 }
 
+func (ec *executionContext) _FWSConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APIFWSConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FWSConfig_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FWSConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FWSConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FailingCommand_fullDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.APIFailingCommand) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_FailingCommand_fullDisplayName(ctx, field)
 	if err != nil {
@@ -31186,6 +31978,10 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -31323,6 +32119,10 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_RepoRef_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_RepoRef_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -36896,6 +37696,69 @@ func (ec *executionContext) fieldContext_JiraConfig_host(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _JiraConfig_personalAccessToken(ctx context.Context, field graphql.CollectedField, obj *model.APIJiraConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_JiraConfig_personalAccessToken(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.PersonalAccessToken, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_JiraConfig_personalAccessToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "JiraConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JiraIssueSubscriber_issueType(ctx context.Context, field graphql.CollectedField, obj *model.APIJIRAIssueSubscriber) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_JiraIssueSubscriber_issueType(ctx, field)
 	if err != nil {
@@ -40244,6 +41107,20 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "cedar":
+				return ec.fieldContext_AdminSettings_cedar(ctx, field)
+			case "fws":
+				return ec.fieldContext_AdminSettings_fws(ctx, field)
+			case "jira":
+				return ec.fieldContext_AdminSettings_jira(ctx, field)
+			case "slack":
+				return ec.fieldContext_AdminSettings_slack(ctx, field)
+			case "splunk":
+				return ec.fieldContext_AdminSettings_splunk(ctx, field)
+			case "runtimeEnvironments":
+				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_AdminSettings_testSelection(ctx, field)
 			case "serviceFlags":
 				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
 			case "notify":
@@ -41087,6 +41964,10 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -41244,6 +42125,10 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -41401,6 +42286,10 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -41558,6 +42447,10 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -41933,6 +42826,10 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -44529,6 +45426,10 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -44846,6 +45747,10 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -48662,6 +49567,10 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -53401,7 +54310,48 @@ func (ec *executionContext) _Project_githubTriggerAliases(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GithubTriggerAliases, nil
+		return ec.resolvers.Project().GithubTriggerAliases(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_githubTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_githubPRTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubPRTriggerAliases, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -53415,7 +54365,48 @@ func (ec *executionContext) _Project_githubTriggerAliases(ctx context.Context, f
 	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Project_githubTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Project_githubPRTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_githubMQTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubMQTriggerAliases, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_githubMQTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Project",
 		Field:      field,
@@ -55962,6 +56953,10 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -56575,6 +57570,10 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -57378,6 +58377,20 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			case "cedar":
+				return ec.fieldContext_AdminSettings_cedar(ctx, field)
+			case "fws":
+				return ec.fieldContext_AdminSettings_fws(ctx, field)
+			case "jira":
+				return ec.fieldContext_AdminSettings_jira(ctx, field)
+			case "slack":
+				return ec.fieldContext_AdminSettings_slack(ctx, field)
+			case "splunk":
+				return ec.fieldContext_AdminSettings_splunk(ctx, field)
+			case "runtimeEnvironments":
+				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_AdminSettings_testSelection(ctx, field)
 			case "serviceFlags":
 				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
 			case "notify":
@@ -58736,6 +59749,10 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -61754,7 +62771,48 @@ func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GithubTriggerAliases, nil
+		return ec.resolvers.RepoRef().GithubTriggerAliases(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoRef_githubPRTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubPRTriggerAliases, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -61768,7 +62826,48 @@ func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, f
 	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RepoRef_githubTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RepoRef_githubPRTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoRef_githubMQTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubMQTriggerAliases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubMQTriggerAliases, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubMQTriggerAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoRef",
 		Field:      field,
@@ -63228,6 +64327,10 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_RepoRef_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_RepoRef_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_RepoRef_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -64000,6 +65103,113 @@ func (ec *executionContext) fieldContext_RestartAdminTasksPayload_numRestartedTa
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RuntimeEnvironmentConfig_baseUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIRuntimeEnvironmentsConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RuntimeEnvironmentConfig_baseUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BaseURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_baseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RuntimeEnvironmentConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RuntimeEnvironmentConfig_apiKey(ctx context.Context, field graphql.CollectedField, obj *model.APIRuntimeEnvironmentsConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RuntimeEnvironmentConfig_apiKey(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.APIKey, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RuntimeEnvironmentConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66919,6 +68129,169 @@ func (ec *executionContext) fieldContext_SingleTaskDistroConfig_projectTasksPair
 	return fc, nil
 }
 
+func (ec *executionContext) _SlackConfig_options(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackConfig_options(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Options, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISlackOptions)
+	fc.Result = res
+	return ec.marshalOSlackOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackConfig_options(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channel":
+				return ec.fieldContext_SlackOptions_channel(ctx, field)
+			case "hostname":
+				return ec.fieldContext_SlackOptions_hostname(ctx, field)
+			case "name":
+				return ec.fieldContext_SlackOptions_name(ctx, field)
+			case "username":
+				return ec.fieldContext_SlackOptions_username(ctx, field)
+			case "basicMetadata":
+				return ec.fieldContext_SlackOptions_basicMetadata(ctx, field)
+			case "fields":
+				return ec.fieldContext_SlackOptions_fields(ctx, field)
+			case "allFields":
+				return ec.fieldContext_SlackOptions_allFields(ctx, field)
+			case "fieldsSet":
+				return ec.fieldContext_SlackOptions_fieldsSet(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SlackOptions", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackConfig_token(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackConfig_token(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Token, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackConfig_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackConfig_level(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackConfig_level(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Level, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOPriorityLevel2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackConfig_level(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PriorityLevel does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SlackConfig_name(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SlackConfig_name(ctx, field)
 	if err != nil {
@@ -66955,6 +68328,334 @@ func (ec *executionContext) fieldContext_SlackConfig_name(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_channel(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_channel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Channel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_hostname(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_hostname(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Hostname, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_hostname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_name(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_username(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_username(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Username, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_basicMetadata(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_basicMetadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BasicMetadata, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_basicMetadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_fields(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_fields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_fields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_allFields(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_allFields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllFields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_allFields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlackOptions_fieldsSet(ctx context.Context, field graphql.CollectedField, obj *model.APISlackOptions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlackOptions_fieldsSet(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FieldsSet, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]bool)
+	fc.Result = res
+	return ec.marshalOBooleanMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlackOptions_fieldsSet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlackOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BooleanMap does not have child fields")
 		},
 	}
 	return fc, nil
@@ -67611,6 +69312,212 @@ func (ec *executionContext) fieldContext_SpawnHostConfig_unexpirableVolumesPerUs
 	return fc, nil
 }
 
+func (ec *executionContext) _SplunkConfig_splunkConnectionInfo(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConfig_splunkConnectionInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SplunkConnectionInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISplunkConnectionInfo)
+	fc.Result = res
+	return ec.marshalNSplunkConnectionInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConfig_splunkConnectionInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "serverUrl":
+				return ec.fieldContext_SplunkConnectionInfo_serverUrl(ctx, field)
+			case "token":
+				return ec.fieldContext_SplunkConnectionInfo_token(ctx, field)
+			case "channel":
+				return ec.fieldContext_SplunkConnectionInfo_channel(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SplunkConnectionInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SplunkConnectionInfo_serverUrl(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConnectionInfo_serverUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ServerURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConnectionInfo_serverUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConnectionInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SplunkConnectionInfo_token(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConnectionInfo_token(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return obj.Token, nil
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *string
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, obj, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*string); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConnectionInfo_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConnectionInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SplunkConnectionInfo_channel(ctx context.Context, field graphql.CollectedField, obj *model.APISplunkConnectionInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SplunkConnectionInfo_channel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Channel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SplunkConnectionInfo_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SplunkConnectionInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SpruceConfig_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SpruceConfig_banner(ctx, field)
 	if err != nil {
@@ -67822,6 +69729,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_jira(_ context.Context, fi
 				return ec.fieldContext_JiraConfig_email(ctx, field)
 			case "host":
 				return ec.fieldContext_JiraConfig_host(ctx, field)
+			case "personalAccessToken":
+				return ec.fieldContext_JiraConfig_personalAccessToken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type JiraConfig", field.Name)
 		},
@@ -67999,6 +69908,12 @@ func (ec *executionContext) fieldContext_SpruceConfig_slack(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "options":
+				return ec.fieldContext_SlackConfig_options(ctx, field)
+			case "token":
+				return ec.fieldContext_SlackConfig_token(ctx, field)
+			case "level":
+				return ec.fieldContext_SlackConfig_level(ctx, field)
 			case "name":
 				return ec.fieldContext_SlackConfig_name(ctx, field)
 			}
@@ -71896,6 +73811,10 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -78085,6 +80004,50 @@ func (ec *executionContext) fieldContext_TestResult_testFile(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _TestSelectionConfig_url(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestSelectionConfig_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestSelectionConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestSelectionConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TicketFields_assignedTeam(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TicketFields_assignedTeam(ctx, field)
 	if err != nil {
@@ -83160,6 +85123,10 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_Project_githubTriggerAliases(ctx, field)
+			case "githubPRTriggerAliases":
+				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+			case "githubMQTriggerAliases":
+				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
 				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
@@ -88922,7 +90889,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "authConfig", "banner", "bannerTheme", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries", "loggerConfig", "triggers"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "authConfig", "banner", "bannerTheme", "cedar", "fws", "jira", "slack", "splunk", "runtimeEnvironments", "testSelection", "serviceFlags", "notify", "taskLimits", "hostInit", "podLifecycle", "scheduler", "repotracker", "api", "ui", "disabledGQLQueries", "loggerConfig", "triggers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88985,6 +90952,55 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 			if err = ec.resolvers.AdminSettingsInput().BannerTheme(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "cedar":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cedar"))
+			data, err := ec.unmarshalOCedarConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Cedar = data
+		case "fws":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fws"))
+			data, err := ec.unmarshalOFWSConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FWS = data
+		case "jira":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jira"))
+			data, err := ec.unmarshalOJiraConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Jira = data
+		case "slack":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slack"))
+			data, err := ec.unmarshalOSlackConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slack = data
+		case "splunk":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("splunk"))
+			data, err := ec.unmarshalOSplunkConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Splunk = data
+		case "runtimeEnvironments":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("runtimeEnvironments"))
+			data, err := ec.unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RuntimeEnvironments = data
+		case "testSelection":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
+			data, err := ec.unmarshalOTestSelectionConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TestSelection = data
 		case "serviceFlags":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceFlags"))
 			data, err := ec.unmarshalOServiceFlagsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx, v)
@@ -89822,6 +91838,57 @@ func (ec *executionContext) unmarshalInputBuildVariantOptions(ctx context.Contex
 				return it, err
 			}
 			it.Variants = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCedarConfigInput(ctx context.Context, obj any) (model.APICedarConfig, error) {
+	var it model.APICedarConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dbUrl", "dbName"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dbUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dbUrl"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.DBURL = data
+			} else if tmp == nil {
+				it.DBURL = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "dbName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dbName"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DBName = data
 		}
 	}
 
@@ -91039,6 +93106,33 @@ func (ec *executionContext) unmarshalInputExternalLinkInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputFWSConfigInput(ctx context.Context, obj any) (model.APIFWSConfig, error) {
+	var it model.APIFWSConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputFinderSettingsInput(ctx context.Context, obj any) (model.APIFinderSettings, error) {
 	var it model.APIFinderSettings
 	asMap := map[string]any{}
@@ -91651,6 +93745,64 @@ func (ec *executionContext) unmarshalInputIssueLinkInput(ctx context.Context, ob
 				return it, err
 			}
 			it.URL = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputJiraConfigInput(ctx context.Context, obj any) (model.APIJiraConfig, error) {
+	var it model.APIJiraConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"email", "host", "personalAccessToken"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "email":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
+		case "host":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Host = data
+		case "personalAccessToken":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("personalAccessToken"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.PersonalAccessToken = data
+			} else if tmp == nil {
+				it.PersonalAccessToken = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -93117,7 +95269,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93245,11 +95397,27 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			it.GitHubPermissionGroupByRequester = data
 		case "githubTriggerAliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubTriggerAliases"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ProjectInput().GithubTriggerAliases(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "githubPRTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPRTriggerAliases"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.GithubTriggerAliases = data
+			it.GithubPRTriggerAliases = data
+		case "githubMQTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubMQTriggerAliases"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GithubMQTriggerAliases = data
 		case "gitTagAuthorizedTeams":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitTagAuthorizedTeams"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -93797,7 +95965,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93904,11 +96072,27 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 			it.GitHubPermissionGroupByRequester = data
 		case "githubTriggerAliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubTriggerAliases"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.RepoRefInput().GithubTriggerAliases(ctx, &it, data); err != nil {
+				return it, err
+			}
+		case "githubPRTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPRTriggerAliases"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.GithubTriggerAliases = data
+			it.GithubPRTriggerAliases = data
+		case "githubMQTriggerAliases":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubMQTriggerAliases"))
+			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GithubMQTriggerAliases = data
 		case "gitTagAuthorizedTeams":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gitTagAuthorizedTeams"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -94372,6 +96556,57 @@ func (ec *executionContext) unmarshalInputRestartAdminTasksOptions(ctx context.C
 				return it, err
 			}
 			it.IncludeSetupFailed = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx context.Context, obj any) (model.APIRuntimeEnvironmentsConfig, error) {
+	var it model.APIRuntimeEnvironmentsConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"baseUrl", "apiKey"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "baseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseUrl"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.APIKey = data
+			} else if tmp == nil {
+				it.APIKey = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -94969,6 +97204,147 @@ func (ec *executionContext) unmarshalInputSetLastRevisionInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSlackConfigInput(ctx context.Context, obj any) (model.APISlackConfig, error) {
+	var it model.APISlackConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"options", "token", "level", "name"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "options":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+			data, err := ec.unmarshalOSlackOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Options = data
+		case "token":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Token = data
+			} else if tmp == nil {
+				it.Token = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "level":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("level"))
+			data, err := ec.unmarshalNPriorityLevel2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Level = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSlackOptionsInput(ctx context.Context, obj any) (model.APISlackOptions, error) {
+	var it model.APISlackOptions
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channel", "hostname", "name", "username", "basicMetadata", "fields", "allFields", "fieldsSet"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Channel = data
+		case "hostname":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostname"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Hostname = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "username":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("username"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Username = data
+		case "basicMetadata":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("basicMetadata"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BasicMetadata = data
+		case "fields":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fields"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Fields = data
+		case "allFields":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allFields"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllFields = data
+		case "fieldsSet":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fieldsSet"))
+			data, err := ec.unmarshalOBooleanMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FieldsSet = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context, obj any) (host.SleepScheduleInfo, error) {
 	var it host.SleepScheduleInfo
 	asMap := map[string]any{}
@@ -95262,6 +97638,91 @@ func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, 
 				return it, err
 			}
 			it.Type = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSplunkConfigInput(ctx context.Context, obj any) (model.APISplunkConfig, error) {
+	var it model.APISplunkConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"splunkConnectionInfo"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "splunkConnectionInfo":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("splunkConnectionInfo"))
+			data, err := ec.unmarshalNSplunkConnectionInfoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SplunkConnectionInfo = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSplunkConnectionInfoInput(ctx context.Context, obj any) (model.APISplunkConnectionInfo, error) {
+	var it model.APISplunkConnectionInfo
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"serverUrl", "token", "channel"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "serverUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverUrl"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServerURL = data
+		case "token":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Token = data
+			} else if tmp == nil {
+				it.Token = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "channel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channel"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Channel = data
 		}
 	}
 
@@ -95939,6 +98400,33 @@ func (ec *executionContext) unmarshalInputTestFilterOptions(ctx context.Context,
 				return it, err
 			}
 			it.Page = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestSelectionConfigInput(ctx context.Context, obj any) (model.APITestSelectionConfig, error) {
+	var it model.APITestSelectionConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"url"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "url":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.URL = data
 		}
 	}
 
@@ -97385,6 +99873,20 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "cedar":
+			out.Values[i] = ec._AdminSettings_cedar(ctx, field, obj)
+		case "fws":
+			out.Values[i] = ec._AdminSettings_fws(ctx, field, obj)
+		case "jira":
+			out.Values[i] = ec._AdminSettings_jira(ctx, field, obj)
+		case "slack":
+			out.Values[i] = ec._AdminSettings_slack(ctx, field, obj)
+		case "splunk":
+			out.Values[i] = ec._AdminSettings_splunk(ctx, field, obj)
+		case "runtimeEnvironments":
+			out.Values[i] = ec._AdminSettings_runtimeEnvironments(ctx, field, obj)
+		case "testSelection":
+			out.Values[i] = ec._AdminSettings_testSelection(ctx, field, obj)
 		case "serviceFlags":
 			out.Values[i] = ec._AdminSettings_serviceFlags(ctx, field, obj)
 		case "notify":
@@ -98159,6 +100661,50 @@ func (ec *executionContext) _BuildVariantTuple(ctx context.Context, sel ast.Sele
 			}
 		case "displayName":
 			out.Values[i] = ec._BuildVariantTuple_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var cedarConfigImplementors = []string{"CedarConfig"}
+
+func (ec *executionContext) _CedarConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APICedarConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cedarConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CedarConfig")
+		case "dbUrl":
+			out.Values[i] = ec._CedarConfig_dbUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "dbName":
+			out.Values[i] = ec._CedarConfig_dbName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -99399,6 +101945,45 @@ func (ec *executionContext) _ExternalLinkForMetadata(ctx context.Context, sel as
 			}
 		case "displayName":
 			out.Values[i] = ec._ExternalLinkForMetadata_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var fWSConfigImplementors = []string{"FWSConfig"}
+
+func (ec *executionContext) _FWSConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIFWSConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fWSConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FWSConfig")
+		case "url":
+			out.Values[i] = ec._FWSConfig_url(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -101900,6 +104485,8 @@ func (ec *executionContext) _JiraConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._JiraConfig_email(ctx, field, obj)
 		case "host":
 			out.Values[i] = ec._JiraConfig_host(ctx, field, obj)
+		case "personalAccessToken":
+			out.Values[i] = ec._JiraConfig_personalAccessToken(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -105409,7 +107996,42 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 		case "githubPermissionGroupByRequester":
 			out.Values[i] = ec._Project_githubPermissionGroupByRequester(ctx, field, obj)
 		case "githubTriggerAliases":
-			out.Values[i] = ec._Project_githubTriggerAliases(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Project_githubTriggerAliases(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "githubPRTriggerAliases":
+			out.Values[i] = ec._Project_githubPRTriggerAliases(ctx, field, obj)
+		case "githubMQTriggerAliases":
+			out.Values[i] = ec._Project_githubMQTriggerAliases(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
 			out.Values[i] = ec._Project_gitTagAuthorizedTeams(ctx, field, obj)
 		case "gitTagAuthorizedUsers":
@@ -107511,69 +110133,104 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "id":
 			out.Values[i] = ec._RepoRef_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "admins":
 			out.Values[i] = ec._RepoRef_admins(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "batchTime":
 			out.Values[i] = ec._RepoRef_batchTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "buildBaronSettings":
 			out.Values[i] = ec._RepoRef_buildBaronSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "commitQueue":
 			out.Values[i] = ec._RepoRef_commitQueue(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "containerSizeDefinitions":
 			out.Values[i] = ec._RepoRef_containerSizeDefinitions(ctx, field, obj)
 		case "deactivatePrevious":
 			out.Values[i] = ec._RepoRef_deactivatePrevious(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "disabledStatsCache":
 			out.Values[i] = ec._RepoRef_disabledStatsCache(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "dispatchingDisabled":
 			out.Values[i] = ec._RepoRef_dispatchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "displayName":
 			out.Values[i] = ec._RepoRef_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "enabled":
 			out.Values[i] = ec._RepoRef_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "githubChecksEnabled":
 			out.Values[i] = ec._RepoRef_githubChecksEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "githubDynamicTokenPermissionGroups":
 			out.Values[i] = ec._RepoRef_githubDynamicTokenPermissionGroups(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "githubPermissionGroupByRequester":
 			out.Values[i] = ec._RepoRef_githubPermissionGroupByRequester(ctx, field, obj)
 		case "githubTriggerAliases":
-			out.Values[i] = ec._RepoRef_githubTriggerAliases(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RepoRef_githubTriggerAliases(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "githubPRTriggerAliases":
+			out.Values[i] = ec._RepoRef_githubPRTriggerAliases(ctx, field, obj)
+		case "githubMQTriggerAliases":
+			out.Values[i] = ec._RepoRef_githubMQTriggerAliases(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
 			out.Values[i] = ec._RepoRef_gitTagAuthorizedTeams(ctx, field, obj)
 		case "gitTagAuthorizedUsers":
@@ -107581,105 +110238,105 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 		case "gitTagVersionsEnabled":
 			out.Values[i] = ec._RepoRef_gitTagVersionsEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "manualPrTestingEnabled":
 			out.Values[i] = ec._RepoRef_manualPrTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "notifyOnBuildFailure":
 			out.Values[i] = ec._RepoRef_notifyOnBuildFailure(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "oldestAllowedMergeBase":
 			out.Values[i] = ec._RepoRef_oldestAllowedMergeBase(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "owner":
 			out.Values[i] = ec._RepoRef_owner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "parsleyFilters":
 			out.Values[i] = ec._RepoRef_parsleyFilters(ctx, field, obj)
 		case "patchingDisabled":
 			out.Values[i] = ec._RepoRef_patchingDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "patchTriggerAliases":
 			out.Values[i] = ec._RepoRef_patchTriggerAliases(ctx, field, obj)
 		case "perfEnabled":
 			out.Values[i] = ec._RepoRef_perfEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "periodicBuilds":
 			out.Values[i] = ec._RepoRef_periodicBuilds(ctx, field, obj)
 		case "prTestingEnabled":
 			out.Values[i] = ec._RepoRef_prTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "remotePath":
 			out.Values[i] = ec._RepoRef_remotePath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "repo":
 			out.Values[i] = ec._RepoRef_repo(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "repotrackerDisabled":
 			out.Values[i] = ec._RepoRef_repotrackerDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "restricted":
 			out.Values[i] = ec._RepoRef_restricted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "spawnHostScriptPath":
 			out.Values[i] = ec._RepoRef_spawnHostScriptPath(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "stepbackDisabled":
 			out.Values[i] = ec._RepoRef_stepbackDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "stepbackBisect":
 			out.Values[i] = ec._RepoRef_stepbackBisect(ctx, field, obj)
 		case "taskAnnotationSettings":
 			out.Values[i] = ec._RepoRef_taskAnnotationSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "tracksPushEvents":
 			out.Values[i] = ec._RepoRef_tracksPushEvents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "triggers":
 			out.Values[i] = ec._RepoRef_triggers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "versionControlEnabled":
 			out.Values[i] = ec._RepoRef_versionControlEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "workstationConfig":
 			out.Values[i] = ec._RepoRef_workstationConfig(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "externalLinks":
 			out.Values[i] = ec._RepoRef_externalLinks(ctx, field, obj)
@@ -108115,6 +110772,47 @@ func (ec *executionContext) _RestartAdminTasksPayload(ctx context.Context, sel a
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var runtimeEnvironmentConfigImplementors = []string{"RuntimeEnvironmentConfig"}
+
+func (ec *executionContext) _RuntimeEnvironmentConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIRuntimeEnvironmentsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, runtimeEnvironmentConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RuntimeEnvironmentConfig")
+		case "baseUrl":
+			out.Values[i] = ec._RuntimeEnvironmentConfig_baseUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "apiKey":
+			out.Values[i] = ec._RuntimeEnvironmentConfig_apiKey(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -108692,8 +111390,64 @@ func (ec *executionContext) _SlackConfig(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("SlackConfig")
+		case "options":
+			out.Values[i] = ec._SlackConfig_options(ctx, field, obj)
+		case "token":
+			out.Values[i] = ec._SlackConfig_token(ctx, field, obj)
+		case "level":
+			out.Values[i] = ec._SlackConfig_level(ctx, field, obj)
 		case "name":
 			out.Values[i] = ec._SlackConfig_name(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var slackOptionsImplementors = []string{"SlackOptions"}
+
+func (ec *executionContext) _SlackOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APISlackOptions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, slackOptionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SlackOptions")
+		case "channel":
+			out.Values[i] = ec._SlackOptions_channel(ctx, field, obj)
+		case "hostname":
+			out.Values[i] = ec._SlackOptions_hostname(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._SlackOptions_name(ctx, field, obj)
+		case "username":
+			out.Values[i] = ec._SlackOptions_username(ctx, field, obj)
+		case "basicMetadata":
+			out.Values[i] = ec._SlackOptions_basicMetadata(ctx, field, obj)
+		case "fields":
+			out.Values[i] = ec._SlackOptions_fields(ctx, field, obj)
+		case "allFields":
+			out.Values[i] = ec._SlackOptions_allFields(ctx, field, obj)
+		case "fieldsSet":
+			out.Values[i] = ec._SlackOptions_fieldsSet(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -108890,6 +111644,94 @@ func (ec *executionContext) _SpawnHostConfig(ctx context.Context, sel ast.Select
 			}
 		case "unexpirableVolumesPerUser":
 			out.Values[i] = ec._SpawnHostConfig_unexpirableVolumesPerUser(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var splunkConfigImplementors = []string{"SplunkConfig"}
+
+func (ec *executionContext) _SplunkConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISplunkConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, splunkConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SplunkConfig")
+		case "splunkConnectionInfo":
+			out.Values[i] = ec._SplunkConfig_splunkConnectionInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var splunkConnectionInfoImplementors = []string{"SplunkConnectionInfo"}
+
+func (ec *executionContext) _SplunkConnectionInfo(ctx context.Context, sel ast.SelectionSet, obj *model.APISplunkConnectionInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, splunkConnectionInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SplunkConnectionInfo")
+		case "serverUrl":
+			out.Values[i] = ec._SplunkConnectionInfo_serverUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "token":
+			out.Values[i] = ec._SplunkConnectionInfo_token(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channel":
+			out.Values[i] = ec._SplunkConnectionInfo_channel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -111981,6 +114823,45 @@ func (ec *executionContext) _TestResult(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._TestResult_taskId(ctx, field, obj)
 		case "testFile":
 			out.Values[i] = ec._TestResult_testFile(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var testSelectionConfigImplementors = []string{"TestSelectionConfig"}
+
+func (ec *executionContext) _TestSelectionConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APITestSelectionConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, testSelectionConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TestSelectionConfig")
+		case "url":
+			out.Values[i] = ec._TestSelectionConfig_url(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -119131,6 +122012,21 @@ func (ec *executionContext) unmarshalNSpawnVolumeInput2githubᚗcomᚋevergreen�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNSplunkConnectionInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx context.Context, sel ast.SelectionSet, v *model.APISplunkConnectionInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SplunkConnectionInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSplunkConnectionInfoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConnectionInfo(ctx context.Context, v any) (*model.APISplunkConnectionInfo, error) {
+	res, err := ec.unmarshalInputSplunkConnectionInfoInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNStatusCount2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐStatusCount(ctx context.Context, sel ast.SelectionSet, v task.StatusCount) graphql.Marshaler {
 	return ec._StatusCount(ctx, sel, &v)
 }
@@ -120901,6 +123797,24 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOBooleanMap2map(ctx context.Context, v any) (map[string]bool, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := UnmarshalBooleanMap(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOBooleanMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]bool) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := MarshalBooleanMap(v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOBuildBaronSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBuildBaronSettings(ctx context.Context, v any) (model.APIBuildBaronSettings, error) {
 	res, err := ec.unmarshalInputBuildBaronSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -120959,6 +123873,21 @@ func (ec *executionContext) marshalOBuildVariantTuple2ᚕᚖgithubᚗcomᚋeverg
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOCedarConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx context.Context, sel ast.SelectionSet, v *model.APICedarConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CedarConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOCedarConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICedarConfig(ctx context.Context, v any) (*model.APICedarConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputCedarConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOChildPatchAlias2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIChildPatchAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIChildPatchAlias) graphql.Marshaler {
@@ -121319,6 +124248,21 @@ func (ec *executionContext) unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergr
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOFWSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIFWSConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FWSConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOFWSConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIFWSConfig(ctx context.Context, v any) (*model.APIFWSConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputFWSConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOFeedbackRule2ᚖstring(ctx context.Context, v any) (*string, error) {
@@ -122262,6 +125206,14 @@ func (ec *executionContext) marshalOJiraConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._JiraConfig(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOJiraConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJiraConfig(ctx context.Context, v any) (*model.APIJiraConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputJiraConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOJiraIssueSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIJIRAIssueSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIJIRAIssueSubscriber) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -123175,6 +126127,21 @@ var (
 	}
 )
 
+func (ec *executionContext) marshalORuntimeEnvironmentConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIRuntimeEnvironmentsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RuntimeEnvironmentConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRuntimeEnvironmentsConfig(ctx context.Context, v any) (*model.APIRuntimeEnvironmentsConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputRuntimeEnvironmentConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, sel ast.SelectionSet, v model.APISESConfig) graphql.Marshaler {
 	return ec._SESConfig(ctx, sel, &v)
 }
@@ -123233,6 +126200,29 @@ func (ec *executionContext) marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑci
 		return graphql.Null
 	}
 	return ec._SlackConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSlackConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx context.Context, v any) (*model.APISlackConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSlackConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSlackOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx context.Context, sel ast.SelectionSet, v *model.APISlackOptions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SlackOptions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSlackOptionsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackOptions(ctx context.Context, v any) (*model.APISlackOptions, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSlackOptionsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOSleepSchedule2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐSleepScheduleInfo(ctx context.Context, sel ast.SelectionSet, v *host.SleepScheduleInfo) graphql.Marshaler {
@@ -123296,6 +126286,21 @@ func (ec *executionContext) unmarshalOSpawnHostInput2ᚖgithubᚗcomᚋevergreen
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputSpawnHostInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSplunkConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISplunkConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SplunkConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSplunkConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISplunkConfig(ctx context.Context, v any) (*model.APISplunkConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSplunkConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -123705,6 +126710,21 @@ func (ec *executionContext) unmarshalOTestFilterOptions2ᚖgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputTestFilterOptions(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTestSelectionConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx context.Context, sel ast.SelectionSet, v *model.APITestSelectionConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TestSelectionConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTestSelectionConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionConfig(ctx context.Context, v any) (*model.APITestSelectionConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTestSelectionConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

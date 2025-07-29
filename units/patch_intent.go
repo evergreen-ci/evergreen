@@ -912,8 +912,8 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
-	if len(projectRef.GithubTriggerAliases) > 0 {
-		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubTriggerAliases}
+	if len(projectRef.GithubPRTriggerAliases) > 0 {
+		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubPRTriggerAliases}
 	}
 
 	isMember, err := j.isUserAuthorized(ctx, patchDoc, mustBeMemberOfOrg,

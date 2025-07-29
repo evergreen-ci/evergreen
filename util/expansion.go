@@ -99,9 +99,19 @@ func (exp *Expansions) ExpandString(toExpand string) (string, error) {
 				match = match[0:idx]
 			}
 
+			// determine if the expansion is required to have a value
+			var requireVal bool
+			if secondaryValue != "" && strings.HasSuffix(match, "!") {
+				requireVal = true
+				match = match[:len(match)-1]
+			}
+
 			// return the specified expansion, if it is present.
 			if exp.Exists(match) {
-				return []byte(exp.Get(match))
+				expVal := exp.Get(match)
+				if !requireVal || (requireVal && expVal != "") {
+					return []byte(expVal)
+				}
 			}
 
 			// look for an expansion in the secondary value
