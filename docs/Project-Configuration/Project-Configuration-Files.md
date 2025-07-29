@@ -769,7 +769,7 @@ Every task has some expansions available by default:
 
 - `${activated_by}` is username of the user who caused the task to run
 - `${author}` is the Evergreen user associated with the commit.
-  If the commit is originates from a pull request and that pull
+  If the commit is from a pull request and that pull
   request is not linked to an Evergreen user, this will default to
   the string 'github_pull_request'.
 - `${author_email}` the email associated with the author, if one
