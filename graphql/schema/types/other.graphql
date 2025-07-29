@@ -5,47 +5,47 @@ input BucketConfigInput {
 }
 
 type BucketConfig {
-    name: String
-    testResultsPrefix: String
-    roleARN: String @requireAdmin
+  name: String
+  testResultsPrefix: String
+  roleARN: String @requireAdmin
 }
 
 input BucketsConfigInput {
-    logBucket: BucketConfigInput
-    testResultsBucket: BucketConfigInput
-    internalBuckets: [String!]!
-    credentials: S3CredentialsInput @redactSecrets
+  logBucket: BucketConfigInput
+  testResultsBucket: BucketConfigInput
+  internalBuckets: [String!]!
+  credentials: S3CredentialsInput @redactSecrets
 }
 
 type BucketsConfig {
-    logBucket: BucketConfig
-    testResultsBucket: BucketConfig
-    internalBuckets: [String!]!
-    credentials: S3Credentials @requireAdmin
+  logBucket: BucketConfig
+  testResultsBucket: BucketConfig
+  internalBuckets: [String!]!
+  credentials: S3Credentials @requireAdmin
 }
 
 input GitHubCheckRunConfigInput {
-    checkRunLimit: Int 
+  checkRunLimit: Int
 }
 
 type GitHubCheckRunConfig {
-    checkRunLimit: Int 
+  checkRunLimit: Int
 }
 
 input HostJasperConfigInput {
-    binaryName: String
-    downloadFileName: String
-    port: Int
-    url: String
-    version: String
+  binaryName: String
+  downloadFileName: String
+  port: Int
+  url: String
+  version: String
 }
 
 type HostJasperConfig {
-    binaryName: String
-    downloadFileName: String
-    port: Int
-    url: String
-    version: String
+  binaryName: String
+  downloadFileName: String
+  port: Int
+  url: String
+  version: String
 }
 
 input JiraNotificationsProjectInput {
@@ -53,7 +53,6 @@ input JiraNotificationsProjectInput {
   components: [String!]!
   labels: [String!]!
 }
-
 
 type JiraNotificationsProject {
   fields: StringMap
@@ -84,121 +83,121 @@ type JiraNotificationsConfig {
 }
 
 input OwnerRepoInput {
-    owner: String
-    repo: String
+  owner: String
+  repo: String
 }
 
 type OwnerRepo {
-    owner: String
-    repo: String
+  owner: String
+  repo: String
 }
 
 input ProjectCreationConfigInput {
-    totalProjectLimit: Int
-    repoProjectLimit: Int
-    repoExceptions: [OwnerRepoInput!]!
-    jiraProject: String
+  totalProjectLimit: Int
+  repoProjectLimit: Int
+  repoExceptions: [OwnerRepoInput!]!
+  jiraProject: String
 }
 
 type ProjectCreationConfig {
-    totalProjectLimit: Int
-    repoProjectLimit: Int
-    repoExceptions: [OwnerRepo!]!
-    jiraProject: String
+  totalProjectLimit: Int
+  repoProjectLimit: Int
+  repoExceptions: [OwnerRepo!]!
+  jiraProject: String
 }
 
 input S3CredentialsInput {
-    key: String @redactSecrets
-    secret: String @redactSecrets
-    bucket: String
+  key: String @redactSecrets
+  secret: String @redactSecrets
+  bucket: String
 }
 
 type S3Credentials {
-    key: String @requireAdmin
-    secret: String @requireAdmin
-    bucket: String
+  key: String @requireAdmin
+  secret: String @requireAdmin
+  bucket: String
 }
 
 input SleepScheduleConfigInput {
-    permanentlyExemptHosts: [String!]!
+  permanentlyExemptHosts: [String!]!
 }
 
 type SleepScheduleConfig {
-    permanentlyExemptHosts: [String!]!
+  permanentlyExemptHosts: [String!]!
 }
 
 input SSHConfigInput {
-    taskHostKey: SSHKeyPairInput
-    spawnHostKey: SSHKeyPairInput
+  taskHostKey: SSHKeyPairInput
+  spawnHostKey: SSHKeyPairInput
 }
 
 type SSHConfig {
-    taskHostKey: SSHKeyPair
-    spawnHostKey: SSHKeyPair
+  taskHostKey: SSHKeyPair
+  spawnHostKey: SSHKeyPair
 }
 
 input SSHKeyPairInput {
-    name: String
-    secretARN: String @redactSecrets
+  name: String
+  secretARN: String @redactSecrets
 }
 
 type SSHKeyPair {
-    name: String
-    secretARN: String @requireAdmin
+  name: String
+  secretARN: String @requireAdmin
 }
 
 input SpawnHostConfigInput {
-    unexpirableHostsPerUser: Int
-    unexpirableVolumesPerUser: Int
-    spawnHostsPerUser: Int
+  unexpirableHostsPerUser: Int
+  unexpirableVolumesPerUser: Int
+  spawnHostsPerUser: Int
 }
 
 type SpawnHostConfig {
-    unexpirableHostsPerUser: Int
-    unexpirableVolumesPerUser: Int
-    spawnHostsPerUser: Int
+  unexpirableHostsPerUser: Int
+  unexpirableVolumesPerUser: Int
+  spawnHostsPerUser: Int
 }
 
 input ProjectTasksPairInput {
-    projectID: String!
-    allowedTasks: [String!]!
-    allowedBVs: [String!]!
+  projectID: String!
+  allowedTasks: [String!]!
+  allowedBVs: [String!]!
 }
 
 type ProjectTasksPair {
-    projectId: String!
-    allowedTasks: [String!]!
-    allowedBVs: [String!]!
+  projectId: String!
+  allowedTasks: [String!]!
+  allowedBVs: [String!]!
 }
 input ReleaseModeConfigInput {
-    distroMaxHostsFactor: Float
-    targetTimeSecondsOverride: Int
-    idleTimeSecondsOverride: Int
+  distroMaxHostsFactor: Float
+  targetTimeSecondsOverride: Int
+  idleTimeSecondsOverride: Int
 }
 type ReleaseModeConfig {
-    distroMaxHostsFactor: Float
-    targetTimeSecondsOverride: Int
-    idleTimeSecondsOverride: Int
+  distroMaxHostsFactor: Float
+  targetTimeSecondsOverride: Int
+  idleTimeSecondsOverride: Int
 }
 
 input SingleTaskDistroConfigInput {
-    projectTasksPairs: [ProjectTasksPairInput!]!
+  projectTasksPairs: [ProjectTasksPairInput!]!
 }
 
 type SingleTaskDistroConfig {
-    projectTasksPairs: [ProjectTasksPair!]!
+  projectTasksPairs: [ProjectTasksPair!]!
 }
 
 input TracerSettingsInput {
-    enabled: Boolean
-    collectorEndpoint: String
-    collectorInternalEndpoint: String
-    collectorAPIKey: String @redactSecrets
+  enabled: Boolean
+  collectorEndpoint: String
+  collectorInternalEndpoint: String
+  collectorAPIKey: String @redactSecrets
 }
 
 type TracerSettings {
-    enabled: Boolean!
-    collectorEndpoint: String
-    collectorInternalEndpoint: String
-    collectorAPIKey: String @requireAdmin
+  enabled: Boolean!
+  collectorEndpoint: String
+  collectorInternalEndpoint: String
+  collectorAPIKey: String @requireAdmin
 }

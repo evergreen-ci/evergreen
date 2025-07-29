@@ -1,190 +1,180 @@
 mutation SaveAdminSettingsOther {
-    saveAdminSettings(adminSettings: {
-        configDir: "/test/config"
-        domainName: "test.example.com"
-        githubPRCreatorOrg: "test-org"
-        shutdownWaitSeconds: 10
-        githubWebhookSecret: "test-secret"
-        perfMonitoringKanopyURL: "https://perf.kanopy.example.com"
-        perfMonitoringURL: "https://perf.mutation.com"
-        pprofPort: "8080"
-        logPath: "/test/logs"
-        githubOrgs: ["test-org1", "test-org2"]
-        singleTaskDistro: {
-            projectTasksPairs: [{
-                projectID: "test-project"
-                allowedTasks: ["test-task1", "test-task2"]
-                allowedBVs: ["test-bv1", "test-bv2"]
-            }]
+  saveAdminSettings(
+    adminSettings: {
+      configDir: "/test/config"
+      domainName: "test.example.com"
+      githubPRCreatorOrg: "test-org"
+      shutdownWaitSeconds: 10
+      githubWebhookSecret: "test-secret"
+      perfMonitoringKanopyURL: "https://perf.kanopy.example.com"
+      perfMonitoringURL: "https://perf.mutation.com"
+      pprofPort: "8080"
+      logPath: "/test/logs"
+      githubOrgs: ["test-org1", "test-org2"]
+      singleTaskDistro: {
+        projectTasksPairs: [
+          {
+            projectID: "test-project"
+            allowedTasks: ["test-task1", "test-task2"]
+            allowedBVs: ["test-bv1", "test-bv2"]
+          }
+        ]
+      }
+      buckets: {
+        internalBuckets: ["internal-bucket1", "internal-bucket2"]
+        logBucket: {
+          name: "mutation-log-bucket"
+          testResultsPrefix: "mutation-results"
+          roleARN: "test arn"
         }
-        buckets: {
-            internalBuckets: ["internal-bucket1", "internal-bucket2"]
-            logBucket: {
-                name: "mutation-log-bucket"
-                testResultsPrefix: "mutation-results"
-                roleARN: "test arn"
-            }
-            testResultsBucket: {
-                name: "mutation-test-bucket"
-                testResultsPrefix: "mutation-test-results"
-                roleARN: "test arn"
-            }
+        testResultsBucket: {
+          name: "mutation-test-bucket"
+          testResultsPrefix: "mutation-test-results"
+          roleARN: "test arn"
         }
-        ssh: {
-            taskHostKey: {
-                name: "mutation-task-key"
-                secretARN: "test secret arn"
-            }
-            spawnHostKey: {
-                name: "mutation-spawn-key"
-                secretARN: "test secret arn"
-            }
+      }
+      ssh: {
+        taskHostKey: { name: "mutation-task-key", secretARN: "test secret arn" }
+        spawnHostKey: {
+          name: "mutation-spawn-key"
+          secretARN: "test secret arn"
         }
-        expansions: {
-            mutation_key: "mutation_expansion_value"
-        }
-        hostJasper: {
-            binaryName: "mutation-jasper"
-            downloadFileName: "mutation-jasper.tar.gz"
-            port: 3000
-            url: "https://mutation.example.com/jasper"
-            version: "v2.0.0"
-        }
-        jiraNotifications: {
-            customFields: [
-                {
-                  project: "mutation-project"
-                  fields: {
-                    key1: "value1"
-                  }
-                  components: ["mutation-component"],
-                  labels: ["mutation-label"]
-                },
-                {
-                  project: "another-project"
-                  components: ["another-component"],
-                  labels: ["another-label"]
-                }
-            ]
-        }
-        spawnhost: {
-            unexpirableHostsPerUser: 5
-            unexpirableVolumesPerUser: 3
-            spawnHostsPerUser: 10
-        }
-        sleepSchedule: {
-            permanentlyExemptHosts: ["host1", "host2"]
-        }
-        tracer: {
-            enabled: true
-            collectorEndpoint: "https://collector.example.com"
-            collectorInternalEndpoint: "https://internal-collector.example.com"
-            collectorAPIKey: "test-api-key"
-        }
-        projectCreation: {
-            totalProjectLimit: 100
-            repoProjectLimit: 50
-            repoExceptions: [{
-                owner: "test-owner"
-                repo: "test-repo"
-            }]
-            jiraProject: "TEST"
-        }
-        githubCheckRun: {
-            checkRunLimit: 10
-        }
-        releaseMode: {
-            distroMaxHostsFactor: 1.5
-            targetTimeSecondsOverride: 300
-            idleTimeSecondsOverride: 60
-        }
-    }) {
-        configDir
-        domainName
-        githubPRCreatorOrg
-        shutdownWaitSeconds
-        githubWebhookSecret
-        perfMonitoringKanopyURL
-        perfMonitoringURL
-        pprofPort
-        logPath
-        githubOrgs
-        singleTaskDistro {
-            projectTasksPairs {
-                projectId
-                allowedTasks
-                allowedBVs
-            }
-        }
-        buckets {
-            internalBuckets
-            logBucket {
-                name
-                testResultsPrefix
-                roleARN
-            }
-            testResultsBucket {
-                name
-                testResultsPrefix
-                roleARN
-            }
-        }
-        ssh {
-            taskHostKey {
-                name
-                secretARN
-            }
-            spawnHostKey {
-                name
-                secretARN
-            }
-        }
-        expansions
-        hostJasper {
-            binaryName
-            downloadFileName
-            port
-            url
-            version
-        }
-        jiraNotifications {
-            customFields {
-                project
-                fields
-                components
-                labels
-            }
-        }
-        spawnhost {
-            unexpirableHostsPerUser
-            unexpirableVolumesPerUser
-            spawnHostsPerUser
-        }
-        sleepSchedule {
-            permanentlyExemptHosts
-        }
-        tracer {
-            enabled
-            collectorEndpoint
-            collectorInternalEndpoint
-            collectorAPIKey
-        }
-        projectCreation {
-            totalProjectLimit
-            repoProjectLimit
-            repoExceptions {
-                owner
-                repo
-            }
-            jiraProject
-        }
-        githubCheckRun {
-            checkRunLimit
-        }
-        releaseMode {
-            distroMaxHostsFactor
-            targetTimeSecondsOverride
-            idleTimeSecondsOverride
-        }
+      }
+      expansions: { mutation_key: "mutation_expansion_value" }
+      hostJasper: {
+        binaryName: "mutation-jasper"
+        downloadFileName: "mutation-jasper.tar.gz"
+        port: 3000
+        url: "https://mutation.example.com/jasper"
+        version: "v2.0.0"
+      }
+      jiraNotifications: {
+        customFields: [
+          {
+            project: "mutation-project"
+            fields: { key1: "value1" }
+            components: ["mutation-component"]
+            labels: ["mutation-label"]
+          }
+          {
+            project: "another-project"
+            components: ["another-component"]
+            labels: ["another-label"]
+          }
+        ]
+      }
+      spawnhost: {
+        unexpirableHostsPerUser: 5
+        unexpirableVolumesPerUser: 3
+        spawnHostsPerUser: 10
+      }
+      sleepSchedule: { permanentlyExemptHosts: ["host1", "host2"] }
+      tracer: {
+        enabled: true
+        collectorEndpoint: "https://collector.example.com"
+        collectorInternalEndpoint: "https://internal-collector.example.com"
+        collectorAPIKey: "test-api-key"
+      }
+      projectCreation: {
+        totalProjectLimit: 100
+        repoProjectLimit: 50
+        repoExceptions: [{ owner: "test-owner", repo: "test-repo" }]
+        jiraProject: "TEST"
+      }
+      githubCheckRun: { checkRunLimit: 10 }
+      releaseMode: {
+        distroMaxHostsFactor: 1.5
+        targetTimeSecondsOverride: 300
+        idleTimeSecondsOverride: 60
+      }
     }
+  ) {
+    configDir
+    domainName
+    githubPRCreatorOrg
+    shutdownWaitSeconds
+    githubWebhookSecret
+    perfMonitoringKanopyURL
+    perfMonitoringURL
+    pprofPort
+    logPath
+    githubOrgs
+    singleTaskDistro {
+      projectTasksPairs {
+        projectId
+        allowedTasks
+        allowedBVs
+      }
+    }
+    buckets {
+      internalBuckets
+      logBucket {
+        name
+        testResultsPrefix
+        roleARN
+      }
+      testResultsBucket {
+        name
+        testResultsPrefix
+        roleARN
+      }
+    }
+    ssh {
+      taskHostKey {
+        name
+        secretARN
+      }
+      spawnHostKey {
+        name
+        secretARN
+      }
+    }
+    expansions
+    hostJasper {
+      binaryName
+      downloadFileName
+      port
+      url
+      version
+    }
+    jiraNotifications {
+      customFields {
+        project
+        fields
+        components
+        labels
+      }
+    }
+    spawnhost {
+      unexpirableHostsPerUser
+      unexpirableVolumesPerUser
+      spawnHostsPerUser
+    }
+    sleepSchedule {
+      permanentlyExemptHosts
+    }
+    tracer {
+      enabled
+      collectorEndpoint
+      collectorInternalEndpoint
+      collectorAPIKey
+    }
+    projectCreation {
+      totalProjectLimit
+      repoProjectLimit
+      repoExceptions {
+        owner
+        repo
+      }
+      jiraProject
+    }
+    githubCheckRun {
+      checkRunLimit
+    }
+    releaseMode {
+      distroMaxHostsFactor
+      targetTimeSecondsOverride
+      idleTimeSecondsOverride
+    }
+  }
 }
