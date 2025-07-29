@@ -24,7 +24,7 @@ func LastRevision() cli.Command {
 	)
 	return cli.Command{
 		Name:  "last-revision",
-		Usage: "return the latest revision that matches a set of criteria",
+		Usage: "return the latest revision for a version that matches a set of criteria",
 		Flags: addProjectFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(regexpVariantsFlagName, "rv"),
@@ -84,10 +84,15 @@ func LastRevision() cli.Command {
 // lastRevisionBuildInfo includes information needed to determine if a build
 // passes a set of criteria.
 type lastRevisionBuildInfo struct {
-	buildID            string
-	versionID          string
-	buildVariant       string
-	numTasks           int
+	// buildID is the ID of the build.
+	buildID string
+	// versionID is the ID of the version that this build belongs to.
+	versionID string
+	// buildVariant is the name of the build variant for this build.
+	buildVariant string
+	// numTasks is the total number of tasks in the build.
+	numTasks int
+	// numSuccessfulTasks is the number of tasks in the build that succeeded.
 	numSuccessfulTasks int
 }
 
@@ -107,6 +112,8 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) last
 	}
 }
 
+// successProportion calculates the proportion of successful tasks out of all
+// the tasks in the build.
 func (i *lastRevisionBuildInfo) successProportion() float64 {
 	return float64(i.numSuccessfulTasks) / float64(i.numTasks)
 }
@@ -116,12 +123,12 @@ func (i *lastRevisionBuildInfo) successProportion() float64 {
 type lastRevisionCriteria struct {
 	// project is the project ID or identifier.
 	project string
-	// buildVariantRegexp is a list of regular expressions of build variant
-	// names. This determines which particular build variants the criteria
-	// should apply to.
+	// buildVariantRegexp is a list of regular expressions of matching build
+	// variant names. This determines which particular build variants the
+	// criteria should apply to.
 	buildVariantRegexp []regexp.Regexp
 	// minSuccessProportion is a criterion for the minimum proportion of tasks
-	// in the build that must succeed.
+	// in a matching build that must succeed.
 	minSuccessProportion float64
 }
 
@@ -159,6 +166,8 @@ func (c *lastRevisionCriteria) shouldApply(bv string) bool {
 	return false
 }
 
+// check returns whether the the criteria applies to the build and if so, if it
+// passes all the criteria. This returns true if the criteria does not apply.
 func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 	if !c.shouldApply(info.buildVariant) {
 		// The criteria does not apply to this build variant, so it
@@ -181,6 +190,9 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 	return true
 }
 
+// findLatestMatchingVersion iterates through the latest versions and finds the
+// first one that matches the criteria. It returns nil version if no matching
+// version is found.
 func findLatestMatchingVersion(ctx context.Context, c client.Communicator, latestVersions []model.APIVersion, criteria lastRevisionCriteria) (*model.APIVersion, error) {
 	for _, v := range latestVersions {
 		grip.Debug(message.Fields{
@@ -209,6 +221,7 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 	return nil, nil
 }
 
+// checkBuildsPassCriteria checks if all the provided builds pass the criteria.
 func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
 	type buildResult struct {
 		passesCriteria bool
@@ -248,6 +261,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 	return allBuildsPassedCriteria, catcher.Resolve()
 }
 
+// checkBuildPassesCriteria checks if a single build passes the criteria.
 func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
 	if !criteria.shouldApply(utility.FromStringPtr(b.BuildVariant)) {
 		return true, nil
