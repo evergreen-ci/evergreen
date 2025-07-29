@@ -270,15 +270,6 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 		settingsType := reflect.TypeOf(*paramConfig)
 		adminCatcher := grip.NewBasicCatcher()
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
-		grip.Info(message.Fields{
-			"bynnbynn":       "successfully read admin settings from parameter store",
-			"count":          settingsValue.NumField(),
-			"config":         fmt.Sprintf("%+v", paramConfig),
-			"base_config":    fmt.Sprintf("%+v", baseConfig),
-			"settings_type":  settingsType,
-			"settings_value": fmt.Sprintf("%+v", settingsValue),
-			"admin_catcher":  adminCatcher.Resolve(),
-		})
 		if adminCatcher.HasErrors() {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {
