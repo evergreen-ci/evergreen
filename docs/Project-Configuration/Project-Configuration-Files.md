@@ -654,6 +654,7 @@ tasks:
   - name: only-run-for-manual-patches-and-git-tag-versions
     allowed_requesters: ["patch", "github_tag"]
 ```
+
 The valid requester values are:
 
 - `patch`: manual patches.
@@ -703,7 +704,7 @@ You can control when tasks and build variants run based on which files have chan
 For mainline version, we will not automatically run tasks if they are filtered out, and we will not create PR patches/tasks if filtered out, but instead send a successful status for all required
 checks as well as the base `evergreen` check.
 
-##### Project-Level File Ignoring
+#### Project-Level File Ignoring
 
 Some commits to your repository don't need to be tested. The obvious
 examples here would be documentation or configuration files for other
@@ -735,18 +736,19 @@ Build variants can specify `paths` patterns to define which files should trigger
 
 ```yaml
 buildvariants:
-- name: frontend
-  display_name: Frontend Tests
-  paths:
-    - "frontend/**"
-    - "shared/**"
-  run_on:
-    - ubuntu1604-test
-  tasks:
-    - name: frontend_test
+  - name: frontend
+    display_name: Frontend Tests
+    paths:
+      - "frontend/**"
+      - "shared/**"
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - name: frontend_test
 ```
 
 When a build variant has `paths` defined:
+
 - The variant will only run if at least one changed file matches one of the path patterns
 - If no changed files match any path pattern, the variant will not run
 - If no paths or changed files are specified, the variant will always run (default behavior)
@@ -757,7 +759,6 @@ Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
 be scheduled manually, and their tasks will still be scheduled on
 failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
-
 
 ### Expansions
 
@@ -1714,8 +1715,6 @@ can also be used to define dependencies.
   depends_on:
     - "!.favorite !.other" ## runs all tasks that don't match these tags
 ```
-
-
 
 ### Auto restarting tasks upon failure
 
