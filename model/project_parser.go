@@ -36,6 +36,10 @@ const EmptyConfigurationError = "received empty configuration file"
 // to the place where the parser project is accessed.
 const DefaultParserProjectAccessTimeout = 60 * time.Second
 
+// MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
+// config YAML.
+const MaxConfigSetPriority = 50
+
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
@@ -184,6 +188,19 @@ type displayTask struct {
 // helper methods for task tag evaluations
 func (pt *parserTask) name() string   { return pt.Name }
 func (pt *parserTask) tags() []string { return pt.Tags }
+
+func (pt *parserTask) UnmarshalYAML(unmarshal func(any) error) error {
+	type copyType parserTask
+	var copy copyType
+	if err := unmarshal(&copy); err != nil {
+		return err
+	}
+	if copy.Priority > MaxConfigSetPriority {
+		copy.Priority = MaxConfigSetPriority
+	}
+	*pt = parserTask(copy)
+	return nil
+}
 
 // parserDependency represents the intermediary state for referencing dependencies.
 type parserDependency struct {
