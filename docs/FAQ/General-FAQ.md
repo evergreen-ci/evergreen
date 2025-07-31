@@ -5,7 +5,7 @@
 The Evergreen CLI grabs the user's config file and determines what project should be used. The CLI then establishes a connection with the Evergreen server and retrieves that project's information, specifically the GitHub org + repo + branch (which we'll call, org, repo, and main respectively).
 
 The CLI then fetches the corresponding [remote](https://git-scm.com/docs/git-remote) (which we'll call upstream).
-Using that, it runs `git merge-base upstream/main HEAD` to find the common ancestor of the Evergreen tracking branch and the currently checked out branch. This is the commit that will be used as the base for the patch. Changes (including commits and uncommited changes) made after this common ancestor will be included as diff changes in the patch rather than as commits.
+Using that, it runs `git merge-base upstream/<PROJECT_BRANCH_NAME> HEAD` to find the common ancestor of the Evergreen project's tracking branch and the currently checked out branch. This is the commit that will be used as the base for the patch. Changes (including commits and uncommitted changes) made after this common ancestor will be included as diff changes in the patch rather than as commits.
 
 Some Caveats to be aware of:
 
