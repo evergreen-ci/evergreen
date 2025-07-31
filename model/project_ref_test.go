@@ -1086,7 +1086,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NotNil(t, pRefFromDB.GitTagVersionsEnabled)
 			assert.True(t, pRefFromDB.IsGitTagVersionsEnabled())
 			assert.True(t, pRefFromDB.IsGithubChecksEnabled())
-			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubTriggerAliases)
+			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubPRTriggerAliases)
 			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
 			dbUser, err = user.FindOneByIdContext(t.Context(), "me")
@@ -1253,15 +1253,15 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.Insert(t.Context()))
 
 			repoRef := RepoRef{ProjectRef{
-				Id:                    pRef.RepoRefId,
-				Owner:                 pRef.Owner,
-				Repo:                  pRef.Repo,
-				TracksPushEvents:      utility.TruePtr(),
-				PRTestingEnabled:      utility.TruePtr(),
-				GitTagVersionsEnabled: utility.FalsePtr(),
-				GithubChecksEnabled:   utility.TruePtr(),
-				GithubTriggerAliases:  []string{"my_trigger"},
-				Admins:                []string{"me"},
+				Id:                     pRef.RepoRefId,
+				Owner:                  pRef.Owner,
+				Repo:                   pRef.Repo,
+				TracksPushEvents:       utility.TruePtr(),
+				PRTestingEnabled:       utility.TruePtr(),
+				GitTagVersionsEnabled:  utility.FalsePtr(),
+				GithubChecksEnabled:    utility.TruePtr(),
+				GithubPRTriggerAliases: []string{"my_trigger"},
+				Admins:                 []string{"me"},
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
@@ -3775,7 +3775,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			},
-			GithubTriggerAliases: []string{"one", "two"},
+			GithubPRTriggerAliases: []string{"one", "two"},
+			GithubMQTriggerAliases: []string{"three", "four"},
 		},
 	}
 	assert.NoError(t, projectRef.Insert(t.Context()))
@@ -3795,7 +3796,8 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, "EVG", projectRef.BuildBaronSettings.TicketCreateProject)
 	assert.Equal(t, "Bug", projectRef.BuildBaronSettings.TicketCreateIssueType)
 	assert.Equal(t, []string{"BF", "BFG"}, projectRef.BuildBaronSettings.TicketSearchProjects)
-	assert.Equal(t, []string{"one", "two"}, projectRef.GithubTriggerAliases)
+	assert.Equal(t, []string{"one", "two"}, projectRef.GithubPRTriggerAliases)
+	assert.Equal(t, []string{"three", "four"}, projectRef.GithubMQTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
 	assert.Equal(t, 1, projectRef.ContainerSizeDefinitions[0].CPU)
 	assert.Equal(t, 2, projectRef.ContainerSizeDefinitions[1].CPU)

@@ -4,180 +4,119 @@ import (
 	"path/filepath"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpansions(t *testing.T) {
-
-	Convey("With a set of expansions", t, func() {
-
-		Convey("the expansions object should contain the values it is"+
-			" initialized with", func() {
-
-			expansions := NewExpansions(map[string]string{
-				"key1": "val1",
-				"key2": "val2",
-			})
-			So((*expansions)["key1"], ShouldEqual, "val1")
-			So((*expansions)["key2"], ShouldEqual, "val2")
-
-		})
-
-		Convey("updating the expansions with a map should update all of the"+
-			" specified values", func() {
-
-			expansions := NewExpansions(map[string]string{
-				"key1": "val1",
-				"key2": "val2",
-			})
-			expansions.Update(map[string]string{
-				"key2": "newval1",
-				"key3": "newval2",
-			})
-
-			So((*expansions)["key1"], ShouldEqual, "val1")
-			So((*expansions)["key2"], ShouldEqual, "newval1")
-			So((*expansions)["key3"], ShouldEqual, "newval2")
-
-		})
-
-		Convey("fetching an expansion should return the appropriate value,"+
-			" or the empty string if the value is not present", func() {
-
-			expansions := NewExpansions(map[string]string{
-				"key1": "val1",
-				"key2": "val2",
-			})
-			So(expansions.Get("key1"), ShouldEqual, "val1")
-			So(expansions.Get("key2"), ShouldEqual, "val2")
-			So(expansions.Get("key3"), ShouldEqual, "")
-
-		})
-
-		Convey("checking for a key's existence should return whether it is"+
-			" specified as an expansion", func() {
-
-			expansions := NewExpansions(map[string]string{
-				"key1": "val1",
-				"key2": "val2",
-			})
-			So(expansions.Exists("key1"), ShouldBeTrue)
-			So(expansions.Exists("key2"), ShouldBeTrue)
-			So(expansions.Exists("key3"), ShouldBeFalse)
-
-		})
-
-		Convey("updating from a yaml file should get keys copied over", func() {
-			expansions := NewExpansions(map[string]string{
-				"key1": "val1",
-				"key2": "val2",
-			})
-
-			keys, err := expansions.UpdateFromYaml(filepath.Join(
-				getDirectoryOfFile(), "testdata", "expansions.yml"))
-			So(err, ShouldBeNil)
-			So(expansions.Get("marge"), ShouldEqual, "1")
-			So(expansions.Get("lisa"), ShouldEqual, "2")
-			So(expansions.Get("bart"), ShouldEqual, "3")
-			So(expansions.Get("homer"), ShouldEqual, "4")
-			So(expansions.Get("key1"), ShouldEqual, "blah")
-			So(keys, ShouldContain, "marge")
-			So(keys, ShouldContain, "lisa")
-			So(keys, ShouldContain, "bart")
-			So(keys, ShouldContain, "homer")
-			So(keys, ShouldContain, "key1")
-		})
-
-	})
-}
-
-func TestExpandString(t *testing.T) {
-
-	Convey("When applying expansions to a command string", t, func() {
-
-		expansions := NewExpansions(map[string]string{
+	getExpansions := func() *Expansions {
+		return NewExpansions(map[string]string{
 			"key1": "val1",
 			"key2": "val2",
 		})
+	}
 
-		Convey("if the string contains no variables to be expanded, it should"+
-			" be returned unchanged", func() {
+	t.Run("Get", func(t *testing.T) {
+		expansions := getExpansions()
+		assert.Equal(t, "val1", expansions.Get("key1"))
+		assert.Equal(t, "val2", expansions.Get("key2"))
+		assert.Equal(t, "", expansions.Get("key3"), "Empty string for missing expansion")
+	})
 
-			toExpand := "hello hello hellohello"
-			expanded := "hello hello hellohello"
+	t.Run("Exists", func(t *testing.T) {
+		expansions := getExpansions()
+		assert.True(t, expansions.Exists("key1"))
+		assert.True(t, expansions.Exists("key2"))
+		assert.False(t, expansions.Exists("key3"), "False for missing expansion")
+	})
 
-			exp, err := expansions.ExpandString("")
-			So(err, ShouldBeNil)
-			So(exp, ShouldEqual, "")
-
-			exp, err = expansions.ExpandString(toExpand)
-			So(err, ShouldBeNil)
-			So(exp, ShouldEqual, expanded)
-
+	t.Run("Update", func(t *testing.T) {
+		expansions := getExpansions()
+		expansions.Update(map[string]string{
+			"key2": "newval1",
+			"key3": "newval2",
 		})
 
-		Convey("if the string contains variables to be expanded", func() {
+		assert.Equal(t, "val1", expansions.Get("key1"))
+		assert.Equal(t, "newval1", expansions.Get("key2"))
+		assert.Equal(t, "newval2", expansions.Get("key3"))
+	})
 
-			Convey("if the variables occur as keys in the expansions map",
-				func() {
+	t.Run("YamlUpdate", func(t *testing.T) {
+		expansions := getExpansions()
 
-					Convey("they should be replaced with the appropriate"+
-						" values from the map", func() {
+		keys, err := expansions.UpdateFromYaml(filepath.Join(
+			getDirectoryOfFile(), "testdata", "expansions.yml"),
+		)
+		require.NoError(t, err)
+		assert.Equal(t, "1", expansions.Get("marge"))
+		assert.Equal(t, "2", expansions.Get("lisa"))
+		assert.Equal(t, "3", expansions.Get("bart"))
+		assert.Equal(t, "4", expansions.Get("homer"))
+		assert.Equal(t, "blah", expansions.Get("key1"))
+		assert.Contains(t, keys, "marge")
+		assert.Contains(t, keys, "lisa")
+		assert.Contains(t, keys, "bart")
+		assert.Contains(t, keys, "homer")
+		assert.Contains(t, keys, "key1")
+	})
 
-						toExpand := "hello hello ${key1} hello${key2}hello" +
-							"${key1}"
-						expanded := "hello hello val1 helloval2helloval1"
+}
 
-						exp, err := expansions.ExpandString(toExpand)
-						So(err, ShouldBeNil)
-						So(exp, ShouldEqual, expanded)
-
-					})
-
-				})
-
-			Convey("if the variables do not occur as keys in the expansions"+
-				" map", func() {
-
-				Convey("any variables with default values provided should be"+
-					" replaced with their default value", func() {
-
-					toExpand := "hello ${key1|blah} ${key3|blech} hello ${key4|}hello ${key5|*key1}"
-					expanded := "hello val1 blech hello hello val1"
-
-					exp, err := expansions.ExpandString(toExpand)
-					So(err, ShouldBeNil)
-					So(exp, ShouldEqual, expanded)
-
-				})
-
-				Convey("any variables without default values provided should"+
-					" be replaced with the empty string", func() {
-
-					toExpand := "hello ${key1|blah} ${key3}hello ${key4} ${key5|blech} hello ${key6|*key3}"
-					expanded := "hello val1 hello  blech hello "
-
-					exp, err := expansions.ExpandString(toExpand)
-					So(err, ShouldBeNil)
-					So(exp, ShouldEqual, expanded)
-				})
-
+func TestExpandString(t *testing.T) {
+	for tName, tFunc := range map[string]struct {
+		toExpand    string
+		expanded    string
+		expectedErr bool
+	}{
+		"UnchangedWithNoVariables": {
+			toExpand: "hello hello hellohello",
+			expanded: "hello hello hellohello",
+		},
+		"ExpandsMultipleVariables": {
+			toExpand: "hello ${key1} ${key2} ${key3}",
+			expanded: "hello val1 val2 val3",
+		},
+		"ExpandsWithDefaultValues": {
+			toExpand: "hello ${key1|default1} ${key2|default2} ${key4|default4}",
+			expanded: "hello val1 val2 default4",
+		},
+		"ExpandsWithMissingVariables": {
+			toExpand: "hello ${key1|default1} ${key5} ${key6|default6}",
+			expanded: "hello val1  default6",
+		},
+		"ExpandsDefaultWithExpansions": {
+			toExpand: "hello ${key5|*key6} ${key5|*key2} ${key6|*key1}",
+			expanded: "hello  val2 val1",
+		},
+		"ExpandsRequired": {
+			toExpand: "hello ${empty|nope} ${empty!|yup}",
+			expanded: "hello  yup",
+		},
+		"ExpandsRequiredWithExpansions": {
+			toExpand: "hello ${empty|*nope} ${empty!|*key2}",
+			expanded: "hello  val2",
+		},
+		"HandlesMalformedStrings": {
+			toExpand:    "hello ${key1|default1}${key3}hello${ ${key4} ${key5|default5}hello",
+			expectedErr: true,
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			expansions := NewExpansions(map[string]string{
+				"key1":  "val1",
+				"key2":  "val2",
+				"key3":  "val3",
+				"empty": "",
 			})
 
+			expanded, err := expansions.ExpandString(tFunc.toExpand)
+			if tFunc.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, expanded, tFunc.expanded)
+			}
 		})
-
-		Convey("badly formed command strings should cause an error", func() {
-
-			badStr1 := "hello ${key1|blah}${key3}hello${ ${key4} " +
-				"${key5|blech}hello"
-			badStr2 := "hello ${hellohello"
-
-			_, err := expansions.ExpandString(badStr1)
-			So(err, ShouldNotBeNil)
-
-			_, err = expansions.ExpandString(badStr2)
-			So(err, ShouldNotBeNil)
-		})
-
-	})
+	}
 }

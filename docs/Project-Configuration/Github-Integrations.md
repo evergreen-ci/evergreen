@@ -188,7 +188,7 @@ Evergreen offers the [github.generate_token](Project-Commands#github_generate_to
 
 If you run into any issues, please see our [FAQ](../FAQ.md#dynamic-github-access-tokens).
 
-If you don't already have a github app, reach out to the IT team for help obtaining one.
+If you don't already have a github app, please request one [here](https://jira.mongodb.org/plugins/servlet/desk/portal/81/create/1328). .
 
 ### Saving An App Id and Key
 

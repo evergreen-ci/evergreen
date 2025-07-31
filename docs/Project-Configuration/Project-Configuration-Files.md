@@ -705,21 +705,24 @@ expansion whose value uses another expansion.
 
 ```yaml
 command: s3.get
-   params:
-     aws_key: ${aws_key}
-     aws_secret: ${aws_secret}
+  params:
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
 ```
 
-Expansions can also take default arguments, in the form of
-`${key_name|default}`.
+Expansions can be provided a default when the expansion is undefined,
+in the form of `${key_name|default}`. To provide a default
+when the expansion is either undefined or defined but empty,
+use the form `${key_name!|default}`.
 
 ```yaml
 command: shell.exec
-   params:
-     working_dir: src
-     script: |
-       if [ ${has_pyyaml_installed|false} = false ]; then
-       ...
+  params:
+    working_dir: src
+    script: |
+      if [ ${has_pyyaml_installed|false} = false ]; then
+        echo "Using python version ${python_version!|3.8}"
+        ...
 ```
 
 Likewise, the default argument of an expansion can be an expansion
@@ -728,9 +731,10 @@ expansion value of the default value, rather than the hard coded string.
 
 ```yaml
 command: shell.exec
-   params:
+  params:
     script: |
       VERSION=${use_version|*use_version_default} ./foo.sh
+      YAML=${yaml_file!|*yaml_file_default} ./bar.sh
 ```
 
 If an expansion is used in your project file, but is unset, it will be
@@ -743,10 +747,10 @@ Expansions are also case-sensitive.
 
 ```yaml
 command: shell.exec
-   params:
-      working_dir: src
-     script: |
-       echo ${HelloWorld}
+  params:
+    working_dir: src
+    script: |
+      echo ${HelloWorld}
 ```
 
 #### Usage
@@ -764,9 +768,12 @@ file a ticket or issues. That's a bug.
 Every task has some expansions available by default:
 
 - `${activated_by}` is username of the user who caused the task to run
-- `${author}` is the patch author's username for patch tasks or the
-  git commit author for git tasks
-- `${author_email}` is the patch or the git commit authors email
+- `${author}` is the Evergreen user associated with the commit.
+  If the commit is from a pull request and that pull
+  request is not linked to an Evergreen user, this will default to
+  the string 'github_pull_request'.
+- `${author_email}` the email associated with the author, if one
+  is available.
 - `${build_id}` is the id of the build the task belongs to
 - `${branch_name}` is the name of the branch tracked by the
   project
