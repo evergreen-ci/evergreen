@@ -1207,6 +1207,10 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		t.ActivatedBy = evergreen.StepbackTaskActivator
 	}
 
+	if t.ActivatedBy == "" && creationInfo.Version.TriggeredByGitTag.Tag != "" {
+		t.ActivatedBy = evergreen.GitTagRequester
+	}
+
 	if buildVarTask.IsPartOfGroup {
 		tg := creationInfo.Project.FindTaskGroup(buildVarTask.GroupName)
 		if tg == nil {

@@ -93,6 +93,8 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	}
 	var fileChunks []fileChunk
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
+	fileSizes := []int64{}
+	filesOverTenMB := 0
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
@@ -117,6 +119,10 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		}
 
 		fileSize := fileInfo.Size()
+		fileSizes = append(fileSizes, fileSize)
+		if fileSize > 10e6 {
+			filesOverTenMB++
+		}
 		var (
 			currentByte int64
 			sequence    int
@@ -164,7 +170,9 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	wg.Wait()
 
 	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
-
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_chunks_count", Value: attribute.IntValue(len(fileChunks))})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_sizes", Value: attribute.Int64SliceValue(fileSizes)})
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_files_over_ten_mb", Value: attribute.IntValue(filesOverTenMB)})
 	return err
 }
 

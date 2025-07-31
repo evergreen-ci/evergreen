@@ -30,7 +30,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -4146,7 +4145,7 @@ const (
 // SetSortingValueBreakdownAttributes saves a full breakdown which compartmentalizes each factor that played a role in computing the
 // overall value used to sort it in the queue, and creates a honeycomb trace with this data to enable dashboards/analysis.
 func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown SortingValueBreakdown) {
-	_, span := tracer.Start(ctx, "queue-factor-breakdown", trace.WithNewRoot())
+	_, span := tracer.Start(ctx, "queue-factor-breakdown")
 	defer span.End()
 	span.SetAttributes(
 		attribute.String(evergreen.DistroIDOtelAttribute, t.DistroId),
