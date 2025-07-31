@@ -20,7 +20,6 @@ var redactedFields = map[string]bool{
 	"issuer": true,
 	"kanopy": true,
 	"kanopySSHKeyPath": true,
-	"key": true,
 	"keysetURL": true,
 	"multi": true,
 	"naive": true,

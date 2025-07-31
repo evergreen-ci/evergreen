@@ -107,13 +107,13 @@ type ProjectCreationConfig {
 }
 
 input S3CredentialsInput {
-  key: String @redactSecrets
+  key: String 
   secret: String @redactSecrets
   bucket: String
 }
 
 type S3Credentials {
-  key: String @requireAdmin
+  key: String 
   secret: String @requireAdmin
   bucket: String
 }
