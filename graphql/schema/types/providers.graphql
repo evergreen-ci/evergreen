@@ -9,9 +9,9 @@ type AWSAccountRoleMapping {
 }
 
 input AWSConfigInput {
-  ec2Keys: [EC2KeyInput!]!
+  ec2Keys: [EC2KeyInput!]! @redactSecrets
   subnets: [SubnetInput!]!
-  parserProject: ParserProjectS3ConfigInput
+  parserProject: ParserProjectS3ConfigInput @redactSecrets
   persistentDNS: PersistentDNSConfigInput
   defaultSecurityGroup: String @redactSecrets
   allowedInstanceTypes: [String!]!
@@ -25,9 +25,9 @@ input AWSConfigInput {
 }
 
 type AWSConfig {
-  ec2Keys: [EC2Key!]!
+  ec2Keys: [EC2Key!]! @requireAdmin
   subnets: [Subnet!]!
-  parserProject: ParserProjectS3Config
+  parserProject: ParserProjectS3Config @requireAdmin
   persistentDNS: PersistentDNSConfig
   defaultSecurityGroup: String @requireAdmin
   allowedInstanceTypes: [String!]!
@@ -106,13 +106,13 @@ type DockerConfig {
 
 input EC2KeyInput {
   name: String!
-  key: String! @redactSecrets
+  key: String! 
   secret: String! @redactSecrets
 }
 
 type EC2Key {
   name: String!
-  key: String! @requireAdmin
+  key: String! 
   secret: String! @requireAdmin
 }
 
@@ -205,7 +205,7 @@ type ParameterStoreConfig {
 }
 
 input ParserProjectS3ConfigInput {
-  key: String @redactSecrets
+  key: String 
   secret: String! @redactSecrets
   bucket: String
   prefix: String
@@ -213,7 +213,7 @@ input ParserProjectS3ConfigInput {
 }
 
 type ParserProjectS3Config {
-  key: String @requireAdmin
+  key: String 
   secret: String! @requireAdmin
   bucket: String
   prefix: String

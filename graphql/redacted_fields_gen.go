@@ -19,7 +19,6 @@ var redactedFields = map[string]bool{
 	"headerName": true,
 	"issuer": true,
 	"kanopy": true,
-	"key": true,
 	"keysetURL": true,
 	"multi": true,
 	"naive": true,
