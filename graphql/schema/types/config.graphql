@@ -321,7 +321,7 @@ input AdminSettingsInput {
   parameterStore: ParameterStoreConfigInput
   podLifecycle: PodLifecycleConfigInput
   projectCreation: ProjectCreationConfigInput
-  providers: CloudProvidersInput
+  providers: CloudProviderConfigInput
   scheduler: SchedulerConfigInput
   repotracker: RepotrackerConfigInput
   api: APIConfigInput
@@ -352,7 +352,7 @@ type AdminSettings {
   parameterStore: ParameterStoreConfig
   podLifecycle: PodLifecycleConfig
   projectCreation: ProjectCreationConfig
-  providers: CloudProviders
+  providers: CloudProviderConfig
   scheduler: SchedulerConfig
   repotracker: RepotrackerConfig
   api: APIConfig
@@ -372,7 +372,7 @@ type SpruceConfig {
   containerPools: ContainerPoolsConfig
   githubOrgs: [String!]!
   jira: JiraConfig
-  providers: CloudProviders
+  providers: CloudProviderConfig
   secretFields: [String!]!
   singleTaskDistro: SingleTaskDistroConfig
   slack: SlackConfig

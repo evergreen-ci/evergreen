@@ -17,11 +17,11 @@ input AWSConfigInput {
   allowedInstanceTypes: [String!]!
   alertableInstanceTypes: [String!]!
   allowedRegions: [String!]!
-  maxVolumeSizePerUser: Int!
-  pod: AWSPodConfigInput!
+  maxVolumeSizePerUser: Int
+  pod: AWSPodConfigInput
   accountRoles: [AWSAccountRoleMappingInput!]! @redactSecrets
-  ipamPoolID: String!
-  elasticIPUsageRate: Float!
+  ipamPoolID: String
+  elasticIPUsageRate: Float
 }
 
 type AWSConfig {
@@ -33,11 +33,11 @@ type AWSConfig {
   allowedInstanceTypes: [String!]!
   alertableInstanceTypes: [String!]!
   allowedRegions: [String!]!
-  maxVolumeSizePerUser: Int!
-  pod: AWSPodConfig!
+  maxVolumeSizePerUser: Int
+  pod: AWSPodConfig
   accountRoles: [AWSAccountRoleMapping!]! @requireAdmin
-  ipamPoolID: String!
-  elasticIPUsageRate: Float!
+  ipamPoolID: String
+  elasticIPUsageRate: Float
 }
 
 input AWSPodConfigInput {
@@ -64,12 +64,12 @@ type AWSVPCConfig {
   securityGroups: [String!]! @requireAdmin
 }
 
-input CloudProvidersInput {
+input CloudProviderConfigInput {
   aws: AWSConfigInput
   docker: DockerConfigInput
 }
 
-type CloudProviders {
+type CloudProviderConfig {
   aws: AWSConfig
   docker: DockerConfig
 }

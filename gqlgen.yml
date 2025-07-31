@@ -135,9 +135,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientBinary
   ClientConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
-  CloudProviders:
+  CloudProviderConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
-  CloudProvidersInput:
+  CloudProviderConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
