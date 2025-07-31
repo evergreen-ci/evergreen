@@ -105,6 +105,8 @@
         "data": {
           "spruceConfig": {
             "secretFields": [
+              "account",
+              "accountRoles",
               "amboyDB",
               "apiKey",
               "appId",
@@ -114,6 +116,7 @@
               "dbUrl",
               "defaultOwner",
               "defaultRepo",
+              "defaultSecurityGroup",
               "github",
               "githubAppAuth",
               "headerName",
@@ -127,7 +130,10 @@
               "personalAccessToken",
               "preferredType",
               "publicKey",
+              "role",
               "secret",
+              "secretPrefix",
+              "securityGroups",
               "senderAddress",
               "servicePassword",
               "token",
