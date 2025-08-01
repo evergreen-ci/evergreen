@@ -481,7 +481,11 @@
     {
       "_id": "project_creation",
       "total_project_limit": 10,
-      "repo_project_limit": 2
+      "repo_project_limit": 2,
+      "repo_exceptions": [
+        {"owner": "evergreen-ci", "repo": "evergreen"},
+        {"owner": "mongodb", "repo":"mongo"}
+      ]
     },
     {
       "_id": "github_check_run",

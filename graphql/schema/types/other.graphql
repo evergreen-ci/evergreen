@@ -82,30 +82,6 @@ type JiraNotificationsConfig {
   customFields: [JiraNotificationsProjectEntry!]!
 }
 
-input OwnerRepoInput {
-  owner: String
-  repo: String
-}
-
-type OwnerRepo {
-  owner: String
-  repo: String
-}
-
-input ProjectCreationConfigInput {
-  totalProjectLimit: Int
-  repoProjectLimit: Int
-  repoExceptions: [OwnerRepoInput!]!
-  jiraProject: String
-}
-
-type ProjectCreationConfig {
-  totalProjectLimit: Int
-  repoProjectLimit: Int
-  repoExceptions: [OwnerRepo!]!
-  jiraProject: String
-}
-
 input S3CredentialsInput {
   key: String 
   secret: String @redactSecrets

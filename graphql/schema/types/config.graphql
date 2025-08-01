@@ -311,24 +311,6 @@ input AdminSettingsInput {
   cedar: CedarConfigInput
   configDir: String
   containerPools: ContainerPoolsConfigInput
-  fws: FWSConfigInput
-  jira: JiraConfigInput
-  slack: SlackConfigInput
-  splunk: SplunkConfigInput
-  runtimeEnvironments: RuntimeEnvironmentConfigInput
-  testSelection: TestSelectionConfigInput
-  serviceFlags: ServiceFlagsInput
-  notify: NotifyConfigInput
-  taskLimits: TaskLimitsConfigInput
-  hostInit: HostInitConfigInput
-  parameterStore: ParameterStoreConfigInput
-  podLifecycle: PodLifecycleConfigInput
-  projectCreation: ProjectCreationConfigInput
-  providers: CloudProviderConfigInput
-  scheduler: SchedulerConfigInput
-  repotracker: RepotrackerConfigInput
-  api: APIConfigInput
-  ui: UIConfigInput
   disabledGQLQueries: [String!]
   domainName: String
   expansions: StringMap
@@ -345,11 +327,13 @@ input AdminSettingsInput {
   logPath: String
   loggerConfig: LoggerConfigInput
   notify: NotifyConfigInput
+  parameterStore: ParameterStoreConfigInput
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
   podLifecycle: PodLifecycleConfigInput
   pprofPort: String
   projectCreation: ProjectCreationConfigInput
+  providers: CloudProviderConfigInput
   releaseMode: ReleaseModeConfigInput
   repotracker: RepotrackerConfigInput
   runtimeEnvironments: RuntimeEnvironmentConfigInput
@@ -380,24 +364,6 @@ type AdminSettings {
   cedar: CedarConfig
   configDir: String
   containerPools: ContainerPoolsConfig
-  fws: FWSConfig
-  jira: JiraConfig
-  slack: SlackConfig
-  splunk: SplunkConfig
-  runtimeEnvironments: RuntimeEnvironmentConfig
-  testSelection: TestSelectionConfig
-  serviceFlags: ServiceFlags
-  notify: NotifyConfig
-  taskLimits: TaskLimitsConfig
-  hostInit: HostInitConfig
-  parameterStore: ParameterStoreConfig
-  podLifecycle: PodLifecycleConfig
-  projectCreation: ProjectCreationConfig
-  providers: CloudProviderConfig
-  scheduler: SchedulerConfig
-  repotracker: RepotrackerConfig
-  api: APIConfig
-  ui: UIConfig
   disabledGQLQueries: [String!]!
   domainName: String
   expansions: StringMap
@@ -408,19 +374,21 @@ type AdminSettings {
   githubWebhookSecret: String @requireAdmin
   hostInit: HostInitConfig
   hostJasper: HostJasperConfig
-  kanopySSHKeyPath: String @requireAdmin
   jira: JiraConfig
   jiraNotifications: JiraNotificationsConfig
+  kanopySSHKeyPath: String @requireAdmin
   logPath: String
   loggerConfig: LoggerConfig
   notify: NotifyConfig
+  parameterStore: ParameterStoreConfig
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
   podLifecycle: PodLifecycleConfig
   pprofPort: String
   projectCreation: ProjectCreationConfig
-  repotracker: RepotrackerConfig
+  providers: CloudProviderConfig
   releaseMode: ReleaseModeConfig
+  repotracker: RepotrackerConfig
   runtimeEnvironments: RuntimeEnvironmentConfig
   scheduler: SchedulerConfig
   serviceFlags: ServiceFlags

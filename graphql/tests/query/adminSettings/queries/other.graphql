@@ -72,11 +72,11 @@ query Other {
     projectCreation {
       totalProjectLimit
       repoProjectLimit
+      jiraProject
       repoExceptions {
         owner
         repo
       }
-      jiraProject
     }
     githubCheckRun {
       checkRunLimit

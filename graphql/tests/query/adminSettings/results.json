@@ -413,8 +413,17 @@
             "projectCreation": {
               "totalProjectLimit": 10,
               "repoProjectLimit": 2,
-              "repoExceptions": [],
-              "jiraProject": ""
+              "jiraProject": "",
+              "repoExceptions": [
+                {
+                  "owner": "evergreen-ci",
+                  "repo": "evergreen"
+                },
+                {
+                  "owner": "mongodb",
+                  "repo": "mongo"
+                }
+              ]
             },
             "githubCheckRun": {
               "checkRunLimit": 0

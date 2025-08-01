@@ -231,11 +231,17 @@ type PersistentDNSConfig {
 }
 
 input ProjectCreationConfigInput {
+  totalProjectLimit: Int
+  repoProjectLimit: Int
   repoExceptions: [OwnerRepoInput!]!
+  jiraProject: String
 }
 
 type ProjectCreationConfig {
+  totalProjectLimit: Int
+  repoProjectLimit: Int
   repoExceptions: [OwnerRepo!]!
+  jiraProject: String
 }
 
 input SecretsManagerConfigInput {
