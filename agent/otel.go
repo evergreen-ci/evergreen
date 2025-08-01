@@ -237,7 +237,7 @@ func addMemoryMetrics(meter metric.Meter) error {
 func isWeightedIOSupported() bool {
 	switch runtime.GOOS {
 	case "linux":
-		return true // Linux(since Linux 2.5.69) supports WeightedIO in /proc/diskstats
+		return true // Linux(since 2.5.69) supports WeightedIO in /proc/diskstats
 	default:
 		return false // Windows and macOS typically don't provide this metric
 	}
