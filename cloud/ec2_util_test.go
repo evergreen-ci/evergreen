@@ -156,12 +156,14 @@ func TestAllocateIPAddressForHost(t *testing.T) {
 
 	serviceFlags, err := evergreen.GetServiceFlags(t.Context())
 	require.NoError(t, err)
-	originalFlags := *serviceFlags
-	serviceFlags.ElasticIPsDisabled = false
-	require.NoError(t, evergreen.SetServiceFlags(t.Context(), *serviceFlags))
-	defer func() {
-		assert.NoError(t, evergreen.SetServiceFlags(t.Context(), originalFlags))
-	}()
+	if serviceFlags.ElasticIPsDisabled {
+		originalFlags := *serviceFlags
+		serviceFlags.ElasticIPsDisabled = false
+		require.NoError(t, evergreen.SetServiceFlags(t.Context(), *serviceFlags))
+		defer func() {
+			assert.NoError(t, evergreen.SetServiceFlags(t.Context(), originalFlags))
+		}()
+	}
 
 	checkHostAssociatedWithIPAddr := func(t *testing.T, hostTag string, allocationID string) {
 		dbIPAddr, err := host.FindIPAddressByAllocationID(t.Context(), allocationID)
@@ -234,6 +236,127 @@ func TestAllocateIPAddressForHost(t *testing.T) {
 				Tag: "host_tag",
 			}
 			require.NoError(t, h.Insert(t.Context()))
+
+			tCase(t, h)
+		})
+	}
+}
+
+func TestReleaseIPAddressForHost(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, host.IPAddressCollection))
+	}()
+
+	serviceFlags, err := evergreen.GetServiceFlags(t.Context())
+	require.NoError(t, err)
+	if serviceFlags.ElasticIPsDisabled {
+		originalFlags := *serviceFlags
+		serviceFlags.ElasticIPsDisabled = false
+		assert.NoError(t, evergreen.SetServiceFlags(t.Context(), *serviceFlags))
+		defer func() {
+			assert.NoError(t, evergreen.SetServiceFlags(t.Context(), originalFlags))
+		}()
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T, h *host.Host){
+		"Succeeds": func(t *testing.T, h *host.Host) {
+			// Create an IP address associated with this host
+			ipAddr := &host.IPAddress{
+				ID:           "ip_addr",
+				AllocationID: "eipalloc-123456789",
+				HostTag:      h.Tag,
+			}
+			require.NoError(t, ipAddr.Insert(t.Context()))
+
+			h.IPAllocationID = ipAddr.AllocationID
+			require.NoError(t, h.Insert(t.Context()))
+
+			assert.NoError(t, releaseIPAddressForHost(t.Context(), h))
+
+			dbIPAddr, err := host.FindIPAddressByAllocationID(t.Context(), ipAddr.AllocationID)
+			require.NoError(t, err)
+			require.NotNil(t, dbIPAddr)
+			assert.Empty(t, dbIPAddr.HostTag)
+
+			dbHost, err := host.FindOneId(t.Context(), h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.Equal(t, ipAddr.AllocationID, dbHost.IPAllocationID, "host should still retain information about the allocation ID that it originally used, even though the address is currently freed")
+		},
+		"NoopsForHostWithoutIPAllocationID": func(t *testing.T, h *host.Host) {
+			h.IPAllocationID = ""
+			require.NoError(t, h.Insert(t.Context()))
+
+			assert.NoError(t, releaseIPAddressForHost(t.Context(), h))
+
+			dbHost, err := host.FindOneId(t.Context(), h.Id)
+			require.NoError(t, err)
+			require.NotNil(t, dbHost)
+			assert.Empty(t, dbHost.IPAllocationID)
+		},
+		"ErrorsWhenIPAddressNotFound": func(t *testing.T, h *host.Host) {
+			h.IPAllocationID = "eipalloc-nonexistent"
+			require.NoError(t, h.Insert(t.Context()))
+
+			assert.Error(t, releaseIPAddressForHost(t.Context(), h))
+		},
+		"ErrorsWhenIPAddressIsAssociatedWithDifferentHost": func(t *testing.T, h *host.Host) {
+			ipAddr := &host.IPAddress{
+				ID:           "ip_addr",
+				AllocationID: "eipalloc-123456789",
+				HostTag:      "some_other_host",
+			}
+			require.NoError(t, ipAddr.Insert(t.Context()))
+
+			h.IPAllocationID = ipAddr.AllocationID
+			require.NoError(t, h.Insert(t.Context()))
+
+			assert.Error(t, releaseIPAddressForHost(t.Context(), h))
+
+			dbIPAddr, err := host.FindIPAddressByAllocationID(t.Context(), ipAddr.AllocationID)
+			require.NoError(t, err)
+			require.NotNil(t, dbIPAddr)
+			assert.Equal(t, "some_other_host", dbIPAddr.HostTag)
+		},
+		"SuccessfullyReleasesIPAddressWithMatchingTag": func(t *testing.T, h *host.Host) {
+			// Create multiple IP addresses to ensure we're operating on the correct one
+			otherIPAddr := &host.IPAddress{
+				ID:           "other_ip_addr",
+				AllocationID: "eipalloc-987654321",
+				HostTag:      "some_other_host",
+			}
+			require.NoError(t, otherIPAddr.Insert(t.Context()))
+
+			targetIPAddr := &host.IPAddress{
+				ID:           "target_ip_addr",
+				AllocationID: "eipalloc-123456789",
+				HostTag:      h.Tag,
+			}
+			require.NoError(t, targetIPAddr.Insert(t.Context()))
+
+			h.IPAllocationID = targetIPAddr.AllocationID
+			require.NoError(t, h.Insert(t.Context()))
+
+			assert.NoError(t, releaseIPAddressForHost(t.Context(), h))
+
+			dbTargetIPAddr, err := host.FindIPAddressByAllocationID(t.Context(), targetIPAddr.AllocationID)
+			require.NoError(t, err)
+			require.NotNil(t, dbTargetIPAddr)
+			assert.Empty(t, dbTargetIPAddr.HostTag, "target IP address should no longer be associated with any host")
+
+			dbOtherIPAddr, err := host.FindIPAddressByAllocationID(t.Context(), otherIPAddr.AllocationID)
+			require.NoError(t, err)
+			require.NotNil(t, dbOtherIPAddr)
+			assert.Equal(t, "some_other_host", dbOtherIPAddr.HostTag, "other IP address should remain unchanged")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(host.Collection, host.IPAddressCollection))
+
+			h := &host.Host{
+				Id:  "host_id",
+				Tag: "host_tag",
+			}
 
 			tCase(t, h)
 		})
