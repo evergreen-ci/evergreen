@@ -169,6 +169,14 @@ func (c *Settings) ValidateAndDefault() error {
 			catcher.Add(errors.Wrap(err, "parsing expansions"))
 		}
 	}
+
+	// Validate that expansion values are not empty
+	for key, value := range c.Expansions {
+		if value == "" {
+			catcher.Add(errors.Errorf("expansion '%s' cannot have an empty value", key))
+		}
+	}
+
 	if len(c.PluginsNew) > 0 {
 		tempPlugins, err := c.PluginsNew.NestedMap()
 		if err != nil {
