@@ -106,7 +106,14 @@ type Communicator interface {
 	// GetManifestByTask returns the manifest corresponding to the given task
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
 
-	GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]restmodel.APIVersion, error)
+	// GetRecentVersionsForProject returns the most recent versions for a
+	// project.
+	GetRecentVersionsForProject(ctx context.Context, projectID, requester string, limit int) ([]restmodel.APIVersion, error)
+
+	// GetBuildsForVersion gets all builds for a version.
+	GetBuildsForVersion(ctx context.Context, versionID string) ([]restmodel.APIBuild, error)
+	// GetTasksForBuild gets all tasks in a build.
+	GetTasksForBuild(ctx context.Context, buildID string) ([]restmodel.APITask, error)
 
 	// GetClientURLs returns the all URLs that can be used to request the
 	// Evergreen binary for a given distro.
