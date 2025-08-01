@@ -573,7 +573,7 @@ type projectSuite struct {
 	suite.Suite
 }
 
-func TestProject(t *testing.T) {
+func TestProjectSuite(t *testing.T) {
 	suite.Run(t, &projectSuite{})
 }
 
@@ -2727,6 +2727,10 @@ func (s *projectSuite) TestBuildVariantPathsMatchAny() {
 			bv := &BuildVariant{Paths: []string{"README.md"}}
 			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
 		})
+		Convey("a build variant that excludes all specific files should not match.", func() {
+			bv := &BuildVariant{Paths: []string{"!README.md", "!etc/other_config.yml", "!src/cool/test.py"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
 		Convey("a build variant that matches directory patterns should match", func() {
 			bv := &BuildVariant{Paths: []string{"src/*"}}
 			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
@@ -2738,6 +2742,11 @@ func (s *projectSuite) TestBuildVariantPathsMatchAny() {
 		Convey("a build variant that excludes all files should not match", func() {
 			bv := &BuildVariant{Paths: []string{"!*"}}
 			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+		Convey("my current problem should match", func() {
+			bv := &BuildVariant{Paths: []string{"!README.md"}}
+			files = []string{"evergreen.yml"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
 		})
 	})
 }

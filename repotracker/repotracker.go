@@ -819,30 +819,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		sourceRev = metadata.SourceVersion.Revision
 	}
 
-	//// Filter build variants based on changed files if paths are specified
-	//ignoredBuildVariants := []string{}
-	//for _, buildvariant := range projectInfo.Project.BuildVariants {
-	//	// If the build variant has no path patterns, don't ignore (default behavior)
-	//	if len(buildvariant.Paths) == 0 {
-	//		continue
-	//	}
-	//
-	//	// If we have changed files, check if any match the build variant's path patterns.
-	//	// If we don't have changed files but the variant has path patterns,
-	//	// skip ignore to maintain existing behavior.
-	//	if len(metadata.ChangedFiles) > 0 && !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles) {
-	//		grip.Debug(message.Fields{
-	//			"message":       "build variant skipped due to path filtering",
-	//			"variant":       buildvariant.Name,
-	//			"paths":         buildvariant.Paths,
-	//			"changed_files": metadata.ChangedFiles,
-	//			"project":       projectInfo.Project.Identifier,
-	//			"version":       v.Id,
-	//		})
-	//		ignoredBuildVariants = append(ignoredBuildVariants, buildvariant.Name)
-	//	}
-	//}
-
 	// create all builds for the version
 	buildsToCreate := []any{}
 	tasksToCreate := task.Tasks{}
@@ -926,8 +902,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
-		// Activate the build if the version is activated and the changed files match the variant's paths.
-		activateBuild := utility.FromBoolPtr(v.Activated) && buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
 		creationInfo := model.TaskCreationInfo{
 			Project:             projectInfo.Project,
 			ProjectRef:          projectInfo.Ref,
@@ -935,7 +909,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			TaskIDs:             taskIds,
 			TaskNames:           taskNames,
 			BuildVariantName:    buildvariant.Name,
-			ActivateBuild:       activateBuild,
+			ActivateBuild:       utility.FromBoolPtr(v.Activated),
 			SourceRev:           sourceRev,
 			DefinitionID:        metadata.TriggerDefinitionID,
 			Aliases:             aliases,
@@ -966,9 +940,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			tasksToCreate = append(tasksToCreate, t)
 		}
 
+		// Determine if this build variant should be ignored due to path filtering.
+		ignoreBuildVariant := !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
+
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
-		if evergreen.ShouldConsiderBatchtime(v.Requester) {
+		if evergreen.ShouldConsiderBatchtime(v.Requester) && !ignoreBuildVariant {
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
@@ -992,22 +969,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 		}
 
-		grip.Debug(message.Fields{
-			"message":            "created build",
-			"name":               buildvariant.Name,
-			"project":            projectInfo.Ref.Id,
-			"project_identifier": projectInfo.Ref.Identifier,
-			"version":            v.Id,
-			"time":               activateVariantAt,
-			"matched_files":      buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles),
-			"runner":             RunnerName,
-		})
 		v.BuildIds = append(v.BuildIds, b.Id)
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
 			BuildVariant:   buildvariant.Name,
 			BuildId:        b.Id,
 			DisplayName:    b.DisplayName,
 			BatchTimeTasks: taskStatuses,
+			Ignored:        ignoreBuildVariant,
 			ActivationStatus: model.ActivationStatus{
 				ActivateAt: activateVariantAt,
 				Activated:  false,

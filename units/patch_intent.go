@@ -1302,7 +1302,7 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 			patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
-			ignoredFilesForVariant,
+			ignoredFiles,
 		)
 		update.Run(ctx)
 		j.AddError(update.Error())
@@ -1357,7 +1357,7 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 
 	ignoredVariants := []string{}
 	filteredVariantsTasks := []patch.VariantTasks{}
-	keptVariants := make(map[string]bool)
+	filteredBuildVariants := []string{}
 
 	// Check each variant in VariantsTasks to see if it should be ignored
 	for _, vt := range patchDoc.VariantsTasks {
@@ -1365,7 +1365,7 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 		if bv == nil {
 			// If we can't find the build variant, keep it (don't ignore)
 			filteredVariantsTasks = append(filteredVariantsTasks, vt)
-			keptVariants[vt.Variant] = true
+			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
 			continue
 		}
 
@@ -1375,20 +1375,12 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 		} else {
 			// Keep this variant
 			filteredVariantsTasks = append(filteredVariantsTasks, vt)
-			keptVariants[vt.Variant] = true
+			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
 		}
 	}
 
 	// Update the patch document with the filtered variants
 	patchDoc.VariantsTasks = filteredVariantsTasks
-
-	// Update BuildVariants to only include variants that weren't filtered out
-	filteredBuildVariants := []string{}
-	for _, variant := range patchDoc.BuildVariants {
-		if keptVariants[variant] {
-			filteredBuildVariants = append(filteredBuildVariants, variant)
-		}
-	}
 	patchDoc.BuildVariants = filteredBuildVariants
 
 	// Update Tasks to only include tasks that are still used by remaining variants
