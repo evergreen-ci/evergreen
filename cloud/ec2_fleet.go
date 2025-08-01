@@ -428,7 +428,6 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 
 // cleanupStaleIPAddresses cleans up IP addresses that are assigned to a host
 // but whose host is already terminated.
-// kim: TODO: add unit test
 func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
 	staleIPAddrs, err := host.FindStaleIPAddresses(ctx)
 	if err != nil {

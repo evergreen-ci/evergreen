@@ -802,7 +802,6 @@ func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSetti
 }
 
 // allocateIPAddressForHost allocates an unused elastic IP address for the host.
-// kim: TODO: add unit test
 func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
@@ -861,7 +860,6 @@ func allocateIPAddress(ctx context.Context, c AWSClient, ipamPoolID string) (str
 
 // releaseIPAddressForHost releases the elastic IP address that was associated
 // with the host, if it has an elastic IP.
-// kim: TODO: add unit test
 func releaseIPAddressForHost(ctx context.Context, h *host.Host) error {
 	if h.IPAllocationID == "" {
 		return nil
