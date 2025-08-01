@@ -917,6 +917,24 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), apiDistro.PlannerSettings.Version)
 }
 
+func (s *DistroPatchByIDSuite) TestRunValidCostData() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	json := []byte(`{"cost_data": {"on_demand_rate": 0.25, "savings_plan_rate": 0.15}}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
+	s.Require().True(ok)
+	s.Equal(0.25, apiDistro.CostData.OnDemandRate)
+	s.Equal(0.15, apiDistro.CostData.SavingsPlanRate)
+}
+
 func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
@@ -1519,22 +1537,4 @@ func (s *distroCopySuite) TestRunInvalidCopyNonexistentID() {
 	s.Equal(http.StatusNotFound, resp.Status())
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Equal("distro 'nonexistent' not found", err.Message)
-}
-
-func (s *DistroPatchSetupByIDSuite) TestRunValidCostData() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	json := []byte(`{"cost_data": {"on_demand_rate": 0.25, "savings_plan_rate": 0.15}}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(http.StatusOK, resp.Status())
-
-	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
-	s.Require().True(ok)
-	s.Equal(0.25, apiDistro.CostData.OnDemandRate)
-	s.Equal(0.15, apiDistro.CostData.SavingsPlanRate)
 }
