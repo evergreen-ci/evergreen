@@ -260,7 +260,6 @@ func TestReleaseIPAddressForHost(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, h *host.Host){
 		"Succeeds": func(t *testing.T, h *host.Host) {
-			// Create an IP address associated with this host
 			ipAddr := &host.IPAddress{
 				ID:           "ip_addr",
 				AllocationID: "eipalloc-123456789",
@@ -319,7 +318,6 @@ func TestReleaseIPAddressForHost(t *testing.T) {
 			assert.Equal(t, "some_other_host", dbIPAddr.HostTag)
 		},
 		"SuccessfullyReleasesIPAddressWithMatchingTag": func(t *testing.T, h *host.Host) {
-			// Create multiple IP addresses to ensure we're operating on the correct one
 			otherIPAddr := &host.IPAddress{
 				ID:           "other_ip_addr",
 				AllocationID: "eipalloc-987654321",
