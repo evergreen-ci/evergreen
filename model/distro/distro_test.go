@@ -711,3 +711,34 @@ func TestGetImageIDFromDistro(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ubuntu1804", found)
 }
+
+func TestCostData(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.Clear(Collection))
+
+	// Test distro with cost data
+	d := &Distro{
+		Id: "cost-test-distro",
+		CostData: CostData{
+			OnDemandRate:    0.25,
+			SavingsPlanRate: 0.15,
+		},
+	}
+	assert.NoError(t, d.Insert(ctx))
+
+	found, err := FindOneId(ctx, d.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0.25, found.CostData.OnDemandRate)
+	assert.Equal(t, 0.15, found.CostData.SavingsPlanRate)
+
+	// Test without cost data (should default to zero values)
+	d2 := &Distro{Id: "cost-test-distro-2"}
+	assert.NoError(t, d2.Insert(ctx))
+
+	found2, err := FindOneId(ctx, d2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, 0.0, found2.CostData.OnDemandRate)
+	assert.Equal(t, 0.0, found2.CostData.SavingsPlanRate)
+}

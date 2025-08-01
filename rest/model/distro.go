@@ -334,6 +334,23 @@ func (s *APIIceCreamSettings) ToService() distro.IceCreamSettings {
 	}
 }
 
+type APICostData struct {
+	OnDemandRate    float64 `json:"on_demand_rate"`
+	SavingsPlanRate float64 `json:"savings_plan_rate"`
+}
+
+func (s *APICostData) BuildFromService(settings distro.CostData) {
+	s.OnDemandRate = settings.OnDemandRate
+	s.SavingsPlanRate = settings.SavingsPlanRate
+}
+
+func (s *APICostData) ToService() distro.CostData {
+	return distro.CostData{
+		OnDemandRate:    s.OnDemandRate,
+		SavingsPlanRate: s.SavingsPlanRate,
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // APIDistro is the model to be returned by the API whenever distros are fetched
@@ -373,6 +390,7 @@ type APIDistro struct {
 	SingleTaskDistro      bool                     `json:"single_task_distro"`
 	ImageID               *string                  `json:"image_id"`
 	ExecUser              *string                  `json:"exec_user"`
+	CostData              APICostData              `json:"cost_data"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -439,6 +457,10 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	bootstrapSettings := APIBootstrapSettings{}
 	bootstrapSettings.BuildFromService(d.BootstrapSettings)
 	apiDistro.BootstrapSettings = bootstrapSettings
+
+	costData := APICostData{}
+	costData.BuildFromService(d.CostData)
+	apiDistro.CostData = costData
 }
 
 // ToService returns a service layer distro using the data from APIDistro
@@ -484,6 +506,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation
 	d.IsCluster = apiDistro.IsCluster
+	d.CostData = apiDistro.CostData.ToService()
 
 	return &d
 }

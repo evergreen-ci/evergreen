@@ -18,7 +18,7 @@ import (
 )
 
 // Handler returns a gimlet http handler func used as the gql route handler
-func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
+func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *http.Request) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
 
 	// Send OTEL traces for each request.
@@ -42,6 +42,10 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 
 	// Disable queries for service degradation
 	srv.Use(DisableQuery{})
+
+	if !allowMutations {
+		srv.Use(DisableMutations{})
+	}
 
 	// Handler to log graphql panics to splunk
 	srv.SetRecoverFunc(func(ctx context.Context, err any) error {

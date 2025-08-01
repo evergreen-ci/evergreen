@@ -31,6 +31,10 @@ type Mock struct {
 	GetSubscriptionsFail bool
 	MockServiceFlags     *model.APIServiceFlags
 	MockServiceFlagErr   error
+
+	GetRecentVersionsResult   []restmodel.APIVersion
+	GetBuildsForVersionResult []restmodel.APIBuild
+	GetTasksForBuildResult    []restmodel.APITask
 }
 
 func (c *Mock) Close() {}
@@ -263,7 +267,24 @@ func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, b
 	return nil, nil
 }
 
-func (c *Mock) GetRecentVersionsForProject(context.Context, string, string) ([]restmodel.APIVersion, error) {
+func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, branch string, limit int) ([]restmodel.APIVersion, error) {
+	if c.GetRecentVersionsResult != nil {
+		return c.GetRecentVersionsResult, nil
+	}
+	return nil, nil
+}
+
+func (c *Mock) GetBuildsForVersion(ctx context.Context, versionID string) ([]restmodel.APIBuild, error) {
+	if c.GetBuildsForVersionResult != nil {
+		return c.GetBuildsForVersionResult, nil
+	}
+	return nil, nil
+}
+
+func (c *Mock) GetTasksForBuild(ctx context.Context, buildID string) ([]restmodel.APITask, error) {
+	if c.GetTasksForBuildResult != nil {
+		return c.GetTasksForBuildResult, nil
+	}
 	return nil, nil
 }
 

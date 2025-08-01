@@ -310,6 +310,25 @@ input AdminSettingsInput {
   buckets: BucketsConfigInput
   cedar: CedarConfigInput
   configDir: String
+  containerPools: ContainerPoolsConfigInput
+  fws: FWSConfigInput
+  jira: JiraConfigInput
+  slack: SlackConfigInput
+  splunk: SplunkConfigInput
+  runtimeEnvironments: RuntimeEnvironmentConfigInput
+  testSelection: TestSelectionConfigInput
+  serviceFlags: ServiceFlagsInput
+  notify: NotifyConfigInput
+  taskLimits: TaskLimitsConfigInput
+  hostInit: HostInitConfigInput
+  parameterStore: ParameterStoreConfigInput
+  podLifecycle: PodLifecycleConfigInput
+  projectCreation: ProjectCreationConfigInput
+  providers: CloudProviderConfigInput
+  scheduler: SchedulerConfigInput
+  repotracker: RepotrackerConfigInput
+  api: APIConfigInput
+  ui: UIConfigInput
   disabledGQLQueries: [String!]
   domainName: String
   expansions: StringMap
@@ -360,6 +379,25 @@ type AdminSettings {
   buckets: BucketsConfig
   cedar: CedarConfig
   configDir: String
+  containerPools: ContainerPoolsConfig
+  fws: FWSConfig
+  jira: JiraConfig
+  slack: SlackConfig
+  splunk: SplunkConfig
+  runtimeEnvironments: RuntimeEnvironmentConfig
+  testSelection: TestSelectionConfig
+  serviceFlags: ServiceFlags
+  notify: NotifyConfig
+  taskLimits: TaskLimitsConfig
+  hostInit: HostInitConfig
+  parameterStore: ParameterStoreConfig
+  podLifecycle: PodLifecycleConfig
+  projectCreation: ProjectCreationConfig
+  providers: CloudProviderConfig
+  scheduler: SchedulerConfig
+  repotracker: RepotrackerConfig
+  api: APIConfig
+  ui: UIConfig
   disabledGQLQueries: [String!]!
   domainName: String
   expansions: StringMap
@@ -496,17 +534,6 @@ type ServiceFlags {
   githubStatusAPIDisabled: Boolean!
 }
 
-type ContainerPoolsConfig {
-  pools: [ContainerPool!]!
-}
-
-type ContainerPool {
-  id: String!
-  distro: String!
-  maxContainers: Int!
-  port: Int!
-}
-
 input APIConfigInput {
   httpListenAddr: String!
   url: String!
@@ -553,25 +580,6 @@ type UIConfig {
   csrfKey: String @requireAdmin
   cacheTemplates: Boolean
   stagingEnvironment: String
-}
-
-
-type CloudProviderConfig {
-  aws: AWSConfig
-}
-
-type AWSConfig {
-  maxVolumeSizePerUser: Int
-  pod: AWSPodConfig
-}
-
-type AWSPodConfig {
-  ecs: ECSConfig
-}
-
-type ECSConfig {
-  maxCPU: Int!
-  maxMemoryMb: Int!
 }
 
 """

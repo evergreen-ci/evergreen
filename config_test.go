@@ -547,6 +547,20 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.Equal("pluginVal", pluginMap["pluginKey"])
 }
 
+func (s *AdminSuite) TestExpansionValidation() {
+	config := Settings{
+		ConfigDir: "dir",
+		Expansions: map[string]string{
+			"validKey": "validValue",
+			"emptyKey": "",
+		},
+	}
+
+	err := config.ValidateAndDefault()
+	s.Error(err)
+	s.Contains(err.Error(), "expansion 'emptyKey' cannot have an empty value")
+}
+
 func (s *AdminSuite) TestNotifyConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

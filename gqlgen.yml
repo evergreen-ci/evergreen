@@ -78,10 +78,22 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
   AuthUserInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
+  AWSAccountRoleMapping:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSAccountRoleMapping
+  AWSAccountRoleMappingInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSAccountRoleMapping
   AWSConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
+  AWSConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   AWSPodConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
+  AWSPodConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
+  AWSVPCConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSVPCConfig
+  AWSVPCConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSVPCConfig
   BannerTheme:
     model: github.com/evergreen-ci/evergreen.BannerTheme
   BetaFeatures:
@@ -133,6 +145,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
   CloudProviderConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
+  CloudProviderConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   CommitQueueParamsInput:
@@ -148,7 +162,11 @@ models:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodRPC
   ContainerPool:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
+  ContainerPoolInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
+  ContainerPoolsConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
   ContainerResources:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
@@ -175,10 +193,51 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
   DistroInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.DistroInfo
+  DockerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDockerConfig
+  DockerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDockerConfig
   Duration:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDuration
+  EC2Key:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
+  EC2KeyInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
   ECSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIECSConfig
+  ECSConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIECSConfig
+  ECSCapacityProvider:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIECSCapacityProvider
+  ECSCapacityProviderInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIECSCapacityProvider
+  ECSClusterConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIECSClusterConfig
+  ECSClusterConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIECSClusterConfig
+  ECSArchitecture:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      ECS_ARCH_AMD64:
+        value: github.com/evergreen-ci/evergreen.ECSArchAMD64
+      ECS_ARCH_ARM64:
+        value: github.com/evergreen-ci/evergreen.ECSArchARM64
+  ECSOperatingSystem:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      ECS_OS_LINUX:
+        value: github.com/evergreen-ci/evergreen.ECSOSLinux
+      ECS_OS_WINDOWS:
+        value: github.com/evergreen-ci/evergreen.ECSOSWindows
+  ECSWindowsVersion:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      ECS_WINDOWS_SERVER_2016:
+        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2016
+      ECS_WINDOWS_SERVER_2019:
+        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2019
+      ECS_WINDOWS_SERVER_2022:
+        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2022
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
   EnvVarInput:
@@ -462,7 +521,7 @@ models:
         value: github.com/evergreen-ci/evergreen.HostsOverallocatedIgnore
       DEFAULT:
         value: github.com/evergreen-ci/evergreen.HostsOverallocatedUseDefault
-  OwnerRepo: 
+  OwnerRepo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOwnerRepo
   OwnerRepoInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOwnerRepo
@@ -474,6 +533,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
+  ParameterStoreConfig: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameterStoreConfig
+  ParameterStoreConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParameterStoreConfig
+  ParserProjectS3Config:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParserProjectS3Config
+  ParserProjectS3ConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIParserProjectS3Config
   ParsleyFilter:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   ParsleyFilterInput:
@@ -509,6 +576,10 @@ models:
         resolver: true
       repoPermissions:
         resolver: true
+  PersistentDNSConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPersistentDNSConfig
+  PersistentDNSConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPersistentDNSConfig
   PlannerSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
   PlannerSettingsInput:
@@ -692,6 +763,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISESConfig
   SearchReturnInfo:
     model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
+  SecretsManagerConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISecretsManagerConfig
+  SecretsManagerConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISecretsManagerConfig
   Selector:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:
@@ -752,6 +827,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIStepbackInfo
   StringMap:
     model: github.com/evergreen-ci/evergreen/graphql.StringMap
+  Subnet:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubnet
+  SubnetInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISubnet
   SubscriberInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscriber
   SubscriberWrapper:
