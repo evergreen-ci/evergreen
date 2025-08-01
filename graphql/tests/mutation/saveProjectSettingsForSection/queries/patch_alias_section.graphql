@@ -5,7 +5,8 @@ mutation {
       projectRef: {
         id: "sandbox_project_id"
         patchTriggerAliases: []
-        githubTriggerAliases: []
+        githubPRTriggerAliases: ["test"]
+        githubMQTriggerAliases: ["test2"]
       }
       aliases: [
         {
@@ -20,10 +21,27 @@ mutation {
           remotePath: ""
           parameters: [{ key: "test", value: "thing" }]
         }
+        {
+          id: "65c80057d1d6f12b0d4c69d0"
+          alias: "test2"
+          description: "second alias"
+          variant: ""
+          variantTags: [".*"]
+          task: ""
+          taskTags: [".*"]
+          gitTag: ""
+          remotePath: ""
+          parameters: [{ key: "test", value: "thing" }]
+        }
       ]
     }
     section: PATCH_ALIASES
   ) {
+    projectRef {
+      githubTriggerAliases
+      githubPRTriggerAliases
+      githubMQTriggerAliases
+    }
     aliases {
       id
       alias
@@ -39,7 +57,5 @@ mutation {
         value
       }
     }
-
-
   }
 }

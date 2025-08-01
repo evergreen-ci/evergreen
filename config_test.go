@@ -131,13 +131,14 @@ func (s *AdminSuite) TestBaseConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// This test does not check Expansions because it is not possible to
+	// call parameter store functions, real or mocked, in this test suite.
 	config := Settings{
 		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
 		ConfigDir:           "cfg_dir",
 		DomainName:          "example.com",
-		Expansions:          map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg:  "org",
 		GithubOrgs:          []string{"evergreen-ci"},
 		LogPath:             "logpath",
@@ -156,7 +157,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.DomainName, settings.DomainName)
-	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.GithubOrgs, settings.GithubOrgs)
 	s.Equal(config.LogPath, settings.LogPath)
@@ -545,6 +545,20 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	pluginMap := dbConfig.Plugins[config.PluginsNew[0].Key]
 	s.NotNil(pluginMap)
 	s.Equal("pluginVal", pluginMap["pluginKey"])
+}
+
+func (s *AdminSuite) TestExpansionValidation() {
+	config := Settings{
+		ConfigDir: "dir",
+		Expansions: map[string]string{
+			"validKey": "validValue",
+			"emptyKey": "",
+		},
+	}
+
+	err := config.ValidateAndDefault()
+	s.Error(err)
+	s.Contains(err.Error(), "expansion 'emptyKey' cannot have an empty value")
 }
 
 func (s *AdminSuite) TestNotifyConfig() {

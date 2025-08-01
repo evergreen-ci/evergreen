@@ -34,10 +34,7 @@ mutation {
       }
       testSelection: { url: "https://test-selection.example.com" }
       fws: { url: "https://fws.example.com" }
-      cedar: {
-        dbUrl: "mongodb://localhost:27017",
-        dbName: "cedar"
-      }
+      cedar: { dbUrl: "mongodb://localhost:27017", dbName: "cedar" }
     }
   ) {
     jira {

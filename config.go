@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
@@ -31,11 +32,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-07-16c"
+	ClientVersion = "2025-07-29"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-07-28"
+	AgentVersion = "2025-07-29-a"
 )
 
 const (
@@ -168,6 +169,14 @@ func (c *Settings) ValidateAndDefault() error {
 			catcher.Add(errors.Wrap(err, "parsing expansions"))
 		}
 	}
+
+	// Validate that expansion values are not empty
+	for key, value := range c.Expansions {
+		if value == "" {
+			catcher.Add(errors.Errorf("expansion '%s' cannot have an empty value", key))
+		}
+	}
+
 	if len(c.PluginsNew) > 0 {
 		tempPlugins, err := c.PluginsNew.NestedMap()
 		if err != nil {
@@ -260,10 +269,109 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 		propVal.Set(sectionVal)
 	}
 
+	// If the admin parameter store is not disabled, we need to read secrets from it.
+	// If it fails, log the error and ignore changes made from the parameter store.
+	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled {
+		paramConfig := baseConfig
+		paramMgr := GetEnvironment().ParameterManager()
+		settingsValue := reflect.ValueOf(paramConfig).Elem()
+		settingsType := reflect.TypeOf(*paramConfig)
+		adminCatcher := grip.NewBasicCatcher()
+		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
+		if adminCatcher.HasErrors() {
+			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
+		} else {
+			baseConfig = paramConfig
+		}
+	}
+
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return baseConfig, nil
+}
+
+func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
+	if paramMgr == nil {
+		catcher.Add(errors.New("parameter manager is nil"))
+		return
+	}
+	// Handle different kinds of values
+	switch value.Kind() {
+	case reflect.Struct:
+		structName := typ.Name()
+		currentPath := path
+		if structName != "" {
+			if currentPath != "" {
+				currentPath = currentPath + "/" + structName
+			} else {
+				currentPath = structName
+			}
+		}
+
+		// Iterate through all fields in the struct.
+		for i := 0; i < value.NumField(); i++ {
+			field := typ.Field(i)
+			fieldValue := value.Field(i)
+
+			fieldPath := currentPath
+			if fieldPath != "" {
+				fieldPath = fieldPath + "/" + field.Name
+			} else {
+				fieldPath = field.Name
+			}
+
+			// Check if this field has the secret:"true" tag.
+			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
+				// If the field is a string, store in parameter manager and update struct with path.
+				if fieldValue.Kind() == reflect.String {
+					param, err := paramMgr.Get(ctx, fieldPath)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath))
+					} else if len(param) > 0 {
+						// Update the value with the path from the parameter store if it exists.
+						fieldValue.SetString(param[0].Value)
+					}
+					// if the field is a map[string]string, store each key-value pair individually
+				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
+					// Create a new map to store the paths
+					newMap := reflect.MakeMap(fieldValue.Type())
+					for _, key := range fieldValue.MapKeys() {
+						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
+						param, err := paramMgr.Get(ctx, mapFieldPath)
+						if err != nil {
+							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							continue
+						} else if len(param) > 0 {
+							// Set the map value to the parameter store value
+							newMap.SetMapIndex(key, reflect.ValueOf(param[0].Value))
+						} else {
+							catcher.Add(errors.Errorf("no value found for map key '%s' in parameter store", mapFieldPath))
+						}
+					}
+					// Update the struct field with the new map containing paths
+					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
+						fieldValue.Set(newMap)
+					} else {
+						catcher.Add(errors.New("not all map keys were found in parameter store"))
+					}
+				}
+			}
+
+			// Recursively check nested structs, pointers, slices, and maps.
+			readAdminSecrets(ctx, paramMgr, fieldValue, field.Type, currentPath, catcher)
+		}
+	case reflect.Ptr:
+		// Dereference pointer if not nil.
+		if !value.IsNil() {
+			readAdminSecrets(ctx, paramMgr, value.Elem(), typ.Elem(), path, catcher)
+		}
+	case reflect.Slice, reflect.Array:
+		// Check each element in slice/array.
+		for i := 0; i < value.Len(); i++ {
+			readAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+		}
+	}
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
@@ -598,5 +706,91 @@ func IsValidBannerTheme(input string) (bool, BannerTheme) {
 		return true, Important
 	default:
 		return false, ""
+	}
+}
+
+// StoreAdminSecrets recursively finds all fields tagged with "secret:true"
+// and stores them in the parameter manager
+// The function has section commented out because all the functionality does not currently exist.
+// It is currently only uncommented during the testing to ensure that the function works as expected.
+// Those sections will be uncommented/deleted when the functionality is implemented.
+func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
+	if paramMgr == nil {
+		catcher.Add(errors.New("parameter manager is nil"))
+		return
+	}
+	// Handle different kinds of values
+	switch value.Kind() {
+	case reflect.Struct:
+		structName := typ.Name()
+		currentPath := path
+		if structName != "" {
+			if currentPath != "" {
+				currentPath = currentPath + "/" + structName
+			} else {
+				currentPath = structName
+			}
+		}
+
+		// Iterate through all fields in the struct.
+		for i := 0; i < value.NumField(); i++ {
+			field := typ.Field(i)
+			fieldValue := value.Field(i)
+
+			fieldPath := currentPath
+			if fieldPath != "" {
+				fieldPath = fieldPath + "/" + field.Name
+			} else {
+				fieldPath = field.Name
+			}
+
+			// Check if this field has the secret:"true" tag.
+			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
+				// If the field is a string, store in parameter manager and update struct with path.
+				if fieldValue.Kind() == reflect.String {
+					secretValue := fieldValue.String()
+					if secretValue == "" {
+						continue
+					}
+					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
+					}
+					// // TODO DEVPROD-18236: Update the struct field to store the path instead of the secret value
+					// fieldValue.SetString(fieldPath)
+					// if the field is a map[string]string, store each key-value pair individually
+				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
+					// // Create a new map to store the paths
+					// newMap := reflect.MakeMap(fieldValue.Type())
+					for _, key := range fieldValue.MapKeys() {
+						mapValue := fieldValue.MapIndex(key)
+						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
+						secretValue := mapValue.String()
+						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
+						if err != nil {
+							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							continue
+						}
+						// // TODO DEVPROD-18236: Replace the secret value with the path
+						// newMap.SetMapIndex(key, reflect.ValueOf(mapFieldPath))
+					}
+					// // Update the struct field with the new map containing paths
+					// fieldValue.Set(newMap)
+				}
+			}
+
+			// Recursively check nested structs, pointers, slices, and maps.
+			StoreAdminSecrets(ctx, paramMgr, fieldValue, field.Type, currentPath, catcher)
+		}
+	case reflect.Ptr:
+		// Dereference pointer if not nil.
+		if !value.IsNil() {
+			StoreAdminSecrets(ctx, paramMgr, value.Elem(), typ.Elem(), path, catcher)
+		}
+	case reflect.Slice, reflect.Array:
+		// Check each element in slice/array.
+		for i := 0; i < value.Len(); i++ {
+			StoreAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+		}
 	}
 }
