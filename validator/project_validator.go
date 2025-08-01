@@ -2280,6 +2280,15 @@ func checkTasks(project *model.Project) ValidationErrors {
 				},
 			)
 		}
+		if task.Priority >= 50 {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("task '%s' has been set at or above %d priority, in YAML, will default priority to %d",
+						task.Name, model.MaxConfigSetPriority, model.MaxConfigSetPriority),
+					Level: Warning,
+				},
+			)
+		}
 		if project.ExecTimeoutSecs == 0 && task.ExecTimeoutSecs == 0 && !execTimeoutWarningAdded {
 			errs = append(errs,
 				ValidationError{
