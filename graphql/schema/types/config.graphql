@@ -319,6 +319,8 @@ input AdminSettingsInput {
   taskLimits: TaskLimitsConfigInput
   hostInit: HostInitConfigInput
   parameterStore: ParameterStoreConfigInput
+  perfMonitoringKanopyURL: String
+  perfMonitoringURL: String
   podLifecycle: PodLifecycleConfigInput
   projectCreation: ProjectCreationConfigInput
   providers: CloudProviderConfigInput
@@ -350,6 +352,8 @@ type AdminSettings {
   taskLimits: TaskLimitsConfig
   hostInit: HostInitConfig
   parameterStore: ParameterStoreConfig
+  perfMonitoringKanopyURL: String
+  perfMonitoringURL: String
   podLifecycle: PodLifecycleConfig
   projectCreation: ProjectCreationConfig
   providers: CloudProviderConfig
