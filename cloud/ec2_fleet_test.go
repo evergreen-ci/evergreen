@@ -393,7 +393,7 @@ func TestCleanup(t *testing.T) {
 		EC2FleetManagerOptions: &EC2FleetManagerOptions{client: client},
 	}
 
-	t.Run("NotYetExpired", func(t *testing.T) {
+	t.Run("NotYetExpiredLaunchTemplates", func(t *testing.T) {
 		client.launchTemplates = []types.LaunchTemplate{
 			{
 				LaunchTemplateId: aws.String("lt0"),
@@ -405,13 +405,13 @@ func TestCleanup(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, m.Cleanup(context.Background()))
+		assert.NoError(t, m.Cleanup(t.Context()))
 		require.Len(t, client.launchTemplates, 2)
 		assert.Equal(t, "lt0", *client.launchTemplates[0].LaunchTemplateId)
 		assert.Equal(t, "lt1", *client.launchTemplates[1].LaunchTemplateId)
 	})
 
-	t.Run("AllExpired", func(t *testing.T) {
+	t.Run("AllExpiredLaunchTemplates", func(t *testing.T) {
 		client.launchTemplates = []types.LaunchTemplate{
 			{
 				LaunchTemplateId: aws.String("lt0"),
@@ -423,11 +423,11 @@ func TestCleanup(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, m.Cleanup(context.Background()))
+		assert.NoError(t, m.Cleanup(t.Context()))
 		assert.Empty(t, client.launchTemplates)
 	})
 
-	t.Run("SomeExpired", func(t *testing.T) {
+	t.Run("SomeExpiredLaunchTemplates", func(t *testing.T) {
 		client.launchTemplates = []types.LaunchTemplate{
 			{
 				LaunchTemplateId: aws.String("lt0"),
@@ -439,9 +439,57 @@ func TestCleanup(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, m.Cleanup(context.Background()))
+		assert.NoError(t, m.Cleanup(t.Context()))
 		require.Len(t, client.launchTemplates, 1)
 		assert.Equal(t, "lt1", *client.launchTemplates[0].LaunchTemplateId)
+	})
+
+	t.Run("FreesIPAddressFromTerminatedHost", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(host.Collection, host.IPAddressCollection))
+		defer func() {
+			assert.NoError(t, db.ClearCollections(host.Collection, host.IPAddressCollection))
+		}()
+		h1 := &host.Host{
+			Id:              "h1",
+			Tag:             "ht_1",
+			Status:          evergreen.HostTerminated,
+			IPAllocationID:  "eipalloc-12345",
+			IPAssociationID: "eipassoc-12345",
+		}
+		h2 := &host.Host{
+			Id:              "h2",
+			Tag:             "ht_2",
+			Status:          evergreen.HostRunning,
+			IPAllocationID:  "eipalloc-67890",
+			IPAssociationID: "eipassoc-67890",
+		}
+		require.NoError(t, h1.Insert(t.Context()))
+		require.NoError(t, h2.Insert(t.Context()))
+
+		ipAddr1 := &host.IPAddress{
+			ID:           "ip1",
+			AllocationID: "eipalloc-12345",
+			HostTag:      h1.Tag,
+		}
+		require.NoError(t, ipAddr1.Insert(t.Context()))
+		ipAddr2 := &host.IPAddress{
+			ID:           "ip2",
+			AllocationID: "eipalloc-67890",
+			HostTag:      h2.Tag,
+		}
+		require.NoError(t, ipAddr2.Insert(t.Context()))
+
+		require.NoError(t, m.Cleanup(t.Context()))
+
+		dbIPAddr1, err := host.FindIPAddressByAllocationID(t.Context(), ipAddr1.AllocationID)
+		require.NoError(t, err)
+		require.NotZero(t, dbIPAddr1)
+		assert.Empty(t, dbIPAddr1.HostTag, "IP address should be freed from terminated host")
+
+		dbIPAddr2, err := host.FindIPAddressByAllocationID(t.Context(), ipAddr2.AllocationID)
+		require.NoError(t, err)
+		require.NotZero(t, dbIPAddr2)
+		assert.Equal(t, h2.Tag, dbIPAddr2.HostTag, "IP address should remain associated with running host")
 	})
 }
 
