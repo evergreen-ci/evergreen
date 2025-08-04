@@ -38,7 +38,7 @@ func LastRevision() cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(successfulTasks, "t"),
-				Usage: "names of tasks that, if present in the builds under consideration, must have succeeded",
+				Usage: "names of tasks that, if present in the builds, must have succeeded",
 			},
 		),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, func(c *cli.Context) error {
