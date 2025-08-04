@@ -52,18 +52,19 @@ func LastRevision() cli.Command {
 			regexpBVs := c.StringSlice(regexpVariantsFlagName)
 			minSuccessProp := c.Float64(minSuccessProportionFlagName)
 			successfulTasks := c.StringSlice(successfulTasks)
+
 			criteria, err := newLastRevisionCriteria(projectID, regexpBVs, minSuccessProp, successfulTasks)
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
@@ -151,6 +152,9 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccess
 	}
 	if minSuccessProportion < 0 || minSuccessProportion > 1 {
 		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
+	}
+	if project == "" {
+		return nil, errors.New("must specify a project")
 	}
 
 	bvRegexps := make([]regexp.Regexp, 0, len(bvRegexpsAsStr))
