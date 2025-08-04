@@ -776,7 +776,8 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
 							continue
 						}
-						// 	newMap.SetMapIndex(key, mapValue)
+						// // TODO DEVPROD-18236: Replace the secret value with the path
+						// newMap.SetMapIndex(key, mapValue)
 					}
 					// // Update the struct field with the new map containing paths
 					// fieldValue.Set(newMap)
