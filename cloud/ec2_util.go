@@ -823,41 +823,6 @@ func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
-func allocateIPAddress(ctx context.Context, c AWSClient, ipamPoolID string) (string, error) {
-	ctx, span := tracer.Start(ctx, "allocateIPAddress")
-	defer span.End()
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "unknown"
-	}
-	input := &ec2.AllocateAddressInput{
-		IpamPoolId: aws.String(ipamPoolID),
-		TagSpecifications: []types.TagSpecification{
-			{
-				ResourceType: types.ResourceTypeElasticIp,
-				Tags: []types.Tag{
-					{Key: aws.String(evergreen.TagEvergreenService), Value: aws.String(hostname)},
-					{Key: aws.String(evergreen.TagMode), Value: aws.String("production")},
-				},
-			},
-		},
-	}
-
-	allocateAddrOut, err := c.AllocateAddress(ctx, input)
-	if err != nil {
-		return "", errors.Wrap(err, "allocating new IP address for host")
-	}
-	if allocateAddrOut == nil {
-		return "", errors.New("address allocation returned nil result")
-	}
-	allocationID := aws.ToString(allocateAddrOut.AllocationId)
-	if allocationID == "" {
-		return "", errors.New("address allocation did not return an allocation ID")
-	}
-	return allocationID, nil
-}
-
 // releaseIPAddressForHost releases the elastic IP address that was associated
 // with the host, if it has an elastic IP.
 func releaseIPAddressForHost(ctx context.Context, h *host.Host) error {
