@@ -34,7 +34,6 @@ func LastRevision() cli.Command {
 			cli.Float64Flag{
 				Name:  joinFlagNames(minSuccessProportionFlagName),
 				Usage: "minimum proportion of successful tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
-				Value: 1,
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(successfulTasks, "t"),
