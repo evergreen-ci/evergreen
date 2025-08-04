@@ -25,5 +25,4 @@
 {"_id": "jira_notifications", "custom_fields": [{"project": "CUSTOM PROJECT", "fields": null, "components": ["component"], "labels": ["label"]}, {"project": "OTHER PROJECT", "fields": null, "components": [], "labels": []}]},
 {"_id": "host_jasper", "binary_name": "binary", "download_file_name": "download", "port": 2385, "url": "http://localhost:9090", "version": "1123"},
 {"_id": "sleep_schedule", "permanently_exempt_hosts": ["1135"]},
-{"_id": "ssh", "spawn_host_key": {"name": "spawn host key", "secret_arn": "<secret_arn>"}, "task_host_key": {"name": "task host key", "secret_arn": "<secret_arn>"}},
 {"_id": "buckets", "credentials": {"key": "2118927364", "secret": "alskhrp2342", "bucket": "bucket-credentials"}, "log_bucket": {"name": "s3 bucket", "type": "s3", "db_name": "mongodb", "test_results_prefix": "all", "role_arn": ""}, "test_results_bucket": {"name": "test bucket", "type": "s3", "db_name": "mongodb", "test_results_prefix": "all", "role_arn": ""}},
