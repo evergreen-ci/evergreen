@@ -201,9 +201,6 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 		return false
 	}
 
-	// kim; TODO: add tests for successful tasks criteria
-	// kim: TODO: test that nonexistent tasks always pass this check since
-	// they're not in the version.
 	allTasksSet := make(map[string]model.APITask, len(info.allTasks))
 	for _, t := range info.allTasks {
 		allTasksSet[utility.FromStringPtr(t.DisplayName)] = t
