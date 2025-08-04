@@ -67,6 +67,8 @@
       "github_webhook_secret": "",
       "kanopy_ssh_key_path": "",
       "log_path": "LOCAL",
+      "perf_monitoring_kanopy_url": "https://kanopy.example.com",
+      "perf_monitoring_url": "https://perf.example.com",
       "plugins": {},
       "plugins_new": null,
       "pprof_port": "",
@@ -296,6 +298,98 @@
       "db_url": "mongodb://localhost:8000"
     },
     {
+      "_id": "single_task_distro",
+      "project_tasks_pairs": [
+        {
+          "project_id": "evergreen",
+          "allowed_tasks": ["compile", "test"],
+          "allowed_bvs": ["windows", "ubuntu1604"]
+        },
+        {
+          "project_id": "spruce",
+          "allowed_tasks": ["lint", "storybook"],
+          "allowed_bvs": null
+        }
+      ]
+    },
+    {
+      "_id": "buckets",
+      "credentials": {
+        "key": "2118927364",
+        "secret": "alskhrp2342",
+        "bucket": "bucket-credentials"
+      },
+      "log_bucket": {
+        "name": "s3 bucket",
+        "type": "s3",
+        "db_name": "mongodb",
+        "test_results_prefix": "all",
+        "role_arn": ""
+      },
+      "test_results_bucket": {
+        "name": "test bucket",
+        "type": "s3",
+        "db_name": "mongodb",
+        "test_results_prefix": "all",
+        "role_arn": ""
+      }
+    },
+    {
+      "_id": "ssh",
+      "spawn_host_key": {
+        "name": "spawn host key",
+        "secret_arn": "<secret_arn>"
+      },
+      "task_host_key": {
+        "name": "task host key",
+        "secret_arn": "<secret_arn>"
+      }
+    },
+    {
+      "_id": "sleep_schedule",
+      "permanently_exempt_hosts": ["1135"]
+    },
+    {
+      "_id": "host_jasper",
+      "binary_name": "binary",
+      "download_file_name": "download",
+      "port": 2385,
+      "url": "http://localhost:9090",
+      "version": "1123"
+    },
+
+    {
+      "_id": "jira_notifications",
+      "custom_fields": [
+        {
+          "project": "CUSTOM PROJECT",
+          "fields": null,
+          "components": ["component"],
+          "labels": ["label"]
+        },
+        {
+          "project": "OTHER PROJECT",
+          "fields": null,
+          "components": [],
+          "labels": []
+        }
+      ]
+    },
+    {
+      "_id": "spawnhost",
+      "unexpirable_hosts_per_user": 2,
+      "unexpirable_volumes_per_user": 1,
+      "spawn_hosts_per_user": 6
+    },
+    {
+      "_id": "tracer",
+      "collector_api_key": "<collector_api_key>",
+      "collector_endpoint": "<collector_endpoint>",
+      "collector_internal_endpoint": "<collector_internal_endpoint>",
+      "enabled": false
+
+    },
+    {
       "_id": "providers",
       "aws": {
         "ec2_keys": [
@@ -400,6 +494,17 @@
     {
       "_id": "project_creation",
       "total_project_limit": 10,
+      "repo_project_limit": 2
+    },
+    {
+      "_id": "github_check_run",
+      "check_run_limit": 0
+    },
+    {
+      "_id": "release_mode",
+      "distro_max_hosts_factor": 0,
+      "idle_time_seconds_override": 0,
+      "target_time_seconds_override": 0,
       "repo_project_limit": 2,
       "repo_exceptions": [
         {
