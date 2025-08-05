@@ -1,12 +1,15 @@
 package agent
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/mongodb/jasper/mock"
+	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -99,4 +102,42 @@ func TestDirectoryCleanup(t *testing.T) {
 	assert.False(os.IsNotExist(err))
 	_, err = os.Stat(shouldNotDelete)
 	assert.False(os.IsNotExist(err))
+}
+
+func TestCheckDataDirectoryHealthWithUsage(t *testing.T) {
+	t.Run("DiskUsageBelowThreshold", func(t *testing.T) {
+		mockComm := &client.Mock{}
+		agent := Agent{
+			opts: Options{
+				HostID: "test-host-id",
+			},
+			comm: mockComm,
+		}
+
+		// Test with low disk usage
+		lowUsage := &disk.UsageStat{
+			UsedPercent: 40.0, // Below threshold
+		}
+
+		err := agent.checkDataDirectoryHealthWithUsage(context.Background(), lowUsage)
+		assert.NoError(t, err)
+	})
+
+	t.Run("DiskUsageAboveThreshold", func(t *testing.T) {
+		mockComm := &client.Mock{}
+		agent := Agent{
+			opts: Options{
+				HostID: "test-host-id",
+			},
+			comm: mockComm,
+		}
+
+		// Test with high disk usage
+		highUsage := &disk.UsageStat{
+			UsedPercent: 95.0, // Above threshold
+		}
+
+		err := agent.checkDataDirectoryHealthWithUsage(context.Background(), highUsage)
+		assert.NoError(t, err)
+	})
 }
