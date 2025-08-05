@@ -2280,7 +2280,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				},
 			)
 		}
-		if task.Priority >= model.MaxConfigSetPriority {
+		if task.Priority > model.MaxConfigSetPriority {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("task '%s' has been set at or above %d priority, in YAML, will default priority to %d",

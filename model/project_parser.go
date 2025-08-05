@@ -189,19 +189,6 @@ type displayTask struct {
 func (pt *parserTask) name() string   { return pt.Name }
 func (pt *parserTask) tags() []string { return pt.Tags }
 
-func (pt *parserTask) UnmarshalYAML(unmarshal func(any) error) error {
-	type copyType parserTask
-	var copy copyType
-	if err := unmarshal(&copy); err != nil {
-		return err
-	}
-	if copy.Priority > MaxConfigSetPriority {
-		copy.Priority = MaxConfigSetPriority
-	}
-	*pt = parserTask(copy)
-	return nil
-}
-
 // parserDependency represents the intermediary state for referencing dependencies.
 type parserDependency struct {
 	TaskSelector       taskSelector `yaml:",inline"`
@@ -1483,6 +1470,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
+	}
+	if res.Priority > MaxConfigSetPriority {
+		res.Priority = MaxConfigSetPriority
 	}
 	if res.Patchable == nil {
 		res.Patchable = pt.Patchable
