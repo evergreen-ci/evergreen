@@ -293,7 +293,7 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 
 func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
 	if paramMgr == nil {
-		catcher.Add(errors.New("parameter manager is nil"))
+		catcher.New("parameter manager is nil")
 		return
 	}
 	// Handle different kinds of values
@@ -327,7 +327,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 				if fieldValue.Kind() == reflect.String {
 					param, err := paramMgr.Get(ctx, fieldPath)
 					if err != nil {
-						catcher.Add(errors.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath))
+						catcher.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath)
 					} else if len(param) > 0 {
 						// Update the value with the path from the parameter store if it exists.
 						fieldValue.SetString(param[0].Value)
@@ -340,7 +340,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						param, err := paramMgr.Get(ctx, mapFieldPath)
 						if err != nil {
-							catcher.Add(errors.Wrapf(err, "Failed to read secret map field '%s' in parameter store", mapFieldPath))
+							catcher.Wrapf(err, "Failed to read secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						} else if len(param) > 0 {
 							// Set the map value to the parameter store value
@@ -351,7 +351,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
 						fieldValue.Set(newMap)
 					} else {
-						grip.Debug(message.Fields{
+						grip.Error(message.Fields{
 							"message":  "readAdminSecrets did not find all map keys in parameter store",
 							"path":     fieldPath,
 							"keys":     fieldValue.MapKeys(),
@@ -719,7 +719,7 @@ func IsValidBannerTheme(input string) (bool, BannerTheme) {
 // Those sections will be uncommented/deleted when the functionality is implemented.
 func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
 	if paramMgr == nil {
-		catcher.Add(errors.New("parameter manager is nil"))
+		catcher.New("parameter manager is nil")
 		return
 	}
 
@@ -758,7 +758,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					}
 					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
 					if err != nil {
-						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
+						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
 					// // TODO DEVPROD-18236: Update the struct field to store the path instead of the secret value
 					// fieldValue.SetString(fieldPath)
@@ -773,7 +773,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 
 						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
 						if err != nil {
-							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
 						// // TODO DEVPROD-18236: Replace the secret value with the path
