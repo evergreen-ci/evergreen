@@ -929,8 +929,6 @@ buildvariants:
   - "etc/**"
   tasks:
   - name: "t1"
-    create_check_run:
-      path_to_outputs: "path"
 tasks:
 - name: t1
 `
