@@ -47,9 +47,6 @@ const (
 	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
 	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
-	// ec2InsufficientFreeAddresses	means that there are no IP addresses
-	// remaining in an IPAM pool to allocate (not documented in AWS).
-	ec2InsufficientFreeAddresses = "InsufficientFreeAddressesInPool"
 
 	r53InvalidInput       = "InvalidInput"
 	r53InvalidChangeBatch = "InvalidChangeBatch"
