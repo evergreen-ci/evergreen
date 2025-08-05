@@ -89,7 +89,6 @@ func trySetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSet
 		return nil, errors.Wrap(err, "converting settings to service model")
 	}
 	newSettings := i.(evergreen.Settings)
-	paramUpdatedSettings := newSettings
 
 	if persist {
 		// We have to call Validate before we attempt to persist it because the
@@ -100,6 +99,7 @@ func trySetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSet
 		}
 
 		if useParameterStore {
+			paramUpdatedSettings := newSettings
 			paramMgr := evergreen.GetEnvironment().ParameterManager()
 			// Find and store all secret fields in the parameter store
 			// Use pointer to newSettings so we can modify the struct fields
