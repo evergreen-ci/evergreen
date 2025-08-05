@@ -225,9 +225,9 @@ models:
   ECSOperatingSystem:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      ECS_OS_LINUX:
+      ECSOSLinux:
         value: github.com/evergreen-ci/evergreen.ECSOSLinux
-      ECS_OS_WINDOWS:
+      ECSOSWindows:
         value: github.com/evergreen-ci/evergreen.ECSOSWindows
   ECSWindowsVersion:
     model: github.com/99designs/gqlgen/graphql.String
