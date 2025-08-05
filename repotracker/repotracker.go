@@ -304,26 +304,27 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		// "Ignore" a version if all changes are to ignored files
 		var ignore bool
-		if len(pInfo.Project.Ignore) > 0 {
-			var filenames []string
-			filenames, err = repoTracker.GetChangedFiles(ctx, revision)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":            "error checking GitHub for ignored files",
-					"runner":             RunnerName,
-					"project":            ref.Id,
-					"project_identifier": ref.Identifier,
-					"revision":           revision,
-				}))
-				continue
-			}
-			if pInfo.Project.IgnoresAllFiles(filenames) {
-				ignore = true
-			}
+		var filenames []string
+
+		// Always get changed files for build variant filtering
+		filenames, err = repoTracker.GetChangedFiles(ctx, revision)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":            "error checking GitHub for changed files",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+			}))
+			// Continue without changed files info rather than failing completely
+			filenames = nil
+		} else if len(pInfo.Project.Ignore) > 0 && pInfo.Project.IgnoresAllFiles(filenames) {
+			ignore = true
 		}
 
 		metadata := model.VersionMetadata{
-			Revision: revisions[i],
+			Revision:     revisions[i],
+			ChangedFiles: filenames,
 		}
 		projectInfo := &model.ProjectInfo{
 			Ref:                 ref,
@@ -939,9 +940,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			tasksToCreate = append(tasksToCreate, t)
 		}
 
+		// Determine if this build variant should be ignored due to path filtering.
+		ignoreBuildVariant := !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
+
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
-		if evergreen.ShouldConsiderBatchtime(v.Requester) {
+		if evergreen.ShouldConsiderBatchtime(v.Requester) && !ignoreBuildVariant {
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
@@ -965,21 +969,13 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			}
 		}
 
-		grip.Debug(message.Fields{
-			"message":            "created build",
-			"name":               buildvariant.Name,
-			"project":            projectInfo.Ref.Id,
-			"project_identifier": projectInfo.Ref.Identifier,
-			"version":            v.Id,
-			"time":               activateVariantAt,
-			"runner":             RunnerName,
-		})
 		v.BuildIds = append(v.BuildIds, b.Id)
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
 			BuildVariant:   buildvariant.Name,
 			BuildId:        b.Id,
 			DisplayName:    b.DisplayName,
 			BatchTimeTasks: taskStatuses,
+			Ignored:        ignoreBuildVariant,
 			ActivationStatus: model.ActivationStatus{
 				ActivateAt: activateVariantAt,
 				Activated:  false,
