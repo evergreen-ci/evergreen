@@ -19,9 +19,10 @@ const defaultLastRevisionLookbackLimit = 50
 
 func LastRevision() cli.Command {
 	const (
-		regexpVariantsFlagName       = "regex-variants"
-		minSuccessProportionFlagName = "min-success"
-		successfulTasks              = "successful-tasks"
+		regexpVariantsFlagName            = "regex-variants"
+		regexpVariantsDisplayNameFlagName = "regex-display-variants"
+		minSuccessProportionFlagName      = "min-success"
+		successfulTasks                   = "successful-tasks"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -30,6 +31,10 @@ func LastRevision() cli.Command {
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(regexpVariantsFlagName, "rv"),
 				Usage: "regexps for build variant names to check",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(regexpVariantsDisplayNameFlagName, "rdv"),
+				Usage: "regexps for build variant display names",
 			},
 			cli.Float64Flag{
 				Name:  joinFlagNames(minSuccessProportionFlagName),
@@ -49,11 +54,12 @@ func LastRevision() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
-			regexpBVs := c.StringSlice(regexpVariantsFlagName)
+			bvRegexps := c.StringSlice(regexpVariantsFlagName)
+			bvDisplayNameRegexps := c.StringSlice(regexpVariantsDisplayNameFlagName)
 			minSuccessProp := c.Float64(minSuccessProportionFlagName)
 			successfulTasks := c.StringSlice(successfulTasks)
+			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, successfulTasks)
 
-			criteria, err := newLastRevisionCriteria(projectID, regexpBVs, minSuccessProp, successfulTasks)
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
 			}
@@ -101,6 +107,9 @@ type lastRevisionBuildInfo struct {
 	versionID string
 	// buildVariant is the name of the build variant for this build.
 	buildVariant string
+	// buildVariantDisplayName is the display name of the build variant for this
+	// build.
+	buildVariantDisplayName string
 	// allTasks is the set of all tasks in the build.
 	allTasks []model.APITask
 	// numSuccessfulTasks is the number of tasks in the build that succeeded.
@@ -115,11 +124,12 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) last
 		}
 	}
 	return lastRevisionBuildInfo{
-		buildID:            utility.FromStringPtr(b.Id),
-		buildVariant:       utility.FromStringPtr(b.BuildVariant),
-		versionID:          utility.FromStringPtr(b.Version),
-		allTasks:           buildTasks,
-		numSuccessfulTasks: numSuccessfulTasks,
+		buildID:                 utility.FromStringPtr(b.Id),
+		buildVariant:            utility.FromStringPtr(b.BuildVariant),
+		buildVariantDisplayName: utility.FromStringPtr(b.DisplayName),
+		versionID:               utility.FromStringPtr(b.Version),
+		allTasks:                buildTasks,
+		numSuccessfulTasks:      numSuccessfulTasks,
 	}
 }
 
@@ -134,10 +144,14 @@ func (i *lastRevisionBuildInfo) successProportion() float64 {
 type lastRevisionCriteria struct {
 	// project is the project ID or identifier.
 	project string
-	// buildVariantRegexp is a list of regular expressions of matching build
+	// buildVariantRegexps is a list of regular expressions of matching build
 	// variant names. This determines which particular build variants the
 	// criteria should apply to.
-	buildVariantRegexp []regexp.Regexp
+	buildVariantRegexps []regexp.Regexp
+	// buildVariantDisplayNameRegexps is a list of regular expressions of matching
+	// build variant display names. This determines which particular build
+	// variants the criteria should apply to.
+	buildVariantDisplayNameRegexps []regexp.Regexp
 	// minSuccessProportion is a criterion for the minimum proportion of tasks
 	// in a matching build that must succeed.
 	minSuccessProportion float64
@@ -147,9 +161,9 @@ type lastRevisionCriteria struct {
 	successfulTasks []string
 }
 
-func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccessProportion float64, successfulTasks []string) (*lastRevisionCriteria, error) {
-	if len(bvRegexpsAsStr) == 0 {
-		return nil, errors.New("must specify at least one build variant regexp for criteria")
+func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, bvDisplayRegexpsAsStr []string, minSuccessProportion float64, successfulTasks []string) (*lastRevisionCriteria, error) {
+	if len(bvRegexpsAsStr) == 0 && len(bvDisplayRegexpsAsStr) == 0 {
+		return nil, errors.New("must specify at least one build variant name or display name regexp for criteria")
 	}
 	if minSuccessProportion < 0 || minSuccessProportion > 1 {
 		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
@@ -166,19 +180,33 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccess
 		}
 		bvRegexps = append(bvRegexps, *bvRegexp)
 	}
+	bvDisplayRegexps := make([]regexp.Regexp, 0, len(bvDisplayRegexpsAsStr))
+	for _, bvDisplayRegexpStr := range bvDisplayRegexpsAsStr {
+		bvDisplayRegexp, err := regexp.Compile(bvDisplayRegexpStr)
+		if err != nil {
+			return nil, errors.Wrapf(err, "compiling build variant display name regexp '%s'", bvDisplayRegexpStr)
+		}
+		bvDisplayRegexps = append(bvDisplayRegexps, *bvDisplayRegexp)
+	}
 
 	return &lastRevisionCriteria{
-		project:              project,
-		successfulTasks:      successfulTasks,
-		buildVariantRegexp:   bvRegexps,
-		minSuccessProportion: minSuccessProportion,
+		project:                        project,
+		buildVariantRegexps:            bvRegexps,
+		buildVariantDisplayNameRegexps: bvDisplayRegexps,
+		minSuccessProportion:           minSuccessProportion,
+		successfulTasks:                successfulTasks,
 	}, nil
 }
 
 // shouldApply returns whether the criteria applies to this build variant.
-func (c *lastRevisionCriteria) shouldApply(bv string) bool {
-	for _, bvRegexp := range c.buildVariantRegexp {
+func (c *lastRevisionCriteria) shouldApply(bv, bvDisplayName string) bool {
+	for _, bvRegexp := range c.buildVariantRegexps {
 		if bvRegexp.MatchString(bv) {
+			return true
+		}
+	}
+	for _, bvDisplayNameRegexp := range c.buildVariantDisplayNameRegexps {
+		if bvDisplayNameRegexp.MatchString(bvDisplayName) {
 			return true
 		}
 	}
@@ -188,7 +216,7 @@ func (c *lastRevisionCriteria) shouldApply(bv string) bool {
 // check returns whether the the criteria applies to the build and if so, if it
 // passes all the criteria. This returns true if the criteria does not apply.
 func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
-	if !c.shouldApply(info.buildVariant) {
+	if !c.shouldApply(info.buildVariant, info.buildVariantDisplayName) {
 		// The criteria does not apply to this build variant, so it
 		// automatically passes checks.
 		return true
@@ -306,7 +334,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 
 // checkBuildPassesCriteria checks if a single build passes the criteria.
 func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
-	if !criteria.shouldApply(utility.FromStringPtr(b.BuildVariant)) {
+	if !criteria.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
 		return true, nil
 	}
 

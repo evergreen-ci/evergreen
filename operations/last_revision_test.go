@@ -37,7 +37,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 0.5,
 			}
 
@@ -68,7 +68,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 1,
 			}
 
@@ -93,7 +93,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("nonexistent")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("nonexistent")},
 				minSuccessProportion: 0.5,
 			}
 
@@ -118,9 +118,9 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				},
 			}
 			criteria := lastRevisionCriteria{
-				project:            "test_project",
-				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
-				successfulTasks:    []string{"Task 1"},
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:     []string{"Task 1"},
 			}
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
@@ -143,9 +143,9 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				},
 			}
 			criteria := lastRevisionCriteria{
-				project:            "test_project",
-				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
-				successfulTasks:    []string{"nonexistent"},
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:     []string{"nonexistent"},
 			}
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
@@ -169,9 +169,9 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				},
 			}
 			criteria := lastRevisionCriteria{
-				project:            "test_project",
-				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
-				successfulTasks:    []string{"Task 1"},
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:     []string{"Task 1"},
 			}
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
@@ -219,7 +219,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 0.5,
 			}
 
@@ -260,7 +260,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 1,
 			}
 
@@ -293,7 +293,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("nonexistent")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("nonexistent")},
 				minSuccessProportion: 0.5,
 			}
 
