@@ -1893,58 +1893,58 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 
 func TestCreateVersionItemsPathFiltering(t *testing.T) {
 	testCases := []struct {
-		name             string
-		metadata         model.VersionMetadata
-		expectedVariants []string
+		name            string
+		metadata        model.VersionMetadata
+		ignoredVariants []string
 	}{
 		{
 			name: "FrontendFilesOnly",
 			metadata: model.VersionMetadata{
 				ChangedFiles: []string{"frontend/src/app.js", "frontend/package.json"},
 			},
-			expectedVariants: []string{"frontend", "all_files", "non_docs"},
+			ignoredVariants: []string{"backend"},
 		},
 		{
 			name: "BackendFilesOnly",
 			metadata: model.VersionMetadata{
 				ChangedFiles: []string{"backend/src/server.go", "backend/config.yml"},
 			},
-			expectedVariants: []string{"backend", "all_files", "non_docs"},
+			ignoredVariants: []string{"frontend"},
 		},
 		{
 			name: "SharedFiles",
 			metadata: model.VersionMetadata{
 				ChangedFiles: []string{"shared/utils.js", "shared/constants.go"},
 			},
-			expectedVariants: []string{"frontend", "backend", "all_files", "non_docs"},
+			ignoredVariants: []string{},
 		},
 		{
 			name: "NoChangedFiles",
 			metadata: model.VersionMetadata{
 				ChangedFiles: nil,
 			},
-			expectedVariants: []string{"frontend", "backend", "all_files", "non_docs"},
+			ignoredVariants: []string{},
 		},
 		{
 			name: "NonMatchingFiles",
 			metadata: model.VersionMetadata{
 				ChangedFiles: []string{"docs/README.md", "scripts/deploy.sh"},
 			},
-			expectedVariants: []string{"all_files", "non_docs"},
+			ignoredVariants: []string{"frontend", "backend"},
 		},
 		{
 			name: "GoFileInNonBackendLocation",
 			metadata: model.VersionMetadata{
 				ChangedFiles: []string{"tools/migrate/main.go", "scripts/deploy.go"},
 			},
-			expectedVariants: []string{"backend", "non_docs", "all_files"},
+			ignoredVariants: []string{"frontend"},
 		},
 		{
 			name: "MarkdownFileChanged",
 			metadata: model.VersionMetadata{
 				ChangedFiles: []string{"docs/README.md", "CHANGELOG.md"},
 			},
-			expectedVariants: []string{"all_files"},
+			ignoredVariants: []string{"frontend", "backend", "non_docs"},
 		},
 	}
 
@@ -2031,23 +2031,19 @@ tasks:
 			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil)
 			require.NoError(t, err)
 
-			builds, err := build.Find(ctx, build.ByVersion(v.Id))
-			require.NoError(t, err)
-
-			activatedBVs := []string{}
-			for _, b := range builds {
-				if b.Activated {
-					activatedBVs = append(activatedBVs, b.BuildVariant)
+			ignoredVariants := []string{}
+			for _, bv := range v.BuildVariants {
+				if bv.Ignored {
+					ignoredVariants = append(ignoredVariants, bv.BuildVariant)
 				}
 			}
 
-			// Verify that all expected variants are activated
-			for _, expectedVariant := range tc.expectedVariants {
-				assert.Contains(t, activatedBVs, expectedVariant, "Expected variant %s to be activated", expectedVariant)
+			// Verify that all expected variants are ignored.
+			for _, ignoredVariant := range tc.ignoredVariants {
+				assert.Contains(t, ignoredVariants, ignoredVariant, "Expected variant '%s' to be ignored", ignoredVariant)
 			}
-
-			// Verify that only expected variants are activated
-			assert.Len(t, activatedBVs, len(tc.expectedVariants), "Expected exactly %d variants to be activated, got %d", len(tc.expectedVariants), len(activatedBVs))
+			// Verify that only expected variants are ignored.
+			assert.Len(t, ignoredVariants, len(tc.ignoredVariants), "Expected exactly %d variants to be ignored, got %d", len(tc.ignoredVariants), len(ignoredVariants))
 		})
 	}
 

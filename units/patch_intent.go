@@ -1345,17 +1345,18 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 // and the changed files in the patch. It removes ignored variants from all relevant patch fields
 // and returns the list of ignored variant names.
 func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, patchedProject *model.Project) []string {
+	ignoredVariants := []string{}
+
 	// Only apply variant filtering for GitHub PR patches
 	if !patchDoc.IsGithubPRPatch() {
-		return nil
+		return ignoredVariants
 	}
 
 	changedFiles := patchDoc.FilesChanged()
 	if len(changedFiles) == 0 {
-		return nil
+		return ignoredVariants
 	}
 
-	ignoredVariants := []string{}
 	filteredVariantsTasks := []patch.VariantTasks{}
 	filteredBuildVariants := []string{}
 
