@@ -324,7 +324,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	// Don't create patches for github PRs if the only changes are in ignored files.
 	if patchDoc.IsGithubPRPatch() && patchedProject.IgnoresAllFiles(patchDoc.FilesChanged()) {
-		j.sendGitHubSuccessMessages(ctx, patchDoc, pref, ignoredFiles)
+		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
 		return nil
 	}
 
@@ -350,6 +350,18 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if err = j.buildTasksAndVariants(ctx, patchDoc, patchedProject); err != nil {
 		return errors.Wrap(err, BuildTasksAndVariantsError)
+	}
+
+	ignoredVariants := j.filterOutIgnoredVariants(patchDoc, patchedProject)
+	// If all variants were filtered out, send success messages and don't create the patch.
+	if len(patchDoc.VariantsTasks) == 0 && len(ignoredVariants) > 0 {
+		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
+		return nil
+	}
+
+	// If some variants were filtered out, send success messages for those variants.
+	if len(ignoredVariants) > 0 {
+		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsMergeQueuePatch()) &&
@@ -1262,9 +1274,27 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	j.AddError(update.Error())
 }
 
+// sendGitHubSuccessMessageForIgnoredVariants sends GitHub success messages for variants that were ignored
+// due to path filtering.
+func (j *patchIntentProcessor) sendGitHubSuccessMessageForIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, ignoredVariants []string) {
+	for _, variant := range ignoredVariants {
+		// Create a context that includes the variant name
+		variantContext := fmt.Sprintf("%s/%s", thirdparty.GithubStatusDefaultContext, variant)
+		update := NewGithubStatusUpdateJobWithSuccessMessage(
+			variantContext,
+			patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo,
+			patchDoc.GithubPatchData.HeadHash,
+			ignoredFilesForVariant,
+		)
+		update.Run(ctx)
+		j.AddError(update.Error())
+	}
+}
+
 // sendGitHubSuccessMessages sends a successful status to GitHub with the given message for all
 // Evergreen rules configured for the given project.
-func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef, msg string) {
+func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef) {
 	rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
 	for _, rule := range rules {
 		update := NewGithubStatusUpdateJobWithSuccessMessage(
@@ -1272,7 +1302,7 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 			patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
-			msg,
+			ignoredFiles,
 		)
 		update.Run(ctx)
 		j.AddError(update.Error())
@@ -1309,4 +1339,69 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 	allRules = append(allRules, rulesetRules...)
 
 	return utility.UniqueStrings(allRules)
+}
+
+// filterOutIgnoredVariants checks which variants should be ignored based on their path patterns
+// and the changed files in the patch. It removes ignored variants from all relevant patch fields
+// and returns the list of ignored variant names.
+func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, patchedProject *model.Project) []string {
+	ignoredVariants := []string{}
+
+	// Only apply variant filtering for GitHub PR patches
+	if !patchDoc.IsGithubPRPatch() {
+		return ignoredVariants
+	}
+
+	changedFiles := patchDoc.FilesChanged()
+	if len(changedFiles) == 0 {
+		return ignoredVariants
+	}
+
+	filteredVariantsTasks := []patch.VariantTasks{}
+	filteredBuildVariants := []string{}
+
+	// Check each variant in VariantsTasks to see if it should be ignored
+	for _, vt := range patchDoc.VariantsTasks {
+		bv := patchedProject.FindBuildVariant(vt.Variant)
+		if bv == nil {
+			// If we can't find the build variant, keep it (don't ignore)
+			filteredVariantsTasks = append(filteredVariantsTasks, vt)
+			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
+			continue
+		}
+
+		// If the variant has path patterns and none of the changed files match, ignore it
+		if len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			ignoredVariants = append(ignoredVariants, vt.Variant)
+		} else {
+			// Keep this variant
+			filteredVariantsTasks = append(filteredVariantsTasks, vt)
+			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
+		}
+	}
+
+	// Update the patch document with the filtered variants
+	patchDoc.VariantsTasks = filteredVariantsTasks
+	patchDoc.BuildVariants = filteredBuildVariants
+
+	// Update Tasks to only include tasks that are still used by remaining variants
+	usedTasks := make(map[string]bool)
+	for _, vt := range filteredVariantsTasks {
+		for _, task := range vt.Tasks {
+			usedTasks[task] = true
+		}
+		for _, dt := range vt.DisplayTasks {
+			usedTasks[dt.Name] = true
+		}
+	}
+
+	filteredTasks := []string{}
+	for _, task := range patchDoc.Tasks {
+		if usedTasks[task] {
+			filteredTasks = append(filteredTasks, task)
+		}
+	}
+	patchDoc.Tasks = filteredTasks
+
+	return ignoredVariants
 }

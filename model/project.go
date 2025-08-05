@@ -403,6 +403,11 @@ type BuildVariant struct {
 	// provided for the task
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 
+	// Paths specifies gitignore-style patterns for files that should trigger
+	// this build variant when changed. If provided, the build variant will only
+	// run if at least one changed file matches one of these patterns.
+	Paths []string `yaml:"paths,omitempty" bson:"paths,omitempty"`
+
 	// all of the tasks/groups to be run on the build variant, compile through tests.
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
@@ -1782,15 +1787,15 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 	var pairs TaskVariantPairs
-	for _, v := range bvs {
+	for _, bvName := range bvs {
 		for _, t := range tasks {
-			if bvt := p.FindTaskForVariant(t, v); bvt != nil {
+			if bvt := p.FindTaskForVariant(t, bvName); bvt != nil {
 				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) {
 					continue
 				}
-				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
-			} else if p.GetDisplayTask(v, t) != nil {
-				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})
+				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: bvName, TaskName: t})
+			} else if p.GetDisplayTask(bvName, t) != nil {
+				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: bvName, TaskName: t})
 			}
 		}
 	}
@@ -2257,4 +2262,37 @@ func GetVariantsAndTasksFromPatchProject(ctx context.Context, settings *evergree
 		Project:  *project,
 	}
 	return &variantsAndTasksFromProject, nil
+}
+
+// ChangedFilesMatchPaths takes in a slice of filepaths and checks to see if
+// any files are matched by the build variant's Paths patterns.
+// If Paths is empty or no changed files are provided, it returns true (no path filtering).
+// If Paths is provided, it returns true only if at least one file matches.
+func (bv BuildVariant) ChangedFilesMatchPaths(changedFiles []string) bool {
+	// Schedule all tasks if there are no paths specified or no changedFiles to check.
+	if len(bv.Paths) == 0 || len(changedFiles) == 0 {
+		return true
+	}
+
+	paths := bv.Paths
+	// If all patterns are negation patterns (start with !), add "*" to include all changedFiles first
+	allNegation := true
+	for _, path := range bv.Paths {
+		if !strings.HasPrefix(path, "!") {
+			allNegation = false
+			break
+		}
+	}
+	if allNegation {
+		paths = append([]string{"*"}, bv.Paths...)
+	}
+
+	// CompileIgnoreLines has a silly API: it always returns a nil error.
+	pathMatcher := ignore.CompileIgnoreLines(paths...)
+	for _, f := range changedFiles {
+		if pathMatcher.MatchesPath(f) {
+			return true
+		}
+	}
+	return false
 }
