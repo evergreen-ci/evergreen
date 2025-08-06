@@ -33,7 +33,7 @@ func LastRevision() cli.Command {
 				Usage: "regexps for build variant names to check",
 			},
 			cli.StringSliceFlag{
-				Name:  joinFlagNames(regexpVariantsDisplayNameFlagName, "rdv"),
+				Name:  regexpVariantsDisplayNameFlagName,
 				Usage: "regexps for build variant display names to check",
 			},
 			cli.Float64Flag{
