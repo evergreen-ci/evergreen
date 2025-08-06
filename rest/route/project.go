@@ -30,10 +30,12 @@ import (
 )
 
 type projectGetHandler struct {
-	key   string
-	limit int
-	user  *user.DBUser
-	url   string
+	key       string
+	limit     int
+	user      *user.DBUser
+	url       string
+	ownerName string
+	repoName  string
 }
 
 func makeFetchProjectsRoute() gimlet.RouteHandler {
@@ -49,6 +51,8 @@ func makeFetchProjectsRoute() gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Param			start_at	query	string	false	"The identifier of the host to start at in the pagination"
 //	@Param			limit		query	int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+//	@Param			owner_name	query	string	false	"Filter projects by owner name (GitHub organization)"
+//	@Param			repo_name	query	string	false	"Filter projects by repository name"
 //	@Success		200			{array}	model.APIProjectRef
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
 	return &projectGetHandler{}
@@ -61,6 +65,9 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.url = util.HttpsUrl(r.Host)
 
 	p.key = vals.Get("start_at")
+	p.ownerName = vals.Get("owner_name")
+	p.repoName = vals.Get("repo_name")
+
 	var err error
 	p.limit, err = getLimit(vals)
 	if err != nil {
@@ -71,7 +78,7 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projects, err := dbModel.FindNonHiddenProjects(ctx, p.key, p.limit+1, 1)
+	projects, err := dbModel.FindNonHiddenProjects(ctx, p.key, p.limit+1, 1, p.ownerName, p.repoName)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
