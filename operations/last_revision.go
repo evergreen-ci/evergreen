@@ -22,6 +22,7 @@ func LastRevision() cli.Command {
 		regexpVariantsFlagName            = "regex-variants"
 		regexpVariantsDisplayNameFlagName = "regex-display-variants"
 		minSuccessProportionFlagName      = "min-success"
+		minFinishedProportionFlagName     = "min-finished"
 		successfulTasks                   = "successful-tasks"
 	)
 	return cli.Command{
@@ -37,12 +38,16 @@ func LastRevision() cli.Command {
 				Usage: "regexps for build variant display names to check",
 			},
 			cli.Float64Flag{
-				Name:  joinFlagNames(minSuccessProportionFlagName),
+				Name:  minSuccessProportionFlagName,
 				Usage: "minimum proportion of successful tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(successfulTasks, "t"),
 				Usage: "names of tasks that, if present in the builds, must have succeeded",
+			},
+			cli.Float64Flag{
+				Name:  minFinishedProportionFlagName,
+				Usage: "minimum proportion of finished tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
 			},
 		),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, func(c *cli.Context) error {
@@ -57,8 +62,9 @@ func LastRevision() cli.Command {
 			bvRegexps := c.StringSlice(regexpVariantsFlagName)
 			bvDisplayNameRegexps := c.StringSlice(regexpVariantsDisplayNameFlagName)
 			minSuccessProp := c.Float64(minSuccessProportionFlagName)
+			minFinishedProp := c.Float64(minFinishedProportionFlagName)
 			successfulTasks := c.StringSlice(successfulTasks)
-			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, successfulTasks)
+			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks)
 
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
@@ -114,11 +120,17 @@ type lastRevisionBuildInfo struct {
 	allTasks []model.APITask
 	// numSuccessfulTasks is the number of tasks in the build that succeeded.
 	numSuccessfulTasks int
+	// numFinishedTasks is the number of tasks in the build that finished.
+	numFinishedTasks int
 }
 
 func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) lastRevisionBuildInfo {
+	numFinishedTasks := 0
 	numSuccessfulTasks := 0
 	for _, t := range buildTasks {
+		if evergreen.IsFinishedTaskStatus(utility.FromStringPtr(t.Status)) {
+			numFinishedTasks++
+		}
 		if utility.FromStringPtr(t.Status) == evergreen.TaskSucceeded {
 			numSuccessfulTasks++
 		}
@@ -130,6 +142,7 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) last
 		versionID:               utility.FromStringPtr(b.Version),
 		allTasks:                buildTasks,
 		numSuccessfulTasks:      numSuccessfulTasks,
+		numFinishedTasks:        numFinishedTasks,
 	}
 }
 
@@ -137,6 +150,12 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) last
 // the tasks in the build.
 func (i *lastRevisionBuildInfo) successProportion() float64 {
 	return float64(i.numSuccessfulTasks) / float64(len(i.allTasks))
+}
+
+// finishedProportion calculates the proportion of finished tasks out of all
+// the tasks in the build.
+func (i *lastRevisionBuildInfo) finishedProportion() float64 {
+	return float64(i.numFinishedTasks) / float64(len(i.allTasks))
 }
 
 // lastRevisionCriteria defines the user criteria for selecting a suitable last
@@ -155,18 +174,24 @@ type lastRevisionCriteria struct {
 	// minSuccessProportion is a criterion for the minimum proportion of tasks
 	// in a matching build that must succeed.
 	minSuccessProportion float64
+	// minSuccessProportion is a criterion for the minimum proportion of tasks
+	// in a matching build that must be finished.
+	minFinishedProportion float64
 	// successfulTasks is a criterion for the list of task names that, if
 	// present in the build, must have succeeded. If the task is not present in
 	// the build, then this criterion does not apply.
 	successfulTasks []string
 }
 
-func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, bvDisplayRegexpsAsStr []string, minSuccessProportion float64, successfulTasks []string) (*lastRevisionCriteria, error) {
+func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion float64, successfulTasks []string) (*lastRevisionCriteria, error) {
 	if len(bvRegexpsAsStr) == 0 && len(bvDisplayRegexpsAsStr) == 0 {
 		return nil, errors.New("must specify at least one build variant name or display name regexp for criteria")
 	}
 	if minSuccessProportion < 0 || minSuccessProportion > 1 {
 		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
+	}
+	if minFinishedProportion < 0 || minFinishedProportion > 1 {
+		return nil, errors.New("minimum finished proportion must be between 0 and 1 inclusive")
 	}
 	if project == "" {
 		return nil, errors.New("must specify a project")
@@ -194,6 +219,7 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, bvDisplayR
 		buildVariantRegexps:            bvRegexps,
 		buildVariantDisplayNameRegexps: bvDisplayRegexps,
 		minSuccessProportion:           minSuccessProportion,
+		minFinishedProportion:          minFinishedProportion,
 		successfulTasks:                successfulTasks,
 	}, nil
 }
@@ -224,12 +250,24 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 
 	if info.successProportion() < c.minSuccessProportion {
 		grip.Debug(message.Fields{
-			"message":                "build does not meet minimum success proportion",
+			"message":                "build does not meet minimum successful tasks proportion",
 			"version_id":             info.versionID,
 			"build_id":               info.buildID,
 			"build_variant":          info.buildVariant,
 			"min_success_proportion": c.minSuccessProportion,
 			"success_proportion":     info.successProportion(),
+		})
+		return false
+	}
+
+	if info.finishedProportion() < c.minFinishedProportion {
+		grip.Debug(message.Fields{
+			"message":                 "build does not meet minimum finished tasks proportion",
+			"version_id":              info.versionID,
+			"build_id":                info.buildID,
+			"build_variant":           info.buildVariant,
+			"min_finished_proportion": c.minFinishedProportion,
+			"finished_proportion":     info.finishedProportion(),
 		})
 		return false
 	}
