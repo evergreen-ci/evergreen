@@ -141,8 +141,9 @@ type lastRevisionCriteria struct {
 	// minSuccessProportion is a criterion for the minimum proportion of tasks
 	// in a matching build that must succeed.
 	minSuccessProportion float64
-	// successfulTasks is a criterion for the list of task names that must have
-	// succeeded in the build.
+	// successfulTasks is a criterion for the list of task names that, if
+	// present in the build, must have succeeded. If the task is not present in
+	// the build, then this criterion does not apply.
 	successfulTasks []string
 }
 
