@@ -47,9 +47,6 @@ const (
 	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
 	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
-	// ec2InsufficientFreeAddresses	means that there are no IP addresses
-	// remaining in an IPAM pool to allocate (not documented in AWS).
-	ec2InsufficientFreeAddresses = "InsufficientFreeAddressesInPool"
 
 	r53InvalidInput       = "InvalidInput"
 	r53InvalidChangeBatch = "InvalidChangeBatch"
@@ -821,41 +818,6 @@ func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", ipAddr.AllocationID)
 	}
 	return nil
-}
-
-func allocateIPAddress(ctx context.Context, c AWSClient, ipamPoolID string) (string, error) {
-	ctx, span := tracer.Start(ctx, "allocateIPAddress")
-	defer span.End()
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "unknown"
-	}
-	input := &ec2.AllocateAddressInput{
-		IpamPoolId: aws.String(ipamPoolID),
-		TagSpecifications: []types.TagSpecification{
-			{
-				ResourceType: types.ResourceTypeElasticIp,
-				Tags: []types.Tag{
-					{Key: aws.String(evergreen.TagEvergreenService), Value: aws.String(hostname)},
-					{Key: aws.String(evergreen.TagMode), Value: aws.String("production")},
-				},
-			},
-		},
-	}
-
-	allocateAddrOut, err := c.AllocateAddress(ctx, input)
-	if err != nil {
-		return "", errors.Wrap(err, "allocating new IP address for host")
-	}
-	if allocateAddrOut == nil {
-		return "", errors.New("address allocation returned nil result")
-	}
-	allocationID := aws.ToString(allocateAddrOut.AllocationId)
-	if allocationID == "" {
-		return "", errors.New("address allocation did not return an allocation ID")
-	}
-	return allocationID, nil
 }
 
 // releaseIPAddressForHost releases the elastic IP address that was associated

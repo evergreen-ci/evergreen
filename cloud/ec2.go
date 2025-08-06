@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // EC2ProviderSettings describes properties of managed instances.
@@ -1325,32 +1324,6 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
-}
-
-// TODO (DEVPROD-17195): remove temporary method once all elastic IPs are
-// allocated into collection.
-func (m *ec2Manager) AllocateIP(ctx context.Context) (*host.IPAddress, error) {
-	if err := m.setupClient(ctx); err != nil {
-		return nil, errors.Wrap(err, "creating client")
-	}
-
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
-	}
-	if flags.ElasticIPsDisabled {
-		return nil, errors.Errorf("elastic IP features are disabled, cannot allocate IP")
-	}
-	allocationID, err := allocateIPAddress(ctx, m.client, m.settings.Providers.AWS.IPAMPoolID)
-	if err != nil {
-		return nil, errors.Wrap(err, "allocating IP address")
-	}
-	ipAddr := &host.IPAddress{
-		ID:           primitive.NewObjectID().Hex(),
-		AllocationID: allocationID,
-	}
-
-	return ipAddr, nil
 }
 
 func (m *ec2Manager) AssociateIP(ctx context.Context, h *host.Host) error {
