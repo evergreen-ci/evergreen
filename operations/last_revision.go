@@ -2,6 +2,8 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"regexp"
 	"sync"
 
@@ -23,6 +25,7 @@ func LastRevision() cli.Command {
 		regexpVariantsDisplayNameFlagName = "regex-display-variants"
 		minSuccessProportionFlagName      = "min-success"
 		successfulTasks                   = "successful-tasks"
+		jsonFlagName                      = "json"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -44,8 +47,19 @@ func LastRevision() cli.Command {
 				Name:  joinFlagNames(successfulTasks, "t"),
 				Usage: "names of tasks that, if present in the builds, must have succeeded",
 			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(jsonFlagName, "j"),
+				Usage: "output the result in JSON format",
+			},
 		),
-		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, func(c *cli.Context) error {
+		Before: mergeBeforeFuncs(setPlainLogger, func(c *cli.Context) error {
+			if c.Bool(jsonFlagName) {
+				// If running with JSON output, don't try to upgrade the CLI
+				// because it will produce extraneous non-JSON output.
+				return nil
+			}
+			return autoUpdateCLI(c)
+		}, func(c *cli.Context) error {
 			if len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
 				return errors.New("must specify at least one build variant name or display name regexp")
 			}
@@ -58,6 +72,7 @@ func LastRevision() cli.Command {
 			bvDisplayNameRegexps := c.StringSlice(regexpVariantsDisplayNameFlagName)
 			minSuccessProp := c.Float64(minSuccessProportionFlagName)
 			successfulTasks := c.StringSlice(successfulTasks)
+			jsonOutput := c.Bool(jsonFlagName)
 			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, successfulTasks)
 
 			if err != nil {
@@ -72,7 +87,7 @@ func LastRevision() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			client, err := conf.setupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, !jsonOutput)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -91,11 +106,39 @@ func LastRevision() cli.Command {
 				return errors.New("no matching version found")
 			}
 
-			grip.Infof("Latest version that matches criteria: %s\nRevision: %s\n", utility.FromStringPtr(matchingVersion.Id), utility.FromStringPtr(matchingVersion.Revision))
+			printLastRevisionResult(conf, matchingVersion, jsonOutput)
 
 			return nil
 		},
 	}
+}
+
+// kim: TODO: manually test JSON output
+func printLastRevisionResult(conf *ClientSettings, v *model.APIVersion, jsonOutput bool) error {
+	versionID := utility.FromStringPtr(v.Id)
+	revision := utility.FromStringPtr(v.Revision)
+	versionURL := fmt.Sprintf("%s/%s/%s", conf.UIServerHost, "version", versionID)
+
+	if jsonOutput {
+		output, err := json.MarshalIndent(struct {
+			VersionID  string `json:"version_id"`
+			VersionURL string `json:"version_url"`
+			Revision   string `json:"revision"`
+		}{
+			VersionID:  versionID,
+			Revision:   revision,
+			VersionURL: versionURL,
+		}, "", "\t")
+		if err != nil {
+			return errors.Wrap(err, "marshaling output to JSON")
+		}
+		fmt.Println(string(output))
+		return nil
+	}
+
+	fmt.Printf("Latest version that matches criteria: %s\nRevision: %s\nVersion URL: %s\n", utility.FromStringPtr(v.Id), utility.FromStringPtr(v.Revision), versionURL)
+	return nil
+
 }
 
 // lastRevisionBuildInfo includes information needed to determine if a build
