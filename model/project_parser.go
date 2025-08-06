@@ -36,6 +36,10 @@ const EmptyConfigurationError = "received empty configuration file"
 // to the place where the parser project is accessed.
 const DefaultParserProjectAccessTimeout = 60 * time.Second
 
+// MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
+// config YAML.
+const MaxConfigSetPriority = 50
+
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
@@ -1469,6 +1473,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
+	}
+	if res.Priority > MaxConfigSetPriority {
+		res.Priority = MaxConfigSetPriority
 	}
 	if res.Patchable == nil {
 		res.Patchable = pt.Patchable
