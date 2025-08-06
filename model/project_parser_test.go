@@ -919,6 +919,32 @@ tasks:
 	assert.Equal("evergreen", modules[0].Repo)
 }
 
+func TestBuildVariantPaths(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+buildvariants:
+- name: "v1"
+  paths:
+  - "src/**"
+  - "etc/**"
+  tasks:
+  - name: "t1"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.NoError(err)
+
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Len(proj.BuildVariants[0].Paths, 2)
+	assert.Equal("src/**", proj.BuildVariants[0].Paths[0])
+	assert.Equal("etc/**", proj.BuildVariants[0].Paths[1])
+}
+
 func TestDisplayTaskParsing(t *testing.T) {
 	assert := assert.New(t)
 	yml := `

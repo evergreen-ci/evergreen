@@ -1199,12 +1199,6 @@ func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.
 	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
 }
 
-func populateIPAddressAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		return amboy.EnqueueUniqueJob(ctx, queue, NewIPAddressAllocatorJob(env, utility.RoundPartOfMinute(0).Format(TSFormat)))
-	}
-}
-
 func PopulateDistroAutoTuneJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		distrosToAutoTune, err := distro.FindByCanAutoTune(ctx)

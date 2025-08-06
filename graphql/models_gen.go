@@ -254,6 +254,20 @@ type ImageToolchainsPayload struct {
 	TotalCount    int                   `json:"totalCount"`
 }
 
+type JiraNotificationsProjectEntry struct {
+	Project    string            `json:"project"`
+	Fields     map[string]string `json:"fields,omitempty"`
+	Components []string          `json:"components"`
+	Labels     []string          `json:"labels"`
+}
+
+type JiraNotificationsProjectEntryInput struct {
+	Project    string            `json:"project"`
+	Fields     map[string]string `json:"fields,omitempty"`
+	Components []string          `json:"components"`
+	Labels     []string          `json:"labels"`
+}
+
 type MainlineCommitVersion struct {
 	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions,omitempty"`
 	Version          *model.APIVersion   `json:"version,omitempty"`

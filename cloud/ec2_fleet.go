@@ -15,7 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const launchTemplateExpiration = 24 * time.Hour
@@ -335,32 +334,6 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 	return errors.New("can't start instances for EC2 fleet provider")
 }
 
-// TODO (DEVPROD-17195): remove temporary method once all elastic IPs are
-// allocated into collection.
-func (m *ec2FleetManager) AllocateIP(ctx context.Context) (*host.IPAddress, error) {
-	if err := m.setupClient(ctx); err != nil {
-		return nil, errors.Wrap(err, "creating client")
-	}
-
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
-	}
-	if flags.ElasticIPsDisabled {
-		return nil, errors.Errorf("elastic IP features are disabled, cannot allocate IP")
-	}
-	allocationID, err := allocateIPAddress(ctx, m.client, m.settings.Providers.AWS.IPAMPoolID)
-	if err != nil {
-		return nil, errors.Wrap(err, "allocating IP address")
-	}
-	ipAddr := &host.IPAddress{
-		ID:           primitive.NewObjectID().Hex(),
-		AllocationID: allocationID,
-	}
-
-	return ipAddr, nil
-}
-
 // AssociateIP associates the host with its allocated IP address.
 func (m *ec2FleetManager) AssociateIP(ctx context.Context, h *host.Host) error {
 	if h.IPAllocationID == "" {
@@ -384,9 +357,6 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(m.cleanupStaleLaunchTemplates(ctx), "cleaning up stale launch templates")
-	// TODO (DEVPROD-17195): remove this cleanup if pre-allocated elastic IPs
-	// created in DEVPROD-17313 work.
-	// catcher.Wrap(m.cleanupIdleElasticIPs(ctx), "cleaning up idle elastic IPs")
 	catcher.Wrap(m.cleanupStaleIPAddresses(ctx), "cleaning up stale IP addresses")
 
 	return catcher.Resolve()
@@ -449,97 +419,6 @@ func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
 	})
 
 	return nil
-}
-
-// cleanupIdleElasticIPs checks for any elastic IP addresses that are not
-// being actively used and releases them. This is a very slow operation and can
-// take several minutes.
-//
-//nolint:unused
-func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting service flags")
-	}
-	if flags.ElasticIPsDisabled {
-		return nil
-	}
-
-	ctx, span := tracer.Start(ctx, "cleanupIdleElasticIPs")
-	defer span.End()
-
-	idleAddrAllocationIDs, err := m.getIdleElasticIPs(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting idle elastic IP addresses for initial check")
-	}
-	if len(idleAddrAllocationIDs) == 0 {
-		return nil
-	}
-
-	// Wait for a few minutes and check again to see which of the idle addresses
-	// is still idle. Waiting like this is slightly hacky but important because
-	// the AWS API doesn't provide information on when an address was last
-	// allocated or associated. That makes it hard to tell if the address is
-	// idle because it's truly unused or if it was just recently allocated and
-	// is waiting to be associated with a host.
-	const recheckIdleAddrsAfter = 5 * time.Minute
-	timer := time.NewTimer(recheckIdleAddrsAfter)
-	defer timer.Stop()
-
-	select {
-	case <-timer.C:
-		idleAddrAllocationIDsRecheck, err := m.getIdleElasticIPs(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting idle elastic IP addresses for recheck")
-		}
-
-		idleAddrs := utility.StringSliceIntersection(idleAddrAllocationIDs, idleAddrAllocationIDsRecheck)
-		if len(idleAddrs) == 0 {
-			return nil
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for _, idleAddr := range idleAddrs {
-			if _, err := m.client.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
-				AllocationId: aws.String(idleAddr),
-			}); err != nil {
-				catcher.Wrapf(err, "releasing idle elastic IP address with allocation ID '%s'", idleAddr)
-			}
-		}
-
-		grip.Info(message.Fields{
-			"message":      "cleaned up idle elastic IP addresses",
-			"num_released": len(idleAddrs),
-			"provider":     evergreen.ProviderNameEc2Fleet,
-		})
-
-		return catcher.Resolve()
-	case <-ctx.Done():
-		return errors.Wrap(ctx.Err(), "context was done while waiting for idle addresses")
-	}
-}
-
-// getIdleElasticIPs gets all elastic IPs that are not currently associated with
-// any host.
-//
-//nolint:unused
-func (m *ec2FleetManager) getIdleElasticIPs(ctx context.Context) ([]string, error) {
-	descAddrOut, err := m.client.DescribeAddresses(ctx, &ec2.DescribeAddressesInput{
-		Filters: []types.Filter{
-			{Name: aws.String(filterTagKey), Values: []string{evergreen.TagEvergreenService}},
-		},
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "describing elastic IP addresses")
-	}
-
-	var idleAddrAllocationIDs []string
-	for _, addr := range descAddrOut.Addresses {
-		if aws.ToString(addr.AssociationId) == "" && aws.ToString(addr.AllocationId) != "" {
-			idleAddrAllocationIDs = append(idleAddrAllocationIDs, aws.ToString(addr.AllocationId))
-		}
-	}
-	return idleAddrAllocationIDs, nil
 }
 
 func (m *ec2FleetManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
