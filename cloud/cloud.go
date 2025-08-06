@@ -79,9 +79,6 @@ type Manager interface {
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
 
-	// AllocateIP allocates a new IP address.
-	AllocateIP(context.Context) (*host.IPAddress, error)
-
 	// AssociateIP associates an IP address allocated to a host with the host's
 	// network interface.
 	AssociateIP(context.Context, *host.Host) error

@@ -101,6 +101,83 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
+		"PassesCriteriaWithRequiredSuccessfulTaskInBuild": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					DisplayName:  utility.ToStringPtr("Task 1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:            "test_project",
+				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:    []string{"Task 1"},
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
+		"PassesCriteriaWithRequiredSuccessfulTaskNotInBuild": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:            "test_project",
+				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:    []string{"nonexistent"},
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
+		"DoesNotPassCriteriaWithRequiredSuccessfulTaskFailingInBuild": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					DisplayName:  utility.ToStringPtr("Task 1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:            "test_project",
+				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:    []string{"Task 1"},
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.False(t, passesCriteria)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tCase(t, &client.Mock{})

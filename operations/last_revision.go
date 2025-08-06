@@ -21,6 +21,7 @@ func LastRevision() cli.Command {
 	const (
 		regexpVariantsFlagName       = "regex-variants"
 		minSuccessProportionFlagName = "min-success"
+		successfulTasks              = "successful-tasks"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -28,12 +29,17 @@ func LastRevision() cli.Command {
 		Flags: addProjectFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(regexpVariantsFlagName, "rv"),
-				Usage: "regexps for build variant names",
-			}, cli.Float64Flag{
+				Usage: "regexps for build variant names to check",
+			},
+			cli.Float64Flag{
 				Name:  joinFlagNames(minSuccessProportionFlagName),
 				Usage: "minimum proportion of successful tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
-				Value: 1,
-			}),
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(successfulTasks, "t"),
+				Usage: "names of tasks that, if present in the builds, must have succeeded",
+			},
+		),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, func(c *cli.Context) error {
 			if len(c.StringSlice(regexpVariantsFlagName)) == 0 {
 				return errors.New("must specify at least one build variant regexp")
@@ -42,18 +48,23 @@ func LastRevision() cli.Command {
 		}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
-			criteria, err := newLastRevisionCriteria(c.String(projectFlagName), c.StringSlice(regexpVariantsFlagName), c.Float64(minSuccessProportionFlagName))
+			projectID := c.String(projectFlagName)
+			regexpBVs := c.StringSlice(regexpVariantsFlagName)
+			minSuccessProp := c.Float64(minSuccessProportionFlagName)
+			successfulTasks := c.StringSlice(successfulTasks)
+
+			criteria, err := newLastRevisionCriteria(projectID, regexpBVs, minSuccessProp, successfulTasks)
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
 			}
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
@@ -90,8 +101,8 @@ type lastRevisionBuildInfo struct {
 	versionID string
 	// buildVariant is the name of the build variant for this build.
 	buildVariant string
-	// numTasks is the total number of tasks in the build.
-	numTasks int
+	// allTasks is the set of all tasks in the build.
+	allTasks []model.APITask
 	// numSuccessfulTasks is the number of tasks in the build that succeeded.
 	numSuccessfulTasks int
 }
@@ -107,7 +118,7 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) last
 		buildID:            utility.FromStringPtr(b.Id),
 		buildVariant:       utility.FromStringPtr(b.BuildVariant),
 		versionID:          utility.FromStringPtr(b.Version),
-		numTasks:           len(buildTasks),
+		allTasks:           buildTasks,
 		numSuccessfulTasks: numSuccessfulTasks,
 	}
 }
@@ -115,7 +126,7 @@ func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) last
 // successProportion calculates the proportion of successful tasks out of all
 // the tasks in the build.
 func (i *lastRevisionBuildInfo) successProportion() float64 {
-	return float64(i.numSuccessfulTasks) / float64(i.numTasks)
+	return float64(i.numSuccessfulTasks) / float64(len(i.allTasks))
 }
 
 // lastRevisionCriteria defines the user criteria for selecting a suitable last
@@ -130,14 +141,21 @@ type lastRevisionCriteria struct {
 	// minSuccessProportion is a criterion for the minimum proportion of tasks
 	// in a matching build that must succeed.
 	minSuccessProportion float64
+	// successfulTasks is a criterion for the list of task names that, if
+	// present in the build, must have succeeded. If the task is not present in
+	// the build, then this criterion does not apply.
+	successfulTasks []string
 }
 
-func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccessProportion float64) (*lastRevisionCriteria, error) {
+func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccessProportion float64, successfulTasks []string) (*lastRevisionCriteria, error) {
 	if len(bvRegexpsAsStr) == 0 {
 		return nil, errors.New("must specify at least one build variant regexp for criteria")
 	}
 	if minSuccessProportion < 0 || minSuccessProportion > 1 {
 		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
+	}
+	if project == "" {
+		return nil, errors.New("must specify a project")
 	}
 
 	bvRegexps := make([]regexp.Regexp, 0, len(bvRegexpsAsStr))
@@ -151,6 +169,7 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr []string, minSuccess
 
 	return &lastRevisionCriteria{
 		project:              project,
+		successfulTasks:      successfulTasks,
 		buildVariantRegexp:   bvRegexps,
 		minSuccessProportion: minSuccessProportion,
 	}, nil
@@ -185,6 +204,30 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 			"success_proportion":     info.successProportion(),
 		})
 		return false
+	}
+
+	allTasksSet := make(map[string]model.APITask, len(info.allTasks))
+	for _, t := range info.allTasks {
+		allTasksSet[utility.FromStringPtr(t.DisplayName)] = t
+	}
+	for _, taskName := range c.successfulTasks {
+		tsk, ok := allTasksSet[taskName]
+		if !ok {
+			// The task does not run in this build, so the criteria does not
+			// apply.
+			continue
+		}
+		if status := utility.FromStringPtr(tsk.Status); status != evergreen.TaskSucceeded {
+			grip.Debug(message.Fields{
+				"message":                  "build has required task but it was not successful",
+				"version_id":               info.versionID,
+				"build_id":                 info.buildID,
+				"build_variant":            info.buildVariant,
+				"required_successful_task": taskName,
+				"task_status":              status,
+			})
+			return false
+		}
 	}
 
 	return true

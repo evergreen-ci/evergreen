@@ -303,67 +303,107 @@ type TriggerConfig {
 input AdminSettingsInput {
   amboy: AmboyConfigInput
   amboyDB: AmboyDBConfigInput @redactSecrets
+  api: APIConfigInput
   authConfig: AuthConfigInput
   banner: String
   bannerTheme: BannerTheme
+  buckets: BucketsConfigInput
   cedar: CedarConfigInput
+  configDir: String
   containerPools: ContainerPoolsConfigInput
+  disabledGQLQueries: [String!]
+  domainName: String
+  expansions: StringMap
   fws: FWSConfigInput
-  jira: JiraConfigInput
-  slack: SlackConfigInput
-  splunk: SplunkConfigInput
-  runtimeEnvironments: RuntimeEnvironmentConfigInput
-  testSelection: TestSelectionConfigInput
-  serviceFlags: ServiceFlagsInput
-  notify: NotifyConfigInput
-  taskLimits: TaskLimitsConfigInput
+  githubCheckRun: GitHubCheckRunConfigInput
+  githubOrgs: [String!]
+  githubPRCreatorOrg: String
+  githubWebhookSecret: String @redactSecrets
   hostInit: HostInitConfigInput
+  hostJasper: HostJasperConfigInput
+  jira: JiraConfigInput
+  jiraNotifications: JiraNotificationsConfigInput
+  kanopySSHKeyPath: String @redactSecrets
+  logPath: String
+  loggerConfig: LoggerConfigInput
+  notify: NotifyConfigInput
   parameterStore: ParameterStoreConfigInput
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
   podLifecycle: PodLifecycleConfigInput
+  pprofPort: String
   projectCreation: ProjectCreationConfigInput
   providers: CloudProviderConfigInput
-  scheduler: SchedulerConfigInput
+  releaseMode: ReleaseModeConfigInput
   repotracker: RepotrackerConfigInput
-  api: APIConfigInput
-  ui: UIConfigInput
-  disabledGQLQueries: [String!]
-  loggerConfig: LoggerConfigInput
+  runtimeEnvironments: RuntimeEnvironmentConfigInput
+  scheduler: SchedulerConfigInput
+  serviceFlags: ServiceFlagsInput
+  shutdownWaitSeconds: Int
+  singleTaskDistro: SingleTaskDistroConfigInput
+  slack: SlackConfigInput
+  sleepSchedule: SleepScheduleConfigInput
+  spawnhost: SpawnHostConfigInput
+  splunk: SplunkConfigInput
+  ssh: SSHConfigInput
+  taskLimits: TaskLimitsConfigInput
+  testSelection: TestSelectionConfigInput
+  tracer: TracerSettingsInput
   triggers: TriggerConfigInput
+  ui: UIConfigInput
 }
 
 type AdminSettings {
   amboy: AmboyConfig
   amboyDB: AmboyDBConfig
+  api: APIConfig
   authConfig: AuthConfig
   banner: String
   bannerTheme: BannerTheme
+  buckets: BucketsConfig
   cedar: CedarConfig
+  configDir: String
   containerPools: ContainerPoolsConfig
+  disabledGQLQueries: [String!]!
+  domainName: String
+  expansions: StringMap
   fws: FWSConfig
-  jira: JiraConfig
-  slack: SlackConfig
-  splunk: SplunkConfig
-  runtimeEnvironments: RuntimeEnvironmentConfig
-  testSelection: TestSelectionConfig
-  serviceFlags: ServiceFlags
-  notify: NotifyConfig
-  taskLimits: TaskLimitsConfig
+  githubCheckRun: GitHubCheckRunConfig
+  githubOrgs: [String!]
+  githubPRCreatorOrg: String
+  githubWebhookSecret: String @requireAdmin
   hostInit: HostInitConfig
+  hostJasper: HostJasperConfig
+  jira: JiraConfig
+  jiraNotifications: JiraNotificationsConfig
+  kanopySSHKeyPath: String @requireAdmin
+  logPath: String
+  loggerConfig: LoggerConfig
+  notify: NotifyConfig
   parameterStore: ParameterStoreConfig
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
   podLifecycle: PodLifecycleConfig
+  pprofPort: String
   projectCreation: ProjectCreationConfig
   providers: CloudProviderConfig
-  scheduler: SchedulerConfig
+  releaseMode: ReleaseModeConfig
   repotracker: RepotrackerConfig
-  api: APIConfig
-  ui: UIConfig
-  disabledGQLQueries: [String!]!
-  loggerConfig: LoggerConfig
+  runtimeEnvironments: RuntimeEnvironmentConfig
+  scheduler: SchedulerConfig
+  serviceFlags: ServiceFlags
+  shutdownWaitSeconds: Int
+  singleTaskDistro: SingleTaskDistroConfig
+  slack: SlackConfig
+  sleepSchedule: SleepScheduleConfig
+  spawnhost: SpawnHostConfig
+  splunk: SplunkConfig
+  ssh: SSHConfig
+  taskLimits: TaskLimitsConfig
+  testSelection: TestSelectionConfig
+  tracer: TracerSettings
   triggers: TriggerConfig
+  ui: UIConfig
 }
 
 """
@@ -510,12 +550,6 @@ type UIConfig {
   stagingEnvironment: String
 }
 
-type SpawnHostConfig {
-  spawnHostsPerUser: Int!
-  unexpirableHostsPerUser: Int!
-  unexpirableVolumesPerUser: Int!
-}
-
 """
 ClientConfig stores information about the binaries for the Evergreen Command-Line Client that are available for
 download on Evergreen.
@@ -532,12 +566,3 @@ type ClientBinary {
   url: String
 }
 
-type SingleTaskDistroConfig {
-  projectTasksPairs: [ProjectTasksPair!]!
-}
-
-type ProjectTasksPair {
-  projectId: String!
-  allowedTasks: [String!]!
-  allowedBVs: [String!]!
-}
