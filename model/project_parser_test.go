@@ -665,9 +665,9 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					taskDefs,
 					[]BuildVariantTaskUnit{{Name: "white"}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
-					parserBVTaskUnits{{Name: "red", Priority: 50}, {Name: ".secondary"}},
+					parserBVTaskUnits{{Name: "red", Priority: 500}, {Name: ".secondary"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "red", Priority: 50}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}}, nil, nil)
+					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
@@ -693,13 +693,13 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
-						{Name: "red", Priority: 10},
-						{Name: "!.warm .secondary", Priority: 10}},
+						{Name: "red", Priority: 100},
+						{Name: "!.warm .secondary", Priority: 100}},
 					taskDefs,
 					[]BuildVariantTaskUnit{
-						{Name: "red", Priority: 10},
-						{Name: "purple", Priority: 10},
-						{Name: "green", Priority: 10}}, nil, nil)
+						{Name: "red", Priority: 100},
+						{Name: "purple", Priority: 100},
+						{Name: "green", Priority: 100}}, nil, nil)
 			})
 			Convey("should ignore selectors that do not select any tasks if another does select a task", func() {
 				parserTaskSelectorTaskEval(tse, tgse,
