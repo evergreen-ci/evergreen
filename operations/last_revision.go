@@ -46,8 +46,8 @@ func LastRevision() cli.Command {
 			},
 		),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, func(c *cli.Context) error {
-			if len(c.StringSlice(regexpVariantsFlagName)) == 0 {
-				return errors.New("must specify at least one build variant regexp")
+			if len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
+				return errors.New("must specify at least one build variant name or display name regexp")
 			}
 			return nil
 		}),
