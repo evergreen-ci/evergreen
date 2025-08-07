@@ -7,13 +7,15 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -66,7 +68,7 @@ func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	versionModel := &model.APIVersion{}
+	versionModel := &restModel.APIVersion{}
 	versionModel.BuildFromService(ctx, *foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }
@@ -211,9 +213,9 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	buildModels := []model.APIBuild{}
+	buildModels := []restModel.APIBuild{}
 	for _, b := range builds {
-		buildModel := model.APIBuild{}
+		buildModel := restModel.APIBuild{}
 		buildModel.BuildFromService(ctx, b, pp)
 		if h.includeTaskInfo {
 			if err := setBuildTaskCache(ctx, &b, &buildModel); err != nil {
@@ -280,7 +282,7 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	versionModel := &model.APIVersion{}
+	versionModel := &restModel.APIVersion{}
 	versionModel.BuildFromService(ctx, *foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }
@@ -339,7 +341,107 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	versionModel := &model.APIVersion{}
+	versionModel := &restModel.APIVersion{}
 	versionModel.BuildFromService(ctx, *foundVersion)
+	return gimlet.NewJSONResponse(versionModel)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/versions/{version_id}/activate_tasks
+
+type versionActivateTasksHandler struct {
+	Variants []variant `json:"variants" validate:"required"`
+
+	versionId string
+}
+
+func makeActivateVersionTasks() gimlet.RouteHandler {
+	return &versionActivateTasksHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Activate specific tasks for a version
+//	@Description	Activates specified tasks for the given build variants in a version
+//	@Tags			versions
+//	@Router			/versions/{version_id}/activate_tasks [post]
+//	@Security		Api-User || Api-Key
+//	@Param			version_id	path		string						true	"the version ID"
+//	@Param			{object}	body		versionActivateTasksHandler	true	"variant and task combinations to activate"
+//	@Success		200			{object}	model.APIVersion
+func (h *versionActivateTasksHandler) Factory() gimlet.RouteHandler {
+	return &versionActivateTasksHandler{}
+}
+
+// Parse fetches the versionId from the http request and parses the request body.
+func (h *versionActivateTasksHandler) Parse(ctx context.Context, r *http.Request) error {
+	if err := utility.ReadJSON(r.Body, h); err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+
+	if len(h.Variants) == 0 {
+		return gimlet.ErrorResponse{
+			Message:    "Must provide at least one variant task combination",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	h.versionId = gimlet.GetVars(r)["version_id"]
+	if h.versionId == "" {
+		return errors.New("missing version ID")
+	}
+	return nil
+}
+
+// Run activates the specified tasks for the given version.
+func (h *versionActivateTasksHandler) Run(ctx context.Context) gimlet.Responder {
+	version, err := dbModel.VersionFindOneId(ctx, h.versionId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
+	}
+	if version == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
+		})
+	}
+
+	user := MustHaveUser(ctx)
+	caller := user.Username()
+
+	var tasksToActivate []task.Task
+	for _, vt := range h.Variants {
+		query := task.ByVersion(h.versionId)
+		query[task.BuildVariantKey] = vt.Id
+		query[task.DisplayNameKey] = bson.M{"$in": vt.Tasks}
+		query[task.ActivatedKey] = false
+
+		tasks, err := task.FindAll(ctx, db.Query(query))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks for variant '%s'", vt.Id))
+		}
+
+		tasksToActivate = append(tasksToActivate, tasks...)
+	}
+
+	if len(tasksToActivate) == 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "No inactive tasks found matching the specified variant/task combinations",
+		})
+	}
+
+	if err := dbModel.SetActiveState(ctx, caller, true, tasksToActivate...); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "activating tasks"))
+	}
+
+	version, err = dbModel.VersionFindOneIdWithBuildVariants(ctx, h.versionId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated version '%s'", h.versionId))
+	}
+
+	versionModel := &restModel.APIVersion{}
+	versionModel.BuildFromService(ctx, *version)
 	return gimlet.NewJSONResponse(versionModel)
 }
