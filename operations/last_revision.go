@@ -106,7 +106,9 @@ func LastRevision() cli.Command {
 				return errors.New("no matching version found")
 			}
 
-			printLastRevision(matchingVersion, jsonOutput)
+			if err := printLastRevision(matchingVersion, jsonOutput); err != nil {
+				return errors.Wrap(err, "printing last revision")
+			}
 
 			return nil
 		},
