@@ -42,7 +42,7 @@ var (
 const (
 	mongoTimeout        = 5 * time.Minute
 	mongoConnectTimeout = 5 * time.Second
-	redactedValue       = "REDACTED"
+	RedactedSecret      = "REDACTED"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -761,11 +761,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					grip.Info(message.Fields{
-						"bynnbynn": "Storing secret field in parameter store",
-						"path":     fieldPath,
-					})
-					fieldValue.SetString(redactedValue)
+					fieldValue.SetString(RedactedSecret)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
@@ -779,11 +775,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						grip.Info(message.Fields{
-							"bynnbynn": "Storing secret map field in parameter store",
-							"path":     mapFieldPath,
-						})
-						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
+						newMap.SetMapIndex(key, reflect.ValueOf(RedactedSecret))
 					}
 					fieldValue.Set(newMap)
 				}
