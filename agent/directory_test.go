@@ -114,12 +114,11 @@ func TestCheckDataDirectoryHealthWithUsage(t *testing.T) {
 			comm: mockComm,
 		}
 
-		// Test with low disk usage
 		lowUsage := &disk.UsageStat{
 			UsedPercent: 40.0, // Below threshold
 		}
 
-		err := agent.checkDataDirectoryHealthWithUsage(context.Background(), lowUsage)
+		err := agent.checkDataDirectoryHealthWithUsage(t.Context(), lowUsage)
 		assert.NoError(t, err)
 	})
 
@@ -132,12 +131,11 @@ func TestCheckDataDirectoryHealthWithUsage(t *testing.T) {
 			comm: mockComm,
 		}
 
-		// Test with high disk usage
 		highUsage := &disk.UsageStat{
 			UsedPercent: 95.0, // Above threshold
 		}
 
-		err := agent.checkDataDirectoryHealthWithUsage(context.Background(), highUsage)
+		err := agent.checkDataDirectoryHealthWithUsage(t.Context(), highUsage)
 		assert.NoError(t, err)
 	})
 }
