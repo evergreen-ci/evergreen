@@ -42,6 +42,7 @@ var (
 const (
 	mongoTimeout        = 5 * time.Minute
 	mongoConnectTimeout = 5 * time.Second
+	redactedValue       = "REDACTED"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -764,15 +765,14 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						"bynnbynn": "Storing secret field in parameter store",
 						"path":     fieldPath,
 					})
-					fieldValue.SetString(secretValue)
+					fieldValue.SetString(redactedValue)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
 					newMap := reflect.MakeMap(fieldValue.Type())
 					for _, key := range fieldValue.MapKeys() {
-						mapValue := fieldValue.MapIndex(key)
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
-						secretValue := mapValue.String()
+						secretValue := fieldValue.MapIndex(key).String()
 
 						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
 						if err != nil {
@@ -783,7 +783,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 							"bynnbynn": "Storing secret map field in parameter store",
 							"path":     mapFieldPath,
 						})
-						newMap.SetMapIndex(key, mapValue)
+						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
 					}
 					fieldValue.Set(newMap)
 				}
