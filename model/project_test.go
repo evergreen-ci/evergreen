@@ -1789,7 +1789,7 @@ func (s *FindProjectsSuite) TestFilterByOwnerName() {
 	// Test filtering by owner "evergreen-ci" - should return projectA and projectB
 	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "")
 	s.NoError(err)
-	s.Len(projects, 2)
+	s.Require().Len(projects, 2)
 	// Results should be sorted by ID, so projectA comes first
 	s.Equal("projectA", projects[0].Id)
 	s.Equal("evergreen-ci", projects[0].Owner)
@@ -1801,7 +1801,7 @@ func (s *FindProjectsSuite) TestFilterByRepoName() {
 	// Test filtering by repo "mongo" - should return projectC
 	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "mongo")
 	s.NoError(err)
-	s.Len(projects, 1)
+	s.Require().Len(projects, 1)
 	s.Equal("projectC", projects[0].Id)
 	s.Equal("mongo", projects[0].Repo)
 }
@@ -1810,7 +1810,7 @@ func (s *FindProjectsSuite) TestFilterByOwnerAndRepo() {
 	// Test filtering by both owner "evergreen-ci" and repo "evergreen" - should return projectB
 	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "evergreen")
 	s.NoError(err)
-	s.Len(projects, 1)
+	s.Require().Len(projects, 1)
 	s.Equal("projectB", projects[0].Id)
 	s.Equal("evergreen-ci", projects[0].Owner)
 	s.Equal("evergreen", projects[0].Repo)

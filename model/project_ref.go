@@ -1969,12 +1969,10 @@ func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir i
 		filter[ProjectRefIdKey] = bson.M{"$gte": key}
 	}
 
-	// Add owner filter if provided
 	if ownerName != "" {
 		filter[ProjectRefOwnerKey] = ownerName
 	}
 
-	// Add repo filter if provided
 	if repoName != "" {
 		filter[ProjectRefRepoKey] = repoName
 	}
