@@ -1472,6 +1472,21 @@ func checkBVBatchTimes(buildVariant *model.BuildVariant) ValidationErrors {
 	return errs
 }
 
+func checkBVTaskPriority(buildVariant *model.BuildVariant) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, t := range buildVariant.Tasks {
+		if t.Priority > model.MaxConfigSetPriority {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("task '%s' has been set above %d priority, in YAML, will default priority to %d",
+						t.Name, model.MaxConfigSetPriority, model.MaxConfigSetPriority),
+					Level: Notice,
+				})
+		}
+	}
+	return errs
+}
+
 func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
@@ -2280,6 +2295,15 @@ func checkTasks(project *model.Project) ValidationErrors {
 				},
 			)
 		}
+		if task.Priority > model.MaxConfigSetPriority {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("task '%s' has been set above %d priority, in YAML, will default priority to %d",
+						task.Name, model.MaxConfigSetPriority, model.MaxConfigSetPriority),
+					Level: Notice,
+				},
+			)
+		}
 		if project.ExecTimeoutSecs == 0 && task.ExecTimeoutSecs == 0 && !execTimeoutWarningAdded {
 			errs = append(errs,
 				ValidationError{
@@ -2346,6 +2370,7 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 
 		errs = append(errs, checkBVNames(&buildVariant)...)
 		errs = append(errs, checkBVBatchTimes(&buildVariant)...)
+		errs = append(errs, checkBVTaskPriority(&buildVariant)...)
 	}
 
 	for k, v := range displayNames {
