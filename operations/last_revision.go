@@ -111,6 +111,12 @@ func LastRevision() cli.Command {
 			if matchingVersion == nil {
 				return errors.New("no matching version found")
 			}
+			modules, err := getModulesForVersion(ctx, client, utility.FromStringPtr(matchingVersion.Id))
+			if err != nil {
+				return errors.Wrapf(err, "getting modules for matching version '%s'", utility.FromStringPtr(matchingVersion.Id))
+			}
+			// kim; TODO: wait for JSON formatting PR to be merged.
+			fmt.Printf("kim: TODO: use modules: %v\n", modules)
 
 			if err := printLastRevision(matchingVersion, jsonOutput); err != nil {
 				return errors.Wrap(err, "printing last revision")
@@ -432,4 +438,17 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	buildInfo := newLastRevisionBuildInfo(b, tasks)
 
 	return criteria.check(buildInfo), nil
+}
+
+func getModulesForVersion(ctx context.Context, c client.Communicator, versionID string) ([]model.APIManifestModule, error) {
+	mfst, err := c.GetManifestForVersion(ctx, versionID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting manifest for version '%s'", versionID)
+	}
+	if mfst == nil {
+		// Manifests are only available for versions using modules, so it's
+		// valid to not get a manifest.
+		return nil, nil
+	}
+	return mfst.Modules, nil
 }

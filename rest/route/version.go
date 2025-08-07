@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -342,4 +343,65 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	versionModel := &model.APIVersion{}
 	versionModel.BuildFromService(ctx, *foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
+}
+
+// GET /rest/v2/versions/{version_id}/manifest
+
+type versionManifestGetHandler struct {
+	versionId string
+}
+
+func makeGetVersionManifest() gimlet.RouteHandler {
+	return &versionManifestGetHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Fetch module manifest by version ID
+//	@Description	Fetches the module manifest by its version ID
+//	@Tags			versions
+//	@Router			/versions/{version_id}/manifest [get]
+//	@Security		Api-User || Api-Key
+//	@Param			version_id	path		string	true	"version ID"
+//	@Success		200			{object}	model.APIManifest
+func (h *versionManifestGetHandler) Factory() gimlet.RouteHandler {
+	return &versionManifestGetHandler{}
+}
+
+// ParseAndValidate fetches the versionId from the http request.
+func (h *versionManifestGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.versionId = gimlet.GetVars(r)["version_id"]
+	if h.versionId == "" {
+		return errors.New("missing version ID")
+	}
+
+	return nil
+}
+
+func (h *versionManifestGetHandler) Run(ctx context.Context) gimlet.Responder {
+	v, err := dbModel.VersionFindOneId(ctx, h.versionId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
+		})
+	}
+
+	mfst, err := manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for version '%s'", h.versionId))
+	}
+	if mfst == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("manifest for version '%s' not found", h.versionId),
+		})
+	}
+
+	apiMfst := &model.APIManifest{}
+	apiMfst.BuildFromService(mfst)
+	return gimlet.NewJSONResponse(apiMfst)
 }
