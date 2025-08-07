@@ -760,12 +760,15 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					// // TODO DEVPROD-18236: Update the struct field to store the path instead of the secret value
-					// fieldValue.SetString(fieldPath)
+					grip.Info(message.Fields{
+						"bynnbynn": "Storing secret field in parameter store",
+						"path":     fieldPath,
+					})
+					fieldValue.SetString(fieldPath)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
-					// newMap := reflect.MakeMap(fieldValue.Type())
+					newMap := reflect.MakeMap(fieldValue.Type())
 					for _, key := range fieldValue.MapKeys() {
 						mapValue := fieldValue.MapIndex(key)
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
@@ -776,11 +779,13 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						// // TODO DEVPROD-18236: Replace the secret value with the path
-						// newMap.SetMapIndex(key, mapValue)
+						grip.Info(message.Fields{
+							"bynnbynn": "Storing secret map field in parameter store",
+							"path":     mapFieldPath,
+						})
+						newMap.SetMapIndex(key, mapValue)
 					}
-					// // Update the struct field with the new map containing paths
-					// fieldValue.Set(newMap)
+					fieldValue.Set(newMap)
 				}
 			}
 
