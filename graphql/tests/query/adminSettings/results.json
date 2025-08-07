@@ -386,13 +386,9 @@
                   "project": "CUSTOM PROJECT",
                   "fields": {},
                   "components": ["component"],
-                  "labels": ["label"]
-                },
-                {
-                  "project": "OTHER PROJECT",
-                  "fields": {},
-                  "components": [],
-                  "labels": []
+                  "labels": [
+                    "label"
+                  ]
                 }
               ]
             },
