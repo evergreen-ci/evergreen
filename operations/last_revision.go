@@ -106,37 +106,33 @@ func LastRevision() cli.Command {
 				return errors.New("no matching version found")
 			}
 
-			printLastRevisionResult(conf, matchingVersion, jsonOutput)
+			printLastRevision(matchingVersion, jsonOutput)
 
 			return nil
 		},
 	}
 }
 
-// kim: TODO: manually test JSON output
-func printLastRevisionResult(conf *ClientSettings, v *model.APIVersion, jsonOutput bool) error {
+func printLastRevision(v *model.APIVersion, jsonOutput bool) error {
 	versionID := utility.FromStringPtr(v.Id)
 	revision := utility.FromStringPtr(v.Revision)
-	versionURL := fmt.Sprintf("%s/%s/%s", conf.UIServerHost, "version", versionID)
 
 	if jsonOutput {
 		output, err := json.MarshalIndent(struct {
-			VersionID  string `json:"version_id"`
-			VersionURL string `json:"version_url"`
-			Revision   string `json:"revision"`
+			VersionID string `json:"version_id"`
+			Revision  string `json:"revision"`
 		}{
-			VersionID:  versionID,
-			Revision:   revision,
-			VersionURL: versionURL,
+			VersionID: versionID,
+			Revision:  revision,
 		}, "", "\t")
 		if err != nil {
-			return errors.Wrap(err, "marshaling output to JSON")
+			return errors.Wrap(err, "marshalling output to JSON")
 		}
 		fmt.Println(string(output))
 		return nil
 	}
 
-	fmt.Printf("Latest version that matches criteria: %s\nRevision: %s\nVersion URL: %s\n", utility.FromStringPtr(v.Id), utility.FromStringPtr(v.Revision), versionURL)
+	fmt.Printf("Latest version that matches criteria: %s\nRevision: %s\n", utility.FromStringPtr(v.Id), utility.FromStringPtr(v.Revision))
 	return nil
 
 }
