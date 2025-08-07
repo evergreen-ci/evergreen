@@ -370,9 +370,6 @@
                 "secretARN": "\u003csecret_arn\u003e"
               }
             },
-            "expansions": {
-              "github_app_key": "someKey"
-            },
             "hostJasper": {
               "binaryName": "binary",
               "downloadFileName": "download",
