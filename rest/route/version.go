@@ -357,9 +357,9 @@ func makeGetVersionManifest() gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Fetch module manifest by version ID
-//	@Description	Fetches the module manifest by its version ID
-//	@Tags			versions
+//	@Summary		Fetch manifest by version ID
+//	@Description	Fetches the manifest by its version ID
+//	@Tags			manifests
 //	@Router			/versions/{version_id}/manifest [get]
 //	@Security		Api-User || Api-Key
 //	@Param			version_id	path		string	true	"version ID"

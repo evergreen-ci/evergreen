@@ -10,6 +10,7 @@ type APIManifest struct {
 	Revision    *string             `json:"revision"`
 	ProjectName *string             `json:"project"`
 	Branch      *string             `json:"branch"`
+	IsBase      bool                `json:"is_base"`
 	Modules     []APIManifestModule `json:"modules"`
 }
 
@@ -18,6 +19,7 @@ func (m *APIManifest) BuildFromService(mfst *manifest.Manifest) {
 	m.Revision = utility.ToStringPtr(mfst.Revision)
 	m.ProjectName = utility.ToStringPtr(mfst.ProjectName)
 	m.Branch = utility.ToStringPtr(mfst.Branch)
+	m.IsBase = mfst.IsBase
 	for modName, mod := range mfst.Modules {
 		apiMod := APIManifestModule{}
 		apiMod.BuildFromService(modName, mod)

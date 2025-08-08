@@ -1526,7 +1526,7 @@ func (c *communicatorImpl) GetManifestForVersion(ctx context.Context, versionID 
 
 	manifestResp := restmodel.APIManifest{}
 	if err = utility.ReadJSON(resp.Body, &manifestResp); err != nil {
-		return nil, errors.Wrap(err, "reading response body")
+		return nil, errors.Wrap(err, "reading manifest response body")
 	}
 	return &manifestResp, nil
 }

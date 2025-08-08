@@ -15,6 +15,7 @@ func TestBuildFromService(t *testing.T) {
 		Revision:    "1234567890abcdef",
 		ProjectName: "test-project",
 		Branch:      "main",
+		IsBase:      true,
 		Modules: map[string]*manifest.Module{
 			"module1": {
 				Branch:   "main",
@@ -32,6 +33,7 @@ func TestBuildFromService(t *testing.T) {
 	assert.Equal(t, mfst.Revision, utility.FromStringPtr(apiManifest.Revision))
 	assert.Equal(t, mfst.ProjectName, utility.FromStringPtr(apiManifest.ProjectName))
 	assert.Equal(t, mfst.Branch, utility.FromStringPtr(apiManifest.Branch))
+	assert.Equal(t, mfst.IsBase, apiManifest.IsBase)
 	require.Len(t, apiManifest.Modules, 1)
 	expectedModule := mfst.Modules["module1"]
 	assert.Equal(t, "module1", utility.FromStringPtr(apiManifest.Modules[0].Name))
