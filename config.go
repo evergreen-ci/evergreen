@@ -223,7 +223,7 @@ func NewSettings(filename string) (*Settings, error) {
 // the [ConfigCollection] collection in the [DB] database. Use [GetRawConfig] to get
 // a configuration that doesn't reflect overrides.
 func GetConfig(ctx context.Context) (*Settings, error) {
-	return getSettings(ctx, true)
+	return getSettings(ctx, true, true)
 }
 
 // GetRawConfig returns only the raw Evergreen configuration without applying overrides. Use
@@ -231,10 +231,10 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 // If there is no [SharedDB] there are no overrides and [GetConfig] and [GetRawConfig] are
 // functionally equivalent.
 func GetRawConfig(ctx context.Context) (*Settings, error) {
-	return getSettings(ctx, false)
+	return getSettings(ctx, false, true)
 }
 
-func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) {
+func getSettings(ctx context.Context, includeOverrides, includeParameterStore bool) (*Settings, error) {
 	config := NewConfigSections()
 	if err := config.populateSections(ctx, includeOverrides); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
@@ -271,7 +271,7 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 
 	// If the admin parameter store is not disabled, we need to read secrets from it.
 	// If it fails, log the error and ignore changes made from the parameter store.
-	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled {
+	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled && includeParameterStore {
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
 		settingsValue := reflect.ValueOf(paramConfig).Elem()
