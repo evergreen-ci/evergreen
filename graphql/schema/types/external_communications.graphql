@@ -32,7 +32,7 @@ type RuntimeEnvironmentConfig {
 input SlackConfigInput {
   options: SlackOptionsInput
   token: String! @redactSecrets
-  level: PriorityLevel!
+  level: PriorityLevel
   name: String!
 }
 
