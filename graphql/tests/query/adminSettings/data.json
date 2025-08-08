@@ -354,12 +354,6 @@
           "fields": null,
           "components": ["component"],
           "labels": ["label"]
-        },
-        {
-          "project": "OTHER PROJECT",
-          "fields": null,
-          "components": [],
-          "labels": []
         }
       ]
     },
