@@ -252,23 +252,13 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		}
 	}
 
-	grip.Error(message.Fields{
-		"bynnbynn": "here0",
-	})
-
 	if err := e.initSettings(ctx, confPath, tracer); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	grip.Error(message.Fields{
-		"bynnbynn": "here0.5",
-	})
 
 	if db != nil && confPath == "" {
 		e.settings.Database = *db
 	}
-	grip.Error(message.Fields{
-		"bynnbynn": "here0.75",
-	})
 
 	e.dbName = e.settings.Database.DB
 
@@ -277,31 +267,10 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		catcher.Add(e.initDB(ctx, e.settings.Database, tracer))
 	}
 
-	grip.Error(message.Fields{
-		"bynnbynn":   "here1",
-		"PathPrefix": e.settings.ParameterStore.Prefix,
-		"DB":         e.client.Database(e.dbName),
-	})
-	// catcher.Add(e.initParameterManager(ctx, tracer, e.settings.ParameterStore.Prefix))
-	grip.Error(message.Fields{
-		"bynnbynn": "here2",
-	})
 	catcher.Add(e.initCedarDB(ctx, tracer))
-	grip.Error(message.Fields{
-		"bynnbynn": "here3",
-	})
 	catcher.Add(e.initJasper(ctx, tracer))
-	grip.Error(message.Fields{
-		"bynnbynn": "here4",
-	})
 	catcher.Add(e.initDepot(ctx, tracer))
-	grip.Error(message.Fields{
-		"bynnbynn": "here5",
-	})
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
-	grip.Error(message.Fields{
-		"bynnbynn": "here6",
-	})
 	catcher.Add(e.initClientConfig(ctx, versionID, clientS3Bucket, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
 	catcher.Add(e.createRemoteQueues(ctx, tracer))
