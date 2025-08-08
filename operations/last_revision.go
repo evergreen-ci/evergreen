@@ -115,10 +115,7 @@ func LastRevision() cli.Command {
 			if err != nil {
 				return errors.Wrapf(err, "getting modules for matching version '%s'", utility.FromStringPtr(matchingVersion.Id))
 			}
-			// kim; TODO: wait for JSON formatting PR to be merged.
-			fmt.Printf("kim: TODO: use modules: %v\n", modules)
-
-			if err := printLastRevision(matchingVersion, jsonOutput); err != nil {
+			if err := printLastRevision(matchingVersion, modules, jsonOutput); err != nil {
 				return errors.Wrap(err, "printing last revision")
 			}
 
@@ -127,17 +124,35 @@ func LastRevision() cli.Command {
 	}
 }
 
-func printLastRevision(v *model.APIVersion, jsonOutput bool) error {
+// kim: TODO: test module printing with/without JSON in staging.
+func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, jsonOutput bool) error {
 	versionID := utility.FromStringPtr(v.Id)
 	revision := utility.FromStringPtr(v.Revision)
 
 	if jsonOutput {
+		type moduleInfo struct {
+			Name     string `json:"name"`
+			Revision string `json:"revision"`
+		}
+		var moduleNameAndRevisions []moduleInfo
+		if len(modules) > 0 {
+			moduleNameAndRevisions = make([]moduleInfo, 0, len(modules))
+			for _, m := range modules {
+				moduleNameAndRevisions = append(moduleNameAndRevisions, moduleInfo{
+					Name:     utility.FromStringPtr(m.Name),
+					Revision: utility.FromStringPtr(m.Revision),
+				})
+			}
+		}
+
 		output, err := json.MarshalIndent(struct {
-			VersionID string `json:"version_id"`
-			Revision  string `json:"revision"`
+			VersionID string       `json:"version_id"`
+			Revision  string       `json:"revision"`
+			Modules   []moduleInfo `json:"modules,omitzero"`
 		}{
 			VersionID: versionID,
 			Revision:  revision,
+			Modules:   moduleNameAndRevisions,
 		}, "", "\t")
 		if err != nil {
 			return errors.Wrap(err, "marshalling output to JSON")
@@ -147,6 +162,12 @@ func printLastRevision(v *model.APIVersion, jsonOutput bool) error {
 	}
 
 	fmt.Printf("Latest version that matches criteria: %s\nRevision: %s\n", utility.FromStringPtr(v.Id), utility.FromStringPtr(v.Revision))
+	if len(modules) > 0 {
+		fmt.Println("Modules:")
+		for _, m := range modules {
+			fmt.Printf("\t- %s: %s\n", utility.FromStringPtr(m.Name), utility.FromStringPtr(m.Revision))
+		}
+	}
 	return nil
 
 }
