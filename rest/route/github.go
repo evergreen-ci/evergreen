@@ -995,7 +995,8 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 			MaxDelay:    checkVersionRetryMaxDelay,
 		})
 	catcher.Add(err)
-	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+	resolvedError := catcher.Resolve()
+	grip.Error(message.WrapError(resolvedError, message.Fields{
 		"source":  "GitHub hook",
 		"msg_id":  gh.msgID,
 		"event":   gh.eventType,
@@ -1005,7 +1006,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		"tag":     tag,
 		"message": "errors updating/creating versions for git tag",
 	}))
-	return nil
+	return errors.Wrap(resolvedError, "updating/creating versions for git tag")
 }
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
