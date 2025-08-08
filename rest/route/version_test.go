@@ -291,3 +291,94 @@ func (s *VersionSuite) TestRestartVersion() {
 	s.NoError(err)
 	s.Equal(evergreen.VersionStarted, v.Status)
 }
+
+// TestActivateVersionTasks tests the route for activating specific tasks in a version.
+func (s *VersionSuite) TestActivateVersionTasks() {
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	testTasks := []task.Task{
+		{
+			Id:           "inactive_task1",
+			Version:      versionId,
+			BuildVariant: s.bv[0],
+			DisplayName:  "test_task_1",
+			Activated:    false,
+			Status:       evergreen.TaskUndispatched,
+			BuildId:      s.bi[0],
+		},
+		{
+			Id:           "inactive_task2",
+			Version:      versionId,
+			BuildVariant: s.bv[0],
+			DisplayName:  "test_task_2",
+			Activated:    false,
+			Status:       evergreen.TaskUndispatched,
+			BuildId:      s.bi[0],
+		},
+		{
+			Id:           "inactive_task3",
+			Version:      versionId,
+			BuildVariant: s.bv[1],
+			DisplayName:  "test_task_3",
+			Activated:    false,
+			Status:       evergreen.TaskUndispatched,
+			BuildId:      s.bi[1],
+		},
+	}
+
+	for _, task := range testTasks {
+		s.Require().NoError(task.Insert(s.ctx))
+	}
+
+	handler := &versionActivateTasksHandler{
+		versionId: versionId,
+		Variants: []variant{
+			{
+				Id:    s.bv[0],
+				Tasks: []string{"test_task_1", "test_task_2"},
+			},
+			{
+				Id:    s.bv[1],
+				Tasks: []string{"test_task_3"},
+			},
+		},
+	}
+
+	// Test successful activation
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
+	// Verify tasks were activated
+	activatedTask1, err := task.FindOneId(s.ctx, "inactive_task1")
+	s.NoError(err)
+	s.True(activatedTask1.Activated)
+
+	activatedTask2, err := task.FindOneId(s.ctx, "inactive_task2")
+	s.NoError(err)
+	s.True(activatedTask2.Activated)
+
+	activatedTask3, err := task.FindOneId(s.ctx, "inactive_task3")
+	s.NoError(err)
+	s.True(activatedTask3.Activated)
+}
+
+// TestActivateVersionTasksInvalidVariant tests error handling for invalid variant/task combinations.
+func (s *VersionSuite) TestActivateVersionTasksInvalidVariant() {
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	handler := &versionActivateTasksHandler{
+		versionId: versionId,
+		Variants: []variant{
+			{
+				Id:    s.bv[0],
+				Tasks: []string{"test_task_1", "test_task_2"},
+			},
+		},
+	}
+
+	// Test with non-existent variant/tasks
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
