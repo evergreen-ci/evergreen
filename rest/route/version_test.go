@@ -304,7 +304,7 @@ func (s *VersionSuite) TestActivateVersionTasks() {
 			DisplayName:  "test_task_1",
 			Activated:    false,
 			Status:       evergreen.TaskUndispatched,
-			BuildId:      "build1",
+			BuildId:      s.bi[0],
 		},
 		{
 			Id:           "inactive_task2",
@@ -313,7 +313,7 @@ func (s *VersionSuite) TestActivateVersionTasks() {
 			DisplayName:  "test_task_2",
 			Activated:    false,
 			Status:       evergreen.TaskUndispatched,
-			BuildId:      "build1",
+			BuildId:      s.bi[0],
 		},
 		{
 			Id:           "inactive_task3",
@@ -322,7 +322,7 @@ func (s *VersionSuite) TestActivateVersionTasks() {
 			DisplayName:  "test_task_3",
 			Activated:    false,
 			Status:       evergreen.TaskUndispatched,
-			BuildId:      "build2",
+			BuildId:      s.bi[1],
 		},
 	}
 
