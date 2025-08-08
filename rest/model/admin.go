@@ -1393,10 +1393,18 @@ func (a *APICloudProviders) ToService() (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return evergreen.CloudProviders{
-		AWS:    aws.(evergreen.AWSConfig),
-		Docker: docker.(evergreen.DockerConfig),
-	}, nil
+
+	config := evergreen.CloudProviders{}
+
+	if aws != nil {
+		config.AWS = aws.(evergreen.AWSConfig)
+	}
+
+	if docker != nil {
+		config.Docker = docker.(evergreen.DockerConfig)
+	}
+
+	return config, nil
 }
 
 type APIContainerPoolsConfig struct {
@@ -1661,7 +1669,9 @@ func (a *APIAWSConfig) ToService() (any, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
-	config.Pod = *pod
+	if pod != nil {
+		config.Pod = *pod
+	}
 
 	var roleMappings []evergreen.AWSAccountRoleMapping
 	for _, m := range a.AccountRoles {
@@ -1800,12 +1810,17 @@ func (a *APIAWSPodConfig) ToService() (*evergreen.AWSPodConfig, error) {
 
 	sm := a.SecretsManager.ToService()
 
-	return &evergreen.AWSPodConfig{
+	config := &evergreen.AWSPodConfig{
 		Role:           utility.FromStringPtr(a.Role),
 		Region:         utility.FromStringPtr(a.Region),
-		ECS:            *ecs,
 		SecretsManager: sm,
-	}, nil
+	}
+
+	if ecs != nil {
+		config.ECS = *ecs
+	}
+
+	return config, nil
 }
 
 // APIECSConfig represents configuration options for AWS ECS.
@@ -2008,6 +2023,9 @@ func (a *APIDockerConfig) BuildFromService(h any) error {
 }
 
 func (a *APIDockerConfig) ToService() (any, error) {
+	if a == nil {
+		return nil, nil
+	}
 	return evergreen.DockerConfig{
 		APIVersion: utility.FromStringPtr(a.APIVersion),
 	}, nil

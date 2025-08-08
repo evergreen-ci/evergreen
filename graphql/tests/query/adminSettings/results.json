@@ -383,7 +383,9 @@
                   "project": "CUSTOM PROJECT",
                   "fields": {},
                   "components": ["component"],
-                  "labels": ["label"]
+                  "labels": [
+                    "label"
+                  ]
                 }
               ]
             },
@@ -519,23 +521,23 @@
                     "clusters": [
                       {
                         "name": "evergreen-cluster-1",
-                        "os": "linux"
+                        "os": "ECSOSLinux"
                       },
                       {
                         "name": "evergreen-cluster-2",
-                        "os": "windows"
+                        "os": "ECSOSWindows"
                       }
                     ],
                     "capacityProviders": [
                       {
                         "name": "FARGATE",
-                        "os": "ECS_OS_LINUX",
+                        "os": "ECSOSLinux",
                         "arch": "ECS_ARCH_AMD64",
                         "windowsVersion": ""
                       },
                       {
                         "name": "EC2",
-                        "os": "ECS_OS_LINUX",
+                        "os": "ECSOSLinux",
                         "arch": "ECS_ARCH_ARM64",
                         "windowsVersion": ""
                       }

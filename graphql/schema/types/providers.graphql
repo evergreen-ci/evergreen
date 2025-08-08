@@ -147,8 +147,8 @@ type ECSConfig {
 }
 
 enum ECSOperatingSystem {
-  ECS_OS_LINUX
-  ECS_OS_WINDOWS
+  ECSOSLinux
+  ECSOSWindows
 }
 
 enum ECSArchitecture {
@@ -178,12 +178,12 @@ type ECSCapacityProvider {
 
 input ECSClusterConfigInput {
   name: String
-  os: String
+  os: ECSOperatingSystem
 }
 
 type ECSClusterConfig {
   name: String
-  os: String
+  os: ECSOperatingSystem
 }
 
 input OwnerRepoInput {
