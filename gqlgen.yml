@@ -418,6 +418,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   IceCreamSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
+  CostData:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
+  CostDataInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
   Image:
     model: github.com/evergreen-ci/evergreen/rest/model.APIImage
   ImageEvent:
