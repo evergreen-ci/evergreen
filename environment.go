@@ -240,14 +240,18 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		// Persist the environment early so the db will be available for initSettings.
 		SetEnvironment(e)
 
-		tempSettings, err := getSettings(ctx, true, false)
+		// Get settings without parameter manager to avoid circular dependency of
+		// needing the parameter manager to initialize the settings.
+		// It's important that we initialize parameter manager before we initialize
+		// the settings, so that we can read secrets from the parameter store.
+		settingsWithoutSecrets, err := getSettings(ctx, true, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting temporary settings from DB")
 		}
-		if tempSettings == nil {
+		if settingsWithoutSecrets == nil {
 			return nil, errors.New("temporary settings from DB not found")
 		}
-		if err := e.initParameterManager(ctx, tracer, tempSettings.ParameterStore.Prefix); err != nil {
+		if err := e.initParameterManager(ctx, tracer, settingsWithoutSecrets.ParameterStore.Prefix); err != nil {
 			return nil, errors.Wrap(err, "initializing parameter manager")
 		}
 	}
@@ -985,12 +989,12 @@ func (e *envState) initDepot(ctx context.Context, tracer trace.Tracer) error {
 	return nil
 }
 
-func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer, pathprefix string) error {
+func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer, pathPrefix string) error {
 	ctx, span := tracer.Start(ctx, "InitParameterManager")
 	defer span.End()
 
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-		PathPrefix:     pathprefix,
+		PathPrefix:     pathPrefix,
 		CachingEnabled: true,
 		DB:             e.client.Database(e.dbName),
 	})

@@ -269,7 +269,8 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		propVal.Set(sectionVal)
 	}
 
-	// If the admin parameter store is not disabled, we need to read secrets from it.
+	// If the admin parameter store is not disabled and we aren't getting secrets
+	// for initialization read secrets from the parameter store.
 	// If it fails, log the error and ignore changes made from the parameter store.
 	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled && includeParameterStore {
 		paramConfig := baseConfig
