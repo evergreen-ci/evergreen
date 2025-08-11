@@ -124,7 +124,6 @@ func LastRevision() cli.Command {
 	}
 }
 
-// kim: TODO: test module printing with/without JSON in staging.
 func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, jsonOutput bool) error {
 	versionID := utility.FromStringPtr(v.Id)
 	revision := utility.FromStringPtr(v.Revision)
@@ -165,7 +164,7 @@ func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, j
 	if len(modules) > 0 {
 		fmt.Println("Modules:")
 		for _, m := range modules {
-			fmt.Printf("\t- %s: %s\n", utility.FromStringPtr(m.Name), utility.FromStringPtr(m.Revision))
+			fmt.Printf("- name: %s\n  revision: %s\n", utility.FromStringPtr(m.Name), utility.FromStringPtr(m.Revision))
 		}
 	}
 	return nil
