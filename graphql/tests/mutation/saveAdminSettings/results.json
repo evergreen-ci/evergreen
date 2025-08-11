@@ -368,7 +368,7 @@
               ]
             },
             "buckets": {
-              "internalBuckets": [],
+              "internalBuckets": null,
               "logBucket": {
                 "name": "mutation-log-bucket",
                 "testResultsPrefix": null,
