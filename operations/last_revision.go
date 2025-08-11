@@ -30,7 +30,7 @@ func LastRevision() cli.Command {
 	)
 	return cli.Command{
 		Name:  "last-revision",
-		Usage: "return the latest revision for a version that matches a set of criteria",
+		Usage: "return the latest revision for a version that matches a set of criteria, along with its modules",
 		Flags: addProjectFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(regexpVariantsFlagName, "rv"),
