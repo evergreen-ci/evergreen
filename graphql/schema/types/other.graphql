@@ -13,14 +13,14 @@ type BucketConfig {
 input BucketsConfigInput {
   logBucket: BucketConfigInput
   testResultsBucket: BucketConfigInput
-  internalBuckets: [String!]!
+  internalBuckets: [String!]
   credentials: S3CredentialsInput @redactSecrets
 }
 
 type BucketsConfig {
   logBucket: BucketConfig
   testResultsBucket: BucketConfig
-  internalBuckets: [String!]!
+  internalBuckets: [String!]
   credentials: S3Credentials @requireAdmin
 }
 
