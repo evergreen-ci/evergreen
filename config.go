@@ -761,7 +761,8 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					fieldValue.SetString(RedactedValue)
+					redactedValue := fmt.Sprintf("REDACTED:%s", util.GetSHA256Hash(secretValue)[:6])
+					fieldValue.SetString(redactedValue)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
@@ -775,7 +776,8 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						newMap.SetMapIndex(key, reflect.ValueOf(RedactedValue))
+						redactedValue := fmt.Sprintf("REDACTED:%s", util.GetSHA256Hash(secretValue)[:6])
+						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
 					}
 					fieldValue.Set(newMap)
 				}
