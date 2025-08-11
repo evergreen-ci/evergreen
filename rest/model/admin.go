@@ -22,6 +22,7 @@ func NewConfigModel() *APIAdminSettings {
 		Cedar:               &APICedarConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
+		Cost:                &APICostConfig{},
 		FWS:                 &APIFWSConfig{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
@@ -70,6 +71,7 @@ type APIAdminSettings struct {
 	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
 	DomainName              *string                       `json:"domain_name,omitempty"`
 	Expansions              map[string]string             `json:"expansions,omitempty"`
+	Cost                    *APICostConfig                `json:"cost,omitempty"`
 	FWS                     *APIFWSConfig                 `json:"fws,omitempty"`
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
@@ -3077,4 +3079,34 @@ func (a *APIAWSAccountRoleMapping) ToService() evergreen.AWSAccountRoleMapping {
 		Account: utility.FromStringPtr(a.Account),
 		Role:    utility.FromStringPtr(a.Role),
 	}
+}
+
+type APICostConfig struct {
+	FinanceFormula      *float64 `json:"finance_formula"`
+	SavingsPlanDiscount *float64 `json:"savings_plan_discount"`
+	OnDemandDiscount    *float64 `json:"on_demand_discount"`
+}
+
+func (a *APICostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case *evergreen.CostConfig:
+		a.FinanceFormula = &v.FinanceFormula
+		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
+		a.OnDemandDiscount = &v.OnDemandDiscount
+	case evergreen.CostConfig:
+		a.FinanceFormula = &v.FinanceFormula
+		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
+		a.OnDemandDiscount = &v.OnDemandDiscount
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+	return nil
+}
+
+func (a *APICostConfig) ToService() (any, error) {
+	return evergreen.CostConfig{
+		FinanceFormula:      utility.FromFloat64Ptr(a.FinanceFormula),
+		SavingsPlanDiscount: utility.FromFloat64Ptr(a.SavingsPlanDiscount),
+		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
+	}, nil
 }

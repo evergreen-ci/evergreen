@@ -77,6 +77,7 @@ type Settings struct {
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions" secret:"true"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	Cost                CostConfig              `yaml:"cost" bson:"cost" json:"cost" id:"cost"`
 	FWS                 FWSConfig               `yaml:"fws" bson:"fws" json:"fws" id:"fws"`
 	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`

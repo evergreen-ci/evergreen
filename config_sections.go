@@ -30,6 +30,7 @@ func NewConfigSections() ConfigSections {
 		&CedarConfig{},
 		&CloudProviders{},
 		&ContainerPoolsConfig{},
+		&CostConfig{},
 		&FWSConfig{},
 		&HostInitConfig{},
 		&HostJasperConfig{},

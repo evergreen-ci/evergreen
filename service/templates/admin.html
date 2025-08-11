@@ -97,6 +97,7 @@ Admin Settings
 						<div>Other</div>
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('buckets')">Bucket Config</li>
+						<li class="link" ng-click="scrollTo('cost')">Cost Config</li>
 						<li class="link" ng-click="scrollTo('ssh')">SSH Key Pairs</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
@@ -2267,7 +2268,7 @@ Admin Settings
 							<md-card flex=50 id="buckets">
 								<md-card-title>
 									<md-card-title-text>
-										<span>Bucket Config</span>
+										<span>Bucket chaya Configggggggssssssss</span>
 									</md-card-title-text>
 								</md-card-title>
 								<md-card-content>
@@ -2309,6 +2310,31 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
+							<md-card flex=50 id="cost">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Cost Config</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<div>
+										Task cost calculation configuration:
+									</div>
+									<md-input-container class="control" style="width:45%;">
+										<label>Finance Formula</label>
+										<input type="number" ng-model="Settings.cost.finance_formula" placeholder="0" step="any">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Savings Plan Discount</label>
+										<input type="number" ng-model="Settings.cost.savings_plan_discount" placeholder="0" step="any">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>On Demand Discount</label>
+										<input type="number" ng-model="Settings.cost.on_demand_discount" placeholder="0" step="any">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
 							<md-card flex=50 id="ssh">
 								<md-card-title>
 									<md-card-title-text>

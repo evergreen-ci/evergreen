@@ -61,6 +61,20 @@ var (
 	eitherSlash = regexp.MustCompile(`[/\\]`)
 )
 
+// TaskCost represents the cost breakdown for a task
+type TaskCost struct {
+	// OnDemandCost is the cost calculated using only on-demand rates
+	OnDemandCost float64 `bson:"on_demand_cost,omitempty" json:"on_demand_cost,omitempty"`
+	// AdjustedCost is the cost calculated using the finance formula with savings plan and on-demand components
+	AdjustedCost float64 `bson:"adjusted_cost,omitempty" json:"adjusted_cost,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (tc TaskCost) IsZero() bool {
+	return tc.OnDemandCost == 0 && tc.AdjustedCost == 0
+}
+
 type Task struct {
 	Id     string `bson:"_id" json:"id"`
 	Secret string `bson:"secret" json:"secret"`
@@ -239,6 +253,10 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute (if it has finished) or how long the task has been running (if it has started)
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
+	// ExpectedTaskCost is the expected cost of running the task based on its predicted duration and distro cost rates
+	ExpectedTaskCost TaskCost `bson:"expected_task_cost,omitempty" json:"expected_task_cost,omitempty"`
+	// TaskCost is the cost of the task based on runtime and distro cost rates
+	TaskCost TaskCost `bson:"task_cost,omitempty" json:"task_cost,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -2279,6 +2297,16 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 
+	// Calculate task cost now that we have the actual runtime
+	if err := t.UpdateTaskCost(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":   "failed to calculate task cost",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+		}))
+		// Don't fail the task finishing if cost calculation fails
+	}
+
 	grip.Debug(message.Fields{
 		"message":   "marking task finished",
 		"task_id":   t.Id,
@@ -2316,6 +2344,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				FinishTimeKey:         finishTime,
 				StatusKey:             detail.Status,
 				TimeTakenKey:          t.TimeTaken,
+				TaskCostKey:           t.TaskCost,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
@@ -2676,19 +2705,31 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	t.StartTime = startTime
 	t.Status = evergreen.TaskStarted
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
+
+	estimatedCost, err := t.GetEstimatedCost(ctx)
+	if err == nil && (estimatedCost.OnDemandCost != 0 || estimatedCost.AdjustedCost != 0) {
+		t.ExpectedTaskCost = estimatedCost
+	}
+
+	updateDoc := bson.M{
+		"$set": bson.M{
+			StatusKey:             evergreen.TaskStarted,
+			LastHeartbeatKey:      startTime,
+			StartTimeKey:          startTime,
+			DisplayStatusCacheKey: t.DisplayStatusCache,
+		},
+	}
+
+	if t.ExpectedTaskCost.OnDemandCost != 0 || t.ExpectedTaskCost.AdjustedCost != 0 {
+		updateDoc["$set"].(bson.M)[ExpectedTaskCostKey] = t.ExpectedTaskCost
+	}
+
 	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey:             evergreen.TaskStarted,
-				LastHeartbeatKey:      startTime,
-				StartTimeKey:          startTime,
-				DisplayStatusCacheKey: t.DisplayStatusCache,
-			},
-		},
+		updateDoc,
 	)
 }
 
@@ -4179,4 +4220,115 @@ func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown
 		attribute.Float64(fmt.Sprintf("%s.estimated_runtime_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.EstimatedRuntimeImpact/breakdown.TotalValue*100)),
 	)
 	t.SortingValueBreakdown = breakdown
+}
+
+// CalculateOnDemandCost calculates the on-demand cost of running a task.
+func CalculateOnDemandCost(runtimeSeconds float64, distroCostData distro.CostData, financeConfig evergreen.CostConfig) float64 {
+	if runtimeSeconds <= 0 {
+		return 0
+	}
+
+	return runtimeSeconds * (distroCostData.OnDemandRate / 3600.0) * (1 - financeConfig.OnDemandDiscount)
+}
+
+// CalculateAdjustedTaskCost calculates the adjusted cost of running a task based on the provided runtime,
+// distro cost data, and admin finance settings using the finance formula.
+func CalculateAdjustedTaskCost(runtimeSeconds float64, distroCostData distro.CostData, financeConfig evergreen.CostConfig) float64 {
+	if runtimeSeconds <= 0 {
+		return 0
+	}
+
+	savingsPlanComponent := financeConfig.FinanceFormula * (distroCostData.SavingsPlanRate / 3600.0) * (1 - financeConfig.SavingsPlanDiscount)
+	onDemandComponent := (1 - financeConfig.FinanceFormula) * (distroCostData.OnDemandRate / 3600.0) * (1 - financeConfig.OnDemandDiscount)
+	costPerSecond := savingsPlanComponent + onDemandComponent
+
+	return runtimeSeconds * costPerSecond
+}
+
+// CalculateTaskCost calculates both on-demand and adjusted costs for a task.
+func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, financeConfig evergreen.CostConfig) TaskCost {
+	return TaskCost{
+		OnDemandCost: CalculateOnDemandCost(runtimeSeconds, distroCostData, financeConfig),
+		AdjustedCost: CalculateAdjustedTaskCost(runtimeSeconds, distroCostData, financeConfig),
+	}
+}
+
+func isFinanceConfigured(financeConfig evergreen.CostConfig) bool {
+	return financeConfig.FinanceFormula != 0 || financeConfig.SavingsPlanDiscount != 0 || financeConfig.OnDemandDiscount != 0
+}
+
+func hasDistroCostData(costData distro.CostData) bool {
+	return costData.OnDemandRate != 0 || costData.SavingsPlanRate != 0
+}
+
+func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, error) {
+	financeConfig := evergreen.CostConfig{}
+	if err := financeConfig.Get(ctx); err != nil {
+		return financeConfig, distro.CostData{}, errors.Wrap(err, "getting finance configuration")
+	}
+
+	if !isFinanceConfigured(financeConfig) {
+		return financeConfig, distro.CostData{}, errors.New("finance configuration not set up")
+	}
+
+	d, err := distro.FindOneId(ctx, t.DistroId)
+	if err != nil {
+		return financeConfig, distro.CostData{}, errors.Wrapf(err, "finding distro '%s'", t.DistroId)
+	}
+	if d == nil {
+		return financeConfig, distro.CostData{}, errors.Errorf("distro '%s' not found", t.DistroId)
+	}
+
+	if !hasDistroCostData(d.CostData) {
+		return financeConfig, distro.CostData{}, errors.New("distro cost data not configured")
+	}
+
+	return financeConfig, d.CostData, nil
+}
+
+// UpdateTaskCost updates the task's cost based on its current TimeTaken duration.
+func (t *Task) UpdateTaskCost(ctx context.Context) error {
+	if t.TimeTaken <= 0 {
+		return nil
+	}
+
+	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
+	if err != nil {
+		return nil
+	}
+
+	runtimeSeconds := t.TimeTaken.Seconds()
+	t.TaskCost = CalculateTaskCost(runtimeSeconds, costData, financeConfig)
+
+	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{
+		"$set": bson.M{
+			"task_cost": t.TaskCost,
+		},
+	})
+}
+
+// GetEstimatedCost calculates the estimated cost for a task based on its DurationPrediction.
+// This is useful for in-progress tasks to show estimated costs without modifying the database.
+// Returns zero cost if no duration prediction is available or if cost configuration is not set up.
+func (t *Task) GetEstimatedCost(ctx context.Context) (TaskCost, error) {
+	var estimatedDuration time.Duration
+	if t.Status == evergreen.TaskStarted || t.Status == evergreen.TaskDispatched {
+		if t.DurationPrediction.Value > 0 {
+			estimatedDuration = t.DurationPrediction.Value
+		} else {
+			return TaskCost{}, nil
+		}
+	} else if t.TimeTaken > 0 {
+		estimatedDuration = t.TimeTaken
+	} else {
+		return TaskCost{}, nil
+	}
+
+	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
+	if err != nil {
+		return TaskCost{}, nil
+	}
+
+	runtimeSeconds := estimatedDuration.Seconds()
+	return CalculateTaskCost(runtimeSeconds, costData, financeConfig), nil
 }

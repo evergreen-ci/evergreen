@@ -76,6 +76,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.jira_notifications.custom_fields = $scope.Settings.jira_notifications.custom_fields || {};
       $scope.Settings.providers.aws.ec2_keys = $scope.Settings.providers.aws.ec2_keys || [];
       $scope.Settings.providers.aws.allowed_regions = $scope.Settings.providers.aws.allowed_regions || [];
+      $scope.Settings.cost = $scope.Settings.cost || {};
       $scope.Settings.single_task_distro.project_tasks_pair
         .sort((a,b) => $scope.getProjectOrRepoName(a.project_id).localeCompare($scope.getProjectOrRepoName(b.project_id)))
         .sort((a,b) => {

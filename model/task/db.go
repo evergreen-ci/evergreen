@@ -82,6 +82,8 @@ var (
 	AbortedKey                     = bsonutil.MustHaveTag(Task{}, "Aborted")
 	AbortInfoKey                   = bsonutil.MustHaveTag(Task{}, "AbortInfo")
 	TimeTakenKey                   = bsonutil.MustHaveTag(Task{}, "TimeTaken")
+	TaskCostKey                    = bsonutil.MustHaveTag(Task{}, "TaskCost")
+	ExpectedTaskCostKey            = bsonutil.MustHaveTag(Task{}, "ExpectedTaskCost")
 	ExpectedDurationKey            = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
 	ExpectedDurationStddevKey      = bsonutil.MustHaveTag(Task{}, "ExpectedDurationStdDev")
 	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
