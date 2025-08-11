@@ -239,6 +239,21 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		e.dbName = db.DB
 		// Persist the environment early so the db will be available for initSettings.
 		SetEnvironment(e)
+
+		// Get settings without parameter manager to avoid circular dependency of
+		// needing the parameter manager to initialize the settings.
+		// It's important that we initialize parameter manager before we initialize
+		// the settings, so that we can read secrets from the parameter store.
+		settingsWithoutSecrets, err := getSettings(ctx, true, false)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting temporary settings from DB")
+		}
+		if settingsWithoutSecrets == nil {
+			return nil, errors.New("temporary settings from DB not found")
+		}
+		if err := e.initParameterManager(ctx, tracer, settingsWithoutSecrets.ParameterStore.Prefix); err != nil {
+			return nil, errors.Wrap(err, "initializing parameter manager")
+		}
 	}
 
 	if err := e.initSettings(ctx, confPath, tracer); err != nil {
@@ -259,7 +274,6 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.initCedarDB(ctx, tracer))
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
-	catcher.Add(e.initParameterManager(ctx, tracer))
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
 	catcher.Add(e.initClientConfig(ctx, versionID, clientS3Bucket, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
@@ -975,12 +989,12 @@ func (e *envState) initDepot(ctx context.Context, tracer trace.Tracer) error {
 	return nil
 }
 
-func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer) error {
+func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer, pathPrefix string) error {
 	ctx, span := tracer.Start(ctx, "InitParameterManager")
 	defer span.End()
 
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-		PathPrefix:     e.settings.ParameterStore.Prefix,
+		PathPrefix:     pathPrefix,
 		CachingEnabled: true,
 		DB:             e.client.Database(e.dbName),
 	})

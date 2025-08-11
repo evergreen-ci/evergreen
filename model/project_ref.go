@@ -1954,7 +1954,8 @@ func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete 
 }
 
 // FindNonHiddenProjects returns limit visible project refs starting at project id key in the sortDir direction.
-func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int) ([]ProjectRef, error) {
+// Optionally filters by ownerName and repoName if provided.
+func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int, ownerName, repoName string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	filter := bson.M{
 		ProjectRefHiddenKey: bson.M{"$ne": true},
@@ -1966,6 +1967,14 @@ func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir i
 		filter[ProjectRefIdKey] = bson.M{"$lt": key}
 	} else {
 		filter[ProjectRefIdKey] = bson.M{"$gte": key}
+	}
+
+	if ownerName != "" {
+		filter[ProjectRefOwnerKey] = ownerName
+	}
+
+	if repoName != "" {
+		filter[ProjectRefRepoKey] = repoName
 	}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)

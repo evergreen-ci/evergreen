@@ -282,7 +282,16 @@ func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting disk usage")
 	}
-	if usage.UsedPercent > globals.MaxPercentageDataVolumeUsage {
+	return a.checkDataDirectoryHealthWithUsage(ctx, usage)
+}
+
+func (a *Agent) checkDataDirectoryHealthWithUsage(ctx context.Context, usage *disk.UsageStat) error {
+	maxPercentageDataVolumeUsage := globals.MaxPercentageDataVolumeUsageDefault
+	if runtime.GOOS == "darwin" {
+		maxPercentageDataVolumeUsage = globals.MaxPercentageDataVolumeUsageDarwin
+	}
+
+	if usage.UsedPercent > float64(maxPercentageDataVolumeUsage) {
 		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
 			Reason: fmt.Sprintf("data directory usage (%f%%) is too high to run a new task", usage.UsedPercent),
 		})

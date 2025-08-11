@@ -37,7 +37,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 0.5,
 			}
 
@@ -68,7 +68,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 1,
 			}
 
@@ -93,13 +93,171 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("nonexistent")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("nonexistent")},
 				minSuccessProportion: 0.5,
 			}
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
+		},
+		"PassesCriteriaWithMatchingBuildVariantDisplayNameWhenSuccessRateIsAboveThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					DisplayName:  utility.ToStringPtr("Build variant 1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:                        "test_project",
+				buildVariantDisplayNameRegexps: []regexp.Regexp{*regexp.MustCompile("variant 1")},
+				minSuccessProportion:           0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
+		"DoesNotPassCriteriaWithMatchingBuildVariantDisplayNameWhenSuccessRateIsBelowThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					DisplayName:  utility.ToStringPtr("Build variant 1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:                        "test_project",
+				buildVariantDisplayNameRegexps: []regexp.Regexp{*regexp.MustCompile("variant 1")},
+				minSuccessProportion:           1,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.False(t, passesCriteria)
+		},
+		"PassesCriteriaWithNoMatchingBuildVariantDisplayNames": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					DisplayName:  utility.ToStringPtr("Build variant 1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:                        "test_project",
+				buildVariantDisplayNameRegexps: []regexp.Regexp{*regexp.MustCompile("nonexistent")},
+				minSuccessProportion:           0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
+		"PassesCriteriaWithBuildFinishedRateAboveThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskFailed),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:               "test_project",
+				buildVariantRegexps:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minFinishedProportion: 0.9,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
+		"DoesNotPassCriteriaWithBuildFinishedRateBelowThreshold": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:           utility.ToStringPtr("t1"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskStarted),
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+				{
+					Id:           utility.ToStringPtr("t3"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskUndispatched),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:               "test_project",
+				buildVariantRegexps:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minFinishedProportion: 0.5,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.False(t, passesCriteria)
 		},
 		"PassesCriteriaWithRequiredSuccessfulTaskInBuild": func(t *testing.T, c *client.Mock) {
 			builds := []model.APIBuild{
@@ -118,9 +276,9 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				},
 			}
 			criteria := lastRevisionCriteria{
-				project:            "test_project",
-				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
-				successfulTasks:    []string{"Task 1"},
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:     []string{"Task 1"},
 			}
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
@@ -143,9 +301,9 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				},
 			}
 			criteria := lastRevisionCriteria{
-				project:            "test_project",
-				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
-				successfulTasks:    []string{"nonexistent"},
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:     []string{"nonexistent"},
 			}
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
@@ -169,9 +327,9 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				},
 			}
 			criteria := lastRevisionCriteria{
-				project:            "test_project",
-				buildVariantRegexp: []regexp.Regexp{*regexp.MustCompile("bv1")},
-				successfulTasks:    []string{"Task 1"},
+				project:             "test_project",
+				buildVariantRegexps: []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:     []string{"Task 1"},
 			}
 
 			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
@@ -219,7 +377,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 0.5,
 			}
 
@@ -260,7 +418,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("bv1")},
 				minSuccessProportion: 1,
 			}
 
@@ -293,7 +451,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 			}
 			criteria := lastRevisionCriteria{
 				project:              "test_project",
-				buildVariantRegexp:   []regexp.Regexp{*regexp.MustCompile("nonexistent")},
+				buildVariantRegexps:  []regexp.Regexp{*regexp.MustCompile("nonexistent")},
 				minSuccessProportion: 0.5,
 			}
 

@@ -39,7 +39,6 @@ query Other {
         secretARN
       }
     }
-    expansions
     hostJasper {
       binaryName
       downloadFileName
