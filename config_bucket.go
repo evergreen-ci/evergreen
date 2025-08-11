@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"context"
+	"slices"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -100,10 +101,8 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 // GetLogBucket returns the appropriate log bucket based on if the project ID
 // is in the LongRetentionProjects list.
 func (c *BucketsConfig) GetLogBucket(projectID string) BucketConfig {
-	for _, project := range c.LongRetentionProjects {
-		if project == projectID {
-			return c.LogBucketLongRetention
-		}
+	if slices.Contains(c.LongRetentionProjects, projectID) {
+		return c.LogBucketLongRetention
 	}
 	return c.LogBucket
 }
