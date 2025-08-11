@@ -1763,7 +1763,7 @@ func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*TaskOutput,
 		return nil, false
 	}
 
-	return InitializeTaskOutput(env), true
+	return InitializeTaskOutput(env, t.Project), true
 }
 
 // GetTaskOutputSafe returns an instantiation of the task output interface and

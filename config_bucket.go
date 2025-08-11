@@ -96,3 +96,14 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 	catcher.Add(c.LogBucketLongRetention.validate())
 	return catcher.Resolve()
 }
+
+// GetLogBucket returns the appropriate log bucket based on if the project ID
+// is in the LongRetentionProjects list.
+func (c *BucketsConfig) GetLogBucket(projectID string) BucketConfig {
+	for _, project := range c.LongRetentionProjects {
+		if project == projectID {
+			return c.LogBucketLongRetention
+		}
+	}
+	return c.LogBucket
+}
