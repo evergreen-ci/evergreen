@@ -234,6 +234,12 @@ func GetRawConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, false, true)
 }
 
+// GetConfigWithoutSecrets returns the Evergreen configuration without secrets, should
+// only be used for logging or displaying settings without sensitive information.
+func GetConfigWithoutSecrets(ctx context.Context) (*Settings, error) {
+	return getSettings(ctx, true, false)
+}
+
 func getSettings(ctx context.Context, includeOverrides, includeParameterStore bool) (*Settings, error) {
 	config := NewConfigSections()
 	if err := config.populateSections(ctx, includeOverrides); err != nil {
@@ -761,7 +767,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					redactedValue := fmt.Sprintf("REDACTED:%s", util.GetSHA256Hash(secretValue)[:6])
+					redactedValue := redactedSecretValue(secretValue)
 					fieldValue.SetString(redactedValue)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
@@ -776,7 +782,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						redactedValue := fmt.Sprintf("REDACTED:%s", util.GetSHA256Hash(secretValue)[:6])
+						redactedValue := redactedSecretValue(secretValue)
 						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
 					}
 					fieldValue.Set(newMap)
@@ -797,4 +803,8 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 			StoreAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s/%d", path, i), catcher)
 		}
 	}
+}
+
+func redactedSecretValue(secretValue string) string {
+	return fmt.Sprintf("REDACTED:%s", util.GetSHA256Hash(secretValue)[:6])
 }
