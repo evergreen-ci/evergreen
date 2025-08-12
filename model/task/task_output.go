@@ -13,17 +13,18 @@ type TaskOutput struct {
 }
 
 // InitializeTaskOutput initializes the task output for a new task run.
-func InitializeTaskOutput(env evergreen.Environment) *TaskOutput {
+func InitializeTaskOutput(env evergreen.Environment, projectID string) *TaskOutput {
 	settings := env.Settings()
+	logBucket := settings.Buckets.GetLogBucket(projectID)
 
 	return &TaskOutput{
 		TaskLogs: TaskLogOutput{
 			Version:      TestResultServiceEvergreen,
-			BucketConfig: settings.Buckets.LogBucket,
+			BucketConfig: logBucket,
 		},
 		TestLogs: TestLogOutput{
 			Version:      TestResultServiceEvergreen,
-			BucketConfig: settings.Buckets.LogBucket,
+			BucketConfig: logBucket,
 		},
 		TestResults: TestResultOutput{
 			Version:      TestResultServiceEvergreen,
