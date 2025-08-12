@@ -82,6 +82,14 @@ GitHub only allows one set of statuses for every commit SHA. If you have a situa
 
 See [GitHub Merge Queue](../Project-Configuration/Merge-Queue.md) for more information.
 
+## GitHub Hooks
+
+Evergreen receives GitHub Events through the Evergreen GitHub App that's installed on your repository.
+When looking through the events on the GitHub app, some events may be labeled as `timed out.` This 
+is expected because GitHub expects to receive a response within 10 seconds of sending the event but 
+some Evergreen operations, like creating a version, can take longer than that. For more accurate debugging,
+we recommend looking at the logs in Splunk.
+
 ## Github Check Runs
 
 Evergreen offers integration with the GitHub checks API. Users have the option to specify check runs with or without output and they will then be sent to GitHub once the task finishes running. The check run will include basic information about the task such as the status and complete time as well as whatever information is sent as output.
