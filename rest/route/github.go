@@ -53,7 +53,7 @@ const (
 	skipCIDescriptionCharLimit = 100
 
 	// githubWebhookTimeout is the maximum timeout for processing a GitHub webhook.
-	githubWebhookTimeout = 60 * time.Second
+	githubWebhookTimeout = 5 * time.Minute
 )
 
 // skipCILabels are a set of labels which will skip creating PR patch if part of
