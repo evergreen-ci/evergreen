@@ -348,7 +348,7 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 		}
 		// kim: TODO: adjust this check to allow known failures to count as
 		// success.
-		if isSuccessfulTask(tsk, c.knownFailuresAreSuccess) {
+		if !isSuccessfulTask(tsk, c.knownFailuresAreSuccess) {
 			grip.Debug(message.Fields{
 				"message":                  "build has required task but it was not successful",
 				"version_id":               info.versionID,
