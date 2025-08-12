@@ -26,6 +26,7 @@ func LastRevision() cli.Command {
 		minSuccessProportionFlagName      = "min-success"
 		minFinishedProportionFlagName     = "min-finished"
 		successfulTasks                   = "successful-tasks"
+		knownFailuresAreSuccessFlagName   = "known-failures-are-success"
 		jsonFlagName                      = "json"
 	)
 	return cli.Command{
@@ -53,6 +54,10 @@ func LastRevision() cli.Command {
 				Usage: "minimum proportion of finished tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
 			},
 			cli.BoolFlag{
+				Name:  knownFailuresAreSuccessFlagName,
+				Usage: "treat tasks with known failures as successful when checking the last revision criteria",
+			},
+			cli.BoolFlag{
 				Name:  joinFlagNames(jsonFlagName, "j"),
 				Usage: "output the result in JSON format",
 			},
@@ -78,8 +83,9 @@ func LastRevision() cli.Command {
 			minSuccessProp := c.Float64(minSuccessProportionFlagName)
 			minFinishedProp := c.Float64(minFinishedProportionFlagName)
 			successfulTasks := c.StringSlice(successfulTasks)
+			knownFailuresAreSuccess := c.Bool(knownFailuresAreSuccessFlagName)
 			jsonOutput := c.Bool(jsonFlagName)
-			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks)
+			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownFailuresAreSuccess)
 
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
@@ -165,14 +171,18 @@ type lastRevisionBuildInfo struct {
 	numFinishedTasks int
 }
 
-func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) lastRevisionBuildInfo {
+func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask, knownFailuresAreSuccess bool) lastRevisionBuildInfo {
 	numFinishedTasks := 0
 	numSuccessfulTasks := 0
 	for _, t := range buildTasks {
-		if evergreen.IsFinishedTaskStatus(utility.FromStringPtr(t.Status)) {
+		status := utility.FromStringPtr(t.Status)
+		if evergreen.IsFinishedTaskStatus(status) {
 			numFinishedTasks++
 		}
-		if utility.FromStringPtr(t.Status) == evergreen.TaskSucceeded {
+		// kim: TODO: test in staging to verify that this ignores known
+		// failures.
+		// kim: TODO: add unit test for known failures as success.
+		if isSuccessfulTask(t, knownFailuresAreSuccess) {
 			numSuccessfulTasks++
 		}
 	}
@@ -199,6 +209,14 @@ func (i *lastRevisionBuildInfo) finishedProportion() float64 {
 	return float64(i.numFinishedTasks) / float64(len(i.allTasks))
 }
 
+func isSuccessfulTask(t model.APITask, knownFailuresAreSuccess bool) bool {
+	status := utility.FromStringPtr(t.Status)
+	if status == evergreen.TaskSucceeded {
+		return true
+	}
+	return knownFailuresAreSuccess && evergreen.IsFailedTaskStatus(status) && t.HasAnnotations
+}
+
 // lastRevisionCriteria defines the user criteria for selecting a suitable last
 // revision.
 type lastRevisionCriteria struct {
@@ -222,9 +240,12 @@ type lastRevisionCriteria struct {
 	// present in the build, must have succeeded. If the task is not present in
 	// the build, then this criterion does not apply.
 	successfulTasks []string
+	// knownFailuresAreSuccess indicates whether tasks with known failures
+	// should be treated as successful when checking the criteria.
+	knownFailuresAreSuccess bool
 }
 
-func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion float64, successfulTasks []string) (*lastRevisionCriteria, error) {
+func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion float64, successfulTasks []string, knownFailuresAreSuccess bool) (*lastRevisionCriteria, error) {
 	if len(bvRegexpsAsStr) == 0 && len(bvDisplayRegexpsAsStr) == 0 {
 		return nil, errors.New("must specify at least one build variant name or display name regexp for criteria")
 	}
@@ -262,6 +283,7 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsS
 		minSuccessProportion:           minSuccessProportion,
 		minFinishedProportion:          minFinishedProportion,
 		successfulTasks:                successfulTasks,
+		knownFailuresAreSuccess:        knownFailuresAreSuccess,
 	}, nil
 }
 
@@ -324,14 +346,16 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 			// apply.
 			continue
 		}
-		if status := utility.FromStringPtr(tsk.Status); status != evergreen.TaskSucceeded {
+		// kim: TODO: adjust this check to allow known failures to count as
+		// success.
+		if isSuccessfulTask(tsk, c.knownFailuresAreSuccess) {
 			grip.Debug(message.Fields{
 				"message":                  "build has required task but it was not successful",
 				"version_id":               info.versionID,
 				"build_id":                 info.buildID,
 				"build_variant":            info.buildVariant,
 				"required_successful_task": taskName,
-				"task_status":              status,
+				"task_status":              utility.FromStringPtr(tsk.Status),
 			})
 			return false
 		}
@@ -429,7 +453,7 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		return false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
 	}
 
-	buildInfo := newLastRevisionBuildInfo(b, tasks)
+	buildInfo := newLastRevisionBuildInfo(b, tasks, criteria.knownFailuresAreSuccess)
 
 	return criteria.check(buildInfo), nil
 }
