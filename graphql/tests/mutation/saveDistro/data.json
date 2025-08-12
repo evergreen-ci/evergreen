@@ -105,7 +105,11 @@
       "home_volume_settings": {
         "format_command": ""
       },
-      "icecream_settings": {}
+      "icecream_settings": {},
+      "cost_data": {
+        "on_demand_rate": 0.05,
+        "savings_plan_rate": 0.15
+      }
     }
   ],
   "hosts": [
@@ -218,7 +222,11 @@
         "home_volume_settings": {
           "format_command": ""
         },
-        "icecream_settings": {}
+        "icecream_settings": {},
+        "cost_data": {
+          "on_demand_rate": 0.05,
+          "savings_plan_rate": 0.15
+        }
       },
       "expiration_time": {
         "$date": "0001-01-01T00:00:00Z"
@@ -348,7 +356,11 @@
         "home_volume_settings": {
           "format_command": ""
         },
-        "icecream_settings": {}
+        "icecream_settings": {},
+        "cost_data": {
+          "on_demand_rate": 0.05,
+          "savings_plan_rate": 0.15
+        }
       },
       "expiration_time": {
         "$date": "0001-01-01T00:00:00Z"
