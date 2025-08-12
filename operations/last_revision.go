@@ -206,6 +206,9 @@ func (i *lastRevisionBuildInfo) finishedProportion() float64 {
 	return float64(i.numFinishedTasks) / float64(len(i.allTasks))
 }
 
+// isSuccessfulTask checks if a task is considered successful for last revision
+// criteria, which means either the task succeeded or if knownIssuesAreSuccess
+// is true, the task failed with known issues.
 func isSuccessfulTask(t model.APITask, knownIssuesAreSuccess bool) bool {
 	status := utility.FromStringPtr(t.Status)
 	if status == evergreen.TaskSucceeded {
