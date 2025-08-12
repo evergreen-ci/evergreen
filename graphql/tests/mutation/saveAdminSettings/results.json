@@ -409,12 +409,6 @@
                   },
                   "components": ["mutation-component"],
                   "labels": ["mutation-label"]
-                },
-                {
-                  "project": "another-project",
-                  "fields": {},
-                  "components": ["another-component"],
-                  "labels": ["another-label"]
                 }
               ]
             },
