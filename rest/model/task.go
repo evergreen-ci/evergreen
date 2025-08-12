@@ -125,8 +125,7 @@ type APITask struct {
 	MustHaveResults   bool            `json:"must_have_test_results"`
 	BaseTask          APIBaseTaskInfo `json:"base_task"`
 	ResetWhenFinished bool            `json:"reset_when_finished"`
-	// kim: TODO: confirm that this is returned from REST API in staging.
-	HasAnnotations bool `json:"has_annotations"`
+	HasAnnotations    bool            `json:"has_annotations"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
