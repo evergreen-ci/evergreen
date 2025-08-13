@@ -1248,7 +1248,7 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	return result, nil
 }
 
-func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string, limit int) ([]model.APIVersion, error) {
+func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("projects/%s/versions", projectID),
@@ -1256,6 +1256,9 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 	queryParams := []string{}
 	if requester != "" {
 		queryParams = append(queryParams, fmt.Sprintf("requester=%s", requester))
+	}
+	if startAtOrderNum > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("start=%d", startAtOrderNum))
 	}
 	if limit > 0 {
 		queryParams = append(queryParams, fmt.Sprintf("limit=%d", limit))

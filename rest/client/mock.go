@@ -271,7 +271,7 @@ func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, b
 	return nil, nil
 }
 
-func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, branch string, limit int) ([]restmodel.APIVersion, error) {
+func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, branch string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
 	if c.GetRecentVersionsResult != nil {
 		return c.GetRecentVersionsResult, nil
 	}
