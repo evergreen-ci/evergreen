@@ -333,13 +333,13 @@ func (s *VersionSuite) TestActivateVersionTasks() {
 
 	handler := &versionActivateTasksHandler{
 		versionId: versionId,
-		Variants: []variant{
+		Variants: []Variant{
 			{
-				Id:    s.bv[0],
+				Name:  s.bv[0],
 				Tasks: []string{"test_task_1", "test_task_2"},
 			},
 			{
-				Id:    s.bv[1],
+				Name:  s.bv[1],
 				Tasks: []string{"test_task_3"},
 			},
 		},
@@ -370,9 +370,9 @@ func (s *VersionSuite) TestActivateVersionTasksInvalidVariant() {
 
 	handler := &versionActivateTasksHandler{
 		versionId: versionId,
-		Variants: []variant{
+		Variants: []Variant{
 			{
-				Id:    s.bv[0],
+				Name:  s.bv[0],
 				Tasks: []string{"test_task_1", "test_task_2"},
 			},
 		},

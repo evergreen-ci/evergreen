@@ -351,9 +351,14 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/versions/{version_id}/activate_tasks
 
 type versionActivateTasksHandler struct {
-	Variants []variant `json:"variants" validate:"required"`
+	Variants []Variant `json:"variants" validate:"required"`
 
 	versionId string
+}
+
+type Variant struct {
+	Name  string   `json:"name"`
+	Tasks []string `json:"tasks"`
 }
 
 func makeActivateVersionTasks() gimlet.RouteHandler {
@@ -413,13 +418,13 @@ func (h *versionActivateTasksHandler) Run(ctx context.Context) gimlet.Responder 
 	var tasksToActivate []task.Task
 	for _, vt := range h.Variants {
 		query := task.ByVersion(h.versionId)
-		query[task.BuildVariantKey] = vt.Id
+		query[task.BuildVariantKey] = vt.Name
 		query[task.DisplayNameKey] = bson.M{"$in": vt.Tasks}
 		query[task.ActivatedKey] = false
 
 		tasks, err := task.FindAll(ctx, db.Query(query))
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks for variant '%s'", vt.Id))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks for variant '%s'", vt.Name))
 		}
 
 		tasksToActivate = append(tasksToActivate, tasks...)
@@ -439,6 +444,10 @@ func (h *versionActivateTasksHandler) Run(ctx context.Context) gimlet.Responder 
 	version, err = dbModel.VersionFindOneIdWithBuildVariants(ctx, h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated version '%s'", h.versionId))
+	}
+
+	if version == nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "version '%s' not found", h.versionId))
 	}
 
 	versionModel := &restModel.APIVersion{}
