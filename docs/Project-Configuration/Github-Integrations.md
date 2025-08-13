@@ -88,7 +88,7 @@ Evergreen receives GitHub Events through the Evergreen GitHub App that's install
 When looking through the events on the GitHub app, some events may be labeled as `timed out.` This 
 is expected because GitHub expects to receive a response within 10 seconds of sending the event but 
 some Evergreen operations, like creating a version, can take longer than that. For more accurate debugging,
-we recommend looking at the logs in Splunk.
+we recommend asking the Evergreen Slack channel for help.
 
 ## Github Check Runs
 
