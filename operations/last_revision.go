@@ -31,6 +31,7 @@ func LastRevision() cli.Command {
 		jsonFlagName                      = "json"
 		timeoutFlagName                   = "timeout"
 		lookbackLimitFlagName             = "lookback-limit"
+		saveFlagName                      = "save"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -73,6 +74,10 @@ func LastRevision() cli.Command {
 				Name:  lookbackLimitFlagName,
 				Usage: "number of recent versions to consider before giving up",
 				Value: defaultLastRevisionLookbackLimit,
+			},
+			cli.BoolFlag{
+				Name:  saveFlagName,
+				Usage: "save the last revision criteria for reuse",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
@@ -124,7 +129,15 @@ func LastRevision() cli.Command {
 			knownIssuesAreSuccess := c.Bool(knownIssuesAreSuccessFlagName)
 			jsonOutput := c.Bool(jsonFlagName)
 			versionLookbackLimit := c.Int(lookbackLimitFlagName)
+			saveCriteria := c.Bool(saveFlagName)
 			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
+
+			if saveCriteria {
+				if err := saveLastRevisionCriteria(confPath, criteria); err != nil {
+					return errors.Wrap(err, "saving last revision criteria")
+				}
+				return nil
+			}
 
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
@@ -452,7 +465,7 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 // findLatestMatchingVersion iterates through the latest versions and finds the
 // first one that matches the criteria. It returns nil version if no matching
 // version is found.
-func findLatestMatchingVersion(ctx context.Context, c client.Communicator, latestVersions []model.APIVersion, criteria lastRevisionCriteria) (*model.APIVersion, error) {
+func findLatestMatchingVersion(ctx context.Context, c client.Communicator, latestVersions []model.APIVersion, criteria []lastRevisionCriteria) (*model.APIVersion, error) {
 	for _, v := range latestVersions {
 		grip.Debug(message.Fields{
 			"message":    "checking version",
@@ -481,7 +494,7 @@ func findLatestMatchingVersion(ctx context.Context, c client.Communicator, lates
 }
 
 // checkBuildsPassCriteria checks if all the provided builds pass the criteria.
-func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
+func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds []model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
 	type buildResult struct {
 		passesCriteria bool
 		err            error
@@ -521,8 +534,17 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 }
 
 // checkBuildPassesCriteria checks if a single build passes the criteria.
-func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria lastRevisionCriteria) (passesCriteria bool, err error) {
-	if !criteria.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
+func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
+	// kim: TODO: double-check that this is logically equivalen to what
+	// git-co-evg-base does
+	anyCriteriaApply := false
+	for _, c := range criteria {
+		if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
+			anyCriteriaApply = true
+			break
+		}
+	}
+	if !anyCriteriaApply {
 		return true, nil
 	}
 
@@ -540,7 +562,23 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 
 	buildInfo := newLastRevisionBuildInfo(b, tasks, criteria.knownIssuesAreSuccess)
 
-	return criteria.check(buildInfo), nil
+	// kim: TODO: double-check that this is logically equivalent to what
+	// git-co-evg-base does
+	for _, c := range criteria {
+		passesCriteria := c.check(buildInfo)
+		if !passesCriteria {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+type lastRevisionCriteriaGroup struct {
+	criteria []lastRevisionCriteria
+}
+
+func saveLastRevisionCriteria(confPath string, criteria *lastRevisionCriteria) error {
+	return errors.New("kim: TODO: implement")
 }
 
 func getModulesForVersion(ctx context.Context, c client.Communicator, versionID string) ([]model.APIManifestModule, error) {
