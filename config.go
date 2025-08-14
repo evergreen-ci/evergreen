@@ -280,10 +280,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		settingsType := reflect.TypeOf(*paramConfig)
 		adminCatcher := grip.NewBasicCatcher()
 
-		paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
-		defer cancel()
-
-		readAdminSecrets(paramCtx, paramMgr, settingsValue, settingsType, "", adminCatcher)
+		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
 		if adminCatcher.HasErrors() {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {
@@ -331,7 +328,9 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
 				// If the field is a string, store in parameter manager and update struct with path.
 				if fieldValue.Kind() == reflect.String {
-					param, err := paramMgr.Get(ctx, fieldPath)
+					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+					defer cancel()
+					param, err := paramMgr.Get(paramCtx, fieldPath)
 					if err != nil {
 						catcher.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath)
 					} else if len(param) > 0 {
@@ -342,9 +341,11 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
 					newMap := reflect.MakeMap(fieldValue.Type())
+					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+					defer cancel()
 					for _, key := range fieldValue.MapKeys() {
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
-						param, err := paramMgr.Get(ctx, mapFieldPath)
+						param, err := paramMgr.Get(paramCtx, mapFieldPath)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to read secret map field '%s' in parameter store", mapFieldPath)
 							continue
