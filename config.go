@@ -341,10 +341,10 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
 					newMap := reflect.MakeMap(fieldValue.Type())
+					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+					defer cancel()
 					for _, key := range fieldValue.MapKeys() {
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
-						paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
-						defer cancel()
 						param, err := paramMgr.Get(paramCtx, mapFieldPath)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to read secret map field '%s' in parameter store", mapFieldPath)
