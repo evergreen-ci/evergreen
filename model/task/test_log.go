@@ -77,14 +77,14 @@ func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log
 	}
 
 	// If the project is in the long retention list, override the bucket config
-	settings := evergreen.GetEnvironment().Settings()
+	env := evergreen.GetEnvironment()
 	var testLogOutput TestLogOutput
 
-	if settings != nil && slices.Contains(settings.Buckets.LongRetentionProjects, task.Project) {
+	if env != nil && env.Settings() != nil && slices.Contains(env.Settings().Buckets.LongRetentionProjects, task.Project) {
 		// Project is in long retention list, use current long retention bucket
 		testLogOutput = TestLogOutput{
 			Version:        output.TestLogs.Version,
-			BucketConfig:   settings.Buckets.LogBucketLongRetention,
+			BucketConfig:   env.Settings().Buckets.LogBucketLongRetention,
 			AWSCredentials: output.TestLogs.AWSCredentials,
 		}
 	} else {
