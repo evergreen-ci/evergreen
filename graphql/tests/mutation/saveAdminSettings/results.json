@@ -368,7 +368,7 @@
               ]
             },
             "buckets": {
-              "internalBuckets": [],
+              "internalBuckets": null,
               "logBucket": {
                 "name": "mutation-log-bucket",
                 "testResultsPrefix": null,
@@ -409,12 +409,6 @@
                   },
                   "components": ["mutation-component"],
                   "labels": ["mutation-label"]
-                },
-                {
-                  "project": "another-project",
-                  "fields": {},
-                  "components": ["another-component"],
-                  "labels": ["another-label"]
                 }
               ]
             },

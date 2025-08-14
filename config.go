@@ -32,16 +32,17 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-08-11"
+	ClientVersion = "2025-08-14"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-08-05"
+	AgentVersion = "2025-08-11"
 )
 
 const (
-	mongoTimeout        = 5 * time.Minute
-	mongoConnectTimeout = 5 * time.Second
+	mongoTimeout          = 5 * time.Minute
+	mongoConnectTimeout   = 5 * time.Second
+	parameterStoreTimeout = 30 * time.Second
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -278,7 +279,11 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		settingsValue := reflect.ValueOf(paramConfig).Elem()
 		settingsType := reflect.TypeOf(*paramConfig)
 		adminCatcher := grip.NewBasicCatcher()
-		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
+
+		paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+		defer cancel()
+
+		readAdminSecrets(paramCtx, paramMgr, settingsValue, settingsType, "", adminCatcher)
 		if adminCatcher.HasErrors() {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {

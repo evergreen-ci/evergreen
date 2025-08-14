@@ -25,6 +25,9 @@ const branchRefPrefix = "refs/heads/"
 // TriggerRepotracker creates an amboy job to get the commits from a
 // Github Push Event
 func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event *github.PushEvent) error {
+	ctx, span := tracer.Start(ctx, "trigger-repotracker")
+	defer span.End()
+
 	branch, err := validatePushEvent(event)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

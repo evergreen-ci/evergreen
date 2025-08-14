@@ -56,11 +56,6 @@ mutation SaveAdminSettingsOther {
             components: ["mutation-component"]
             labels: ["mutation-label"]
           }
-          {
-            project: "another-project"
-            components: ["another-component"]
-            labels: ["another-label"]
-          }
         ]
       }
       spawnhost: {

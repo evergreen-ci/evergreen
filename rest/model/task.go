@@ -125,6 +125,7 @@ type APITask struct {
 	MustHaveResults   bool            `json:"must_have_test_results"`
 	BaseTask          APIBaseTaskInfo `json:"base_task"`
 	ResetWhenFinished bool            `json:"reset_when_finished"`
+	HasAnnotations    bool            `json:"has_annotations"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -358,6 +359,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 			User:       t.AbortInfo.User,
 			PRClosed:   t.AbortInfo.PRClosed,
 		},
+		HasAnnotations: t.HasAnnotations,
 	}
 
 	at.ContainerOpts.BuildFromService(t.ContainerOpts)
@@ -553,6 +555,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 		Details:              at.Details.ToService(),
 		Archived:             at.Archived,
 		OverrideDependencies: at.OverrideDependencies,
+		HasAnnotations:       at.HasAnnotations,
 	}
 
 	catcher := grip.NewBasicCatcher()

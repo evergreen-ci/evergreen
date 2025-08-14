@@ -130,6 +130,7 @@ input DistroInput {
   homeVolumeSettings: HomeVolumeSettingsInput!
   hostAllocatorSettings: HostAllocatorSettingsInput!
   iceCreamSettings: IceCreamSettingsInput!
+  costData: CostDataInput
   imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
@@ -231,6 +232,16 @@ input ResourceLimitsInput {
 }
 
 ###### TYPES ######
+type CostData {
+  onDemandRate: Float
+  savingsPlanRate: Float
+}
+
+input CostDataInput {
+  onDemandRate: Float
+  savingsPlanRate: Float
+}
+
 """
 Return type representing whether a distro was created and any validation errors
 """
@@ -305,6 +316,7 @@ type Distro {
   validProjects: [String!]!
   warningNote: String!
   workDir: String!
+  costData: CostData
 }
 
 type BootstrapSettings {
