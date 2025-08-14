@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
@@ -129,7 +130,23 @@ func getTaskLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log
 		return nil, err
 	}
 
-	svc, err := getLogService(ctx, output.TaskLogs)
+	// If the project is in the long retention list, override the bucket config
+	settings := evergreen.GetEnvironment().Settings()
+	var taskLogOutput TaskLogOutput
+
+	if settings != nil && slices.Contains(settings.Buckets.LongRetentionProjects, task.Project) {
+		// Project is in long retention list, use current long retention bucket
+		taskLogOutput = TaskLogOutput{
+			Version:        output.TaskLogs.Version,
+			BucketConfig:   settings.Buckets.LogBucketLongRetention,
+			AWSCredentials: output.TaskLogs.AWSCredentials,
+		}
+	} else {
+		// Project is not in long retention list, use original bucket config
+		taskLogOutput = output.TaskLogs
+	}
+
+	svc, err := getLogService(ctx, taskLogOutput)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
