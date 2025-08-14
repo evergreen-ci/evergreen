@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -28,6 +29,7 @@ func LastRevision() cli.Command {
 		successfulTasks                   = "successful-tasks"
 		knownIssuesAreSuccessFlagName     = "known-issues-are-success"
 		jsonFlagName                      = "json"
+		timeoutFlagName                   = "timeout"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -60,6 +62,11 @@ func LastRevision() cli.Command {
 			cli.BoolFlag{
 				Name:  joinFlagNames(jsonFlagName, "j"),
 				Usage: "output the result in JSON format",
+			},
+			cli.IntFlag{
+				Name:  timeoutFlagName,
+				Usage: "timeout in seconds to find a revision",
+				Value: 300,
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, func(c *cli.Context) error {
@@ -96,8 +103,18 @@ func LastRevision() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			var ctx context.Context
+			var cancel context.CancelFunc
+			timeoutSecs := c.Int(timeoutFlagName)
+			if timeoutSecs < 0 {
+				return errors.New("timeout must be a non-negative integer")
+			} else if timeoutSecs > 0 {
+				ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
+				defer cancel()
+			} else {
+				ctx, cancel = context.WithCancel(context.Background())
+				defer cancel()
+			}
 
 			client, err := conf.setupRestCommunicator(ctx, !jsonOutput)
 			if err != nil {
