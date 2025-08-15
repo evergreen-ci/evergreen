@@ -256,8 +256,7 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdate bool) {
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
-		grip.Debug(err)
-
+		grip.Debug(errors.Wrap(err, "getting banner messages"))
 	} else if len(banner) > 0 {
 		grip.Noticef("Banner: %s", banner)
 	}

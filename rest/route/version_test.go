@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -56,7 +57,7 @@ func (s *VersionSuite) SetupSuite() {
 	branch = "branch"
 	project = "project"
 
-	s.NoError(db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
+	s.NoError(db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection, manifest.Collection))
 	s.bv = append(s.bv, "buildvariant1", "buildvariant2")
 	s.bi = append(s.bi, "buildId1", "buildId2")
 	s.btc = [][]build.TaskCache{
@@ -345,11 +346,11 @@ func (s *VersionSuite) TestActivateVersionTasks() {
 		},
 	}
 
-	// Test successful activation
 	res := handler.Run(ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
+	// Test successful activation
 	// Verify tasks were activated
 	activatedTask1, err := task.FindOneId(s.ctx, "inactive_task1")
 	s.NoError(err)
@@ -382,4 +383,59 @@ func (s *VersionSuite) TestActivateVersionTasksInvalidVariant() {
 	res := handler.Run(ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *VersionSuite) TestGetManifestForVersion() {
+	mfst := manifest.Manifest{
+		Id:          versionId,
+		Revision:    revision,
+		ProjectName: project,
+		Branch:      branch,
+		Modules: map[string]*manifest.Module{
+			"module1": {
+				Branch:   "module1_branch",
+				Repo:     "module1_repo",
+				Revision: "module1_revision",
+				Owner:    "module1_owner",
+				URL:      "module1_url",
+			},
+		},
+	}
+	exists, err := mfst.TryInsert(s.ctx)
+	s.Require().NoError(err)
+	s.False(exists)
+
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	handler := &versionManifestGetHandler{versionId: "versionId"}
+
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
+	apiMfst, ok := res.Data().(*model.APIManifest)
+	s.Require().True(ok)
+	s.Equal(versionId, utility.FromStringPtr(apiMfst.Id))
+	s.Equal(revision, utility.FromStringPtr(apiMfst.Revision))
+	s.Equal(project, utility.FromStringPtr(apiMfst.ProjectName))
+	s.Equal(branch, utility.FromStringPtr(apiMfst.Branch))
+	s.NotEmpty(apiMfst.Modules)
+	s.Len(apiMfst.Modules, 1)
+	expectedModule := mfst.Modules["module1"]
+	s.Equal("module1", utility.FromStringPtr(apiMfst.Modules[0].Name))
+	s.Equal(expectedModule.Branch, utility.FromStringPtr(apiMfst.Modules[0].Branch))
+	s.Equal(expectedModule.Repo, utility.FromStringPtr(apiMfst.Modules[0].Repo))
+	s.Equal(expectedModule.Revision, utility.FromStringPtr(apiMfst.Modules[0].Revision))
+	s.Equal(expectedModule.Owner, utility.FromStringPtr(apiMfst.Modules[0].Owner))
+	s.Equal(expectedModule.URL, utility.FromStringPtr(apiMfst.Modules[0].URL))
+}
+
+func (s *VersionSuite) TestGetManifestForVersionErrorsForNonexistentVersion() {
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	handler := &versionManifestGetHandler{versionId: "nonexistent"}
+
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusNotFound, res.Status())
 }

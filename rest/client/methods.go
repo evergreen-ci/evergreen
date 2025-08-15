@@ -1500,6 +1500,37 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 	return &rp, nil
 }
 
+func (c *communicatorImpl) GetManifestForVersion(ctx context.Context, versionID string) (*restmodel.APIManifest, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("versions/%s/manifest", versionID),
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get version manifest")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		// Manifests are optional for versions that don't use modules, so the
+		// route can return 404 if the version does not exist or if the version
+		// has no manifest.
+		return nil, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "getting version manifest")
+	}
+
+	manifestResp := restmodel.APIManifest{}
+	if err = utility.ReadJSON(resp.Body, &manifestResp); err != nil {
+		return nil, errors.Wrap(err, "reading manifest response body")
+	}
+	return &manifestResp, nil
+}
+
 func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOptions) (io.ReadCloser, error) {
 	var params []string
 	if opts.Execution != nil {
