@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -365,16 +366,14 @@ func makeActivateVersionTasks() gimlet.RouteHandler {
 	return &versionActivateTasksHandler{}
 }
 
-// Factory creates an instance of the handler.
-//
-//	@Summary		Activate specific tasks for a version
-//	@Description	Activates specified tasks for the given build variants in a version
-//	@Tags			versions
-//	@Router			/versions/{version_id}/activate_tasks [post]
-//	@Security		Api-User || Api-Key
-//	@Param			version_id	path		string						true	"the version ID"
-//	@Param			{object}	body		versionActivateTasksHandler	true	"variant and task combinations to activate"
-//	@Success		200			{object}	model.APIVersion
+// @Summary		Activate specific tasks for a version
+// @Description	Activates specified tasks for the given build variants in a version
+// @Tags			versions
+// @Router			/versions/{version_id}/activate_tasks [post]
+// @Security		Api-User || Api-Key
+// @Param			version_id	path		string						true	"the version ID"
+// @Param			{object}	body		versionActivateTasksHandler	true	"variant and task combinations to activate"
+// @Success		200			{object}	model.APIVersion
 func (h *versionActivateTasksHandler) Factory() gimlet.RouteHandler {
 	return &versionActivateTasksHandler{}
 }
@@ -396,6 +395,7 @@ func (h *versionActivateTasksHandler) Parse(ctx context.Context, r *http.Request
 	if h.versionId == "" {
 		return errors.New("missing version ID")
 	}
+
 	return nil
 }
 
@@ -453,4 +453,64 @@ func (h *versionActivateTasksHandler) Run(ctx context.Context) gimlet.Responder 
 	versionModel := &restModel.APIVersion{}
 	versionModel.BuildFromService(ctx, *version)
 	return gimlet.NewJSONResponse(versionModel)
+}
+
+// GET /rest/v2/versions/{version_id}/manifest
+
+type versionManifestGetHandler struct {
+	versionId string
+}
+
+func makeGetVersionManifest() gimlet.RouteHandler {
+	return &versionManifestGetHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Fetch manifest by version ID
+//	@Description	Fetches the manifest by its version ID
+//	@Tags			manifests
+//	@Router			/versions/{version_id}/manifest [get]
+//	@Security		Api-User || Api-Key
+//	@Param			version_id	path		string	true	"version ID"
+//	@Success		200			{object}	model.APIManifest
+func (h *versionManifestGetHandler) Factory() gimlet.RouteHandler {
+	return &versionManifestGetHandler{}
+}
+
+// ParseAndValidate fetches the versionId from the http request.
+func (h *versionManifestGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.versionId = gimlet.GetVars(r)["version_id"]
+	if h.versionId == "" {
+		return errors.New("missing version ID")
+	}
+	return nil
+}
+
+func (h *versionManifestGetHandler) Run(ctx context.Context) gimlet.Responder {
+	v, err := dbModel.VersionFindOneId(ctx, h.versionId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
+		})
+	}
+
+	mfst, err := manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for version '%s'", h.versionId))
+	}
+	if mfst == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("manifest for version '%s' not found", h.versionId),
+		})
+	}
+
+	apiMfst := &restModel.APIManifest{}
+	apiMfst.BuildFromService(mfst)
+	return gimlet.NewJSONResponse(apiMfst)
 }

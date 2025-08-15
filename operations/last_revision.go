@@ -31,7 +31,7 @@ func LastRevision() cli.Command {
 	)
 	return cli.Command{
 		Name:  "last-revision",
-		Usage: "return the latest revision for a version that matches a set of criteria",
+		Usage: "return the latest revision for a version that matches a set of criteria, along with its modules (if any)",
 		Flags: addProjectFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(regexpVariantsFlagName, "rv"),
@@ -117,8 +117,11 @@ func LastRevision() cli.Command {
 			if matchingVersion == nil {
 				return errors.New("no matching version found")
 			}
-
-			if err := printLastRevision(matchingVersion, jsonOutput); err != nil {
+			modules, err := getModulesForVersion(ctx, client, utility.FromStringPtr(matchingVersion.Id))
+			if err != nil {
+				return errors.Wrapf(err, "getting modules for matching version '%s'", utility.FromStringPtr(matchingVersion.Id))
+			}
+			if err := printLastRevision(matchingVersion, modules, jsonOutput); err != nil {
 				return errors.Wrap(err, "printing last revision")
 			}
 
@@ -127,17 +130,34 @@ func LastRevision() cli.Command {
 	}
 }
 
-func printLastRevision(v *model.APIVersion, jsonOutput bool) error {
+func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, jsonOutput bool) error {
 	versionID := utility.FromStringPtr(v.Id)
 	revision := utility.FromStringPtr(v.Revision)
 
 	if jsonOutput {
+		type moduleInfo struct {
+			Name     string `json:"name"`
+			Revision string `json:"revision"`
+		}
+		var moduleNameAndRevisions []moduleInfo
+		if len(modules) > 0 {
+			moduleNameAndRevisions = make([]moduleInfo, 0, len(modules))
+			for _, m := range modules {
+				moduleNameAndRevisions = append(moduleNameAndRevisions, moduleInfo{
+					Name:     utility.FromStringPtr(m.Name),
+					Revision: utility.FromStringPtr(m.Revision),
+				})
+			}
+		}
+
 		output, err := json.MarshalIndent(struct {
-			VersionID string `json:"version_id"`
-			Revision  string `json:"revision"`
+			VersionID string       `json:"version_id"`
+			Revision  string       `json:"revision"`
+			Modules   []moduleInfo `json:"modules,omitzero"`
 		}{
 			VersionID: versionID,
 			Revision:  revision,
+			Modules:   moduleNameAndRevisions,
 		}, "", "\t")
 		if err != nil {
 			return errors.Wrap(err, "marshalling output to JSON")
@@ -147,6 +167,14 @@ func printLastRevision(v *model.APIVersion, jsonOutput bool) error {
 	}
 
 	fmt.Printf("Latest version that matches criteria: %s\nRevision: %s\n", utility.FromStringPtr(v.Id), utility.FromStringPtr(v.Revision))
+	if len(modules) > 0 {
+		fmt.Println("Modules:")
+		for _, m := range modules {
+			fmt.Printf("- name: %s\n  revision: %s\n", utility.FromStringPtr(m.Name), utility.FromStringPtr(m.Revision))
+		}
+	} else {
+		fmt.Println("No modules found for this version.")
+	}
 	return nil
 
 }
@@ -454,4 +482,17 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	buildInfo := newLastRevisionBuildInfo(b, tasks, criteria.knownIssuesAreSuccess)
 
 	return criteria.check(buildInfo), nil
+}
+
+func getModulesForVersion(ctx context.Context, c client.Communicator, versionID string) ([]model.APIManifestModule, error) {
+	mfst, err := c.GetManifestForVersion(ctx, versionID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting manifest for version '%s'", versionID)
+	}
+	if mfst == nil {
+		// Manifests are only available for versions using modules, so it's
+		// valid to not get a manifest.
+		return nil, nil
+	}
+	return mfst.Modules, nil
 }
