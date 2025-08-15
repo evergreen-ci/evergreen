@@ -75,7 +75,16 @@ func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log
 		return log.EmptyIterator(), nil
 	}
 
-	svc, err := getTestLogService(ctx, output.TestLogs)
+	// Get the appropriate bucket config for this project
+	bucketConfig := getBucketConfigForProject(task.Project, output.TestLogs.BucketConfig)
+
+	testLogOutput := TestLogOutput{
+		Version:        output.TestLogs.Version,
+		BucketConfig:   bucketConfig,
+		AWSCredentials: output.TestLogs.AWSCredentials,
+	}
+
+	svc, err := getTestLogService(ctx, testLogOutput)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
