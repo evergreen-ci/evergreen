@@ -765,7 +765,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					_, alreadyExists, err := paramMgr.PutNewValue(ctx, fieldPath, secretValue, redactedValue)
+					_, alreadyExists, err := PutNewValue(ctx, paramMgr, fieldPath, secretValue, redactedValue)
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
@@ -783,7 +783,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						secretValue := fieldValue.MapIndex(key).String()
 
-						_, alreadyExists, err := paramMgr.PutNewValue(ctx, mapFieldPath, secretValue, redactedValue)
+						_, alreadyExists, err := PutNewValue(ctx, paramMgr, mapFieldPath, secretValue, redactedValue)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
@@ -814,6 +814,45 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 	}
 }
 
-func redactedSecretValue(secretValue string) string {
-	return fmt.Sprintf("REDACTED:%s", util.GetSHA256Hash(secretValue)[:6])
+// PutNewValue first checks if the parameter's value is the same as the
+// current value in Parameter Store. Returns true if value already exists.
+func PutNewValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value, dbValue string) (*parameterstore.Parameter, string, error) {
+	if name == "" {
+		return nil, "", errors.New("cannot put a parameter with an empty name")
+	}
+
+	fullName := pm.GetPrefixedName(name)
+	dbName := fmt.Sprintf("%s/DB", fullName)
+	existingParams, err := pm.Get(ctx, fullName)
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "getting parameter '%s'", name)
+	}
+	if len(existingParams) > 0 && existingParams[0].Value == value {
+		existingDBValue := ""
+		currentDBValue, err := pm.Get(ctx, dbName)
+		if err != nil {
+			return nil, "", errors.Wrapf(err, "getting parameter '%s'", dbName)
+		}
+		if len(currentDBValue) > 0 && currentDBValue[0].Value != "" {
+			existingDBValue = currentDBValue[0].Value
+		} else {
+			_, err = pm.Put(ctx, dbName, dbValue)
+			if err != nil {
+				return nil, "", errors.Wrapf(err, "putting parameter '%s'", dbName)
+			}
+
+		}
+		return &parameterstore.Parameter{
+			Name:     fullName,
+			Basename: parameterstore.GetBasename(fullName),
+			Value:    value,
+		}, existingDBValue, nil
+	}
+	_, err = pm.Put(ctx, dbName, dbValue)
+	if err != nil {
+		return nil, "", errors.Wrapf(err, "putting parameter '%s'", dbName)
+	}
+
+	param, err := pm.Put(ctx, name, value)
+	return param, "", err
 }

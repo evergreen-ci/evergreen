@@ -99,7 +99,7 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 		return nil, errors.New("cannot put a parameter with an empty name")
 	}
 
-	fullName := pm.getPrefixedName(name)
+	fullName := pm.GetPrefixedName(name)
 	if _, err := pm.ssmClient.PutParameter(ctx, &ssm.PutParameterInput{
 		Name:      aws.String(fullName),
 		Value:     aws.String(value),
@@ -127,49 +127,6 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 	}, nil
 }
 
-// PutNewValue first checks if the parameter's value is the same as the
-// current value in Parameter Store. Returns true if value already exists.
-func (pm *ParameterManager) PutNewValue(ctx context.Context, name, value, dbValue string) (*Parameter, string, error) {
-	if name == "" {
-		return nil, "", errors.New("cannot put a parameter with an empty name")
-	}
-
-	fullName := pm.getPrefixedName(name)
-	dbName := fmt.Sprintf("%s/DB", fullName)
-	existingParams, err := pm.Get(ctx, fullName)
-	if err != nil {
-		return nil, "", errors.Wrapf(err, "getting parameter '%s'", name)
-	}
-	if len(existingParams) > 0 && existingParams[0].Value == value {
-		existingDBValue := ""
-		currentDBValue, err := pm.Get(ctx, dbName)
-		if err != nil {
-			return nil, "", errors.Wrapf(err, "getting parameter '%s'", dbName)
-		}
-		if len(currentDBValue) > 0 && currentDBValue[0].Value != "" {
-			existingDBValue = currentDBValue[0].Value
-		} else {
-			_, err = pm.Put(ctx, dbName, dbValue)
-			if err != nil {
-				return nil, "", errors.Wrapf(err, "putting parameter '%s'", dbName)
-			}
-
-		}
-		return &Parameter{
-			Name:     fullName,
-			Basename: GetBasename(fullName),
-			Value:    value,
-		}, existingDBValue, nil
-	}
-	_, err = pm.Put(ctx, dbName, dbValue)
-	if err != nil {
-		return nil, "", errors.Wrapf(err, "putting parameter '%s'", dbName)
-	}
-
-	param, err := pm.Put(ctx, name, value)
-	return param, "", err
-}
-
 // Get retrieves the parameters given by the provided name(s). If some
 // parameters cannot be found, they will not be returned. Use GetStrict to both
 // get the parameters and validate that all the requested parameters were found.
@@ -180,7 +137,7 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
-		fullNames = append(fullNames, pm.getPrefixedName(name))
+		fullNames = append(fullNames, pm.GetPrefixedName(name))
 	}
 
 	fullNamesToFind := fullNames
@@ -247,7 +204,7 @@ func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]P
 
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
-		fullNames = append(fullNames, pm.getPrefixedName(name))
+		fullNames = append(fullNames, pm.GetPrefixedName(name))
 	}
 
 	params, err := pm.Get(ctx, fullNames...)
@@ -284,7 +241,7 @@ func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
-		fullNames = append(fullNames, pm.getPrefixedName(name))
+		fullNames = append(fullNames, pm.GetPrefixedName(name))
 	}
 
 	_, err := pm.ssmClient.DeleteParameters(ctx, &ssm.DeleteParametersInput{
@@ -314,9 +271,9 @@ func (pm *ParameterManager) isCachingEnabled() bool {
 	return pm.cache != nil
 }
 
-// getPrefixedName returns the parameter name with the common parameter prefix
+// GetPrefixedName returns the parameter name with the common parameter prefix
 // to ensure it is a full path rather than a basename.
-func (pm *ParameterManager) getPrefixedName(basename string) string {
+func (pm *ParameterManager) GetPrefixedName(basename string) string {
 	if pm.pathPrefix == "" {
 		return basename
 	}
