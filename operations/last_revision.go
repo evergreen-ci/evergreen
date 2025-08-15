@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -28,6 +29,7 @@ func LastRevision() cli.Command {
 		successfulTasks                   = "successful-tasks"
 		knownIssuesAreSuccessFlagName     = "known-issues-are-success"
 		jsonFlagName                      = "json"
+		timeoutFlagName                   = "timeout"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -61,20 +63,44 @@ func LastRevision() cli.Command {
 				Name:  joinFlagNames(jsonFlagName, "j"),
 				Usage: "output the result in JSON format",
 			},
+			cli.IntFlag{
+				Name:  timeoutFlagName,
+				Usage: "timeout in seconds to find a revision",
+				Value: 300,
+			},
 		),
-		Before: mergeBeforeFuncs(setPlainLogger, func(c *cli.Context) error {
-			if c.Bool(jsonFlagName) {
-				// If running with JSON output, don't try to upgrade the CLI
-				// because it will produce extraneous non-JSON output.
+		Before: mergeBeforeFuncs(setPlainLogger,
+			func(c *cli.Context) error {
+				if c.Bool(jsonFlagName) {
+					// If running with JSON output, don't try to upgrade the CLI
+					// because it will produce extraneous non-JSON output.
+					return nil
+				}
+				return autoUpdateCLI(c)
+			},
+			requireProjectFlag,
+			func(c *cli.Context) error {
+				if len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
+					return errors.New("must specify at least one build variant name or display name regexp")
+				}
 				return nil
-			}
-			return autoUpdateCLI(c)
-		}, func(c *cli.Context) error {
-			if len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
-				return errors.New("must specify at least one build variant name or display name regexp")
-			}
-			return nil
-		}),
+			},
+			func(c *cli.Context) error {
+				if c.Float64(minSuccessProportionFlagName) < 0 || c.Float64(minSuccessProportionFlagName) > 1 {
+					return errors.New("minimum success proportion must be between 0 and 1 inclusive")
+				}
+				if c.Float64(minFinishedProportionFlagName) < 0 || c.Float64(minFinishedProportionFlagName) > 1 {
+					return errors.New("minimum finished proportion must be between 0 and 1 inclusive")
+				}
+				return nil
+			},
+			func(c *cli.Context) error {
+				if c.Int(timeoutFlagName) < 0 {
+					return errors.New("timeout must be a non-negative integer")
+				}
+				return nil
+			},
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
@@ -96,8 +122,16 @@ func LastRevision() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			var ctx context.Context
+			var cancel context.CancelFunc
+			timeoutSecs := c.Int(timeoutFlagName)
+			if timeoutSecs > 0 {
+				ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
+				defer cancel()
+			} else {
+				ctx, cancel = context.WithCancel(context.Background())
+				defer cancel()
+			}
 
 			client, err := conf.setupRestCommunicator(ctx, !jsonOutput)
 			if err != nil {
@@ -274,19 +308,6 @@ type lastRevisionCriteria struct {
 }
 
 func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion float64, successfulTasks []string, knownIssuesAreSuccess bool) (*lastRevisionCriteria, error) {
-	if len(bvRegexpsAsStr) == 0 && len(bvDisplayRegexpsAsStr) == 0 {
-		return nil, errors.New("must specify at least one build variant name or display name regexp for criteria")
-	}
-	if minSuccessProportion < 0 || minSuccessProportion > 1 {
-		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
-	}
-	if minFinishedProportion < 0 || minFinishedProportion > 1 {
-		return nil, errors.New("minimum finished proportion must be between 0 and 1 inclusive")
-	}
-	if project == "" {
-		return nil, errors.New("must specify a project")
-	}
-
 	bvRegexps := make([]regexp.Regexp, 0, len(bvRegexpsAsStr))
 	for _, bvRegexpStr := range bvRegexpsAsStr {
 		bvRegexp, err := regexp.Compile(bvRegexpStr)
