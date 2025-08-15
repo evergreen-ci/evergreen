@@ -730,6 +730,8 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 		return
 	}
 
+	redactedValue := fmt.Sprintf("REDACTED:%s", time.Now().String())
+
 	// Handle different kinds of values
 	switch value.Kind() {
 	case reflect.Struct:
@@ -763,12 +765,16 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
+					_, alreadyExists, err := paramMgr.PutNewValue(ctx, fieldPath, secretValue, redactedValue)
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					redactedValue := redactedSecretValue(secretValue)
-					fieldValue.SetString(redactedValue)
+					// if the field already exists, keep it as the original DB value.
+					if alreadyExists != "" {
+						fieldValue.SetString(alreadyExists)
+					} else {
+						fieldValue.SetString(redactedValue)
+					}
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
@@ -777,13 +783,16 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						secretValue := fieldValue.MapIndex(key).String()
 
-						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
+						_, alreadyExists, err := paramMgr.PutNewValue(ctx, mapFieldPath, secretValue, redactedValue)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						redactedValue := redactedSecretValue(secretValue)
-						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
+						if alreadyExists != "" {
+							newMap.SetMapIndex(key, reflect.ValueOf(alreadyExists))
+						} else {
+							newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
+						}
 					}
 					fieldValue.Set(newMap)
 				}
