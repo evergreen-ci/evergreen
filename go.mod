@@ -195,6 +195,7 @@ require (
 	github.com/fraugster/parquet-go v0.11.0
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/handlers v1.5.2
+	github.com/modelcontextprotocol/go-sdk v0.2.0
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
 	go.uber.org/automaxprocs v1.6.0
@@ -207,6 +208,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sns v1.34.7 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 )
