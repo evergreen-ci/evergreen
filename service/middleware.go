@@ -155,7 +155,7 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return route.AddCORSHeaders(uis.Settings.Ui.CORSOrigins, next)
 }
 
-// wrapUserForMCP is a middleware that wraps the request with the user id from the MCP-User header.
+// wrapUserForMCP is a middleware that wraps the request with the user id from the x-authenticated-sage-user header.
 // This is used to simulate a user for the MCP server. To ensure that the user has the correct permissions,
 // This should only be used for MCP requests and should only be followed by a route that checks if
 func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
