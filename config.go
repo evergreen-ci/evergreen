@@ -805,6 +805,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 
 // PutSecretValue only updates the parameter's value if it is different from the
 // current value in Parameter Store. Returns last updated time of the value.
+// Necessary to log events correctly in the event log.
 func PutSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value string) (string, error) {
 	// If the parameter already exists and its value matches the new value,
 	// return the last updated time without updating it.
