@@ -178,6 +178,8 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 				"error":   err,
 				"userId":  userId,
 			})
+			http.Error(w, "Invalid MCP request", http.StatusBadRequest)
+			return
 		}
 		if user == nil {
 			grip.Error(message.Fields{
