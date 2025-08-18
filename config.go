@@ -730,8 +730,6 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 		return
 	}
 
-	redactedValue := fmt.Sprintf("REDACTED:%s", time.Now().String())
-
 	// Handle different kinds of values
 	switch value.Kind() {
 	case reflect.Struct:
@@ -765,16 +763,11 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					_, alreadyExists, err := PutNewValue(ctx, paramMgr, fieldPath, secretValue, redactedValue)
+					redactedValue, err := PutSecretValue(ctx, paramMgr, fieldPath, secretValue)
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					// if the field already exists, keep it as the original DB value.
-					if alreadyExists != "" {
-						fieldValue.SetString(alreadyExists)
-					} else {
-						fieldValue.SetString(redactedValue)
-					}
+					fieldValue.SetString(redactedValue)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
@@ -783,16 +776,12 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						secretValue := fieldValue.MapIndex(key).String()
 
-						_, alreadyExists, err := PutNewValue(ctx, paramMgr, mapFieldPath, secretValue, redactedValue)
+						redactedValue, err := PutSecretValue(ctx, paramMgr, mapFieldPath, secretValue)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						if alreadyExists != "" {
-							newMap.SetMapIndex(key, reflect.ValueOf(alreadyExists))
-						} else {
-							newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
-						}
+						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
 					}
 					fieldValue.Set(newMap)
 				}
@@ -814,45 +803,40 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 	}
 }
 
-// PutNewValue first checks if the parameter's value is the same as the
-// current value in Parameter Store. Returns true if value already exists.
-func PutNewValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value, dbValue string) (*parameterstore.Parameter, string, error) {
-	if name == "" {
-		return nil, "", errors.New("cannot put a parameter with an empty name")
-	}
-
-	fullName := pm.GetPrefixedName(name)
-	dbName := fmt.Sprintf("%s/DB", fullName)
-	existingParams, err := pm.Get(ctx, fullName)
+// PutSecretValue only updates the parameter's value if it is different from the
+// current value in Parameter Store. Returns last updated time of the value.
+func PutSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value string) (string, error) {
+	// If the parameter already exists and its value matches the new value,
+	// return the last updated time without updating it.
+	param, err := pm.Get(ctx, name)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "getting parameter '%s'", name)
+		return "", errors.Wrapf(err, "getting parameter '%s'", name)
 	}
-	if len(existingParams) > 0 && existingParams[0].Value == value {
-		existingDBValue := ""
-		currentDBValue, err := pm.Get(ctx, dbName)
+	if len(param) > 0 && param[0].Value == value {
+		record, err := parameterstore.FindOneName(ctx, pm.DB, param[0].Name)
 		if err != nil {
-			return nil, "", errors.Wrapf(err, "getting parameter '%s'", dbName)
+			return "", errors.Wrapf(err, "finding parameter record for '%s'", param[0].Name)
 		}
-		if len(currentDBValue) > 0 && currentDBValue[0].Value != "" {
-			existingDBValue = currentDBValue[0].Value
-		} else {
-			_, err = pm.Put(ctx, dbName, dbValue)
-			if err != nil {
-				return nil, "", errors.Wrapf(err, "putting parameter '%s'", dbName)
-			}
-
+		if record == nil {
+			return "", errors.Errorf("parameter record '%s' not found after put", param[0].Name)
 		}
-		return &parameterstore.Parameter{
-			Name:     fullName,
-			Basename: parameterstore.GetBasename(fullName),
-			Value:    value,
-		}, existingDBValue, nil
+		return record.LastUpdated.String(), nil
 	}
-	_, err = pm.Put(ctx, dbName, dbValue)
+
+	// If the parameter does not exist or has a new value, update it.
+	updatedParam, err := pm.Put(ctx, name, value)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "putting parameter '%s'", dbName)
+		return "", errors.Wrapf(err, "putting parameter '%s'", name)
 	}
-
-	param, err := pm.Put(ctx, name, value)
-	return param, "", err
+	if updatedParam == nil {
+		return "", errors.Errorf("parameter '%s' not found after put", name)
+	}
+	record, err := parameterstore.FindOneName(ctx, pm.DB, updatedParam.Name)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding parameter record for '%s'", updatedParam.Name)
+	}
+	if record == nil {
+		return "", errors.Errorf("parameter record '%s' not found after put", updatedParam.Name)
+	}
+	return record.LastUpdated.String(), nil
 }

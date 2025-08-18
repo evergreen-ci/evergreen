@@ -43,7 +43,7 @@ type ParameterManager struct {
 	// from the cache or is stale.
 	cache     *parameterCache
 	ssmClient SSMClient
-	db        *mongo.Database
+	DB        *mongo.Database
 }
 
 // ParameterManagerOptions represent options to create a parameter manager.
@@ -85,7 +85,7 @@ func NewParameterManager(ctx context.Context, opts ParameterManagerOptions) (*Pa
 	pm := ParameterManager{
 		pathPrefix: opts.PathPrefix,
 		ssmClient:  opts.SSMClient,
-		db:         opts.DB,
+		DB:         opts.DB,
 	}
 	if opts.CachingEnabled {
 		pm.cache = newParameterCache()
@@ -113,7 +113,7 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 	// Regardless of whether caching is enabled or not, still record that the
 	// parameter was changed in case caching gets enabled or a different
 	// ParameterManager instance has caching enabled.
-	if err := BumpParameterRecord(ctx, pm.db, fullName, time.Now()); err != nil {
+	if err := BumpParameterRecord(ctx, pm.DB, fullName, time.Now()); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "could not bump parameter update timestamp, possibly because it is being concurrently updated",
 			"name":    fullName,
@@ -143,7 +143,7 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 	fullNamesToFind := fullNames
 	params := make([]Parameter, 0, len(fullNamesToFind))
 	if pm.isCachingEnabled() {
-		paramRecords, err := FindByNames(ctx, pm.db, fullNames...)
+		paramRecords, err := FindByNames(ctx, pm.DB, fullNames...)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding parameter records for %d parameters", len(fullNamesToFind))
 		}
@@ -255,7 +255,7 @@ func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 		// Regardless of whether caching is enabled or not, still record that
 		// the parameter was changed in case caching gets enabled or a different
 		// ParameterManager instance has caching enabled.
-		if err := BumpParameterRecord(ctx, pm.db, fullName, time.Now()); err != nil {
+		if err := BumpParameterRecord(ctx, pm.DB, fullName, time.Now()); err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "could not bump parameter record last updated timestamp, possibly because it is being concurrently updated",
 				"name":    fullName,
