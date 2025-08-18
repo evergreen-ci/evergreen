@@ -32,6 +32,7 @@ func LastRevision() cli.Command {
 		timeoutFlagName                   = "timeout"
 		lookbackLimitFlagName             = "lookback-limit"
 		saveFlagName                      = "save"
+		overwriteFlagName                 = "overwrite"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -75,10 +76,12 @@ func LastRevision() cli.Command {
 				Usage: "number of recent versions to consider before giving up",
 				Value: defaultLastRevisionLookbackLimit,
 			},
-			cli.BoolFlag{
+			cli.StringFlag{
 				Name:  saveFlagName,
-				Usage: "save the last revision criteria for reuse",
+				Usage: "save the last revision criteria for reuse with the given name. If criteria already exists for the build variant name or display name regexps, the old criteria will be overwritten.",
 			},
+			// kim: NOTE: intentionally not implementing overwrite flag and
+			// letting it overwrite by default to keep things simple.
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -129,15 +132,8 @@ func LastRevision() cli.Command {
 			knownIssuesAreSuccess := c.Bool(knownIssuesAreSuccessFlagName)
 			jsonOutput := c.Bool(jsonFlagName)
 			versionLookbackLimit := c.Int(lookbackLimitFlagName)
-			saveCriteria := c.Bool(saveFlagName)
+			saveCriteriaName := c.String(saveFlagName)
 			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
-
-			if saveCriteria {
-				if err := saveLastRevisionCriteria(confPath, criteria); err != nil {
-					return errors.Wrap(err, "saving last revision criteria")
-				}
-				return nil
-			}
 
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
@@ -146,6 +142,13 @@ func LastRevision() cli.Command {
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
+			}
+			if saveCriteriaName != "" {
+				// kim: TODO: test this out on local ~/.evergreen.yml
+				if err := saveLastRevisionCriteria(conf, saveCriteriaName, criteria); err != nil {
+					return errors.Wrap(err, "saving last revision criteria")
+				}
+				return nil
 			}
 
 			var ctx context.Context
@@ -165,6 +168,8 @@ func LastRevision() cli.Command {
 			}
 			defer client.Close()
 
+			criteriaGroup := []lastRevisionCriteria{*criteria}
+
 			// Search for a suitable version in batches to reduce request times.
 			// Otherwise without any batching, the initial time to get recent
 			// versions becomes slower as the lookback limit increases.
@@ -178,7 +183,7 @@ func LastRevision() cli.Command {
 					return errors.Wrap(err, "getting latest versions for project")
 				}
 
-				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, *criteria)
+				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, criteriaGroup)
 				if err != nil {
 					return errors.Wrap(err, "finding latest matching revision")
 				}
@@ -535,7 +540,7 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 
 // checkBuildPassesCriteria checks if a single build passes the criteria.
 func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
-	// kim: TODO: double-check that this is logically equivalen to what
+	// kim: TODO: double-check that this is logically equivalent to what
 	// git-co-evg-base does
 	anyCriteriaApply := false
 	for _, c := range criteria {
@@ -560,11 +565,10 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		return false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
 	}
 
-	buildInfo := newLastRevisionBuildInfo(b, tasks, criteria.knownIssuesAreSuccess)
-
 	// kim: TODO: double-check that this is logically equivalent to what
 	// git-co-evg-base does
 	for _, c := range criteria {
+		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
 		passesCriteria := c.check(buildInfo)
 		if !passesCriteria {
 			return false, nil
@@ -573,12 +577,81 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	return true, nil
 }
 
-type lastRevisionCriteriaGroup struct {
-	criteria []lastRevisionCriteria
+// LastRevisionCriteriaGroup is a group of last revision criteria that can be
+// saved and reused.
+type LastRevisionCriteriaGroup struct {
+	Name     string                         `json:"name" yaml:"name"`
+	Criteria []ReusableLastRevisionCriteria `json:"criteria" yaml:"criteria"`
 }
 
-func saveLastRevisionCriteria(confPath string, criteria *lastRevisionCriteria) error {
-	return errors.New("kim: TODO: implement")
+// ReusableLastRevisionCriteria defines the criteria for the last revision that
+// can be saved and reused.
+type ReusableLastRevisionCriteria struct {
+	BVRegexps             []string `json:"bv_regexps" yaml:"bv_regexps"`
+	BVDisplayRegexps      []string `json:"bv_display_regexps" yaml:"bv_display_regexps"`
+	MinSuccessProportion  float64  `json:"min_success_proportion" yaml:"min_success_proportion"`
+	MinFinishedProportion float64  `json:"min_finished_proportion" yaml:"min_finished_proportion"`
+	SuccessfulTasks       []string `json:"successful_tasks" yaml:"successful_tasks"`
+}
+
+func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisionCriteria {
+	var bvRegexps []string
+	for _, bvRegexp := range c.buildVariantRegexps {
+		bvRegexps = append(bvRegexps, bvRegexp.String())
+	}
+	var bvDisplayRegexps []string
+	for _, bvDisplayRegexp := range c.buildVariantDisplayNameRegexps {
+		bvDisplayRegexps = append(bvDisplayRegexps, bvDisplayRegexp.String())
+	}
+	return ReusableLastRevisionCriteria{
+		BVRegexps:             bvRegexps,
+		BVDisplayRegexps:      bvDisplayRegexps,
+		MinSuccessProportion:  c.minSuccessProportion,
+		MinFinishedProportion: c.minFinishedProportion,
+		SuccessfulTasks:       c.successfulTasks,
+	}
+}
+
+// kim: TODO: test that this saves the file as expected.
+func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastRevisionCriteria) error {
+	criteriaToSave := NewReusableLastRevisionCriteria(criteria)
+	var criteriaGroup *LastRevisionCriteriaGroup
+	for _, cg := range conf.CriteriaGroups {
+		if cg.Name == name {
+			criteriaGroup = &cg
+			break
+		}
+	}
+	if criteriaGroup == nil {
+		criteriaGroup = &LastRevisionCriteriaGroup{
+			Name:     name,
+			Criteria: []ReusableLastRevisionCriteria{criteriaToSave},
+		}
+	} else {
+		// If criteria already exists in this group for the build
+		// variant name/display name regexps, overwrite it with the new
+		// criteria. Otherwise, append the new criteria to the group.
+		isNewCriteriaForGroup := true
+		for i, c := range criteriaGroup.Criteria {
+			// kim: TODO: check if string slices are the same set. Clean  this
+			// up a bit.
+			a, b := utility.StringSliceSymmetricDifference(c.BVRegexps, criteriaToSave.BVRegexps)
+			c, d := utility.StringSliceSymmetricDifference(c.BVDisplayRegexps, criteriaToSave.BVDisplayRegexps)
+			if len(a) == 0 && len(b) == 0 && len(c) == 0 && len(d) == 0 {
+				criteriaGroup.Criteria[i] = criteriaToSave
+				isNewCriteriaForGroup = false
+			}
+		}
+		if isNewCriteriaForGroup {
+			criteriaGroup.Criteria = append(criteriaGroup.Criteria, criteriaToSave)
+		}
+	}
+
+	if err := conf.Write(""); err != nil {
+		return errors.Wrap(err, "writing last revision criteria to configuration file")
+	}
+
+	return nil
 }
 
 func getModulesForVersion(ctx context.Context, c client.Communicator, versionID string) ([]model.APIManifestModule, error) {
