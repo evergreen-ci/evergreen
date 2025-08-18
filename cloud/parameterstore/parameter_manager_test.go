@@ -33,7 +33,7 @@ func TestParameterManager(t *testing.T) {
 			pm := &ParameterManager{
 				pathPrefix: opts.PathPrefix,
 			}
-			t.Run("getPrefixedName", func(t *testing.T) {
+			t.Run("GetPrefixedName", func(t *testing.T) {
 				t.Run("PrefixesBasename", func(t *testing.T) {
 					assert.Equal(t, "/prefix/basename", pm.getPrefixedName("basename"))
 				})

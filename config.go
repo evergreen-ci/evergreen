@@ -763,7 +763,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					redactedValue, err := PutSecretValue(ctx, paramMgr, fieldPath, secretValue)
+					redactedValue, err := putSecretValue(ctx, paramMgr, fieldPath, secretValue)
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
@@ -776,7 +776,7 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						secretValue := fieldValue.MapIndex(key).String()
 
-						redactedValue, err := PutSecretValue(ctx, paramMgr, mapFieldPath, secretValue)
+						redactedValue, err := putSecretValue(ctx, paramMgr, mapFieldPath, secretValue)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
@@ -803,10 +803,10 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 	}
 }
 
-// PutSecretValue only updates the parameter's value if it is different from the
+// putSecretValue only updates the parameter's value if it is different from the
 // current value in Parameter Store. Returns last updated time of the value.
 // Necessary to log events correctly in the event log.
-func PutSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value string) (string, error) {
+func putSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value string) (string, error) {
 	// If the parameter already exists and its value matches the new value,
 	// return the last updated time without updating it.
 	param, err := pm.Get(ctx, name)
