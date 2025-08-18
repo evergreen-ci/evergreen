@@ -190,7 +190,8 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Invalid MCP request", http.StatusBadRequest)
 			return
 		}
-		gimlet.AttachUser(r.Context(), user)
+		ctx := gimlet.AttachUser(r.Context(), user)
+		r = r.WithContext(ctx)
 		next(w, r)
 	}
 }
