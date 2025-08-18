@@ -110,7 +110,7 @@ type Communicator interface {
 
 	// GetRecentVersionsForProject returns the most recent versions for a
 	// project.
-	GetRecentVersionsForProject(ctx context.Context, projectID, requester string, limit int) ([]restmodel.APIVersion, error)
+	GetRecentVersionsForProject(ctx context.Context, projectID, requester string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error)
 
 	// GetBuildsForVersion gets all builds for a version.
 	GetBuildsForVersion(ctx context.Context, versionID string) ([]restmodel.APIBuild, error)

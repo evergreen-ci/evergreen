@@ -30,6 +30,7 @@ func LastRevision() cli.Command {
 		knownIssuesAreSuccessFlagName     = "known-issues-are-success"
 		jsonFlagName                      = "json"
 		timeoutFlagName                   = "timeout"
+		lookbackLimitFlagName             = "lookback-limit"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -68,6 +69,11 @@ func LastRevision() cli.Command {
 				Usage: "timeout in seconds to find a revision",
 				Value: 300,
 			},
+			cli.IntFlag{
+				Name:  lookbackLimitFlagName,
+				Usage: "number of recent versions to consider before giving up",
+				Value: defaultLastRevisionLookbackLimit,
+			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -100,6 +106,12 @@ func LastRevision() cli.Command {
 				}
 				return nil
 			},
+			func(c *cli.Context) error {
+				if c.Int(lookbackLimitFlagName) <= 0 {
+					return errors.New("lookback limit must be a positive integer")
+				}
+				return nil
+			},
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
@@ -111,6 +123,7 @@ func LastRevision() cli.Command {
 			successfulTasks := c.StringSlice(successfulTasks)
 			knownIssuesAreSuccess := c.Bool(knownIssuesAreSuccessFlagName)
 			jsonOutput := c.Bool(jsonFlagName)
+			versionLookbackLimit := c.Int(lookbackLimitFlagName)
 			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
 
 			if err != nil {
@@ -139,15 +152,40 @@ func LastRevision() cli.Command {
 			}
 			defer client.Close()
 
-			latestVersions, err := client.GetRecentVersionsForProject(ctx, c.String(projectFlagName), evergreen.RepotrackerVersionRequester, defaultLastRevisionLookbackLimit)
-			if err != nil {
-				return errors.Wrap(err, "getting latest versions for project")
+			// Search for a suitable version in batches to reduce request times.
+			// Otherwise without any batching, the initial time to get recent
+			// versions becomes slower as the lookback limit increases.
+			const maxVersionBatchSize = 20
+			var orderNum int
+			var matchingVersion *model.APIVersion
+			for numRevisionsSearched := 0; numRevisionsSearched < versionLookbackLimit; numRevisionsSearched += maxVersionBatchSize {
+				numRevisionsToSearch := min(maxVersionBatchSize, versionLookbackLimit-numRevisionsSearched)
+				latestVersions, err := client.GetRecentVersionsForProject(ctx, c.String(projectFlagName), evergreen.RepotrackerVersionRequester, orderNum, numRevisionsToSearch)
+				if err != nil {
+					return errors.Wrap(err, "getting latest versions for project")
+				}
+
+				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, *criteria)
+				if err != nil {
+					return errors.Wrap(err, "finding latest matching revision")
+				}
+				if matchingVersion != nil {
+					break
+				}
+
+				// latestVersions is always sorted from most to least recent
+				// version, so the last version in the slice is the first
+				// version to start at (exclusive) for the next batch of
+				// versions.
+				orderNum = latestVersions[len(latestVersions)-1].Order
+				if orderNum <= 1 {
+					// If the last order number searched is 1, that's the
+					// earliest waterfall version, so there's no more versions
+					// to search.
+					break
+				}
 			}
 
-			matchingVersion, err := findLatestMatchingVersion(ctx, client, latestVersions, *criteria)
-			if err != nil {
-				return errors.Wrap(err, "finding latest matching revision")
-			}
 			if matchingVersion == nil {
 				return errors.New("no matching version found")
 			}
