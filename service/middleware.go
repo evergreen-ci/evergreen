@@ -155,6 +155,44 @@ func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return route.AddCORSHeaders(uis.Settings.Ui.CORSOrigins, next)
 }
 
+// wrapUserForMCP is a middleware that wraps the request with the user id from the MCP-User header.
+// This is used to simulate a user for the MCP server. To ensure that the user has the correct permissions,
+// This should only be used for MCP requests and should only be followed by a route that checks if
+func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId := r.Header.Get(evergreen.SageUserHeader)
+		if userId == "" {
+			// Throw an error
+			grip.Error(message.Fields{
+				"message": "No user id found in request header",
+				"request": r,
+			})
+			http.Error(w, "Invalid MCP request", http.StatusBadRequest)
+			return
+		}
+		user, err := user.FindOneByIdContext(r.Context(), userId)
+		if err != nil {
+			grip.Error(message.Fields{
+				"message": "Error finding user in request",
+				"request": r,
+				"error":   err,
+				"userId":  userId,
+			})
+		}
+		if user == nil {
+			grip.Error(message.Fields{
+				"message": "User not found in request",
+				"request": r,
+				"userId":  userId,
+			})
+			http.Error(w, "Invalid MCP request", http.StatusBadRequest)
+			return
+		}
+		gimlet.AttachUser(r.Context(), user)
+		next(w, r)
+	}
+}
+
 // isAdmin returns true if the user id is located in ProjectRef's Admins field
 // or if the the permission level is sufficient.
 func isAdmin(u gimlet.User, projectId string) bool {
