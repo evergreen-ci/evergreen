@@ -175,11 +175,13 @@ func LastRevision() cli.Command {
 
 				// latestVersions is always sorted from most to least recent
 				// version, so the last version in the slice is the first
-				// version to start at for the next batch of versions.
+				// version to start at (exclusive) for the next batch of
+				// versions.
 				orderNum = latestVersions[len(latestVersions)-1].Order
-				if orderNum == 0 {
-					// This is the earliest waterfall version, so it's not
-					// possible to search any further.
+				if orderNum <= 1 {
+					// If the last order number searched is 1, that's the
+					// earliest waterfall version, so there's no more versions
+					// to search.
 					break
 				}
 			}
