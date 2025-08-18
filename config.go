@@ -235,6 +235,12 @@ func GetRawConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, false, true)
 }
 
+// GetConfigWithoutSecrets returns the Evergreen configuration without secrets, should
+// only be used for logging or displaying settings without sensitive information.
+func GetConfigWithoutSecrets(ctx context.Context) (*Settings, error) {
+	return getSettings(ctx, true, false)
+}
+
 func getSettings(ctx context.Context, includeOverrides, includeParameterStore bool) (*Settings, error) {
 	config := NewConfigSections()
 	if err := config.populateSections(ctx, includeOverrides); err != nil {
@@ -763,11 +769,11 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
+					redactedValue, err := putSecretValue(ctx, paramMgr, fieldPath, secretValue)
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					fieldValue.SetString(RedactedValue)
+					fieldValue.SetString(redactedValue)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
@@ -776,12 +782,12 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						secretValue := fieldValue.MapIndex(key).String()
 
-						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
+						redactedValue, err := putSecretValue(ctx, paramMgr, mapFieldPath, secretValue)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						newMap.SetMapIndex(key, reflect.ValueOf(RedactedValue))
+						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
 					}
 					fieldValue.Set(newMap)
 				}
@@ -801,4 +807,43 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 			StoreAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s/%d", path, i), catcher)
 		}
 	}
+}
+
+// putSecretValue only updates the parameter's value if it is different from the
+// current value in Parameter Store. Returns last updated time of the value.
+// Necessary to log events correctly in the event log.
+func putSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value string) (string, error) {
+	// If the parameter already exists and its value matches the new value,
+	// return the last updated time without updating it.
+	param, err := pm.Get(ctx, name)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting parameter '%s'", name)
+	}
+	if len(param) > 0 && param[0].Value == value {
+		record, err := parameterstore.FindOneName(ctx, pm.DB, param[0].Name)
+		if err != nil {
+			return "", errors.Wrapf(err, "finding parameter record for '%s'", param[0].Name)
+		}
+		if record == nil {
+			return "", errors.Errorf("parameter record '%s' not found after put", param[0].Name)
+		}
+		return record.LastUpdated.String(), nil
+	}
+
+	// If the parameter does not exist or has a new value, update it.
+	updatedParam, err := pm.Put(ctx, name, value)
+	if err != nil {
+		return "", errors.Wrapf(err, "putting parameter '%s'", name)
+	}
+	if updatedParam == nil {
+		return "", errors.Errorf("parameter '%s' not found after put", name)
+	}
+	record, err := parameterstore.FindOneName(ctx, pm.DB, updatedParam.Name)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding parameter record for '%s'", updatedParam.Name)
+	}
+	if record == nil {
+		return "", errors.Errorf("parameter record '%s' not found after put", updatedParam.Name)
+	}
+	return record.LastUpdated.String(), nil
 }

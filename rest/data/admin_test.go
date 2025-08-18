@@ -260,7 +260,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		case *evergreen.CloudProviders:
 			foundProvidersEvent = true
 			s.Require().NotEmpty(v.AWS.EC2Keys)
-			s.Equal(evergreen.RedactedValue, v.AWS.EC2Keys[0].Key)
+			// Verify that the key is a timestamp
+			layout := "2006-01-02 15:04:05 Z0700 MST"
+			_, err := time.Parse(layout, v.AWS.EC2Keys[0].Key)
+			s.NoError(err)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
 			s.Equal(testSettings.Ui.Url, v.Url)
