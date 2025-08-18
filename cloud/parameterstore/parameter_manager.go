@@ -99,7 +99,7 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 		return nil, errors.New("cannot put a parameter with an empty name")
 	}
 
-	fullName := pm.GetPrefixedName(name)
+	fullName := pm.getPrefixedName(name)
 	if _, err := pm.ssmClient.PutParameter(ctx, &ssm.PutParameterInput{
 		Name:      aws.String(fullName),
 		Value:     aws.String(value),
@@ -137,7 +137,7 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
-		fullNames = append(fullNames, pm.GetPrefixedName(name))
+		fullNames = append(fullNames, pm.getPrefixedName(name))
 	}
 
 	fullNamesToFind := fullNames
@@ -204,7 +204,7 @@ func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]P
 
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
-		fullNames = append(fullNames, pm.GetPrefixedName(name))
+		fullNames = append(fullNames, pm.getPrefixedName(name))
 	}
 
 	params, err := pm.Get(ctx, fullNames...)
@@ -241,7 +241,7 @@ func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
-		fullNames = append(fullNames, pm.GetPrefixedName(name))
+		fullNames = append(fullNames, pm.getPrefixedName(name))
 	}
 
 	_, err := pm.ssmClient.DeleteParameters(ctx, &ssm.DeleteParametersInput{
@@ -271,9 +271,9 @@ func (pm *ParameterManager) isCachingEnabled() bool {
 	return pm.cache != nil
 }
 
-// GetPrefixedName returns the parameter name with the common parameter prefix
+// getPrefixedName returns the parameter name with the common parameter prefix
 // to ensure it is a full path rather than a basename.
-func (pm *ParameterManager) GetPrefixedName(basename string) string {
+func (pm *ParameterManager) getPrefixedName(basename string) string {
 	if pm.pathPrefix == "" {
 		return basename
 	}
