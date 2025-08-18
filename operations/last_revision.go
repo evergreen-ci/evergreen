@@ -144,10 +144,10 @@ func LastRevision() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 			if saveCriteriaName != "" {
-				// kim: TODO: test this out on local ~/.evergreen.yml
 				if err := saveLastRevisionCriteria(conf, saveCriteriaName, criteria); err != nil {
 					return errors.Wrap(err, "saving last revision criteria")
 				}
+				fmt.Printf("Saved last revision criteria '%s'\n", saveCriteriaName)
 				return nil
 			}
 
@@ -580,18 +580,18 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 // LastRevisionCriteriaGroup is a group of last revision criteria that can be
 // saved and reused.
 type LastRevisionCriteriaGroup struct {
-	Name     string                         `json:"name" yaml:"name"`
-	Criteria []ReusableLastRevisionCriteria `json:"criteria" yaml:"criteria"`
+	Name     string                         `yaml:"name"`
+	Criteria []ReusableLastRevisionCriteria `yaml:"criteria"`
 }
 
 // ReusableLastRevisionCriteria defines the criteria for the last revision that
 // can be saved and reused.
 type ReusableLastRevisionCriteria struct {
-	BVRegexps             []string `json:"bv_regexps" yaml:"bv_regexps"`
-	BVDisplayRegexps      []string `json:"bv_display_regexps" yaml:"bv_display_regexps"`
-	MinSuccessProportion  float64  `json:"min_success_proportion" yaml:"min_success_proportion"`
-	MinFinishedProportion float64  `json:"min_finished_proportion" yaml:"min_finished_proportion"`
-	SuccessfulTasks       []string `json:"successful_tasks" yaml:"successful_tasks"`
+	BVRegexps             []string `yaml:"bv_regexps,omitempty"`
+	BVDisplayRegexps      []string `yaml:"bv_display_regexps,omitempty"`
+	MinSuccessProportion  float64  `yaml:"min_success_proportion,omitempty"`
+	MinFinishedProportion float64  `yaml:"min_finished_proportion,omitempty"`
+	SuccessfulTasks       []string `yaml:"successful_tasks,omitempty"`
 }
 
 func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisionCriteria {
@@ -612,13 +612,14 @@ func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisi
 	}
 }
 
-// kim: TODO: test that this saves the file as expected.
 func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastRevisionCriteria) error {
 	criteriaToSave := NewReusableLastRevisionCriteria(criteria)
 	var criteriaGroup *LastRevisionCriteriaGroup
-	for _, cg := range conf.CriteriaGroups {
+	var criteriaGroupIdx int
+	for i, cg := range conf.LastRevisionCriteriaGroups {
 		if cg.Name == name {
 			criteriaGroup = &cg
+			criteriaGroupIdx = i
 			break
 		}
 	}
@@ -627,14 +628,14 @@ func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastR
 			Name:     name,
 			Criteria: []ReusableLastRevisionCriteria{criteriaToSave},
 		}
+		conf.LastRevisionCriteriaGroups = append(conf.LastRevisionCriteriaGroups, *criteriaGroup)
 	} else {
 		// If criteria already exists in this group for the build
 		// variant name/display name regexps, overwrite it with the new
 		// criteria. Otherwise, append the new criteria to the group.
 		isNewCriteriaForGroup := true
 		for i, c := range criteriaGroup.Criteria {
-			// kim: TODO: check if string slices are the same set. Clean  this
-			// up a bit.
+			// kim: TODO: clean this up a bit.
 			a, b := utility.StringSliceSymmetricDifference(c.BVRegexps, criteriaToSave.BVRegexps)
 			c, d := utility.StringSliceSymmetricDifference(c.BVDisplayRegexps, criteriaToSave.BVDisplayRegexps)
 			if len(a) == 0 && len(b) == 0 && len(c) == 0 && len(d) == 0 {
@@ -645,6 +646,7 @@ func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastR
 		if isNewCriteriaForGroup {
 			criteriaGroup.Criteria = append(criteriaGroup.Criteria, criteriaToSave)
 		}
+		conf.LastRevisionCriteriaGroups[criteriaGroupIdx] = *criteriaGroup
 	}
 
 	if err := conf.Write(""); err != nil {
