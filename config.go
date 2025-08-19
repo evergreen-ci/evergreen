@@ -42,6 +42,7 @@ var (
 const (
 	mongoTimeout          = 5 * time.Minute
 	mongoConnectTimeout   = 5 * time.Second
+	mongoMaxPoolSize      = 200 // doubled from default 100 to handle more concurrent connections
 	parameterStoreTimeout = 30 * time.Second
 )
 
@@ -338,7 +339,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					// after the parameter store read to avoid context leaks.
 					// This is because the recursive calls can create many contexts,
 					// and we want to ensure they are all cleaned up properly.
-					paramCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), parameterStoreTimeout)
+					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
 					param, err := paramMgr.Get(paramCtx, fieldPath)
 					cancel()
 					if err != nil {
@@ -357,7 +358,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 						// after the parameter store read to avoid context leaks.
 						// This is because the recursive calls can create many contexts,
 						// and we want to ensure they are all cleaned up properly.
-						paramCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), parameterStoreTimeout)
+						paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
 						param, err := paramMgr.Get(paramCtx, mapFieldPath)
 						cancel()
 						if err != nil {
@@ -695,6 +696,7 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
 		SetSocketTimeout(mongoTimeout).
+		SetMaxPoolSize(mongoMaxPoolSize).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if s.AWSAuthEnabled {
