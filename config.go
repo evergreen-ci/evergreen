@@ -340,7 +340,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					// after the parameter store read to avoid context leaks.
 					// This is because the recursive calls can create many contexts,
 					// and we want to ensure they are all cleaned up properly.
-					paramCtx, cancel := context.WithTimeout(context.Background(), parameterStoreTimeout)
+					paramCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), parameterStoreTimeout)
 					param, err := paramMgr.Get(paramCtx, fieldPath)
 					cancel()
 					if err != nil {
@@ -361,7 +361,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 						// after the parameter store read to avoid context leaks.
 						// This is because the recursive calls can create many contexts,
 						// and we want to ensure they are all cleaned up properly.
-						paramCtx, cancel := context.WithTimeout(context.Background(), parameterStoreTimeout)
+						paramCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), parameterStoreTimeout)
 						param, err := paramMgr.Get(paramCtx, mapFieldPath)
 						cancel()
 						if err != nil {
