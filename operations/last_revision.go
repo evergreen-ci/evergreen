@@ -81,8 +81,6 @@ func LastRevision() cli.Command {
 				Name:  saveFlagName,
 				Usage: "save the last revision criteria for reuse with the given name. If criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
 			},
-			// kim: NOTE: intentionally not implementing overwrite flag and
-			// letting it overwrite by default to keep things simple.
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -586,8 +584,6 @@ func checkBuildsPassCriteria(ctx context.Context, c client.Communicator, builds 
 
 // checkBuildPassesCriteria checks if a single build passes the criteria.
 func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b model.APIBuild, criteria []lastRevisionCriteria) (passesCriteria bool, err error) {
-	// kim: TODO: double-check that this is logically equivalent to what
-	// git-co-evg-base does
 	anyCriteriaApply := false
 	for _, c := range criteria {
 		if c.shouldApply(utility.FromStringPtr(b.BuildVariant), utility.FromStringPtr(b.DisplayName)) {
@@ -611,8 +607,6 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		return false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
 	}
 
-	// kim: TODO: double-check that this is logically equivalent to what
-	// git-co-evg-base does
 	for _, c := range criteria {
 		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
 		passesCriteria := c.check(buildInfo)
@@ -676,15 +670,12 @@ func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastR
 		}
 		conf.LastRevisionCriteriaGroups = append(conf.LastRevisionCriteriaGroups, *criteriaGroup)
 	} else {
-		// If criteria already exists in this group for the build
-		// variant name/display name regexps, overwrite it with the new
-		// criteria. Otherwise, append the new criteria to the group.
+		// If criteria already exists in this group for the same build variant
+		// name/display name regexps, overwrite it with the new criteria.
+		// Otherwise, append the new criteria to the group.
 		isNewCriteriaForGroup := true
 		for i, c := range criteriaGroup.Criteria {
-			// kim: TODO: clean this up a bit.
-			a, b := utility.StringSliceSymmetricDifference(c.BVRegexps, criteriaToSave.BVRegexps)
-			c, d := utility.StringSliceSymmetricDifference(c.BVDisplayRegexps, criteriaToSave.BVDisplayRegexps)
-			if len(a) == 0 && len(b) == 0 && len(c) == 0 && len(d) == 0 {
+			if stringSetEquals(c.BVRegexps, criteriaToSave.BVRegexps) && stringSetEquals(c.BVDisplayRegexps, criteriaToSave.BVDisplayRegexps) {
 				criteriaGroup.Criteria[i] = criteriaToSave
 				isNewCriteriaForGroup = false
 			}
@@ -700,6 +691,13 @@ func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastR
 	}
 
 	return criteriaGroup, nil
+}
+
+// stringSetEquals checks if two slices of strings have the same sets of
+// strings, ignoring the order of elements and duplicates.
+func stringSetEquals(a, b []string) bool {
+	uniqueToA, uniqueToB := utility.StringSliceSymmetricDifference(a, b)
+	return len(uniqueToA) == 0 && len(uniqueToB) == 0
 }
 
 func getModulesForVersion(ctx context.Context, c client.Communicator, versionID string) ([]model.APIManifestModule, error) {
