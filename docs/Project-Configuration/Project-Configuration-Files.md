@@ -1484,6 +1484,11 @@ group and each individual task. Tasks in a task group will not run the `pre`
 and `post` blocks in the YAML file; instead, the tasks will run the task group's
 setup and teardown blocks.
 
+Note: Because task directory is not removed between tasks, if git.get_project is
+used for the task group and/or if any manual clones are shared between the tasks,
+they should be done in `setup_group` rather than `setup_task` in order to save
+resources and avoid conflicts.
+
 ```yaml
 task_groups:
   - name: example_task_group
