@@ -334,9 +334,13 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
 				// If the field is a string, store in parameter manager and update struct with path.
 				if fieldValue.Kind() == reflect.String {
+					// We don't defer the cancel() and instead cancel it immediately
+					// after the parameter store read to avoid context leaks.
+					// This is because the recursive calls can create many contexts,
+					// and we want to ensure they are all cleaned up properly.
 					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
-					defer cancel()
 					param, err := paramMgr.Get(paramCtx, fieldPath)
+					cancel()
 					if err != nil {
 						catcher.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath)
 					} else if len(param) > 0 {
@@ -347,11 +351,15 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
 					newMap := reflect.MakeMap(fieldValue.Type())
-					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
-					defer cancel()
 					for _, key := range fieldValue.MapKeys() {
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
+						// We don't defer the cancel() and instead cancel it immediately
+						// after the parameter store read to avoid context leaks.
+						// This is because the recursive calls can create many contexts,
+						// and we want to ensure they are all cleaned up properly.
+						paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
 						param, err := paramMgr.Get(paramCtx, mapFieldPath)
+						cancel()
 						if err != nil {
 							catcher.Wrapf(err, "Failed to read secret map field '%s' in parameter store", mapFieldPath)
 							continue
