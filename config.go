@@ -334,11 +334,13 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
 				// If the field is a string, store in parameter manager and update struct with path.
 				if fieldValue.Kind() == reflect.String {
+					// Use a detached context to avoid context cancellation as this
+					// is a critical operation.
 					// We don't defer the cancel() and instead cancel it immediately
 					// after the parameter store read to avoid context leaks.
 					// This is because the recursive calls can create many contexts,
 					// and we want to ensure they are all cleaned up properly.
-					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+					paramCtx, cancel := context.WithTimeout(context.Background(), parameterStoreTimeout)
 					param, err := paramMgr.Get(paramCtx, fieldPath)
 					cancel()
 					if err != nil {
@@ -353,11 +355,13 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					newMap := reflect.MakeMap(fieldValue.Type())
 					for _, key := range fieldValue.MapKeys() {
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
+						// Use a detached context to avoid context cancellation as this
+						// is a critical operation.
 						// We don't defer the cancel() and instead cancel it immediately
 						// after the parameter store read to avoid context leaks.
 						// This is because the recursive calls can create many contexts,
 						// and we want to ensure they are all cleaned up properly.
-						paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+						paramCtx, cancel := context.WithTimeout(context.Background(), parameterStoreTimeout)
 						param, err := paramMgr.Get(paramCtx, mapFieldPath)
 						cancel()
 						if err != nil {
