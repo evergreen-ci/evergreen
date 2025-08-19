@@ -312,6 +312,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
 			cmd.Optional = "${optional}"
+			cmd.Permissions = "${permissions}"
 			cmd.LocalFile = abs
 
 			conf.Expansions.Update(
@@ -325,6 +326,7 @@ func TestExpandS3PutParams(t *testing.T) {
 					"optional":     "true",
 					"visibility":   artifact.Private,
 					"workdir":      "/working_directory",
+					"permissions":  "private",
 				},
 			)
 
@@ -337,6 +339,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			So(cmd.ResourceDisplayName, ShouldEqual, "file")
 			So(cmd.Visibility, ShouldEqual, "private")
 			So(cmd.Optional, ShouldEqual, "true")
+			So(cmd.Permissions, ShouldEqual, "private")
 
 			// EVG-7226 Since LocalFile is an absolute path, workDir should be empty
 			So(cmd.workDir, ShouldEqual, "")

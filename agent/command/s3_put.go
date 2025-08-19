@@ -84,7 +84,7 @@ type s3put struct {
 	// Permissions is the ACL to apply to the uploaded file. See:
 	// http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
 	// for some examples.
-	Permissions string `mapstructure:"permissions"`
+	Permissions string `mapstructure:"permissions" plugin:"expand"`
 
 	// ContentType is the MIME type of the uploaded file.
 	// E.g. text/html, application/pdf, image/jpeg, ...
