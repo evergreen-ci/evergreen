@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cheynewallace/tabby"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -78,7 +79,7 @@ func LastRevision() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  saveFlagName,
-				Usage: "save the last revision criteria for reuse with the given name. If criteria already exists for the build variant name or display name regexps, the old criteria will be overwritten.",
+				Usage: "save the last revision criteria for reuse with the given name. If criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
 			},
 			// kim: NOTE: intentionally not implementing overwrite flag and
 			// letting it overwrite by default to keep things simple.
@@ -144,10 +145,13 @@ func LastRevision() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 			if saveCriteriaName != "" {
-				if err := saveLastRevisionCriteria(conf, saveCriteriaName, criteria); err != nil {
+				cg, err := saveLastRevisionCriteria(conf, saveCriteriaName, criteria)
+				if err != nil {
 					return errors.Wrap(err, "saving last revision criteria")
 				}
-				fmt.Printf("Saved last revision criteria '%s'\n", saveCriteriaName)
+				if err := printCriteriaGroup(cg, jsonOutput); err != nil {
+					return errors.Wrap(err, "printing last revision criteria group")
+				}
 				return nil
 			}
 
@@ -266,7 +270,49 @@ func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, j
 		fmt.Println("No modules found for this version.")
 	}
 	return nil
+}
 
+func printCriteriaGroup(cg *LastRevisionCriteriaGroup, jsonOutput bool) error {
+	if jsonOutput {
+		output, err := json.MarshalIndent(cg, "", "\t")
+		if err != nil {
+			return errors.Wrap(err, "marshalling criteria group to JSON")
+		}
+		fmt.Println(string(output))
+		return nil
+	}
+
+	t := tabby.New()
+	t.AddHeader("Name", "Build Variant Regexps", "Build Variant Display Name Regexps", "Min Success Proportion", "Min Finished Proportion", "Successful Tasks")
+	for i, c := range cg.Criteria {
+		name := cg.Name
+		if i > 0 {
+			name = ""
+		}
+		bvRegexps := ""
+		if len(c.BVRegexps) > 0 {
+			bvRegexps = fmt.Sprint(c.BVRegexps)
+		}
+		bvDisplayRegexps := ""
+		if len(c.BVDisplayRegexps) > 0 {
+			bvDisplayRegexps = fmt.Sprint(c.BVDisplayRegexps)
+		}
+		minSuccessProp := ""
+		if c.MinSuccessProportion > 0 {
+			minSuccessProp = fmt.Sprintf("%.2f", c.MinSuccessProportion)
+		}
+		minFinishedProp := ""
+		if c.MinFinishedProportion > 0 {
+			minFinishedProp = fmt.Sprintf("%.2f", c.MinFinishedProportion)
+		}
+		successfulTasks := ""
+		if len(c.SuccessfulTasks) > 0 {
+			successfulTasks = fmt.Sprint(c.SuccessfulTasks)
+		}
+		t.AddLine(name, bvRegexps, bvDisplayRegexps, minSuccessProp, minFinishedProp, successfulTasks)
+	}
+	t.Print()
+	return nil
 }
 
 // lastRevisionBuildInfo includes information needed to determine if a build
@@ -580,18 +626,18 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 // LastRevisionCriteriaGroup is a group of last revision criteria that can be
 // saved and reused.
 type LastRevisionCriteriaGroup struct {
-	Name     string                         `yaml:"name"`
-	Criteria []ReusableLastRevisionCriteria `yaml:"criteria"`
+	Name     string                         `json:"name" yaml:"name"`
+	Criteria []ReusableLastRevisionCriteria `json:"criteria" yaml:"criteria"`
 }
 
 // ReusableLastRevisionCriteria defines the criteria for the last revision that
 // can be saved and reused.
 type ReusableLastRevisionCriteria struct {
-	BVRegexps             []string `yaml:"bv_regexps,omitempty"`
-	BVDisplayRegexps      []string `yaml:"bv_display_regexps,omitempty"`
-	MinSuccessProportion  float64  `yaml:"min_success_proportion,omitempty"`
-	MinFinishedProportion float64  `yaml:"min_finished_proportion,omitempty"`
-	SuccessfulTasks       []string `yaml:"successful_tasks,omitempty"`
+	BVRegexps             []string `json:"bv_regexps,omitempty" yaml:"bv_regexps,omitempty"`
+	BVDisplayRegexps      []string `json:"bv_display_regexps,omitempty" yaml:"bv_display_regexps,omitempty"`
+	MinSuccessProportion  float64  `json:"min_success_proportion,omitempty" yaml:"min_success_proportion,omitempty"`
+	MinFinishedProportion float64  `json:"min_finished_proportion,omitempty" yaml:"min_finished_proportion,omitempty"`
+	SuccessfulTasks       []string `json:"successful_tasks,omitempty" yaml:"successful_tasks,omitempty"`
 }
 
 func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisionCriteria {
@@ -612,7 +658,7 @@ func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisi
 	}
 }
 
-func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastRevisionCriteria) error {
+func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastRevisionCriteria) (*LastRevisionCriteriaGroup, error) {
 	criteriaToSave := NewReusableLastRevisionCriteria(criteria)
 	var criteriaGroup *LastRevisionCriteriaGroup
 	var criteriaGroupIdx int
@@ -650,10 +696,10 @@ func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastR
 	}
 
 	if err := conf.Write(""); err != nil {
-		return errors.Wrap(err, "writing last revision criteria to configuration file")
+		return nil, errors.Wrap(err, "writing last revision criteria to configuration file")
 	}
 
-	return nil
+	return criteriaGroup, nil
 }
 
 func getModulesForVersion(ctx context.Context, c client.Communicator, versionID string) ([]model.APIManifestModule, error) {
