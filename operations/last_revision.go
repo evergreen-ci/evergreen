@@ -33,6 +33,7 @@ func LastRevision() cli.Command {
 		timeoutFlagName                   = "timeout"
 		lookbackLimitFlagName             = "lookback-limit"
 		saveFlagName                      = "save"
+		reuseFlagName                     = "reuse"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -80,6 +81,10 @@ func LastRevision() cli.Command {
 				Name:  saveFlagName,
 				Usage: "instead of searching for a revision, save the last revision criteria for reuse with the given name. If a set of criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
 			},
+			cli.StringFlag{
+				Name:  reuseFlagName,
+				Usage: "reuse a set of last revision criteria by name",
+			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -92,7 +97,7 @@ func LastRevision() cli.Command {
 			},
 			requireProjectFlag,
 			func(c *cli.Context) error {
-				if len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
+				if c.String(reuseFlagName) == "" && len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
 					return errors.New("must specify at least one build variant name or display name regexp")
 				}
 				return nil
@@ -119,8 +124,20 @@ func LastRevision() cli.Command {
 				return nil
 			},
 			func(c *cli.Context) error {
-				if c.Float64(minSuccessProportionFlagName) == 0 && c.Float64(minFinishedProportionFlagName) == 0 && len(c.StringSlice(successfulTasks)) == 0 {
-					return errors.New("must specify at least one criteria (minimum success proportion, minimum finished proportion, or required successful tasks)")
+				if c.String(reuseFlagName) == "" && c.Float64(minSuccessProportionFlagName) == 0 && c.Float64(minFinishedProportionFlagName) == 0 && len(c.StringSlice(successfulTasks)) == 0 {
+					return errors.New("must specify at least one criteria (minimum success proportion, minimum finished proportion, or required successful tasks) or set of criteria to reuse")
+				}
+				return nil
+			},
+			func(c *cli.Context) error {
+				reuseCriteria := c.String(reuseFlagName) != ""
+				saveCriteria := c.String(saveFlagName) != ""
+				if reuseCriteria && saveCriteria {
+					return errors.New("cannot both reuse and save criteria")
+				}
+				if reuseCriteria && (len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
+					c.Float64(minSuccessProportionFlagName) > 0 || c.Float64(minFinishedProportionFlagName) > 0 || len(c.StringSlice(successfulTasks)) > 0) {
+					return errors.New("cannot both reuse criteria and also specify specify other criteria")
 				}
 				return nil
 			},
@@ -137,17 +154,18 @@ func LastRevision() cli.Command {
 			jsonOutput := c.Bool(jsonFlagName)
 			versionLookbackLimit := c.Int(lookbackLimitFlagName)
 			saveCriteriaName := c.String(saveFlagName)
-			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
-
-			if err != nil {
-				return errors.Wrap(err, "building last revision options")
-			}
+			reuseCriteriaName := c.String(reuseFlagName)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
 			if saveCriteriaName != "" {
+				criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
+				if err != nil {
+					return errors.Wrap(err, "building last revision options")
+				}
+
 				cg, err := saveLastRevisionCriteria(conf, saveCriteriaName, criteria)
 				if err != nil {
 					return errors.Wrap(err, "saving last revision criteria")
@@ -175,7 +193,20 @@ func LastRevision() cli.Command {
 			}
 			defer client.Close()
 
-			criteriaGroup := []lastRevisionCriteria{*criteria}
+			var allCriteria []lastRevisionCriteria
+			if reuseCriteriaName != "" {
+				// kim: TODO: manually test reusing criteria
+				allCriteria, err = getLastRevisionCriteria(conf, reuseCriteriaName, projectID, knownIssuesAreSuccess)
+				if err != nil {
+					return errors.Wrapf(err, "getting last revision criteria with name '%s'", reuseCriteriaName)
+				}
+			} else {
+				criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
+				if err != nil {
+					return errors.Wrap(err, "building last revision options")
+				}
+				allCriteria = []lastRevisionCriteria{*criteria}
+			}
 
 			// Search for a suitable version in batches to reduce request times.
 			// Otherwise without any batching, the initial time to get recent
@@ -190,7 +221,7 @@ func LastRevision() cli.Command {
 					return errors.Wrap(err, "getting latest versions for project")
 				}
 
-				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, criteriaGroup)
+				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, allCriteria)
 				if err != nil {
 					return errors.Wrap(err, "finding latest matching revision")
 				}
@@ -629,6 +660,18 @@ type lastRevisionCriteriaGroup struct {
 	Criteria []reusableLastRevisionCriteria `json:"criteria" yaml:"criteria"`
 }
 
+func (cg *lastRevisionCriteriaGroup) toLastRevisionCriteria(projectID string, knownIssuesAreSuccess bool) ([]lastRevisionCriteria, error) {
+	allCriteria := make([]lastRevisionCriteria, 0, len(cg.Criteria))
+	for i, c := range cg.Criteria {
+		criteria, err := newLastRevisionCriteria(projectID, c.BVRegexps, c.BVDisplayRegexps, c.MinSuccessProportion, c.MinFinishedProportion, c.SuccessfulTasks, knownIssuesAreSuccess)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reusing last revision criteria from group '%s' at index %d", cg.Name, i)
+		}
+		allCriteria = append(allCriteria, *criteria)
+	}
+	return allCriteria, nil
+}
+
 // reusableLastRevisionCriteria defines the criteria for the last revision that
 // can be saved and reused.
 type reusableLastRevisionCriteria struct {
@@ -696,6 +739,21 @@ func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastR
 	}
 
 	return criteriaGroup, nil
+}
+
+func getLastRevisionCriteria(conf *ClientSettings, name, project string, knownIssuesAreSuccess bool) ([]lastRevisionCriteria, error) {
+	var criteriaGroup *lastRevisionCriteriaGroup
+	for _, cg := range conf.LastRevisionCriteriaGroups {
+		if cg.Name == name {
+			criteriaGroup = &cg
+			break
+		}
+	}
+	if criteriaGroup == nil {
+		return nil, errors.Errorf("no last revision criteria group found with name '%s'", name)
+	}
+
+	return criteriaGroup.toLastRevisionCriteria(project, knownIssuesAreSuccess)
 }
 
 // stringSetEquals checks if two slices of strings have the same sets of
