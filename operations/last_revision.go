@@ -79,7 +79,7 @@ func LastRevision() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  saveFlagName,
-				Usage: "save the last revision criteria for reuse with the given name. If criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
+				Usage: "instead of searching for a revision, save the last revision criteria for reuse with the given name. If criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
