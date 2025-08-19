@@ -255,6 +255,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
+	wrapUserForMCP := gimlet.WrapperMiddleware(uis.wrapUserForMCP)
 	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
 	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
@@ -311,7 +312,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// MCP-only GraphQL (queries only, no mutations)
 	app.AddRoute("/mcp/graphql/query").
-		Wrap(allowsCORS, requireSage).
+		Wrap(allowsCORS, requireSage, wrapUserForMCP).
 		Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL, false))).ServeHTTP(w, r)
 		})).
