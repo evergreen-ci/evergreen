@@ -197,6 +197,22 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "invalid permissions")
 			})
 
+			Convey("an expansion s3 permission should pass", func() {
+
+				params := map[string]any{
+					"aws_key":      "key",
+					"aws_secret":   "secret",
+					"local_file":   "local",
+					"remote_file":  "remote",
+					"bucket":       "bck",
+					"permissions":  "${test|private}",
+					"content_type": "application/x-tar",
+					"display_name": "test_file",
+				}
+				err := cmd.ParseParams(params)
+				require.NoError(t, err)
+			})
+
 			Convey("a missing content type should cause an error", func() {
 
 				params := map[string]any{
