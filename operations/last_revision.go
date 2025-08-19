@@ -119,6 +119,12 @@ func LastRevision() cli.Command {
 				}
 				return nil
 			},
+			func(c *cli.Context) error {
+				if c.Float64(minSuccessProportionFlagName) == 0 && c.Float64(minFinishedProportionFlagName) == 0 && len(c.StringSlice(successfulTasks)) == 0 {
+					return errors.New("must specify at least one criteria (minimum success proportion, minimum finished proportion, or required successful tasks)")
+				}
+				return nil
+			},
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
@@ -270,7 +276,7 @@ func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, j
 	return nil
 }
 
-func printCriteriaGroup(cg *LastRevisionCriteriaGroup, jsonOutput bool) error {
+func printCriteriaGroup(cg *lastRevisionCriteriaGroup, jsonOutput bool) error {
 	if jsonOutput {
 		output, err := json.MarshalIndent(cg, "", "\t")
 		if err != nil {
@@ -281,7 +287,7 @@ func printCriteriaGroup(cg *LastRevisionCriteriaGroup, jsonOutput bool) error {
 	}
 
 	t := tabby.New()
-	t.AddHeader("Name", "Build Variant Regexps", "Build Variant Display Name Regexps", "Min Success Proportion", "Min Finished Proportion", "Successful Tasks")
+	t.AddHeader("Name", "Build Variant Regexps", "Build Variant Display Name Regexps", "Min Success Proportion", "Min Finished Proportion", "Required Successful Tasks")
 	for i, c := range cg.Criteria {
 		name := cg.Name
 		if i > 0 {
@@ -617,16 +623,16 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	return true, nil
 }
 
-// LastRevisionCriteriaGroup is a group of last revision criteria that can be
+// lastRevisionCriteriaGroup is a group of last revision criteria that can be
 // saved and reused.
-type LastRevisionCriteriaGroup struct {
+type lastRevisionCriteriaGroup struct {
 	Name     string                         `json:"name" yaml:"name"`
-	Criteria []ReusableLastRevisionCriteria `json:"criteria" yaml:"criteria"`
+	Criteria []reusableLastRevisionCriteria `json:"criteria" yaml:"criteria"`
 }
 
-// ReusableLastRevisionCriteria defines the criteria for the last revision that
+// reusableLastRevisionCriteria defines the criteria for the last revision that
 // can be saved and reused.
-type ReusableLastRevisionCriteria struct {
+type reusableLastRevisionCriteria struct {
 	BVRegexps             []string `json:"bv_regexps,omitempty" yaml:"bv_regexps,omitempty"`
 	BVDisplayRegexps      []string `json:"bv_display_regexps,omitempty" yaml:"bv_display_regexps,omitempty"`
 	MinSuccessProportion  float64  `json:"min_success_proportion,omitempty" yaml:"min_success_proportion,omitempty"`
@@ -634,7 +640,7 @@ type ReusableLastRevisionCriteria struct {
 	SuccessfulTasks       []string `json:"successful_tasks,omitempty" yaml:"successful_tasks,omitempty"`
 }
 
-func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisionCriteria {
+func newReusableLastRevisionCriteria(c *lastRevisionCriteria) reusableLastRevisionCriteria {
 	var bvRegexps []string
 	for _, bvRegexp := range c.buildVariantRegexps {
 		bvRegexps = append(bvRegexps, bvRegexp.String())
@@ -643,7 +649,7 @@ func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisi
 	for _, bvDisplayRegexp := range c.buildVariantDisplayNameRegexps {
 		bvDisplayRegexps = append(bvDisplayRegexps, bvDisplayRegexp.String())
 	}
-	return ReusableLastRevisionCriteria{
+	return reusableLastRevisionCriteria{
 		BVRegexps:             bvRegexps,
 		BVDisplayRegexps:      bvDisplayRegexps,
 		MinSuccessProportion:  c.minSuccessProportion,
@@ -652,9 +658,9 @@ func NewReusableLastRevisionCriteria(c *lastRevisionCriteria) ReusableLastRevisi
 	}
 }
 
-func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastRevisionCriteria) (*LastRevisionCriteriaGroup, error) {
-	criteriaToSave := NewReusableLastRevisionCriteria(criteria)
-	var criteriaGroup *LastRevisionCriteriaGroup
+func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastRevisionCriteria) (*lastRevisionCriteriaGroup, error) {
+	criteriaToSave := newReusableLastRevisionCriteria(criteria)
+	var criteriaGroup *lastRevisionCriteriaGroup
 	var criteriaGroupIdx int
 	for i, cg := range conf.LastRevisionCriteriaGroups {
 		if cg.Name == name {
@@ -664,9 +670,9 @@ func saveLastRevisionCriteria(conf *ClientSettings, name string, criteria *lastR
 		}
 	}
 	if criteriaGroup == nil {
-		criteriaGroup = &LastRevisionCriteriaGroup{
+		criteriaGroup = &lastRevisionCriteriaGroup{
 			Name:     name,
-			Criteria: []ReusableLastRevisionCriteria{criteriaToSave},
+			Criteria: []reusableLastRevisionCriteria{criteriaToSave},
 		}
 		conf.LastRevisionCriteriaGroups = append(conf.LastRevisionCriteriaGroups, *criteriaGroup)
 	} else {
