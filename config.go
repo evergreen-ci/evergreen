@@ -483,14 +483,6 @@ func collectSecretPaths(value reflect.Value, typ reflect.Type, path string) []st
 	return secretPaths
 }
 
-// GetSecretPaths returns a list of all paths to fields tagged with "secret":"true"
-// in the Settings struct.
-func (s *Settings) GetSecretPaths() []string {
-	settingsValue := reflect.ValueOf(*s)
-	settingsType := reflect.TypeOf(*s)
-	return collectSecretPaths(settingsValue, settingsType, "")
-}
-
 // UpdateConfig updates all evergreen settings documents in the DB.
 func UpdateConfig(ctx context.Context, config *Settings) error {
 	// update the root config document
