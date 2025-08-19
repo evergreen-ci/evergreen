@@ -91,13 +91,5 @@ query Other {
       targetTimeSecondsOverride
       idleTimeSecondsOverride
     }
-    projectRefs {
-      id
-      displayName
-    }
-    repoRefs {
-      id
-      displayName
-    }
   }
 }

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
@@ -23,40 +22,6 @@ func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *restModel.
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid banner theme '%s'", themeString))
 	}
 	return &theme, nil
-}
-
-// ProjectRefs is the resolver for the projectRefs field.
-func (r *adminSettingsResolver) ProjectRefs(ctx context.Context, obj *restModel.APIAdminSettings) ([]*ProjectRefData, error) {
-	projectRefs, err := model.FindAllProjectRefs(ctx)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching project refs: %s", err.Error()))
-	}
-
-	result := make([]*ProjectRefData, len(projectRefs))
-	for i, ref := range projectRefs {
-		result[i] = &ProjectRefData{
-			ID:          ref.Id,
-			DisplayName: ref.Identifier,
-		}
-	}
-	return result, nil
-}
-
-// RepoRefs is the resolver for the repoRefs field.
-func (r *adminSettingsResolver) RepoRefs(ctx context.Context, obj *restModel.APIAdminSettings) ([]*RepoRefData, error) {
-	repoRefs, err := model.FindAllRepoRefs(ctx)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error fetching repo refs: %s", err.Error()))
-	}
-
-	result := make([]*RepoRefData, len(repoRefs))
-	for i, ref := range repoRefs {
-		result[i] = &RepoRefData{
-			ID:          ref.Id,
-			DisplayName: ref.Repo,
-		}
-	}
-	return result, nil
 }
 
 // SecretFields is the resolver for the secretFields field.

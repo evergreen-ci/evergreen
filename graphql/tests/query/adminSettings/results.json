@@ -429,9 +429,7 @@
               "distroMaxHostsFactor": 1,
               "targetTimeSecondsOverride": 0,
               "idleTimeSecondsOverride": 0
-            },
-            "projectRefs": [],
-            "repoRefs": []
+            }
           }
         }
       }

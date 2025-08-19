@@ -353,16 +353,6 @@ input AdminSettingsInput {
   ui: UIConfigInput
 }
 
-type ProjectRefData {
-  id: String!
-  displayName: String!
-}
-
-type RepoRefData {
-  id: String!
-  displayName: String!
-}
-
 type AdminSettings {
   amboy: AmboyConfig
   amboyDB: AmboyDBConfig
@@ -396,10 +386,8 @@ type AdminSettings {
   podLifecycle: PodLifecycleConfig
   pprofPort: String
   projectCreation: ProjectCreationConfig
-  projectRefs: [ProjectRefData!]
   providers: CloudProviderConfig
   releaseMode: ReleaseModeConfig
-  repoRefs: [RepoRefData!]
   repotracker: RepotrackerConfig
   runtimeEnvironments: RuntimeEnvironmentConfig
   scheduler: SchedulerConfig

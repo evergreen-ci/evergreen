@@ -403,11 +403,6 @@ type ProjectPermissionsOptions struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
-type ProjectRefData struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"displayName"`
-}
-
 // PromoteVarsToRepoInput is the input to the promoteVarsToRepo mutation.
 type PromoteVarsToRepoInput struct {
 	ProjectID string   `json:"projectId"`
@@ -434,11 +429,6 @@ type RepoPermissions struct {
 
 type RepoPermissionsOptions struct {
 	RepoID string `json:"repoId"`
-}
-
-type RepoRefData struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"displayName"`
 }
 
 type RestartAdminTasksPayload struct {
