@@ -53,7 +53,7 @@ const (
 	skipCIDescriptionCharLimit = 100
 
 	// githubWebhookTimeout is the maximum timeout for processing a GitHub webhook.
-	githubWebhookTimeout = 60 * time.Second
+	githubWebhookTimeout = 5 * time.Minute
 )
 
 // skipCILabels are a set of labels which will skip creating PR patch if part of
@@ -857,6 +857,9 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 
 // handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
 func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEvent) error {
+	ctx, span := tracer.Start(ctx, "handle-git-tag")
+	defer span.End()
+
 	if err := validatePushTagEvent(event); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
@@ -995,7 +998,8 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 			MaxDelay:    checkVersionRetryMaxDelay,
 		})
 	catcher.Add(err)
-	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+	resolvedError := catcher.Resolve()
+	grip.Error(message.WrapError(resolvedError, message.Fields{
 		"source":  "GitHub hook",
 		"msg_id":  gh.msgID,
 		"event":   gh.eventType,
@@ -1005,7 +1009,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		"tag":     tag,
 		"message": "errors updating/creating versions for git tag",
 	}))
-	return nil
+	return errors.Wrap(resolvedError, "updating/creating versions for git tag")
 }
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,

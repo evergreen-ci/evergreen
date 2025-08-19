@@ -255,6 +255,10 @@ func (c *Mock) GetManifestByTask(context.Context, string) (*manifest.Manifest, e
 	return &manifest.Manifest{Id: "manifest0"}, nil
 }
 
+func (c *Mock) GetManifestForVersion(context.Context, string) (*model.APIManifest, error) {
+	return nil, nil
+}
+
 func (c *Mock) StartHostProcesses(context.Context, []string, string, int) ([]model.APIHostProcess, error) {
 	return nil, nil
 }
@@ -267,7 +271,7 @@ func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, b
 	return nil, nil
 }
 
-func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, branch string, limit int) ([]restmodel.APIVersion, error) {
+func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, branch string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
 	if c.GetRecentVersionsResult != nil {
 		return c.GetRecentVersionsResult, nil
 	}

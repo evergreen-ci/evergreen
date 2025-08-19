@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -26,11 +27,14 @@ func LastRevision() cli.Command {
 		minSuccessProportionFlagName      = "min-success"
 		minFinishedProportionFlagName     = "min-finished"
 		successfulTasks                   = "successful-tasks"
+		knownIssuesAreSuccessFlagName     = "known-issues-are-success"
 		jsonFlagName                      = "json"
+		timeoutFlagName                   = "timeout"
+		lookbackLimitFlagName             = "lookback-limit"
 	)
 	return cli.Command{
 		Name:  "last-revision",
-		Usage: "return the latest revision for a version that matches a set of criteria",
+		Usage: "return the latest revision for a version that matches a set of criteria, along with its modules (if any)",
 		Flags: addProjectFlag(
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(regexpVariantsFlagName, "rv"),
@@ -53,23 +57,62 @@ func LastRevision() cli.Command {
 				Usage: "minimum proportion of finished tasks (between 0 and 1 inclusive) in a build for it to be considered a match",
 			},
 			cli.BoolFlag{
+				Name:  knownIssuesAreSuccessFlagName,
+				Usage: "treat tasks with known issues as successful when checking the last revision criteria",
+			},
+			cli.BoolFlag{
 				Name:  joinFlagNames(jsonFlagName, "j"),
 				Usage: "output the result in JSON format",
 			},
+			cli.IntFlag{
+				Name:  timeoutFlagName,
+				Usage: "timeout in seconds to find a revision",
+				Value: 300,
+			},
+			cli.IntFlag{
+				Name:  lookbackLimitFlagName,
+				Usage: "number of recent versions to consider before giving up",
+				Value: defaultLastRevisionLookbackLimit,
+			},
 		),
-		Before: mergeBeforeFuncs(setPlainLogger, func(c *cli.Context) error {
-			if c.Bool(jsonFlagName) {
-				// If running with JSON output, don't try to upgrade the CLI
-				// because it will produce extraneous non-JSON output.
+		Before: mergeBeforeFuncs(setPlainLogger,
+			func(c *cli.Context) error {
+				if c.Bool(jsonFlagName) {
+					// If running with JSON output, don't try to upgrade the CLI
+					// because it will produce extraneous non-JSON output.
+					return nil
+				}
+				return autoUpdateCLI(c)
+			},
+			requireProjectFlag,
+			func(c *cli.Context) error {
+				if len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
+					return errors.New("must specify at least one build variant name or display name regexp")
+				}
 				return nil
-			}
-			return autoUpdateCLI(c)
-		}, func(c *cli.Context) error {
-			if len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
-				return errors.New("must specify at least one build variant name or display name regexp")
-			}
-			return nil
-		}),
+			},
+			func(c *cli.Context) error {
+				if c.Float64(minSuccessProportionFlagName) < 0 || c.Float64(minSuccessProportionFlagName) > 1 {
+					return errors.New("minimum success proportion must be between 0 and 1 inclusive")
+				}
+				if c.Float64(minFinishedProportionFlagName) < 0 || c.Float64(minFinishedProportionFlagName) > 1 {
+					return errors.New("minimum finished proportion must be between 0 and 1 inclusive")
+				}
+				return nil
+			},
+			func(c *cli.Context) error {
+				if c.Int(timeoutFlagName) < 0 {
+					return errors.New("timeout must be a non-negative integer")
+				}
+				return nil
+			},
+			func(c *cli.Context) error {
+				if c.Int(lookbackLimitFlagName) <= 0 {
+					return errors.New("lookback limit must be a positive integer")
+				}
+				return nil
+			},
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
@@ -78,8 +121,10 @@ func LastRevision() cli.Command {
 			minSuccessProp := c.Float64(minSuccessProportionFlagName)
 			minFinishedProp := c.Float64(minFinishedProportionFlagName)
 			successfulTasks := c.StringSlice(successfulTasks)
+			knownIssuesAreSuccess := c.Bool(knownIssuesAreSuccessFlagName)
 			jsonOutput := c.Bool(jsonFlagName)
-			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks)
+			versionLookbackLimit := c.Int(lookbackLimitFlagName)
+			criteria, err := newLastRevisionCriteria(projectID, bvRegexps, bvDisplayNameRegexps, minSuccessProp, minFinishedProp, successfulTasks, knownIssuesAreSuccess)
 
 			if err != nil {
 				return errors.Wrap(err, "building last revision options")
@@ -90,8 +135,16 @@ func LastRevision() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			var ctx context.Context
+			var cancel context.CancelFunc
+			timeoutSecs := c.Int(timeoutFlagName)
+			if timeoutSecs > 0 {
+				ctx, cancel = context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
+				defer cancel()
+			} else {
+				ctx, cancel = context.WithCancel(context.Background())
+				defer cancel()
+			}
 
 			client, err := conf.setupRestCommunicator(ctx, !jsonOutput)
 			if err != nil {
@@ -99,20 +152,48 @@ func LastRevision() cli.Command {
 			}
 			defer client.Close()
 
-			latestVersions, err := client.GetRecentVersionsForProject(ctx, c.String(projectFlagName), evergreen.RepotrackerVersionRequester, defaultLastRevisionLookbackLimit)
-			if err != nil {
-				return errors.Wrap(err, "getting latest versions for project")
+			// Search for a suitable version in batches to reduce request times.
+			// Otherwise without any batching, the initial time to get recent
+			// versions becomes slower as the lookback limit increases.
+			const maxVersionBatchSize = 20
+			var orderNum int
+			var matchingVersion *model.APIVersion
+			for numRevisionsSearched := 0; numRevisionsSearched < versionLookbackLimit; numRevisionsSearched += maxVersionBatchSize {
+				numRevisionsToSearch := min(maxVersionBatchSize, versionLookbackLimit-numRevisionsSearched)
+				latestVersions, err := client.GetRecentVersionsForProject(ctx, c.String(projectFlagName), evergreen.RepotrackerVersionRequester, orderNum, numRevisionsToSearch)
+				if err != nil {
+					return errors.Wrap(err, "getting latest versions for project")
+				}
+
+				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, *criteria)
+				if err != nil {
+					return errors.Wrap(err, "finding latest matching revision")
+				}
+				if matchingVersion != nil {
+					break
+				}
+
+				// latestVersions is always sorted from most to least recent
+				// version, so the last version in the slice is the first
+				// version to start at (exclusive) for the next batch of
+				// versions.
+				orderNum = latestVersions[len(latestVersions)-1].Order
+				if orderNum <= 1 {
+					// If the last order number searched is 1, that's the
+					// earliest waterfall version, so there's no more versions
+					// to search.
+					break
+				}
 			}
 
-			matchingVersion, err := findLatestMatchingVersion(ctx, client, latestVersions, *criteria)
-			if err != nil {
-				return errors.Wrap(err, "finding latest matching revision")
-			}
 			if matchingVersion == nil {
 				return errors.New("no matching version found")
 			}
-
-			if err := printLastRevision(matchingVersion, jsonOutput); err != nil {
+			modules, err := getModulesForVersion(ctx, client, utility.FromStringPtr(matchingVersion.Id))
+			if err != nil {
+				return errors.Wrapf(err, "getting modules for matching version '%s'", utility.FromStringPtr(matchingVersion.Id))
+			}
+			if err := printLastRevision(matchingVersion, modules, jsonOutput); err != nil {
 				return errors.Wrap(err, "printing last revision")
 			}
 
@@ -121,17 +202,34 @@ func LastRevision() cli.Command {
 	}
 }
 
-func printLastRevision(v *model.APIVersion, jsonOutput bool) error {
+func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, jsonOutput bool) error {
 	versionID := utility.FromStringPtr(v.Id)
 	revision := utility.FromStringPtr(v.Revision)
 
 	if jsonOutput {
+		type moduleInfo struct {
+			Name     string `json:"name"`
+			Revision string `json:"revision"`
+		}
+		var moduleNameAndRevisions []moduleInfo
+		if len(modules) > 0 {
+			moduleNameAndRevisions = make([]moduleInfo, 0, len(modules))
+			for _, m := range modules {
+				moduleNameAndRevisions = append(moduleNameAndRevisions, moduleInfo{
+					Name:     utility.FromStringPtr(m.Name),
+					Revision: utility.FromStringPtr(m.Revision),
+				})
+			}
+		}
+
 		output, err := json.MarshalIndent(struct {
-			VersionID string `json:"version_id"`
-			Revision  string `json:"revision"`
+			VersionID string       `json:"version_id"`
+			Revision  string       `json:"revision"`
+			Modules   []moduleInfo `json:"modules,omitzero"`
 		}{
 			VersionID: versionID,
 			Revision:  revision,
+			Modules:   moduleNameAndRevisions,
 		}, "", "\t")
 		if err != nil {
 			return errors.Wrap(err, "marshalling output to JSON")
@@ -141,6 +239,14 @@ func printLastRevision(v *model.APIVersion, jsonOutput bool) error {
 	}
 
 	fmt.Printf("Latest version that matches criteria: %s\nRevision: %s\n", utility.FromStringPtr(v.Id), utility.FromStringPtr(v.Revision))
+	if len(modules) > 0 {
+		fmt.Println("Modules:")
+		for _, m := range modules {
+			fmt.Printf("- name: %s\n  revision: %s\n", utility.FromStringPtr(m.Name), utility.FromStringPtr(m.Revision))
+		}
+	} else {
+		fmt.Println("No modules found for this version.")
+	}
 	return nil
 
 }
@@ -165,14 +271,15 @@ type lastRevisionBuildInfo struct {
 	numFinishedTasks int
 }
 
-func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask) lastRevisionBuildInfo {
+func newLastRevisionBuildInfo(b model.APIBuild, buildTasks []model.APITask, knownIssuesAreSuccess bool) lastRevisionBuildInfo {
 	numFinishedTasks := 0
 	numSuccessfulTasks := 0
 	for _, t := range buildTasks {
-		if evergreen.IsFinishedTaskStatus(utility.FromStringPtr(t.Status)) {
+		status := utility.FromStringPtr(t.Status)
+		if evergreen.IsFinishedTaskStatus(status) {
 			numFinishedTasks++
 		}
-		if utility.FromStringPtr(t.Status) == evergreen.TaskSucceeded {
+		if isSuccessfulTask(t, knownIssuesAreSuccess) {
 			numSuccessfulTasks++
 		}
 	}
@@ -199,6 +306,17 @@ func (i *lastRevisionBuildInfo) finishedProportion() float64 {
 	return float64(i.numFinishedTasks) / float64(len(i.allTasks))
 }
 
+// isSuccessfulTask checks if a task is considered successful for last revision
+// criteria, which means either the task succeeded or if knownIssuesAreSuccess
+// is true, the task failed with known issues.
+func isSuccessfulTask(t model.APITask, knownIssuesAreSuccess bool) bool {
+	status := utility.FromStringPtr(t.Status)
+	if status == evergreen.TaskSucceeded {
+		return true
+	}
+	return knownIssuesAreSuccess && evergreen.IsFailedTaskStatus(status) && t.HasAnnotations
+}
+
 // lastRevisionCriteria defines the user criteria for selecting a suitable last
 // revision.
 type lastRevisionCriteria struct {
@@ -222,22 +340,12 @@ type lastRevisionCriteria struct {
 	// present in the build, must have succeeded. If the task is not present in
 	// the build, then this criterion does not apply.
 	successfulTasks []string
+	// knownIssuesAreSuccess indicates whether tasks with known issues
+	// should be treated as successful when checking the criteria.
+	knownIssuesAreSuccess bool
 }
 
-func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion float64, successfulTasks []string) (*lastRevisionCriteria, error) {
-	if len(bvRegexpsAsStr) == 0 && len(bvDisplayRegexpsAsStr) == 0 {
-		return nil, errors.New("must specify at least one build variant name or display name regexp for criteria")
-	}
-	if minSuccessProportion < 0 || minSuccessProportion > 1 {
-		return nil, errors.New("minimum success proportion must be between 0 and 1 inclusive")
-	}
-	if minFinishedProportion < 0 || minFinishedProportion > 1 {
-		return nil, errors.New("minimum finished proportion must be between 0 and 1 inclusive")
-	}
-	if project == "" {
-		return nil, errors.New("must specify a project")
-	}
-
+func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsStr []string, minSuccessProportion, minFinishedProportion float64, successfulTasks []string, knownIssuesAreSuccess bool) (*lastRevisionCriteria, error) {
 	bvRegexps := make([]regexp.Regexp, 0, len(bvRegexpsAsStr))
 	for _, bvRegexpStr := range bvRegexpsAsStr {
 		bvRegexp, err := regexp.Compile(bvRegexpStr)
@@ -262,6 +370,7 @@ func newLastRevisionCriteria(project string, bvRegexpsAsStr, bvDisplayRegexpsAsS
 		minSuccessProportion:           minSuccessProportion,
 		minFinishedProportion:          minFinishedProportion,
 		successfulTasks:                successfulTasks,
+		knownIssuesAreSuccess:          knownIssuesAreSuccess,
 	}, nil
 }
 
@@ -324,14 +433,14 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 			// apply.
 			continue
 		}
-		if status := utility.FromStringPtr(tsk.Status); status != evergreen.TaskSucceeded {
+		if !isSuccessfulTask(tsk, c.knownIssuesAreSuccess) {
 			grip.Debug(message.Fields{
 				"message":                  "build has required task but it was not successful",
 				"version_id":               info.versionID,
 				"build_id":                 info.buildID,
 				"build_variant":            info.buildVariant,
 				"required_successful_task": taskName,
-				"task_status":              status,
+				"task_status":              utility.FromStringPtr(tsk.Status),
 			})
 			return false
 		}
@@ -429,7 +538,20 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		return false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
 	}
 
-	buildInfo := newLastRevisionBuildInfo(b, tasks)
+	buildInfo := newLastRevisionBuildInfo(b, tasks, criteria.knownIssuesAreSuccess)
 
 	return criteria.check(buildInfo), nil
+}
+
+func getModulesForVersion(ctx context.Context, c client.Communicator, versionID string) ([]model.APIManifestModule, error) {
+	mfst, err := c.GetManifestForVersion(ctx, versionID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting manifest for version '%s'", versionID)
+	}
+	if mfst == nil {
+		// Manifests are only available for versions using modules, so it's
+		// valid to not get a manifest.
+		return nil, nil
+	}
+	return mfst.Modules, nil
 }

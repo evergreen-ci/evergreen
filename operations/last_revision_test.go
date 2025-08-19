@@ -336,6 +336,67 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, passesCriteria)
 		},
+		"PassesCriteriaWithBuildSuccessRateAboveThresholdCountingKnownIssuesAsSuccesses": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:             utility.ToStringPtr("t1"),
+					BuildId:        utility.ToStringPtr("b1"),
+					BuildVariant:   utility.ToStringPtr("bv1"),
+					Status:         utility.ToStringPtr(evergreen.TaskFailed),
+					HasAnnotations: true,
+				},
+				{
+					Id:           utility.ToStringPtr("t2"),
+					BuildId:      utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+					Status:       utility.ToStringPtr(evergreen.TaskSucceeded),
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:               "test_project",
+				buildVariantRegexps:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				minSuccessProportion:  1,
+				knownIssuesAreSuccess: true,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
+		"PassesCriteriaWithRequiredSuccessfulTaskInBuildCountingKnownIssuesAsSuccesses": func(t *testing.T, c *client.Mock) {
+			builds := []model.APIBuild{
+				{
+					Id:           utility.ToStringPtr("b1"),
+					BuildVariant: utility.ToStringPtr("bv1"),
+				},
+			}
+			c.GetTasksForBuildResult = []model.APITask{
+				{
+					Id:             utility.ToStringPtr("t1"),
+					DisplayName:    utility.ToStringPtr("Task 1"),
+					BuildId:        utility.ToStringPtr("b1"),
+					BuildVariant:   utility.ToStringPtr("bv1"),
+					Status:         utility.ToStringPtr(evergreen.TaskFailed),
+					HasAnnotations: true,
+				},
+			}
+			criteria := lastRevisionCriteria{
+				project:               "test_project",
+				buildVariantRegexps:   []regexp.Regexp{*regexp.MustCompile("bv1")},
+				successfulTasks:       []string{"Task 1"},
+				knownIssuesAreSuccess: true,
+			}
+
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			require.NoError(t, err)
+			assert.True(t, passesCriteria)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tCase(t, &client.Mock{})

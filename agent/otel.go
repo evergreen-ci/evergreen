@@ -45,6 +45,7 @@ const (
 	diskIOInstrumentPrefix         = "system.disk.io"
 	diskOperationsInstrumentPrefix = "system.disk.operations"
 	diskIOTimeInstrumentPrefix     = "system.disk.io_time"
+	diskWeightedIOInstrumentPrefix = "system.disk.weighted_io"
 
 	networkIOInstrumentPrefix = "system.network.io"
 
@@ -233,11 +234,23 @@ func addMemoryMetrics(meter metric.Meter) error {
 	return errors.Wrap(err, "registering memory callback")
 }
 
+func isWeightedIOSupported() bool {
+	switch runtime.GOOS {
+	case "linux":
+		return true // Linux(since 2.5.69) supports WeightedIO in /proc/diskstats
+	default:
+		return false // Windows and macOS typically don't provide this metric
+	}
+}
+
 func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 	ioCountersMap, err := disk.IOCountersWithContext(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting disk stats")
 	}
+
+	// Check if WeightedIO is supported on this platform before creating instruments
+	weightedIOSupported := isWeightedIOSupported()
 
 	type diskInstruments struct {
 		diskIORead          metric.Int64ObservableCounter
@@ -245,9 +258,11 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 		diskOperationsRead  metric.Int64ObservableCounter
 		diskOperationsWrite metric.Int64ObservableCounter
 		diskIOTime          metric.Float64ObservableCounter
+		diskWeightedIO      metric.Float64ObservableCounter // will be nil if not supported
 	}
 	diskInstrumentMap := map[string]diskInstruments{}
 	var allInstruments []metric.Observable
+	var diskWeightedIO metric.Float64ObservableCounter
 	for diskName := range ioCountersMap {
 		// Instrument names may only contain characters in the allowed set. Characters such as : (such as in C: on Windows) are disallowed.
 		sanitizedDiskName := instrumentNameDisallowedCharacters.ReplaceAllString(diskName, "")
@@ -275,14 +290,26 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			return errors.Wrapf(err, "making disk io time counter for disk '%s'", diskName)
 		}
 
+		if weightedIOSupported {
+			diskWeightedIO, err = meter.Float64ObservableCounter(fmt.Sprintf("%s.%s", diskWeightedIOInstrumentPrefix, sanitizedDiskName), metric.WithUnit("s"), metric.WithDescription("Weighted time spent doing I/Os"))
+			if err != nil {
+				return errors.Wrapf(err, "making disk weighted io time counter for disk '%s'", diskName)
+			}
+		}
+
 		diskInstrumentMap[diskName] = diskInstruments{
 			diskIORead:          diskIORead,
 			diskIOWrite:         diskIOWrite,
 			diskOperationsRead:  diskOperationsRead,
 			diskOperationsWrite: diskOperationsWrite,
 			diskIOTime:          diskIOTime,
+			diskWeightedIO:      diskWeightedIO,
 		}
-		allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime)
+		if weightedIOSupported {
+			allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime, diskWeightedIO)
+		} else {
+			allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime)
+		}
 	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
@@ -303,6 +330,11 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			observer.ObserveInt64(instruments.diskOperationsWrite, int64(counter.WriteCount))
 
 			observer.ObserveFloat64(instruments.diskIOTime, float64(counter.IoTime))
+
+			// Only observe WeightedIO if the instrument was created (supported platform)
+			if instruments.diskWeightedIO != nil {
+				observer.ObserveFloat64(instruments.diskWeightedIO, float64(counter.WeightedIO))
+			}
 		}
 		return nil
 	}, allInstruments...)

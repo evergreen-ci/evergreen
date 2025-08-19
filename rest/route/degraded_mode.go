@@ -14,15 +14,13 @@ import (
 )
 
 const firingStatus = "firing"
-const evergreenWebhook = "webhook-devprod-evergreen"
 
 func makeSetDegradedMode() gimlet.RouteHandler {
 	return &degradedModeHandler{}
 }
 
 type degradedModeHandler struct {
-	Receiver string `json:"receiver"`
-	Status   string `json:"status"`
+	Status string `json:"status"`
 }
 
 func (h *degradedModeHandler) Factory() gimlet.RouteHandler {
@@ -33,7 +31,7 @@ func (h *degradedModeHandler) Parse(ctx context.Context, r *http.Request) error 
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
 		return errors.Wrap(err, "parsing request")
 	}
-	if h.Status != firingStatus || h.Receiver != evergreenWebhook {
+	if h.Status != firingStatus {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "alert is in incorrect state to trigger degraded mode",

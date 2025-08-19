@@ -32,16 +32,17 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-08-07"
+	ClientVersion = "2025-08-18"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-07-29-a"
+	AgentVersion = "2025-08-11"
 )
 
 const (
-	mongoTimeout        = 5 * time.Minute
-	mongoConnectTimeout = 5 * time.Second
+	mongoTimeout          = 5 * time.Minute
+	mongoConnectTimeout   = 5 * time.Second
+	parameterStoreTimeout = 30 * time.Second
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -223,7 +224,7 @@ func NewSettings(filename string) (*Settings, error) {
 // the [ConfigCollection] collection in the [DB] database. Use [GetRawConfig] to get
 // a configuration that doesn't reflect overrides.
 func GetConfig(ctx context.Context) (*Settings, error) {
-	return getSettings(ctx, true)
+	return getSettings(ctx, true, true)
 }
 
 // GetRawConfig returns only the raw Evergreen configuration without applying overrides. Use
@@ -231,10 +232,10 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 // If there is no [SharedDB] there are no overrides and [GetConfig] and [GetRawConfig] are
 // functionally equivalent.
 func GetRawConfig(ctx context.Context) (*Settings, error) {
-	return getSettings(ctx, false)
+	return getSettings(ctx, false, true)
 }
 
-func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) {
+func getSettings(ctx context.Context, includeOverrides, includeParameterStore bool) (*Settings, error) {
 	config := NewConfigSections()
 	if err := config.populateSections(ctx, includeOverrides); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
@@ -269,14 +270,16 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 		propVal.Set(sectionVal)
 	}
 
-	// If the admin parameter store is not disabled, we need to read secrets from it.
+	// If the admin parameter store is not disabled and we aren't getting secrets
+	// for initialization read secrets from the parameter store.
 	// If it fails, log the error and ignore changes made from the parameter store.
-	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled {
+	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled && includeParameterStore {
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
 		settingsValue := reflect.ValueOf(paramConfig).Elem()
 		settingsType := reflect.TypeOf(*paramConfig)
 		adminCatcher := grip.NewBasicCatcher()
+
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
 		if adminCatcher.HasErrors() {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
@@ -325,7 +328,9 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
 				// If the field is a string, store in parameter manager and update struct with path.
 				if fieldValue.Kind() == reflect.String {
-					param, err := paramMgr.Get(ctx, fieldPath)
+					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+					defer cancel()
+					param, err := paramMgr.Get(paramCtx, fieldPath)
 					if err != nil {
 						catcher.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath)
 					} else if len(param) > 0 {
@@ -336,9 +341,11 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
 					newMap := reflect.MakeMap(fieldValue.Type())
+					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+					defer cancel()
 					for _, key := range fieldValue.MapKeys() {
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
-						param, err := paramMgr.Get(ctx, mapFieldPath)
+						param, err := paramMgr.Get(paramCtx, mapFieldPath)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to read secret map field '%s' in parameter store", mapFieldPath)
 							continue
@@ -760,27 +767,23 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if err != nil {
 						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					// // TODO DEVPROD-18236: Update the struct field to store the path instead of the secret value
-					// fieldValue.SetString(fieldPath)
+					fieldValue.SetString(RedactedValue)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
 					// Create a new map to store the paths
-					// newMap := reflect.MakeMap(fieldValue.Type())
+					newMap := reflect.MakeMap(fieldValue.Type())
 					for _, key := range fieldValue.MapKeys() {
-						mapValue := fieldValue.MapIndex(key)
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
-						secretValue := mapValue.String()
+						secretValue := fieldValue.MapIndex(key).String()
 
 						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
 						if err != nil {
 							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						// // TODO DEVPROD-18236: Replace the secret value with the path
-						// newMap.SetMapIndex(key, mapValue)
+						newMap.SetMapIndex(key, reflect.ValueOf(RedactedValue))
 					}
-					// // Update the struct field with the new map containing paths
-					// fieldValue.Set(newMap)
+					fieldValue.Set(newMap)
 				}
 			}
 

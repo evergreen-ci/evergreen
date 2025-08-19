@@ -916,6 +916,18 @@ func (s *AdminSuite) TestBucketsConfig() {
 	err = config.ValidateAndDefault()
 	s.NoError(err)
 
+	// Test GetLogBucket method
+	longRetentionBucket := settings.Buckets.GetLogBucket("project1")
+	s.Equal("logs-long-retention", longRetentionBucket.Name)
+	s.Equal(BucketTypeS3, longRetentionBucket.Type)
+
+	longRetentionBucket2 := settings.Buckets.GetLogBucket("project2")
+	s.Equal("logs-long-retention", longRetentionBucket2.Name)
+
+	defaultBucket := settings.Buckets.GetLogBucket("other-project")
+	s.Equal("logs-2", defaultBucket.Name)
+	s.Equal(BucketTypeS3, defaultBucket.Type)
+
 	// Test invalid bucket type
 	config.LogBucketLongRetention.Type = "invalid"
 	err = config.ValidateAndDefault()

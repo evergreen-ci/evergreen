@@ -84,6 +84,7 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
+					HasAnnotations: true,
 				},
 				st: task.Task{
 					Id:                          "testId",
@@ -132,6 +133,7 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
+					HasAnnotations: true,
 				},
 			},
 			{
@@ -268,6 +270,8 @@ func TestTaskBuildFromService(t *testing.T) {
 				} else {
 					So(apiTask.StepbackInfo, ShouldEqual, tc.at.StepbackInfo)
 				}
+
+				So(apiTask.HasAnnotations, ShouldEqual, tc.at.HasAnnotations)
 			}
 		})
 	})
