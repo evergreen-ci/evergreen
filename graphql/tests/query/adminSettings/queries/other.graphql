@@ -28,6 +28,12 @@ query Other {
         testResultsPrefix
         roleARN
       }
+      longRetentionProjects
+      logBucketLongRetention {
+        name
+        testResultsPrefix
+        roleARN
+      }
     }
     ssh {
       taskHostKey {
@@ -84,6 +90,14 @@ query Other {
       distroMaxHostsFactor
       targetTimeSecondsOverride
       idleTimeSecondsOverride
+    }
+    projectRefs {
+      id
+      displayName
+    }
+    repoRefs {
+      id
+      displayName
     }
   }
 }

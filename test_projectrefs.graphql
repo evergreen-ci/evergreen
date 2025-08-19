@@ -1,0 +1,14 @@
+query AdminSettingsWithRefs {
+  adminSettings {
+    configDir
+    domainName
+    projectRefs {
+      id
+      displayName
+    }
+    repoRefs {
+      id
+      displayName
+    }
+  }
+}

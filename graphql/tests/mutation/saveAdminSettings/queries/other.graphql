@@ -32,6 +32,12 @@ mutation SaveAdminSettingsOther {
           testResultsPrefix: "mutation-test-results"
           roleARN: "test arn"
         }
+        longRetentionProjects: ["project1", "project2"],
+        logBucketLongRetention: {
+          name: "mutation-long-retention-bucket"
+          testResultsPrefix: "mutation-long-results"
+          roleARN: "test long retention arn"
+        }
       }
       ssh: {
         taskHostKey: { name: "mutation-task-key", secretARN: "test secret arn" }
@@ -109,6 +115,12 @@ mutation SaveAdminSettingsOther {
         roleARN
       }
       testResultsBucket {
+        name
+        testResultsPrefix
+        roleARN
+      }
+      longRetentionProjects
+      logBucketLongRetention {
         name
         testResultsPrefix
         roleARN
