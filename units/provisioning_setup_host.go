@@ -824,7 +824,7 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 	// This avoids accidentally attaching ephemeral instance storage
 	filteredDevices := []blockDevice{}
 	for _, device := range devices {
-		if device.Model == "Amazon Elastic Block Store" {
+		if strings.Contains(device.Model, "Amazon Elastic Block Store") {
 			filteredDevices = append(filteredDevices, device)
 		}
 	}
