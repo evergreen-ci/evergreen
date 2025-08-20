@@ -2786,5 +2786,20 @@ func (s *projectSuite) TestBuildVariantPathsMatchAny() {
 			files = []string{"evergreen.yml"}
 			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
 		})
+		Convey("if a parent directory is ignored, but child is not-ignored, file should be fetched", func() {
+			bv := &BuildVariant{Paths: []string{"!server/**", "server/conf/**"}}
+			files = []string{"server/conf/conf-test-e2e.properties"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("if a parent directory is enabled, child directory is ignored, file in the child directory should be ignored", func() {
+			bv := &BuildVariant{Paths: []string{"server/**", "!server/conf/**"}}
+			files = []string{"server/conf/conf-test-e2e.properties"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+		Convey("if a parent directory is enabled, child is ignored, file in the child directory should be ignored", func() {
+			bv := &BuildVariant{Paths: []string{"server/**", "!server/conf/**", "server/conf/conf-test*.properties"}}
+			files = []string{"server/conf/conf-test-e2e.properties"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
 	})
 }
