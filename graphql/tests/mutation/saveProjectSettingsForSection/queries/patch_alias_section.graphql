@@ -38,7 +38,6 @@ mutation {
     section: PATCH_ALIASES
   ) {
     projectRef {
-      githubTriggerAliases
       githubPRTriggerAliases
       githubMQTriggerAliases
     }
