@@ -308,6 +308,12 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		}
 	}
 
+	// The context may be cancelled while getting settings.
+	// In this case, there's no need to return an error.
+	if ctx.Err() != nil {
+		grip.Warning(message.WrapError(ctx.Err(), "context is cancelled, cannot get settings"))
+		return nil, nil
+	}
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
@@ -317,6 +323,9 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, paramCache map[string]string, catcher grip.Catcher) {
 	if paramMgr == nil {
 		catcher.New("parameter manager is nil")
+		return
+	}
+	if catcher.HasErrors() {
 		return
 	}
 	if ctx.Err() != nil {
