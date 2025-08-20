@@ -282,6 +282,10 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled && includeParameterStore {
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
+		if paramMgr == nil {
+			grip.Errorf("parameter manager is nil, cannot read admin secrets from parameter store")
+			return baseConfig, nil
+		}
 		settingsValue := reflect.ValueOf(paramConfig).Elem()
 		settingsType := reflect.TypeOf(*paramConfig)
 		adminCatcher := grip.NewBasicCatcher()
