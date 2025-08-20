@@ -319,6 +319,10 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 		catcher.New("parameter manager is nil")
 		return
 	}
+	if ctx.Err() != nil {
+		catcher.Wrap(ctx.Err(), "context is cancelled, cannot read admin secrets")
+		return
+	}
 	// Handle different kinds of values
 	switch value.Kind() {
 	case reflect.Struct:
