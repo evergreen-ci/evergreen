@@ -1890,3 +1890,161 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.Equal(t, usr.DisplayName(), v.Author)
 	assert.Equal(t, usr.Email(), v.AuthorEmail)
 }
+
+func TestCreateVersionItemsPathFiltering(t *testing.T) {
+	testCases := []struct {
+		name            string
+		metadata        model.VersionMetadata
+		ignoredVariants []string
+	}{
+		{
+			name: "FrontendFilesOnly",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"frontend/src/app.js", "frontend/package.json"},
+			},
+			ignoredVariants: []string{"backend"},
+		},
+		{
+			name: "BackendFilesOnly",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"backend/src/server.go", "backend/config.yml"},
+			},
+			ignoredVariants: []string{"frontend"},
+		},
+		{
+			name: "SharedFiles",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"shared/utils.js", "shared/constants.go"},
+			},
+			ignoredVariants: []string{},
+		},
+		{
+			name: "NoChangedFiles",
+			metadata: model.VersionMetadata{
+				ChangedFiles: nil,
+			},
+			ignoredVariants: []string{},
+		},
+		{
+			name: "NonMatchingFiles",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"docs/README.md", "scripts/deploy.sh"},
+			},
+			ignoredVariants: []string{"frontend", "backend"},
+		},
+		{
+			name: "GoFileInNonBackendLocation",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"tools/migrate/main.go", "scripts/deploy.go"},
+			},
+			ignoredVariants: []string{"frontend"},
+		},
+		{
+			name: "MarkdownFileChanged",
+			metadata: model.VersionMetadata{
+				ChangedFiles: []string{"docs/README.md", "CHANGELOG.md"},
+			},
+			ignoredVariants: []string{"frontend", "backend", "non_docs"},
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			// Clear collections before running tests
+			require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))
+
+			// Test configuration with build variants that have different path patterns
+			configYml := `
+buildvariants:
+- name: frontend
+  display_name: Frontend
+  run_on: d
+  paths:
+  - "frontend/**"
+  - "shared/**"
+  tasks:
+  - name: frontend_test
+- name: backend
+  display_name: Backend
+  run_on: d
+  paths:
+  - "backend/**"
+  - "shared/**"
+  - "**/*.go"
+  - "go.mod"
+  tasks:
+  - name: backend_test
+- name: non_docs
+  display_name: Non-Documentation
+  run_on: d
+  paths:
+  - "!**/*.md"
+  tasks:
+  - name: non_docs_test
+- name: all_files
+  display_name: All Files
+  run_on: d
+  # No paths specified - should always run
+  tasks:
+  - name: integration_test
+tasks:
+- name: frontend_test
+- name: backend_test
+- name: non_docs_test
+- name: integration_test
+`
+
+			projectRef := &model.ProjectRef{
+				Owner:      "evergreen-ci",
+				Repo:       "evergreen",
+				Branch:     "main",
+				Id:         "project1",
+				Identifier: "project1",
+			}
+
+			p := &model.Project{}
+			pp, err := model.LoadProjectInto(ctx, []byte(configYml), nil, projectRef.Id, p)
+			require.NoError(t, err)
+
+			projectInfo := &model.ProjectInfo{
+				Ref:                 projectRef,
+				IntermediateProject: pp,
+				Project:             p,
+			}
+
+			v := &model.Version{
+				Id:                  fmt.Sprintf("test_version_%s_%d", tc.name, time.Now().UnixNano()),
+				CreateTime:          time.Now(),
+				Revision:            fmt.Sprintf("rev%d", i+1),
+				Author:              "test_author",
+				Activated:           utility.TruePtr(),
+				RevisionOrderNumber: i + 1,
+				Owner:               "test_owner",
+				Repo:                "test_repo",
+				Branch:              "main",
+				Requester:           evergreen.RepotrackerVersionRequester,
+			}
+
+			err = createVersionItems(ctx, v, tc.metadata, projectInfo, nil)
+			require.NoError(t, err)
+
+			ignoredVariants := []string{}
+			for _, bv := range v.BuildVariants {
+				if bv.Ignored {
+					ignoredVariants = append(ignoredVariants, bv.BuildVariant)
+				}
+			}
+
+			// Verify that all expected variants are ignored.
+			for _, ignoredVariant := range tc.ignoredVariants {
+				assert.Contains(t, ignoredVariants, ignoredVariant, "Expected variant '%s' to be ignored", ignoredVariant)
+			}
+			// Verify that only expected variants are ignored.
+			assert.Len(t, ignoredVariants, len(tc.ignoredVariants), "Expected exactly %d variants to be ignored, got %d", len(tc.ignoredVariants), len(ignoredVariants))
+		})
+	}
+
+}

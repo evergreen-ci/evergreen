@@ -342,6 +342,259 @@
           }
         }
       }
+    },
+    {
+      "query_file": "other.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "configDir": "/test/config",
+            "domainName": "test.example.com",
+            "githubPRCreatorOrg": "test-org",
+            "shutdownWaitSeconds": 10,
+            "githubWebhookSecret": "test-secret",
+            "perfMonitoringKanopyURL": "https://perf.kanopy.example.com",
+            "perfMonitoringURL": "https://perf.mutation.com",
+            "pprofPort": "8080",
+            "logPath": "/test/logs",
+            "githubOrgs": ["test-org1", "test-org2"],
+            "singleTaskDistro": {
+              "projectTasksPairs": [
+                {
+                  "projectId": "test-project",
+                  "allowedTasks": ["test-task1", "test-task2"],
+                  "allowedBVs": ["test-bv1", "test-bv2"]
+                }
+              ]
+            },
+            "buckets": {
+              "internalBuckets": null,
+              "logBucket": {
+                "name": "mutation-log-bucket",
+                "testResultsPrefix": null,
+                "roleARN": null
+              },
+              "testResultsBucket": {
+                "name": "mutation-test-bucket",
+                "testResultsPrefix": "mutation-test-results",
+                "roleARN": "test arn"
+              },
+              "longRetentionProjects": ["project1", "project2"],
+              "logBucketLongRetention": {
+                "name": "mutation-long-retention-bucket",
+                "testResultsPrefix": null,
+                "roleARN": "test long retention arn"
+              }
+            },
+            "ssh": {
+              "taskHostKey": {
+                "name": "mutation-task-key",
+                "secretARN": "test secret arn"
+              },
+              "spawnHostKey": {
+                "name": "mutation-spawn-key",
+                "secretARN": "test secret arn"
+              }
+            },
+            "expansions": {
+              "mutation_key": "mutation_expansion_value"
+            },
+            "hostJasper": {
+              "binaryName": "mutation-jasper",
+              "downloadFileName": "mutation-jasper.tar.gz",
+              "port": 3000,
+              "url": "https://mutation.example.com/jasper",
+              "version": "v2.0.0"
+            },
+            "jiraNotifications": {
+              "customFields": [
+                {
+                  "project": "mutation-project",
+                  "fields": {
+                    "key1": "value1"
+                  },
+                  "components": ["mutation-component"],
+                  "labels": ["mutation-label"]
+                }
+              ]
+            },
+            "spawnhost": {
+              "unexpirableHostsPerUser": 5,
+              "unexpirableVolumesPerUser": 3,
+              "spawnHostsPerUser": 10
+            },
+            "sleepSchedule": {
+              "permanentlyExemptHosts": ["host1", "host2"]
+            },
+            "tracer": {
+              "enabled": true,
+              "collectorEndpoint": "https://collector.example.com",
+              "collectorInternalEndpoint": "https://internal-collector.example.com",
+              "collectorAPIKey": "test-api-key"
+            },
+            "projectCreation": {
+              "totalProjectLimit": 100,
+              "repoProjectLimit": 50,
+              "repoExceptions": [
+                {
+                  "owner": "test-owner",
+                  "repo": "test-repo"
+                }
+              ],
+              "jiraProject": "TEST"
+            },
+            "githubCheckRun": {
+              "checkRunLimit": 10
+            },
+            "releaseMode": {
+              "distroMaxHostsFactor": 1.5,
+              "targetTimeSecondsOverride": 300,
+              "idleTimeSecondsOverride": 60
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "providers.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "providers": {
+              "aws": {
+                "ec2Keys": [
+                  {
+                    "name": "test-key-1",
+                    "key": "21039487102938470912837",
+                    "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                  },
+                  {
+                    "name": "test-key-2",
+                    "key": "120938471209384701298",
+                    "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
+                  }
+                ],
+                "subnets": [
+                  {
+                    "az": "us-east-1a",
+                    "subnetId": "subnet-12345678"
+                  },
+                  {
+                    "az": "us-east-1b",
+                    "subnetId": "subnet-87654321"
+                  }
+                ],
+                "parserProject": {
+                  "key": "AKIAIOSFODNN7EXAMPLE",
+                  "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                  "bucket": "evergreen-parser-projects",
+                  "prefix": "parser-projects/",
+                  "generatedJSONPrefix": "generated-json/"
+                },
+                "persistentDNS": {
+                  "hostedZoneID": "Z1D633PJN98FT9",
+                  "domain": "evergreen.example.com"
+                },
+                "defaultSecurityGroup": "sg-12345678",
+                "allowedInstanceTypes": ["m5.large", "m5.xlarge", "c5.large"],
+                "alertableInstanceTypes": ["m5.24xlarge", "c5.24xlarge"],
+                "allowedRegions": ["us-east-1", "us-west-1", "us-west-2"],
+                "maxVolumeSizePerUser": 1000,
+                "pod": {
+                  "role": "arn:aws:iam::123456789012:role/ECSTaskRole",
+                  "region": "us-east-1",
+                  "ecs": {
+                    "maxCPU": 1024,
+                    "maxMemoryMb": 1024,
+                    "taskDefinitionPrefix": "evergreen-",
+                    "taskRole": "arn:aws:iam::123456789012:role/ECSTaskRole",
+                    "executionRole": "arn:aws:iam::123456789012:role/ECSExecutionRole",
+                    "logRegion": "us-east-1",
+                    "logGroup": "/evergreen/ecs",
+                    "logStreamPrefix": "evergreen-task-",
+                    "awsVPC": {
+                      "subnets": ["subnet-12345678", "subnet-87654321"],
+                      "securityGroups": ["sg-12345678", "sg-87654321"]
+                    },
+                    "clusters": [
+                      {
+                        "name": "evergreen-cluster-1",
+                        "os": "ECSOSLinux"
+                      },
+                      {
+                        "name": "evergreen-cluster-2",
+                        "os": "ECSOSWindows"
+                      }
+                    ],
+                    "capacityProviders": [
+                      {
+                        "name": "FARGATE",
+                        "os": "ECSOSLinux",
+                        "arch": "ECS_ARCH_ARM64"
+                      },
+                      {
+                        "name": "EC2",
+                        "os": "ECSOSLinux",
+                        "arch": "ECS_ARCH_ARM64"
+                      }
+                    ],
+                    "allowedImages": [
+                      "amazonlinux:latest",
+                      "ubuntu:20.04",
+                      "centos:8"
+                    ]
+                  },
+                  "secretsManager": {
+                    "secretPrefix": ""
+                  }
+                },
+                "accountRoles": [
+                  {
+                    "account": "evgUser",
+                    "role": "super"
+                  }
+                ],
+                "ipamPoolID": "pool-id",
+                "elasticIPUsageRate": 0.5
+              },
+              "docker": {
+                "apiVersion": "1.40"
+              }
+            },
+            "projectCreation": {
+              "repoExceptions": [
+                {
+                  "owner": "evergreen-ci",
+                  "repo": "evergreen"
+                },
+                {
+                  "owner": "mongodb",
+                  "repo": "mongo"
+                }
+              ]
+            },
+            "containerPools": {
+              "pools": [
+                {
+                  "id": "test-pool-1",
+                  "distro": "ubuntu1604-parent",
+                  "maxContainers": 5,
+                  "port": 2525
+                },
+                {
+                  "id": "test-pool-2",
+                  "distro": "ubuntu1604-parent",
+                  "maxContainers": 10,
+                  "port": 4649
+                }
+              ]
+            },
+            "parameterStore": {
+              "prefix": "mutant"
+            }
+          }
+        }
+      }
     }
   ]
 }

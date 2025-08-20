@@ -58,7 +58,7 @@
               "name": "test-app"
             },
             "splunk": {
-              "splunkConnectionInfo": { 
+              "splunkConnectionInfo": {
                 "serverUrl": "testServer",
                 "token": "testToken",
                 "channel": "42"
@@ -314,6 +314,264 @@
             },
             "triggers": {
               "generateTaskDistro": "archlinux-test"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "other.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "configDir": "../config",
+            "domainName": "localhost",
+            "githubOrgs": ["evergreen-ci"],
+            "githubPRCreatorOrg": "evergreen-ci",
+            "githubWebhookSecret": "webhook_secret",
+            "logPath": "/var/log/evergreen",
+            "perfMonitoringKanopyURL": "https://kanopy.example.com",
+            "perfMonitoringURL": "https://perf.example.com",
+            "pprofPort": "6660",
+            "shutdownWaitSeconds": 0,
+            "singleTaskDistro": {
+              "projectTasksPairs": [
+                {
+                  "projectId": "evergreen",
+                  "allowedTasks": ["compile", "test"],
+                  "allowedBVs": ["windows", "ubuntu1604"]
+                },
+                {
+                  "projectId": "spruce",
+                  "allowedTasks": ["lint", "storybook"],
+                  "allowedBVs": []
+                }
+              ]
+            },
+            "buckets": {
+              "logBucket": {
+                "name": "s3 bucket",
+                "testResultsPrefix": null,
+                "roleARN": null
+              },
+              "testResultsBucket": {
+                "name": "test bucket",
+                "testResultsPrefix": "all",
+                "roleARN": ""
+              },
+              "longRetentionProjects": ["project1", "project2"],
+              "logBucketLongRetention": {
+                "name": "mutation-long-retention-bucket",
+                "testResultsPrefix": null,
+                "roleARN": ""
+              }
+            },
+            "ssh": {
+              "taskHostKey": {
+                "name": "task host key",
+                "secretARN": "\u003csecret_arn\u003e"
+              },
+              "spawnHostKey": {
+                "name": "spawn host key",
+                "secretARN": "\u003csecret_arn\u003e"
+              }
+            },
+            "hostJasper": {
+              "binaryName": "binary",
+              "downloadFileName": "download",
+              "port": 2385,
+              "url": "http://localhost:9090",
+              "version": "1123"
+            },
+            "jiraNotifications": {
+              "customFields": [
+                {
+                  "project": "CUSTOM PROJECT",
+                  "fields": {},
+                  "components": ["component"],
+                  "labels": ["label"]
+                }
+              ]
+            },
+            "spawnhost": {
+              "unexpirableHostsPerUser": 2,
+              "unexpirableVolumesPerUser": 1,
+              "spawnHostsPerUser": 6
+            },
+            "sleepSchedule": {
+              "permanentlyExemptHosts": ["1135"]
+            },
+            "tracer": {
+              "enabled": false,
+              "collectorEndpoint": "\u003ccollector_endpoint\u003e",
+              "collectorInternalEndpoint": "\u003ccollector_internal_endpoint\u003e",
+              "collectorAPIKey": "\u003ccollector_api_key\u003e"
+            },
+            "projectCreation": {
+              "totalProjectLimit": 10,
+              "repoProjectLimit": 2,
+              "jiraProject": "",
+              "repoExceptions": [
+                {
+                  "owner": "evergreen-ci",
+                  "repo": "evergreen"
+                },
+                {
+                  "owner": "mongodb",
+                  "repo": "mongo"
+                }
+              ]
+            },
+            "githubCheckRun": {
+              "checkRunLimit": 0
+            },
+            "releaseMode": {
+              "distroMaxHostsFactor": 1,
+              "targetTimeSecondsOverride": 0,
+              "idleTimeSecondsOverride": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "providers.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "containerPools": {
+              "pools": [
+                {
+                  "id": "test-pool-1",
+                  "distro": "ubuntu1604-parent",
+                  "maxContainers": 5,
+                  "port": 2525
+                },
+                {
+                  "id": "test-pool-2",
+                  "distro": "ubuntu1604-parent",
+                  "maxContainers": 10,
+                  "port": 4649
+                }
+              ]
+            },
+            "projectCreation": {
+              "repoExceptions": [
+                {
+                  "owner": "evergreen-ci",
+                  "repo": "evergreen"
+                },
+                {
+                  "owner": "mongodb",
+                  "repo": "mongo"
+                }
+              ]
+            },
+            "providers": {
+              "aws": {
+                "ec2Keys": [
+                  {
+                    "name": "test-key-1",
+                    "key": "21039487102938470912837",
+                    "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                  },
+                  {
+                    "name": "test-key-2",
+                    "key": "120938471209384701298",
+                    "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
+                  }
+                ],
+                "subnets": [
+                  {
+                    "az": "us-east-1a",
+                    "subnetId": "subnet-12345678"
+                  },
+                  {
+                    "az": "us-east-1b",
+                    "subnetId": "subnet-87654321"
+                  }
+                ],
+                "parserProject": {
+                  "key": "AKIAIOSFODNN7EXAMPLE",
+                  "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                  "bucket": "evergreen-parser-projects",
+                  "generatedJSONPrefix": "generated-json/"
+                },
+                "persistentDNS": {
+                  "hostedZoneID": "Z1D633PJN98FT9",
+                  "domain": "evergreen.example.com"
+                },
+                "defaultSecurityGroup": "sg-12345678",
+                "allowedInstanceTypes": ["m5.large", "m5.xlarge", "c5.large"],
+                "alertableInstanceTypes": ["m5.24xlarge", "c5.24xlarge"],
+                "allowedRegions": ["us-east-1", "us-west-1", "us-west-2"],
+                "maxVolumeSizePerUser": 1000,
+                "pod": {
+                  "role": "arn:aws:iam::123456789012:role/ECSTaskRole",
+                  "region": "us-east-1",
+                  "ecs": {
+                    "maxCPU": 1024,
+                    "maxMemoryMb": 1024,
+                    "taskDefinitionPrefix": "evergreen-",
+                    "taskRole": "arn:aws:iam::123456789012:role/ECSTaskRole",
+                    "executionRole": "arn:aws:iam::123456789012:role/ECSExecutionRole",
+                    "logRegion": "us-east-1",
+                    "logGroup": "/evergreen/ecs",
+                    "logStreamPrefix": "evergreen-task-",
+                    "awsVPC": {
+                      "subnets": ["subnet-12345678", "subnet-87654321"],
+                      "securityGroups": ["sg-12345678", "sg-87654321"]
+                    },
+                    "clusters": [
+                      {
+                        "name": "evergreen-cluster-1",
+                        "os": "ECSOSLinux"
+                      },
+                      {
+                        "name": "evergreen-cluster-2",
+                        "os": "ECSOSWindows"
+                      }
+                    ],
+                    "capacityProviders": [
+                      {
+                        "name": "FARGATE",
+                        "os": "ECSOSLinux",
+                        "arch": "ECS_ARCH_AMD64",
+                        "windowsVersion": ""
+                      },
+                      {
+                        "name": "EC2",
+                        "os": "ECSOSLinux",
+                        "arch": "ECS_ARCH_ARM64",
+                        "windowsVersion": ""
+                      }
+                    ],
+                    "allowedImages": [
+                      "amazonlinux:latest",
+                      "ubuntu:20.04",
+                      "centos:8"
+                    ]
+                  }
+                },
+                "accountRoles": [
+                  {
+                    "account": "123456789012",
+                    "role": "arn:aws:iam::123456789012:role/EvergreenCrossAccountRole"
+                  },
+                  {
+                    "account": "987654321098",
+                    "role": "arn:aws:iam::987654321098:role/EvergreenCrossAccountRole"
+                  }
+                ],
+                "ipamPoolID": "ipam-pool-12345678",
+                "elasticIPUsageRate": 0.8
+              },
+              "docker": {
+                "apiVersion": "1.40"
+              }
+            },
+            "parameterStore": {
+              "prefix": "store"
             }
           }
         }

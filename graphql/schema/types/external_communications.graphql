@@ -21,18 +21,18 @@ type JiraConfig {
 }
 
 input RuntimeEnvironmentConfigInput {
-    baseUrl: String!
-    apiKey: String @redactSecrets
+  baseUrl: String!
+  apiKey: String @redactSecrets
 }
 type RuntimeEnvironmentConfig {
-    baseUrl: String!
-    apiKey: String @requireAdmin
+  baseUrl: String!
+  apiKey: String @requireAdmin
 }
 
 input SlackConfigInput {
   options: SlackOptionsInput
   token: String! @redactSecrets
-  level: PriorityLevel!
+  level: PriorityLevel
   name: String!
 }
 
@@ -55,41 +55,41 @@ input SlackOptionsInput {
 }
 
 type SlackOptions {
-    channel: String
-    hostname: String
-    name: String
-    username: String
-    basicMetadata: Boolean
-    fields: Boolean
-    allFields: Boolean
-    fieldsSet: BooleanMap
+  channel: String
+  hostname: String
+  name: String
+  username: String
+  basicMetadata: Boolean
+  fields: Boolean
+  allFields: Boolean
+  fieldsSet: BooleanMap
 }
 
 input SplunkConfigInput {
-    splunkConnectionInfo: SplunkConnectionInfoInput!
+  splunkConnectionInfo: SplunkConnectionInfoInput!
 }
 
 type SplunkConfig {
-    splunkConnectionInfo: SplunkConnectionInfo!
+  splunkConnectionInfo: SplunkConnectionInfo!
 }
 
 input SplunkConnectionInfoInput {
-    serverUrl: String!
-    token: String! @redactSecrets
-    channel: String!
+  serverUrl: String!
+  token: String! @redactSecrets
+  channel: String!
 }
 type SplunkConnectionInfo {
-    serverUrl: String!
-    token: String! @requireAdmin
-    channel: String!
+  serverUrl: String!
+  token: String! @requireAdmin
+  channel: String!
 }
 
 input TestSelectionConfigInput {
-    url: String!
+  url: String!
 }
 
 type TestSelectionConfig {
-    url: String!
+  url: String!
 }
 
 input FWSConfigInput {

@@ -321,6 +321,7 @@ type VersionBuildStatus struct {
 	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
 	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
+	Ignored          bool                  `bson:"ignored,omitempty" json:"ignored,omitempty"`
 	ActivationStatus `bson:",inline"`
 }
 
@@ -356,6 +357,7 @@ type VersionMetadata struct {
 	PeriodicBuildID     string
 	RemotePath          string
 	GitTag              GitTag
+	ChangedFiles        []string
 }
 
 var (
@@ -364,6 +366,7 @@ var (
 	VersionBuildStatusVariantKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
 	VersionBuildStatusActivatedKey      = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
 	VersionBuildStatusBatchTimeTasksKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "BatchTimeTasks")
+	VersionBuildStatusIgnoredKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "Ignored")
 
 	BatchTimeTaskStatusTaskNameKey  = bsonutil.MustHaveTag(BatchTimeTaskStatus{}, "TaskName")
 	BatchTimeTaskStatusActivatedKey = bsonutil.MustHaveTag(BatchTimeTaskStatus{}, "Activated")

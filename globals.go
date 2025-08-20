@@ -569,6 +569,7 @@ const (
 	ContentLengthHeader = "Content-Length"
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
+	SageUserHeader      = "x-authenticated-sage-user"
 	KanopyTokenHeader   = "X-Kanopy-Authorization"
 	EnvironmentHeader   = "X-Evergreen-Environment"
 )

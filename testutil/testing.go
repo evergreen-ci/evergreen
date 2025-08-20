@@ -70,8 +70,6 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 	err = testSettings.Set(context.Background())
 	require.NoError(t, err, "Error updating admin settings in DB")
 
-	// err = evergreen.UpdateConfig(context.Background(), testSettings)
-	// require.NoError(t, err, "Error updating settings in DB")
 	catcher := grip.NewBasicCatcher()
 	evergreen.StoreAdminSecrets(context.Background(),
 		evergreen.GetEnvironment().ParameterManager(),

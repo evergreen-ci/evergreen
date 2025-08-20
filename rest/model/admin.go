@@ -649,10 +649,12 @@ func (a *APIAuthConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket         APIBucketConfig  `json:"log_bucket"`
-	TestResultsBucket APIBucketConfig  `json:"test_results_bucket"`
-	InternalBuckets   []string         `json:"internal_buckets"`
-	Credentials       APIS3Credentials `json:"credentials"`
+	LogBucket              APIBucketConfig  `json:"log_bucket"`
+	LogBucketLongRetention APIBucketConfig  `json:"log_bucket_long_retention"`
+	LongRetentionProjects  []string         `json:"long_retention_projects"`
+	TestResultsBucket      APIBucketConfig  `json:"test_results_bucket"`
+	InternalBuckets        []string         `json:"internal_buckets"`
+	Credentials            APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -680,6 +682,13 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+
+		a.LogBucketLongRetention.Name = utility.ToStringPtr(v.LogBucketLongRetention.Name)
+		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
+		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
+		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
+
+		a.LongRetentionProjects = v.LongRetentionProjects
 
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
 		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
@@ -714,6 +723,13 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
+		LogBucketLongRetention: evergreen.BucketConfig{
+			Name:    utility.FromStringPtr(a.LogBucketLongRetention.Name),
+			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketLongRetention.Type)),
+			DBName:  utility.FromStringPtr(a.LogBucketLongRetention.DBName),
+			RoleARN: utility.FromStringPtr(a.LogBucketLongRetention.RoleARN),
+		},
+		LongRetentionProjects: a.LongRetentionProjects,
 		TestResultsBucket: evergreen.BucketConfig{
 			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
 			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
@@ -1377,10 +1393,18 @@ func (a *APICloudProviders) ToService() (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return evergreen.CloudProviders{
-		AWS:    aws.(evergreen.AWSConfig),
-		Docker: docker.(evergreen.DockerConfig),
-	}, nil
+
+	config := evergreen.CloudProviders{}
+
+	if aws != nil {
+		config.AWS = aws.(evergreen.AWSConfig)
+	}
+
+	if docker != nil {
+		config.Docker = docker.(evergreen.DockerConfig)
+	}
+
+	return config, nil
 }
 
 type APIContainerPoolsConfig struct {
@@ -1645,7 +1669,9 @@ func (a *APIAWSConfig) ToService() (any, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
-	config.Pod = *pod
+	if pod != nil {
+		config.Pod = *pod
+	}
 
 	var roleMappings []evergreen.AWSAccountRoleMapping
 	for _, m := range a.AccountRoles {
@@ -1784,12 +1810,17 @@ func (a *APIAWSPodConfig) ToService() (*evergreen.AWSPodConfig, error) {
 
 	sm := a.SecretsManager.ToService()
 
-	return &evergreen.AWSPodConfig{
+	config := &evergreen.AWSPodConfig{
 		Role:           utility.FromStringPtr(a.Role),
 		Region:         utility.FromStringPtr(a.Region),
-		ECS:            *ecs,
 		SecretsManager: sm,
-	}, nil
+	}
+
+	if ecs != nil {
+		config.ECS = *ecs
+	}
+
+	return config, nil
 }
 
 // APIECSConfig represents configuration options for AWS ECS.
@@ -1992,6 +2023,9 @@ func (a *APIDockerConfig) BuildFromService(h any) error {
 }
 
 func (a *APIDockerConfig) ToService() (any, error) {
+	if a == nil {
+		return nil, nil
+	}
 	return evergreen.DockerConfig{
 		APIVersion: utility.FromStringPtr(a.APIVersion),
 	}, nil

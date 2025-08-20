@@ -39,6 +39,7 @@ const (
 )
 
 const alertmanagerUser = "alertmanager"
+const sageUser = "sage"
 
 type projCtxMiddleware struct{}
 
@@ -444,6 +445,46 @@ func updateHostAccessTime(ctx context.Context, h *host.Host) {
 	if h.NeedsNewAgentMonitor {
 		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
 	}
+}
+
+type sageMiddleware struct{}
+
+// NewSageMiddleware returns a middleware that verifies the request
+// is coming from Sage.
+func NewSageMiddleware() gimlet.Middleware {
+	return &sageMiddleware{}
+}
+
+func (m *sageMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	apiUser := r.Header.Get(evergreen.APIUserHeader)
+	apiKey := r.Header.Get(evergreen.APIKeyHeader)
+	if apiUser != sageUser {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
+		return
+	}
+	u, err := user.FindOneByIdContext(r.Context(), apiUser)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", apiUser)))
+		return
+	}
+	if u == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("user '%s' not found", apiUser),
+		}))
+		return
+	}
+	if u.APIKey != apiKey {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
+		return
+	}
+	next(rw, r)
 }
 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {

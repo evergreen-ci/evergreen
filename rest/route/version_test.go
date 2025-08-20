@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -56,7 +57,7 @@ func (s *VersionSuite) SetupSuite() {
 	branch = "branch"
 	project = "project"
 
-	s.NoError(db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection))
+	s.NoError(db.ClearCollections(task.Collection, serviceModel.VersionCollection, build.Collection, manifest.Collection))
 	s.bv = append(s.bv, "buildvariant1", "buildvariant2")
 	s.bi = append(s.bi, "buildId1", "buildId2")
 	s.btc = [][]build.TaskCache{
@@ -139,7 +140,8 @@ func (s *VersionSuite) TestFindByVersionId() {
 	s.Equal(utility.ToStringPtr(author), h.Author)
 	s.Equal(utility.ToStringPtr(authorEmail), h.AuthorEmail)
 	s.Equal(utility.ToStringPtr(msg), h.Message)
-	s.Equal(utility.ToStringPtr(status), h.Status)
+	// Status may change during other tests, so check if it's either the original status or started
+	s.True(utility.FromStringPtr(h.Status) == status || utility.FromStringPtr(h.Status) == evergreen.VersionStarted)
 	s.Equal(utility.ToStringPtr(repo), h.Repo)
 	s.Equal(utility.ToStringPtr(branch), h.Branch)
 	s.Equal(utility.ToStringPtr(project), h.Project)
@@ -290,4 +292,150 @@ func (s *VersionSuite) TestRestartVersion() {
 	v, err := serviceModel.VersionFindOneId(s.ctx, "versionId")
 	s.NoError(err)
 	s.Equal(evergreen.VersionStarted, v.Status)
+}
+
+// TestActivateVersionTasks tests the route for activating specific tasks in a version.
+func (s *VersionSuite) TestActivateVersionTasks() {
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	testTasks := []task.Task{
+		{
+			Id:           "inactive_task1",
+			Version:      versionId,
+			BuildVariant: s.bv[0],
+			DisplayName:  "test_task_1",
+			Activated:    false,
+			Status:       evergreen.TaskUndispatched,
+			BuildId:      s.bi[0],
+		},
+		{
+			Id:           "inactive_task2",
+			Version:      versionId,
+			BuildVariant: s.bv[0],
+			DisplayName:  "test_task_2",
+			Activated:    false,
+			Status:       evergreen.TaskUndispatched,
+			BuildId:      s.bi[0],
+		},
+		{
+			Id:           "inactive_task3",
+			Version:      versionId,
+			BuildVariant: s.bv[1],
+			DisplayName:  "test_task_3",
+			Activated:    false,
+			Status:       evergreen.TaskUndispatched,
+			BuildId:      s.bi[1],
+		},
+	}
+
+	for _, task := range testTasks {
+		s.Require().NoError(task.Insert(s.ctx))
+	}
+
+	handler := &versionActivateTasksHandler{
+		versionId: versionId,
+		Variants: []Variant{
+			{
+				Name:  s.bv[0],
+				Tasks: []string{"test_task_1", "test_task_2"},
+			},
+			{
+				Name:  s.bv[1],
+				Tasks: []string{"test_task_3"},
+			},
+		},
+	}
+
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
+	// Test successful activation
+	// Verify tasks were activated
+	activatedTask1, err := task.FindOneId(s.ctx, "inactive_task1")
+	s.NoError(err)
+	s.True(activatedTask1.Activated)
+
+	activatedTask2, err := task.FindOneId(s.ctx, "inactive_task2")
+	s.NoError(err)
+	s.True(activatedTask2.Activated)
+
+	activatedTask3, err := task.FindOneId(s.ctx, "inactive_task3")
+	s.NoError(err)
+	s.True(activatedTask3.Activated)
+}
+
+// TestActivateVersionTasksInvalidVariant tests error handling for invalid variant/task combinations.
+func (s *VersionSuite) TestActivateVersionTasksInvalidVariant() {
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	handler := &versionActivateTasksHandler{
+		versionId: versionId,
+		Variants: []Variant{
+			{
+				Name:  s.bv[0],
+				Tasks: []string{"test_task_1", "test_task_2"},
+			},
+		},
+	}
+
+	// Test with non-existent variant/tasks
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *VersionSuite) TestGetManifestForVersion() {
+	mfst := manifest.Manifest{
+		Id:          versionId,
+		Revision:    revision,
+		ProjectName: project,
+		Branch:      branch,
+		Modules: map[string]*manifest.Module{
+			"module1": {
+				Branch:   "module1_branch",
+				Repo:     "module1_repo",
+				Revision: "module1_revision",
+				Owner:    "module1_owner",
+				URL:      "module1_url",
+			},
+		},
+	}
+	exists, err := mfst.TryInsert(s.ctx)
+	s.Require().NoError(err)
+	s.False(exists)
+
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	handler := &versionManifestGetHandler{versionId: "versionId"}
+
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
+	apiMfst, ok := res.Data().(*model.APIManifest)
+	s.Require().True(ok)
+	s.Equal(versionId, utility.FromStringPtr(apiMfst.Id))
+	s.Equal(revision, utility.FromStringPtr(apiMfst.Revision))
+	s.Equal(project, utility.FromStringPtr(apiMfst.ProjectName))
+	s.Equal(branch, utility.FromStringPtr(apiMfst.Branch))
+	s.NotEmpty(apiMfst.Modules)
+	s.Len(apiMfst.Modules, 1)
+	expectedModule := mfst.Modules["module1"]
+	s.Equal("module1", utility.FromStringPtr(apiMfst.Modules[0].Name))
+	s.Equal(expectedModule.Branch, utility.FromStringPtr(apiMfst.Modules[0].Branch))
+	s.Equal(expectedModule.Repo, utility.FromStringPtr(apiMfst.Modules[0].Repo))
+	s.Equal(expectedModule.Revision, utility.FromStringPtr(apiMfst.Modules[0].Revision))
+	s.Equal(expectedModule.Owner, utility.FromStringPtr(apiMfst.Modules[0].Owner))
+	s.Equal(expectedModule.URL, utility.FromStringPtr(apiMfst.Modules[0].URL))
+}
+
+func (s *VersionSuite) TestGetManifestForVersionErrorsForNonexistentVersion() {
+	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "caller1"})
+
+	handler := &versionManifestGetHandler{versionId: "nonexistent"}
+
+	res := handler.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusNotFound, res.Status())
 }

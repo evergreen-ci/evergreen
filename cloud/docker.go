@@ -296,10 +296,6 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 	return nil
 }
 
-func (m *dockerManager) AllocateIP(context.Context) (*host.IPAddress, error) {
-	return nil, errors.New("can't allocate IP with Docker provider")
-}
-
 func (m *dockerManager) AssociateIP(context.Context, *host.Host) error {
 	return errors.New("can't associate IP with Docker provider")
 }

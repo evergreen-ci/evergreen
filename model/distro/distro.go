@@ -66,6 +66,9 @@ type Distro struct {
 
 	// ExecUser is the user to run shell.exec and subprocess.exec processes as. If unset, processes are run as the regular distro User.
 	ExecUser string `bson:"exec_user,omitempty" json:"exec_user,omitempty" mapstructure:"exec_user,omitempty"`
+
+	// Cost data for pricing calculations
+	CostData CostData `bson:"cost_data,omitempty" json:"cost_data,omitempty" mapstructure:"cost_data,omitempty"`
 }
 
 // DistroData is the same as a distro, with the only difference being that all
@@ -969,4 +972,10 @@ func (d *Distro) SetMaxHosts(ctx context.Context, newMaxHosts int) error {
 	d.HostAllocatorSettings.MaximumHosts = newMaxHosts
 
 	return nil
+}
+
+// CostData represents cost information for a distro
+type CostData struct {
+	OnDemandRate    float64 `bson:"on_demand_rate,omitempty" json:"on_demand_rate,omitempty" mapstructure:"on_demand_rate,omitempty"`
+	SavingsPlanRate float64 `bson:"savings_plan_rate,omitempty" json:"savings_plan_rate,omitempty" mapstructure:"savings_plan_rate,omitempty"`
 }

@@ -665,9 +665,9 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					taskDefs,
 					[]BuildVariantTaskUnit{{Name: "white"}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
-					parserBVTaskUnits{{Name: "red", Priority: 500}, {Name: ".secondary"}},
+					parserBVTaskUnits{{Name: "red", Priority: 50}, {Name: ".secondary"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}}, nil, nil)
+					[]BuildVariantTaskUnit{{Name: "red", Priority: 50}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
@@ -693,13 +693,13 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
-						{Name: "red", Priority: 100},
-						{Name: "!.warm .secondary", Priority: 100}},
+						{Name: "red", Priority: 10},
+						{Name: "!.warm .secondary", Priority: 10}},
 					taskDefs,
 					[]BuildVariantTaskUnit{
-						{Name: "red", Priority: 100},
-						{Name: "purple", Priority: 100},
-						{Name: "green", Priority: 100}}, nil, nil)
+						{Name: "red", Priority: 10},
+						{Name: "purple", Priority: 10},
+						{Name: "green", Priority: 10}}, nil, nil)
 			})
 			Convey("should ignore selectors that do not select any tasks if another does select a task", func() {
 				parserTaskSelectorTaskEval(tse, tgse,
@@ -917,6 +917,32 @@ tasks:
 	require.Len(t, modules, 1)
 	assert.Equal("evergreen-ci", modules[0].Owner)
 	assert.Equal("evergreen", modules[0].Repo)
+}
+
+func TestBuildVariantPaths(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+buildvariants:
+- name: "v1"
+  paths:
+  - "src/**"
+  - "etc/**"
+  tasks:
+  - name: "t1"
+tasks:
+- name: t1
+`
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
+	assert.NotNil(proj)
+	assert.NoError(err)
+
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Len(proj.BuildVariants[0].Paths, 2)
+	assert.Equal("src/**", proj.BuildVariants[0].Paths[0])
+	assert.Equal("etc/**", proj.BuildVariants[0].Paths[1])
 }
 
 func TestDisplayTaskParsing(t *testing.T) {

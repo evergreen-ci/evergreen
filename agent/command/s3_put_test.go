@@ -197,6 +197,22 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "invalid permissions")
 			})
 
+			Convey("an expansion s3 permission should pass", func() {
+
+				params := map[string]any{
+					"aws_key":      "key",
+					"aws_secret":   "secret",
+					"local_file":   "local",
+					"remote_file":  "remote",
+					"bucket":       "bck",
+					"permissions":  "${test|private}",
+					"content_type": "application/x-tar",
+					"display_name": "test_file",
+				}
+				err := cmd.ParseParams(params)
+				require.NoError(t, err)
+			})
+
 			Convey("a missing content type should cause an error", func() {
 
 				params := map[string]any{
@@ -296,6 +312,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
 			cmd.Optional = "${optional}"
+			cmd.Permissions = "${permissions}"
 			cmd.LocalFile = abs
 
 			conf.Expansions.Update(
@@ -309,6 +326,7 @@ func TestExpandS3PutParams(t *testing.T) {
 					"optional":     "true",
 					"visibility":   artifact.Private,
 					"workdir":      "/working_directory",
+					"permissions":  "private",
 				},
 			)
 
@@ -321,6 +339,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			So(cmd.ResourceDisplayName, ShouldEqual, "file")
 			So(cmd.Visibility, ShouldEqual, "private")
 			So(cmd.Optional, ShouldEqual, "true")
+			So(cmd.Permissions, ShouldEqual, "private")
 
 			// EVG-7226 Since LocalFile is an absolute path, workDir should be empty
 			So(cmd.workDir, ShouldEqual, "")

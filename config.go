@@ -32,16 +32,17 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-07-16c"
+	ClientVersion = "2025-08-18"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-07-29-a"
+	AgentVersion = "2025-08-19"
 )
 
 const (
-	mongoTimeout        = 5 * time.Minute
-	mongoConnectTimeout = 5 * time.Second
+	mongoTimeout          = 5 * time.Minute
+	mongoConnectTimeout   = 5 * time.Second
+	parameterStoreTimeout = 30 * time.Second
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -169,6 +170,14 @@ func (c *Settings) ValidateAndDefault() error {
 			catcher.Add(errors.Wrap(err, "parsing expansions"))
 		}
 	}
+
+	// Validate that expansion values are not empty
+	for key, value := range c.Expansions {
+		if value == "" {
+			catcher.Add(errors.Errorf("expansion '%s' cannot have an empty value", key))
+		}
+	}
+
 	if len(c.PluginsNew) > 0 {
 		tempPlugins, err := c.PluginsNew.NestedMap()
 		if err != nil {
@@ -215,7 +224,7 @@ func NewSettings(filename string) (*Settings, error) {
 // the [ConfigCollection] collection in the [DB] database. Use [GetRawConfig] to get
 // a configuration that doesn't reflect overrides.
 func GetConfig(ctx context.Context) (*Settings, error) {
-	return getSettings(ctx, true)
+	return getSettings(ctx, true, true)
 }
 
 // GetRawConfig returns only the raw Evergreen configuration without applying overrides. Use
@@ -223,10 +232,16 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 // If there is no [SharedDB] there are no overrides and [GetConfig] and [GetRawConfig] are
 // functionally equivalent.
 func GetRawConfig(ctx context.Context) (*Settings, error) {
-	return getSettings(ctx, false)
+	return getSettings(ctx, false, true)
 }
 
-func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) {
+// GetConfigWithoutSecrets returns the Evergreen configuration without secrets, should
+// only be used for logging or displaying settings without sensitive information.
+func GetConfigWithoutSecrets(ctx context.Context) (*Settings, error) {
+	return getSettings(ctx, true, false)
+}
+
+func getSettings(ctx context.Context, includeOverrides, includeParameterStore bool) (*Settings, error) {
 	config := NewConfigSections()
 	if err := config.populateSections(ctx, includeOverrides); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
@@ -261,14 +276,16 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 		propVal.Set(sectionVal)
 	}
 
-	// If the admin parameter store is not disabled, we need to read secrets from it.
+	// If the admin parameter store is not disabled and we aren't getting secrets
+	// for initialization read secrets from the parameter store.
 	// If it fails, log the error and ignore changes made from the parameter store.
-	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled {
+	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled && includeParameterStore {
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
 		settingsValue := reflect.ValueOf(paramConfig).Elem()
 		settingsType := reflect.TypeOf(*paramConfig)
 		adminCatcher := grip.NewBasicCatcher()
+
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", adminCatcher)
 		if adminCatcher.HasErrors() {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
@@ -285,7 +302,7 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 
 func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
 	if paramMgr == nil {
-		catcher.Add(errors.New("parameter manager is nil"))
+		catcher.New("parameter manager is nil")
 		return
 	}
 	// Handle different kinds of values
@@ -317,9 +334,15 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 			if secretTag := field.Tag.Get("secret"); secretTag == "true" {
 				// If the field is a string, store in parameter manager and update struct with path.
 				if fieldValue.Kind() == reflect.String {
-					param, err := paramMgr.Get(ctx, fieldPath)
+					// We don't defer the cancel() and instead cancel it immediately
+					// after the parameter store read to avoid context leaks.
+					// This is because the recursive calls can create many contexts,
+					// and we want to ensure they are all cleaned up properly.
+					paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+					param, err := paramMgr.Get(paramCtx, fieldPath)
+					cancel()
 					if err != nil {
-						catcher.Add(errors.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath))
+						catcher.Wrapf(err, "Failed to read secret field '%s' in parameter store", fieldPath)
 					} else if len(param) > 0 {
 						// Update the value with the path from the parameter store if it exists.
 						fieldValue.SetString(param[0].Value)
@@ -329,23 +352,32 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					// Create a new map to store the paths
 					newMap := reflect.MakeMap(fieldValue.Type())
 					for _, key := range fieldValue.MapKeys() {
-						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
-						param, err := paramMgr.Get(ctx, mapFieldPath)
+						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
+						// We don't defer the cancel() and instead cancel it immediately
+						// after the parameter store read to avoid context leaks.
+						// This is because the recursive calls can create many contexts,
+						// and we want to ensure they are all cleaned up properly.
+						paramCtx, cancel := context.WithTimeout(ctx, parameterStoreTimeout)
+						param, err := paramMgr.Get(paramCtx, mapFieldPath)
+						cancel()
 						if err != nil {
-							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							catcher.Wrapf(err, "Failed to read secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						} else if len(param) > 0 {
 							// Set the map value to the parameter store value
 							newMap.SetMapIndex(key, reflect.ValueOf(param[0].Value))
-						} else {
-							catcher.Add(errors.Errorf("no value found for map key '%s' in parameter store", mapFieldPath))
 						}
 					}
 					// Update the struct field with the new map containing paths
 					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
 						fieldValue.Set(newMap)
 					} else {
-						catcher.Add(errors.New("not all map keys were found in parameter store"))
+						grip.Error(message.Fields{
+							"message":  "readAdminSecrets did not find all map keys in parameter store",
+							"path":     fieldPath,
+							"keys":     fieldValue.MapKeys(),
+							"new_keys": newMap.MapKeys(),
+						})
 					}
 				}
 			}
@@ -361,7 +393,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 	case reflect.Slice, reflect.Array:
 		// Check each element in slice/array.
 		for i := 0; i < value.Len(); i++ {
-			readAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+			readAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s/%d", path, i), catcher)
 		}
 	}
 }
@@ -708,9 +740,10 @@ func IsValidBannerTheme(input string) (bool, BannerTheme) {
 // Those sections will be uncommented/deleted when the functionality is implemented.
 func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterManager, value reflect.Value, typ reflect.Type, path string, catcher grip.Catcher) {
 	if paramMgr == nil {
-		catcher.Add(errors.New("parameter manager is nil"))
+		catcher.New("parameter manager is nil")
 		return
 	}
+
 	// Handle different kinds of values
 	switch value.Kind() {
 	case reflect.Struct:
@@ -744,30 +777,27 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 					if secretValue == "" {
 						continue
 					}
-					_, err := paramMgr.Put(ctx, fieldPath, secretValue)
+					redactedValue, err := putSecretValue(ctx, paramMgr, fieldPath, secretValue)
 					if err != nil {
-						catcher.Add(errors.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath))
+						catcher.Wrapf(err, "Failed to store secret field '%s' in parameter store", fieldPath)
 					}
-					// // TODO DEVPROD-18236: Update the struct field to store the path instead of the secret value
-					// fieldValue.SetString(fieldPath)
+					fieldValue.SetString(redactedValue)
 					// if the field is a map[string]string, store each key-value pair individually
 				} else if fieldValue.Kind() == reflect.Map && fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
-					// // Create a new map to store the paths
-					// newMap := reflect.MakeMap(fieldValue.Type())
+					// Create a new map to store the paths
+					newMap := reflect.MakeMap(fieldValue.Type())
 					for _, key := range fieldValue.MapKeys() {
-						mapValue := fieldValue.MapIndex(key)
-						mapFieldPath := fmt.Sprintf("%s[%s]", fieldPath, key.String())
-						secretValue := mapValue.String()
-						_, err := paramMgr.Put(ctx, mapFieldPath, secretValue)
+						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
+						secretValue := fieldValue.MapIndex(key).String()
+
+						redactedValue, err := putSecretValue(ctx, paramMgr, mapFieldPath, secretValue)
 						if err != nil {
-							catcher.Add(errors.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath))
+							catcher.Wrapf(err, "Failed to store secret map field '%s' in parameter store", mapFieldPath)
 							continue
 						}
-						// // TODO DEVPROD-18236: Replace the secret value with the path
-						// newMap.SetMapIndex(key, reflect.ValueOf(mapFieldPath))
+						newMap.SetMapIndex(key, reflect.ValueOf(redactedValue))
 					}
-					// // Update the struct field with the new map containing paths
-					// fieldValue.Set(newMap)
+					fieldValue.Set(newMap)
 				}
 			}
 
@@ -782,7 +812,46 @@ func StoreAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMa
 	case reflect.Slice, reflect.Array:
 		// Check each element in slice/array.
 		for i := 0; i < value.Len(); i++ {
-			StoreAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s[%d]", path, i), catcher)
+			StoreAdminSecrets(ctx, paramMgr, value.Index(i), value.Index(i).Type(), fmt.Sprintf("%s/%d", path, i), catcher)
 		}
 	}
+}
+
+// putSecretValue only updates the parameter's value if it is different from the
+// current value in Parameter Store. Returns last updated time of the value.
+// Necessary to log events correctly in the event log.
+func putSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, name, value string) (string, error) {
+	// If the parameter already exists and its value matches the new value,
+	// return the last updated time without updating it.
+	param, err := pm.Get(ctx, name)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting parameter '%s'", name)
+	}
+	if len(param) > 0 && param[0].Value == value {
+		record, err := parameterstore.FindOneName(ctx, pm.DB, param[0].Name)
+		if err != nil {
+			return "", errors.Wrapf(err, "finding parameter record for '%s'", param[0].Name)
+		}
+		if record == nil {
+			return "", errors.Errorf("parameter record '%s' not found after put", param[0].Name)
+		}
+		return record.LastUpdated.String(), nil
+	}
+
+	// If the parameter does not exist or has a new value, update it.
+	updatedParam, err := pm.Put(ctx, name, value)
+	if err != nil {
+		return "", errors.Wrapf(err, "putting parameter '%s'", name)
+	}
+	if updatedParam == nil {
+		return "", errors.Errorf("parameter '%s' not found after put", name)
+	}
+	record, err := parameterstore.FindOneName(ctx, pm.DB, updatedParam.Name)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding parameter record for '%s'", updatedParam.Name)
+	}
+	if record == nil {
+		return "", errors.Errorf("parameter record '%s' not found after put", updatedParam.Name)
+	}
+	return record.LastUpdated.String(), nil
 }

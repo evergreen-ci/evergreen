@@ -36,6 +36,10 @@ const EmptyConfigurationError = "received empty configuration file"
 // to the place where the parser project is accessed.
 const DefaultParserProjectAccessTimeout = 60 * time.Second
 
+// MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
+// config YAML.
+const MaxConfigSetPriority = 50
+
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
@@ -341,6 +345,7 @@ type parserBV struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	Paths             parserStringSlice         `yaml:"paths,omitempty" bson:"paths,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -410,6 +415,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.AllowForGitTag == nil &&
 		pbv.GitTagOnly == nil &&
 		len(pbv.AllowedRequesters) == 0 &&
+		len(pbv.Paths) == 0 &&
 		pbv.MatrixId == "" &&
 		pbv.MatrixVal == nil &&
 		pbv.Matrix == nil &&
@@ -1210,6 +1216,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			DeactivatePrevious: pbv.DeactivatePrevious,
 			RunOn:              pbv.RunOn,
 			Tags:               pbv.Tags,
+			Paths:              pbv.Paths,
 		}
 		bv.AllowedRequesters = pbv.AllowedRequesters
 		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
@@ -1466,6 +1473,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
+	}
+	if res.Priority > MaxConfigSetPriority {
+		res.Priority = MaxConfigSetPriority
 	}
 	if res.Patchable == nil {
 		res.Patchable = pt.Patchable

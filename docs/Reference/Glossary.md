@@ -13,6 +13,7 @@
 - **patch build**: A patch build is a version not triggered by a commit to a repository. It either runs tasks on a base commit plus some diff if submitted by the CLI or on a git branch if created by a GitHub pull request.
 - **project configuration file**: The project configuration file is a file parsed by Evergreen that defines commands, functions, build variants, and tasks.
 - **stepback** When a task fails and the offending commit is unknown, Evergreen will perform linear or bisection stepback depending on the project settings. Linear incrementally runs the same task in previous versions in O(n) tasks while bisection performs binary search in O(logn) tasks.
+- **tag**: A tag is a name used to group build variants or tasks. More detailed info [here](../Project-Configuration/Project-Configuration-Files#task-and-variant-tags).
 - **task group**: A task group is a set of tasks which run with project-specified setup and teardown code without cleaning up the task directory before or after each task and without any tasks running in between tasks in the group.
 - **task**: The fundamental unit of execution is the task. A task corresponds to a box on the waterfall page.
 - **test**: A test is sent to Evergreen in a known format by a command during a task, parsed by Evergreen, and displayed on the task page.

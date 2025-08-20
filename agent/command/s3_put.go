@@ -84,7 +84,7 @@ type s3put struct {
 	// Permissions is the ACL to apply to the uploaded file. See:
 	// http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
 	// for some examples.
-	Permissions string `mapstructure:"permissions"`
+	Permissions string `mapstructure:"permissions" plugin:"expand"`
 
 	// ContentType is the MIME type of the uploaded file.
 	// E.g. text/html, application/pdf, image/jpeg, ...
@@ -220,8 +220,8 @@ func (s3pc *s3put) validate() error {
 
 	catcher.Wrapf(validateS3BucketName(s3pc.Bucket), "invalid bucket name '%s'", s3pc.Bucket)
 
-	// make sure the s3 permissions are valid
-	if !validS3Permissions(s3pc.Permissions) {
+	// Check that the permissions are expanded and not invalid.
+	if !util.IsExpandable(s3pc.Permissions) && !validS3Permissions(s3pc.Permissions) {
 		catcher.Errorf("invalid permissions '%s'", s3pc.Permissions)
 	}
 

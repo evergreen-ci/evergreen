@@ -46,6 +46,11 @@ var (
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
 	ImageIDKey          = bsonutil.MustHaveTag(Distro{}, "ImageID")
 	SingleTaskDistroKey = bsonutil.MustHaveTag(Distro{}, "SingleTaskDistro")
+	CostDataKey         = bsonutil.MustHaveTag(Distro{}, "CostData")
+
+	// bson fields for the CostData struct
+	CostDataOnDemandRateKey    = bsonutil.MustHaveTag(CostData{}, "OnDemandRate")
+	CostDataSavingsPlanRateKey = bsonutil.MustHaveTag(CostData{}, "SavingsPlanRate")
 
 	hostAllocatorMaxHostsKey         = bsonutil.MustHaveTag(HostAllocatorSettings{}, "MaximumHosts")
 	hostAllocatorAutoTuneMaxHostsKey = bsonutil.MustHaveTag(HostAllocatorSettings{}, "AutoTuneMaximumHosts")

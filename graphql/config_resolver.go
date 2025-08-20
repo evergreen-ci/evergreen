@@ -24,11 +24,6 @@ func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *restModel.
 	return &theme, nil
 }
 
-// Port is the resolver for the port field.
-func (r *containerPoolResolver) Port(ctx context.Context, obj *restModel.APIContainerPool) (int, error) {
-	return int(obj.Port), nil
-}
-
 // SecretFields is the resolver for the secretFields field.
 func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *restModel.APIAdminSettings) ([]string, error) {
 	redactedFieldsAsSlice := []string{}
@@ -54,9 +49,6 @@ func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *restM
 // AdminSettings returns AdminSettingsResolver implementation.
 func (r *Resolver) AdminSettings() AdminSettingsResolver { return &adminSettingsResolver{r} }
 
-// ContainerPool returns ContainerPoolResolver implementation.
-func (r *Resolver) ContainerPool() ContainerPoolResolver { return &containerPoolResolver{r} }
-
 // SpruceConfig returns SpruceConfigResolver implementation.
 func (r *Resolver) SpruceConfig() SpruceConfigResolver { return &spruceConfigResolver{r} }
 
@@ -66,6 +58,5 @@ func (r *Resolver) AdminSettingsInput() AdminSettingsInputResolver {
 }
 
 type adminSettingsResolver struct{ *Resolver }
-type containerPoolResolver struct{ *Resolver }
 type spruceConfigResolver struct{ *Resolver }
 type adminSettingsInputResolver struct{ *Resolver }

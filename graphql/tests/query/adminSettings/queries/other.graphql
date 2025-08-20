@@ -1,0 +1,95 @@
+query Other {
+  adminSettings {
+    configDir
+    domainName
+    githubOrgs
+    githubPRCreatorOrg
+    githubWebhookSecret
+    logPath
+    perfMonitoringKanopyURL
+    perfMonitoringURL
+    pprofPort
+    shutdownWaitSeconds
+    singleTaskDistro {
+      projectTasksPairs {
+        projectId
+        allowedTasks
+        allowedBVs
+      }
+    }
+    buckets {
+      logBucket {
+        name
+        testResultsPrefix
+        roleARN
+      }
+      testResultsBucket {
+        name
+        testResultsPrefix
+        roleARN
+      }
+      longRetentionProjects
+      logBucketLongRetention {
+        name
+        testResultsPrefix
+        roleARN
+      }
+    }
+    ssh {
+      taskHostKey {
+        name
+        secretARN
+      }
+      spawnHostKey {
+        name
+        secretARN
+      }
+    }
+    hostJasper {
+      binaryName
+      downloadFileName
+      port
+      url
+      version
+    }
+    jiraNotifications {
+      customFields {
+        project
+        fields
+        components
+        labels
+      }
+    }
+    spawnhost {
+      unexpirableHostsPerUser
+      unexpirableVolumesPerUser
+      spawnHostsPerUser
+    }
+    sleepSchedule {
+      permanentlyExemptHosts
+    }
+    tracer {
+      enabled
+      collectorEndpoint
+      collectorInternalEndpoint
+      collectorAPIKey
+    }
+    projectCreation {
+      totalProjectLimit
+      repoProjectLimit
+      jiraProject
+      repoExceptions {
+        owner
+        repo
+      }
+    }
+    githubCheckRun {
+      checkRunLimit
+    }
+    releaseMode {
+      distroMaxHostsFactor
+      targetTimeSecondsOverride
+      idleTimeSecondsOverride
+    }
+  }
+}

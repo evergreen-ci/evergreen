@@ -64,7 +64,16 @@
       "banner": "This is an important notification",
       "banner_theme": "IMPORTANT",
       "github_orgs": ["evergreen-ci"],
-      "disabled_gql_queries": null
+      "disabled_gql_queries": null,
+      "github_pr_creator_org": "evergreen-ci",
+      "github_webhook_secret": "webhook_secret",
+      "perf_monitoring_kanopy_url": "https://kanopy.example.com",
+      "perf_monitoring_url": "https://perf.example.com",
+      "pprof_port": "6660",
+      "log_path": "/var/log/evergreen",
+      "expansions": {
+        "github_app_key": "someKey"
+      }
     },
     {
       "_id": "notify",
@@ -275,6 +284,253 @@
       "_id": "cedar",
       "db_name": "cedar",
       "db_url": "mongodb://localhost:27017/cedar"
+    },
+    {
+      "_id": "single_task_distro",
+      "project_tasks_pairs": [
+        {
+          "project_id": "evergreen",
+          "allowed_tasks": ["compile", "test"],
+          "allowed_bvs": ["windows", "ubuntu1604"]
+        },
+        {
+          "project_id": "spruce",
+          "allowed_tasks": ["lint", "storybook"],
+          "allowed_bvs": null
+        }
+      ]
+    },
+    {
+      "_id": "buckets",
+      "credentials": {
+        "key": "2118927364",
+        "secret": "alskhrp2342",
+        "bucket": "bucket-credentials"
+      },
+      "log_bucket": {
+        "name": "s3 bucket",
+        "type": "s3",
+        "db_name": "mongodb",
+        "test_results_prefix": "all",
+        "role_arn": ""
+      },
+      "test_results_bucket": {
+        "name": "test bucket",
+        "type": "s3",
+        "db_name": "mongodb",
+        "test_results_prefix": "all",
+        "role_arn": ""
+      },
+      "long_retention_projects": ["project1", "project2"],
+      "log_bucket_long_retention": {
+        "name": "mutation-long-retention-bucket",
+        "testResultsPrefix": null,
+        "roleARN": "test long retention arn"
+      }
+    },
+    {
+      "_id": "ssh",
+      "spawn_host_key": {
+        "name": "spawn host key",
+        "secret_arn": "<secret_arn>"
+      },
+      "task_host_key": {
+        "name": "task host key",
+        "secret_arn": "<secret_arn>"
+      }
+    },
+    {
+      "_id": "sleep_schedule",
+      "permanently_exempt_hosts": ["1135"]
+    },
+    {
+      "_id": "host_jasper",
+      "binary_name": "binary",
+      "download_file_name": "download",
+      "port": 2385,
+      "url": "http://localhost:9090",
+      "version": "1123"
+    },
+
+    {
+      "_id": "jira_notifications",
+      "custom_fields": [
+        {
+          "project": "CUSTOM PROJECT",
+          "fields": null,
+          "components": ["component"],
+          "labels": ["label"]
+        }
+      ]
+    },
+    {
+      "_id": "spawnhost",
+      "unexpirable_hosts_per_user": 2,
+      "unexpirable_volumes_per_user": 1,
+      "spawn_hosts_per_user": 6
+    },
+    {
+      "_id": "tracer",
+      "collector_api_key": "<collector_api_key>",
+      "collector_endpoint": "<collector_endpoint>",
+      "collector_internal_endpoint": "<collector_internal_endpoint>",
+      "enabled": false
+    },
+    {
+      "_id": "providers",
+      "aws": {
+        "ec2_keys": [
+          {
+            "name": "test-key-1",
+            "key": "21039487102938470912837",
+            "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+          },
+          {
+            "name": "test-key-2",
+            "key": "120938471209384701298",
+            "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
+          }
+        ],
+        "subnets": [
+          {
+            "az": "us-east-1a",
+            "subnet_id": "subnet-12345678"
+          },
+          {
+            "az": "us-east-1b",
+            "subnet_id": "subnet-87654321"
+          }
+        ],
+        "parser_project": {
+          "key": "AKIAIOSFODNN7EXAMPLE",
+          "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+          "bucket": "evergreen-parser-projects",
+          "prefix": "parser-projects/",
+          "generated_json_prefix": "generated-json/"
+        },
+        "persistent_dns": {
+          "hosted_zone_id": "Z1D633PJN98FT9",
+          "domain": "evergreen.example.com"
+        },
+        "default_security_group": "sg-12345678",
+        "allowed_instance_types": ["m5.large", "m5.xlarge", "c5.large"],
+        "alertable_instance_types": ["m5.24xlarge", "c5.24xlarge"],
+        "allowed_regions": ["us-east-1", "us-west-1", "us-west-2"],
+        "max_volume_size": 1000,
+        "pod": {
+          "role": "arn:aws:iam::123456789012:role/ECSTaskRole",
+          "region": "us-east-1",
+          "ecs": {
+            "max_cpu": 1024,
+            "max_memory_mb": 1024,
+            "task_definition_prefix": "evergreen-",
+            "task_role": "arn:aws:iam::123456789012:role/ECSTaskRole",
+            "execution_role": "arn:aws:iam::123456789012:role/ECSExecutionRole",
+            "log_region": "us-east-1",
+            "log_group": "/evergreen/ecs",
+            "log_stream_prefix": "evergreen-task-",
+            "awsvpc": {
+              "subnets": ["subnet-12345678", "subnet-87654321"],
+              "security_groups": ["sg-12345678", "sg-87654321"]
+            },
+            "clusters": [
+              {
+                "name": "evergreen-cluster-1",
+                "os": "linux"
+              },
+              {
+                "name": "evergreen-cluster-2",
+                "os": "windows"
+              }
+            ],
+            "capacity_providers": [
+              {
+                "name": "FARGATE",
+                "os": "linux",
+                "arch": "amd64"
+              },
+              {
+                "name": "EC2",
+                "os": "linux",
+                "arch": "arm64"
+              }
+            ],
+            "allowed_images": ["amazonlinux:latest", "ubuntu:20.04", "centos:8"]
+          },
+          "secrets_manager": {
+            "secret_prefix": "evergreen/"
+          }
+        },
+        "account_roles": [
+          {
+            "account": "123456789012",
+            "role": "arn:aws:iam::123456789012:role/EvergreenCrossAccountRole"
+          },
+          {
+            "account": "987654321098",
+            "role": "arn:aws:iam::987654321098:role/EvergreenCrossAccountRole"
+          }
+        ],
+        "ipam_pool_id": "ipam-pool-12345678",
+        "elastic_ip_usage_rate": 0.8
+      },
+      "docker": {
+        "api_version": "1.40"
+      }
+    },
+    {
+      "_id": "project_creation",
+      "total_project_limit": 10,
+      "repo_project_limit": 2,
+      "repo_exceptions": [
+        { "owner": "evergreen-ci", "repo": "evergreen" },
+        { "owner": "mongodb", "repo": "mongo" }
+      ]
+    },
+    {
+      "_id": "github_check_run",
+      "check_run_limit": 0
+    },
+    {
+      "_id": "release_mode",
+      "distro_max_hosts_factor": 1,
+      "idle_time_seconds_override": 0,
+      "target_time_seconds_override": 0,
+      "repo_project_limit": 2,
+      "repo_exceptions": [
+        {
+          "owner": "evergreen-ci",
+          "repo": "evergreen"
+        },
+        {
+          "owner": "mongodb",
+          "repo": "mongo"
+        }
+      ],
+      "jira_project": "EVG"
+    },
+    {
+      "_id": "container_pools",
+      "pools": [
+        {
+          "distro": "ubuntu1604-parent",
+          "id": "test-pool-1",
+          "max_containers": 5,
+          "port": 2525,
+          "maximages": 0
+        },
+        {
+          "distro": "ubuntu1604-parent",
+          "id": "test-pool-2",
+          "max_containers": 10,
+          "port": 4649,
+          "maximages": 0
+        }
+      ]
+    },
+    {
+      "_id": "parameter_store",
+      "prefix": "store"
     }
   ]
 }

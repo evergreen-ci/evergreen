@@ -75,7 +75,10 @@ const (
 	// clean up state left behind by previous tasks, like if the task writes a
 	// lot of data outside of the task directory or if the agent fails to clean
 	// up the task directory.
-	MaxPercentageDataVolumeUsage = 50
+	// Mac hosts have have larger volumes and are more limited. It can therefore
+	// tolerate a higher threshold.
+	MaxPercentageDataVolumeUsageDefault = 50
+	MaxPercentageDataVolumeUsageDarwin  = 80
 )
 
 // TimeoutType indicates the type of task timeout.

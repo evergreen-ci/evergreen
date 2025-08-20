@@ -573,7 +573,7 @@ type projectSuite struct {
 	suite.Suite
 }
 
-func TestProject(t *testing.T) {
+func TestProjectSuite(t *testing.T) {
 	suite.Run(t, &projectSuite{})
 }
 
@@ -1727,60 +1727,98 @@ func (s *FindProjectsSuite) TearDownSuite() {
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1, "", "")
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1, "", "")
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchExactNumber() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1, "", "")
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1, "", "")
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1, "", "")
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1, "", "")
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1, "", "")
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1, "", "")
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1, "", "")
+	s.NoError(err)
+	s.Empty(projects)
+}
+
+func (s *FindProjectsSuite) TestFilterByOwnerName() {
+	// Test filtering by owner "evergreen-ci" - should return projectA and projectB
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "")
+	s.NoError(err)
+	s.Require().Len(projects, 2)
+	// Results should be sorted by ID, so projectA comes first
+	s.Equal("projectA", projects[0].Id)
+	s.Equal("evergreen-ci", projects[0].Owner)
+	s.Equal("projectB", projects[1].Id)
+	s.Equal("evergreen-ci", projects[1].Owner)
+}
+
+func (s *FindProjectsSuite) TestFilterByRepoName() {
+	// Test filtering by repo "mongo" - should return projectC
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "mongo")
+	s.NoError(err)
+	s.Require().Len(projects, 1)
+	s.Equal("projectC", projects[0].Id)
+	s.Equal("mongo", projects[0].Repo)
+}
+
+func (s *FindProjectsSuite) TestFilterByOwnerAndRepo() {
+	// Test filtering by both owner "evergreen-ci" and repo "evergreen" - should return projectB
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "evergreen")
+	s.NoError(err)
+	s.Require().Len(projects, 1)
+	s.Equal("projectB", projects[0].Id)
+	s.Equal("evergreen-ci", projects[0].Owner)
+	s.Equal("evergreen", projects[0].Repo)
+}
+
+func (s *FindProjectsSuite) TestFilterNoMatches() {
+	// Test filtering with non-existent owner/repo combination
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "nonexistent", "repo")
 	s.NoError(err)
 	s.Empty(projects)
 }
@@ -2694,4 +2732,59 @@ patch_aliases:
 		s.NotEqual("performance-variant", pair.Variant)
 		s.NotEqual("other-variant", pair.Variant)
 	}
+}
+
+func (s *projectSuite) TestBuildVariantPathsMatchAny() {
+	Convey("With test BuildVariant.Paths setups and a list of .py, .yml, and .md files", s.T(), func() {
+		files := []string{
+			"src/cool/test.py",
+			"etc/other_config.yml",
+			"README.md",
+		}
+		Convey("a build variant with an empty paths field should always match", func() {
+			bv := &BuildVariant{Paths: []string{}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant with no paths field should always match", func() {
+			bv := &BuildVariant{}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that matches .py files should match", func() {
+			bv := &BuildVariant{Paths: []string{"*.py"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that matches .go files should not match", func() {
+			bv := &BuildVariant{Paths: []string{"*.go"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+		Convey("a build variant that matches multiple patterns should match if any match", func() {
+			bv := &BuildVariant{Paths: []string{"*.go", "*.py"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that matches specific files should match", func() {
+			bv := &BuildVariant{Paths: []string{"README.md"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant that excludes all specific files should not match.", func() {
+			bv := &BuildVariant{Paths: []string{"!README.md", "!etc/other_config.yml", "!src/cool/test.py"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+		Convey("a build variant that matches directory patterns should match", func() {
+			bv := &BuildVariant{Paths: []string{"src/*"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("a build variant with negations should work correctly", func() {
+			bv := &BuildVariant{Paths: []string{"!*.md"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue) // matches .py and .yml files
+		})
+		Convey("a build variant that excludes all files should not match", func() {
+			bv := &BuildVariant{Paths: []string{"!*"}}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+		Convey("my current problem should match", func() {
+			bv := &BuildVariant{Paths: []string{"!README.md"}}
+			files = []string{"evergreen.yml"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+	})
 }

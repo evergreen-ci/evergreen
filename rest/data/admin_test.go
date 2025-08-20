@@ -214,16 +214,16 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	secret, err = paramMgr.Get(ctx, "Settings/JiraConfig/PersonalAccessToken")
 	s.NoError(err)
 	s.Equal(testSettings.Jira.PersonalAccessToken, secret[0].Value)
-	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig[0]/EC2Key/Key")
+	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig/0/EC2Key/Key")
 	s.NoError(err)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, secret[0].Value)
-	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig[0]/EC2Key/Secret")
+	secret, err = paramMgr.Get(ctx, "Settings/CloudProviders/AWSConfig/0/EC2Key/Secret")
 	s.NoError(err)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Secret, secret[0].Value)
 	secret, err = paramMgr.Get(ctx, "Settings/SlackConfig/Token")
 	s.NoError(err)
 	s.Equal(testSettings.Slack.Token, secret[0].Value)
-	secret, err = paramMgr.Get(ctx, "Settings/Expansions[k2]")
+	secret, err = paramMgr.Get(ctx, "Settings/Expansions/k2")
 	s.NoError(err)
 	s.Equal(testSettings.Expansions["k2"], secret[0].Value)
 
@@ -260,7 +260,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		case *evergreen.CloudProviders:
 			foundProvidersEvent = true
 			s.Require().NotEmpty(v.AWS.EC2Keys)
-			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
+			// Verify that the key is a timestamp
+			layout := "2006-01-02 15:04:05 Z0700 MST"
+			_, err := time.Parse(layout, v.AWS.EC2Keys[0].Key)
+			s.NoError(err)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
 			s.Equal(testSettings.Ui.Url, v.Url)

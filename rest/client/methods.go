@@ -1248,15 +1248,28 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	return result, nil
 }
 
-func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]model.APIVersion, error) {
+func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   fmt.Sprintf("projects/%s/versions?requester=%s", projectID, requester),
+		path:   fmt.Sprintf("projects/%s/versions", projectID),
+	}
+	queryParams := []string{}
+	if requester != "" {
+		queryParams = append(queryParams, fmt.Sprintf("requester=%s", requester))
+	}
+	if startAtOrderNum > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("start=%d", startAtOrderNum))
+	}
+	if limit > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("limit=%d", limit))
+	}
+	if len(queryParams) > 0 {
+		info.path = info.path + "?" + strings.Join(queryParams, "&")
 	}
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to get versions for project '%s' and requester '%s'", projectID, requester)
+		return nil, errors.Wrapf(err, "sending request to get versions for project '%s'", projectID)
 	}
 	defer resp.Body.Close()
 
@@ -1264,7 +1277,7 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting versions for project '%s' and requester '%s'", projectID, requester)
+		return nil, util.RespErrorf(resp, "getting versions for project '%s'", projectID)
 	}
 
 	getVersionsResp := []model.APIVersion{}
@@ -1273,6 +1286,60 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 	}
 
 	return getVersionsResp, nil
+}
+
+func (c *communicatorImpl) GetBuildsForVersion(ctx context.Context, versionID string) ([]restmodel.APIBuild, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("versions/%s/builds", versionID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get builds for version '%s'", versionID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting builds for version '%s'", versionID)
+	}
+
+	getBuildsResp := []model.APIBuild{}
+	if err = utility.ReadJSON(resp.Body, &getBuildsResp); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+
+	return getBuildsResp, nil
+}
+
+func (c *communicatorImpl) GetTasksForBuild(ctx context.Context, buildID string) ([]restmodel.APITask, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("builds/%s/tasks", buildID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get tasks for build '%s'", buildID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting tasks for build '%s'", buildID)
+	}
+
+	getTasksResp := []model.APITask{}
+	if err = utility.ReadJSON(resp.Body, &getTasksResp); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+
+	return getTasksResp, nil
 }
 
 func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
@@ -1434,6 +1501,37 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 	return &rp, nil
+}
+
+func (c *communicatorImpl) GetManifestForVersion(ctx context.Context, versionID string) (*restmodel.APIManifest, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("versions/%s/manifest", versionID),
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get version manifest")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		// Manifests are optional for versions that don't use modules, so the
+		// route can return 404 if the version does not exist or if the version
+		// has no manifest.
+		return nil, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "getting version manifest")
+	}
+
+	manifestResp := restmodel.APIManifest{}
+	if err = utility.ReadJSON(resp.Body, &manifestResp); err != nil {
+		return nil, errors.Wrap(err, "reading manifest response body")
+	}
+	return &manifestResp, nil
 }
 
 func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOptions) (io.ReadCloser, error) {
