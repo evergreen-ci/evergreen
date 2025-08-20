@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -79,6 +80,14 @@ func TestAdminSuite(t *testing.T) {
 	}
 
 	originalEnv := GetEnvironment()
+	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix:     "prefix",
+		CachingEnabled: true,
+		DB:             originalEnv.DB(),
+	})
+	require.NoError(t, err)
+	originalEnv.SetParameterManager(pm)
+
 	originalSettings, err := GetConfig(ctx)
 	require.NoError(t, err)
 
