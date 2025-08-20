@@ -301,7 +301,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		}
 
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", paramCache, adminCatcher)
-		if adminCatcher.HasErrors() {
+		if adminCatcher.HasErrors() && ctx.Err() == nil {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {
 			baseConfig = paramConfig
@@ -311,8 +311,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 	// The context may be cancelled while getting settings.
 	// In this case, there's no need to return an error.
 	if ctx.Err() != nil {
-		grip.Warning(message.WrapError(ctx.Err(), "context is cancelled, cannot get settings"))
-		return nil, nil
+		return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
 	}
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
@@ -409,7 +408,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
 						fieldValue.Set(newMap)
 					} else {
-						grip.Error(message.Fields{
+						grip.ErrorWhen(ctx.Err() == nil, message.Fields{
 							"message":  "readAdminSecrets did not find all map keys in parameter store",
 							"path":     fieldPath,
 							"keys":     fieldValue.MapKeys(),
