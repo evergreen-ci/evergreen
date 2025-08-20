@@ -79,11 +79,11 @@ func LastRevision() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  saveFlagName,
-				Usage: "instead of searching for a revision, save the last revision criteria for reuse with the given name. If a set of criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
+				Usage: "instead of searching for a revision, save the last revision criteria for reuse with the given group name. If a set of criteria already exists in the group for the same build variant name/display name regexps, the old criteria will be overwritten.",
 			},
 			cli.StringFlag{
 				Name:  reuseFlagName,
-				Usage: "reuse a set of last revision criteria by name",
+				Usage: "reuse a set of last revision criteria by group name",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
@@ -137,7 +137,7 @@ func LastRevision() cli.Command {
 				}
 				if reuseCriteria && (len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
 					c.Float64(minSuccessProportionFlagName) > 0 || c.Float64(minFinishedProportionFlagName) > 0 || len(c.StringSlice(successfulTasks)) > 0) {
-					return errors.New("cannot both reuse criteria and also specify specify other criteria")
+					return errors.New("cannot both reuse criteria and also specify other criteria")
 				}
 				return nil
 			},
@@ -195,7 +195,6 @@ func LastRevision() cli.Command {
 
 			var allCriteria []lastRevisionCriteria
 			if reuseCriteriaName != "" {
-				// kim: TODO: manually test reusing criteria
 				allCriteria, err = getLastRevisionCriteria(conf, reuseCriteriaName, projectID, knownIssuesAreSuccess)
 				if err != nil {
 					return errors.Wrapf(err, "getting last revision criteria with name '%s'", reuseCriteriaName)
