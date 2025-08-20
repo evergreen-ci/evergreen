@@ -33,7 +33,6 @@ func LastRevision() cli.Command {
 		timeoutFlagName                   = "timeout"
 		lookbackLimitFlagName             = "lookback-limit"
 		saveFlagName                      = "save"
-		overwriteFlagName                 = "overwrite"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -79,7 +78,7 @@ func LastRevision() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  saveFlagName,
-				Usage: "instead of searching for a revision, save the last revision criteria for reuse with the given name. If criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
+				Usage: "instead of searching for a revision, save the last revision criteria for reuse with the given name. If a set of criteria already exists for the same build variant name/display name regexps, the old criteria will be overwritten.",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
