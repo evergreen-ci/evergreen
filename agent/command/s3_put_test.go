@@ -221,7 +221,7 @@ func TestS3PutValidateParams(t *testing.T) {
 					"local_file":   "local",
 					"remote_file":  "remote",
 					"bucket":       "bck",
-					"permissions":  "permissions",
+					"permissions":  "private",
 					"visibility":   "${visibility|signed}",
 					"content_type": "application/x-tar",
 					"display_name": "test_file",
