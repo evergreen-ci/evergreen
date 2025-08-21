@@ -190,7 +190,6 @@ require (
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
-	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/evergreen-ci/test-selection-client v0.0.0-20250331142509-2af2d0f91c8b
 	github.com/fraugster/parquet-go v0.11.0
 	github.com/google/go-github/v70 v70.0.0

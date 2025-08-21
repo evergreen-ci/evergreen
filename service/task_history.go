@@ -54,6 +54,21 @@ type versionDrawerItem struct {
 	Ignored    bool      `json:"ignored"`
 }
 
+type taskHistoryPageData struct {
+	TaskName    string
+	Tasks       []bson.M
+	Variants    []string
+	FailedTests map[string][]string
+	Versions    []model.Version
+
+	// Flags that indicate whether the beginning/end of history has been reached
+	ExhaustedBefore bool
+	ExhaustedAfter  bool
+
+	// The revision for which the surrounding history was requested
+	SelectedRevision string
+}
+
 // Represents a small amount of information about a task - used as part of the
 // task history to display a visual blurb.
 type taskBlurb struct {
