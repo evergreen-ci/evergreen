@@ -2720,7 +2720,7 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 		},
 	}
 
-	if t.ExpectedTaskCost.OnDemandCost != 0 || t.ExpectedTaskCost.AdjustedCost != 0 {
+	if !t.ExpectedTaskCost.IsZero() {
 		updateDoc["$set"].(bson.M)[ExpectedTaskCostKey] = t.ExpectedTaskCost
 	}
 
