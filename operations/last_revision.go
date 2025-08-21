@@ -96,12 +96,7 @@ func LastRevision() cli.Command {
 				return autoUpdateCLI(c)
 			},
 			requireProjectFlag,
-			func(c *cli.Context) error {
-				if c.String(reuseFlagName) == "" && len(c.StringSlice(regexpVariantsFlagName)) == 0 && len(c.StringSlice(regexpVariantsDisplayNameFlagName)) == 0 {
-					return errors.New("must specify at least one build variant name or display name regexp")
-				}
-				return nil
-			},
+			requireAtLeastOneFlag(reuseFlagName, regexpVariantsFlagName, regexpVariantsDisplayNameFlagName),
 			func(c *cli.Context) error {
 				if c.Float64(minSuccessProportionFlagName) < 0 || c.Float64(minSuccessProportionFlagName) > 1 {
 					return errors.New("minimum success proportion must be between 0 and 1 inclusive")
@@ -123,18 +118,10 @@ func LastRevision() cli.Command {
 				}
 				return nil
 			},
-			func(c *cli.Context) error {
-				if c.String(reuseFlagName) == "" && c.Float64(minSuccessProportionFlagName) == 0 && c.Float64(minFinishedProportionFlagName) == 0 && len(c.StringSlice(successfulTasks)) == 0 {
-					return errors.New("must specify at least one criteria (minimum success proportion, minimum finished proportion, or required successful tasks) or set of criteria to reuse")
-				}
-				return nil
-			},
+			requireAtLeastOneFlag(reuseFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, successfulTasks),
+			mutuallyExclusiveArgs(false, reuseFlagName, saveFlagName),
 			func(c *cli.Context) error {
 				reuseCriteria := c.String(reuseFlagName) != ""
-				saveCriteria := c.String(saveFlagName) != ""
-				if reuseCriteria && saveCriteria {
-					return errors.New("cannot both reuse and save criteria")
-				}
 				if reuseCriteria && (len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
 					c.Float64(minSuccessProportionFlagName) > 0 || c.Float64(minFinishedProportionFlagName) > 0 || len(c.StringSlice(successfulTasks)) > 0) {
 					return errors.New("cannot both reuse criteria and also specify other criteria")

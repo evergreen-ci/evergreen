@@ -549,7 +549,7 @@ func TestLastRevisionCriteriaReuse(t *testing.T) {
 	}
 	t.Run("ReturnsExistingCriteriaGroup", func(t *testing.T) {
 		allCriteria, err := getLastRevisionCriteria(conf, "group1", "project", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Len(t, allCriteria, 2)
 		for _, c := range allCriteria {
 			assert.Equal(t, "project", c.project)
