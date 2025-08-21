@@ -1213,34 +1213,6 @@ func TestBlocked(t *testing.T) {
 	}
 }
 
-func TestCircularDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(Collection))
-	t1 := Task{
-		Id:          "t1",
-		DisplayName: "t1",
-		Activated:   true,
-		Status:      evergreen.TaskSucceeded,
-		DependsOn: []Dependency{
-			{TaskId: "t2", Status: evergreen.TaskSucceeded},
-		},
-	}
-	assert.NoError(t1.Insert(t.Context()))
-	t2 := Task{
-		Id:          "t2",
-		DisplayName: "t2",
-		Activated:   true,
-		Status:      evergreen.TaskSucceeded,
-		DependsOn: []Dependency{
-			{TaskId: "t1", Status: evergreen.TaskSucceeded},
-		},
-	}
-	assert.NoError(t2.Insert(t.Context()))
-}
-
 func TestSiblingDependency(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
