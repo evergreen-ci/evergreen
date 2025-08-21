@@ -301,13 +301,17 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		}
 
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", paramCache, adminCatcher)
-		if adminCatcher.HasErrors() {
+		if adminCatcher.HasErrors() && ctx.Err() == nil {
 			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {
 			baseConfig = paramConfig
 		}
 	}
 
+	// The context may be cancelled while getting settings.
+	if ctx.Err() != nil {
+		return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
+	}
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
@@ -319,6 +323,11 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 		catcher.New("parameter manager is nil")
 		return
 	}
+	// No need to go through the recursive loop if we already have errors.
+	if catcher.HasErrors() {
+		return
+	}
+	// No need to go through the recursive loop if the context is cancelled.
 	if ctx.Err() != nil {
 		catcher.Wrap(ctx.Err(), "context is cancelled, cannot read admin secrets")
 		return
@@ -400,7 +409,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
 						fieldValue.Set(newMap)
 					} else {
-						grip.Error(message.Fields{
+						grip.ErrorWhen(ctx.Err() == nil, message.Fields{
 							"message":  "readAdminSecrets did not find all map keys in parameter store",
 							"path":     fieldPath,
 							"keys":     fieldValue.MapKeys(),
