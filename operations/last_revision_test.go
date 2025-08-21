@@ -527,3 +527,49 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 		})
 	}
 }
+
+func TestLastRevisionCriteriaReuse(t *testing.T) {
+	criteria1 := reusableLastRevisionCriteria{
+		BVRegexps:             []string{"bv1"},
+		MinSuccessProportion:  0.5,
+		MinFinishedProportion: 0.9,
+		SuccessfulTasks:       []string{"task1", "task2"},
+	}
+	criteria2 := reusableLastRevisionCriteria{
+		BVDisplayRegexps: []string{"Build Variant 2"},
+		SuccessfulTasks:  []string{"task3"},
+	}
+	conf := &ClientSettings{
+		LastRevisionCriteriaGroups: []lastRevisionCriteriaGroup{
+			{
+				Name:     "group1",
+				Criteria: []reusableLastRevisionCriteria{criteria1, criteria2},
+			},
+		},
+	}
+	t.Run("ReturnsExistingCriteriaGroup", func(t *testing.T) {
+		allCriteria, err := getLastRevisionCriteria(conf, "group1", "project", true)
+		require.NoError(t, err)
+		require.Len(t, allCriteria, 2)
+		for _, c := range allCriteria {
+			assert.Equal(t, "project", c.project)
+			assert.True(t, c.knownIssuesAreSuccess)
+		}
+
+		assert.Len(t, allCriteria[0].buildVariantRegexps, len(criteria1.BVRegexps))
+		assert.Len(t, allCriteria[0].buildVariantDisplayNameRegexps, len(criteria1.BVDisplayRegexps))
+		assert.Equal(t, criteria1.MinSuccessProportion, allCriteria[0].minSuccessProportion)
+		assert.Equal(t, criteria1.MinFinishedProportion, allCriteria[0].minFinishedProportion)
+		assert.Len(t, allCriteria[0].successfulTasks, len(criteria1.SuccessfulTasks))
+
+		assert.Len(t, allCriteria[1].buildVariantRegexps, len(criteria2.BVRegexps))
+		assert.Len(t, allCriteria[1].buildVariantDisplayNameRegexps, len(criteria2.BVDisplayRegexps))
+		assert.Zero(t, allCriteria[1].minSuccessProportion, criteria2.MinSuccessProportion)
+		assert.Zero(t, allCriteria[1].minFinishedProportion, criteria2.MinFinishedProportion)
+		assert.Len(t, allCriteria[1].successfulTasks, len(criteria2.SuccessfulTasks))
+	})
+	t.Run("ErrorsForNonexistentCriteriaGroup", func(t *testing.T) {
+		_, err := getLastRevisionCriteria(conf, "nonexistent", "project", true)
+		assert.Error(t, err)
+	})
+}
