@@ -56,3 +56,8 @@ func (c *CostConfig) ValidateAndDefault() error {
 
 	return catcher.Resolve()
 }
+
+// IsConfigured returns true if any finance config field is set.
+func (c *CostConfig) IsConfigured() bool {
+	return c.FinanceFormula != 0 || c.SavingsPlanDiscount != 0 || c.OnDemandDiscount != 0
+}

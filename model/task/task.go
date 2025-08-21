@@ -2711,25 +2711,22 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 		t.ExpectedTaskCost = estimatedCost
 	}
 
-	updateDoc := bson.M{
-		"$set": bson.M{
-			StatusKey:             evergreen.TaskStarted,
-			LastHeartbeatKey:      startTime,
-			StartTimeKey:          startTime,
-			DisplayStatusCacheKey: t.DisplayStatusCache,
-		},
+	setCommand := bson.M{
+		StatusKey:             evergreen.TaskStarted,
+		LastHeartbeatKey:      startTime,
+		StartTimeKey:          startTime,
+		DisplayStatusCacheKey: t.DisplayStatusCache,
 	}
 
 	if !t.ExpectedTaskCost.IsZero() {
-		updateDoc["$set"].(bson.M)[ExpectedTaskCostKey] = t.ExpectedTaskCost
+		setCommand[ExpectedTaskCostKey] = t.ExpectedTaskCost
 	}
-
 	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
-		updateDoc,
+		bson.M{"$set": setCommand},
 	)
 }
 
@@ -4228,7 +4225,14 @@ func CalculateOnDemandCost(runtimeSeconds float64, distroCostData distro.CostDat
 		return 0
 	}
 
-	return runtimeSeconds * (distroCostData.OnDemandRate / 3600.0) * (1 - financeConfig.OnDemandDiscount)
+	// Convert the on-demand rate from per hour to per second
+	onDemandRatePerSecond := distroCostData.OnDemandRate / 3600.0
+
+	// Apply the discount
+	discountedRate := onDemandRatePerSecond * (1 - financeConfig.OnDemandDiscount)
+
+	// Calculate the total cost for the given runtime
+	return runtimeSeconds * discountedRate
 }
 
 // CalculateAdjustedTaskCost calculates the adjusted cost of running a task based on the provided runtime,
@@ -4253,21 +4257,13 @@ func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, f
 	}
 }
 
-func isFinanceConfigured(financeConfig evergreen.CostConfig) bool {
-	return financeConfig.FinanceFormula != 0 || financeConfig.SavingsPlanDiscount != 0 || financeConfig.OnDemandDiscount != 0
-}
-
-func hasDistroCostData(costData distro.CostData) bool {
-	return costData.OnDemandRate != 0 || costData.SavingsPlanRate != 0
-}
-
 func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, error) {
 	financeConfig := evergreen.CostConfig{}
 	if err := financeConfig.Get(ctx); err != nil {
 		return financeConfig, distro.CostData{}, errors.Wrap(err, "getting finance configuration")
 	}
 
-	if !isFinanceConfigured(financeConfig) {
+	if !financeConfig.IsConfigured() {
 		return financeConfig, distro.CostData{}, errors.New("finance configuration not set up")
 	}
 
@@ -4279,7 +4275,7 @@ func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostCon
 		return financeConfig, distro.CostData{}, errors.Errorf("distro '%s' not found", t.DistroId)
 	}
 
-	if !hasDistroCostData(d.CostData) {
+	if !d.CostData.IsConfigured() {
 		return financeConfig, distro.CostData{}, errors.New("distro cost data not configured")
 	}
 
