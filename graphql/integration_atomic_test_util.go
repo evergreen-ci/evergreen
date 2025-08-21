@@ -34,6 +34,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -581,6 +583,11 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		require.NoError(t, state.Settings.Set(ctx))
 
 	}
+
+	setupAdminSettings := func(t *testing.T) {
+		setupAdminSettingsFromData(t, state)
+	}
+
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
 	m := map[string][]setupFn{
@@ -590,6 +597,7 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
 		"mutation/updateVolume":         {spawnTestHostAndVolume},
 		"mutation/schedulePatch":        {persistTestSettings},
+		"query/adminSettings":           {setupAdminSettings},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
@@ -685,4 +693,36 @@ func addSubnets(t *testing.T) {
 
 func clearSubnets(t *testing.T) {
 	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{}
+}
+
+func setupAdminSettingsFromData(t *testing.T, state AtomicGraphQLState) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Get the admin data from the loaded test data
+	adminRaw, exists := state.DBData["admin"]
+	require.True(t, exists, "no admin data found in test data for adminSettings test")
+
+	var adminData []interface{}
+	err := bson.UnmarshalExtJSON(adminRaw, false, &adminData)
+	require.NoError(t, err, "unmarshalling admin data")
+	require.Len(t, adminData, 1, "expected exactly one admin document")
+
+	adminDoc, ok := adminData[0].(map[string]interface{})
+	require.True(t, ok, "admin data is not a map")
+
+	bsonRaw, err := bson.Marshal(adminDoc)
+	require.NoError(t, err, "marshalling admin data")
+
+	var testSettings evergreen.Settings
+	err = bson.Unmarshal(bsonRaw, &testSettings)
+	require.NoError(t, err, "unmarshalling admin data into settings")
+
+	restSettings := restModel.NewConfigModel()
+	err = restSettings.BuildFromService(testSettings)
+	require.NoError(t, err, "building API model from existing settings")
+
+	u := &user.DBUser{Id: "user"}
+	_, err = data.SetEvergreenSettings(ctx, restSettings, state.Settings, u, true)
+	require.NoError(t, err, "setting admin settings")
 }

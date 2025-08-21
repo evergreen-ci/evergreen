@@ -33,7 +33,6 @@
         "data": {
           "saveAdminSettings": {
             "serviceFlags": {
-              "adminParameterStoreDisabled": true,
               "agentStartDisabled": true,
               "alertsDisabled": true,
               "backgroundReauthDisabled": true,

@@ -92,7 +92,7 @@ var (
 	cpuDegradedModeDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "CPUDegradedModeDisabled")
 	elasticIPsDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "ElasticIPsDisabled")
 	releaseModeDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "ReleaseModeDisabled")
-	adminParameterStoreDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "AdminParameterStoreDisabled")
+	legacyUITaskPageDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUITaskPageDisabled")
 	legacyUITaskHistoryPageDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUITaskHistoryPageDisabled")
 
 	// ContainerPoolsConfig keys
