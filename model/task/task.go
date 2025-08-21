@@ -2707,7 +2707,7 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	estimatedCost, err := t.GetEstimatedCost(ctx)
-	if err == nil && (estimatedCost.OnDemandCost != 0 || estimatedCost.AdjustedCost != 0) {
+	if err == nil && !estimatedCost.IsZero() {
 		t.ExpectedTaskCost = estimatedCost
 	}
 
