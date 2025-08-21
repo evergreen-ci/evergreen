@@ -28,6 +28,12 @@ query Other {
         testResultsPrefix
         roleARN
       }
+      longRetentionProjects
+      logBucketLongRetention {
+        name
+        testResultsPrefix
+        roleARN
+      }
     }
     ssh {
       taskHostKey {

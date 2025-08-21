@@ -320,6 +320,12 @@
         "db_name": "mongodb",
         "test_results_prefix": "all",
         "role_arn": ""
+      },
+      "long_retention_projects": ["project1", "project2"],
+      "log_bucket_long_retention": {
+        "name": "mutation-long-retention-bucket",
+        "testResultsPrefix": null,
+        "roleARN": "test long retention arn"
       }
     },
     {
@@ -477,8 +483,8 @@
       "total_project_limit": 10,
       "repo_project_limit": 2,
       "repo_exceptions": [
-        {"owner": "evergreen-ci", "repo": "evergreen"},
-        {"owner": "mongodb", "repo":"mongo"}
+        { "owner": "evergreen-ci", "repo": "evergreen" },
+        { "owner": "mongodb", "repo": "mongo" }
       ]
     },
     {

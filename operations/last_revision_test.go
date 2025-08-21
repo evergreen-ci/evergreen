@@ -41,7 +41,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minSuccessProportion: 0.5,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -72,7 +72,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minSuccessProportion: 1,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.False(t, passesCriteria)
 		},
@@ -97,7 +97,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minSuccessProportion: 0.5,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -129,7 +129,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minSuccessProportion:           0.5,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -161,7 +161,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minSuccessProportion:           1,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.False(t, passesCriteria)
 		},
@@ -187,7 +187,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minSuccessProportion:           0.5,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -218,7 +218,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minFinishedProportion: 0.9,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -255,7 +255,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				minFinishedProportion: 0.5,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.False(t, passesCriteria)
 		},
@@ -281,7 +281,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				successfulTasks:     []string{"Task 1"},
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -306,7 +306,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				successfulTasks:     []string{"nonexistent"},
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -332,7 +332,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				successfulTasks:     []string{"Task 1"},
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.False(t, passesCriteria)
 		},
@@ -365,7 +365,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				knownIssuesAreSuccess: true,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -393,7 +393,7 @@ func TestLastRevisionCheckBuilds(t *testing.T) {
 				knownIssuesAreSuccess: true,
 			}
 
-			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, criteria)
+			passesCriteria, err := checkBuildsPassCriteria(t.Context(), c, builds, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			assert.True(t, passesCriteria)
 		},
@@ -442,7 +442,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 				minSuccessProportion: 0.5,
 			}
 
-			v, err := findLatestMatchingVersion(t.Context(), c, versions, criteria)
+			v, err := findLatestMatchingVersion(t.Context(), c, versions, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			require.NotNil(t, v)
 			assert.Equal(t, "v1", utility.FromStringPtr(v.Id))
@@ -483,7 +483,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 				minSuccessProportion: 1,
 			}
 
-			v, err := findLatestMatchingVersion(t.Context(), c, versions, criteria)
+			v, err := findLatestMatchingVersion(t.Context(), c, versions, []lastRevisionCriteria{criteria})
 			assert.NoError(t, err)
 			assert.Nil(t, v)
 		},
@@ -516,7 +516,7 @@ func TestLastRevisionCheckVersions(t *testing.T) {
 				minSuccessProportion: 0.5,
 			}
 
-			v, err := findLatestMatchingVersion(t.Context(), c, versions, criteria)
+			v, err := findLatestMatchingVersion(t.Context(), c, versions, []lastRevisionCriteria{criteria})
 			require.NoError(t, err)
 			require.NotNil(t, v)
 			assert.Equal(t, "v1", utility.FromStringPtr(v.Id))

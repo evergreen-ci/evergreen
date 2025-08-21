@@ -12,6 +12,8 @@ type BucketConfig {
 
 input BucketsConfigInput {
   logBucket: BucketConfigInput
+  logBucketLongRetention: BucketConfigInput
+  longRetentionProjects: [String!]
   testResultsBucket: BucketConfigInput
   internalBuckets: [String!]
   credentials: S3CredentialsInput @redactSecrets
@@ -19,6 +21,8 @@ input BucketsConfigInput {
 
 type BucketsConfig {
   logBucket: BucketConfig
+  logBucketLongRetention: BucketConfig
+  longRetentionProjects: [String!]
   testResultsBucket: BucketConfig
   internalBuckets: [String!]
   credentials: S3Credentials @requireAdmin
