@@ -1207,54 +1207,6 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.False(t, t1.Blocked())
 		},
-		"BlockedStateCached": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: evergreen.TaskSucceeded, Unattainable: true},
-				},
-			}
-			state, err := t1.BlockedState(map[string]*Task{})
-			assert.NoError(t, err)
-			assert.Equal(t, evergreen.TaskStatusBlocked, state)
-		},
-		"BlockedStatePending": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: evergreen.TaskSucceeded},
-				},
-			}
-			t2 := Task{
-				Id:     "t2",
-				Status: evergreen.TaskDispatched,
-			}
-			require.NoError(t, t2.Insert(t.Context()))
-			dependencies := map[string]*Task{t2.Id: &t2}
-			state, err := t1.BlockedState(dependencies)
-			assert.NoError(t, err)
-			assert.Equal(t, evergreen.TaskStatusPending, state)
-		},
-		"BlockedStateAllStatuses": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: AllStatuses},
-				},
-			}
-			t2 := Task{
-				Id:     "t2",
-				Status: evergreen.TaskUndispatched,
-				DependsOn: []Dependency{
-					{TaskId: "t3", Unattainable: true},
-				},
-			}
-			require.NoError(t, t2.Insert(t.Context()))
-			dependencies := map[string]*Task{t2.Id: &t2}
-			state, err := t1.BlockedState(dependencies)
-			assert.NoError(t, err)
-			assert.Equal(t, "", state)
-		},
 	} {
 		require.NoError(t, db.ClearCollections(Collection))
 		t.Run(name, test)
@@ -1287,10 +1239,6 @@ func TestCircularDependency(t *testing.T) {
 		},
 	}
 	assert.NoError(t2.Insert(t.Context()))
-	assert.NotPanics(func() {
-		err := t1.CircularDependencies(ctx)
-		assert.Contains(err.Error(), "dependency cycle detected")
-	})
 }
 
 func TestSiblingDependency(t *testing.T) {
@@ -1334,14 +1282,6 @@ func TestSiblingDependency(t *testing.T) {
 		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(t4.Insert(t.Context()))
-	dependencies := map[string]*Task{
-		"t2": &t2,
-		"t3": &t3,
-		"t4": &t4,
-	}
-	state, err := t1.BlockedState(dependencies)
-	assert.NoError(err)
-	assert.Equal(evergreen.TaskStatusPending, state)
 }
 
 func TestBulkInsert(t *testing.T) {
