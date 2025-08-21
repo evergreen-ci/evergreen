@@ -34,6 +34,7 @@ func LastRevision() cli.Command {
 		lookbackLimitFlagName             = "lookback-limit"
 		saveFlagName                      = "save"
 		reuseFlagName                     = "reuse"
+		listFlagName                      = "list"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -85,6 +86,10 @@ func LastRevision() cli.Command {
 				Name:  reuseFlagName,
 				Usage: "reuse a set of last revision criteria by group name",
 			},
+			cli.BoolFlag{
+				Name:  listFlagName,
+				Usage: "list all saved last revision criteria groups",
+			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -119,7 +124,7 @@ func LastRevision() cli.Command {
 				return nil
 			},
 			requireAtLeastOneFlag(reuseFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, successfulTasks),
-			mutuallyExclusiveArgs(false, reuseFlagName, saveFlagName),
+			mutuallyExclusiveArgs(false, reuseFlagName, saveFlagName, listFlagName),
 			func(c *cli.Context) error {
 				reuseCriteria := c.String(reuseFlagName) != ""
 				if reuseCriteria && (len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
@@ -142,6 +147,7 @@ func LastRevision() cli.Command {
 			versionLookbackLimit := c.Int(lookbackLimitFlagName)
 			saveCriteriaName := c.String(saveFlagName)
 			reuseCriteriaName := c.String(reuseFlagName)
+			listCriteria := c.Bool(listFlagName)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -161,6 +167,9 @@ func LastRevision() cli.Command {
 					return errors.Wrap(err, "printing last revision criteria group")
 				}
 				return nil
+			}
+			if listCriteria {
+				// kim: TODO: implement logic to list all criteria groups.
 			}
 
 			var ctx context.Context
