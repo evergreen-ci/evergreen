@@ -309,7 +309,6 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 	}
 
 	// The context may be cancelled while getting settings.
-	// In this case, there's no need to return an error.
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
 	}
@@ -324,9 +323,11 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 		catcher.New("parameter manager is nil")
 		return
 	}
+	// No need to go through the recursive loop if we already have errors.
 	if catcher.HasErrors() {
 		return
 	}
+	// No need to go through the recursive loop if the context is cancelled.
 	if ctx.Err() != nil {
 		catcher.Wrap(ctx.Err(), "context is cancelled, cannot read admin secrets")
 		return
