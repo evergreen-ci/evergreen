@@ -11,7 +11,7 @@ import (
 
 // CostConfig represents the admin config section for finance-related settings.
 type CostConfig struct {
-	// FinanceFormula is the percentage factor (0.0-1.0) for savings plan allocation in cost calculation
+	// FinanceFormula determines the weighting/percentage of the two parts of total cost: savingsPlanComponent and onDemandComponent.
 	FinanceFormula float64 `bson:"finance_formula" json:"finance_formula" yaml:"finance_formula"`
 	// SavingsPlanDiscount is the discount rate (0.0-1.0) applied to savings plan pricing
 	SavingsPlanDiscount float64 `bson:"savings_plan_discount" json:"savings_plan_discount" yaml:"savings_plan_discount"`
