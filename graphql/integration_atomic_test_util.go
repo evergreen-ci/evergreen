@@ -581,6 +581,7 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		require.NoError(t, state.Settings.Set(ctx))
 
 	}
+
 	type setupFn func(*testing.T)
 	// Map the directory name to the test setup function
 	m := map[string][]setupFn{

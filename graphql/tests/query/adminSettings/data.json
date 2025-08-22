@@ -42,8 +42,8 @@
         "keyset_url": "https://kanopy.com/keyset"
       },
       "multi": {
-        "read_write": ["admin", "privileged"],
-        "read_only": ["admin", "privileged", "regular"]
+        "read_write": ["okta"],
+        "read_only": ["github"]
       },
       "okta": {
         "client_id": "client_id",
