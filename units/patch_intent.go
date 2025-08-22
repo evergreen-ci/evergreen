@@ -507,7 +507,7 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(ctx context.Context, p 
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(buildSub.Upsert(ctx), "inserting build subscription for GitHub PR")
 	if p.IsParent() {
-		// add a subscription on each child patch to report it's status to github when it's done.
+		// add a subscription on each child patch to report its status to github when it's done.
 		for _, childPatch := range p.Triggers.ChildPatches {
 			childGhStatusSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 				Owner:    p.GithubPatchData.BaseOwner,
@@ -538,7 +538,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	catcher.Wrap(buildSub.Upsert(ctx), "inserting build subscription for GitHub merge queue")
 
 	if p.IsParent() {
-		// add a subscription on each child patch to report it's status to github when it's done.
+		// add a subscription on each child patch to report its status to github when it's done.
 		for _, childPatch := range p.Triggers.ChildPatches {
 			childGhStatusSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
 				Owner:   p.GithubPatchData.BaseOwner,
