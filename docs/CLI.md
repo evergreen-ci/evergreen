@@ -490,6 +490,43 @@ The "url" keys in each list item should contain the appropriate URL to the binar
 
 ### Notifications
 
+
+### MCP Server
+
+Expose Evergreen helpers over the Model Context Protocol (MCP) via stdio.
+
+Usage:
+
+```bash
+# Start server on stdio (reads newline-delimited JSON-RPC 2.0 requests from stdin)
+evergreen mcp-server --stdio
+
+# With explicit patch context and tail limit for convenience methods
+printf '%s\n' '{ "jsonrpc": "2.0", "id": 1, "method": "detectPatchId", "params": {} }' | evergreen mcp-server --stdio
+```
+
+Methods:
+- detectPatchId(params: { project?: string, patchId?: string }) -> { patchId, reason }
+- listPatchTasks(params: { patchId?: string, failedOnly?: bool }) -> TaskSummary[]
+- getTaskLogs(params: { taskId: string, execution?: number, type?: string, tail?: number }) -> { content: string }
+- fetchFailedLogsForPatch(params: { patchId?: string, tail?: number }) -> { logs: Record<taskId,string> }
+
+Notes:
+- The server uses your CLI config for authentication (see --conf flag).
+- TCP transport via --port is reserved for future use.
+
+#### Patch Failed Logs
+
+Fetch logs for failed tasks in a given patch ID.
+
+```bash
+evergreen patch-failed-logs --patch <patch_id> --tail 200
+```
+
+- Uses the same authentication and server configuration as other commands.
+- Output is printed to stdout with simple headings per task.
+
+
 The Evergreen CLI has the ability to send slack and email notifications for scripting. These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
 
 ```bash

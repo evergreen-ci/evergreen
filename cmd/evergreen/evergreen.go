@@ -58,10 +58,13 @@ func buildApp() *cli.App {
 		operations.LastRevision(),
 		operations.Subscriptions(),
 		operations.Client(),
+		operations.MCPServer(),
+		operations.MCPServerSDK(),
 
 		// Patch creation and management commands (top-level)
 		operations.Patch(),
 		operations.PatchFile(),
+		operations.PatchFailedLogs(),
 		operations.PatchList(),
 		operations.PatchSetModule(),
 		operations.PatchRemoveModule(),
