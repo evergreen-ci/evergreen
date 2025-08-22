@@ -93,6 +93,10 @@ type APITask struct {
 	ParsleyLogs LogLinks `json:"parsley_logs"`
 	// Number of milliseconds this task took during execution
 	TimeTaken APIDuration `json:"time_taken_ms"`
+	// Cost breakdown for running this task
+	TaskCost *APITaskCost `json:"task_cost,omitempty"`
+	// Expected cost breakdown for running this task based on duration prediction
+	ExpectedTaskCost *APITaskCost `json:"expected_task_cost,omitempty"`
 	// Number of milliseconds expected for this task to execute
 	ExpectedDuration APIDuration `json:"expected_duration_ms"`
 	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
@@ -146,6 +150,13 @@ type APIAbortInfo struct {
 	TaskID     string `json:"task_id,omitempty"`
 	NewVersion string `json:"new_version,omitempty"`
 	PRClosed   bool   `json:"pr_closed,omitempty"`
+}
+
+type APITaskCost struct {
+	// OnDemandCost is the cost calculated using only on-demand rates
+	OnDemandCost *float64 `json:"on_demand_cost,omitempty"`
+	// AdjustedCost is the cost calculated using the finance formula with savings plan and on-demand components
+	AdjustedCost *float64 `json:"adjusted_cost,omitempty"`
 }
 
 type LogLinks struct {
@@ -377,6 +388,16 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.TimeTaken = NewAPIDuration(time.Since(t.StartTime))
 	}
 
+	if t.TaskCost.OnDemandCost != 0 || t.TaskCost.AdjustedCost != 0 {
+		at.TaskCost = &APITaskCost{}
+		at.TaskCost.BuildFromService(t.TaskCost)
+	}
+
+	if t.ExpectedTaskCost.OnDemandCost != 0 || t.ExpectedTaskCost.AdjustedCost != 0 {
+		at.ExpectedTaskCost = &APITaskCost{}
+		at.ExpectedTaskCost.BuildFromService(t.ExpectedTaskCost)
+	}
+
 	if t.ParentPatchID != "" {
 		at.Version = utility.ToStringPtr(t.ParentPatchID)
 		if t.ParentPatchNumber != 0 {
@@ -558,6 +579,14 @@ func (at *APITask) ToService() (*task.Task, error) {
 		HasAnnotations:       at.HasAnnotations,
 	}
 
+	if at.TaskCost != nil {
+		st.TaskCost = at.TaskCost.ToService()
+	}
+
+	if at.ExpectedTaskCost != nil {
+		st.ExpectedTaskCost = at.ExpectedTaskCost.ToService()
+	}
+
 	catcher := grip.NewBasicCatcher()
 	var err error
 	st.CreateTime, err = FromTimePtr(at.CreateTime)
@@ -683,6 +712,26 @@ func (o *APIContainerOptions) ToService() task.ContainerOptions {
 		Arch:           evergreen.ContainerArch(utility.FromStringPtr(o.Arch)),
 		WindowsVersion: evergreen.WindowsVersion(utility.FromStringPtr(o.WindowsVersion)),
 	}
+}
+
+func (c *APITaskCost) BuildFromService(taskCost task.TaskCost) {
+	if taskCost.OnDemandCost != 0 {
+		c.OnDemandCost = &taskCost.OnDemandCost
+	}
+	if taskCost.AdjustedCost != 0 {
+		c.AdjustedCost = &taskCost.AdjustedCost
+	}
+}
+
+func (c *APITaskCost) ToService() task.TaskCost {
+	taskCost := task.TaskCost{}
+	if c.OnDemandCost != nil {
+		taskCost.OnDemandCost = *c.OnDemandCost
+	}
+	if c.AdjustedCost != nil {
+		taskCost.AdjustedCost = *c.AdjustedCost
+	}
+	return taskCost
 }
 
 // APIGeneratedTaskInfo contains basic information about a generated task.
