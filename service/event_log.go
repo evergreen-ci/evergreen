@@ -23,8 +23,6 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	var loggedEvents []event.EventLogEntry
 	var err error
 	switch resourceType {
-	case event.ResourceTypeTask:
-		loggedEvents, err = event.Find(r.Context(), event.MostRecentTaskEvents(resourceID, 100))
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

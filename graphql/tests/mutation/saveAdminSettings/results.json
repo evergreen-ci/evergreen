@@ -33,7 +33,6 @@
         "data": {
           "saveAdminSettings": {
             "serviceFlags": {
-              "adminParameterStoreDisabled": true,
               "agentStartDisabled": true,
               "alertsDisabled": true,
               "backgroundReauthDisabled": true,
@@ -378,6 +377,12 @@
                 "name": "mutation-test-bucket",
                 "testResultsPrefix": "mutation-test-results",
                 "roleARN": "test arn"
+              },
+              "longRetentionProjects": ["project1", "project2"],
+              "logBucketLongRetention": {
+                "name": "mutation-long-retention-bucket",
+                "testResultsPrefix": null,
+                "roleARN": "test long retention arn"
               }
             },
             "ssh": {

@@ -84,7 +84,7 @@ type s3put struct {
 	// Permissions is the ACL to apply to the uploaded file. See:
 	// http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
 	// for some examples.
-	Permissions string `mapstructure:"permissions"`
+	Permissions string `mapstructure:"permissions" plugin:"expand"`
 
 	// ContentType is the MIME type of the uploaded file.
 	// E.g. text/html, application/pdf, image/jpeg, ...
@@ -214,7 +214,7 @@ func (s3pc *s3put) validate() error {
 		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
-	if !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
+	if !util.IsExpandable(s3pc.Visibility) && !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
 		catcher.Errorf("invalid visibility setting '%s', allowed visibilities are: %s", s3pc.Visibility, artifact.ValidVisibilities)
 	}
 

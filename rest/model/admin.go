@@ -2187,7 +2187,6 @@ type APIServiceFlags struct {
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
-	AdminParameterStoreDisabled     bool `json:"admin_parameter_store_disabled"`
 	LegacyUITaskPageDisabled        bool `json:"legacy_ui_task_page_disabled"`
 	LegacyUITaskHistoryPageDisabled bool `json:"legacy_ui_task_history_page_disabled"`
 
@@ -2620,7 +2619,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
-		as.AdminParameterStoreDisabled = v.AdminParameterStoreDisabled
 		as.LegacyUITaskPageDisabled = v.LegacyUITaskPageDisabled
 		as.LegacyUITaskHistoryPageDisabled = v.LegacyUITaskHistoryPageDisabled
 	default:
@@ -2667,7 +2665,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
-		AdminParameterStoreDisabled:     as.AdminParameterStoreDisabled,
 		LegacyUITaskPageDisabled:        as.LegacyUITaskPageDisabled,
 		LegacyUITaskHistoryPageDisabled: as.LegacyUITaskHistoryPageDisabled,
 	}, nil

@@ -78,19 +78,20 @@ func isValidPath(path string) bool {
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
-	APIServerHost         string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	UIServerHost          string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
-	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
-	User                  string              `json:"user" yaml:"user,omitempty"`
-	JWT                   string              `json:"jwt" yaml:"jwt,omitempty"`
-	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
-	AutoUpgradeCLI        bool                `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
-	DoNotRunKanopyOIDC    bool                `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
-	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
-	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
-	LoadedFrom            string              `json:"-" yaml:"-"`
-	DisableAutoDefaulting bool                `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
-	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
+	APIServerHost              string                      `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
+	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
+	User                       string                      `json:"user" yaml:"user,omitempty"`
+	JWT                        string                      `json:"jwt" yaml:"jwt,omitempty"`
+	UncommittedChanges         bool                        `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
+	AutoUpgradeCLI             bool                        `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
+	DoNotRunKanopyOIDC         bool                        `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
+	PreserveCommits            bool                        `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
+	Projects                   []ClientProjectConf         `json:"projects" yaml:"projects,omitempty"`
+	LoadedFrom                 string                      `json:"-" yaml:"-"`
+	DisableAutoDefaulting      bool                        `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
+	ProjectsForDirectory       map[string]string           `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
+	LastRevisionCriteriaGroups []lastRevisionCriteriaGroup `json:"last_revision_criteria_groups,omitempty" yaml:"last_revision_criteria_groups,omitempty"`
 
 	// StagingEnvironment configures which staging environment to point to.
 	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`

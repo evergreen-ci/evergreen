@@ -128,8 +128,8 @@
                 "users": []
               },
               "multi": {
-                "readWrite": ["admin", "privileged"],
-                "readOnly": ["admin", "privileged", "regular"]
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
               },
               "kanopy": {
                 "headerName": "",
@@ -358,6 +358,12 @@
                 "name": "test bucket",
                 "testResultsPrefix": "all",
                 "roleARN": ""
+              },
+              "longRetentionProjects": ["project1", "project2"],
+              "logBucketLongRetention": {
+                "name": "mutation-long-retention-bucket",
+                "testResultsPrefix": null,
+                "roleARN": ""
               }
             },
             "ssh": {
@@ -383,9 +389,7 @@
                   "project": "CUSTOM PROJECT",
                   "fields": {},
                   "components": ["component"],
-                  "labels": [
-                    "label"
-                  ]
+                  "labels": ["label"]
                 }
               ]
             },
