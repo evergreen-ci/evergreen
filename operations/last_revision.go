@@ -101,7 +101,7 @@ func LastRevision() cli.Command {
 				return autoUpdateCLI(c)
 			},
 			func(c *cli.Context) error {
-				if c.String(reuseFlagName) != "" || c.String(saveFlagName) != "" || c.Bool(listFlagName) {
+				if c.String(saveFlagName) != "" || c.Bool(listFlagName) {
 					return nil
 				}
 				return requireProjectFlag(c)
@@ -133,12 +133,12 @@ func LastRevision() cli.Command {
 			func(c *cli.Context) error {
 				reuseCriteria := c.String(reuseFlagName) != ""
 				listCriteria := c.Bool(listFlagName)
-				searchCriteriaSpecified := len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
-					c.Float64(minSuccessProportionFlagName) > 0 || c.Float64(minFinishedProportionFlagName) > 0 || len(c.StringSlice(successfulTasks)) > 0
+				searchCriteriaSpecified := c.IsSet(regexpVariantsFlagName) || c.IsSet(regexpVariantsDisplayNameFlagName) ||
+					c.IsSet(minSuccessProportionFlagName) || c.IsSet(minFinishedProportionFlagName) || c.IsSet(successfulTasks)
 				if reuseCriteria && searchCriteriaSpecified {
 					return errors.New("cannot both reuse criteria and also specify other search criteria")
 				}
-				if listCriteria && (searchCriteriaSpecified || c.Int(lookbackLimitFlagName) > 0 || c.Int(timeoutFlagName) > 0 || c.Bool(knownIssuesAreSuccessFlagName)) {
+				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName)) {
 					// List criteria doesn't accept any other flags.
 					return errors.New("cannot both list criteria and also specify search criteria")
 				}
