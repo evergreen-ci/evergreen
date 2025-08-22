@@ -5507,7 +5507,7 @@ func TestCalculateOnDemandCost(t *testing.T) {
 	runtimeHours := runtimeSeconds / 3600.0
 	expectedCost := runtimeHours * distroCost.OnDemandRate * (1 - financeConfig.OnDemandDiscount)
 	actualCost := CalculateOnDemandCost(runtimeSeconds, distroCost, financeConfig)
-	assert.Equal(t, expectedCost, actualCost)
+	assert.Equal(t, float32(expectedCost), float32(actualCost))
 }
 
 func TestCalculateAdjustedTaskCost(t *testing.T) {
