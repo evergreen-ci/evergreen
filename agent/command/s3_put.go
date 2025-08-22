@@ -214,7 +214,7 @@ func (s3pc *s3put) validate() error {
 		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
-	if !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
+	if !util.IsExpandable(s3pc.Visibility) && !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
 		catcher.Errorf("invalid visibility setting '%s', allowed visibilities are: %s", s3pc.Visibility, artifact.ValidVisibilities)
 	}
 
