@@ -88,7 +88,7 @@ func LastRevision() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  listFlagName,
-				Usage: "list all saved last revision criteria groups",
+				Usage: "instead of searching for a revision, list all saved last revision criteria groups",
 			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
@@ -100,8 +100,13 @@ func LastRevision() cli.Command {
 				}
 				return autoUpdateCLI(c)
 			},
-			requireProjectFlag,
-			requireAtLeastOneFlag(reuseFlagName, regexpVariantsFlagName, regexpVariantsDisplayNameFlagName),
+			func(c *cli.Context) error {
+				if c.String(reuseFlagName) != "" || c.String(saveFlagName) != "" || c.Bool(listFlagName) {
+					return nil
+				}
+				return requireProjectFlag(c)
+			},
+			requireAtLeastOneFlag(reuseFlagName, listFlagName, regexpVariantsFlagName, regexpVariantsDisplayNameFlagName),
 			func(c *cli.Context) error {
 				if c.Float64(minSuccessProportionFlagName) < 0 || c.Float64(minSuccessProportionFlagName) > 1 {
 					return errors.New("minimum success proportion must be between 0 and 1 inclusive")
@@ -123,13 +128,19 @@ func LastRevision() cli.Command {
 				}
 				return nil
 			},
-			requireAtLeastOneFlag(reuseFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, successfulTasks),
+			requireAtLeastOneFlag(reuseFlagName, listFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, successfulTasks),
 			mutuallyExclusiveArgs(false, reuseFlagName, saveFlagName, listFlagName),
 			func(c *cli.Context) error {
 				reuseCriteria := c.String(reuseFlagName) != ""
-				if reuseCriteria && (len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
-					c.Float64(minSuccessProportionFlagName) > 0 || c.Float64(minFinishedProportionFlagName) > 0 || len(c.StringSlice(successfulTasks)) > 0) {
-					return errors.New("cannot both reuse criteria and also specify other criteria")
+				listCriteria := c.Bool(listFlagName)
+				searchCriteriaSpecified := len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
+					c.Float64(minSuccessProportionFlagName) > 0 || c.Float64(minFinishedProportionFlagName) > 0 || len(c.StringSlice(successfulTasks)) > 0
+				if reuseCriteria && searchCriteriaSpecified {
+					return errors.New("cannot both reuse criteria and also specify other search criteria")
+				}
+				if listCriteria && (searchCriteriaSpecified || c.Int(lookbackLimitFlagName) > 0 || c.Int(timeoutFlagName) > 0 || c.Bool(knownIssuesAreSuccessFlagName)) {
+					// List criteria doesn't accept any other flags.
+					return errors.New("cannot both list criteria and also specify search criteria")
 				}
 				return nil
 			},
@@ -163,13 +174,16 @@ func LastRevision() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "saving last revision criteria")
 				}
-				if err := printCriteriaGroup(cg, jsonOutput); err != nil {
+				if err := printCriteriaGroups([]lastRevisionCriteriaGroup{*cg}, jsonOutput); err != nil {
 					return errors.Wrap(err, "printing last revision criteria group")
 				}
 				return nil
 			}
 			if listCriteria {
-				// kim: TODO: implement logic to list all criteria groups.
+				if err := printCriteriaGroups(conf.LastRevisionCriteriaGroups, jsonOutput); err != nil {
+					return errors.Wrap(err, "listing all last revision criteria groups")
+				}
+				return nil
 			}
 
 			var ctx context.Context
@@ -301,9 +315,9 @@ func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, j
 	return nil
 }
 
-func printCriteriaGroup(cg *lastRevisionCriteriaGroup, jsonOutput bool) error {
+func printCriteriaGroups(groups []lastRevisionCriteriaGroup, jsonOutput bool) error {
 	if jsonOutput {
-		output, err := json.MarshalIndent(cg, "", "\t")
+		output, err := json.MarshalIndent(groups, "", "\t")
 		if err != nil {
 			return errors.Wrap(err, "marshalling criteria group to JSON")
 		}
@@ -313,32 +327,34 @@ func printCriteriaGroup(cg *lastRevisionCriteriaGroup, jsonOutput bool) error {
 
 	t := tabby.New()
 	t.AddHeader("Name", "Build Variant Regexps", "Build Variant Display Name Regexps", "Min Success Proportion", "Min Finished Proportion", "Required Successful Tasks")
-	for i, c := range cg.Criteria {
-		name := cg.Name
-		if i > 0 {
-			name = ""
+	for _, cg := range groups {
+		for i, c := range cg.Criteria {
+			name := cg.Name
+			if i > 0 {
+				name = ""
+			}
+			bvRegexps := ""
+			if len(c.BVRegexps) > 0 {
+				bvRegexps = fmt.Sprint(c.BVRegexps)
+			}
+			bvDisplayRegexps := ""
+			if len(c.BVDisplayRegexps) > 0 {
+				bvDisplayRegexps = fmt.Sprint(c.BVDisplayRegexps)
+			}
+			minSuccessProp := ""
+			if c.MinSuccessProportion > 0 {
+				minSuccessProp = fmt.Sprintf("%.2f", c.MinSuccessProportion)
+			}
+			minFinishedProp := ""
+			if c.MinFinishedProportion > 0 {
+				minFinishedProp = fmt.Sprintf("%.2f", c.MinFinishedProportion)
+			}
+			successfulTasks := ""
+			if len(c.SuccessfulTasks) > 0 {
+				successfulTasks = fmt.Sprint(c.SuccessfulTasks)
+			}
+			t.AddLine(name, bvRegexps, bvDisplayRegexps, minSuccessProp, minFinishedProp, successfulTasks)
 		}
-		bvRegexps := ""
-		if len(c.BVRegexps) > 0 {
-			bvRegexps = fmt.Sprint(c.BVRegexps)
-		}
-		bvDisplayRegexps := ""
-		if len(c.BVDisplayRegexps) > 0 {
-			bvDisplayRegexps = fmt.Sprint(c.BVDisplayRegexps)
-		}
-		minSuccessProp := ""
-		if c.MinSuccessProportion > 0 {
-			minSuccessProp = fmt.Sprintf("%.2f", c.MinSuccessProportion)
-		}
-		minFinishedProp := ""
-		if c.MinFinishedProportion > 0 {
-			minFinishedProp = fmt.Sprintf("%.2f", c.MinFinishedProportion)
-		}
-		successfulTasks := ""
-		if len(c.SuccessfulTasks) > 0 {
-			successfulTasks = fmt.Sprint(c.SuccessfulTasks)
-		}
-		t.AddLine(name, bvRegexps, bvDisplayRegexps, minSuccessProp, minFinishedProp, successfulTasks)
 	}
 	t.Print()
 	return nil
