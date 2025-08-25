@@ -91,5 +91,10 @@ query Other {
       targetTimeSecondsOverride
       idleTimeSecondsOverride
     }
+    cost {
+      financeFormula
+      savingsPlanDiscount
+      onDemandDiscount
+    }
   }
 }

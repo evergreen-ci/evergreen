@@ -386,7 +386,6 @@
       "collector_endpoint": "<collector_endpoint>",
       "collector_internal_endpoint": "<collector_internal_endpoint>",
       "enabled": false
-
     },
     {
       "_id": "providers",
@@ -539,6 +538,12 @@
     {
       "_id": "parameter_store",
       "prefix": "store"
+    },
+    {
+      "_id": "cost",
+      "finance_formula": 0.777,
+      "savings_plan_discount": 0.3,
+      "on_demand_discount": 0.8
     }
   ]
 }

@@ -1,0 +1,129 @@
+input SESConfigInput {
+  senderAddress: String! @redactSecrets
+}
+
+type SESConfig {
+  senderAddress: String @requireAdmin
+}
+
+input NotifyConfigInput {
+  ses: SESConfigInput
+  bufferTargetPerInterval: Int
+  bufferIntervalSeconds: Int
+}
+
+type NotifyConfig {
+  ses: SESConfig @requireAdmin
+  bufferTargetPerInterval: Int
+  bufferIntervalSeconds: Int
+}
+
+input TaskLimitsConfigInput {
+  maxTasksPerVersion: Int!
+  maxIncludesPerVersion: Int!
+  maxHourlyPatchTasks: Int!
+  maxPendingGeneratedTasks: Int!
+  maxGenerateTaskJSONSize: Int!
+  maxConcurrentLargeParserProjectTasks: Int!
+  maxDegradedModeConcurrentLargeParserProjectTasks: Int!
+  maxDegradedModeParserProjectSize: Int!
+  maxParserProjectSize: Int!
+  maxExecTimeoutSecs: Int!
+  maxTaskExecution: Int!
+  maxDailyAutomaticRestarts: Int!
+}
+
+type TaskLimitsConfig {
+  maxTasksPerVersion: Int
+  maxIncludesPerVersion: Int
+  maxHourlyPatchTasks: Int
+  maxPendingGeneratedTasks: Int
+  maxGenerateTaskJSONSize: Int
+  maxConcurrentLargeParserProjectTasks: Int
+  maxDegradedModeConcurrentLargeParserProjectTasks: Int
+  maxDegradedModeParserProjectSize: Int
+  maxParserProjectSize: Int
+  maxExecTimeoutSecs: Int
+  maxTaskExecution: Int
+  maxDailyAutomaticRestarts: Int
+}
+
+input HostInitConfigInput {
+  hostThrottle: Int!
+  provisioningThrottle: Int!
+  cloudStatusBatchSize: Int!
+  maxTotalDynamicHosts: Int!
+}
+
+type HostInitConfig {
+  hostThrottle: Int
+  provisioningThrottle: Int
+  cloudStatusBatchSize: Int
+  maxTotalDynamicHosts: Int
+}
+
+input PodLifecycleConfigInput {
+  maxParallelPodRequests: Int!
+  maxPodDefinitionCleanupRate: Int!
+  maxSecretCleanupRate: Int!
+}
+
+type PodLifecycleConfig {
+  maxParallelPodRequests: Int
+  maxPodDefinitionCleanupRate: Int
+  maxSecretCleanupRate: Int
+}
+
+input SchedulerConfigInput {
+  taskFinder: FinderVersion!
+  hostAllocator: HostAllocatorVersion!
+  hostAllocatorRoundingRule: RoundingRule!
+  hostAllocatorFeedbackRule: FeedbackRule!
+  hostsOverallocatedRule: OverallocatedRule!
+  futureHostFraction: Float!
+  cacheDurationSeconds: Int!
+  targetTimeSeconds: Int!
+  acceptableHostIdleTimeSeconds: Int!
+  groupVersions: Boolean!
+  patchFactor: Int!
+  patchTimeInQueueFactor: Int!
+  commitQueueFactor: Int!
+  mainlineTimeInQueueFactor: Int!
+  expectedRuntimeFactor: Int!
+  generateTaskFactor: Int!
+  numDependentsFactor: Float!
+  stepbackTaskFactor: Int!
+}
+
+type SchedulerConfig {
+  taskFinder: FinderVersion
+  hostAllocator: HostAllocatorVersion
+  hostAllocatorRoundingRule: RoundingRule
+  hostAllocatorFeedbackRule: FeedbackRule
+  hostsOverallocatedRule: OverallocatedRule
+  futureHostFraction: Float
+  cacheDurationSeconds: Int
+  targetTimeSeconds: Int
+  acceptableHostIdleTimeSeconds: Int
+  groupVersions: Boolean!
+  patchFactor: Int
+  patchTimeInQueueFactor: Int
+  commitQueueFactor: Int
+  mainlineTimeInQueueFactor: Int
+  expectedRuntimeFactor: Int
+  generateTaskFactor: Int
+  numDependentsFactor: Float
+  stepbackTaskFactor: Int
+}
+
+input RepotrackerConfigInput {
+  numNewRepoRevisionsToFetch: Int!
+  maxRepoRevisionsToSearch: Int!
+  maxConcurrentRequests: Int!
+}
+
+type RepotrackerConfig {
+  numNewRepoRevisionsToFetch: Int
+  maxRepoRevisionsToSearch: Int
+  maxConcurrentRequests: Int
+}

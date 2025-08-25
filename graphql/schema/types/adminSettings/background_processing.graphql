@@ -1,0 +1,113 @@
+input AmboyRetryConfigInput {
+  numWorkers: Int!
+  maxCapacity: Int!
+  maxRetryAttempts: Int!
+  maxRetryTimeSeconds: Int!
+  retryBackoffSeconds: Int!
+  staleRetryingMonitorIntervalSeconds: Int!
+}
+
+type AmboyRetryConfig {
+  numWorkers: Int
+  maxCapacity: Int
+  maxRetryAttempts: Int
+  maxRetryTimeSeconds: Int
+  retryBackoffSeconds: Int
+  staleRetryingMonitorIntervalSeconds: Int
+}
+
+input AmboyNamedQueueConfigInput {
+  name: String!
+  regexp: String!
+  numWorkers: Int!
+  sampleSize: Int!
+  lockTimeoutSeconds: Int!
+}
+
+type AmboyNamedQueueConfig {
+  name: String
+  regexp: String
+  numWorkers: Int
+  sampleSize: Int
+  lockTimeoutSeconds: Int
+}
+
+input AmboyConfigInput {
+  name: String!
+  singleName: String!
+  poolSizeLocal: Int!
+  poolSizeRemote: Int!
+  localStorage: Int!
+  groupDefaultWorkers: Int!
+  groupBackgroundCreateFrequencyMinutes: Int!
+  groupPruneFrequencyMinutes: Int!
+  groupTTLMinutes: Int!
+  lockTimeoutMinutes: Int!
+  sampleSize: Int!
+  retry: AmboyRetryConfigInput!
+  namedQueues: [AmboyNamedQueueConfigInput!]!
+}
+
+type AmboyConfig {
+  name: String
+  singleName: String
+  poolSizeLocal: Int
+  poolSizeRemote: Int
+  localStorage: Int
+  groupDefaultWorkers: Int
+  groupBackgroundCreateFrequencyMinutes: Int
+  groupPruneFrequencyMinutes: Int
+  groupTTLMinutes: Int
+  lockTimeoutMinutes: Int
+  sampleSize: Int
+  retry: AmboyRetryConfig
+  namedQueues: [AmboyNamedQueueConfig!]!
+}
+
+input AmboyDBConfigInput {
+  url: String!
+  database: String!
+}
+
+type AmboyDBConfig {
+  url: String @requireAdmin
+  database: String @requireAdmin
+}
+
+input LogBufferingInput {
+  useAsync: Boolean!
+  durationSeconds: Int!
+  count: Int!
+  incomingBufferFactor: Int!
+}
+
+type LogBuffering {
+  useAsync: Boolean!
+  durationSeconds: Int
+  count: Int
+  incomingBufferFactor: Int
+}
+
+input LoggerConfigInput {
+  buffer: LogBufferingInput!
+  defaultLevel: PriorityLevel!
+  thresholdLevel: PriorityLevel!
+  logkeeperURL: String!
+  redactKeys: [String!]!
+}
+
+type LoggerConfig {
+  buffer: LogBuffering
+  defaultLevel: PriorityLevel
+  thresholdLevel: PriorityLevel
+  logkeeperURL: String
+  redactKeys: [String!]!
+}
+
+input TriggerConfigInput {
+  generateTaskDistro: String!
+}
+
+type TriggerConfig {
+  generateTaskDistro: String
+}
