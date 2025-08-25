@@ -47,7 +47,7 @@ require (
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	github.com/urfave/cli v1.22.17
 	github.com/vektah/gqlparser/v2 v2.5.30
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.37.0
