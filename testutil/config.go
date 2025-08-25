@@ -397,7 +397,6 @@ func MockConfig() *evergreen.Settings {
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
 			ReleaseModeDisabled:             true,
-			AdminParameterStoreDisabled:     false,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{

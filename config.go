@@ -36,7 +36,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-08-19"
+	AgentVersion = "2025-08-21"
 )
 
 const (
@@ -77,6 +77,7 @@ type Settings struct {
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions" secret:"true"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	Cost                CostConfig              `yaml:"cost" bson:"cost" json:"cost" id:"cost"`
 	FWS                 FWSConfig               `yaml:"fws" bson:"fws" json:"fws" id:"fws"`
 	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
@@ -276,10 +277,9 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		propVal.Set(sectionVal)
 	}
 
-	// If the admin parameter store is not disabled and we aren't getting secrets
-	// for initialization read secrets from the parameter store.
+	// If we aren't getting secrets for initialization, read secrets from the parameter store.
 	// If it fails, log the error and ignore changes made from the parameter store.
-	if !baseConfig.ServiceFlags.AdminParameterStoreDisabled && includeParameterStore {
+	if includeParameterStore {
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
 		if paramMgr == nil {

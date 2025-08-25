@@ -507,7 +507,7 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(ctx context.Context, p 
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(buildSub.Upsert(ctx), "inserting build subscription for GitHub PR")
 	if p.IsParent() {
-		// add a subscription on each child patch to report it's status to github when it's done.
+		// add a subscription on each child patch to report its status to github when it's done.
 		for _, childPatch := range p.Triggers.ChildPatches {
 			childGhStatusSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 				Owner:    p.GithubPatchData.BaseOwner,
@@ -536,6 +536,20 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	catcher.Wrap(patchSub.Upsert(ctx), "inserting patch subscription for GitHub merge queue")
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 	catcher.Wrap(buildSub.Upsert(ctx), "inserting build subscription for GitHub merge queue")
+
+	if p.IsParent() {
+		// add a subscription on each child patch to report its status to github when it's done.
+		for _, childPatch := range p.Triggers.ChildPatches {
+			childGhStatusSub := event.NewGithubMergeAPISubscriber(event.GithubMergeSubscriber{
+				Owner:   p.GithubPatchData.BaseOwner,
+				Repo:    p.GithubPatchData.BaseRepo,
+				Ref:     p.GithubPatchData.HeadHash,
+				ChildId: childPatch,
+			})
+			patchSub := event.NewExpiringPatchChildOutcomeSubscription(childPatch, childGhStatusSub)
+			catcher.Wrap(patchSub.Upsert(ctx), "inserting child patch subscription for GitHub MQ")
+		}
+	}
 
 	input := thirdparty.SendGithubStatusInput{
 		VersionId: j.PatchID.Hex(),
@@ -1010,6 +1024,11 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
 	patchDoc.Description = makeMergeQueueDescription(patchDoc.GithubMergeData)
+
+	if len(projectRef.GithubMQTriggerAliases) > 0 {
+		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubMQTriggerAliases}
+	}
+
 	return nil
 }
 

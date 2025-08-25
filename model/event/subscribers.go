@@ -189,7 +189,6 @@ type GithubPullRequestSubscriber struct {
 	PRNumber int    `bson:"pr_number"`
 	Ref      string `bson:"ref"`
 	ChildId  string `bson:"child"`
-	Type     string `bson:"type"`
 }
 
 func (s *GithubPullRequestSubscriber) String() string {
@@ -207,13 +206,14 @@ func (s *GithubCheckSubscriber) String() string {
 }
 
 type GithubMergeSubscriber struct {
-	Owner string `bson:"owner"`
-	Repo  string `bson:"repo"`
-	Ref   string `bson:"ref"`
+	Owner   string `bson:"owner"`
+	Repo    string `bson:"repo"`
+	Ref     string `bson:"ref"`
+	ChildId string `bson:"child"`
 }
 
 func (s *GithubMergeSubscriber) String() string {
-	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
+	return fmt.Sprintf("%s-%s-%s-%s", s.Owner, s.Repo, s.Ref, s.ChildId)
 }
 
 type ChildPatchSubscriber struct {

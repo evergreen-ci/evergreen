@@ -38,7 +38,6 @@ type ServiceFlags struct {
 	CPUDegradedModeDisabled         bool `bson:"cpu_degraded_mode_disabled" json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled              bool `bson:"elastic_ips_disabled" json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `bson:"release_mode_disabled" json:"release_mode_disabled"`
-	AdminParameterStoreDisabled     bool `bson:"admin_parameter_store_disabled" json:"admin_parameter_store_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -93,7 +92,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
 			cpuDegradedModeDisabledKey:         c.CPUDegradedModeDisabled,
 			releaseModeDisabledKey:             c.ReleaseModeDisabled,
-			adminParameterStoreDisabledKey:     c.AdminParameterStoreDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

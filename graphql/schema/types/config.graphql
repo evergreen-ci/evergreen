@@ -454,7 +454,6 @@ input ServiceFlagsInput {
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
   releaseModeDisabled: Boolean
-  adminParameterStoreDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean
   slackNotificationsDisabled: Boolean
@@ -493,7 +492,6 @@ type ServiceFlags {
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
   releaseModeDisabled: Boolean
-  adminParameterStoreDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean
   slackNotificationsDisabled: Boolean

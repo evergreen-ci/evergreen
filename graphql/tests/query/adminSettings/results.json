@@ -128,8 +128,8 @@
                 "users": []
               },
               "multi": {
-                "readWrite": ["admin", "privileged"],
-                "readOnly": ["admin", "privileged", "regular"]
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
               },
               "kanopy": {
                 "headerName": "",
