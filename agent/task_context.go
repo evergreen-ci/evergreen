@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -22,6 +23,14 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	// Platform-specific mountpoints used for disk device detection.
+	// Sync with devprod infrastructure before changing these values.
+	linuxMountpoint   = "/data"
+	windowsMountpoint = "Z:"
+	darwinMountpoint  = "/System/Volumes/Data"
 )
 
 type taskContext struct {
@@ -691,8 +700,24 @@ func (tc *taskContext) getAddMetadataTagResponse() *triggerAddMetadataTagResp {
 	return tc.addMetadataTagResp
 }
 
+// getPlatformMountpoint returns the standard mountpoint used for the current OS.
+func getPlatformMountpoint() string {
+	switch runtime.GOOS {
+	case "linux":
+		return linuxMountpoint
+	case "windows":
+		return windowsMountpoint
+	case "darwin":
+		return darwinMountpoint
+	default:
+		return ""
+	}
+}
+
+// getDeviceNames returns the names of the devices mounted at the platform-specific mountpoint.
 func (tc *taskContext) getDeviceNames(ctx context.Context) error {
-	if tc.taskConfig == nil || tc.taskConfig.Distro == nil || len(tc.taskConfig.Distro.Mountpoints) == 0 {
+	mountpoint := getPlatformMountpoint()
+	if mountpoint == "" {
 		return nil
 	}
 
@@ -701,7 +726,7 @@ func (tc *taskContext) getDeviceNames(ctx context.Context) error {
 		return errors.Wrap(err, "getting partitions")
 	}
 	for _, partition := range partitions {
-		if utility.StringSliceContains(tc.taskConfig.Distro.Mountpoints, partition.Mountpoint) {
+		if partition.Mountpoint == mountpoint {
 			tc.diskDevices = append(tc.diskDevices, filepath.Base(partition.Device))
 		}
 	}
