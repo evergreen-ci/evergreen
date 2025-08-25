@@ -72,7 +72,8 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-
+	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
+	// it is the most relevant.
 	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
 }
 
