@@ -405,7 +405,7 @@ evergreen get-update --auto
 
 Specify the optional `--auto` argument to enable automatic CLI upgrades before each command if your current binary is out of date. Once this is done, all future commands will auto update if necessary without the need for specifying this flag.
 
-#### Fetch
+### Fetch
 
 The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately. The default cloning depth for fetch is 1000.
 
@@ -417,7 +417,7 @@ evergreen fetch -t <task-id> --source --artifacts
 
 Specify the optional `--dir` argument to choose the destination path where the data is fetched to; if omitted, it defaults to the current working directory.
 
-#### List
+### List
 
 The command `evergreen list` can help you determine what projects, variants, and tasks are available for patching against.
 The commands
@@ -434,13 +434,118 @@ will all print lists to stdout.
 
 The list command can take an optional `-f/--file` argument for specifying a local project configuration file to use instead of querying the Evergreen server for `-p/--project`.
 
-#### Last Green
+### Last Revision
+
+The command `evergreen last-revision` can help you find the most recent suitable base commit to patch against based on
+task statuses. You can define your own custom search criteria when looking for a suitable recent commit.
+
+To use it, specify the project you wish to query, the set of build variants to verify, and [criteria](#criteria)
+defining what you need from a suitable commit.
+
+#### Criteria
+
+To begin searching for a suitable base commit, you must specify the build variants that you'd like to check to see if a
+commit is suitable to use. The build variants can be specified using a regular expression on build variant name, or
+build variant display name. The build variant flags can be specified multiple times to match different build variants,
+and last-revision will search all matching build variants.
+
+For example:
+```sh
+# Verify build variants by name (flag can also be shortened to --rv)
+evergreen last-revision -p mongodb-mongo-master --regex-variants "<build_variant_name>" 
+# Multiple build variants can be checked simultaneously
+evergreen last-revision -p mongodb-mongo-master --regex-variants "build-variant-1" --regex-variants "build-variant-2" 
+
+# Verify build variants by display name
+evergreen last-revision -p mongodb-mongo-master --regex-display-variants "<build_variant_display_name>"
+```
+
+Once you've chosen suitable build variants, you must decide what criteria to filter for within those build variants when
+deciding what's a suitable base commit (see below for available options).
+
+##### Successful Tasks
+
+`--successful-tasks` is an option to specify the names of tasks that must complete successfully in any matching build
+variant where they can run (build variants that don't run the task are ignored). This can be specified multiple times to
+require multiple successful task names.
+
+For example, to find a commit in the `mongodb-mongo-master` project where all build variants containing the `auth` and
+`noPassthrough` tasks have succeeded:
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*' --successful-tasks auth --successful-tasks noPassthrough
+```
+
+##### Successful Tasks Threshold
+
+`--min-success` is an option to specify a threshold proportion of tasks (between 0 and 1) that must be successful in all
+matching build variants.
+
+For example, to find a commit in the `mongodb-mongo-master` project where 15% of tasks have succeeded in all build
+variants ending with `-required`:
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-success 0.15
+```
+
+##### Finished Tasks Threshold
+
+`--min-finished` is an option to specify a threshold proportion of tasks (between 0 and 1) that must be finished (i.e.
+success or failure) in all matching build variants.
+
+For example, to find a commit in the `mongodb-mongo-master` project where 15% of tasks have finished in all build
+variants ending with `-required`:
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.15
+```
+
+##### Mixing Multiple Criteria
+
+Multiple criteria can be combined together. The last-revision command will search for a commit that satisfies _all_ the
+criteria.
+
+For example, to find a commit in the `mongodb-mongo-master` project where 95% of tasks have finished and the
+`noPassthrough` task has succeeded in all build variants that end with `-required`:
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.95 --successful-tasks noPassthrough
+```
+
+##### Ignoring Known Issues
+
+Some users may prefer to ignore known issues when searching for a good base commit. To treat known issues as if they
+were successful, you can set the `--known-failures-are-success` flag.
+
+#### Saving Criteria
+
+kim: TODO: fill in
+
+#### Reusing Criteria
+
+kim: TODO: fill in
+
+#### Configuring Lookback
+
+By default, the last-revision command will look through the most recent 50 commits and will give up early if the search
+process takes longer than 5 minutes. You can configure the number of commits to search using the `--lookback-limit` flag
+and change the timeout using the `--timeout` flag.
+
+#### Configuring Output Logs
+
+By default, last-revision will only show the final output revision found (if any) along with any module revisions (if
+the version uses modules). Specify `--json` to print the output in JSON format.
+
+You can use `evergreen --level=debug last-revision` if you'd like to see more verbose output from last-revision showing
+the result of each revision that the command searches through.
+
+
+### Last Green
+
+Note: this is deprecated in favor of [the last revision command](#last-revision), which is a generalization of last
+green.
 
 The command `evergreen last-green` can help you find an entirely successful commit to patch against.
 To use it, specify the project you wish to query along with the set of variants to verify as passing.
 
 ```bash
-evergreen last-green -p <project_id> -v <variant1> -v <variant2> -v <variant...>
+    evergreen last-green -p <project_id> -v <variant1> -v <variant2> -v <variant...>
 ```
 
 A run might look something like
