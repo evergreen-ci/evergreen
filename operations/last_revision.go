@@ -484,24 +484,26 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 
 	if info.successProportion() < c.minSuccessProportion {
 		grip.Debug(message.Fields{
-			"message":                "build does not meet minimum successful tasks proportion",
-			"version_id":             info.versionID,
-			"build_id":               info.buildID,
-			"build_variant":          info.buildVariant,
-			"min_success_proportion": c.minSuccessProportion,
-			"success_proportion":     info.successProportion(),
+			"message":                    "build does not meet minimum successful tasks proportion",
+			"version_id":                 info.versionID,
+			"build_id":                   info.buildID,
+			"build_variant":              info.buildVariant,
+			"build_variant_display_name": info.buildVariantDisplayName,
+			"min_success_proportion":     c.minSuccessProportion,
+			"success_proportion":         info.successProportion(),
 		})
 		return false
 	}
 
 	if info.finishedProportion() < c.minFinishedProportion {
 		grip.Debug(message.Fields{
-			"message":                 "build does not meet minimum finished tasks proportion",
-			"version_id":              info.versionID,
-			"build_id":                info.buildID,
-			"build_variant":           info.buildVariant,
-			"min_finished_proportion": c.minFinishedProportion,
-			"finished_proportion":     info.finishedProportion(),
+			"message":                    "build does not meet minimum finished tasks proportion",
+			"version_id":                 info.versionID,
+			"build_id":                   info.buildID,
+			"build_variant":              info.buildVariant,
+			"build_variant_display_name": info.buildVariantDisplayName,
+			"min_finished_proportion":    c.minFinishedProportion,
+			"finished_proportion":        info.finishedProportion(),
 		})
 		return false
 	}
@@ -519,12 +521,13 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 		}
 		if !isSuccessfulTask(tsk, c.knownIssuesAreSuccess) {
 			grip.Debug(message.Fields{
-				"message":                  "build has required task but it was not successful",
-				"version_id":               info.versionID,
-				"build_id":                 info.buildID,
-				"build_variant":            info.buildVariant,
-				"required_successful_task": taskName,
-				"task_status":              utility.FromStringPtr(tsk.Status),
+				"message":                    "build has required task but it was not successful",
+				"version_id":                 info.versionID,
+				"build_id":                   info.buildID,
+				"build_variant":              info.buildVariant,
+				"build_variant_display_name": info.buildVariantDisplayName,
+				"required_successful_task":   taskName,
+				"task_status":                utility.FromStringPtr(tsk.Status),
 			})
 			return false
 		}
@@ -618,15 +621,38 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 	}
 
 	grip.Debug(message.Fields{
-		"message":       "checking build for last revision criteria",
-		"build_id":      utility.FromStringPtr(b.Id),
-		"build_variant": utility.FromStringPtr(b.BuildVariant),
-		"version":       utility.FromStringPtr(b.Version),
+		"message":                    "checking build for last revision criteria",
+		"build_id":                   utility.FromStringPtr(b.Id),
+		"build_variant":              utility.FromStringPtr(b.BuildVariant),
+		"build_variant_display_name": utility.FromStringPtr(b.DisplayName),
+		"version_id":                 utility.FromStringPtr(b.Version),
 	})
 
-	tasks, err := c.GetTasksForBuild(ctx, utility.FromStringPtr(b.Id))
-	if err != nil {
-		return false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
+	// Getting all tasks in a build is a paginated route, so need to iterate
+	// through batches of tasks until all tasks are retrieved.
+	const buildTasksLimitPerRequest = 100
+	var startAt string
+	var tasks []model.APITask
+	for {
+		tasksBatch, err := c.GetTasksForBuild(ctx, utility.FromStringPtr(b.Id), startAt, buildTasksLimitPerRequest)
+		if err != nil {
+			return false, errors.Wrapf(err, "getting tasks for build '%s'", utility.FromStringPtr(b.Id))
+		}
+		numTasksInBatch := len(tasksBatch)
+		if startAt != "" {
+			// On all later batches after the first one, the first task returned
+			// includes the starting task (i.e. the last task from the previous
+			// batch), so skip that duplicate task.
+			tasksBatch = tasksBatch[1:]
+		}
+		if len(tasksBatch) == 0 {
+			break
+		}
+		tasks = append(tasks, tasksBatch...)
+		startAt = utility.FromStringPtr(tasksBatch[len(tasksBatch)-1].Id)
+		if numTasksInBatch < buildTasksLimitPerRequest {
+			break
+		}
 	}
 
 	for _, c := range criteria {
