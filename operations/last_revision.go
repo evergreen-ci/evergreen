@@ -138,7 +138,7 @@ func LastRevision() cli.Command {
 				if reuseCriteria && searchCriteriaSpecified {
 					return errors.New("cannot both reuse criteria and also specify other search criteria")
 				}
-				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName)) {
+				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName) || c.IsSet(projectFlagName)) {
 					// List criteria doesn't accept any other flags.
 					return errors.New("cannot both list criteria and also specify search criteria")
 				}
