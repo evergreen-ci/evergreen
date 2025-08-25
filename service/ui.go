@@ -381,7 +381,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Task History
 	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.taskHistoryPage).Get()
 	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryPage).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}/pickaxe").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryPickaxe).Get()
 
 	// History Drawer Endpoints
 	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()

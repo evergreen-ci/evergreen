@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -54,21 +53,6 @@ type versionDrawerItem struct {
 	Ignored    bool      `json:"ignored"`
 }
 
-type taskHistoryPageData struct {
-	TaskName    string
-	Tasks       []bson.M
-	Variants    []string
-	FailedTests map[string][]string
-	Versions    []model.Version
-
-	// Flags that indicate whether the beginning/end of history has been reached
-	ExhaustedBefore bool
-	ExhaustedAfter  bool
-
-	// The revision for which the surrounding history was requested
-	SelectedRevision string
-}
-
 // Represents a small amount of information about a task - used as part of the
 // task history to display a visual blurb.
 type taskBlurb struct {
@@ -81,104 +65,16 @@ type taskBlurb struct {
 
 // Serves the task history page itself.
 func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
-	flags, err := evergreen.GetServiceFlags(r.Context())
-	if err != nil {
-		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
-		return
-	}
-
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject(r.Context())
-	taskName := gimlet.GetVars(r)["task_name"]
 
 	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-
 	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
 	// it is the most relevant.
-	// TODO: Delete all content in this file with the exception of this redirect.
-	if flags.LegacyUITaskHistoryPageDisabled {
-		http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
-		return
-	}
-
-	var chunk model.TaskHistoryChunk
-	var v *model.Version
-	var before bool
-
-	if strBefore := r.FormValue("before"); strBefore != "" {
-		if before, err = strconv.ParseBool(strBefore); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-	repo, err := model.FindRepository(r.Context(), project.Identifier)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if repo == nil {
-		gimlet.WriteTextResponse(w, http.StatusNotFound, "no history found for project")
-		return
-	}
-	buildVariants, err := task.FindVariantsWithTask(r.Context(), taskName, project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if revision := r.FormValue("revision"); revision != "" {
-		v, err = model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants, project.Identifier)
-
-	if r.FormValue("format") == "" {
-		if v != nil {
-			chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, InitRevisionsBefore, InitRevisionsAfter, true)
-		} else {
-			// Load the most recent MaxNumRevisions if a particular
-			// version was unspecified
-			chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, MaxNumRevisions, NoRevisions, false)
-		}
-	} else if before {
-		chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, MaxNumRevisions, NoRevisions, false)
-	} else {
-		chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, NoRevisions, MaxNumRevisions, false)
-	}
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := taskHistoryPageData{
-		TaskName:         taskName,
-		Tasks:            chunk.Tasks,
-		Variants:         buildVariants,
-		FailedTests:      chunk.FailedTests,
-		Versions:         chunk.Versions,
-		ExhaustedBefore:  chunk.Exhausted.Before,
-		ExhaustedAfter:   chunk.Exhausted.After,
-		SelectedRevision: r.FormValue("revision"),
-	}
-
-	switch r.FormValue("format") {
-	case "json":
-		gimlet.WriteJSON(w, data)
-		return
-	default:
-		uis.render.WriteResponse(w, http.StatusOK, struct {
-			Data taskHistoryPageData
-			ViewData
-		}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
-			"task_history.html", "base_angular.html", "menu.html")
-	}
+	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
 }
 
 func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
@@ -241,54 +137,6 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
 		"build_variant_history.html", "base_angular.html", "menu.html")
-}
-
-func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
-	project, err := projCtx.GetProject(r.Context())
-	if err != nil || project == nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	taskName := gimlet.GetVars(r)["task_name"]
-
-	highOrder, err := strconv.ParseInt(r.FormValue("high"), 10, 64)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error parsing high: `%s`", err.Error()), http.StatusBadRequest)
-		return
-	}
-	lowOrder, err := strconv.ParseInt(r.FormValue("low"), 10, 64)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error parsing low: `%s`", err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	filter := struct {
-		BuildVariants []string `json:"buildVariants"`
-	}{}
-
-	err = json.Unmarshal([]byte(r.FormValue("filter")), &filter)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error in filter: %v", err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	params := model.PickaxeParams{
-		Project:       project,
-		TaskName:      taskName,
-		NewestOrder:   highOrder,
-		OldestOrder:   lowOrder,
-		BuildVariants: filter.BuildVariants,
-	}
-	tasks, err := model.TaskHistoryPickaxe(r.Context(), params)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error finding tasks: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	gimlet.WriteJSON(w, tasks)
 }
 
 // drawerParams contains the parameters from a request to populate a task or version history drawer.
