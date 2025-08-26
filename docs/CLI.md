@@ -450,6 +450,7 @@ build variant display name. The build variant flags can be specified multiple ti
 and last-revision will search all matching build variants.
 
 For example:
+
 ```sh
 # Verify build variants by name (flag can also be shortened to --rv)
 evergreen last-revision -p mongodb-mongo-master --regex-variants "<build_variant_name>" 
@@ -471,6 +472,7 @@ require multiple successful task names.
 
 For example, to find a commit in the `mongodb-mongo-master` project where all build variants containing the `auth` and
 `noPassthrough` tasks have succeeded:
+
 ```sh
 evergreen last-revision -p mongodb-mongo-master --rv '.*' --successful-tasks auth --successful-tasks noPassthrough
 ```
@@ -482,6 +484,7 @@ matching build variants.
 
 For example, to find a commit in the `mongodb-mongo-master` project where 15% of tasks have succeeded in all build
 variants ending with `-required`:
+
 ```sh
 evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-success 0.15
 ```
@@ -493,6 +496,7 @@ success or failure) in all matching build variants.
 
 For example, to find a commit in the `mongodb-mongo-master` project where 15% of tasks have finished in all build
 variants ending with `-required`:
+
 ```sh
 evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.15
 ```
@@ -504,6 +508,7 @@ criteria.
 
 For example, to find a commit in the `mongodb-mongo-master` project where 95% of tasks have finished and the
 `noPassthrough` task has succeeded in all build variants that end with `-required`:
+
 ```sh
 evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.95 --successful-tasks noPassthrough
 ```
@@ -515,11 +520,48 @@ were successful, you can set the `--known-failures-are-success` flag.
 
 #### Saving Criteria
 
-kim: TODO: fill in
+Instead of typing out the criteria on every single search, criteria can be grouped and saved under a given name and
+referenced in later searches.
 
-#### Reusing Criteria
+To save a set of criteria, specify the criteria you'd like to save and `--save <name>`. If `--save` is given, the
+last-revision command will be saved to your personal Evergreen YAML file and will not run the search.
 
-kim: TODO: fill in
+If `--save` is run on a name that's already saved, there are two possible outcomes:
+
+1. If the build variants match the previously specified build variants, the command will overwrite the previous criteria.
+2. If the build variants do not match any previous specified build variants, then the criteria will be added along with
+   the existing criteria. This allows you to specify different criteria for different build variants.
+
+For example, to save criteria in a group called `b-grade` that requires an 80% success rate on all build variants:
+
+```sh
+evergreen last-revision --rv '.*' --min-success 0.8 --save b-grade
+```
+
+To save criteria under a group called `required` with a 80% success rate on all build variants and the
+`compile_dist_test` task passing on all build variants containing `Windows`:
+
+```sh
+evergreen last-revision --rv '.*' --min-success 0.8 --save required
+evergreen last-revision --rv '.*windows.*' --successful-tasks compile_dist_test --save required
+```
+
+##### Reusing Criteria
+
+Once criteria has been [saved](#saving-criteria), you can use the `--reuse <name>` option to perform a search with it. The option takes the name of the saved criteria as an argument:
+
+To reuse the previously saved `required` criteria:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --reuse required
+```
+
+##### Listing Criteria
+To output the names and criteria for all saved criteria groups, you can use the `--list` option:
+
+```sh
+evergreen last-revision --list
+```
 
 #### Configuring Lookback
 
