@@ -429,6 +429,11 @@
               "distroMaxHostsFactor": 1,
               "targetTimeSecondsOverride": 0,
               "idleTimeSecondsOverride": 0
+            },
+            "cost": {
+              "financeFormula": 0.777,
+              "savingsPlanDiscount": 0.3,
+              "onDemandDiscount": 0.8
             }
           }
         }
