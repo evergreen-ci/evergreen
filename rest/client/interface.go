@@ -115,7 +115,7 @@ type Communicator interface {
 	// GetBuildsForVersion gets all builds for a version.
 	GetBuildsForVersion(ctx context.Context, versionID string) ([]restmodel.APIBuild, error)
 	// GetTasksForBuild gets all tasks in a build.
-	GetTasksForBuild(ctx context.Context, buildID string) ([]restmodel.APITask, error)
+	GetTasksForBuild(ctx context.Context, buildID string, startAt string, limit int) ([]restmodel.APITask, error)
 
 	// GetClientURLs returns the all URLs that can be used to request the
 	// Evergreen binary for a given distro.
