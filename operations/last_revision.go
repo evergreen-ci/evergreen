@@ -34,6 +34,7 @@ func LastRevision() cli.Command {
 		lookbackLimitFlagName             = "lookback-limit"
 		saveFlagName                      = "save"
 		reuseFlagName                     = "reuse"
+		listFlagName                      = "list"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -85,6 +86,10 @@ func LastRevision() cli.Command {
 				Name:  reuseFlagName,
 				Usage: "reuse a set of last revision criteria by group name",
 			},
+			cli.BoolFlag{
+				Name:  listFlagName,
+				Usage: "instead of searching for a revision, list all saved last revision criteria groups",
+			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -95,8 +100,13 @@ func LastRevision() cli.Command {
 				}
 				return autoUpdateCLI(c)
 			},
-			requireProjectFlag,
-			requireAtLeastOneFlag(reuseFlagName, regexpVariantsFlagName, regexpVariantsDisplayNameFlagName),
+			func(c *cli.Context) error {
+				if c.String(saveFlagName) != "" || c.Bool(listFlagName) {
+					return nil
+				}
+				return requireProjectFlag(c)
+			},
+			requireAtLeastOneFlag(reuseFlagName, listFlagName, regexpVariantsFlagName, regexpVariantsDisplayNameFlagName),
 			func(c *cli.Context) error {
 				if c.Float64(minSuccessProportionFlagName) < 0 || c.Float64(minSuccessProportionFlagName) > 1 {
 					return errors.New("minimum success proportion must be between 0 and 1 inclusive")
@@ -118,13 +128,19 @@ func LastRevision() cli.Command {
 				}
 				return nil
 			},
-			requireAtLeastOneFlag(reuseFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, successfulTasks),
-			mutuallyExclusiveArgs(false, reuseFlagName, saveFlagName),
+			requireAtLeastOneFlag(reuseFlagName, listFlagName, minSuccessProportionFlagName, minFinishedProportionFlagName, successfulTasks),
+			mutuallyExclusiveArgs(false, reuseFlagName, saveFlagName, listFlagName),
 			func(c *cli.Context) error {
 				reuseCriteria := c.String(reuseFlagName) != ""
-				if reuseCriteria && (len(c.StringSlice(regexpVariantsFlagName)) > 0 || len(c.StringSlice(regexpVariantsDisplayNameFlagName)) > 0 ||
-					c.Float64(minSuccessProportionFlagName) > 0 || c.Float64(minFinishedProportionFlagName) > 0 || len(c.StringSlice(successfulTasks)) > 0) {
-					return errors.New("cannot both reuse criteria and also specify other criteria")
+				listCriteria := c.Bool(listFlagName)
+				searchCriteriaSpecified := c.IsSet(regexpVariantsFlagName) || c.IsSet(regexpVariantsDisplayNameFlagName) ||
+					c.IsSet(minSuccessProportionFlagName) || c.IsSet(minFinishedProportionFlagName) || c.IsSet(successfulTasks)
+				if reuseCriteria && searchCriteriaSpecified {
+					return errors.New("cannot both reuse criteria and also specify other search criteria")
+				}
+				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName) || c.IsSet(projectFlagName)) {
+					// List criteria doesn't accept any other flags.
+					return errors.New("cannot both list criteria and also specify search criteria")
 				}
 				return nil
 			},
@@ -142,6 +158,7 @@ func LastRevision() cli.Command {
 			versionLookbackLimit := c.Int(lookbackLimitFlagName)
 			saveCriteriaName := c.String(saveFlagName)
 			reuseCriteriaName := c.String(reuseFlagName)
+			listCriteria := c.Bool(listFlagName)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -157,8 +174,14 @@ func LastRevision() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "saving last revision criteria")
 				}
-				if err := printCriteriaGroup(cg, jsonOutput); err != nil {
+				if err := printCriteriaGroups([]lastRevisionCriteriaGroup{*cg}, jsonOutput); err != nil {
 					return errors.Wrap(err, "printing last revision criteria group")
+				}
+				return nil
+			}
+			if listCriteria {
+				if err := printCriteriaGroups(conf.LastRevisionCriteriaGroups, jsonOutput); err != nil {
+					return errors.Wrap(err, "listing all last revision criteria groups")
 				}
 				return nil
 			}
@@ -292,9 +315,9 @@ func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, j
 	return nil
 }
 
-func printCriteriaGroup(cg *lastRevisionCriteriaGroup, jsonOutput bool) error {
+func printCriteriaGroups(groups []lastRevisionCriteriaGroup, jsonOutput bool) error {
 	if jsonOutput {
-		output, err := json.MarshalIndent(cg, "", "\t")
+		output, err := json.MarshalIndent(groups, "", "\t")
 		if err != nil {
 			return errors.Wrap(err, "marshalling criteria group to JSON")
 		}
@@ -304,32 +327,34 @@ func printCriteriaGroup(cg *lastRevisionCriteriaGroup, jsonOutput bool) error {
 
 	t := tabby.New()
 	t.AddHeader("Name", "Build Variant Regexps", "Build Variant Display Name Regexps", "Min Success Proportion", "Min Finished Proportion", "Required Successful Tasks")
-	for i, c := range cg.Criteria {
-		name := cg.Name
-		if i > 0 {
-			name = ""
+	for _, cg := range groups {
+		for i, c := range cg.Criteria {
+			name := cg.Name
+			if i > 0 {
+				name = ""
+			}
+			bvRegexps := ""
+			if len(c.BVRegexps) > 0 {
+				bvRegexps = fmt.Sprint(c.BVRegexps)
+			}
+			bvDisplayRegexps := ""
+			if len(c.BVDisplayRegexps) > 0 {
+				bvDisplayRegexps = fmt.Sprint(c.BVDisplayRegexps)
+			}
+			minSuccessProp := ""
+			if c.MinSuccessProportion > 0 {
+				minSuccessProp = fmt.Sprintf("%.2f", c.MinSuccessProportion)
+			}
+			minFinishedProp := ""
+			if c.MinFinishedProportion > 0 {
+				minFinishedProp = fmt.Sprintf("%.2f", c.MinFinishedProportion)
+			}
+			successfulTasks := ""
+			if len(c.SuccessfulTasks) > 0 {
+				successfulTasks = fmt.Sprint(c.SuccessfulTasks)
+			}
+			t.AddLine(name, bvRegexps, bvDisplayRegexps, minSuccessProp, minFinishedProp, successfulTasks)
 		}
-		bvRegexps := ""
-		if len(c.BVRegexps) > 0 {
-			bvRegexps = fmt.Sprint(c.BVRegexps)
-		}
-		bvDisplayRegexps := ""
-		if len(c.BVDisplayRegexps) > 0 {
-			bvDisplayRegexps = fmt.Sprint(c.BVDisplayRegexps)
-		}
-		minSuccessProp := ""
-		if c.MinSuccessProportion > 0 {
-			minSuccessProp = fmt.Sprintf("%.2f", c.MinSuccessProportion)
-		}
-		minFinishedProp := ""
-		if c.MinFinishedProportion > 0 {
-			minFinishedProp = fmt.Sprintf("%.2f", c.MinFinishedProportion)
-		}
-		successfulTasks := ""
-		if len(c.SuccessfulTasks) > 0 {
-			successfulTasks = fmt.Sprint(c.SuccessfulTasks)
-		}
-		t.AddLine(name, bvRegexps, bvDisplayRegexps, minSuccessProp, minFinishedProp, successfulTasks)
 	}
 	t.Print()
 	return nil
