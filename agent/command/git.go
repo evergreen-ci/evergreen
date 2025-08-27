@@ -127,7 +127,7 @@ func (opts cloneOpts) validate() error {
 }
 
 func (opts cloneOpts) cacheDir() string {
-	return fmt.Sprintf("/cache/%s/%s", opts.owner, opts.repo)
+	return fmt.Sprintf("/mci/evg-cache/%s/%s", opts.owner, opts.repo)
 }
 
 func (opts cloneOpts) httpLocation() string {
