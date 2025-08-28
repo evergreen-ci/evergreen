@@ -66,6 +66,8 @@ type APIPatch struct {
 	ChildPatchAliases    []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester            *string              `json:"requester"`
 	MergedFrom           *string              `json:"merged_from"`
+
+	LocalModuleIncludes []APILocalModuleInclude `bson:"local_module_includes,omitempty"`
 }
 
 type DownstreamTasks struct {
@@ -149,6 +151,11 @@ type APIPatchArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeChildPatches      bool
 	IncludeBranch            bool // TODO DEVPROD-16824: remove since this will be cached with the patch document.
+}
+
+type APILocalModuleInclude struct {
+	FileName string `json:"filename"`
+	Module   string `json:"module"`
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -243,6 +250,16 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 		tasks = append(tasks, utility.ToStringPtr(t))
 	}
 	apiPatch.Tasks = tasks
+
+	localModuleIncludes := []APILocalModuleInclude{}
+	for _, localModuleInclude := range p.LocalModuleIncludes {
+		localModuleIncludes = append(localModuleIncludes, APILocalModuleInclude{
+			FileName: localModuleInclude.FileName,
+			Module:   localModuleInclude.Module,
+		})
+	}
+	apiPatch.LocalModuleIncludes = localModuleIncludes
+
 	variantTasks := []VariantTask{}
 
 	// We remove the execution tasks from selected display tasks to avoid duplication.
@@ -426,6 +443,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	res.Status = utility.FromStringPtr(apiPatch.Status)
 	res.Alias = utility.FromStringPtr(apiPatch.Alias)
 	res.Activated = apiPatch.Activated
+	res.MergedFrom = utility.FromStringPtr(apiPatch.MergedFrom)
 	res.CreateTime, err = FromTimePtr(apiPatch.CreateTime)
 	catcher.Add(err)
 	res.StartTime, err = FromTimePtr(apiPatch.StartTime)
@@ -465,6 +483,15 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 		})
 	}
 	res.VariantsTasks = variantTasks
+
+	localModuleIncludes := []patch.LocalModuleInclude{}
+	for _, localModuleInclude := range apiPatch.LocalModuleIncludes {
+		localModuleIncludes = append(localModuleIncludes, patch.LocalModuleInclude{
+			FileName: localModuleInclude.FileName,
+			Module:   localModuleInclude.Module,
+		})
+	}
+	res.LocalModuleIncludes = localModuleIncludes
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))
