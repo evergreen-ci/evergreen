@@ -49,12 +49,13 @@ const (
 )
 
 var (
-	cloneOwnerAttribute   = fmt.Sprintf("%s.clone_owner", gitGetProjectAttribute)
-	cloneRepoAttribute    = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
-	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
-	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
-	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
-	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
+	cloneOwnerAttribute          = fmt.Sprintf("%s.clone_owner", gitGetProjectAttribute)
+	cloneRepoAttribute           = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
+	cloneBranchAttribute         = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
+	cloneModuleAttribute         = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
+	cloneMethodAttribute         = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
+	cloneAttemptAttribute        = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
+	cloneCacheOnlyFetchAttribute = fmt.Sprintf("%s.cache_only_fetch", gitGetProjectAttribute)
 
 	// validCloneMethods includes all recognized clone methods.
 	validCloneMethods = []string{
@@ -101,6 +102,7 @@ type cloneOpts struct {
 	recurseSubmodules bool
 	useVerbose        bool
 	cloneDepth        int
+	isCache           bool
 }
 
 // validateCloneMethod checks that the clone mechanism is one of the supported
@@ -122,6 +124,10 @@ func (opts cloneOpts) validate() error {
 
 	catcher.NewWhen(opts.cloneDepth < 0, "clone depth cannot be negative")
 	return catcher.Resolve()
+}
+
+func (opts cloneOpts) cacheDir() string {
+	return fmt.Sprintf("/mci/evg-cache/%s/%s", opts.owner, opts.repo)
 }
 
 func (opts cloneOpts) httpLocation() string {
@@ -202,7 +208,12 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	}
 
-	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
+	dir := opts.dir
+	if opts.isCache {
+		dir = opts.cacheDir()
+	}
+
+	clone := fmt.Sprintf("git clone %s '%s'", gitURL, dir)
 
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
@@ -215,6 +226,9 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
+	}
+	if !opts.isCache {
+		clone = fmt.Sprintf("%s --reference-if-able '%s'", clone, opts.cacheDir())
 	}
 
 	return []string{
@@ -431,6 +445,11 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
+func (c *gitFetchProject) cacheSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, jpm jasper.Manager, opts cloneOpts) error {
+	opts.isCache = true
+	return c.fetchSource(ctx, logger, conf, jpm, opts)
+}
+
 func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, jpm jasper.Manager, opts cloneOpts) error {
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
@@ -440,6 +459,15 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 			return err
 		}
 		fetchScript := strings.Join(gitCommands, "\n")
+
+		// If this fetch is creating the cache, but the cache exists already, fetch latest.
+		onlyFetching := false
+		if opts.isCache {
+			if _, err := os.Stat(opts.cacheDir()); err == nil {
+				fetchScript = "git fetch"
+				onlyFetching = true
+			}
+		}
 
 		// This needs to use a thread-safe buffer just in case the context errors
 		// (e.g. due to a timeout) while the command is running. A non-thread-safe
@@ -451,10 +479,19 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		fetchSourceCmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender())
 
-		logger.Execution().Info("Fetching source from git...")
+		if opts.isCache {
+			logger.Execution().Info("Fetching and caching source from git...")
+		} else {
+			logger.Execution().Info("Fetching source from git...")
+		}
 		logger.Execution().Debugf("Commands are: %s", fetchScript)
 
-		ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
+		spanName := "clone_source"
+		if opts.isCache {
+			spanName = "cache_source"
+		}
+
+		ctx, span := getTracer().Start(ctx, spanName, trace.WithAttributes(
 			attribute.String(cloneOwnerAttribute, opts.owner),
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
@@ -462,6 +499,10 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 			attribute.Int(cloneAttemptAttribute, attempt),
 		))
 		defer span.End()
+
+		if opts.isCache {
+			span.SetAttributes(attribute.Bool(cloneCacheOnlyFetchAttribute, onlyFetching))
+		}
 
 		return fetchSourceCmd.Run(ctx)
 	})
@@ -680,9 +721,14 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	defer cancel()
 	jpm := c.JasperManager()
 
+	// Cache the source for future clones.
+	if err := c.cacheSource(ctx, logger, conf, jpm, opts); err != nil {
+		return errors.Wrap(err, "problem caching git source")
+	}
+
 	// Clone the project.
 	if err := c.fetchSource(ctx, logger, conf, jpm, opts); err != nil {
-		return errors.Wrap(err, "problem running fetch command")
+		return errors.Wrap(err, "problem fetching git source")
 	}
 
 	// Retrieve the patch for the version if one exists.
