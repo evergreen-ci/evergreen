@@ -1,0 +1,81 @@
+{{ define "base" }}
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- mongostrap (Bootstrap + MongoDB Theme) -->
+    <link href="/static/css/mongostrap.min.css?hash={{ BuildRevision }}" rel="stylesheet" />
+
+    <!-- fontawesome icons -->
+    <link href="/static/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+
+    <!-- our css -->
+    <link href="/static/dist/css/styles.min.css?hash={{ BuildRevision }}" rel="stylesheet" />
+
+    <script src="/static/thirdparty/jquery.js"></script>
+    <script type="text/javascript" src="/static/thirdparty/ansi_up.js"></script>
+    <script type='text/javascript'>
+      var parseHash = function() {
+        var hash = window.location.hash.toString();
+        hash = (hash.length > 1 ? hash.substr(2) : hash);
+        return parseInt(hash, 10);
+      };
+
+      var scrollToLine = function(lineNumber) {
+        var lineHeight = parseFloat($('pre').css('lineHeight'));
+
+        $('html, body').animate(
+          {
+            scrollTop : $('#line-' + lineNumber).offset().top -
+                Math.floor($(window).height() / 2)
+          },
+          650);
+      };
+
+      var highlightLine = function(lineNumber) {
+        $('#line-' + lineNumber).addClass('selected-line');
+      };
+
+      var removeHighlightLine = function(lineNumber) {
+        $('#line-' + lineNumber).removeClass('selected-line');
+      };
+
+      var setLine = function(lineNumber) {
+        window.location.hash = '#L' + lineNumber;
+        highlightLine(lineNumber);
+      };
+
+      $(document).ready(function() {
+        var lineNumber = parseHash();
+
+        if (!isNaN(lineNumber) && lineNumber >= 0) {
+          setLine(lineNumber);
+          scrollToLine(lineNumber);
+        }
+
+        $('.line-link').click(function(ev) {
+          var elementId = $(ev.target).get(0).id;
+          var newLineNumber = parseInt(elementId.toString().substr('line-link-'.length), 10);
+          if (!isNaN(newLineNumber) && newLineNumber >= 0) {
+            removeHighlightLine(lineNumber);
+            lineNumber = newLineNumber;
+            setLine(lineNumber);
+          }
+        });
+
+        $('.log-line').each(function(i, el) {
+          $(el).html(ansi_up.ansi_to_html($(el).html()));
+          $(el).html(ansi_up.linkify($(el).html()));
+        });
+      });
+    </script>
+  </head>
+
+  <body style="padding:0;">
+    <pre>
+{{ range $index, $element := .Data }}<i class="fa fa-link line-link" id='line-link-{{ $index }}'></i> <span class='severity-{{ $element.Severity }} log-line' id='line-{{ $index }}'>{{if not $element.Timestamp.IsZero}}{{ DateFormat $element.Timestamp "[2006/01/02 15:04:05.000] " (GetTimezone $.User) }}{{end}}{{ $element.Message }}</span>
+{{ end }}
+    </pre>
+
+  </body>
+</html>
+{{ end }}
