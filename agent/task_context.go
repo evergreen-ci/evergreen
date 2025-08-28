@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 	"time"
 
@@ -714,19 +715,27 @@ func getPlatformMountpoint() string {
 	}
 }
 
-// getDeviceNames returns the names of the devices mounted at the platform-specific mountpoint.
-func (tc *taskContext) getDeviceNames(ctx context.Context) error {
-	mountpoint := getPlatformMountpoint()
-	if mountpoint == "" {
-		return nil
+// getMountpoints returns the list of mountpoints to check for disk devices.
+// Always includes "/" as the first mountpoint, followed by platform-specific mountpoint if available.
+func (tc *taskContext) getMountpoints() []string {
+	mountpoints := []string{"/"}
+	if platformMountpoint := getPlatformMountpoint(); platformMountpoint != "" {
+		mountpoints = append(mountpoints, platformMountpoint)
 	}
+	return mountpoints
+}
+
+// getDeviceNames returns the names of the devices mounted.
+func (tc *taskContext) getDeviceNames(ctx context.Context) error {
+	mountpoints := tc.getMountpoints()
 
 	partitions, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "getting partitions")
 	}
+
 	for _, partition := range partitions {
-		if partition.Mountpoint == mountpoint {
+		if slices.Contains(mountpoints, partition.Mountpoint) {
 			tc.diskDevices = append(tc.diskDevices, filepath.Base(partition.Device))
 		}
 	}
