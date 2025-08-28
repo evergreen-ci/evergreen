@@ -561,6 +561,7 @@ evergreen last-revision -p mongodb-mongo-master --reuse required
 ```
 
 ##### Listing Criteria
+
 To print out the names and criteria for all saved criteria groups, you can use the `--list` option:
 
 ```sh
