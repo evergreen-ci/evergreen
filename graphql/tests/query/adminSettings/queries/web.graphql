@@ -23,6 +23,7 @@ query Web {
       stagingEnvironment
       betaFeatures {
         spruceWaterfallEnabled
+        parsleyAIEnabled
       }
     }
     disabledGQLQueries

@@ -242,7 +242,8 @@
               "cacheTemplates": false,
               "stagingEnvironment": "",
               "betaFeatures": {
-                "spruceWaterfallEnabled": true
+                "spruceWaterfallEnabled": true,
+                "parsleyAIEnabled": true
               }
             },
             "disabledGQLQueries": []

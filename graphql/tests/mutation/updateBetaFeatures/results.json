@@ -6,7 +6,8 @@
         "data": {
           "updateBetaFeatures": {
             "betaFeatures": {
-              "spruceWaterfallEnabled": true
+              "spruceWaterfallEnabled": true,
+              "parsleyAIEnabled": true
             }
           }
         }
