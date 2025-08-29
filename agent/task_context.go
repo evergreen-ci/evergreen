@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"sync"
 	"time"
 
@@ -22,6 +24,14 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	// Platform-specific mountpoints used for disk device detection.
+	// Sync with devprod infrastructure before changing these values.
+	linuxMountpoint   = "/data"
+	windowsMountpoint = "Z:"
+	darwinMountpoint  = "/System/Volumes/Data"
 )
 
 type taskContext struct {
@@ -691,17 +701,41 @@ func (tc *taskContext) getAddMetadataTagResponse() *triggerAddMetadataTagResp {
 	return tc.addMetadataTagResp
 }
 
-func (tc *taskContext) getDeviceNames(ctx context.Context) error {
-	if tc.taskConfig == nil || tc.taskConfig.Distro == nil || len(tc.taskConfig.Distro.Mountpoints) == 0 {
-		return nil
+// getPlatformMountpoint returns the standard mountpoint used for the current OS.
+func getPlatformMountpoint() string {
+	switch runtime.GOOS {
+	case "linux":
+		return linuxMountpoint
+	case "windows":
+		return windowsMountpoint
+	case "darwin":
+		return darwinMountpoint
+	default:
+		return ""
 	}
+}
+
+// getMountpoints returns the list of mountpoints to check for disk devices.
+// Always includes "/" as the first mountpoint, followed by platform-specific mountpoint if available.
+func (tc *taskContext) getMountpoints() []string {
+	mountpoints := []string{"/"}
+	if platformMountpoint := getPlatformMountpoint(); platformMountpoint != "" {
+		mountpoints = append(mountpoints, platformMountpoint)
+	}
+	return mountpoints
+}
+
+// getDeviceNames returns the names of the devices mounted.
+func (tc *taskContext) getDeviceNames(ctx context.Context) error {
+	mountpoints := tc.getMountpoints()
 
 	partitions, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "getting partitions")
 	}
+
 	for _, partition := range partitions {
-		if utility.StringSliceContains(tc.taskConfig.Distro.Mountpoints, partition.Mountpoint) {
+		if slices.Contains(mountpoints, partition.Mountpoint) {
 			tc.diskDevices = append(tc.diskDevices, filepath.Base(partition.Device))
 		}
 	}
