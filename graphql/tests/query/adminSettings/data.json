@@ -531,6 +531,12 @@
     {
       "_id": "parameter_store",
       "prefix": "store"
+    },
+    {
+      "_id": "cost",
+      "finance_formula": 0.777,
+      "savings_plan_discount": 0.3,
+      "on_demand_discount": 0.8
     }
   ]
 }
