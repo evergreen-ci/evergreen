@@ -653,6 +653,7 @@ func (a *APIAuthConfig) ToService() (any, error) {
 type APIBucketsConfig struct {
 	LogBucket              APIBucketConfig  `json:"log_bucket"`
 	LogBucketLongRetention APIBucketConfig  `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks   APIBucketConfig  `json:"log_bucket_failed_tasks"`
 	LongRetentionProjects  []string         `json:"long_retention_projects"`
 	TestResultsBucket      APIBucketConfig  `json:"test_results_bucket"`
 	InternalBuckets        []string         `json:"internal_buckets"`
@@ -689,6 +690,11 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
 		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
 		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
+
+		a.LogBucketFailedTasks.Name = utility.ToStringPtr(v.LogBucketFailedTasks.Name)
+		a.LogBucketFailedTasks.Type = utility.ToStringPtr(string(v.LogBucketFailedTasks.Type))
+		a.LogBucketFailedTasks.DBName = utility.ToStringPtr(v.LogBucketFailedTasks.DBName)
+		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 
@@ -730,6 +736,12 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketLongRetention.Type)),
 			DBName:  utility.FromStringPtr(a.LogBucketLongRetention.DBName),
 			RoleARN: utility.FromStringPtr(a.LogBucketLongRetention.RoleARN),
+		},
+		LogBucketFailedTasks: evergreen.BucketConfig{
+			Name:    utility.FromStringPtr(a.LogBucketFailedTasks.Name),
+			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketFailedTasks.Type)),
+			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
+			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
 		LongRetentionProjects: a.LongRetentionProjects,
 		TestResultsBucket: evergreen.BucketConfig{
