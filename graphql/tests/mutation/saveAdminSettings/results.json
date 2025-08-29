@@ -163,7 +163,8 @@
               "cacheTemplates": true,
               "stagingEnvironment": "not-staging",
               "betaFeatures": {
-                "spruceWaterfallEnabled": false
+                "spruceWaterfallEnabled": false,
+                "parsleyAIEnabled": false
               }
             },
             "disabledGQLQueries": ["query1", "query2", "query3", "query4"]
