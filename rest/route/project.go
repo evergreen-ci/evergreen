@@ -831,8 +831,8 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
 //	@Param			include_tasks		query	bool	false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
 //	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
-//	@Param			created_after		query	string	false	"Timestamp to start looking for applicable versions on create_time."
-//	@Param			created_before		query	string	false	"Timestamp to stop looking for applicable versions on create_time.""
+//	@Param			created_after		query	string	false	"Timestamp to look for applicable versions after or equal to create_time."
+//	@Param			created_before		query	string	false	"Timestamp to look for applicable versions before or equal to create_time.""
 //	@Success		200					{array}	model.APIVersion
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectVersionsHandler{}
