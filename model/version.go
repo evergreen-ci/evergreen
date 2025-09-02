@@ -587,15 +587,17 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 
 // GetVersionsOptions is a struct that holds the options for retrieving a list of versions
 type GetVersionsOptions struct {
-	Start          int    `json:"start"`
-	RevisionEnd    int    `json:"revision_end"`
-	Requester      string `json:"requester"`
-	Limit          int    `json:"limit"`
-	Skip           int    `json:"skip"`
-	IncludeBuilds  bool   `json:"include_builds"`
-	IncludeTasks   bool   `json:"include_tasks"`
-	ByBuildVariant string `json:"by_build_variant"`
-	ByTask         string `json:"by_task"`
+	Start          int       `json:"start"`
+	RevisionEnd    int       `json:"revision_end"`
+	Requester      string    `json:"requester"`
+	Limit          int       `json:"limit"`
+	Skip           int       `json:"skip"`
+	IncludeBuilds  bool      `json:"include_builds"`
+	IncludeTasks   bool      `json:"include_tasks"`
+	ByBuildVariant string    `json:"by_build_variant"`
+	ByTask         string    `json:"by_task"`
+	CreatedAfter   time.Time `json:"created_after"`
+	CreatedBefore  time.Time `json:"created_before"`
 }
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
@@ -626,6 +628,14 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 	if opts.RevisionEnd > 0 {
 		revisionFilter["$gte"] = opts.RevisionEnd
 		match[VersionRevisionOrderNumberKey] = revisionFilter
+	}
+
+	if !opts.CreatedAfter.IsZero() && !opts.CreatedBefore.IsZero() {
+		match[VersionCreateTimeKey] = bson.M{"$gte": opts.CreatedAfter, "$lte": opts.CreatedBefore}
+	} else if !opts.CreatedAfter.IsZero() {
+		match[VersionCreateTimeKey] = bson.M{"$gte": opts.CreatedAfter}
+	} else if !opts.CreatedBefore.IsZero() {
+		match[VersionCreateTimeKey] = bson.M{"$lte": opts.CreatedBefore}
 	}
 
 	pipeline := []bson.M{{"$match": match}}
