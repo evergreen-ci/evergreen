@@ -24,13 +24,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TeamData'
+                $ref: "#/components/schemas/TeamData"
           description: Successful Response
         "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Get Team By Tag
       tags:
@@ -61,13 +61,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TeamData'
+                $ref: "#/components/schemas/TeamData"
           description: Successful Response
         "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Get Team By Name And Project
       tags:
@@ -91,7 +91,7 @@ paths:
             application/json:
               schema:
                 additionalProperties:
-                  $ref: '#/components/schemas/TeamData'
+                  $ref: "#/components/schemas/TeamData"
                 title: Response Get Team Projects By Name Api Mothra Team Projects
                   By Name  Name  Get
           description: Successful Response
@@ -99,7 +99,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Get Team Projects By Name
       tags:
@@ -114,10 +114,43 @@ paths:
             application/json:
               schema:
                 items:
-                  $ref: '#/components/schemas/TeamData'
+                  $ref: "#/components/schemas/TeamData"
                 type: array
           description: Successful Response
       summary: Get All Teams
+      tags:
+      - mothra
+  /api/mothra/team_by_github_team/{github_team}:
+    get:
+      description: |-
+        Get the owning team data by GitHub team name.
+
+        :param github_team: The GitHub team name.
+        :return: The owning team data.
+      operationId: get_team_by_github_team_api_mothra_team_by_github_team__github_team__get
+      parameters:
+      - explode: false
+        in: path
+        name: github_team
+        required: true
+        schema:
+          title: Github Team
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamData"
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Get Team By Github Team
       tags:
       - mothra
   /api/owner/by_foliage_logic/{task_id}:
@@ -160,13 +193,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FinalAssignmentResults'
+                $ref: "#/components/schemas/FinalAssignmentResults"
           description: Successful Response
         "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: By Foliage Logic
       tags:
@@ -202,13 +235,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TeamDataWithOwner'
+                $ref: "#/components/schemas/TeamDataWithOwner"
           description: Successful Response
         "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: By Jira Key
       tags:
@@ -236,14 +269,14 @@ paths:
             application/json:
               schema:
                 additionalProperties:
-                  $ref: '#/components/schemas/get_regex_mapping_api_owner_regex_by_project__project_id__get_200_response_value'
+                  $ref: "#/components/schemas/get_regex_mapping_api_owner_regex_by_project__project_id__get_200_response_value"
                 nullable: true
           description: Successful Response
         "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
       summary: Get Regex Mapping
       tags:
@@ -261,6 +294,9 @@ components:
             slack_group_id: slack_group_id
             jira_project: jira_project
             evergreen_tag_name: evergreen_tag_name
+            code_owners:
+            - code_owners
+            - code_owners
             triaged_team_names:
             - triaged_team_names
             - triaged_team_names
@@ -269,12 +305,12 @@ components:
         messages: messages
       properties:
         assignment_type:
-          $ref: '#/components/schemas/AssignmentTypeEnum'
+          $ref: "#/components/schemas/AssignmentTypeEnum"
         messages:
           title: Messages
           type: string
         team_data_with_owner:
-          $ref: '#/components/schemas/TeamDataWithOwner'
+          $ref: "#/components/schemas/TeamDataWithOwner"
       required:
       - assignment_type
       - messages
@@ -304,6 +340,9 @@ components:
               slack_group_id: slack_group_id
               jira_project: jira_project
               evergreen_tag_name: evergreen_tag_name
+              code_owners:
+              - code_owners
+              - code_owners
               triaged_team_names:
               - triaged_team_names
               - triaged_team_names
@@ -318,6 +357,9 @@ components:
               slack_group_id: slack_group_id
               jira_project: jira_project
               evergreen_tag_name: evergreen_tag_name
+              code_owners:
+              - code_owners
+              - code_owners
               triaged_team_names:
               - triaged_team_names
               - triaged_team_names
@@ -333,6 +375,9 @@ components:
               slack_group_id: slack_group_id
               jira_project: jira_project
               evergreen_tag_name: evergreen_tag_name
+              code_owners:
+              - code_owners
+              - code_owners
               triaged_team_names:
               - triaged_team_names
               - triaged_team_names
@@ -343,13 +388,13 @@ components:
       properties:
         all_assignment_results:
           items:
-            $ref: '#/components/schemas/AssignmentResult'
+            $ref: "#/components/schemas/AssignmentResult"
           type: array
         all_messages:
           title: All Messages
           type: string
         selected_assignment:
-          $ref: '#/components/schemas/AssignmentResult'
+          $ref: "#/components/schemas/AssignmentResult"
       required:
       - all_assignment_results
       - all_messages
@@ -371,7 +416,7 @@ components:
       properties:
         detail:
           items:
-            $ref: '#/components/schemas/ValidationError'
+            $ref: "#/components/schemas/ValidationError"
           type: array
       title: HTTPValidationError
     TeamData:
@@ -382,6 +427,9 @@ components:
         slack_group_id: slack_group_id
         jira_project: jira_project
         evergreen_tag_name: evergreen_tag_name
+        code_owners:
+        - code_owners
+        - code_owners
         triaged_team_names:
         - triaged_team_names
         - triaged_team_names
@@ -409,6 +457,11 @@ components:
           items:
             type: string
           type: array
+        code_owners:
+          items:
+            type: string
+          nullable: true
+          type: array
       required:
       - evergreen_tag_name
       - jira_project
@@ -424,6 +477,9 @@ components:
           slack_group_id: slack_group_id
           jira_project: jira_project
           evergreen_tag_name: evergreen_tag_name
+          code_owners:
+          - code_owners
+          - code_owners
           triaged_team_names:
           - triaged_team_names
           - triaged_team_names
@@ -431,7 +487,7 @@ components:
         owning_user: owning_user
       properties:
         team_data:
-          $ref: '#/components/schemas/TeamData'
+          $ref: "#/components/schemas/TeamData"
         owning_user:
           nullable: true
           type: string
@@ -448,7 +504,7 @@ components:
       properties:
         loc:
           items:
-            $ref: '#/components/schemas/ValidationError_loc_inner'
+            $ref: "#/components/schemas/ValidationError_loc_inner"
           type: array
         msg:
           title: Message
@@ -463,7 +519,7 @@ components:
       title: ValidationError
     get_regex_mapping_api_owner_regex_by_project__project_id__get_200_response_value:
       anyOf:
-      - $ref: '#/components/schemas/TeamData'
+      - $ref: "#/components/schemas/TeamData"
       nullable: true
     ValidationError_loc_inner:
       anyOf:

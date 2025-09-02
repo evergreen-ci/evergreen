@@ -11,8 +11,8 @@ API version: 1.0.0
 package fws
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,8 +21,8 @@ var _ MappedNullable = &AssignmentResult{}
 
 // AssignmentResult Result for assignment.
 type AssignmentResult struct {
-	AssignmentType    AssignmentTypeEnum        `json:"assignment_type"`
-	Messages          string                    `json:"messages"`
+	AssignmentType AssignmentTypeEnum `json:"assignment_type"`
+	Messages string `json:"messages"`
 	TeamDataWithOwner NullableTeamDataWithOwner `json:"team_data_with_owner,omitempty"`
 }
 
@@ -127,7 +127,6 @@ func (o *AssignmentResult) HasTeamDataWithOwner() bool {
 func (o *AssignmentResult) SetTeamDataWithOwner(v TeamDataWithOwner) {
 	o.TeamDataWithOwner.Set(&v)
 }
-
 // SetTeamDataWithOwnerNil sets the value for TeamDataWithOwner to be an explicit nil
 func (o *AssignmentResult) SetTeamDataWithOwnerNil() {
 	o.TeamDataWithOwner.Set(nil)
@@ -139,7 +138,7 @@ func (o *AssignmentResult) UnsetTeamDataWithOwner() {
 }
 
 func (o AssignmentResult) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -170,10 +169,10 @@ func (o *AssignmentResult) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -229,3 +228,5 @@ func (v *NullableAssignmentResult) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+
