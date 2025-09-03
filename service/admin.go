@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -33,6 +34,11 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
 		return
 	}
+	spruceLink := fmt.Sprintf("%s/admin-settings/general", uis.Settings.Ui.UIv2Url)
+	if flags.LegacyUIAdminPageDisabled {
+		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+		return
+	}
 	projectRef, err := model.FindAllProjectRefs(ctx)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "unable to retrieve project refs"))
@@ -54,11 +60,6 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 			"id":          ref.Id,
 			"displayName": ref.Repo,
 		})
-	}
-	spruceLink := fmt.Sprintf("%s/admin-settings/general", uis.Settings.Ui.UIv2Url)
-	if flags.LegacyUIAdminPageDisabled {
-		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
-		return
 	}
 	data := struct {
 		ViewData
