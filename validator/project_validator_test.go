@@ -3998,6 +3998,216 @@ tasks:
 			}
 			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
+		Convey("an error should be thrown if a referenced setup_group plugin command is invalid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						SetupGroup: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params:   map[string]any{},
+								},
+							},
+						},
+					},
+				},
+			}
+			errs := validatePluginCommands(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("no error should be thrown if a referenced setup_group plugin command is valid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						SetupGroup: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params: map[string]any{
+										"files": []any{"test"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
+		})
+		Convey("an error should be thrown if a referenced setup_task plugin command is invalid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						SetupTask: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params:   map[string]any{},
+								},
+							},
+						},
+					},
+				},
+			}
+			errs := validatePluginCommands(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("no error should be thrown if a referenced setup_task plugin command is valid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						SetupTask: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params: map[string]any{
+										"files": []any{"test"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
+		})
+		Convey("an error should be thrown if a referenced teardown_task plugin command is invalid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						TeardownTask: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params:   map[string]any{},
+								},
+							},
+						},
+					},
+				},
+			}
+			errs := validatePluginCommands(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("no error should be thrown if a referenced teardown_task plugin command is valid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						TeardownTask: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params: map[string]any{
+										"files": []any{"test"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
+		})
+		Convey("an error should be thrown if a referenced teardown_group plugin command is invalid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						TeardownGroup: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params:   map[string]any{},
+								},
+							},
+						},
+					},
+				},
+			}
+			errs := validatePluginCommands(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("no error should be thrown if a referenced teardown_group plugin command is valid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						TeardownGroup: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params: map[string]any{
+										"files": []any{"test"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
+		})
+		Convey("an error should be thrown if a referenced task group timeout plugin command is invalid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						Timeout: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params:   map[string]any{},
+								},
+							},
+						},
+					},
+				},
+			}
+			errs := validatePluginCommands(project)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("no error should be thrown if a referenced task group timeout plugin command is valid", func() {
+			project := &model.Project{
+				TaskGroups: []model.TaskGroup{
+					{
+						Name: "my_task_group",
+						Timeout: &model.YAMLCommandSet{
+							MultiCommand: []model.PluginCommandConf{
+								{
+									Function: "",
+									Command:  "gotest.parse_files",
+									Params: map[string]any{
+										"files": []any{"test"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
+		})
 		Convey("an error should be thrown if a referenced plugin contains invalid parameters", func() {
 			params := map[string]any{
 				"aws_key":    "key",
