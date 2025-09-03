@@ -2663,7 +2663,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
-		LegacyUIAdminPageDisabled:      as.LegacyUIAdminPageDisabled,
+		LegacyUIAdminPageDisabled:       as.LegacyUIAdminPageDisabled,
 	}, nil
 }
 
