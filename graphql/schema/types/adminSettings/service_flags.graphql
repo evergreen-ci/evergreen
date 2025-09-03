@@ -34,6 +34,7 @@ input ServiceFlagsInput {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
+  legacyUIAdminPageDisabled: Boolean
 }
 
 type ServiceFlags {
@@ -72,4 +73,5 @@ type ServiceFlags {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
+  legacyUIAdminPageDisabled: Boolean
 }

@@ -2187,6 +2187,7 @@ type APIServiceFlags struct {
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
+	LegacyUIAdminPageDisabled       bool `json:"legacy_ui_admin_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2617,6 +2618,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
+		as.LegacyUIAdminPageDisabled = v.LegacyUIAdminPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2661,6 +2663,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
+		LegacyUIAdminPageDisabled:      as.LegacyUIAdminPageDisabled,
 	}, nil
 }
 
