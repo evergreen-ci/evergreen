@@ -11,8 +11,8 @@ API version: 1.0.0
 package fws
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -22,8 +22,8 @@ var _ MappedNullable = &FinalAssignmentResults{}
 // FinalAssignmentResults Results for multiple assignments.
 type FinalAssignmentResults struct {
 	AllAssignmentResults []AssignmentResult `json:"all_assignment_results"`
-	AllMessages          string             `json:"all_messages"`
-	SelectedAssignment   AssignmentResult   `json:"selected_assignment"`
+	AllMessages string `json:"all_messages"`
+	SelectedAssignment AssignmentResult `json:"selected_assignment"`
 }
 
 type _FinalAssignmentResults FinalAssignmentResults
@@ -121,7 +121,7 @@ func (o *FinalAssignmentResults) SetSelectedAssignment(v AssignmentResult) {
 }
 
 func (o FinalAssignmentResults) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -151,10 +151,10 @@ func (o *FinalAssignmentResults) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -210,3 +210,5 @@ func (v *NullableFinalAssignmentResults) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+
