@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -27,6 +28,16 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 		if DBUser.HasPermission(permissions) {
 			template = "admin.html"
 		}
+	}
+	flags, err := evergreen.GetServiceFlags(r.Context())
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
+		return
+	}
+	spruceLink := fmt.Sprintf("%s/admin-settings/general", uis.Settings.Ui.UIv2Url)
+	if flags.LegacyUIAdminPageDisabled {
+		http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+		return
 	}
 	projectRef, err := model.FindAllProjectRefs(ctx)
 	if err != nil {
