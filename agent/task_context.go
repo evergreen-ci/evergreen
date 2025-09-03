@@ -725,6 +725,21 @@ func (tc *taskContext) getMountpoints() []string {
 	return mountpoints
 }
 
+// getDeviceName extracts and sanitizes a device name from a device path.
+func getDeviceName(device string) string {
+	deviceName := filepath.Base(device)
+	if deviceName == "" || deviceName == "/" || deviceName == "." {
+		// check if partition device is a windows drive
+		if runtime.GOOS == "windows" && len(device) == 2 && device[1] == ':' && device[0] >= 'A' && device[0] <= 'Z' {
+			deviceName = device
+		} else {
+			return ""
+		}
+	}
+	sanitizedDeviceName := instrumentNameDisallowedCharacters.ReplaceAllString(deviceName, "")
+	return sanitizedDeviceName
+}
+
 // getDeviceNames returns the names of the devices mounted.
 func (tc *taskContext) getDeviceNames(ctx context.Context) error {
 	mountpoints := tc.getMountpoints()
@@ -736,7 +751,10 @@ func (tc *taskContext) getDeviceNames(ctx context.Context) error {
 
 	for _, partition := range partitions {
 		if slices.Contains(mountpoints, partition.Mountpoint) {
-			tc.diskDevices = append(tc.diskDevices, filepath.Base(partition.Device))
+			deviceName := getDeviceName(partition.Device)
+			if deviceName != "" {
+				tc.diskDevices = append(tc.diskDevices, deviceName)
+			}
 		}
 	}
 	return nil
