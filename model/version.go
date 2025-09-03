@@ -630,11 +630,11 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 		match[VersionRevisionOrderNumberKey] = revisionFilter
 	}
 
-	if !opts.CreatedAfter.IsZero() && !opts.CreatedBefore.IsZero() {
+	if !utility.IsZeroTime(opts.CreatedAfter) && !utility.IsZeroTime(opts.CreatedBefore) {
 		match[VersionCreateTimeKey] = bson.M{"$gte": opts.CreatedAfter, "$lte": opts.CreatedBefore}
-	} else if !opts.CreatedAfter.IsZero() {
+	} else if !utility.IsZeroTime(opts.CreatedAfter) {
 		match[VersionCreateTimeKey] = bson.M{"$gte": opts.CreatedAfter}
-	} else if !opts.CreatedBefore.IsZero() {
+	} else if !utility.IsZeroTime(opts.CreatedBefore) {
 		match[VersionCreateTimeKey] = bson.M{"$lte": opts.CreatedBefore}
 	}
 
