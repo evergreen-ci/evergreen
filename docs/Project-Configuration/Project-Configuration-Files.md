@@ -872,6 +872,8 @@ Every task has some expansions available by default:
 - `${github_repo}` is the GitHub repo for the project
 - `${github_pr_number}` is the Github PR number associated with PR
   patches and PR triggered merge queue items
+- `${github_pr_head_branch}` is the Github PR head branch name
+- `${github_pr_base_branch}` is the Github PR base branch name
 - `${is_commit_queue}` is the string "true" if this is a merge
   queue task
 - `${is_patch}` is "true" if the running task is in a patch build and
