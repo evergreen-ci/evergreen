@@ -1130,6 +1130,8 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 		expansions.Put("alias", p.Alias)
 
 		if v.Requester == evergreen.GithubPRRequester {
+			expansions.Put("github_pr_head_branch", p.GithubPatchData.HeadBranch)
+			expansions.Put("github_pr_base_branch", p.GithubPatchData.BaseBranch)
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
 			expansions.Put("github_author", p.GithubPatchData.Author)
 			expansions.Put("github_commit", p.GithubPatchData.HeadHash)
