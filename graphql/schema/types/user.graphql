@@ -21,7 +21,8 @@ input UpdateBetaFeaturesInput {
 }
 
 input BetaFeaturesInput {
-  spruceWaterfallEnabled: Boolean!
+  spruceWaterfallEnabled: Boolean
+  parsleyAIEnabled: Boolean
 }
 
 """
@@ -148,7 +149,8 @@ type ParsleySettings {
 }
 
 type BetaFeatures {
-  spruceWaterfallEnabled: Boolean!
+  spruceWaterfallEnabled: Boolean
+  parsleyAIEnabled: Boolean
 }
 
 """

@@ -268,7 +268,8 @@
       "uiv2_url": "http://localhost:3000",
       "parsley_url": "http://localhost:4173",
       "beta_features": {
-        "spruce_waterfall_enabled": true
+        "spruce_waterfall_enabled": true,
+        "parsley_ai_enabled": true
       },
       "cache_templates": false,
       "csrf_key": "",

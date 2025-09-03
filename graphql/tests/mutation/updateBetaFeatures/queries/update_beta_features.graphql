@@ -1,7 +1,12 @@
 mutation {
-  updateBetaFeatures(opts: { betaFeatures: { spruceWaterfallEnabled: true } }) {
+  updateBetaFeatures(
+    opts: {
+      betaFeatures: { spruceWaterfallEnabled: true, parsleyAIEnabled: true }
+    }
+  ) {
     betaFeatures {
       spruceWaterfallEnabled
+      parsleyAIEnabled
     }
   }
 }

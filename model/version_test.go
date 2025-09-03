@@ -417,6 +417,11 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.Equal(t, "another_version", versions[0].Id)
+
+	opts = GetVersionsOptions{CreatedAfter: start.Add(-3 * time.Minute), CreatedBefore: start.Add(-1 * time.Minute), Requester: evergreen.RepotrackerVersionRequester}
+	versions, err = GetVersionsWithOptions(t.Context(), "my_project", opts)
+	assert.NoError(t, err)
+	require.Len(t, versions, 3)
 }
 
 func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
