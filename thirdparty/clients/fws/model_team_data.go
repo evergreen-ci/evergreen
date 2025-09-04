@@ -11,8 +11,8 @@ API version: 1.0.0
 package fws
 
 import (
-	"bytes"
 	"encoding/json"
+	"bytes"
 	"fmt"
 )
 
@@ -21,13 +21,14 @@ var _ MappedNullable = &TeamData{}
 
 // TeamData This dataclass holds the team data for a specific team.
 type TeamData struct {
-	TeamName         string         `json:"team_name"`
-	JiraProject      string         `json:"jira_project"`
-	SlackChannelId   NullableString `json:"slack_channel_id"`
-	EvergreenTagName string         `json:"evergreen_tag_name"`
-	TriageTeamName   NullableString `json:"triage_team_name,omitempty"`
-	SlackGroupId     NullableString `json:"slack_group_id,omitempty"`
-	TriagedTeamNames []string       `json:"triaged_team_names,omitempty"`
+	TeamName string `json:"team_name"`
+	JiraProject string `json:"jira_project"`
+	SlackChannelId NullableString `json:"slack_channel_id"`
+	EvergreenTagName string `json:"evergreen_tag_name"`
+	TriageTeamName NullableString `json:"triage_team_name,omitempty"`
+	SlackGroupId NullableString `json:"slack_group_id,omitempty"`
+	TriagedTeamNames []string `json:"triaged_team_names,omitempty"`
+	CodeOwners []string `json:"code_owners,omitempty"`
 }
 
 type _TeamData TeamData
@@ -183,7 +184,6 @@ func (o *TeamData) HasTriageTeamName() bool {
 func (o *TeamData) SetTriageTeamName(v string) {
 	o.TriageTeamName.Set(&v)
 }
-
 // SetTriageTeamNameNil sets the value for TriageTeamName to be an explicit nil
 func (o *TeamData) SetTriageTeamNameNil() {
 	o.TriageTeamName.Set(nil)
@@ -226,7 +226,6 @@ func (o *TeamData) HasSlackGroupId() bool {
 func (o *TeamData) SetSlackGroupId(v string) {
 	o.SlackGroupId.Set(&v)
 }
-
 // SetSlackGroupIdNil sets the value for SlackGroupId to be an explicit nil
 func (o *TeamData) SetSlackGroupIdNil() {
 	o.SlackGroupId.Set(nil)
@@ -269,8 +268,41 @@ func (o *TeamData) SetTriagedTeamNames(v []string) {
 	o.TriagedTeamNames = v
 }
 
+// GetCodeOwners returns the CodeOwners field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *TeamData) GetCodeOwners() []string {
+	if o == nil {
+		var ret []string
+		return ret
+	}
+	return o.CodeOwners
+}
+
+// GetCodeOwnersOk returns a tuple with the CodeOwners field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *TeamData) GetCodeOwnersOk() ([]string, bool) {
+	if o == nil || IsNil(o.CodeOwners) {
+		return nil, false
+	}
+	return o.CodeOwners, true
+}
+
+// HasCodeOwners returns a boolean if a field has been set.
+func (o *TeamData) HasCodeOwners() bool {
+	if o != nil && !IsNil(o.CodeOwners) {
+		return true
+	}
+
+	return false
+}
+
+// SetCodeOwners gets a reference to the given []string and assigns it to the CodeOwners field.
+func (o *TeamData) SetCodeOwners(v []string) {
+	o.CodeOwners = v
+}
+
 func (o TeamData) MarshalJSON() ([]byte, error) {
-	toSerialize, err := o.ToMap()
+	toSerialize,err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -292,6 +324,9 @@ func (o TeamData) ToMap() (map[string]interface{}, error) {
 	if !IsNil(o.TriagedTeamNames) {
 		toSerialize["triaged_team_names"] = o.TriagedTeamNames
 	}
+	if o.CodeOwners != nil {
+		toSerialize["code_owners"] = o.CodeOwners
+	}
 	return toSerialize, nil
 }
 
@@ -311,10 +346,10 @@ func (o *TeamData) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err
+		return err;
 	}
 
-	for _, requiredProperty := range requiredProperties {
+	for _, requiredProperty := range(requiredProperties) {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -370,3 +405,5 @@ func (v *NullableTeamData) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+
+

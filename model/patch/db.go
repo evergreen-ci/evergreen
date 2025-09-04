@@ -151,6 +151,7 @@ type ByPatchNameStatusesMergeQueuePaginatedOptions struct {
 var requesterExpression = bson.M{
 	"$switch": bson.M{
 		"branches": []bson.M{
+			// Should match implementation of IsGithubPRPatch().
 			{
 				"case": bson.M{
 					"$and": []bson.M{
@@ -160,18 +161,16 @@ var requesterExpression = bson.M{
 				},
 				"then": evergreen.GithubPRRequester,
 			},
+			// Should match implementation of IsMergeQueuePatch().
 			{
 				"case": bson.M{
-					"$and": []bson.M{
-						{"$ifNull": []any{"$" + githubMergeDataKey, false}},
-						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
+					"$or": []bson.M{
+						{"$and": []bson.M{
+							{"$ifNull": []any{"$" + githubMergeDataKey, false}},
+							{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
+						}},
+						{"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias}},
 					},
-				},
-				"then": evergreen.GithubMergeRequester,
-			},
-			{
-				"case": bson.M{
-					"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias},
 				},
 				"then": evergreen.GithubMergeRequester,
 			},

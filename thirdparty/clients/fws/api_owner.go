@@ -19,14 +19,15 @@ import (
 	"strings"
 )
 
+
 // OwnerAPIService OwnerAPI service
 type OwnerAPIService service
 
 type ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest struct {
-	ctx                context.Context
-	ApiService         *OwnerAPIService
-	taskId             string
-	testFileName       *string
+	ctx context.Context
+	ApiService *OwnerAPIService
+	taskId string
+	testFileName *string
 	offendingVersionId *string
 }
 
@@ -54,27 +55,26 @@ Get the owner of a task by foliage logic.
 :param offending_version_id: The offending version id.
 :return: The owning team data according to the foliage logic.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param taskId
-	@return ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param taskId
+ @return ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest
 */
 func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx context.Context, taskId string) ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest {
 	return ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest{
 		ApiService: a,
-		ctx:        ctx,
-		taskId:     taskId,
+		ctx: ctx,
+		taskId: taskId,
 	}
 }
 
 // Execute executes the request
-//
 //	@return	FinalAssignmentResults
 func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGetExecute(r ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest) (*FinalAssignmentResults, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *FinalAssignmentResults
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *FinalAssignmentResults
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OwnerAPIService.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet")
@@ -141,8 +141,8 @@ func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGetExecute(r
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
@@ -160,10 +160,10 @@ func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGetExecute(r
 }
 
 type ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OwnerAPIService
-	jiraKey    string
-	projectId  *string
+	jiraKey string
+	projectId *string
 }
 
 func (r ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest) ProjectId(projectId string) ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest {
@@ -184,27 +184,26 @@ Get the owner by a Jira key.
 :param project_id: The project id, optional for avoiding getting bot user emails.
 :return: The owning team data according to the Jira key.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param jiraKey
-	@return ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param jiraKey
+ @return ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest
 */
 func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGet(ctx context.Context, jiraKey string) ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest {
 	return ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest{
 		ApiService: a,
-		ctx:        ctx,
-		jiraKey:    jiraKey,
+		ctx: ctx,
+		jiraKey: jiraKey,
 	}
 }
 
 // Execute executes the request
-//
 //	@return	TeamDataWithOwner
 func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGetExecute(r ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest) (*TeamDataWithOwner, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *TeamDataWithOwner
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *TeamDataWithOwner
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OwnerAPIService.ByJiraKeyApiOwnerByJiraKeyJiraKeyGet")
@@ -268,8 +267,8 @@ func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGetExecute(r ApiByJir
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
@@ -287,9 +286,9 @@ func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGetExecute(r ApiByJir
 }
 
 type ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *OwnerAPIService
-	projectId  string
+	projectId string
 }
 
 func (r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) Execute() (*map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue, *http.Response, error) {
@@ -299,32 +298,31 @@ func (r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) Execute() (
 /*
 GetRegexMappingApiOwnerRegexByProjectProjectIdGet Get Regex Mapping
 
-# Get a mapping from a test file regular expression to the owning team
+Get a mapping from a test file regular expression to the owning team
 
 :param project_id: The project identifier.
 :return: The mapping from test file regular expression to the owning team data.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param projectId
-	@return ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param projectId
+ @return ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest
 */
 func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGet(ctx context.Context, projectId string) ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest {
 	return ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest{
 		ApiService: a,
-		ctx:        ctx,
-		projectId:  projectId,
+		ctx: ctx,
+		projectId: projectId,
 	}
 }
 
 // Execute executes the request
-//
 //	@return	map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
 func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGetExecute(r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) (*map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "OwnerAPIService.GetRegexMappingApiOwnerRegexByProjectProjectIdGet")
@@ -385,8 +383,8 @@ func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGetExecu
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}

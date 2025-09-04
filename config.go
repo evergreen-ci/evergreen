@@ -36,7 +36,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-08-29"
+	AgentVersion = "2025-09-03"
 )
 
 const (
@@ -82,7 +82,7 @@ type Settings struct {
 	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
-	GithubWebhookSecret string                  `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret"`
+	GithubWebhookSecret string                  `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret" secret:"true"`
 	DisabledGQLQueries  []string                `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
 	HostInit            HostInitConfig          `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	HostJasper          HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
@@ -810,7 +810,8 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 	return opts
 }
 
-// supported banner themes in Evergreen
+// Supported banner themes in Evergreen.
+// Empty is a valid banner theme that should not be deleted.
 type BannerTheme string
 
 const (
@@ -818,6 +819,7 @@ const (
 	Information  BannerTheme = "INFORMATION"
 	Warning      BannerTheme = "WARNING"
 	Important    BannerTheme = "IMPORTANT"
+	Empty        BannerTheme = ""
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {

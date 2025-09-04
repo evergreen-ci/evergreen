@@ -1022,19 +1022,19 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
-	assert.False(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+	assert.False(t, dbUser.BetaFeatures.ParsleyAIEnabled)
 
 	newBetaFeatureSettings := evergreen.BetaFeatures{
-		SpruceWaterfallEnabled: true,
+		ParsleyAIEnabled: true,
 	}
 	err = usr.UpdateBetaFeatures(t.Context(), newBetaFeatureSettings)
 	require.NoError(t, err)
-	assert.True(t, usr.BetaFeatures.SpruceWaterfallEnabled)
+	assert.True(t, usr.BetaFeatures.ParsleyAIEnabled)
 
 	dbUser, err = FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
-	assert.True(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+	assert.True(t, dbUser.BetaFeatures.ParsleyAIEnabled)
 }
 
 func (s *UserTestSuite) TestClearUser() {
