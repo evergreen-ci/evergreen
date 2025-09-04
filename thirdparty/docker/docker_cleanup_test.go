@@ -2,6 +2,7 @@ package docker
 
 import (
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -109,22 +111,28 @@ func TestCleanup(t *testing.T) {
 				return true, err
 			}
 			grip.Infof("ImagePull response: %s\n", string(b))
-			if _, err := io.Copy(io.Discard, out); err != nil {
-				return true, err
+			if strings.Contains(string(b), "Rate exceeded") {
+				// The image pull can return no error and also no image if the
+				// rate limit is exceeded.
+				return true, errors.Errorf("rate limit exceeded pulling image %s", imageName)
 			}
 			if err := out.Close(); err != nil {
 				return true, err
 			}
+			images, err := dockerClient.ImageList(t.Context(), types.ImageListOptions{All: true})
+			if err != nil {
+				return true, err
+			}
+			if len(images) == 0 {
+				return true, errors.Errorf("no images found after pull of %s", imageName)
+			}
+
 			return false, nil
 		}, utility.RetryOptions{
 			MaxAttempts: 10,
 			MinDelay:    time.Second,
 			MaxDelay:    10 * time.Minute,
 		}))
-
-		images, err := dockerClient.ImageList(t.Context(), types.ImageListOptions{All: true})
-		require.NoError(t, err)
-		require.Len(t, images, 1)
 
 		t.Run(name, test)
 	}
