@@ -942,9 +942,11 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 	defer func() {
 		if tc.logger != nil {
-			// If the logger from the task is still open, running the teardown
-			// group is the last thing that a task can do, so close the logger
-			// to indicate logging is complete for the task.
+			// Flush teardown logs (e.g. global file cleanup) emitted after the
+			// last explicit flush in finishTask (after rotating the logger) before closing.
+			flushCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			_ = tc.logger.Flush(flushCtx)
+			cancel()
 			grip.Error(tc.logger.Close())
 		}
 	}()
@@ -1095,10 +1097,21 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 	grip.Infof("Successfully sent final task status: '%s'.", detail.Status)
 
+	if detail.Status != evergreen.TaskSucceeded {
+		// In end task, the server may modify the task's TaskOutputInfo to
+		// specify a failed bucket config for task and test logs.
+		// If so, we need to rotate the logger to pick up the new bucket.
+		if err := a.rotateLoggerToFailedBucket(ctx, tc); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{"message": "rotating logger to failed bucket"}))
+		}
+	}
+
 	err = a.upsertCheckRun(ctx, tc)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "upserting check run"))
-		tc.logger.Task().Errorf("Error upserting check run: '%s'", err.Error())
+		if tc.logger != nil {
+			tc.logger.Task().Errorf("Error upserting check run: '%s'", err.Error())
+		}
 	}
 
 	if tc.logger != nil {
@@ -1123,6 +1136,43 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 
 	return resp, nil
+}
+
+// rotateLoggerToFailedBucket closes the current task logger and reinitializes with
+// the current bucket config name for task and test logs.
+func (a *Agent) rotateLoggerToFailedBucket(ctx context.Context, tc *taskContext) error {
+	if tc == nil || tc.taskConfig == nil || tc.taskConfig.Task.TaskOutputInfo == nil {
+		return errors.New("cannot rotate logger: task output info missing")
+	}
+	if tc.logger != nil && !tc.logger.Closed() {
+		flushCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+		_ = tc.logger.Flush(flushCtx)
+		_ = tc.logger.Close()
+	}
+
+	if tc.task.ID != "" {
+		if updatedTask, err := a.comm.GetTask(ctx, tc.task); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "refreshing task after failure to get updated failed bucket config",
+				"task_id": tc.task.ID,
+			}))
+		} else if updatedTask != nil && updatedTask.TaskOutputInfo != nil {
+			if tc.taskConfig.Task.TaskOutputInfo != nil {
+				if updatedTask.TaskOutputInfo.TaskLogs.BucketConfig.Name != "" {
+					tc.taskConfig.Task.TaskOutputInfo.TaskLogs.BucketConfig = updatedTask.TaskOutputInfo.TaskLogs.BucketConfig
+				}
+				if updatedTask.TaskOutputInfo.TestLogs.BucketConfig.Name != "" {
+					tc.taskConfig.Task.TaskOutputInfo.TestLogs.BucketConfig = updatedTask.TaskOutputInfo.TestLogs.BucketConfig
+				}
+			}
+		}
+	}
+	// Recreate logger with updated bucket config.
+	if err := a.startLogging(ctx, tc); err != nil {
+		return errors.Wrap(err, "restarting logger for failed bucket")
+	}
+	return nil
 }
 
 func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
