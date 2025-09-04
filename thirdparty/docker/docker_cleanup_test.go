@@ -110,11 +110,10 @@ func TestCleanup(t *testing.T) {
 			if err != nil {
 				return true, err
 			}
-			grip.Infof("ImagePull response: %s\n", string(b))
 			if strings.Contains(string(b), "Rate exceeded") {
 				// The image pull can return no error and also no image if the
 				// rate limit is exceeded.
-				return true, errors.Errorf("rate limit exceeded pulling image %s", imageName)
+				return true, errors.Errorf("rate limit exceeded pulling image '%s'", imageName)
 			}
 			if err := out.Close(); err != nil {
 				return true, err
@@ -124,7 +123,7 @@ func TestCleanup(t *testing.T) {
 				return true, err
 			}
 			if len(images) == 0 {
-				return true, errors.Errorf("no images found after pull of %s", imageName)
+				return true, errors.Errorf("no images found after pulling image '%s'", imageName)
 			}
 
 			return false, nil
