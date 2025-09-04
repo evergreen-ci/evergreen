@@ -119,9 +119,9 @@ func TestCleanup(t *testing.T) {
 			MaxDelay:    10 * time.Minute,
 		}))
 
-		info, err := dockerClient.Info(ctx)
+		images, err := dockerClient.ImageList(ctx, types.ImageListOptions{All: true})
 		require.NoError(t, err)
-		require.Equal(t, 1, info.Images)
+		require.Len(t, images, 1)
 
 		t.Run(name, test)
 	}
