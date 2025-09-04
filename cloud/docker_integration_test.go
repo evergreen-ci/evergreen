@@ -50,6 +50,8 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	const imageName = "public.ecr.aws/docker/library/hello-world:latest"
 	var err error
 	ctx := context.Background()
+	// Retry pulling the Docker image to work around rate limits on
+	// unauthenciated pulls.
 	err = utility.Retry(ctx, func() (bool, error) {
 		err = s.client.pullImage(ctx, &s.host, imageName, "", "")
 		if err != nil {

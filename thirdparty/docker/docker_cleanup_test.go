@@ -4,11 +4,13 @@ import (
 	"context"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -97,11 +99,25 @@ func TestCleanup(t *testing.T) {
 			assert.Empty(t, volumes.Volumes)
 		},
 	} {
-		out, err := dockerClient.ImagePull(ctx, imageName, types.ImagePullOptions{})
-		require.NoError(t, err)
-		_, err = io.Copy(io.Discard, out)
-		require.NoError(t, err)
-		require.NoError(t, out.Close())
+		// Retry pulling the Docker image to work around rate limits on
+		// unauthenciated pulls.
+		require.NoError(t, utility.Retry(ctx, func() (bool, error) {
+			out, err := dockerClient.ImagePull(ctx, imageName, types.ImagePullOptions{})
+			if err != nil {
+				return true, err
+			}
+			if _, err := io.Copy(io.Discard, out); err != nil {
+				return true, err
+			}
+			if err := out.Close(); err != nil {
+				return true, err
+			}
+			return false, nil
+		}, utility.RetryOptions{
+			MaxAttempts: 10,
+			MinDelay:    time.Second,
+			MaxDelay:    10 * time.Minute,
+		}))
 
 		info, err := dockerClient.Info(ctx)
 		require.NoError(t, err)
