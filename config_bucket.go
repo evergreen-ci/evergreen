@@ -36,6 +36,8 @@ type BucketsConfig struct {
 	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
 	// LogBucketLongRetention is the bucket information for logs with extended retention.
 	LogBucketLongRetention BucketConfig `bson:"log_bucket_long_retention" json:"log_bucket_long_retention" yaml:"log_bucket_long_retention"`
+	// LogBucketFailedTasks is the bucket information for logs of failed tasks.
+	LogBucketFailedTasks BucketConfig `bson:"log_bucket_failed_tasks" json:"log_bucket_failed_tasks" yaml:"log_bucket_failed_tasks"`
 	// LongRetentionProjects is the list of project IDs that require long retention.
 	LongRetentionProjects []string `bson:"long_retention_projects" json:"long_retention_projects" yaml:"long_retention_projects"`
 	// TestResultsBucket is the bucket information for test results.
@@ -47,6 +49,7 @@ type BucketsConfig struct {
 var (
 	bucketsConfigLogBucketKey              = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
 	bucketsConfigLogBucketLongRetentionKey = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
+	bucketsConfigLogBucketFailedTasksKey   = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
 	bucketsConfigLongRetentionProjectsKey  = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
 	bucketsConfigTestResultsBucketKey      = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
 	bucketsConfigCredentialsKey            = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
@@ -80,14 +83,18 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 }
 
 func (c *BucketsConfig) Set(ctx context.Context) error {
-	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
-		"$set": bson.M{
-			bucketsConfigLogBucketKey:              c.LogBucket,
-			bucketsConfigLogBucketLongRetentionKey: c.LogBucketLongRetention,
-			bucketsConfigLongRetentionProjectsKey:  c.LongRetentionProjects,
-			bucketsConfigTestResultsBucketKey:      c.TestResultsBucket,
-			bucketsConfigCredentialsKey:            c.Credentials,
-		}}), "updating config section '%s'", c.SectionId(),
+	return errors.Wrapf(
+		setConfigSection(ctx, c.SectionId(), bson.M{
+			"$set": bson.M{
+				bucketsConfigLogBucketKey:              c.LogBucket,
+				bucketsConfigLogBucketLongRetentionKey: c.LogBucketLongRetention,
+				bucketsConfigLogBucketFailedTasksKey:   c.LogBucketFailedTasks,
+				bucketsConfigLongRetentionProjectsKey:  c.LongRetentionProjects,
+				bucketsConfigTestResultsBucketKey:      c.TestResultsBucket,
+				bucketsConfigCredentialsKey:            c.Credentials,
+			},
+		}),
+		"updating config section '%s'", c.SectionId(),
 	)
 }
 
@@ -95,6 +102,7 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(c.LogBucket.validate())
 	catcher.Add(c.LogBucketLongRetention.validate())
+	catcher.Add(c.LogBucketFailedTasks.validate())
 	return catcher.Resolve()
 }
 
