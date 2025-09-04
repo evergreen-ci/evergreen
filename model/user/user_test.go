@@ -214,8 +214,16 @@ func (s *UserTestSuite) TestGetPublicKeyThatDoesntExist() {
 }
 
 func (s *UserTestSuite) TestAddKey() {
+	// Add public key when there are no existing keys.
 	s.Require().NoError(s.users[0].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890"))
 	key, err := s.users[0].GetPublicKey("key1")
+	s.Require().NoError(err)
+	s.Equal("ssh-mock 67890", key)
+
+	// Add public key when public keys is nil.
+	s.users[0].PubKeys = nil
+	s.Require().NoError(s.users[0].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890"))
+	key, err = s.users[0].GetPublicKey("key1")
 	s.Require().NoError(err)
 	s.Equal("ssh-mock 67890", key)
 
