@@ -810,7 +810,8 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 	return opts
 }
 
-// supported banner themes in Evergreen
+// Supported banner themes in Evergreen.
+// Empty is a valid banner theme that should not be deleted.
 type BannerTheme string
 
 const (
@@ -818,6 +819,7 @@ const (
 	Information  BannerTheme = "INFORMATION"
 	Warning      BannerTheme = "WARNING"
 	Important    BannerTheme = "IMPORTANT"
+	Empty        BannerTheme = ""
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {
