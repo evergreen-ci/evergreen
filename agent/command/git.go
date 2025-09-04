@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -285,7 +286,31 @@ func (c *gitFetchProject) ParseParams(params map[string]any) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
+	if opts.isCache {
+		var script []string
+		script = append(script, fmt.Sprintf("cd '%s'", opts.cacheDir()))
+
+		_, err := os.Stat(opts.cacheDir())
+		missingDirectory := errors.Is(err, fs.ErrNotExist)
+
+		trace.SpanFromContext(ctx).SetAttributes(
+			attribute.Bool(cloneCacheOnlyFetchAttribute, !missingDirectory),
+		)
+
+		// If it exists, just fetch
+		if !missingDirectory {
+			return append(script, "git fetch"), nil
+		}
+
+		// If not, let's clone.
+		cloneCommand, err := opts.getCloneCommand()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting cache command to clone repo")
+		}
+		return append(script, cloneCommand...), nil
+	}
+
 	gitCommands := []string{
 		"set -o xtrace",
 		fmt.Sprintf("chmod -R 755 %s", c.Directory),
@@ -457,23 +482,26 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
 
-		// If this fetch is creating the cache, but the cache exists already, fetch latest.
-		var fetchScript string
-		onlyFetching := false
+		spanName := "clone_source"
 		if opts.isCache {
-			if _, err := os.Stat(opts.cacheDir()); err == nil {
-				fetchScript = "git fetch"
-				onlyFetching = true
-			}
+			spanName = "cache_source"
 		}
-		// If we aren't fetching, we need to build the clone command.
-		if !onlyFetching {
-			gitCommands, err := c.buildSourceCloneCommand(conf, opts)
-			if err != nil {
-				return err
-			}
-			fetchScript = strings.Join(gitCommands, "\n")
+
+		ctx, span := getTracer().Start(ctx, spanName, trace.WithAttributes(
+			attribute.String(cloneOwnerAttribute, opts.owner),
+			attribute.String(cloneRepoAttribute, opts.repo),
+			attribute.String(cloneBranchAttribute, opts.branch),
+			attribute.String(cloneMethodAttribute, opts.method),
+			attribute.Int(cloneAttemptAttribute, attempt),
+		))
+		defer span.End()
+
+		script, err := c.buildSourceCloneCommand(ctx, conf, opts)
+		if err != nil {
+			return errors.Wrap(err, "building source clone command")
 		}
+
+		fetchScript := strings.Join(script, "\n")
 
 		// This needs to use a thread-safe buffer just in case the context errors
 		// (e.g. due to a timeout) while the command is running. A non-thread-safe
@@ -491,24 +519,6 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 			logger.Execution().Info("Fetching source from git...")
 		}
 		logger.Execution().Debugf("Commands are: %s", fetchScript)
-
-		spanName := "clone_source"
-		if opts.isCache {
-			spanName = "cache_source"
-		}
-
-		ctx, span := getTracer().Start(ctx, spanName, trace.WithAttributes(
-			attribute.String(cloneOwnerAttribute, opts.owner),
-			attribute.String(cloneRepoAttribute, opts.repo),
-			attribute.String(cloneBranchAttribute, opts.branch),
-			attribute.String(cloneMethodAttribute, opts.method),
-			attribute.Int(cloneAttemptAttribute, attempt),
-		))
-		defer span.End()
-
-		if opts.isCache {
-			span.SetAttributes(attribute.Bool(cloneCacheOnlyFetchAttribute, onlyFetching))
-		}
 
 		return fetchSourceCmd.Run(ctx)
 	})
