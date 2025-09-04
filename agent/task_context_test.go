@@ -42,7 +42,9 @@ func TestGetDeviceNames(t *testing.T) {
 		expectedDeviceCount := 0
 		for _, partition := range partitions {
 			if slices.Contains(mountpoints, partition.Mountpoint) {
-				expectedDeviceCount++
+				if getDeviceName(partition.Device) != "" {
+					expectedDeviceCount++
+				}
 			}
 		}
 

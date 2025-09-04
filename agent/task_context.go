@@ -728,7 +728,9 @@ func (tc *taskContext) getMountpoints() []string {
 // getDeviceName extracts and sanitizes a device name from a device path.
 func getDeviceName(device string) string {
 	deviceName := filepath.Base(device)
-	if deviceName == "" || deviceName == "/" || deviceName == "." {
+
+	// filepath.Base of windows drive letters could return these
+	if deviceName == "" || deviceName == "/" || deviceName == "\\" {
 		// check if partition device is a windows drive
 		if runtime.GOOS == "windows" && len(device) == 2 && device[1] == ':' && device[0] >= 'A' && device[0] <= 'Z' {
 			deviceName = device
