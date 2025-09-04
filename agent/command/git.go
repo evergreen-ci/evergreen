@@ -102,7 +102,9 @@ type cloneOpts struct {
 	recurseSubmodules bool
 	useVerbose        bool
 	cloneDepth        int
-	isCache           bool
+
+	agentHomeDirectory string
+	isCache            bool
 }
 
 // validateCloneMethod checks that the clone mechanism is one of the supported
@@ -127,7 +129,7 @@ func (opts cloneOpts) validate() error {
 }
 
 func (opts cloneOpts) cacheDir() string {
-	return fmt.Sprintf("/mci/evg-cache/%s/%s", opts.owner, opts.repo)
+	return filepath.Join(opts.agentHomeDirectory, fmt.Sprintf("evg-cache/%s/%s", opts.owner, opts.repo))
 }
 
 func (opts cloneOpts) httpLocation() string {
@@ -454,19 +456,23 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
-		gitCommands, err := c.buildSourceCloneCommand(conf, opts)
-		if err != nil {
-			return err
-		}
-		fetchScript := strings.Join(gitCommands, "\n")
 
 		// If this fetch is creating the cache, but the cache exists already, fetch latest.
+		var fetchScript string
 		onlyFetching := false
 		if opts.isCache {
 			if _, err := os.Stat(opts.cacheDir()); err == nil {
 				fetchScript = "git fetch"
 				onlyFetching = true
 			}
+		}
+		// If we aren't fetching, we need to build the clone command.
+		if !onlyFetching {
+			gitCommands, err := c.buildSourceCloneCommand(conf, opts)
+			if err != nil {
+				return err
+			}
+			fetchScript = strings.Join(gitCommands, "\n")
 		}
 
 		// This needs to use a thread-safe buffer just in case the context errors
