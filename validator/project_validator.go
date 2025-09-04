@@ -1514,11 +1514,13 @@ func validateDisplayTaskNames(project *model.Project) ValidationErrors {
 }
 
 // Helper for validating a set of plugin commands given a project/registry
-func validateCommands(section string, taskName string, project *model.Project, commands []model.PluginCommandConf) ValidationErrors {
+func validateCommands(section, taskName, tgName string, project *model.Project, commands []model.PluginCommandConf) ValidationErrors {
 	errs := ValidationErrors{}
 	var formattedTaskMsg string
 	if taskName != "" {
 		formattedTaskMsg = fmt.Sprintf(" for task '%s'", taskName)
+	} else if tgName != "" {
+		formattedTaskMsg += fmt.Sprintf(" for task group '%s'", tgName)
 	}
 
 	for i, cmd := range commands {
@@ -1578,7 +1580,7 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 			)
 			continue
 		}
-		valErrs := validateCommands("functions", "", project, commands.List())
+		valErrs := validateCommands("functions", "", "", project, commands.List())
 		for _, err := range valErrs {
 			errs = append(errs,
 				ValidationError{
@@ -1612,21 +1614,40 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 	}
 
 	if project.Pre != nil {
-		errs = append(errs, validateCommands("pre", "", project, project.Pre.List())...)
+		errs = append(errs, validateCommands("pre", "", "", project, project.Pre.List())...)
 	}
 
 	if project.Post != nil {
-		errs = append(errs, validateCommands("post", "", project, project.Post.List())...)
+		errs = append(errs, validateCommands("post", "", "", project, project.Post.List())...)
 	}
 
 	if project.Timeout != nil {
-		errs = append(errs, validateCommands("timeout", "", project, project.Timeout.List())...)
+		errs = append(errs, validateCommands("timeout", "", "", project, project.Timeout.List())...)
 	}
 
 	// validate project tasks section
 	for _, task := range project.Tasks {
-		errs = append(errs, validateCommands("tasks", task.Name, project, task.Commands)...)
+		errs = append(errs, validateCommands("tasks", task.Name, "", project, task.Commands)...)
 	}
+
+	for _, tg := range project.TaskGroups {
+		if tg.SetupGroup != nil {
+			errs = append(errs, validateCommands("setup_group", "", tg.Name, project, tg.SetupGroup.List())...)
+		}
+		if tg.SetupTask != nil {
+			errs = append(errs, validateCommands("setup_task", "", tg.Name, project, tg.SetupTask.List())...)
+		}
+		if tg.TeardownTask != nil {
+			errs = append(errs, validateCommands("teardown_task", "", tg.Name, project, tg.TeardownTask.List())...)
+		}
+		if tg.TeardownGroup != nil {
+			errs = append(errs, validateCommands("teardown_group", "", tg.Name, project, tg.TeardownGroup.List())...)
+		}
+		if tg.Timeout != nil {
+			errs = append(errs, validateCommands("timeout", "", tg.Name, project, tg.Timeout.List())...)
+		}
+	}
+
 	return errs
 }
 
