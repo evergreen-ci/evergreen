@@ -130,7 +130,7 @@ func TestCleanup(t *testing.T) {
 		}, utility.RetryOptions{
 			MaxAttempts: 10,
 			MinDelay:    time.Second,
-			MaxDelay:    10 * time.Minute,
+			MaxDelay:    30 * time.Second,
 		}))
 
 		t.Run(name, test)

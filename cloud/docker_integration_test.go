@@ -61,7 +61,7 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	}, utility.RetryOptions{
 		MaxAttempts: 10,
 		MinDelay:    time.Second,
-		MaxDelay:    10 * time.Minute,
+		MaxDelay:    30 * time.Second,
 	})
 	s.NoError(err)
 
