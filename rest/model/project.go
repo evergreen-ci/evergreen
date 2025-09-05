@@ -574,7 +574,9 @@ func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDy
 }
 
 type APITestSelectionSettings struct {
-	Allowed        *bool `json:"allowed,omitzero"`
+	// Whether or not test selection features can be used.
+	Allowed *bool `json:"allowed,omitzero"`
+	// Whether or not test selection is enabled by default for tasks.
 	DefaultEnabled *bool `json:"default_enabled,omitzero"`
 }
 
