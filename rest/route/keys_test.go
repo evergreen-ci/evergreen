@@ -97,14 +97,16 @@ func (s *UserConnectorSuite) TestAddSSHKeyWithNoUserPanics() {
 
 func (s *UserConnectorSuite) TestAddSSHKey() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
+	s.NoError(err)
+	ctx = gimlet.AttachUser(ctx, user0)
 
 	s.post.(*keysPostHandler).keyName = "Test"
 	s.post.(*keysPostHandler).keyValue = "ssh-dss 12345"
 	resp := s.post.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 
-	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
+	user0, err = user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 	s.Equal("Test", user0.PubKeys[2].Name)
@@ -113,10 +115,13 @@ func (s *UserConnectorSuite) TestAddSSHKey() {
 
 func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
+	s.NoError(err)
+
+	ctx = gimlet.AttachUser(ctx, user0)
 	s.TestAddSSHKey()
 
-	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
+	user0, err = user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 
