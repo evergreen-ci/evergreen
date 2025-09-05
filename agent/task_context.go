@@ -725,19 +725,28 @@ func (tc *taskContext) getMountpoints() []string {
 	return mountpoints
 }
 
+// isWindowsDriveLetter checks if the device represents a Windows drive letter (e.g., "C:")
+func isWindowsDriveLetter(device string) bool {
+	return runtime.GOOS == "windows" &&
+		len(device) == 2 &&
+		device[1] == ':' &&
+		device[0] >= 'A' && device[0] <= 'Z'
+}
+
 // getDeviceName extracts and sanitizes a device name from a device path.
 func getDeviceName(device string) string {
 	deviceName := filepath.Base(device)
 
-	// filepath.Base of windows drive letters could return these
+	// Handle edge cases where filepath.Base returns empty or path separators
 	if deviceName == "" || deviceName == "/" || deviceName == "\\" {
-		// check if partition device is a windows drive
-		if runtime.GOOS == "windows" && len(device) == 2 && device[1] == ':' && device[0] >= 'A' && device[0] <= 'Z' {
+		// Special case: Windows drive letters (e.g., "Z:")
+		if isWindowsDriveLetter(device) {
 			deviceName = device
 		} else {
 			return ""
 		}
 	}
+
 	sanitizedDeviceName := instrumentNameDisallowedCharacters.ReplaceAllString(deviceName, "")
 	return sanitizedDeviceName
 }

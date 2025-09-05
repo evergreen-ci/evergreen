@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"slices"
 	"testing"
 
@@ -26,7 +25,7 @@ func TestGetOomTrackerReport(t *testing.T) {
 }
 
 func TestGetDeviceNames(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("MountPoints", func(t *testing.T) {
 		tc := taskContext{}
