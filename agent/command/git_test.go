@@ -183,7 +183,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 		token:  c.Token,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, _ := c.buildSourceCloneCommand(conf, opts)
+	cmds, _ := c.buildSourceCloneCommand(s.ctx, conf, opts)
 	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"))
 }
 
@@ -267,7 +267,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 		cloneDepth: 50,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, conf, opts)
 	s.Require().NoError(err)
 	combined := strings.Join(cmds, " ")
 	s.Contains(combined, "--depth 50")
@@ -543,7 +543,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 	opts.method = cloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 11)
 	s.True(utility.ContainsOrderedSubset([]string{
@@ -578,7 +578,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
@@ -605,7 +605,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(s.ctx, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
