@@ -573,6 +573,23 @@ func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDy
 	return nil
 }
 
+type APITestSelectionSettings struct {
+	Allowed        *bool `json:"allowed,omitzero"`
+	DefaultEnabled *bool `json:"default_enabled,omitzero"`
+}
+
+func (ts *APITestSelectionSettings) ToService() model.TestSelectionSettings {
+	return model.TestSelectionSettings{
+		Allowed:        utility.BoolPtrCopy(ts.Allowed),
+		DefaultEnabled: utility.BoolPtrCopy(ts.DefaultEnabled),
+	}
+}
+
+func (ts *APITestSelectionSettings) BuildFromService(settings model.TestSelectionSettings) {
+	ts.Allowed = utility.BoolPtrCopy(settings.Allowed)
+	ts.DefaultEnabled = utility.BoolPtrCopy(settings.DefaultEnabled)
+}
+
 type APIProjectRef struct {
 	Id *string `json:"id"`
 	// GitHub org name.
@@ -696,6 +713,8 @@ type APIProjectRef struct {
 	GitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup `json:"github_dynamic_token_permission_groups,omitempty"`
 	// GitHub permission group by requester.
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
+	// Test selection settings.
+	TestSelection APITestSelectionSettings `json:"test_selection,omitzero"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -742,6 +761,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		Banner:                           p.Banner.ToService(),
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
+		TestSelection:                    p.TestSelection.ToService(),
 	}
 
 	if projectRef.ProjectHealthView == "" {
@@ -862,6 +882,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubPRTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubPRTriggerAliases)
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
+	p.TestSelection.BuildFromService(projectRef.TestSelection)
 
 	if projectRef.ProjectHealthView == "" {
 		projectRef.ProjectHealthView = model.ProjectHealthViewFailed
