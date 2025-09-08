@@ -23,7 +23,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -358,7 +357,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, jpm jasper.Manager, opts cloneOpts) error {
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
@@ -375,7 +374,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		// return early and will stop waiting for the command to exit. In the
 		// context error case, this thread and the still-running command may race to
 		// read/write the buffer, so the buffer has to be thread-safe.
-		fetchSourceCmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
+		fetchSourceCmd := c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender())
 
 		logger.Execution().Info("Fetching source from git...")
@@ -438,7 +437,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	comm client.Communicator,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
-	jpm jasper.Manager,
 	td client.TaskData,
 	p *patch.Patch,
 	moduleName string) error {
@@ -561,7 +559,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		// read/write the buffer, so the buffer has to be thread-safe.
 		stdOut := utility.MakeSafeBuffer(bytes.Buffer{})
 		stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
-		err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
+		err = c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
 			Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).
 			SetOutputWriter(stdOut).SetErrorWriter(stdErr).Run(ctx)
 
@@ -587,10 +585,9 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	jpm := c.JasperManager()
 
 	// Clone the project.
-	if err := c.fetchSource(ctx, logger, conf, jpm, opts); err != nil {
+	if err := c.fetchSource(ctx, logger, conf, opts); err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
@@ -636,7 +633,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 			if err := gCtx.Err(); err != nil {
 				return nil
 			}
-			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, jpm, td, p, moduleName), "fetching module source '%s'", moduleName)
+			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, td, p, moduleName), "fetching module source '%s'", moduleName)
 		})
 	}
 
