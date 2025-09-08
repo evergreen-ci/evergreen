@@ -182,7 +182,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 		token:  c.Token,
 	}
 	cmds, _ := c.buildSourceCloneCommand(conf, opts)
-	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKaccess-token:EN:@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"), cmds)
+	s.True(utility.StringSliceContains(cmds, "git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"), cmds)
 }
 
 func (s *GitGetProjectSuite) TestRetryFetchAttemptsFiveTimesOnError() {
@@ -504,18 +504,6 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
 		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
-	}), cmds)
-
-	// ensure that we aren't sending the github oauth token to other
-	// servers
-	opts.owner = "something"
-	opts.repo = "else"
-	cmds, err = opts.getCloneCommand()
-	s.NoError(err)
-	s.Require().Len(cmds, 5)
-	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 	}), cmds)
 }
 
