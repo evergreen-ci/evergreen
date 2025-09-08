@@ -181,7 +181,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 		dir:    c.Directory,
 		token:  c.Token,
 	}
-	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildSourceCloneCommand(conf, opts)
 	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"))
 }
@@ -264,7 +263,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 		dir:        c.Directory,
 		cloneDepth: 50,
 	}
-	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.Require().NoError(err)
 	combined := strings.Join(cmds, " ")
@@ -457,7 +455,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
-func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
+func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	projectRef := &model.ProjectRef{
 		Owner:  "evergreen-ci",
 		Repo:   "sample",
@@ -472,8 +470,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 		dir:    "dir",
 		token:  projectGitHubToken,
 	}
-	s.Require().NoError(opts.setLocation())
-	cmds, err := opts.buildHTTPCloneCommand(false)
+	cmds, err := opts.getCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -485,7 +482,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	}))
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	opts.branch = ""
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.getCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -498,9 +495,10 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	// build clone command with a URL that uses http, and ensure it's
 	// been forced to use https
-	opts.location = "http://github.com/evergreen-ci/sample.git"
+	opts.owner = "evergreen-ci"
+	opts.repo = "sample"
 	opts.branch = projectRef.Branch
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.getCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -510,8 +508,9 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	// ensure that we aren't sending the github oauth token to other
 	// servers
-	opts.location = "http://someothergithost.com/something/else.git"
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	opts.owner = "something"
+	opts.repo = "else"
+	cmds, err = opts.getCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -538,7 +537,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 	// ensure clone command with location containing "https://github.com" uses
 	// HTTPS.
 	opts.token = c.Token
-	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 11)
@@ -571,7 +569,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 		repo:   conf.ProjectRef.Repo,
 		dir:    c.Directory,
 	}
-	s.Require().NoError(opts.setLocation())
 
 	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.NoError(err)
@@ -597,7 +594,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 		repo:   conf.ProjectRef.Repo,
 		dir:    c.Directory,
 	}
-	s.Require().NoError(opts.setLocation())
 
 	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.NoError(err)
@@ -623,10 +619,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		repo:  "sample",
 		dir:   "module",
 	}
-	s.Require().NoError(opts.setLocation())
 
 	// ensure module clone command with http URL injects token
-	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
@@ -642,7 +636,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}))
 
 	// ensure insecure github url is forced to use https
-	opts.location = "http://github.com/evergreen-ci/sample.git"
+	opts.owner = "evergreen-ci"
+	opts.repo = "sample"
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
@@ -660,7 +655,6 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 			Patch: "1234",
 		},
 	}
-	s.Require().NoError(opts.setLocation())
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", module)
 	s.NoError(err)
 	s.Require().Len(cmds, 10)
@@ -933,22 +927,6 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	s.Equal("Skipping empty patch file...", msg.Message.String())
 }
 
-func (s *GitGetProjectSuite) TestCloneOptsSetLocationGitHub() {
-	opts := cloneOpts{
-		owner: "foo",
-		repo:  "bar",
-		token: "",
-	}
-	s.Require().NoError(opts.setLocation())
-	s.Equal("https://github.com/foo/bar.git", opts.location)
-
-	s.Require().NoError(opts.setLocation())
-	s.Equal("https://github.com/foo/bar.git", opts.location)
-
-	opts.token = ""
-	s.Error(opts.setLocation())
-}
-
 func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	var token string
 	var err error
@@ -971,22 +949,6 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
-
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
-	s.NoError(err)
-	s.Equal(mockedGitHubAppToken, token)
-
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
-	s.NoError(err)
-	s.Equal(projectGitHubToken, token)
-
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
-	s.NoError(err)
-	s.Equal(projectGitHubToken, token)
-
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
-	s.NoError(err)
-	s.Equal(projectGitHubToken, token)
 
 	s.comm.CreateInstallationTokenFail = true
 

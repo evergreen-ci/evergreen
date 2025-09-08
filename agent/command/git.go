@@ -79,7 +79,6 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	location          string
 	owner             string
 	repo              string
 	branch            string
@@ -94,20 +93,13 @@ func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.owner == "", "missing required owner")
 	catcher.NewWhen(opts.repo == "", "missing required repo")
-	catcher.NewWhen(opts.location == "", "missing required location")
 
 	catcher.NewWhen(opts.cloneDepth < 0, "clone depth cannot be negative")
 	return catcher.Resolve()
 }
 
-func (opts cloneOpts) httpLocation() string {
+func (opts *cloneOpts) location() string {
 	return fmt.Sprintf("https://github.com/%s/%s.git", opts.owner, opts.repo)
-}
-
-// setLocation sets the location to clone from.
-func (opts *cloneOpts) setLocation() error {
-	opts.location = opts.httpLocation()
-	return nil
 }
 
 // getProjectMethodAndToken returns the project's clone method and token. If
@@ -150,11 +142,8 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
-	return opts.buildHTTPCloneCommand(true)
-}
 
-func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
-	urlLocation, err := url.Parse(opts.location)
+	urlLocation, err := url.Parse(opts.location())
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
 	}
@@ -284,8 +273,8 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		"set -o xtrace",
 		"set -o errexit",
 	}
-	if opts.location == "" && opts.repo == "" && opts.owner == "" {
-		return nil, errors.New("must specify repository URI or owner and repo")
+	if opts.repo == "" && opts.owner == "" {
+		return nil, errors.New("must specify owner and repo")
 	}
 	if opts.dir == "" {
 		return nil, errors.New("empty clone path")
@@ -338,9 +327,6 @@ func (c *gitFetchProject) opts(projectToken string, logger client.LoggerProducer
 		}
 	}
 
-	if err := opts.setLocation(); err != nil {
-		return opts, errors.Wrap(err, "setting location to clone from")
-	}
 	if err := opts.validate(); err != nil {
 		return opts, errors.Wrap(err, "validating clone options")
 	}
@@ -529,9 +515,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	opts := cloneOpts{
-		branch:   "",
-		dir:      moduleBase,
-		location: module.Repo,
+		branch: "",
+		dir:    moduleBase,
 	}
 
 	// If the module repo is using the deprecated ssh cloning method, extract the owner
@@ -548,10 +533,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if strings.Contains(module.Repo, "git@github.com:") {
 		logger.Task().Warningf("ssh cloning is being deprecated. We are manually converting '%s'"+
 			" to https format. Please update your project config.", module.Repo)
-	}
-
-	if err := opts.setLocation(); err != nil {
-		return errors.Wrap(err, "setting location to clone from")
 	}
 
 	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, opts.owner, opts.repo)
