@@ -17,6 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	gitHubURL = "github.com"
+)
+
 // Summary stores summary patch information
 type Summary struct {
 	Name        string `bson:"filename"`
@@ -196,20 +200,20 @@ func ParseGitUrl(url string) (string, string, error) {
 	return owner, repo, nil
 }
 
-func FormGitURL(host, owner, repo, token string) string {
+func FormGitURL(owner, repo, token string) string {
 	if token != "" {
-		return fmt.Sprintf("https://%s:x-oauth-basic@%s/%s/%s.git", token, host, owner, repo)
+		return fmt.Sprintf("https://%s:x-oauth-basic@%s/%s/%s.git", token, gitHubURL, owner, repo)
 	}
 
-	return fmt.Sprintf("https://%s/%s/%s.git", host, owner, repo)
+	return fmt.Sprintf("https://%s/%s/%s.git", gitHubURL, owner, repo)
 }
 
-func FormGitURLForApp(host, owner, repo, token string) string {
+func FormGitURLForApp(owner, repo, token string) string {
 	if token != "" {
-		return fmt.Sprintf("https://x-access-token:%s@%s/%s/%s.git", token, host, owner, repo)
+		return fmt.Sprintf("https://x-access-token:%s@%s/%s/%s.git", token, gitHubURL, owner, repo)
 	}
 
-	return fmt.Sprintf("https://%s/%s/%s.git", host, owner, repo)
+	return fmt.Sprintf("https://%s/%s/%s.git", gitHubURL, owner, repo)
 }
 
 // ParseGitVersion parses the git version number from the version string and returns a boolean indicating if it's an Apple Git version.

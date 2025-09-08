@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -98,15 +97,11 @@ func (opts cloneOpts) validate() error {
 	return catcher.Resolve()
 }
 
-func (opts *cloneOpts) location() string {
-	return fmt.Sprintf("https://github.com/%s/%s.git", opts.owner, opts.repo)
-}
-
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string) (string, error) {
-	if projectToken != "" {
-		token, err := parseToken(projectToken)
+func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, providedToken string) (string, error) {
+	if providedToken != "" {
+		token, err := parseToken(providedToken)
 		return token, err
 	}
 
@@ -122,7 +117,6 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 	}
 
 	return appToken, nil
-
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
@@ -143,11 +137,7 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
 
-	urlLocation, err := url.Parse(opts.location())
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing URL from location")
-	}
-	gitURL := thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
+	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
 
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 
