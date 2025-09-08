@@ -55,6 +55,7 @@ var (
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
+	cloneIsOauthAttribute = fmt.Sprintf("%s.is_oauth", gitGetProjectAttribute)
 
 	// validCloneMethods includes all recognized clone methods.
 	validCloneMethods = []string{
@@ -460,6 +461,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 			attribute.String(cloneBranchAttribute, opts.branch),
 			attribute.String(cloneMethodAttribute, opts.method),
 			attribute.Int(cloneAttemptAttribute, attempt),
+			attribute.Bool(cloneIsOauthAttribute, c.IsOauth),
 		))
 		defer span.End()
 
@@ -640,6 +642,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			attribute.String(cloneBranchAttribute, opts.branch),
 			attribute.String(cloneMethodAttribute, opts.method),
 			attribute.Int(cloneAttemptAttribute, attempt),
+			attribute.Bool(cloneIsOauthAttribute, c.IsOauth),
 		))
 		defer span.End()
 
