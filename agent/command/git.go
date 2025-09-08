@@ -106,7 +106,7 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, con
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, owner, repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo)
 	if err != nil {
 		return "", errors.Wrap(err, "creating app token")
 	}
@@ -165,7 +165,7 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
 
 func loadModulesManifestInToExpansions(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig) error {
-	manifest, err := comm.GetManifest(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+	manifest, err := comm.GetManifest(ctx, conf.TaskData())
 	if err != nil {
 		return errors.Wrapf(err, "loading manifest for task '%s'", conf.Task.Id)
 	}
@@ -690,7 +690,6 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 	ctx, span := getTracer().Start(ctx, "get_patches")
 	defer span.End()
 
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	for i, patchPart := range patch.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
@@ -704,7 +703,7 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 		// otherwise, fetch the contents and load it into the patch object
 		logger.Execution().Infof("Fetching patch contents for patch file '%s'.", patchPart.PatchSet.PatchFileId)
 
-		result, err := comm.GetPatchFile(ctx, td, patchPart.PatchSet.PatchFileId)
+		result, err := comm.GetPatchFile(ctx, conf.TaskData(), patchPart.PatchSet.PatchFileId)
 		if err != nil {
 			return errors.Wrapf(err, "getting patch file")
 		}
