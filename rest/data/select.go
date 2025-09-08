@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -54,3 +55,14 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	return selectedTests, nil
 }
 
+// SetTestQuarantined marks the test as quarantined or unquarantined in the test
+// selection service.
+func SetTestQuarantined(projectID, bvName, taskName string, isQuarantined bool) error {
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	c := newTestSelectionClient(httpClient)
+
+	// kim: TODO: need new TSC version.
+	fmt.Println(c.TestSelectionAPI)
+	return nil
+}
