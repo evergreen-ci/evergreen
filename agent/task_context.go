@@ -734,21 +734,22 @@ func isWindowsDriveLetter(device string) bool {
 }
 
 // getDeviceName extracts and sanitizes a device name from a device path.
-func getDeviceName(device string) string {
+// Returns the sanitized device name and a boolean indicating if it's valid.
+func getDeviceName(device string) (string, bool) {
 	deviceName := filepath.Base(device)
 
 	// Handle edge cases where filepath.Base returns empty or path separators
 	if deviceName == "" || deviceName == "/" || deviceName == "\\" {
-		// Special case: Windows drive letters (e.g., "Z:")
+		// Special case: Windows drive letters (e.g., "C:")
 		if isWindowsDriveLetter(device) {
 			deviceName = device
 		} else {
-			return ""
+			return "", false
 		}
 	}
 
 	sanitizedDeviceName := instrumentNameDisallowedCharacters.ReplaceAllString(deviceName, "")
-	return sanitizedDeviceName
+	return sanitizedDeviceName, sanitizedDeviceName != ""
 }
 
 // getDeviceNames returns the names of the devices mounted.
@@ -762,8 +763,8 @@ func (tc *taskContext) getDeviceNames(ctx context.Context) error {
 
 	for _, partition := range partitions {
 		if slices.Contains(mountpoints, partition.Mountpoint) {
-			deviceName := getDeviceName(partition.Device)
-			if deviceName != "" {
+			deviceName, valid := getDeviceName(partition.Device)
+			if valid {
 				tc.diskDevices = append(tc.diskDevices, deviceName)
 			}
 		}

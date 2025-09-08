@@ -25,7 +25,6 @@ func TestGetOomTrackerReport(t *testing.T) {
 }
 
 func TestGetDeviceNames(t *testing.T) {
-	ctx := t.Context()
 
 	t.Run("MountPoints", func(t *testing.T) {
 		tc := taskContext{}
@@ -33,7 +32,7 @@ func TestGetDeviceNames(t *testing.T) {
 		mountpoints := tc.getMountpoints()
 		require.NotEmpty(t, mountpoints)
 
-		partitions, err := disk.PartitionsWithContext(ctx, false)
+		partitions, err := disk.PartitionsWithContext(t.Context(), false)
 		require.NoError(t, err)
 		require.NotEmpty(t, partitions)
 
@@ -41,14 +40,15 @@ func TestGetDeviceNames(t *testing.T) {
 		expectedDeviceCount := 0
 		for _, partition := range partitions {
 			if slices.Contains(mountpoints, partition.Mountpoint) {
-				if getDeviceName(partition.Device) != "" {
+				_, valid := getDeviceName(partition.Device)
+				if valid {
 					expectedDeviceCount++
 				}
 			}
 		}
 
-		err = tc.getDeviceNames(ctx)
-		assert.NoError(t, err)
+		err = tc.getDeviceNames(t.Context())
+		require.NoError(t, err)
 		assert.Len(t, tc.diskDevices, expectedDeviceCount)
 	})
 }
