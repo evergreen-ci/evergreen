@@ -409,35 +409,34 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 	var allInstruments []metric.Observable
 
 	for _, c := range ifaces {
-		ifName := c.Name
-		sanitized := instrumentNameDisallowedCharacters.ReplaceAllString(ifName, "")
+		sanitized := instrumentNameDisallowedCharacters.ReplaceAllString(c.Name, "")
 
 		txBytes, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.transmit", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By"))
 		if err != nil {
-			return errors.Wrapf(err, "making tx counter for iface '%s'", ifName)
+			return errors.Wrapf(err, "making tx counter for iface '%s'", c.Name)
 		}
 		rxBytes, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.receive", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By"))
 		if err != nil {
-			return errors.Wrapf(err, "making rx counter for iface '%s'", ifName)
+			return errors.Wrapf(err, "making rx counter for iface '%s'", c.Name)
 		}
 		txBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.transmit_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
 		if err != nil {
-			return errors.Wrapf(err, "making tx_bps gauge for iface '%s'", ifName)
+			return errors.Wrapf(err, "making tx_bps gauge for iface '%s'", c.Name)
 		}
 		rxBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.receive_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
 		if err != nil {
-			return errors.Wrapf(err, "making rx_bps gauge for iface '%s'", ifName)
+			return errors.Wrapf(err, "making rx_bps gauge for iface '%s'", c.Name)
 		}
 		txBpsMax, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.max_transmit_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
 		if err != nil {
-			return errors.Wrapf(err, "making max_tx_bps gauge for iface '%s'", ifName)
+			return errors.Wrapf(err, "making max_tx_bps gauge for iface '%s'", c.Name)
 		}
 		rxBpsMax, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.max_receive_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
 		if err != nil {
-			return errors.Wrapf(err, "making max_rx_bps gauge for iface '%s'", ifName)
+			return errors.Wrapf(err, "making max_rx_bps gauge for iface '%s'", c.Name)
 		}
 
-		instrumentMap[ifName] = netInstruments{
+		instrumentMap[c.Name] = netInstruments{
 			txBytes:  txBytes,
 			rxBytes:  rxBytes,
 			txBps:    txBps,
@@ -448,7 +447,7 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		allInstruments = append(allInstruments, txBytes, rxBytes, txBps, rxBps, txBpsMax, rxBpsMax)
 
 		// Per-iface baseline
-		state[ifName] = &netState{
+		state[c.Name] = &netState{
 			lastTx: c.BytesSent,
 			lastRx: c.BytesRecv,
 			lastT:  time.Now(),
