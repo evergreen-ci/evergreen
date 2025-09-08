@@ -917,7 +917,7 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	s.Equal("Skipping empty patch file...", msg.Message.String())
 }
 
-func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
+func (s *GitGetProjectSuite) TestGetCloneToken() {
 	var token string
 	var err error
 
@@ -931,20 +931,20 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 		NewExpansions: agentutil.NewDynamicExpansions(map[string]string{}),
 	}
 
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, conf, projectGitHubToken)
+	token, err = getCloneToken(s.ctx, s.comm, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, conf, "")
+	token, err = getCloneToken(s.ctx, s.comm, conf, "")
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
 
 	s.comm.CreateInstallationTokenFail = true
 
-	_, err = getProjectMethodAndToken(s.ctx, s.comm, conf, "")
+	_, err = getCloneToken(s.ctx, s.comm, conf, "")
 	s.Error(err)
 
-	_, err = getProjectMethodAndToken(s.ctx, s.comm, conf, "token this is not a real token")
+	_, err = getCloneToken(s.ctx, s.comm, conf, "token this is not a real token")
 	s.Error(err)
 }
 

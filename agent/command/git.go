@@ -96,9 +96,9 @@ func (opts cloneOpts) validate() error {
 	return catcher.Resolve()
 }
 
-// getProjectMethodAndToken returns the project's clone method and token. If
+// getCloneToken returns the project's clone method and token. If
 // set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, providedToken string) (string, error) {
+func getCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, providedToken string) (string, error) {
 	if providedToken != "" {
 		token, err := parseToken(providedToken)
 		return token, err
@@ -329,7 +329,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	cloneToken, err := getProjectMethodAndToken(ctx, comm, conf, c.Token)
+	cloneToken, err := getCloneToken(ctx, comm, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
