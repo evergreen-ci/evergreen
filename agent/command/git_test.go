@@ -475,8 +475,8 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
+		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 		"set -o xtrace",
 		"cd dir",
 	}), cmds)
@@ -487,8 +487,8 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir'", projectGitHubToken),
+		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir'", projectGitHubToken),
 		"set -o xtrace",
 		"cd dir",
 	}), cmds)
@@ -502,8 +502,8 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
+		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 	}), cmds)
 
 	// ensure that we aren't sending the github oauth token to other
@@ -514,8 +514,8 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s:@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s:@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
+		fmt.Sprintf("echo \"git clone https://x-access-token:%s@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://x-access-token:%s@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 	}), cmds)
 }
 
@@ -546,8 +546,8 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 		"set -o errexit",
 		"rm -rf dir",
 		"set +o xtrace",
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
+		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 		"set -o xtrace",
 		"cd dir",
 		"git reset --hard ",
@@ -624,12 +624,14 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
+	// [2025/09/08 12:39:15.053]         	Messages:   	[set -o xtrace set -o errexit set +o xtrace echo "git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'module'" git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'module' set -o xtrace cd module git checkout 'main']
+
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set -o xtrace",
 		"set -o errexit",
 		"set +o xtrace",
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'module'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
+		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
 		"set -o xtrace",
 		"cd module",
 		"git checkout 'main'",
@@ -642,8 +644,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		fmt.Sprintf("echo \"git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'module'\"", projectGitHubToken),
-		fmt.Sprintf("git clone https://x-access-token:%s:@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
+		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
 	}), cmds)
 
 	conf = s.taskConfig4
