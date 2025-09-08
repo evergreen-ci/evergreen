@@ -665,12 +665,10 @@ Parameters:
   If you do not specify any revisions, all of them will be cloned that
   are defined in the [build variant](Project-Configuration-Files#build-variants)'s
   `modules` field.
-- `token`: Use a token to clone instead of the default Evergreen generated GitHub token.
-  Since this is a secret, it should be provided as a project
-  expansion. For example, you could provide an expansion called
-  "github*token" and then set this field to \${github_token}.
-  Evergreen will populate the expansion when it parses the project
-  yaml. This token is \_only* used for the source repository, not modules.
+- `token`: Use a token to clone instead of the Evergreen generated GitHub token.
+  This should be created with [github.generate_token](#githubgenerate_token).
+  This token is \_only* used for the source repository, not modules.
+  This parameter does not support oauth tokens.
 - `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
   patch builds, Evergreen will `git fetch --unshallow` if the base
   commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`.
