@@ -671,8 +671,6 @@ Parameters:
   "github*token" and then set this field to \${github_token}.
   Evergreen will populate the expansion when it parses the project
   yaml. This token is \_only* used for the source repository, not modules.
-- `is_oauth`: If a project token is provided and that token is an OAuth token and not a
-  GitHub app token, `is_oauth` must be set to true so that the clone command is formatted properly.
 - `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
   patch builds, Evergreen will `git fetch --unshallow` if the base
   commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`.
