@@ -329,8 +329,6 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
 	cloneToken, err := getProjectMethodAndToken(ctx, comm, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
@@ -342,7 +340,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return err
 	}
 
-	err = c.fetch(ctx, comm, logger, conf, td, opts)
+	err = c.fetch(ctx, comm, logger, conf, opts)
 	if err != nil {
 		logger.Task().Error(message.WrapError(err, message.Fields{
 			"operation":    "git.get_project",
@@ -437,7 +435,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	comm client.Communicator,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
-	td client.TaskData,
 	p *patch.Patch,
 	moduleName string) error {
 
@@ -518,7 +515,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			" to https format. Please update your project config.", module.Repo)
 	}
 
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, opts.owner, opts.repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
 	if err != nil {
 		return errors.Wrap(err, "creating app token")
 	}
@@ -580,7 +577,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	comm client.Communicator,
 	logger client.LoggerProducer,
 	conf *internal.TaskConfig,
-	td client.TaskData,
 	opts cloneOpts) error {
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -596,7 +592,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	var err error
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		logger.Execution().Info("Fetching patch.")
-		p, err = comm.GetTaskPatch(ctx, td)
+		p, err = comm.GetTaskPatch(ctx, conf.TaskData())
 		if err != nil {
 			return errors.Wrap(err, "getting patch for task")
 		}
@@ -633,7 +629,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 			if err := gCtx.Err(); err != nil {
 				return nil
 			}
-			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, td, p, moduleName), "fetching module source '%s'", moduleName)
+			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, p, moduleName), "fetching module source '%s'", moduleName)
 		})
 	}
 
