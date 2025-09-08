@@ -921,9 +921,8 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	var token string
 	var err error
 
-	td := client.TaskData{ID: s.taskConfig1.Task.Id, Secret: s.taskConfig1.Task.Secret}
-
 	conf := &internal.TaskConfig{
+		Task: s.taskConfig1.Task,
 		ProjectRef: model.ProjectRef{
 			Owner: "valid-owner",
 			Repo:  "valid-repo",
@@ -932,20 +931,20 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 		NewExpansions: agentutil.NewDynamicExpansions(map[string]string{}),
 	}
 
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 
-	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, conf, "")
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
 
 	s.comm.CreateInstallationTokenFail = true
 
-	_, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
+	_, err = getProjectMethodAndToken(s.ctx, s.comm, conf, "")
 	s.Error(err)
 
-	_, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "token this is not a real token")
+	_, err = getProjectMethodAndToken(s.ctx, s.comm, conf, "token this is not a real token")
 	s.Error(err)
 }
 

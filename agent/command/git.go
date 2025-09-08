@@ -99,7 +99,7 @@ func (opts cloneOpts) validate() error {
 
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, providedToken string) (string, error) {
+func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, providedToken string) (string, error) {
 	if providedToken != "" {
 		token, err := parseToken(providedToken)
 		return token, err
@@ -107,7 +107,7 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, owner, repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, owner, repo)
 	if err != nil {
 		return "", errors.Wrap(err, "creating app token")
 	}
@@ -165,15 +165,10 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 
 func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
 
-// Load performs a GET on /manifest/load
-func (c *gitFetchProject) manifestLoad(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
-	manifest, err := comm.GetManifest(ctx, td)
+func loadModulesManifestInToExpansions(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig) error {
+	manifest, err := comm.GetManifest(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 	if err != nil {
-		return errors.Wrapf(err, "loading manifest for task '%s'", td.ID)
+		return errors.Wrapf(err, "loading manifest for task '%s'", conf.Task.Id)
 	}
 
 	for moduleName := range manifest.Modules {
@@ -184,7 +179,6 @@ func (c *gitFetchProject) manifestLoad(ctx context.Context,
 		conf.NewExpansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
 	}
 
-	logger.Execution().Info("Manifest loaded successfully.")
 	return nil
 }
 
@@ -293,16 +287,17 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		owner:             conf.ProjectRef.Owner,
 		repo:              conf.ProjectRef.Repo,
 		branch:            conf.ProjectRef.Branch,
 		dir:               c.Directory,
-		token:             projectToken,
+		token:             cloneToken,
 		recurseSubmodules: c.RecurseSubmodules,
 	}
+
 	cloneDepth := c.CloneDepth
 	if cloneDepth == 0 && c.ShallowClone {
 		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
@@ -326,24 +321,24 @@ func (c *gitFetchProject) opts(projectToken string, logger client.LoggerProducer
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	err := c.manifestLoad(ctx, comm, logger, conf)
-	if err != nil {
+	if err := loadModulesManifestInToExpansions(ctx, comm, conf); err != nil {
 		return errors.Wrap(err, "loading manifest")
 	}
+	logger.Execution().Info("Manifest loaded successfully.")
 
-	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token)
+	cloneToken, err := getProjectMethodAndToken(ctx, comm, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
 
 	var opts cloneOpts
-	opts, err = c.opts(projectToken, logger, conf)
+	opts, err = c.opts(cloneToken, logger, conf)
 	if err != nil {
 		return err
 	}
