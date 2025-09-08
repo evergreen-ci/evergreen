@@ -37,10 +37,6 @@ const (
 
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
 
-	// Valid types of performing git clone
-	cloneMethodOAuth       = "oauth"
-	cloneMethodAccessToken = "access-token"
-
 	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
 
 	// githubMergeQueueInvalidRefError is the error message returned by Git when it fails to find
@@ -53,14 +49,7 @@ var (
 	cloneRepoAttribute    = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
 	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
-	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
-
-	// validCloneMethods includes all recognized clone methods.
-	validCloneMethods = []string{
-		cloneMethodOAuth,
-		cloneMethodAccessToken,
-	}
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -74,8 +63,7 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	Token   string `plugin:"expand" mapstructure:"token"`
-	IsOauth bool   `mapstructure:"is_oauth"`
+	Token string `plugin:"expand" mapstructure:"token"`
 
 	// ShallowClone sets CloneDepth to 100, and is kept for backwards compatibility.
 	ShallowClone bool `mapstructure:"shallow_clone"`
@@ -91,7 +79,6 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method            string
 	location          string
 	owner             string
 	repo              string
@@ -103,22 +90,11 @@ type cloneOpts struct {
 	cloneDepth        int
 }
 
-// validateCloneMethod checks that the clone mechanism is one of the supported
-// methods.
-func validateCloneMethod(method string) error {
-	if !utility.StringSliceContains(validCloneMethods, method) {
-		return errors.Errorf("'%s' is not a valid clone method", method)
-	}
-	return nil
-}
-
 func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.owner == "", "missing required owner")
 	catcher.NewWhen(opts.repo == "", "missing required repo")
 	catcher.NewWhen(opts.location == "", "missing required location")
-	catcher.Wrapf(validateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
-	catcher.NewWhen(opts.token == "" && opts.method == cloneMethodOAuth, "cannot clone using OAuth if token is not set")
 
 	catcher.NewWhen(opts.cloneDepth < 0, "clone depth cannot be negative")
 	return catcher.Resolve()
@@ -130,37 +106,30 @@ func (opts cloneOpts) httpLocation() string {
 
 // setLocation sets the location to clone from.
 func (opts *cloneOpts) setLocation() error {
-	if err := validateCloneMethod(opts.method); err != nil {
-		return errors.Errorf("unrecognized clone method '%s'", opts.method)
-	}
-
 	opts.location = opts.httpLocation()
 	return nil
 }
 
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string, isOauth bool) (string, string, error) {
+func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string) (string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
-		if isOauth {
-			return cloneMethodOAuth, token, err
-		}
-		return cloneMethodAccessToken, token, err
+		return token, err
 	}
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
 	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, owner, repo)
 	if err != nil {
-		return "", "", errors.Wrap(err, "creating app token")
+		return "", errors.Wrap(err, "creating app token")
 	}
 	if appToken != "" {
 		// Redact the token from the logs.
 		conf.NewExpansions.Redact(generatedTokenKey, appToken)
 	}
 
-	return cloneMethodAccessToken, appToken, nil
+	return appToken, nil
 
 }
 
@@ -181,13 +150,7 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
-	switch opts.method {
-	case cloneMethodOAuth:
-		return opts.buildHTTPCloneCommand(false)
-	case cloneMethodAccessToken:
-		return opts.buildHTTPCloneCommand(true)
-	}
-	return nil, errors.New("unrecognized clone method in options")
+	return opts.buildHTTPCloneCommand(true)
 }
 
 func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
@@ -195,12 +158,7 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
 	}
-	var gitURL string
-	if forApp {
-		gitURL = thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
-	} else {
-		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
-	}
+	gitURL := thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
 
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 
@@ -356,10 +314,9 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		method:            projectMethod,
 		owner:             conf.ProjectRef.Owner,
 		repo:              conf.ProjectRef.Repo,
 		branch:            conf.ProjectRef.Branch,
@@ -404,13 +361,13 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token, c.IsOauth)
+	projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
 
 	var opts cloneOpts
-	opts, err = c.opts(projectMethod, projectToken, logger, conf)
+	opts, err = c.opts(projectToken, logger, conf)
 	if err != nil {
 		return err
 	}
@@ -424,7 +381,6 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 			"owner":        conf.ProjectRef.Owner,
 			"repo":         conf.ProjectRef.Repo,
 			"branch":       conf.ProjectRef.Branch,
-			"clone_method": opts.method,
 		}))
 	}
 
@@ -458,7 +414,6 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 			attribute.String(cloneOwnerAttribute, opts.owner),
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
-			attribute.String(cloneMethodAttribute, opts.method),
 			attribute.Int(cloneAttemptAttribute, attempt),
 		))
 		defer span.End()
@@ -514,8 +469,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	logger client.LoggerProducer,
 	jpm jasper.Manager,
 	td client.TaskData,
-	projectToken string,
-	cloneMethod string,
 	p *patch.Patch,
 	moduleName string) error {
 
@@ -578,7 +531,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	opts := cloneOpts{
 		branch:   "",
 		dir:      moduleBase,
-		method:   cloneMethod,
 		location: module.Repo,
 	}
 
@@ -602,23 +554,15 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Wrap(err, "setting location to clone from")
 	}
 
-	if opts.method == cloneMethodOAuth {
-		// If user provided a token, use that token.
-		opts.token = projectToken
-	} else {
-		// Otherwise, create an installation token for to clone the module.
-		appToken, err := comm.CreateInstallationTokenForClone(ctx, td, opts.owner, opts.repo)
-		if err != nil {
-			return errors.Wrap(err, "creating app token")
-		}
-
-		opts.token = appToken
-		opts.method = cloneMethodAccessToken
-
-		// After generating, redact the token from the logs.
-		conf.NewExpansions.Redact(generatedTokenKey, appToken)
-
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, opts.owner, opts.repo)
+	if err != nil {
+		return errors.Wrap(err, "creating app token")
 	}
+
+	opts.token = appToken
+
+	// After generating, redact the token from the logs.
+	conf.NewExpansions.Redact(generatedTokenKey, appToken)
 
 	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "validating clone options")
@@ -638,7 +582,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			attribute.String(cloneOwnerAttribute, opts.owner),
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
-			attribute.String(cloneMethodAttribute, opts.method),
 			attribute.Int(cloneAttemptAttribute, attempt),
 		))
 		defer span.End()
@@ -727,7 +670,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 			if err := gCtx.Err(); err != nil {
 				return nil
 			}
-			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
+			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, jpm, td, p, moduleName), "fetching module source '%s'", moduleName)
 		})
 	}
 

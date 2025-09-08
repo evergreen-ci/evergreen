@@ -175,7 +175,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 	conf := s.taskConfig1
 
 	opts := cloneOpts{
-		method: cloneMethodOAuth,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
 		branch: conf.ProjectRef.Branch,
@@ -258,7 +257,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 	conf := s.taskConfig2
 
 	opts := cloneOpts{
-		method:     cloneMethodAccessToken,
 		token:      projectGitHubToken,
 		owner:      conf.ProjectRef.Owner,
 		repo:       conf.ProjectRef.Repo,
@@ -468,7 +466,6 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	// build clone command to clone by http, main branch with token into 'dir'
 	opts := cloneOpts{
-		method: cloneMethodOAuth,
 		owner:  projectRef.Owner,
 		repo:   projectRef.Repo,
 		branch: projectRef.Branch,
@@ -540,7 +537,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 
 	// ensure clone command with location containing "https://github.com" uses
 	// HTTPS.
-	opts.method = cloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildSourceCloneCommand(conf, opts)
@@ -569,7 +565,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	}
 
 	opts := cloneOpts{
-		method: cloneMethodAccessToken,
 		token:  projectGitHubToken,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
@@ -596,7 +591,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 	}
 
 	opts := cloneOpts{
-		method: cloneMethodAccessToken,
 		token:  projectGitHubToken,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
@@ -624,11 +618,10 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 
 	opts := cloneOpts{
-		method: cloneMethodOAuth,
-		token:  c.Token,
-		owner:  "evergreen-ci",
-		repo:   "sample",
-		dir:    "module",
+		token: c.Token,
+		owner: "evergreen-ci",
+		repo:  "sample",
+		dir:   "module",
 	}
 	s.Require().NoError(opts.setLocation())
 
@@ -667,7 +660,6 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 			Patch: "1234",
 		},
 	}
-	opts.method = cloneMethodAccessToken
 	s.Require().NoError(opts.setLocation())
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", module)
 	s.NoError(err)
@@ -943,26 +935,22 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 
 func (s *GitGetProjectSuite) TestCloneOptsSetLocationGitHub() {
 	opts := cloneOpts{
-		method: cloneMethodAccessToken,
-		owner:  "foo",
-		repo:   "bar",
-		token:  "",
+		owner: "foo",
+		repo:  "bar",
+		token: "",
 	}
 	s.Require().NoError(opts.setLocation())
 	s.Equal("https://github.com/foo/bar.git", opts.location)
 
-	opts.method = cloneMethodOAuth
 	s.Require().NoError(opts.setLocation())
 	s.Equal("https://github.com/foo/bar.git", opts.location)
 
-	opts.method = "foo"
 	opts.token = ""
 	s.Error(opts.setLocation())
 }
 
 func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	var token string
-	var method string
 	var err error
 
 	td := client.TaskData{ID: s.taskConfig1.Task.Id, Secret: s.taskConfig1.Task.Secret}
@@ -976,42 +964,36 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 		NewExpansions: agentutil.NewDynamicExpansions(map[string]string{}),
 	}
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(cloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "", false)
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
-	s.Equal(cloneMethodAccessToken, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "", false)
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
-	s.Equal(cloneMethodAccessToken, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(cloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(cloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
+	token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
-	s.Equal(cloneMethodOAuth, method)
 
 	s.comm.CreateInstallationTokenFail = true
 
-	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "", false)
+	_, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
 	s.Error(err)
 
-	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "token this is not a real token", false)
+	_, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "token this is not a real token")
 	s.Error(err)
 }
 
