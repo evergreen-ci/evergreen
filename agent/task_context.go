@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"sync"
 	"time"
 
@@ -22,6 +24,14 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	// Platform-specific mountpoints used for disk device detection.
+	// Sync with devprod infrastructure before changing these values.
+	linuxMountpoint   = "/data"
+	windowsMountpoint = "Z:"
+	darwinMountpoint  = "/System/Volumes/Data"
 )
 
 type taskContext struct {
@@ -691,18 +701,72 @@ func (tc *taskContext) getAddMetadataTagResponse() *triggerAddMetadataTagResp {
 	return tc.addMetadataTagResp
 }
 
-func (tc *taskContext) getDeviceNames(ctx context.Context) error {
-	if tc.taskConfig == nil || tc.taskConfig.Distro == nil || len(tc.taskConfig.Distro.Mountpoints) == 0 {
-		return nil
+// getPlatformMountpoint returns the standard mountpoint used for the current OS.
+func getPlatformMountpoint() string {
+	switch runtime.GOOS {
+	case "linux":
+		return linuxMountpoint
+	case "windows":
+		return windowsMountpoint
+	case "darwin":
+		return darwinMountpoint
+	default:
+		return ""
 	}
+}
+
+// getMountpoints returns the list of mountpoints to check for disk devices.
+// Always includes "/" as the first mountpoint, followed by platform-specific mountpoint if available.
+func (tc *taskContext) getMountpoints() []string {
+	mountpoints := []string{"/"}
+	if platformMountpoint := getPlatformMountpoint(); platformMountpoint != "" {
+		mountpoints = append(mountpoints, platformMountpoint)
+	}
+	return mountpoints
+}
+
+// isWindowsDriveLetter checks if the device represents a Windows drive letter (e.g., "C:")
+func isWindowsDriveLetter(device string) bool {
+	return runtime.GOOS == "windows" &&
+		len(device) == 2 &&
+		device[1] == ':' &&
+		device[0] >= 'A' && device[0] <= 'Z'
+}
+
+// getDeviceName extracts and sanitizes a device name from a device path.
+// Returns the sanitized device name and a boolean indicating if it's valid.
+func getDeviceName(device string) (string, bool) {
+	deviceName := filepath.Base(device)
+
+	// Handle edge cases where filepath.Base returns empty or path separators
+	if deviceName == "" || deviceName == "/" || deviceName == "\\" {
+		// Special case: Windows drive letters (e.g., "C:")
+		if isWindowsDriveLetter(device) {
+			deviceName = device
+		} else {
+			return "", false
+		}
+	}
+
+	sanitizedDeviceName := instrumentNameDisallowedCharacters.ReplaceAllString(deviceName, "")
+	return sanitizedDeviceName, sanitizedDeviceName != ""
+}
+
+// getDeviceNames returns the names of the devices mounted.
+func (tc *taskContext) getDeviceNames(ctx context.Context) error {
+	mountpoints := tc.getMountpoints()
 
 	partitions, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "getting partitions")
 	}
+
 	for _, partition := range partitions {
-		if utility.StringSliceContains(tc.taskConfig.Distro.Mountpoints, partition.Mountpoint) {
-			tc.diskDevices = append(tc.diskDevices, filepath.Base(partition.Device))
+		if slices.Contains(mountpoints, partition.Mountpoint) {
+			deviceName, valid := getDeviceName(partition.Device)
+			if valid {
+				tc.diskDevices = append(tc.diskDevices, deviceName)
+			}
 		}
 	}
 	return nil
