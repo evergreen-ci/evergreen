@@ -30,7 +30,7 @@ func TestMetrics(t *testing.T) {
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
 		"NetworkMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addNetworkMetrics(meter))
+			assert.NoError(t, addNetworkMetrics(t.Context(), meter))
 			var metrics metricdata.ResourceMetrics
 			assert.NoError(t, reader.Collect(ctx, &metrics))
 			require.NotEmpty(t, metrics.ScopeMetrics)

@@ -140,7 +140,7 @@ func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 	}
 
 	catcher.Wrap(addMemoryMetrics(meter), "adding memory metrics")
-	catcher.Wrap(addNetworkMetrics(meter), "adding network metrics")
+	catcher.Wrap(addNetworkMetrics(ctx, meter), "adding network metrics")
 	catcher.Wrap(addProcessMetrics(meter), "adding process metrics")
 
 	return catcher.Resolve()
@@ -380,31 +380,140 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 	return nil
 }
 
-func addNetworkMetrics(meter metric.Meter) error {
-	networkIOTransmit, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metric.WithUnit("by"))
-	if err != nil {
-		return errors.Wrap(err, "making network io transmit counter")
+func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
+	type netInstruments struct {
+		txBytes  metric.Int64ObservableCounter
+		rxBytes  metric.Int64ObservableCounter
+		txBps    metric.Float64ObservableGauge
+		rxBps    metric.Float64ObservableGauge
+		txBpsMax metric.Float64ObservableGauge
+		rxBpsMax metric.Float64ObservableGauge
 	}
 
-	networkIOReceive, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.receive", networkIOInstrumentPrefix), metric.WithUnit("by"))
-	if err != nil {
-		return errors.Wrap(err, "making network io receive counter")
+	type netState struct {
+		lastTx uint64
+		lastRx uint64
+		lastT  time.Time
+		maxTx  float64
+		maxRx  float64
 	}
-	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
-		counters, err := net.IOCountersWithContext(ctx, false)
+
+	// Build instruments per interface
+	ifaces, err := net.IOCountersWithContext(ctx, true)
+	if err != nil {
+		return errors.Wrap(err, "getting initial per-interface network stats")
+	}
+
+	instrumentMap := map[string]netInstruments{}
+	state := map[string]*netState{}
+	var allInstruments []metric.Observable
+
+	for _, c := range ifaces {
+		ifName := c.Name
+		sanitized := instrumentNameDisallowedCharacters.ReplaceAllString(ifName, "")
+
+		txBytes, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.transmit", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By"))
 		if err != nil {
-			return errors.Wrap(err, "getting network stats")
+			return errors.Wrapf(err, "making tx counter for iface '%s'", ifName)
 		}
-		if len(counters) != 1 {
-			return errors.Wrap(err, "network counters had an unexpected length")
+		rxBytes, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.receive", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By"))
+		if err != nil {
+			return errors.Wrapf(err, "making rx counter for iface '%s'", ifName)
+		}
+		txBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.transmit_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
+		if err != nil {
+			return errors.Wrapf(err, "making tx_bps gauge for iface '%s'", ifName)
+		}
+		rxBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.receive_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
+		if err != nil {
+			return errors.Wrapf(err, "making rx_bps gauge for iface '%s'", ifName)
+		}
+		txBpsMax, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.max_transmit_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
+		if err != nil {
+			return errors.Wrapf(err, "making max_tx_bps gauge for iface '%s'", ifName)
+		}
+		rxBpsMax, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.max_receive_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
+		if err != nil {
+			return errors.Wrapf(err, "making max_rx_bps gauge for iface '%s'", ifName)
 		}
 
-		observer.ObserveInt64(networkIOTransmit, int64(counters[0].BytesSent))
-		observer.ObserveInt64(networkIOReceive, int64(counters[0].BytesRecv))
+		instrumentMap[ifName] = netInstruments{
+			txBytes:  txBytes,
+			rxBytes:  rxBytes,
+			txBps:    txBps,
+			rxBps:    rxBps,
+			txBpsMax: txBpsMax,
+			rxBpsMax: rxBpsMax,
+		}
+		allInstruments = append(allInstruments, txBytes, rxBytes, txBps, rxBps, txBpsMax, rxBpsMax)
+
+		// Per-iface baseline
+		state[ifName] = &netState{
+			lastTx: c.BytesSent,
+			lastRx: c.BytesRecv,
+			lastT:  time.Now(),
+		}
+	}
+
+	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
+		counters, err := net.IOCountersWithContext(ctx, true)
+		if err != nil {
+			return errors.Wrap(err, "getting per-interface network stats")
+		}
+
+		now := time.Now()
+		for _, c := range counters {
+			inst, ok := instrumentMap[c.Name]
+			if !ok {
+				continue
+			}
+
+			observer.ObserveInt64(inst.txBytes, int64(c.BytesSent))
+			observer.ObserveInt64(inst.rxBytes, int64(c.BytesRecv))
+
+			st := state[c.Name]
+			if st != nil && !st.lastT.IsZero() {
+				dt := now.Sub(st.lastT).Seconds()
+				if dt > 0 {
+					txBps := float64(c.BytesSent-st.lastTx) / dt
+					rxBps := float64(c.BytesRecv-st.lastRx) / dt
+					// Handle counter reset
+					if txBps < 0 {
+						txBps = 0
+					}
+					if rxBps < 0 {
+						rxBps = 0
+					}
+
+					observer.ObserveFloat64(inst.txBps, txBps)
+					observer.ObserveFloat64(inst.rxBps, rxBps)
+
+					if txBps > st.maxTx {
+						st.maxTx = txBps
+					}
+					if rxBps > st.maxRx {
+						st.maxRx = rxBps
+					}
+					observer.ObserveFloat64(inst.txBpsMax, st.maxTx)
+					observer.ObserveFloat64(inst.rxBpsMax, st.maxRx)
+				}
+			}
+
+			// Update baseline
+			if st != nil {
+				st.lastTx = c.BytesSent
+				st.lastRx = c.BytesRecv
+				st.lastT = now
+			}
+		}
 
 		return nil
-	}, networkIOTransmit, networkIOReceive)
-	return errors.Wrap(err, "registering network io callback")
+	}, allInstruments...)
+	if err != nil {
+		return errors.Wrap(err, "registering per-interface network io callback")
+	}
+
+	return nil
 }
 
 func hostResource(ctx context.Context) *resource.Resource {
