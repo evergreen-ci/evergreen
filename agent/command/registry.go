@@ -35,7 +35,6 @@ func init() {
 		"generate.tasks":                        generateTaskFactory,
 		"git.apply_patch":                       gitApplyPatchFactory,
 		"git.get_project":                       gitFetchProjectFactory,
-		"git.push":                              gitPushFactory,
 		"github.generate_token":                 githubGenerateTokenFactory,
 		"gotest.parse_files":                    goTestFactory,
 		"keyval.inc":                            keyValIncFactory,
