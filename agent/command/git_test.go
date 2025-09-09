@@ -174,7 +174,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 	}
 	conf := s.taskConfig1
 
-	opts := cloneOpts{
+	opts := cloneCMD{
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
 		branch: conf.ProjectRef.Branch,
@@ -194,10 +194,10 @@ func (s *GitGetProjectSuite) TestRetryFetchAttemptsFiveTimesOnError() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 
-	opts := cloneOpts{}
+	opts := cloneCMD{}
 
 	attempt := 0
-	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneOpts) error {
+	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneCMD) error {
 		attempt++
 		return errors.New("failed to fetch")
 	})
@@ -216,10 +216,10 @@ func (s *GitGetProjectSuite) TestRetryFetchAttemptsOnceOnSuccess() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 
-	opts := cloneOpts{}
+	opts := cloneCMD{}
 
 	attempt := 0
-	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneOpts) error {
+	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneCMD) error {
 		attempt++
 		return nil
 	})
@@ -237,10 +237,10 @@ func (s *GitGetProjectSuite) TestRetryFetchStopsOnInvalidGitHubMergeQueueRef() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 
-	opts := cloneOpts{}
+	opts := cloneCMD{}
 
 	attempt := 0
-	err = c.retryFetch(s.ctx, logger, true, opts, func(o cloneOpts) error {
+	err = c.retryFetch(s.ctx, logger, true, opts, func(o cloneCMD) error {
 		attempt++
 		return errors.Errorf("fatel: %s", githubMergeQueueInvalidRefError)
 	})
@@ -255,7 +255,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 	}
 	conf := s.taskConfig2
 
-	opts := cloneOpts{
+	opts := cloneCMD{
 		token:      projectGitHubToken,
 		owner:      conf.ProjectRef.Owner,
 		repo:       conf.ProjectRef.Repo,
@@ -455,7 +455,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
-func (s *GitGetProjectSuite) TestGetCloneCommand() {
+func (s *GitGetProjectSuite) TestgetCloneCommands() {
 	projectRef := &model.ProjectRef{
 		Owner:  "evergreen-ci",
 		Repo:   "sample",
@@ -463,14 +463,14 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	}
 
 	// build clone command to clone by http, main branch with token into 'dir'
-	opts := cloneOpts{
+	opts := cloneCMD{
 		owner:  projectRef.Owner,
 		repo:   projectRef.Repo,
 		branch: projectRef.Branch,
 		dir:    "dir",
 		token:  projectGitHubToken,
 	}
-	cmds, err := opts.getCloneCommand()
+	cmds, err := opts.getCloneCommands()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -482,7 +482,7 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	}), cmds)
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	opts.branch = ""
-	cmds, err = opts.getCloneCommand()
+	cmds, err = opts.getCloneCommands()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -498,7 +498,7 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	opts.owner = "evergreen-ci"
 	opts.repo = "sample"
 	opts.branch = projectRef.Branch
-	cmds, err = opts.getCloneCommand()
+	cmds, err = opts.getCloneCommands()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -515,7 +515,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 		Token:     projectGitHubToken,
 	}
 
-	opts := cloneOpts{
+	opts := cloneCMD{
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
 		repo:   conf.ProjectRef.Repo,
@@ -550,7 +550,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 		Directory: "dir",
 	}
 
-	opts := cloneOpts{
+	opts := cloneCMD{
 		token:  projectGitHubToken,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
@@ -575,7 +575,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 		Directory: "dir",
 	}
 
-	opts := cloneOpts{
+	opts := cloneCMD{
 		token:  projectGitHubToken,
 		branch: conf.ProjectRef.Branch,
 		owner:  conf.ProjectRef.Owner,
@@ -601,7 +601,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		Token:     projectGitHubToken,
 	}
 
-	opts := cloneOpts{
+	opts := cloneCMD{
 		token: c.Token,
 		owner: "evergreen-ci",
 		repo:  "sample",

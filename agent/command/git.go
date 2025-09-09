@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
@@ -76,92 +74,6 @@ type gitFetchProject struct {
 	base
 }
 
-type cloneOpts struct {
-	owner             string
-	repo              string
-	branch            string
-	dir               string
-	token             string
-	recurseSubmodules bool
-	useVerbose        bool
-	cloneDepth        int
-}
-
-func (opts cloneOpts) validate() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(opts.owner == "", "missing required owner")
-	catcher.NewWhen(opts.repo == "", "missing required repo")
-
-	catcher.NewWhen(opts.cloneDepth < 0, "clone depth cannot be negative")
-	return catcher.Resolve()
-}
-
-// getCloneToken returns the project's clone method and token. If
-// set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, providedToken string) (string, error) {
-	if providedToken != "" {
-		token, err := parseToken(providedToken)
-		return token, err
-	}
-
-	owner := conf.ProjectRef.Owner
-	repo := conf.ProjectRef.Repo
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo)
-	if err != nil {
-		return "", errors.Wrap(err, "creating app token")
-	}
-	if appToken != "" {
-		// Redact the token from the logs.
-		conf.NewExpansions.Redact(generatedTokenKey, appToken)
-	}
-
-	return appToken, nil
-}
-
-// parseToken parses the OAuth token, if it is in the format "token <token>";
-// otherwise, it returns the token unchanged.
-func parseToken(token string) (string, error) {
-	if !strings.HasPrefix(token, "token") {
-		return token, nil
-	}
-	splitToken := strings.Split(token, " ")
-	if len(splitToken) != 2 {
-		return "", errors.New("token format is invalid")
-	}
-	return splitToken[1], nil
-}
-
-func (opts cloneOpts) getCloneCommand() ([]string, error) {
-	if err := opts.validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid clone command options")
-	}
-
-	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
-
-	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
-
-	if opts.recurseSubmodules {
-		clone = fmt.Sprintf("%s --recurse-submodules", clone)
-	}
-	if opts.useVerbose {
-		clone = fmt.Sprintf("GIT_TRACE=1 %s", clone)
-	}
-	if opts.cloneDepth > 0 {
-		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
-	}
-	if opts.branch != "" {
-		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
-	}
-
-	return []string{
-		"set +o xtrace",
-		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
-		clone,
-		"set -o xtrace",
-		fmt.Sprintf("cd %s", opts.dir),
-	}, nil
-}
-
 func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
 
 func loadModulesManifestInToExpansions(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig) error {
@@ -199,7 +111,7 @@ func (c *gitFetchProject) ParseParams(params map[string]any) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opts cloneCMD) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		fmt.Sprintf("chmod -R 755 %s", c.Directory),
@@ -207,7 +119,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := opts.getCloneCommands()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -251,7 +163,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneCMD, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -266,7 +178,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := opts.getCloneCommands()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -286,9 +198,9 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneCMD, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
-	opts := cloneOpts{
+	opts := cloneCMD{
 		owner:             conf.ProjectRef.Owner,
 		repo:              conf.ProjectRef.Repo,
 		branch:            conf.ProjectRef.Branch,
@@ -334,7 +246,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
 
-	var opts cloneOpts
+	var opts cloneCMD
 	opts, err = c.opts(cloneToken, logger, conf)
 	if err != nil {
 		return err
@@ -355,9 +267,9 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneCMD) error {
 	attempt := 0
-	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
+	return c.retryFetch(ctx, logger, true, opts, func(opts cloneCMD) error {
 		attempt++
 		gitCommands, err := c.buildSourceCloneCommand(conf, opts)
 		if err != nil {
@@ -390,7 +302,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 	})
 }
 
-func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, isSource bool, opts cloneOpts, fetch func(cloneOpts) error) error {
+func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, isSource bool, opts cloneCMD, fetch func(cloneCMD) error) error {
 	const (
 		fetchRetryMinDelay = time.Second
 		fetchRetryMaxDelay = 10 * time.Second
@@ -494,7 +406,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		}
 	}
 
-	opts := cloneOpts{
+	opts := cloneCMD{
 		branch: "",
 		dir:    moduleBase,
 	}
@@ -536,7 +448,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	attempt := 0
-	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
+	return c.retryFetch(ctx, logger, false, opts, func(opts cloneCMD) error {
 		attempt++
 		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 			attribute.String(cloneModuleAttribute, module.Name),
@@ -577,7 +489,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	comm client.Communicator,
 	logger client.LoggerProducer,
 	conf *internal.TaskConfig,
-	opts cloneOpts) error {
+	opts cloneCMD) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
