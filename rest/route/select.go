@@ -32,7 +32,7 @@ func makeSelectTestsHandler(env evergreen.Environment) gimlet.RouteHandler {
 //	@Router			/select/tests [post]
 //	@Param			{object}	body	model.SelectTestsRequest	true	"Select tests request"
 //	@Security		Api-User || Api-Key
-//	@Success		200	{object}	SelectTestsRequest
+//	@Success		200	{object}	model.SelectTestsRequest
 func (t *selectTestsHandler) Factory() gimlet.RouteHandler {
 	return &selectTestsHandler{env: t.env}
 }

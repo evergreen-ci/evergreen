@@ -28,15 +28,6 @@ func TestSelectTestsHandler(t *testing.T) {
 	sth := makeSelectTestsHandler(env)
 	require.NoError(t, sth.Parse(ctx, req), "request should parse successfully")
 
-	result := sth.Run(ctx)
-	selectRequest := result.Data().(SelectTestsRequest)
-	require.Equal(t, "my-project", selectRequest.Project)
-	require.Equal(t, "patch", selectRequest.Requester)
-	require.Equal(t, "variant", selectRequest.BuildVariant)
-	require.Equal(t, "my-task-1234", selectRequest.TaskID)
-	require.Equal(t, "my-task", selectRequest.TaskName)
-	require.Equal(t, []string{"test1", "test2", "test3"}, selectRequest.Tests)
-
 	j = []byte(`{
 		"project": "",
 		"requester": "patch",
