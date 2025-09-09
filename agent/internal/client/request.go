@@ -23,8 +23,7 @@ type requestInfo struct {
 	path     string
 	taskData *TaskData
 
-	retryOnInvalidBody bool
-	retryOn413         bool
+	retryOn413 bool
 }
 
 func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, data any) (*http.Request, error) {
@@ -145,8 +144,9 @@ func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, d
 	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
 	opts := utility.RetryRequestOptions{
-		RetryOptions:       c.retry,
-		RetryOnInvalidBody: info.retryOnInvalidBody,
+		RetryOptions: c.retry,
+		// Routes have returned an invalid body for some distros. See DEVPROD-7885.
+		RetryOnInvalidBody: true,
 		RetryOn413:         info.retryOn413,
 	}
 	resp, err := utility.RetryRequest(ctx, r, opts)

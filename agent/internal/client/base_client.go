@@ -234,9 +234,8 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 
 func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
 	info := requestInfo{
-		method:             http.MethodGet,
-		taskData:           &taskData,
-		retryOnInvalidBody: true, // This route has returned an invalid body for older distros. See DEVPROD-7885.
+		method:   http.MethodGet,
+		taskData: &taskData,
 	}
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
