@@ -530,9 +530,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	g.SetLimit(10)
 
 	// Clone the project's modules in goroutines.
-	for _, name := range conf.BuildVariant.Modules {
-		// TODO (DEVPROD-3611): remove capturing the loop variable and use the loop variable directly.
-		moduleName := name
+	for _, moduleName := range conf.BuildVariant.Modules {
 		expanded, err := conf.NewExpansions.ExpandString(moduleName)
 		if err == nil {
 			moduleName = expanded
