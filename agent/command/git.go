@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -348,12 +347,9 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	logger client.LoggerProducer,
 	p *patch.Patch,
 	moduleName string) error {
-
-	var err error
 	logger.Execution().Infof("Fetching module '%s'.", moduleName)
 
-	var module *model.Module
-	module, err = conf.Project.GetModuleByName(moduleName)
+	module, err := conf.Project.GetModuleByName(moduleName)
 	if err != nil {
 		return errors.Wrapf(err, "getting module '%s'", moduleName)
 	}
