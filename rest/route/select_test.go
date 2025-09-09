@@ -29,6 +29,17 @@ func TestSelectTestsHandler(t *testing.T) {
 	require.NoError(t, sth.Parse(ctx, req), "request should parse successfully")
 
 	j = []byte(`{
+		"project": "my-project",
+		"requester": "patch",
+		"build_variant": "variant",
+		"task_id": "my-task-1234",
+		"task_name": "my-task"
+	}`)
+	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
+	sth = makeSelectTestsHandler(env)
+	require.NoError(t, sth.Parse(ctx, req), "request should parse successfully when tests is missing")
+
+	j = []byte(`{
 		"project": "",
 		"requester": "patch",
 		"build_variant": "variant",
@@ -87,16 +98,4 @@ func TestSelectTestsHandler(t *testing.T) {
 	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
 	sth = makeSelectTestsHandler(env)
 	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when task name is missing")
-
-	j = []byte(`{
-		"project": "my-project",
-		"requester": "patch",
-		"build_variant": "variant",
-		"task_id": "my-task-1234",
-		"task_name": "",
-		"tests": []
-	}`)
-	req, _ = http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
-	sth = makeSelectTestsHandler(env)
-	require.Error(t, sth.Parse(ctx, req), "request should fail to parse when tests are empty")
 }

@@ -53,7 +53,6 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 	catcher.NewWhen(t.selectTests.BuildVariant == "", "build variant is required")
 	catcher.NewWhen(t.selectTests.TaskID == "", "task ID is required")
 	catcher.NewWhen(t.selectTests.TaskName == "", "task name is required")
-	catcher.NewWhen(len(t.selectTests.Tests) == 0, "tests array must not be empty")
 	return catcher.Resolve()
 }
 
