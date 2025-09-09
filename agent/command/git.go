@@ -99,8 +99,7 @@ func (c *gitFetchProject) Name() string { return "git.get_project" }
 // ParseParams parses the command's configuration.
 // Fulfills the Command interface.
 func (c *gitFetchProject) ParseParams(params map[string]any) error {
-	err := mapstructure.Decode(params, c)
-	if err != nil {
+	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
