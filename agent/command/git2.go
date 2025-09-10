@@ -319,6 +319,10 @@ func (c *gitFetchProject2) moduleCloneOptions(ctx context.Context, module *model
 	if err != nil {
 		return nil, errors.Wrap(err, "creating app token")
 	}
+	var modulePatch *patch.ModulePatch
+	if c.patch != nil {
+		modulePatch = c.patch.FindModule(module.Name)
+	}
 
 	return &cloneCMDOptions{
 		conf:        c.conf,
@@ -327,7 +331,7 @@ func (c *gitFetchProject2) moduleCloneOptions(ctx context.Context, module *model
 		dir:         filepath.ToSlash(filepath.Join(c.conf.ModulePaths[module.Name], module.Name)),
 		token:       cloneToken,
 		ref:         c.getModuleRevision(module),
-		modulePatch: c.patch.FindModule(module.Name),
+		modulePatch: modulePatch,
 	}, nil
 }
 
@@ -634,10 +638,8 @@ func (opts *cloneCMDOptions) build() ([]string, error) {
 			}
 			cmds = append(cmds, fmt.Sprintf("git reset --hard %s", opts.conf.Task.Revision))
 		}
-	}
-
-	// Module-specific post-clone commands.
-	if opts.modulePatch != nil {
+	} else {
+		// Module-specific post-clone commands.
 		if isGitHubPRModulePatch(opts.conf, opts.modulePatch) {
 			branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 			cmds = append(cmds,
