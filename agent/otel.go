@@ -383,27 +383,27 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 	transmit, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metric.WithUnit("By"))
 	if err != nil {
-		return errors.Wrap(err, "making aggregate tx counter")
+		return errors.Wrap(err, "making transmit counter")
 	}
 	receive, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.receive", networkIOInstrumentPrefix), metric.WithUnit("By"))
 	if err != nil {
-		return errors.Wrap(err, "making aggregate rx counter")
+		return errors.Wrap(err, "making receive counter")
 	}
 	transmitBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.transmit_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
 	if err != nil {
-		return errors.Wrap(err, "making aggregate tx_bps gauge")
+		return errors.Wrap(err, "making transmit gauge")
 	}
 	receiveBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.receive_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
 	if err != nil {
-		return errors.Wrap(err, "making aggregate rx_bps gauge")
+		return errors.Wrap(err, "making receive gauge")
 	}
 	maxTransmitBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.max_transmit_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
 	if err != nil {
-		return errors.Wrap(err, "making aggregate max_tx_bps gauge")
+		return errors.Wrap(err, "making max transmit gauge")
 	}
 	maxReceiveBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.max_receive_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
 	if err != nil {
-		return errors.Wrap(err, "making aggregate max_rx_bps gauge")
+		return errors.Wrap(err, "making max receive gauge")
 	}
 
 	var lastTransmit, lastReceive uint64
@@ -417,9 +417,9 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		lastReceive = cs[0].BytesRecv
 		lastTime = time.Now()
 	} else if err != nil {
-		return errors.Wrap(err, "getting initial aggregate network stats")
+		return errors.Wrap(err, "getting initial network stats")
 	} else {
-		return errors.New("aggregate network counters had an unexpected length")
+		return errors.New("network counters had an unexpected length")
 	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
@@ -427,10 +427,10 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 
 		counters, err := net.IOCountersWithContext(ctx, false)
 		if err != nil {
-			return errors.Wrap(err, "getting aggregate network stats")
+			return errors.Wrap(err, "getting network stats")
 		}
 		if len(counters) != 1 {
-			return errors.New("aggregate network counters had an unexpected length")
+			return errors.New("network counters had an unexpected length")
 		}
 		ac := counters[0]
 		observer.ObserveInt64(transmit, int64(ac.BytesSent))
