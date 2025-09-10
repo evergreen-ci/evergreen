@@ -410,8 +410,6 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 	var lastTime time.Time
 	var maxTransmit, maxReceive float64
 
-	allInstruments := []metric.Observable{transmit, receive, transmitBps, receiveBps, maxTransmitBps, maxReceiveBps}
-
 	if cs, err := net.IOCountersWithContext(ctx, false); err == nil && len(cs) == 1 {
 		lastTransmit = cs[0].BytesSent
 		lastReceive = cs[0].BytesRecv
@@ -463,7 +461,7 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		lastReceive = ac.BytesRecv
 		lastTime = now
 		return nil
-	}, allInstruments...)
+	}, transmit, receive, transmitBps, receiveBps, maxTransmitBps, maxReceiveBps)
 	return errors.Wrap(err, "registering network io callback")
 }
 
