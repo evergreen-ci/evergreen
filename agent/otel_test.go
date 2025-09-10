@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"runtime"
 	"testing"
 	"time"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestMetrics(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	testCases := map[string]func(t *testing.T, meter metric.Meter, reader sdk.Reader){
@@ -31,37 +30,14 @@ func TestMetrics(t *testing.T) {
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
 		"NetworkMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addNetworkMetrics(ctx, meter))
-
-			var rm metricdata.ResourceMetrics
-			assert.NoError(t, reader.Collect(ctx, &rm))
-			require.NotEmpty(t, rm.ScopeMetrics)
-			ms := rm.ScopeMetrics[0].Metrics
-			require.NotEmpty(t, ms)
-
-			aggName := fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix)
-			ifaceRe := regexp.MustCompile(`^` + regexp.QuoteMeta(networkIOInstrumentPrefix) + `\.[A-Za-z0-9_.-]+\.transmit$`)
-
-			var aggOK, ifaceOK bool
-			for _, m := range ms {
-				switch {
-				case m.Name == aggName:
-					dps := m.Data.(metricdata.Sum[int64]).DataPoints
-					require.NotEmpty(t, dps)
-					assert.NotZero(t, dps[0].Value)
-					aggOK = true
-				case ifaceRe.MatchString(m.Name):
-					dps := m.Data.(metricdata.Sum[int64]).DataPoints
-					require.NotEmpty(t, dps)
-					assert.NotZero(t, dps[0].Value)
-					ifaceOK = true
-				}
-				if aggOK && ifaceOK {
-					break
-				}
-			}
-			assert.True(t, aggOK, "missing aggregate transmit metric")
-			assert.True(t, ifaceOK, "missing per-interface transmit metric")
+			assert.NoError(t, addNetworkMetrics(meter))
+			var metrics metricdata.ResourceMetrics
+			assert.NoError(t, reader.Collect(ctx, &metrics))
+			require.NotEmpty(t, metrics.ScopeMetrics)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 2)
+			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
+			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
+			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
 	}
 
