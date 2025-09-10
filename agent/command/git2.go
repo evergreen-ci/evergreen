@@ -592,7 +592,6 @@ func (opts *cloneCMDOptions) build() ([]string, error) {
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
-	cmds = append(cmds, clone)
 
 	cmds = append(cmds,
 		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
