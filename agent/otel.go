@@ -335,6 +335,34 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 		}
 	}
 
+	rootDiskUsageAvailable, err := meter.Int64ObservableUpDownCounter(diskUsageAvailableInstrument, metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk usage available counter")
+	}
+
+	rootDiskUsageUsed, err := meter.Int64ObservableUpDownCounter(diskUsageUsedInstrumentPrefix, metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk usage used counter")
+	}
+
+	rootDiskUsageUtilization, err := meter.Float64ObservableGauge(diskUsageUtilizationInstrument, metric.WithUnit("%"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk utilization gauge")
+	}
+
+	// Partitions don't change during the lifetime of a task,
+	// so we only need to get them once.
+	partitions, err := disk.PartitionsWithContext(ctx, true)
+	if err != nil {
+		return errors.Wrap(err, "getting disk partitions")
+	}
+
+	partitionsMap := map[string]disk.PartitionStat{}
+	for _, partition := range partitions {
+		sanitizedDeviceName := instrumentNameDisallowedCharacters.ReplaceAllString(partition.Device, "")
+		partitionsMap[sanitizedDeviceName] = partition
+	}
+
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		ioCountersMap, err := disk.IOCountersWithContext(ctx)
 		if err != nil {
@@ -344,7 +372,8 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			counter, ok := ioCountersMap[diskName]
 			if !ok {
 				// If the disk is no longer present there are no readings for it.
-				return nil
+				// Skip this disk.
+				continue
 			}
 			observer.ObserveInt64(instruments.diskIORead, int64(counter.ReadBytes))
 			observer.ObserveInt64(instruments.diskIOWrite, int64(counter.WriteBytes))
@@ -360,17 +389,28 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			}
 
 			// Disk usage stats:
-			usageStats, err := disk.UsageWithContext(ctx, "/")
-			if err != nil {
-				// If there was a problem getting disk usage stats,
-				// just log it rather thanerroring.
-				grip.Error(errors.Wrap(err, "getting disk usage stats"))
+			partition, ok := partitionsMap[diskName]
+			if !ok {
+				// If we don't have a partition for this disk, skip usage stats.
 				continue
+			}
+			usageStats, err := disk.UsageWithContext(ctx, partition.Mountpoint)
+			if err != nil {
+				return errors.Wrapf(err, "getting partition '%s' disk usage", partition.Mountpoint)
 			}
 			observer.ObserveInt64(instruments.diskUsageAvailable, int64(usageStats.Free))
 			observer.ObserveInt64(instruments.diskUsageUsed, int64(usageStats.Used))
 			observer.ObserveFloat64(instruments.diskUsageUtilization, usageStats.UsedPercent)
 		}
+
+		usageStats, err := disk.UsageWithContext(ctx, "/")
+		if err != nil {
+			return errors.Wrap(err, "getting total disk usage")
+		}
+
+		observer.ObserveInt64(rootDiskUsageAvailable, int64(usageStats.Free))
+		observer.ObserveInt64(rootDiskUsageUsed, int64(usageStats.Used))
+		observer.ObserveFloat64(rootDiskUsageUtilization, usageStats.UsedPercent)
 		return nil
 	}, allInstruments...)
 	if err != nil {
