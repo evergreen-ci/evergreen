@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -243,7 +244,7 @@ func (c *gitFetchProject2) cloneModules(ctx context.Context) error {
 	defer span.End()
 
 	var modules []*model.Module
-	for moduleName, _ := range c.conf.ModulePaths {
+	for moduleName := range c.conf.ModulePaths {
 		module, err := c.conf.Project.GetModuleByName(moduleName)
 		if err != nil {
 			return errors.Wrapf(err, "getting module '%s'", moduleName)
@@ -570,7 +571,10 @@ func (opts *cloneCMDOptions) build() ([]string, error) {
 	}
 
 	cmds := []string{
-		"set +o xtrace", // disable xtrace for the echo of the git clone command
+		"set -o xtrace", // disable xtrace for the echo of the git clone command
+		fmt.Sprintf("chmod -R 755 %s", opts.dir),
+		"set -o errexit",
+		fmt.Sprintf("rm -rf %s", opts.dir),
 	}
 
 	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
@@ -589,6 +593,12 @@ func (opts *cloneCMDOptions) build() ([]string, error) {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 	cmds = append(cmds, clone)
+
+	cmds = append(cmds,
+		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
+		clone,
+		fmt.Sprintf("cd %s", opts.dir),
+	)
 
 	// Source-specific post-clone commands.
 	if opts.modulePatch == nil {
@@ -640,11 +650,7 @@ func (opts *cloneCMDOptions) build() ([]string, error) {
 		}
 	}
 
-	return append(
-		cmds,
-		"set -o xtrace",
-		fmt.Sprintf("cd %s", opts.dir),
-	), nil
+	return cmds, nil
 }
 
 func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModulePatch) bool {
