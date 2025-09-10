@@ -605,7 +605,7 @@ func (opts *cloneCMDOptions) build() ([]string, error) {
 	)
 
 	// Source-specific post-clone commands.
-	if opts.modulePatch == nil {
+	if opts.modulePatch == nil && opts.ref == "" {
 		// TODO-zackary: Refactor this
 		if isGitHub(opts.conf) {
 			var suffix, localBranchName, remoteBranchName, commitToTest string
