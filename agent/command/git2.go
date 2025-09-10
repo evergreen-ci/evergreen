@@ -321,12 +321,13 @@ func (c *gitFetchProject2) moduleCloneOptions(ctx context.Context, module *model
 	}
 
 	return &cloneCMDOptions{
-		conf:  c.conf,
-		owner: owner,
-		repo:  repo,
-		dir:   filepath.ToSlash(filepath.Join(c.conf.ModulePaths[module.Name], module.Name)),
-		token: cloneToken,
-		ref:   c.getModuleRevision(module),
+		conf:        c.conf,
+		owner:       owner,
+		repo:        repo,
+		dir:         filepath.ToSlash(filepath.Join(c.conf.ModulePaths[module.Name], module.Name)),
+		token:       cloneToken,
+		ref:         c.getModuleRevision(module),
+		modulePatch: c.patch.FindModule(module.Name),
 	}, nil
 }
 
