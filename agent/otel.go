@@ -381,14 +381,6 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 }
 
 func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
-	type netInstruments struct {
-		txBytes  metric.Int64ObservableCounter
-		rxBytes  metric.Int64ObservableCounter
-		txBps    metric.Float64ObservableGauge
-		rxBps    metric.Float64ObservableGauge
-		txBpsMax metric.Float64ObservableGauge
-		rxBpsMax metric.Float64ObservableGauge
-	}
 	type netState struct {
 		lastTx uint64
 		lastRx uint64
@@ -397,7 +389,6 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		maxRx  float64
 	}
 
-	// These instruments are the aggregate across all NICs.
 	aggTx, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metric.WithUnit("By"))
 	if err != nil {
 		return errors.Wrap(err, "making aggregate tx counter")
@@ -426,7 +417,6 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 	aggState := &netState{}
 	allInstruments := []metric.Observable{aggTx, aggRx, aggTxBps, aggRxBps, aggTxBpsMax, aggRxBpsMax}
 
-	// Establish aggregate baseline (cumulative across all NICs).
 	if cs, err := net.IOCountersWithContext(ctx, false); err == nil && len(cs) == 1 {
 		aggState.lastTx = cs[0].BytesSent
 		aggState.lastRx = cs[0].BytesRecv
@@ -437,66 +427,9 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		return errors.New("aggregate network counters had an unexpected length")
 	}
 
-	type perInstruments struct {
-		inst  netInstruments
-		state *netState
-	}
-	per := map[string]perInstruments{}
-
-	ifaces, err := net.IOCountersWithContext(ctx, true)
-	if err != nil {
-		return errors.Wrap(err, "getting initial per-interface network stats")
-	}
-	for _, c := range ifaces {
-		sanitized := instrumentNameDisallowedCharacters.ReplaceAllString(c.Name, "")
-
-		txBytes, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.transmit", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By"))
-		if err != nil {
-			return errors.Wrapf(err, "making tx counter for iface '%s'", c.Name)
-		}
-		rxBytes, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.receive", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By"))
-		if err != nil {
-			return errors.Wrapf(err, "making rx counter for iface '%s'", c.Name)
-		}
-		txBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.transmit_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
-		if err != nil {
-			return errors.Wrapf(err, "making tx_bps gauge for iface '%s'", c.Name)
-		}
-		rxBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.receive_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
-		if err != nil {
-			return errors.Wrapf(err, "making rx_bps gauge for iface '%s'", c.Name)
-		}
-		txBpsMax, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.max_transmit_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
-		if err != nil {
-			return errors.Wrapf(err, "making max_tx_bps gauge for iface '%s'", c.Name)
-		}
-		rxBpsMax, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s.max_receive_bps", networkIOInstrumentPrefix, sanitized), metric.WithUnit("By/s"))
-		if err != nil {
-			return errors.Wrapf(err, "making max_rx_bps gauge for iface '%s'", c.Name)
-		}
-
-		per[c.Name] = perInstruments{
-			inst: netInstruments{
-				txBytes:  txBytes,
-				rxBytes:  rxBytes,
-				txBps:    txBps,
-				rxBps:    rxBps,
-				txBpsMax: txBpsMax,
-				rxBpsMax: rxBpsMax,
-			},
-			state: &netState{
-				lastTx: c.BytesSent,
-				lastRx: c.BytesRecv,
-				lastT:  time.Now(),
-			},
-		}
-		allInstruments = append(allInstruments, txBytes, rxBytes, txBps, rxBps, txBpsMax, rxBpsMax)
-	}
-
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		now := time.Now()
 
-		// Handles Aggregate reporting.
 		aggCounters, err := net.IOCountersWithContext(ctx, false)
 		if err != nil {
 			return errors.Wrap(err, "getting aggregate network stats")
@@ -534,48 +467,6 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		aggState.lastTx = ac.BytesSent
 		aggState.lastRx = ac.BytesRecv
 		aggState.lastT = now
-
-		// Handles per-interface reporting.
-		ifCounters, err := net.IOCountersWithContext(ctx, true)
-		if err != nil {
-			return errors.Wrap(err, "getting per-interface network stats")
-		}
-		for _, c := range ifCounters {
-			p, ok := per[c.Name]
-			if !ok {
-				continue
-			}
-			observer.ObserveInt64(p.inst.txBytes, int64(c.BytesSent))
-			observer.ObserveInt64(p.inst.rxBytes, int64(c.BytesRecv))
-
-			if !p.state.lastT.IsZero() {
-				dt := now.Sub(p.state.lastT).Seconds()
-				if dt > 0 {
-					txBps := float64(c.BytesSent-p.state.lastTx) / dt
-					rxBps := float64(c.BytesRecv-p.state.lastRx) / dt
-					if txBps < 0 {
-						txBps = 0
-					}
-					if rxBps < 0 {
-						rxBps = 0
-					}
-					observer.ObserveFloat64(p.inst.txBps, txBps)
-					observer.ObserveFloat64(p.inst.rxBps, rxBps)
-
-					if txBps > p.state.maxTx {
-						p.state.maxTx = txBps
-					}
-					if rxBps > p.state.maxRx {
-						p.state.maxRx = rxBps
-					}
-					observer.ObserveFloat64(p.inst.txBpsMax, p.state.maxTx)
-					observer.ObserveFloat64(p.inst.rxBpsMax, p.state.maxRx)
-				}
-			}
-			p.state.lastTx = c.BytesSent
-			p.state.lastRx = c.BytesRecv
-			p.state.lastT = now
-		}
 		return nil
 	}, allInstruments...)
 	if err != nil {
