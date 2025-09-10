@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/mongodb/grip"
@@ -38,6 +39,7 @@ func Cleanup(ctx context.Context, logger grip.Journaler) error {
 	catcher.Add(cleanContainers(ctx, dockerClient))
 	catcher.Add(cleanImages(ctx, dockerClient))
 	catcher.Add(cleanVolumes(ctx, dockerClient, logger))
+	catcher.Add(cleanNetworks(ctx, dockerClient))
 
 	return catcher.Resolve()
 }
@@ -81,6 +83,27 @@ func cleanVolumes(ctx context.Context, dockerClient *client.Client, logger grip.
 	catcher := grip.NewBasicCatcher()
 	for _, volume := range volumes.Volumes {
 		catcher.Wrapf(dockerClient.VolumeRemove(ctx, volume.Name, true), "can't remove volume '%s'", volume.Name)
+	}
+
+	return catcher.Resolve()
+}
+
+func cleanNetworks(ctx context.Context, dockerClient *client.Client) error {
+	networks, err := dockerClient.NetworkList(ctx, types.NetworkListOptions{
+		Filters: filters.NewArgs(filters.KeyValuePair{
+			// Filter out built-in networks, which come with Docker by default
+			// and cannot be removed.
+			Key:   "type",
+			Value: "custom",
+		}),
+	})
+	if err != nil {
+		return errors.Wrap(err, "getting network list")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, network := range networks {
+		catcher.Wrapf(dockerClient.NetworkRemove(ctx, network.ID), "removing network '%s'", network.ID)
 	}
 
 	return catcher.Resolve()
