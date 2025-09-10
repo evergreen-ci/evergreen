@@ -64,7 +64,6 @@ type TaskConfig struct {
 	GithubMergeData    thirdparty.GithubMergeGroup
 	Timeout            Timeout
 	TaskOutput         evergreen.S3Credentials
-	ModulePaths        map[string]string
 	// HasTestResults is true if the task has sent at least one test result.
 	HasTestResults bool
 	// HasFailingTestResult is true if the task has sent at least one test
@@ -73,6 +72,12 @@ type TaskConfig struct {
 	TaskGroup            *model.TaskGroup
 	CommandCleanups      []CommandCleanup
 	MaxExecTimeoutSecs   int
+
+	// A mapping of the BuildVariant's modules to their paths.
+	// The key is the expanded module name and the value is the
+	// expanded module path.
+	// This is only set from the git.get_project command.
+	ModulePaths map[string]string
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
@@ -86,6 +91,10 @@ func (tc *TaskConfig) TaskData() client.TaskData {
 		ID:     tc.Task.Id,
 		Secret: tc.Task.Secret,
 	}
+}
+
+func (tc *TaskConfig) DistroDisablesShallowClone() bool {
+	return tc.Distro != nil && tc.Distro.DisableShallowClone
 }
 
 // CommandCleanup is a cleanup function associated with a command. As a command

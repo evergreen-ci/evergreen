@@ -61,6 +61,36 @@ func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger
 	conf.ModulePaths[module] = modulePrefix
 }
 
+// expandModuleNamesAndPrefixes expands the current BuildVariant's module
+// names and prefixes. It updates conf.ModulePaths in place.
+func expandModuleNamesAndPrefixes(conf *internal.TaskConfig, logger client.LoggerProducer) error {
+	if conf.ModulePaths == nil {
+		conf.ModulePaths = map[string]string{}
+	}
+
+	for _, moduleName := range conf.BuildVariant.Modules {
+		moduleName, err := conf.Expansions.ExpandString(moduleName)
+		if err != nil {
+			logger.Task().Error(errors.Wrapf(err, "expanding module name '%s'", moduleName))
+			// TODO-zackary: Make this an actual error
+		}
+		module, err := conf.Project.GetModuleByName(moduleName)
+		if err != nil {
+			return errors.Wrapf(err, "getting module '%s'", moduleName)
+		}
+
+		modulePrefix, err := conf.Expansions.ExpandString(module.Prefix)
+		if err != nil {
+			logger.Task().Error(errors.Wrapf(err, "expanding module prefix '%s'", modulePrefix))
+			modulePrefix = module.Prefix
+			logger.Task().Warningf("Will attempt to check out into the module prefix '%s' verbatim.", module.Prefix)
+			// TODO-zackary: Make this an actual error
+		}
+		conf.ModulePaths[module.Name] = modulePrefix
+	}
+	return nil
+}
+
 // GetWorkingDirectory joins the conf.WorkDir A with B like this:
 //
 //	if B is relative, return A+B.

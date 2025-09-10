@@ -26,27 +26,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	gitFetchProjectRetries = 5
-	shallowCloneDepth      = 100
-
-	gitGetProjectAttribute = "evergreen.command.git_get_project"
-
-	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
-
-	// githubMergeQueueInvalidRefError is the error message returned by Git when it fails to find
-	// a GitHub merge queue reference.
-	githubMergeQueueInvalidRefError = "couldn't find remote ref gh-readonly-queue"
-)
-
-var (
-	cloneOwnerAttribute   = fmt.Sprintf("%s.clone_owner", gitGetProjectAttribute)
-	cloneRepoAttribute    = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
-	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
-	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
-	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
-)
-
 // gitFetchProject is a command that fetches source code from git for the project
 // associated with the current task
 type gitFetchProject struct {
@@ -71,25 +50,6 @@ type gitFetchProject struct {
 	CommitterEmail string `mapstructure:"committer_email"`
 
 	base
-}
-
-func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
-
-func loadModulesManifestInToExpansions(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig) error {
-	manifest, err := comm.GetManifest(ctx, conf.TaskData())
-	if err != nil {
-		return errors.Wrapf(err, "loading manifest for task '%s'", conf.Task.Id)
-	}
-
-	for moduleName := range manifest.Modules {
-		// put the url for the module in the expansions
-		conf.NewExpansions.Put(moduleRevExpansionName(moduleName), manifest.Modules[moduleName].Revision)
-		conf.NewExpansions.Put(fmt.Sprintf("%s_branch", moduleName), manifest.Modules[moduleName].Branch)
-		conf.NewExpansions.Put(fmt.Sprintf("%s_repo", moduleName), manifest.Modules[moduleName].Repo)
-		conf.NewExpansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
-	}
-
-	return nil
 }
 
 func gitFetchProjectFactory() Command   { return &gitFetchProject{} }
@@ -494,17 +454,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
-	// Retrieve the patch for the version if one exists.
-	var p *patch.Patch
-	var err error
-	if evergreen.IsPatchRequester(conf.Task.Requester) {
-		logger.Execution().Info("Fetching patch.")
-		p, err = comm.GetTaskPatch(ctx, conf.TaskData())
-		if err != nil {
-			return errors.Wrap(err, "getting patch for task")
-		}
-	}
-
 	// For every module, expand the module prefix.
 	for _, moduleName := range conf.BuildVariant.Modules {
 		expanded, err := conf.NewExpansions.ExpandString(moduleName)
@@ -515,10 +464,18 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "getting module '%s'", moduleName)
 		}
-		if module == nil {
-			return errors.Errorf("module '%s' not found", moduleName)
-		}
 		expandModulePrefix(conf, module.Name, module.Prefix, logger)
+	}
+
+	// Retrieve the patch for the version if one exists.
+	var p *patch.Patch
+	var err error
+	if evergreen.IsPatchRequester(conf.Task.Requester) {
+		logger.Execution().Info("Fetching patch.")
+		p, err = comm.GetTaskPatch(ctx, conf.TaskData())
+		if err != nil {
+			return errors.Wrap(err, "getting patch for task")
+		}
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -726,18 +683,3 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 	}
 	return nil
 }
-
-func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModulePatch) bool {
-	patchProvided := (modulePatch != nil) && (modulePatch.PatchSet.Patch != "")
-	return isGitHub(conf) && patchProvided
-}
-
-func isGitHub(conf *internal.TaskConfig) bool {
-	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
-}
-
-type noopWriteCloser struct {
-	*bytes.Buffer
-}
-
-func (noopWriteCloser) Close() error { return nil }

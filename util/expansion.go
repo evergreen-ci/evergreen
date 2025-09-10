@@ -75,6 +75,7 @@ func (exp *Expansions) Remove(expansion string) {
 }
 
 // ExpandString applies the expansions to a single string.
+// If the string isn't an expansion, it returns the string unchanged.
 // Return the expanded string, or an error if the input string is malformed.
 func (exp *Expansions) ExpandString(toExpand string) (string, error) {
 	// replace all expandable parts of the string
