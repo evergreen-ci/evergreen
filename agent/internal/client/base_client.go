@@ -485,6 +485,20 @@ func (c *baseCommunicator) GetPatchFile(ctx context.Context, taskData TaskData, 
 	return string(result), nil
 }
 
+func (c *baseCommunicator) GetPatchFile2(ctx context.Context, taskData TaskData, patchFileID string) (io.ReadCloser, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("git/patchfile2/" + patchFileID)
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrapf(err, "getting patch file '%s'", patchFileID).Error())
+	}
+
+	return resp.Body, nil
+}
+
 // SendTestLog is used by the attach plugin to add to the test_logs
 // collection for log data associated with a test.
 func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, log *testlog.TestLog) (string, error) {

@@ -101,6 +101,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/patch").Version(2).Get().Wrap(requireTask).RouteHandler(makeServePatch())
 	app.AddRoute("/task/{task_id}/version").Version(2).Get().Wrap(requireTask).RouteHandler(makeServeVersion())
 	app.AddRoute("/task/{task_id}/git/patchfile/{patchfile_id}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGitServePatchFile())
+	app.AddRoute("/task/{task_id}/git/patchfile2/{patchfile_id}").Version(2).Get().Wrap(requireTask).RouteHandler(makeGitServePatchFile2())
 	app.AddRoute("/task/{task_id}/github_dynamic_access_token").Version(2).Delete().Wrap(requireTask).RouteHandler(makeRevokeGitHubDynamicAccessToken(env))
 	app.AddRoute("/task/{task_id}/installation_token/{owner}/{repo}").Version(2).Get().Wrap(requireTask).RouteHandler(makeCreateInstallationToken(env))
 	app.AddRoute("/task/{task_id}/github_dynamic_access_token/{owner}/{repo}").Version(2).Post().Wrap(requireTask).RouteHandler(makeCreateGitHubDynamicAccessToken(env))

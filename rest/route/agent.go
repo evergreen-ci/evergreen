@@ -1134,6 +1134,38 @@ func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(patchContents)
 }
 
+// GET /task/{task_id}/git/patchfile2/{patchfile_id}
+type gitServePatchFileHandler2 struct {
+	taskID  string
+	patchID string
+}
+
+func makeGitServePatchFile2() gimlet.RouteHandler {
+	return &gitServePatchFileHandler2{}
+}
+
+func (h *gitServePatchFileHandler2) Factory() gimlet.RouteHandler {
+	return &gitServePatchFileHandler2{}
+}
+
+func (h *gitServePatchFileHandler2) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if h.patchID = gimlet.GetVars(r)["patchfile_id"]; h.patchID == "" {
+		return errors.New("missing patch ID")
+	}
+	return nil
+}
+
+func (h *gitServePatchFileHandler2) Run(ctx context.Context) gimlet.Responder {
+	patchContents, err := patch.FetchPatchContents2(ctx, h.patchID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))
+	}
+	return gimlet.NewBinaryResponse(patchContents)
+}
+
 // GET /task/{task_id}/patch
 type servePatchHandler struct {
 	taskID string

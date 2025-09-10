@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -89,6 +90,7 @@ type SharedCommunicator interface {
 	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
 	GetTaskVersion(context.Context, TaskData) (*model.Version, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
+	GetPatchFile2(context.Context, TaskData, string) (io.ReadCloser, error)
 
 	NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error)
 	UpdatePushStatus(context.Context, TaskData, *model.PushLog) error

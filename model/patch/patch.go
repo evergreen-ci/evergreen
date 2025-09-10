@@ -312,6 +312,15 @@ func FetchPatchContents(ctx context.Context, patchfileID string) (string, error)
 	return string(patchContents), nil
 }
 
+func FetchPatchContents2(ctx context.Context, patchfileID string) (io.ReadCloser, error) {
+	fileReader, err := db.GetGridFile(ctx, GridFSPrefix, patchfileID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting grid file")
+	}
+
+	return fileReader, nil
+}
+
 // UpdateVariantsTasks updates the patch's Tasks and BuildVariants fields to match with the set
 // in the given list of VariantTasks. This is to ensure schema backwards compatibility for T shaped
 // patches. This mutates the patch in memory but does not update it in the database; for that, use

@@ -1,9 +1,11 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -390,6 +392,20 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 	}
 
 	return out, nil
+}
+
+func (c *Mock) GetPatchFile2(ctx context.Context, td TaskData, patchFileID string) (io.ReadCloser, error) {
+	if c.GetPatchFileShouldFail {
+		return nil, errors.New("operation run in fail mode.")
+	}
+
+	out, ok := c.PatchFiles[patchFileID]
+
+	if !ok {
+		return nil, errors.Errorf("patch file %s not found", patchFileID)
+	}
+
+	return io.NopCloser(bytes.NewReader([]byte(out))), nil
 }
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchModel.Patch, error) {

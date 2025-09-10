@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -390,15 +391,16 @@ func (c *gitFetchProject2) applySourcePatches(ctx context.Context) error {
 			// skip module patches
 			continue
 		}
+		var fileStream io.ReadCloser
 		if modulePatch.PatchSet.PatchFileId != "" {
 			var err error
-			modulePatch.PatchSet.Patch, err = c.comm.GetPatchFile(ctx, c.conf.TaskData(), modulePatch.PatchSet.PatchFileId)
+			fileStream, err = c.comm.GetPatchFile2(ctx, c.conf.TaskData(), modulePatch.PatchSet.PatchFileId)
 			if err != nil {
 				return errors.Wrapf(err, "getting patch file")
 			}
 		}
 		c.logger.Execution().Info("Applying source patch with git...")
-		if err := c.applyPatch(ctx, &modulePatch); err != nil {
+		if err := c.applyPatch(ctx, &modulePatch, fileStream); err != nil {
 			return errors.Wrapf(err, "applying patch to source")
 		}
 	}
@@ -420,15 +422,16 @@ func (c *gitFetchProject2) applyModulePatches(ctx context.Context, module *model
 			// skip other module patches
 			continue
 		}
+		var fileStream io.ReadCloser
 		if modulePatch.PatchSet.PatchFileId != "" {
 			var err error
-			modulePatch.PatchSet.Patch, err = c.comm.GetPatchFile(ctx, c.conf.TaskData(), modulePatch.PatchSet.PatchFileId)
+			fileStream, err = c.comm.GetPatchFile2(ctx, c.conf.TaskData(), modulePatch.PatchSet.PatchFileId)
 			if err != nil {
 				return errors.Wrapf(err, "getting patch file")
 			}
 		}
 		c.logger.Execution().Info("Applying source patch with git...")
-		if err := c.applyPatch(ctx, &modulePatch); err != nil {
+		if err := c.applyPatch(ctx, &modulePatch, fileStream); err != nil {
 			return errors.Wrapf(err, "applying patch to source")
 		}
 	}
@@ -436,8 +439,8 @@ func (c *gitFetchProject2) applyModulePatches(ctx context.Context, module *model
 	return nil
 }
 
-func (c *gitFetchProject2) applyPatch(ctx context.Context, modulePatch *patch.ModulePatch) error {
-	if len(modulePatch.PatchSet.Patch) == 0 {
+func (c *gitFetchProject2) applyPatch(ctx context.Context, modulePatch *patch.ModulePatch, fileStream io.ReadCloser) error {
+	if len(modulePatch.PatchSet.Patch) == 0 && fileStream == nil {
 		c.logger.Execution().Info("Skipping empty patch file...")
 		return nil
 	}
@@ -452,19 +455,16 @@ func (c *gitFetchProject2) applyPatch(ctx context.Context, modulePatch *patch.Mo
 		"set -o errexit",
 	}
 
-	dryRun := strings.Join(append(cmds, "git apply --stat || true"), "\n")
-	cmd := c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", dryRun}).
-		Directory(dir).
-		SetOutputSender(level.Info, c.logger.Task().GetSender()).SetErrorSender(level.Error, c.logger.Task().GetSender()).SetInputBytes([]byte(modulePatch.PatchSet.Patch))
-	if err := cmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "running dryrun git apply")
-	}
-
-	applyCommand := "GIT_TRACE=1 git apply --binary --index"
+	applyCommand := "GIT_TRACE=1 git apply --binary --index --stat --apply"
 	applyPatch := strings.Join(append(cmds, applyCommand), "\n")
-	cmd = c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", applyPatch}).
+	cmd := c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", applyPatch}).
 		Directory(dir).
-		SetOutputSender(level.Info, c.logger.Task().GetSender()).SetErrorSender(level.Error, c.logger.Task().GetSender()).SetInputBytes([]byte(modulePatch.PatchSet.Patch))
+		SetOutputSender(level.Info, c.logger.Task().GetSender()).SetErrorSender(level.Error, c.logger.Task().GetSender())
+	if fileStream != nil {
+		cmd.SetInput(fileStream)
+	} else if modulePatch.PatchSet.Patch != "" {
+		cmd.SetInputBytes([]byte(modulePatch.PatchSet.Patch))
+	}
 	if err := cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "running git apply")
 	}
