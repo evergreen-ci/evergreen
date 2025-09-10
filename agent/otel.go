@@ -430,15 +430,15 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		if len(counters) != 1 {
 			return errors.New("network counters had an unexpected length")
 		}
-		ac := counters[0]
-		observer.ObserveInt64(transmit, int64(ac.BytesSent))
-		observer.ObserveInt64(receive, int64(ac.BytesRecv))
+		stats := counters[0]
+		observer.ObserveInt64(transmit, int64(stats.BytesSent))
+		observer.ObserveInt64(receive, int64(stats.BytesRecv))
 
 		if !lastTime.IsZero() {
 			dt := now.Sub(lastTime).Seconds()
 			if dt > 0 {
-				txBps := float64(ac.BytesSent-lastTransmit) / dt
-				rxBps := float64(ac.BytesRecv-lastReceive) / dt
+				txBps := float64(stats.BytesSent-lastTransmit) / dt
+				rxBps := float64(stats.BytesRecv-lastReceive) / dt
 				if txBps < 0 {
 					txBps = 0
 				}
@@ -457,8 +457,8 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 				observer.ObserveFloat64(maxReceiveBps, maxReceive)
 			}
 		}
-		lastTransmit = ac.BytesSent
-		lastReceive = ac.BytesRecv
+		lastTransmit = stats.BytesSent
+		lastReceive = stats.BytesRecv
 		lastTime = now
 		return nil
 	}, transmit, receive, transmitBps, receiveBps, maxTransmitBps, maxReceiveBps)
