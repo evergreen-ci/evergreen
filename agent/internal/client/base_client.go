@@ -26,7 +26,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -758,10 +757,6 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 // StartTask marks the task as started, and sends traceId and diskDevices to be stored with the task.
 func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData, traceID string, diskDevices []string) error {
-	grip.Info(message.Fields{
-		"message": "started StartTask",
-		"task_id": taskData.ID,
-	})
 	taskStartRequest := &apimodels.TaskStartRequest{
 		TraceID:     traceID,
 		DiskDevices: diskDevices,
@@ -776,10 +771,6 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData, tra
 		return util.RespError(resp, errors.Wrap(err, "starting task").Error())
 	}
 	defer resp.Body.Close()
-	grip.Info(message.Fields{
-		"message": "finished StartTask",
-		"task_id": taskData.ID,
-	})
 	return nil
 }
 
