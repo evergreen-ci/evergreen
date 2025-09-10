@@ -38,13 +38,24 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	for _, s := range req.Strategies {
 		strategies = append(strategies, testselection.StrategyEnum(s))
 	}
-	reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
-		TestNames:  req.Tests,
-		Strategies: strategies,
+
+	var (
+		selectedTests []string
+		resp          *http.Response
+		err           error
+	)
+	if len(req.Tests) == 0 {
+		selectedTests, resp, err = c.TestSelectionAPI.SelectAllKnownTestsOfATaskApiTestSelectionSelectKnownTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, req.Project, req.Requester, req.BuildVariant, req.TaskID, req.TaskName).StrategyEnum(strategies).Execute()
+	} else {
+		reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
+			TestNames:  req.Tests,
+			Strategies: strategies,
+		}
+
+		selectedTests, resp, err = c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, req.Project, req.Requester, req.BuildVariant, req.TaskID, req.TaskName).
+			BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
+			Execute()
 	}
-	selectedTests, resp, err := c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, req.Project, req.Requester, req.BuildVariant, req.TaskID, req.TaskName).
-		BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
-		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
 	}
