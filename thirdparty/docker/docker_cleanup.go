@@ -36,38 +36,40 @@ func Cleanup(ctx context.Context, logger grip.Journaler) error {
 	})
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(cleanContainers(ctx, dockerClient))
-	catcher.Add(cleanImages(ctx, dockerClient))
+	catcher.Add(cleanContainers(ctx, dockerClient, logger))
+	catcher.Add(cleanImages(ctx, dockerClient, logger))
 	catcher.Add(cleanVolumes(ctx, dockerClient, logger))
-	catcher.Add(cleanNetworks(ctx, dockerClient))
+	catcher.Add(cleanNetworks(ctx, dockerClient, logger))
 
 	return catcher.Resolve()
 }
 
-func cleanContainers(ctx context.Context, dockerClient *client.Client) error {
+func cleanContainers(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
 	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
-		return errors.Wrap(err, "can't get list of containers")
+		return errors.Wrap(err, "getting containers list")
 	}
 
+	logger.Infof("Removing %d containers", len(containers))
 	catcher := grip.NewBasicCatcher()
 	for _, container := range containers {
-		catcher.Wrapf(dockerClient.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true}), "can't remove container '%s'", container.ID)
+		catcher.Wrapf(dockerClient.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true}), "removing container '%s'", container.ID)
 	}
 
 	return catcher.Resolve()
 }
 
-func cleanImages(ctx context.Context, dockerClient *client.Client) error {
+func cleanImages(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
 	images, err := dockerClient.ImageList(ctx, types.ImageListOptions{All: true})
 	if err != nil {
-		return errors.Wrap(err, "can't get image list")
+		return errors.Wrap(err, "getting image list")
 	}
 
+	logger.Infof("Removing %d images", len(images))
 	catcher := grip.NewBasicCatcher()
 	for _, image := range images {
 		_, err := dockerClient.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true})
-		catcher.Wrapf(err, "can't remove image '%s'", image.ID)
+		catcher.Wrapf(err, "removing image '%s'", image.ID)
 	}
 
 	return catcher.Resolve()
@@ -76,22 +78,22 @@ func cleanImages(ctx context.Context, dockerClient *client.Client) error {
 func cleanVolumes(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
 	volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 	if err != nil {
-		return errors.Wrap(err, "can't get volume list")
+		return errors.Wrap(err, "getting volume list")
 	}
 
 	logger.Infof("Removing %d volumes", len(volumes.Volumes))
 	catcher := grip.NewBasicCatcher()
 	for _, volume := range volumes.Volumes {
-		catcher.Wrapf(dockerClient.VolumeRemove(ctx, volume.Name, true), "can't remove volume '%s'", volume.Name)
+		catcher.Wrapf(dockerClient.VolumeRemove(ctx, volume.Name, true), "removing volume '%s'", volume.Name)
 	}
 
 	return catcher.Resolve()
 }
 
-func cleanNetworks(ctx context.Context, dockerClient *client.Client) error {
+func cleanNetworks(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
 	networks, err := dockerClient.NetworkList(ctx, types.NetworkListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
-			// Filter out built-in networks, which come with Docker by default
+			// Filter out built-in networks. They come with Docker by default
 			// and cannot be removed.
 			Key:   "type",
 			Value: "custom",
@@ -101,6 +103,7 @@ func cleanNetworks(ctx context.Context, dockerClient *client.Client) error {
 		return errors.Wrap(err, "getting network list")
 	}
 
+	logger.Infof("Removing %d networks", len(networks))
 	catcher := grip.NewBasicCatcher()
 	for _, network := range networks {
 		catcher.Wrapf(dockerClient.NetworkRemove(ctx, network.ID), "removing network '%s'", network.ID)
