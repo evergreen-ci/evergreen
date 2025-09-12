@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -61,6 +62,13 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
 	}
+
+	imageValidationErrs, err := validateImageID(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	validationErrs = append(validationErrs, imageValidationErrs...)
+
 	return validationErrs, nil
 }
 
@@ -536,4 +544,25 @@ func validateAliases(d *distro.Distro, allDistroAliases, allDistroIDs []string) 
 		validationErrs = append(validationErrs, ensureValidAliases(d, allDistroIDs)...)
 	}
 	return validationErrs
+}
+
+func validateImageID(ctx context.Context, d *distro.Distro) (ValidationErrors, error) {
+	var validationErrs ValidationErrors
+
+	// Only validate if image ID exists, as it may be blank.
+	if d.ImageID != "" {
+		config, err := evergreen.GetConfig(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting Evergreen configuration")
+		}
+		c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+		imageNames, err := c.GetImageNames(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting list of image names from runtime environments API")
+		}
+		if !utility.StringSliceContains(imageNames, d.ImageID) {
+			validationErrs = append(validationErrs, ValidationError{Level: Error, Message: fmt.Sprintf("'%s' is not an available image", d.ImageID)})
+		}
+	}
+	return validationErrs, nil
 }
