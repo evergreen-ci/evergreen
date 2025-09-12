@@ -264,6 +264,11 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	return &apiVersion, nil
 }
 
+// IncludedLocalModules is the resolver for the includedLocalModules field.
+func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APILocalModuleInclude, error) {
+	return obj.LocalModuleIncludes, nil
+}
+
 // Patch returns PatchResolver implementation.
 func (r *Resolver) Patch() PatchResolver { return &patchResolver{r} }
 
