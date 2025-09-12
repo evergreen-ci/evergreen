@@ -33,7 +33,6 @@
         "data": {
           "saveAdminSettings": {
             "serviceFlags": {
-              "adminParameterStoreDisabled": true,
               "agentStartDisabled": true,
               "alertsDisabled": true,
               "backgroundReauthDisabled": true,
@@ -164,7 +163,8 @@
               "cacheTemplates": true,
               "stagingEnvironment": "not-staging",
               "betaFeatures": {
-                "spruceWaterfallEnabled": false
+                "spruceWaterfallEnabled": false,
+                "parsleyAIEnabled": false
               }
             },
             "disabledGQLQueries": ["query1", "query2", "query3", "query4"]
@@ -450,6 +450,11 @@
               "distroMaxHostsFactor": 1.5,
               "targetTimeSecondsOverride": 300,
               "idleTimeSecondsOverride": 60
+            },
+            "cost": {
+              "financeFormula": 0.01,
+              "savingsPlanDiscount": 0.01,
+              "onDemandDiscount": 0.01
             }
           }
         }

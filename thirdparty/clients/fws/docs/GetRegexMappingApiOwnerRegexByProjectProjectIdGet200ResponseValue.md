@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **TriageTeamName** | Pointer to **string** |  | [optional] 
 **SlackGroupId** | Pointer to **string** |  | [optional] 
 **TriagedTeamNames** | Pointer to **[]string** |  | [optional] 
+**CodeOwners** | Pointer to **[]string** |  | [optional] 
 
 ## Methods
 
@@ -185,6 +186,31 @@ SetTriagedTeamNames sets TriagedTeamNames field to given value.
 `func (o *GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue) HasTriagedTeamNames() bool`
 
 HasTriagedTeamNames returns a boolean if a field has been set.
+
+### GetCodeOwners
+
+`func (o *GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue) GetCodeOwners() []string`
+
+GetCodeOwners returns the CodeOwners field if non-nil, zero value otherwise.
+
+### GetCodeOwnersOk
+
+`func (o *GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue) GetCodeOwnersOk() (*[]string, bool)`
+
+GetCodeOwnersOk returns a tuple with the CodeOwners field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCodeOwners
+
+`func (o *GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue) SetCodeOwners(v []string)`
+
+SetCodeOwners sets CodeOwners field to given value.
+
+### HasCodeOwners
+
+`func (o *GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue) HasCodeOwners() bool`
+
+HasCodeOwners returns a boolean if a field has been set.
 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

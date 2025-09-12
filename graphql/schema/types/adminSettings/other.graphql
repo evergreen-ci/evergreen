@@ -1,0 +1,197 @@
+input BucketConfigInput {
+  name: String
+  testResultsPrefix: String
+  roleARN: String @redactSecrets
+}
+
+type BucketConfig {
+  name: String
+  testResultsPrefix: String
+  roleARN: String @requireAdmin
+}
+
+input BucketsConfigInput {
+  logBucket: BucketConfigInput
+  logBucketLongRetention: BucketConfigInput
+  logBucketFailedTasks: BucketConfigInput
+  longRetentionProjects: [String!]
+  testResultsBucket: BucketConfigInput
+  internalBuckets: [String!]
+  credentials: S3CredentialsInput @redactSecrets
+}
+
+type BucketsConfig {
+  logBucket: BucketConfig
+  logBucketLongRetention: BucketConfig
+  logBucketFailedTasks: BucketConfig
+  longRetentionProjects: [String!]
+  testResultsBucket: BucketConfig
+  internalBuckets: [String!]
+  credentials: S3Credentials @requireAdmin
+}
+
+input GitHubCheckRunConfigInput {
+  checkRunLimit: Int
+}
+
+type GitHubCheckRunConfig {
+  checkRunLimit: Int
+}
+
+input HostJasperConfigInput {
+  binaryName: String
+  downloadFileName: String
+  port: Int
+  url: String
+  version: String
+}
+
+type HostJasperConfig {
+  binaryName: String
+  downloadFileName: String
+  port: Int
+  url: String
+  version: String
+}
+
+input JiraNotificationsProjectInput {
+  fields: StringMap
+  components: [String!]!
+  labels: [String!]!
+}
+
+type JiraNotificationsProject {
+  fields: StringMap
+  components: [String!]!
+  labels: [String!]!
+}
+
+input JiraNotificationsProjectEntryInput {
+  project: String!
+  fields: StringMap
+  components: [String!]!
+  labels: [String!]!
+}
+
+type JiraNotificationsProjectEntry {
+  project: String!
+  fields: StringMap
+  components: [String!]!
+  labels: [String!]!
+}
+
+input JiraNotificationsConfigInput {
+  customFields: [JiraNotificationsProjectEntryInput!]!
+}
+
+type JiraNotificationsConfig {
+  customFields: [JiraNotificationsProjectEntry!]!
+}
+
+input S3CredentialsInput {
+  key: String
+  secret: String @redactSecrets
+  bucket: String
+}
+
+type S3Credentials {
+  key: String
+  secret: String @requireAdmin
+  bucket: String
+}
+
+input SleepScheduleConfigInput {
+  permanentlyExemptHosts: [String!]!
+}
+
+type SleepScheduleConfig {
+  permanentlyExemptHosts: [String!]!
+}
+
+input SSHConfigInput {
+  taskHostKey: SSHKeyPairInput
+  spawnHostKey: SSHKeyPairInput
+}
+
+type SSHConfig {
+  taskHostKey: SSHKeyPair
+  spawnHostKey: SSHKeyPair
+}
+
+input SSHKeyPairInput {
+  name: String
+  secretARN: String @redactSecrets
+}
+
+type SSHKeyPair {
+  name: String
+  secretARN: String @requireAdmin
+}
+
+input SpawnHostConfigInput {
+  unexpirableHostsPerUser: Int
+  unexpirableVolumesPerUser: Int
+  spawnHostsPerUser: Int
+}
+
+type SpawnHostConfig {
+  unexpirableHostsPerUser: Int
+  unexpirableVolumesPerUser: Int
+  spawnHostsPerUser: Int
+}
+
+input ProjectTasksPairInput {
+  projectID: String!
+  allowedTasks: [String!]!
+  allowedBVs: [String!]!
+}
+
+type ProjectTasksPair {
+  projectId: String!
+  allowedTasks: [String!]!
+  allowedBVs: [String!]!
+}
+input ReleaseModeConfigInput {
+  distroMaxHostsFactor: Float
+  targetTimeSecondsOverride: Int
+  idleTimeSecondsOverride: Int
+}
+type ReleaseModeConfig {
+  distroMaxHostsFactor: Float
+  targetTimeSecondsOverride: Int
+  idleTimeSecondsOverride: Int
+}
+
+input SingleTaskDistroConfigInput {
+  projectTasksPairs: [ProjectTasksPairInput!]!
+}
+
+type SingleTaskDistroConfig {
+  projectTasksPairs: [ProjectTasksPair!]!
+}
+
+input TracerSettingsInput {
+  enabled: Boolean
+  collectorEndpoint: String
+  collectorInternalEndpoint: String
+  collectorAPIKey: String @redactSecrets
+}
+
+type TracerSettings {
+  enabled: Boolean!
+  collectorEndpoint: String
+  collectorInternalEndpoint: String
+  collectorAPIKey: String @requireAdmin
+}
+
+input CostConfigInput {
+  financeFormula: Float
+  savingsPlanDiscount: Float
+  onDemandDiscount: Float
+}
+
+type CostConfig {
+  financeFormula: Float
+  savingsPlanDiscount: Float
+  onDemandDiscount: Float
+}

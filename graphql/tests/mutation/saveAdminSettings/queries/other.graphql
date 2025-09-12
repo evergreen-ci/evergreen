@@ -32,7 +32,7 @@ mutation SaveAdminSettingsOther {
           testResultsPrefix: "mutation-test-results"
           roleARN: "test arn"
         }
-        longRetentionProjects: ["project1", "project2"],
+        longRetentionProjects: ["project1", "project2"]
         logBucketLongRetention: {
           name: "mutation-long-retention-bucket"
           testResultsPrefix: "mutation-long-results"
@@ -87,6 +87,11 @@ mutation SaveAdminSettingsOther {
         distroMaxHostsFactor: 1.5
         targetTimeSecondsOverride: 300
         idleTimeSecondsOverride: 60
+      }
+      cost: {
+        financeFormula: 0.01
+        savingsPlanDiscount: 0.01
+        onDemandDiscount: 0.01
       }
     }
   ) {
@@ -182,6 +187,11 @@ mutation SaveAdminSettingsOther {
       distroMaxHostsFactor
       targetTimeSecondsOverride
       idleTimeSecondsOverride
+    }
+    cost {
+      financeFormula
+      savingsPlanDiscount
+      onDemandDiscount
     }
   }
 }

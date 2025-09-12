@@ -79,9 +79,8 @@ func TestAdminSuite(t *testing.T) {
 	}
 
 	originalEnv := GetEnvironment()
-	originalSettings, err := GetConfig(ctx)
+	originalSettings, err := NewSettings(configFile)
 	require.NoError(t, err)
-
 	env, err := NewEnvironment(ctx, configFile, "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 
@@ -905,12 +904,25 @@ func (s *AdminSuite) TestBucketsConfig() {
 
 	err = config.Set(ctx)
 	s.NoError(err)
-
 	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Buckets)
 	s.Len(settings.Buckets.LongRetentionProjects, 2)
+
+	config.LogBucketFailedTasks = BucketConfig{
+		Name: "logs-failed-tasks",
+		Type: BucketTypeS3,
+	}
+	err = config.Set(ctx)
+	s.NoError(err, "Set should not error for LogBucketFailedTasks")
+	settings, err = GetConfig(ctx)
+	s.NoError(err, "GetConfig should not error after setting LogBucketFailedTasks")
+	s.NotNil(settings, "Settings should not be nil after setting LogBucketFailedTasks")
+	s.Equal(config.LogBucketFailedTasks, settings.Buckets.LogBucketFailedTasks, "LogBucketFailedTasks should match config")
+
+	s.Equal("logs-failed-tasks", settings.Buckets.LogBucketFailedTasks.Name, "LogBucketFailedTasks.Name should be 'logs-failed-tasks'")
+	s.Equal(BucketTypeS3, settings.Buckets.LogBucketFailedTasks.Type, "LogBucketFailedTasks.Type should be 's3'")
 
 	// Test validation
 	err = config.ValidateAndDefault()

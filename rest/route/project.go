@@ -831,6 +831,8 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
 //	@Param			include_tasks		query	bool	false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
 //	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
+//	@Param			created_after		query	string	false	"Timestamp to look for applicable versions after or equal to create_time."
+//	@Param			created_before		query	string	false	"Timestamp to look for applicable versions before or equal to create_time."
 //	@Success		200					{array}	model.APIVersion
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectVersionsHandler{}
@@ -883,6 +885,23 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 	if h.opts.RevisionEnd < 0 {
 		return errors.New("revision_end must be a non-negative integer")
+	}
+
+	createdAfterStr := params.Get("created_after")
+	if createdAfterStr != "" {
+		createdAfter, err := model.ParseTime(createdAfterStr)
+		if err != nil {
+			return errors.Wrap(err, "invalid created_after timestamp")
+		}
+		h.opts.CreatedAfter = createdAfter
+	}
+	createdBeforeStr := params.Get("created_before")
+	if createdBeforeStr != "" {
+		createdBefore, err := model.ParseTime(createdBeforeStr)
+		if err != nil {
+			return errors.Wrap(err, "invalid created_before timestamp")
+		}
+		h.opts.CreatedBefore = createdBefore
 	}
 
 	requester := params.Get("requester")

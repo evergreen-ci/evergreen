@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -78,6 +79,13 @@ type TaskConfig struct {
 	PatchOrVersionDescription string
 
 	mu sync.RWMutex
+}
+
+func (tc *TaskConfig) TaskData() client.TaskData {
+	return client.TaskData{
+		ID:     tc.Task.Id,
+		Secret: tc.Task.Secret,
+	}
 }
 
 // CommandCleanup is a cleanup function associated with a command. As a command

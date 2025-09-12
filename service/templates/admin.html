@@ -97,6 +97,7 @@ Admin Settings
 						<div>Other</div>
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('buckets')">Bucket Config</li>
+						<li class="link" ng-click="scrollTo('cost')">Cost Config</li>
 						<li class="link" ng-click="scrollTo('ssh')">SSH Key Pairs</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
@@ -190,15 +191,6 @@ Admin Settings
 													<md-radio-group
 															data-ng-model="Settings.service_flags.release_mode_disabled"
 															layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Admin Parameter Store Enabled</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.admin_parameter_store_disabled" layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -465,19 +457,9 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-											<tr>
-												<td>Legacy UI Task Page</td>
+												<td>Legacy Admin Settings Page</td>
 												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.legacy_ui_task_page_disabled" layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
-												<td>Legacy UI Task History Page</td>
-												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.legacy_ui_task_history_page_disabled" layout="row">
+													<md-radio-group data-ng-model="Settings.service_flags.legacy_ui_admin_page_disabled" layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -1028,6 +1010,15 @@ Admin Settings
 													<td>Spruce Waterfall</td>
 													<td colspan="2">
 														<md-radio-group data-ng-model="Settings.ui.beta_features.spruce_waterfall_enabled" layout="row">
+															<md-radio-button data-ng-value="true"></md-radio-button>
+															<md-radio-button data-ng-value="false"></md-radio-button>
+														</md-radio-group>
+													</td>
+												</tr>
+												<tr>
+													<td>Parsley AI</td>
+													<td colspan="2">
+														<md-radio-group data-ng-model="Settings.ui.beta_features.parsley_ai_enabled" layout="row">
 															<md-radio-button data-ng-value="true"></md-radio-button>
 															<md-radio-button data-ng-value="false"></md-radio-button>
 														</md-radio-group>
@@ -2284,6 +2275,10 @@ Admin Settings
 										<textarea ng-model="Settings.buckets.long_retention_projects" ng-list="&#10;" ng-trim="false" rows="4" md-select-on-focus placeholder="Enter project IDs that need extended log retention"></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Failed Tasks Log Bucket</label>
+										<input type="text" class="form-control" ng-model="Settings.buckets.log_bucket_failed_tasks.name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Test Results Bucket</label>
 										<input type="text" ng-model="Settings.buckets.test_results_bucket.name">
 									</md-input-container>
@@ -2309,6 +2304,31 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
+							<md-card flex=50 id="cost">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Cost Config</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<div>
+										Task cost calculation configuration:
+									</div>
+									<md-input-container class="control" style="width:45%;">
+										<label>Finance Formula</label>
+										<input type="number" ng-model="Settings.cost.finance_formula" placeholder="0" step="any">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Savings Plan Discount</label>
+										<input type="number" ng-model="Settings.cost.savings_plan_discount" placeholder="0" step="any">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>On Demand Discount</label>
+										<input type="number" ng-model="Settings.cost.on_demand_discount" placeholder="0" step="any">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+
 							<md-card flex=50 id="ssh">
 								<md-card-title>
 									<md-card-title-text>

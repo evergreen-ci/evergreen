@@ -20,14 +20,14 @@ type AssignmentTypeEnum string
 
 // List of AssignmentTypeEnum
 const (
-	OFFENDING_VERSION_ID     AssignmentTypeEnum = "offending version id"
-	FAILURE_METADATA_TAG     AssignmentTypeEnum = "failure metadata tag"
+	OFFENDING_VERSION_ID AssignmentTypeEnum = "offending version id"
+	FAILURE_METADATA_TAG AssignmentTypeEnum = "failure metadata tag"
 	SYSTEM_AND_SETUP_FAILURE AssignmentTypeEnum = "system and setup failure"
-	TEST_FILE_NAME           AssignmentTypeEnum = "test file name"
-	TASK_TAG                 AssignmentTypeEnum = "task tag"
-	BUILD_VARIANT_TAG        AssignmentTypeEnum = "build variant tag"
-	TASK_TO_TEAM_MAPPING     AssignmentTypeEnum = "task to team mapping"
-	DEFAULT_TEAM             AssignmentTypeEnum = "default team"
+	TEST_FILE_NAME AssignmentTypeEnum = "test file name"
+	TASK_TAG AssignmentTypeEnum = "task tag"
+	BUILD_VARIANT_TAG AssignmentTypeEnum = "build variant tag"
+	TASK_TO_TEAM_MAPPING AssignmentTypeEnum = "task to team mapping"
+	DEFAULT_TEAM AssignmentTypeEnum = "default team"
 )
 
 // All allowed values of AssignmentTypeEnum enum
@@ -120,3 +120,4 @@ func (v *NullableAssignmentTypeEnum) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
+

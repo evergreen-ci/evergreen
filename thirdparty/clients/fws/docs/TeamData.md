@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **TriageTeamName** | Pointer to **NullableString** |  | [optional] 
 **SlackGroupId** | Pointer to **NullableString** |  | [optional] 
 **TriagedTeamNames** | Pointer to **[]string** |  | [optional] 
+**CodeOwners** | Pointer to **[]string** |  | [optional] 
 
 ## Methods
 
@@ -216,6 +217,41 @@ SetTriagedTeamNames sets TriagedTeamNames field to given value.
 
 HasTriagedTeamNames returns a boolean if a field has been set.
 
+### GetCodeOwners
+
+`func (o *TeamData) GetCodeOwners() []string`
+
+GetCodeOwners returns the CodeOwners field if non-nil, zero value otherwise.
+
+### GetCodeOwnersOk
+
+`func (o *TeamData) GetCodeOwnersOk() (*[]string, bool)`
+
+GetCodeOwnersOk returns a tuple with the CodeOwners field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCodeOwners
+
+`func (o *TeamData) SetCodeOwners(v []string)`
+
+SetCodeOwners sets CodeOwners field to given value.
+
+### HasCodeOwners
+
+`func (o *TeamData) HasCodeOwners() bool`
+
+HasCodeOwners returns a boolean if a field has been set.
+
+### SetCodeOwnersNil
+
+`func (o *TeamData) SetCodeOwnersNil(b bool)`
+
+ SetCodeOwnersNil sets the value for CodeOwners to be an explicit nil
+
+### UnsetCodeOwners
+`func (o *TeamData) UnsetCodeOwners()`
+
+UnsetCodeOwners ensures that no value is present for CodeOwners, not even an explicit nil
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

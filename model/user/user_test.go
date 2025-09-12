@@ -214,8 +214,17 @@ func (s *UserTestSuite) TestGetPublicKeyThatDoesntExist() {
 }
 
 func (s *UserTestSuite) TestAddKey() {
+	// Add public key when there are no existing keys.
 	s.Require().NoError(s.users[0].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890"))
 	key, err := s.users[0].GetPublicKey("key1")
+	s.Require().NoError(err)
+	s.Equal("ssh-mock 67890", key)
+
+	// Add public key when public keys is nil.
+	s.NoError(s.users[0].DeletePublicKey(s.T().Context(), "key1"))
+	s.users[0].PubKeys = nil
+	s.Require().NoError(s.users[0].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890"))
+	key, err = s.users[0].GetPublicKey("key1")
 	s.Require().NoError(err)
 	s.Equal("ssh-mock 67890", key)
 
@@ -1022,19 +1031,19 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
-	assert.False(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+	assert.False(t, dbUser.BetaFeatures.ParsleyAIEnabled)
 
 	newBetaFeatureSettings := evergreen.BetaFeatures{
-		SpruceWaterfallEnabled: true,
+		ParsleyAIEnabled: true,
 	}
 	err = usr.UpdateBetaFeatures(t.Context(), newBetaFeatureSettings)
 	require.NoError(t, err)
-	assert.True(t, usr.BetaFeatures.SpruceWaterfallEnabled)
+	assert.True(t, usr.BetaFeatures.ParsleyAIEnabled)
 
 	dbUser, err = FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
-	assert.True(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+	assert.True(t, dbUser.BetaFeatures.ParsleyAIEnabled)
 }
 
 func (s *UserTestSuite) TestClearUser() {

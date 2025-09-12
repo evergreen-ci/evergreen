@@ -285,7 +285,7 @@ func (c *Mock) GetBuildsForVersion(ctx context.Context, versionID string) ([]res
 	return nil, nil
 }
 
-func (c *Mock) GetTasksForBuild(ctx context.Context, buildID string) ([]restmodel.APITask, error) {
+func (c *Mock) GetTasksForBuild(ctx context.Context, buildID string, startAt string, limit int) ([]restmodel.APITask, error) {
 	if c.GetTasksForBuildResult != nil {
 		return c.GetTasksForBuildResult, nil
 	}

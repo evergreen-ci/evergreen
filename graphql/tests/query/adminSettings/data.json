@@ -42,8 +42,8 @@
         "keyset_url": "https://kanopy.com/keyset"
       },
       "multi": {
-        "read_write": ["admin", "privileged"],
-        "read_only": ["admin", "privileged", "regular"]
+        "read_write": ["okta"],
+        "read_only": ["github"]
       },
       "okta": {
         "client_id": "client_id",
@@ -268,7 +268,8 @@
       "uiv2_url": "http://localhost:3000",
       "parsley_url": "http://localhost:4173",
       "beta_features": {
-        "spruce_waterfall_enabled": true
+        "spruce_waterfall_enabled": true,
+        "parsley_ai_enabled": true
       },
       "cache_templates": false,
       "csrf_key": "",
@@ -531,6 +532,12 @@
     {
       "_id": "parameter_store",
       "prefix": "store"
+    },
+    {
+      "_id": "cost",
+      "finance_formula": 0.777,
+      "savings_plan_discount": 0.3,
+      "on_demand_discount": 0.8
     }
   ]
 }

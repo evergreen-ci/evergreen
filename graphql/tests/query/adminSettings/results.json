@@ -128,8 +128,8 @@
                 "users": []
               },
               "multi": {
-                "readWrite": ["admin", "privileged"],
-                "readOnly": ["admin", "privileged", "regular"]
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
               },
               "kanopy": {
                 "headerName": "",
@@ -242,7 +242,8 @@
               "cacheTemplates": false,
               "stagingEnvironment": "",
               "betaFeatures": {
-                "spruceWaterfallEnabled": true
+                "spruceWaterfallEnabled": true,
+                "parsleyAIEnabled": true
               }
             },
             "disabledGQLQueries": []
@@ -429,6 +430,11 @@
               "distroMaxHostsFactor": 1,
               "targetTimeSecondsOverride": 0,
               "idleTimeSecondsOverride": 0
+            },
+            "cost": {
+              "financeFormula": 0.777,
+              "savingsPlanDiscount": 0.3,
+              "onDemandDiscount": 0.8
             }
           }
         }

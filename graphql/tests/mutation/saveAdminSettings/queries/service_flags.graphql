@@ -2,7 +2,6 @@ mutation {
   saveAdminSettings(
     adminSettings: {
       serviceFlags: {
-        adminParameterStoreDisabled: true
         agentStartDisabled: true
         alertsDisabled: true
         backgroundReauthDisabled: true
@@ -42,7 +41,6 @@ mutation {
     }
   ) {
     serviceFlags {
-      adminParameterStoreDisabled
       agentStartDisabled
       alertsDisabled
       backgroundReauthDisabled

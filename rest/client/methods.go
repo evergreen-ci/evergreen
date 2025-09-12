@@ -1315,10 +1315,20 @@ func (c *communicatorImpl) GetBuildsForVersion(ctx context.Context, versionID st
 	return getBuildsResp, nil
 }
 
-func (c *communicatorImpl) GetTasksForBuild(ctx context.Context, buildID string) ([]restmodel.APITask, error) {
+func (c *communicatorImpl) GetTasksForBuild(ctx context.Context, buildID string, startAt string, limit int) ([]restmodel.APITask, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("builds/%s/tasks", buildID),
+	}
+	var queryParams []string
+	if startAt != "" {
+		queryParams = append(queryParams, fmt.Sprintf("start_at=%s", startAt))
+	}
+	if limit > 0 {
+		queryParams = append(queryParams, fmt.Sprintf("limit=%d", limit))
+	}
+	if len(queryParams) > 0 {
+		info.path = info.path + "?" + strings.Join(queryParams, "&")
 	}
 
 	resp, err := c.request(ctx, info, nil)

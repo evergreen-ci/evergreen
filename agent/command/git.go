@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,7 +23,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -36,10 +34,6 @@ const (
 	shallowCloneDepth      = 100
 
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
-
-	// Valid types of performing git clone
-	cloneMethodOAuth       = "oauth"
-	cloneMethodAccessToken = "access-token"
 
 	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
 
@@ -53,14 +47,7 @@ var (
 	cloneRepoAttribute    = fmt.Sprintf("%s.clone_repo", gitGetProjectAttribute)
 	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
-	cloneMethodAttribute  = fmt.Sprintf("%s.clone_method", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
-
-	// validCloneMethods includes all recognized clone methods.
-	validCloneMethods = []string{
-		cloneMethodOAuth,
-		cloneMethodAccessToken,
-	}
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -74,8 +61,7 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	Token   string `plugin:"expand" mapstructure:"token"`
-	IsOauth bool   `mapstructure:"is_oauth"`
+	Token string `plugin:"expand" mapstructure:"token"`
 
 	// ShallowClone sets CloneDepth to 100, and is kept for backwards compatibility.
 	ShallowClone bool `mapstructure:"shallow_clone"`
@@ -91,8 +77,6 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method            string
-	location          string
 	owner             string
 	repo              string
 	branch            string
@@ -103,65 +87,35 @@ type cloneOpts struct {
 	cloneDepth        int
 }
 
-// validateCloneMethod checks that the clone mechanism is one of the supported
-// methods.
-func validateCloneMethod(method string) error {
-	if !utility.StringSliceContains(validCloneMethods, method) {
-		return errors.Errorf("'%s' is not a valid clone method", method)
-	}
-	return nil
-}
-
 func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(opts.owner == "", "missing required owner")
 	catcher.NewWhen(opts.repo == "", "missing required repo")
-	catcher.NewWhen(opts.location == "", "missing required location")
-	catcher.Wrapf(validateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
-	catcher.NewWhen(opts.token == "" && opts.method == cloneMethodOAuth, "cannot clone using OAuth if token is not set")
 
 	catcher.NewWhen(opts.cloneDepth < 0, "clone depth cannot be negative")
 	return catcher.Resolve()
 }
 
-func (opts cloneOpts) httpLocation() string {
-	return fmt.Sprintf("https://github.com/%s/%s.git", opts.owner, opts.repo)
-}
-
-// setLocation sets the location to clone from.
-func (opts *cloneOpts) setLocation() error {
-	if err := validateCloneMethod(opts.method); err != nil {
-		return errors.Errorf("unrecognized clone method '%s'", opts.method)
-	}
-
-	opts.location = opts.httpLocation()
-	return nil
-}
-
-// getProjectMethodAndToken returns the project's clone method and token. If
+// getCloneToken returns the project's clone method and token. If
 // set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string, isOauth bool) (string, string, error) {
-	if projectToken != "" {
-		token, err := parseToken(projectToken)
-		if isOauth {
-			return cloneMethodOAuth, token, err
-		}
-		return cloneMethodAccessToken, token, err
+func getCloneToken(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, providedToken string) (string, error) {
+	if providedToken != "" {
+		token, err := parseToken(providedToken)
+		return token, err
 	}
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, owner, repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, repo)
 	if err != nil {
-		return "", "", errors.Wrap(err, "creating app token")
+		return "", errors.Wrap(err, "creating app token")
 	}
 	if appToken != "" {
 		// Redact the token from the logs.
 		conf.NewExpansions.Redact(generatedTokenKey, appToken)
 	}
 
-	return cloneMethodAccessToken, appToken, nil
-
+	return appToken, nil
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
@@ -181,26 +135,8 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
-	switch opts.method {
-	case cloneMethodOAuth:
-		return opts.buildHTTPCloneCommand(false)
-	case cloneMethodAccessToken:
-		return opts.buildHTTPCloneCommand(true)
-	}
-	return nil, errors.New("unrecognized clone method in options")
-}
 
-func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
-	urlLocation, err := url.Parse(opts.location)
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing URL from location")
-	}
-	var gitURL string
-	if forApp {
-		gitURL = thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
-	} else {
-		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
-	}
+	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
 
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 
@@ -228,15 +164,10 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 
 func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
 
-// Load performs a GET on /manifest/load
-func (c *gitFetchProject) manifestLoad(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
-	manifest, err := comm.GetManifest(ctx, td)
+func loadModulesManifestInToExpansions(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig) error {
+	manifest, err := comm.GetManifest(ctx, conf.TaskData())
 	if err != nil {
-		return errors.Wrapf(err, "loading manifest for task '%s'", td.ID)
+		return errors.Wrapf(err, "loading manifest for task '%s'", conf.Task.Id)
 	}
 
 	for moduleName := range manifest.Modules {
@@ -247,7 +178,6 @@ func (c *gitFetchProject) manifestLoad(ctx context.Context,
 		conf.NewExpansions.Put(fmt.Sprintf("%s_owner", moduleName), manifest.Modules[moduleName].Owner)
 	}
 
-	logger.Execution().Info("Manifest loaded successfully.")
 	return nil
 }
 
@@ -326,8 +256,8 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		"set -o xtrace",
 		"set -o errexit",
 	}
-	if opts.location == "" && opts.repo == "" && opts.owner == "" {
-		return nil, errors.New("must specify repository URI or owner and repo")
+	if opts.repo == "" && opts.owner == "" {
+		return nil, errors.New("must specify owner and repo")
 	}
 	if opts.dir == "" {
 		return nil, errors.New("empty clone path")
@@ -356,17 +286,17 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		method:            projectMethod,
 		owner:             conf.ProjectRef.Owner,
 		repo:              conf.ProjectRef.Repo,
 		branch:            conf.ProjectRef.Branch,
 		dir:               c.Directory,
-		token:             projectToken,
+		token:             cloneToken,
 		recurseSubmodules: c.RecurseSubmodules,
 	}
+
 	cloneDepth := c.CloneDepth
 	if cloneDepth == 0 && c.ShallowClone {
 		// Experiments with shallow clone on AWS hosts suggest that depth 100 is as fast as 1, but 1000 is slower.
@@ -381,9 +311,6 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 		}
 	}
 
-	if err := opts.setLocation(); err != nil {
-		return opts, errors.Wrap(err, "setting location to clone from")
-	}
 	if err := opts.validate(); err != nil {
 		return opts, errors.Wrap(err, "validating clone options")
 	}
@@ -393,29 +320,27 @@ func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	err := c.manifestLoad(ctx, comm, logger, conf)
-	if err != nil {
+	if err := loadModulesManifestInToExpansions(ctx, comm, conf); err != nil {
 		return errors.Wrap(err, "loading manifest")
 	}
+	logger.Execution().Info("Manifest loaded successfully.")
 
-	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
-	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token, c.IsOauth)
+	cloneToken, err := getCloneToken(ctx, comm, conf, c.Token)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
 
 	var opts cloneOpts
-	opts, err = c.opts(projectMethod, projectToken, logger, conf)
+	opts, err = c.opts(cloneToken, logger, conf)
 	if err != nil {
 		return err
 	}
 
-	err = c.fetch(ctx, comm, logger, conf, td, opts)
+	err = c.fetch(ctx, comm, logger, conf, opts)
 	if err != nil {
 		logger.Task().Error(message.WrapError(err, message.Fields{
 			"operation":    "git.get_project",
@@ -424,14 +349,13 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 			"owner":        conf.ProjectRef.Owner,
 			"repo":         conf.ProjectRef.Repo,
 			"branch":       conf.ProjectRef.Branch,
-			"clone_method": opts.method,
 		}))
 	}
 
 	return err
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, jpm jasper.Manager, opts cloneOpts) error {
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
@@ -448,7 +372,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		// return early and will stop waiting for the command to exit. In the
 		// context error case, this thread and the still-running command may race to
 		// read/write the buffer, so the buffer has to be thread-safe.
-		fetchSourceCmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
+		fetchSourceCmd := c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender())
 
 		logger.Execution().Info("Fetching source from git...")
@@ -458,7 +382,6 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 			attribute.String(cloneOwnerAttribute, opts.owner),
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
-			attribute.String(cloneMethodAttribute, opts.method),
 			attribute.Int(cloneAttemptAttribute, attempt),
 		))
 		defer span.End()
@@ -512,10 +435,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	comm client.Communicator,
 	conf *internal.TaskConfig,
 	logger client.LoggerProducer,
-	jpm jasper.Manager,
-	td client.TaskData,
-	projectToken string,
-	cloneMethod string,
 	p *patch.Patch,
 	moduleName string) error {
 
@@ -576,10 +495,8 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	opts := cloneOpts{
-		branch:   "",
-		dir:      moduleBase,
-		method:   cloneMethod,
-		location: module.Repo,
+		branch: "",
+		dir:    moduleBase,
 	}
 
 	// If the module repo is using the deprecated ssh cloning method, extract the owner
@@ -598,27 +515,15 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			" to https format. Please update your project config.", module.Repo)
 	}
 
-	if err := opts.setLocation(); err != nil {
-		return errors.Wrap(err, "setting location to clone from")
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
+	if err != nil {
+		return errors.Wrap(err, "creating app token")
 	}
 
-	if opts.method == cloneMethodOAuth {
-		// If user provided a token, use that token.
-		opts.token = projectToken
-	} else {
-		// Otherwise, create an installation token for to clone the module.
-		appToken, err := comm.CreateInstallationTokenForClone(ctx, td, opts.owner, opts.repo)
-		if err != nil {
-			return errors.Wrap(err, "creating app token")
-		}
+	opts.token = appToken
 
-		opts.token = appToken
-		opts.method = cloneMethodAccessToken
-
-		// After generating, redact the token from the logs.
-		conf.NewExpansions.Redact(generatedTokenKey, appToken)
-
-	}
+	// After generating, redact the token from the logs.
+	conf.NewExpansions.Redact(generatedTokenKey, appToken)
 
 	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "validating clone options")
@@ -638,7 +543,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			attribute.String(cloneOwnerAttribute, opts.owner),
 			attribute.String(cloneRepoAttribute, opts.repo),
 			attribute.String(cloneBranchAttribute, opts.branch),
-			attribute.String(cloneMethodAttribute, opts.method),
 			attribute.Int(cloneAttemptAttribute, attempt),
 		))
 		defer span.End()
@@ -652,7 +556,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		// read/write the buffer, so the buffer has to be thread-safe.
 		stdOut := utility.MakeSafeBuffer(bytes.Buffer{})
 		stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
-		err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
+		err = c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
 			Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).
 			SetOutputWriter(stdOut).SetErrorWriter(stdErr).Run(ctx)
 
@@ -673,15 +577,13 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	comm client.Communicator,
 	logger client.LoggerProducer,
 	conf *internal.TaskConfig,
-	td client.TaskData,
 	opts cloneOpts) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	jpm := c.JasperManager()
 
 	// Clone the project.
-	if err := c.fetchSource(ctx, logger, conf, jpm, opts); err != nil {
+	if err := c.fetchSource(ctx, logger, conf, opts); err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
@@ -690,7 +592,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	var err error
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		logger.Execution().Info("Fetching patch.")
-		p, err = comm.GetTaskPatch(ctx, td)
+		p, err = comm.GetTaskPatch(ctx, conf.TaskData())
 		if err != nil {
 			return errors.Wrap(err, "getting patch for task")
 		}
@@ -727,7 +629,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 			if err := gCtx.Err(); err != nil {
 				return nil
 			}
-			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, jpm, td, opts.token, opts.method, p, moduleName), "fetching module source '%s'", moduleName)
+			return errors.Wrapf(c.fetchModuleSource(gCtx, comm, conf, logger, p, moduleName), "fetching module source '%s'", moduleName)
 		})
 	}
 
@@ -788,7 +690,6 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 	ctx, span := getTracer().Start(ctx, "get_patches")
 	defer span.End()
 
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	for i, patchPart := range patch.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
@@ -802,7 +703,7 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 		// otherwise, fetch the contents and load it into the patch object
 		logger.Execution().Infof("Fetching patch contents for patch file '%s'.", patchPart.PatchSet.PatchFileId)
 
-		result, err := comm.GetPatchFile(ctx, td, patchPart.PatchSet.PatchFileId)
+		result, err := comm.GetPatchFile(ctx, conf.TaskData(), patchPart.PatchSet.PatchFileId)
 		if err != nil {
 			return errors.Wrapf(err, "getting patch file")
 		}

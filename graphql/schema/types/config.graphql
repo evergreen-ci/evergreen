@@ -1,5 +1,16 @@
-###### RESTART TASKS ######
+enum PriorityLevel {
+  EMERGENCY
+  ALERT
+  CRITICAL
+  ERROR
+  WARNING
+  NOTICE
+  INFO
+  DEBUG
+  TRACE
+}
 
+###### RESTART TASKS ######
 input RestartAdminTasksOptions {
   startTime: Time!
   endTime: Time!
@@ -17,19 +28,6 @@ type RestartAdminTasksPayload {
 }
 
 ###### ADMIN EVENTS ######
-
-enum PriorityLevel {
-  EMERGENCY
-  ALERT
-  CRITICAL
-  ERROR
-  WARNING
-  NOTICE
-  INFO
-  DEBUG
-  TRACE
-}
-
 """
 AdminEventsInput is the input to the adminEvents query.
 """
@@ -56,250 +54,6 @@ input SaveAdminSettingsInput {
   adminSettings: AdminSettingsInput!
 }
 
-input SESConfigInput {
-  senderAddress: String! @redactSecrets
-}
-
-type SESConfig {
-  senderAddress: String @requireAdmin
-}
-
-input NotifyConfigInput {
-  ses: SESConfigInput
-  bufferTargetPerInterval: Int
-  bufferIntervalSeconds: Int
-}
-
-type NotifyConfig {
-  ses: SESConfig @requireAdmin
-  bufferTargetPerInterval: Int
-  bufferIntervalSeconds: Int
-}
-
-input TaskLimitsConfigInput {
-  maxTasksPerVersion: Int!
-  maxIncludesPerVersion: Int!
-  maxHourlyPatchTasks: Int!
-  maxPendingGeneratedTasks: Int!
-  maxGenerateTaskJSONSize: Int!
-  maxConcurrentLargeParserProjectTasks: Int!
-  maxDegradedModeConcurrentLargeParserProjectTasks: Int!
-  maxDegradedModeParserProjectSize: Int!
-  maxParserProjectSize: Int!
-  maxExecTimeoutSecs: Int!
-  maxTaskExecution: Int!
-  maxDailyAutomaticRestarts: Int!
-}
-
-type TaskLimitsConfig {
-  maxTasksPerVersion: Int
-  maxIncludesPerVersion: Int
-  maxHourlyPatchTasks: Int
-  maxPendingGeneratedTasks: Int
-  maxGenerateTaskJSONSize: Int
-  maxConcurrentLargeParserProjectTasks: Int
-  maxDegradedModeConcurrentLargeParserProjectTasks: Int
-  maxDegradedModeParserProjectSize: Int
-  maxParserProjectSize: Int
-  maxExecTimeoutSecs: Int
-  maxTaskExecution: Int
-  maxDailyAutomaticRestarts: Int
-}
-
-input HostInitConfigInput {
-  hostThrottle: Int!
-  provisioningThrottle: Int!
-  cloudStatusBatchSize: Int!
-  maxTotalDynamicHosts: Int!
-}
-
-type HostInitConfig {
-  hostThrottle: Int
-  provisioningThrottle: Int
-  cloudStatusBatchSize: Int
-  maxTotalDynamicHosts: Int
-}
-
-input PodLifecycleConfigInput {
-  maxParallelPodRequests: Int!
-  maxPodDefinitionCleanupRate: Int!
-  maxSecretCleanupRate: Int!
-}
-
-type PodLifecycleConfig {
-  maxParallelPodRequests: Int
-  maxPodDefinitionCleanupRate: Int
-  maxSecretCleanupRate: Int
-}
-
-input SchedulerConfigInput {
-  taskFinder: FinderVersion!
-  hostAllocator: HostAllocatorVersion!
-  hostAllocatorRoundingRule: RoundingRule!
-  hostAllocatorFeedbackRule: FeedbackRule!
-  hostsOverallocatedRule: OverallocatedRule!
-  futureHostFraction: Float!
-  cacheDurationSeconds: Int!
-  targetTimeSeconds: Int!
-  acceptableHostIdleTimeSeconds: Int!
-  groupVersions: Boolean!
-  patchFactor: Int!
-  patchTimeInQueueFactor: Int!
-  commitQueueFactor: Int!
-  mainlineTimeInQueueFactor: Int!
-  expectedRuntimeFactor: Int!
-  generateTaskFactor: Int!
-  numDependentsFactor: Float!
-  stepbackTaskFactor: Int!
-}
-
-type SchedulerConfig {
-  taskFinder: FinderVersion
-  hostAllocator: HostAllocatorVersion
-  hostAllocatorRoundingRule: RoundingRule
-  hostAllocatorFeedbackRule: FeedbackRule
-  hostsOverallocatedRule: OverallocatedRule
-  futureHostFraction: Float
-  cacheDurationSeconds: Int
-  targetTimeSeconds: Int
-  acceptableHostIdleTimeSeconds: Int
-  groupVersions: Boolean!
-  patchFactor: Int
-  patchTimeInQueueFactor: Int
-  commitQueueFactor: Int
-  mainlineTimeInQueueFactor: Int
-  expectedRuntimeFactor: Int
-  generateTaskFactor: Int
-  numDependentsFactor: Float
-  stepbackTaskFactor: Int
-}
-
-input RepotrackerConfigInput {
-  numNewRepoRevisionsToFetch: Int!
-  maxRepoRevisionsToSearch: Int!
-  maxConcurrentRequests: Int!
-}
-
-type RepotrackerConfig {
-  numNewRepoRevisionsToFetch: Int
-  maxRepoRevisionsToSearch: Int
-  maxConcurrentRequests: Int
-}
-
-input AmboyRetryConfigInput {
-  numWorkers: Int!
-  maxCapacity: Int!
-  maxRetryAttempts: Int!
-  maxRetryTimeSeconds: Int!
-  retryBackoffSeconds: Int!
-  staleRetryingMonitorIntervalSeconds: Int!
-}
-
-type AmboyRetryConfig {
-  numWorkers: Int
-  maxCapacity: Int
-  maxRetryAttempts: Int
-  maxRetryTimeSeconds: Int
-  retryBackoffSeconds: Int
-  staleRetryingMonitorIntervalSeconds: Int
-}
-
-input AmboyNamedQueueConfigInput {
-  name: String!
-  regexp: String!
-  numWorkers: Int!
-  sampleSize: Int!
-  lockTimeoutSeconds: Int!
-}
-
-type AmboyNamedQueueConfig {
-  name: String
-  regexp: String
-  numWorkers: Int
-  sampleSize: Int
-  lockTimeoutSeconds: Int
-}
-
-input AmboyConfigInput {
-  name: String!
-  singleName: String!
-  poolSizeLocal: Int!
-  poolSizeRemote: Int!
-  localStorage: Int!
-  groupDefaultWorkers: Int!
-  groupBackgroundCreateFrequencyMinutes: Int!
-  groupPruneFrequencyMinutes: Int!
-  groupTTLMinutes: Int!
-  lockTimeoutMinutes: Int!
-  sampleSize: Int!
-  retry: AmboyRetryConfigInput!
-  namedQueues: [AmboyNamedQueueConfigInput!]!
-}
-
-type AmboyConfig {
-  name: String
-  singleName: String
-  poolSizeLocal: Int
-  poolSizeRemote: Int
-  localStorage: Int
-  groupDefaultWorkers: Int
-  groupBackgroundCreateFrequencyMinutes: Int
-  groupPruneFrequencyMinutes: Int
-  groupTTLMinutes: Int
-  lockTimeoutMinutes: Int
-  sampleSize: Int
-  retry: AmboyRetryConfig
-  namedQueues: [AmboyNamedQueueConfig!]!
-}
-
-input AmboyDBConfigInput {
-  url: String!
-  database: String!
-}
-
-type AmboyDBConfig {
-  url: String @requireAdmin
-  database: String @requireAdmin
-}
-
-input LogBufferingInput {
-  useAsync: Boolean!
-  durationSeconds: Int!
-  count: Int!
-  incomingBufferFactor: Int!
-}
-
-type LogBuffering {
-  useAsync: Boolean!
-  durationSeconds: Int
-  count: Int
-  incomingBufferFactor: Int
-}
-
-input LoggerConfigInput {
-  buffer: LogBufferingInput!
-  defaultLevel: PriorityLevel!
-  thresholdLevel: PriorityLevel!
-  logkeeperURL: String!
-  redactKeys: [String!]!
-}
-
-type LoggerConfig {
-  buffer: LogBuffering
-  defaultLevel: PriorityLevel
-  thresholdLevel: PriorityLevel
-  logkeeperURL: String
-  redactKeys: [String!]!
-}
-
-input TriggerConfigInput {
-  generateTaskDistro: String!
-}
-
-type TriggerConfig {
-  generateTaskDistro: String
-}
-
 input AdminSettingsInput {
   amboy: AmboyConfigInput
   amboyDB: AmboyDBConfigInput @redactSecrets
@@ -311,6 +65,7 @@ input AdminSettingsInput {
   cedar: CedarConfigInput
   configDir: String
   containerPools: ContainerPoolsConfigInput
+  cost: CostConfigInput
   disabledGQLQueries: [String!]
   domainName: String
   expansions: StringMap
@@ -364,6 +119,7 @@ type AdminSettings {
   cedar: CedarConfig
   configDir: String
   containerPools: ContainerPoolsConfig
+  cost: CostConfig
   disabledGQLQueries: [String!]!
   domainName: String
   expansions: StringMap
@@ -424,132 +180,6 @@ type SpruceConfig {
   ui: UIConfig!
 }
 
-input ServiceFlagsInput {
-  taskDispatchDisabled: Boolean!
-  hostInitDisabled: Boolean!
-  podInitDisabled: Boolean!
-  largeParserProjectsDisabled: Boolean!
-  monitorDisabled: Boolean!
-  alertsDisabled: Boolean!
-  agentStartDisabled: Boolean!
-  repotrackerDisabled: Boolean!
-  schedulerDisabled: Boolean!
-  checkBlockedTasksDisabled: Boolean!
-  githubPRTestingDisabled: Boolean!
-  cliUpdatesDisabled: Boolean!
-  backgroundStatsDisabled: Boolean!
-  taskLoggingDisabled: Boolean!
-  cacheStatsJobDisabled: Boolean!
-  cacheStatsEndpointDisabled: Boolean!
-  taskReliabilityDisabled: Boolean!
-  hostAllocatorDisabled: Boolean!
-  podAllocatorDisabled: Boolean!
-  unrecognizedPodCleanupDisabled: Boolean!
-  backgroundReauthDisabled: Boolean!
-  cloudCleanupDisabled: Boolean!
-  sleepScheduleDisabled: Boolean!
-  staticAPIKeysDisabled: Boolean!
-  jwtTokenForCLIDisabled: Boolean!
-  systemFailedTaskRestartDisabled: Boolean!
-  degradedModeDisabled: Boolean!
-  elasticIPsDisabled: Boolean!
-  releaseModeDisabled: Boolean!
-  adminParameterStoreDisabled: Boolean!
-  eventProcessingDisabled: Boolean!
-  jiraNotificationsDisabled: Boolean!
-  slackNotificationsDisabled: Boolean!
-  emailNotificationsDisabled: Boolean!
-  webhookNotificationsDisabled: Boolean!
-  githubStatusAPIDisabled: Boolean!
-}
-
-type ServiceFlags {
-  taskDispatchDisabled: Boolean!
-  hostInitDisabled: Boolean!
-  podInitDisabled: Boolean!
-  largeParserProjectsDisabled: Boolean!
-  monitorDisabled: Boolean!
-  alertsDisabled: Boolean!
-  agentStartDisabled: Boolean!
-  repotrackerDisabled: Boolean!
-  schedulerDisabled: Boolean!
-  checkBlockedTasksDisabled: Boolean!
-  githubPRTestingDisabled: Boolean!
-  cliUpdatesDisabled: Boolean!
-  backgroundStatsDisabled: Boolean!
-  taskLoggingDisabled: Boolean!
-  cacheStatsJobDisabled: Boolean!
-  cacheStatsEndpointDisabled: Boolean!
-  taskReliabilityDisabled: Boolean!
-  hostAllocatorDisabled: Boolean!
-  podAllocatorDisabled: Boolean!
-  unrecognizedPodCleanupDisabled: Boolean!
-  backgroundReauthDisabled: Boolean!
-  cloudCleanupDisabled: Boolean!
-  sleepScheduleDisabled: Boolean!
-  staticAPIKeysDisabled: Boolean!
-  jwtTokenForCLIDisabled: Boolean!
-  systemFailedTaskRestartDisabled: Boolean!
-  degradedModeDisabled: Boolean!
-  elasticIPsDisabled: Boolean!
-  releaseModeDisabled: Boolean!
-  adminParameterStoreDisabled: Boolean!
-  eventProcessingDisabled: Boolean!
-  jiraNotificationsDisabled: Boolean!
-  slackNotificationsDisabled: Boolean!
-  emailNotificationsDisabled: Boolean!
-  webhookNotificationsDisabled: Boolean!
-  githubStatusAPIDisabled: Boolean!
-}
-
-input APIConfigInput {
-  httpListenAddr: String!
-  url: String!
-  corpUrl: String!
-}
-
-type APIConfig {
-  httpListenAddr: String
-  url: String
-  corpUrl: String
-}
-
-input UIConfigInput {
-  url: String!
-  helpUrl: String!
-  uiv2Url: String!
-  parsleyUrl: String!
-  httpListenAddr: String!
-  secret: String! @redactSecrets
-  defaultProject: String!
-  corsOrigins: [String!]!
-  fileStreamingContentTypes: [String!]!
-  loginDomain: String!
-  userVoice: String!
-  csrfKey: String! @redactSecrets
-  cacheTemplates: Boolean!
-  stagingEnvironment: String!
-  betaFeatures: BetaFeaturesInput!
-}
-
-type UIConfig {
-  betaFeatures: BetaFeatures!
-  url: String
-  helpUrl: String
-  uiv2Url: String
-  parsleyUrl: String
-  httpListenAddr: String
-  secret: String @requireAdmin
-  defaultProject: String!
-  corsOrigins: [String!]!
-  fileStreamingContentTypes: [String!]!
-  loginDomain: String
-  userVoice: String
-  csrfKey: String @requireAdmin
-  cacheTemplates: Boolean
-  stagingEnvironment: String
-}
-
 """
 ClientConfig stores information about the binaries for the Evergreen Command-Line Client that are available for
 download on Evergreen.
@@ -565,4 +195,3 @@ type ClientBinary {
   os: String
   url: String
 }
-

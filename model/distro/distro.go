@@ -979,3 +979,8 @@ type CostData struct {
 	OnDemandRate    float64 `bson:"on_demand_rate,omitempty" json:"on_demand_rate,omitempty" mapstructure:"on_demand_rate,omitempty"`
 	SavingsPlanRate float64 `bson:"savings_plan_rate,omitempty" json:"savings_plan_rate,omitempty" mapstructure:"savings_plan_rate,omitempty"`
 }
+
+// IsConfigured returns true if any cost data field is set.
+func (c *CostData) IsConfigured() bool {
+	return c.OnDemandRate != 0 || c.SavingsPlanRate != 0
+}

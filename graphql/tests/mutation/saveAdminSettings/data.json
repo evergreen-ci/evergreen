@@ -20,7 +20,8 @@
       "uiv2_url": "http://localhost:3000",
       "parsley_url": "http://localhost:4173",
       "beta_features": {
-        "spruce_waterfall_enabled": true
+        "spruce_waterfall_enabled": true,
+        "parsley_ai_enabled": true
       },
       "cache_templates": false,
       "csrf_key": "",
@@ -138,7 +139,6 @@
       "sleep_schedule_disabled": false,
       "static_api_keys_disabled": false,
       "jwt_token_for_cli_disabled": false,
-      "admin_parameter_store_disabled": false,
       "cpu_degraded_mode_disabled": false,
       "elastic_ips_disabled": false,
       "system_failed_task_restart_disabled": false
@@ -387,7 +387,6 @@
       "collector_endpoint": "<collector_endpoint>",
       "collector_internal_endpoint": "<collector_internal_endpoint>",
       "enabled": false
-
     },
     {
       "_id": "providers",
@@ -540,6 +539,12 @@
     {
       "_id": "parameter_store",
       "prefix": "store"
+    },
+    {
+      "_id": "cost",
+      "finance_formula": 0.777,
+      "savings_plan_discount": 0.3,
+      "on_demand_discount": 0.8
     }
   ]
 }

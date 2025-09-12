@@ -405,7 +405,7 @@ evergreen get-update --auto
 
 Specify the optional `--auto` argument to enable automatic CLI upgrades before each command if your current binary is out of date. Once this is done, all future commands will auto update if necessary without the need for specifying this flag.
 
-#### Fetch
+### Fetch
 
 The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately. The default cloning depth for fetch is 1000.
 
@@ -417,7 +417,7 @@ evergreen fetch -t <task-id> --source --artifacts
 
 Specify the optional `--dir` argument to choose the destination path where the data is fetched to; if omitted, it defaults to the current working directory.
 
-#### List
+### List
 
 The command `evergreen list` can help you determine what projects, variants, and tasks are available for patching against.
 The commands
@@ -434,7 +434,158 @@ will all print lists to stdout.
 
 The list command can take an optional `-f/--file` argument for specifying a local project configuration file to use instead of querying the Evergreen server for `-p/--project`.
 
-#### Last Green
+### Last Revision
+
+The command `evergreen last-revision` can help you find a suitable recent base commit that matches some user-customized
+search criteria. This can be used to find a base commit for patching. Much of the functionality of this command is based
+on the [git-co-evg-base CLI tool](https://github.com/evergreen-ci/git-co-evg-base).
+
+To use it, specify the project you wish to query, the set of build variants to verify, and [criteria](#criteria)
+defining what you need from a suitable commit.
+
+#### Criteria
+
+To begin searching for a suitable base commit, you must specify the build variants that you'd like to check to see if a
+commit is suitable to use. The build variants can be specified using a regular expression on build variant name
+(`--regex-variants`, or `--rv`), or build variant display name (`--regex-display-variants`). The build variant flags can
+be specified multiple times to include more build variants, and last-revision will verify the criteria for all matching
+build variants.
+
+For example:
+
+```sh
+# Verify build variants by name (flag can also be shortened to --rv)
+evergreen last-revision -p mongodb-mongo-master --regex-variants "<build_variant_name>"
+# Multiple build variants can be checked simultaneously
+evergreen last-revision -p mongodb-mongo-master --regex-variants "build-variant-1" --regex-variants "build-variant-2"
+
+# Verify build variants by display name
+evergreen last-revision -p mongodb-mongo-master --regex-display-variants "<build_variant_display_name>"
+```
+
+Once you've chosen suitable build variants, you must decide what criteria to filter for within those build variants to
+determine what's a suitable base commit (see below for available options).
+
+##### Successful Tasks
+
+`--successful-tasks` is an option to specify the names of tasks that must complete successfully in any matching build
+variant where they can run (build variants that don't run the task are ignored). This can be specified multiple times to
+require multiple successful task names.
+
+For example, to find a commit in the `mongodb-mongo-master` project where all build variants containing the `auth` and
+`noPassthrough` tasks have succeeded:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*' --successful-tasks auth --successful-tasks noPassthrough
+```
+
+##### Successful Tasks Threshold
+
+`--min-success` is an option to specify a threshold proportion of tasks (between 0 and 1) that must be successful in all
+matching build variants.
+
+For example, to find a commit in the `mongodb-mongo-master` project where 15% of tasks have succeeded in all build
+variants ending with `-required`:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-success 0.15
+```
+
+##### Finished Tasks Threshold
+
+`--min-finished` is an option to specify a threshold proportion of tasks (between 0 and 1) that must be finished (i.e.
+success or failure) in all matching build variants.
+
+For example, to find a commit in the `mongodb-mongo-master` project where 15% of tasks have finished in all build
+variants ending with `-required`:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.15
+```
+
+##### Mixing Multiple Criteria
+
+Multiple criteria can be combined together. The last-revision command will search for a commit that satisfies _all_ the
+criteria.
+
+For example, to find a commit in the `mongodb-mongo-master` project where 95% of tasks have finished and the
+`noPassthrough` task has succeeded in all build variants that end with `-required`:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --rv '.*-required$' --min-finished 0.95 --successful-tasks noPassthrough
+```
+
+##### Ignoring Known Issues
+
+Some users may prefer to ignore known issues when searching for a base commit. To treat known issues as if they were
+successful, you can set the `--known-issues-are-success` flag.
+
+#### Saving Criteria
+
+Instead of typing out the criteria on every single search, criteria can be saved under a more user-friendly name to be
+reused in later searches.
+
+To save a set of criteria, specify the criteria you'd like to save and `--save <name>`. If `--save` is given, the
+last-revision command criteria will be saved to your personal Evergreen YAML file and will not run the search.
+
+If `--save` is run on a name that's already saved, there are two possible outcomes:
+
+1. If the build variants exactly match the previously specified build variants, the command will overwrite the previous
+   criteria.
+2. If the build variants do not match any previous specified build variants, then the criteria will be added along with
+   the existing criteria. This allows you to specify different criteria for different build variants.
+
+For example, to save criteria in a group called `b-grade` that requires an 80% success rate on all build variants:
+
+```sh
+evergreen last-revision --rv '.*' --min-success 0.8 --save b-grade
+```
+
+To save criteria under a group called `required` with a 80% success rate on all build variants and the
+`compile_dist_test` task passing on all build variants containing `Windows`:
+
+```sh
+evergreen last-revision --rv '.*' --min-success 0.8 --save required
+evergreen last-revision --rv '.*windows.*' --successful-tasks compile_dist_test --save required
+```
+
+##### Reusing Criteria
+
+Once criteria has been [saved](#saving-criteria), you can use the `--reuse <name>` option to perform a search with it.
+The option takes the name of the saved criteria group as an argument.
+
+To reuse the previously saved `required` criteria:
+
+```sh
+evergreen last-revision -p mongodb-mongo-master --reuse required
+```
+
+##### Listing Criteria
+
+To print out the names and criteria for all saved criteria groups, you can use the `--list` option:
+
+```sh
+evergreen last-revision --list
+```
+
+#### Configuring Lookback
+
+By default, the last-revision command will look through the most recent 50 commits and will give up early if the search
+process takes longer than 5 minutes. You can configure the number of commits to search using the `--lookback-limit` flag
+and change the timeout using the `--timeout` flag.
+
+#### Configuring Output Logs
+
+By default, last-revision will only output the final commit found (if any) along with any module revisions (if the
+version uses modules). Specify `--json` to print the output in JSON format.
+
+You can use `evergreen --level=debug last-revision` if you'd like to see more verbose output from last-revision showing
+the result of each revision that the command searches through.
+
+### Last Green
+
+Note: this is deprecated in favor of [the last revision command](#last-revision), which is a generalization of last
+green.
 
 The command `evergreen last-green` can help you find an entirely successful commit to patch against.
 To use it, specify the project you wish to query along with the set of variants to verify as passing.

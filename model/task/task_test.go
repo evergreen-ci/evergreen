@@ -1207,90 +1207,10 @@ func TestBlocked(t *testing.T) {
 			}
 			assert.False(t, t1.Blocked())
 		},
-		"BlockedStateCached": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: evergreen.TaskSucceeded, Unattainable: true},
-				},
-			}
-			state, err := t1.BlockedState(map[string]*Task{})
-			assert.NoError(t, err)
-			assert.Equal(t, evergreen.TaskStatusBlocked, state)
-		},
-		"BlockedStatePending": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: evergreen.TaskSucceeded},
-				},
-			}
-			t2 := Task{
-				Id:     "t2",
-				Status: evergreen.TaskDispatched,
-			}
-			require.NoError(t, t2.Insert(t.Context()))
-			dependencies := map[string]*Task{t2.Id: &t2}
-			state, err := t1.BlockedState(dependencies)
-			assert.NoError(t, err)
-			assert.Equal(t, evergreen.TaskStatusPending, state)
-		},
-		"BlockedStateAllStatuses": func(*testing.T) {
-			t1 := Task{
-				Id: "t1",
-				DependsOn: []Dependency{
-					{TaskId: "t2", Status: AllStatuses},
-				},
-			}
-			t2 := Task{
-				Id:     "t2",
-				Status: evergreen.TaskUndispatched,
-				DependsOn: []Dependency{
-					{TaskId: "t3", Unattainable: true},
-				},
-			}
-			require.NoError(t, t2.Insert(t.Context()))
-			dependencies := map[string]*Task{t2.Id: &t2}
-			state, err := t1.BlockedState(dependencies)
-			assert.NoError(t, err)
-			assert.Equal(t, "", state)
-		},
 	} {
 		require.NoError(t, db.ClearCollections(Collection))
 		t.Run(name, test)
 	}
-}
-
-func TestCircularDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(Collection))
-	t1 := Task{
-		Id:          "t1",
-		DisplayName: "t1",
-		Activated:   true,
-		Status:      evergreen.TaskSucceeded,
-		DependsOn: []Dependency{
-			{TaskId: "t2", Status: evergreen.TaskSucceeded},
-		},
-	}
-	assert.NoError(t1.Insert(t.Context()))
-	t2 := Task{
-		Id:          "t2",
-		DisplayName: "t2",
-		Activated:   true,
-		Status:      evergreen.TaskSucceeded,
-		DependsOn: []Dependency{
-			{TaskId: "t1", Status: evergreen.TaskSucceeded},
-		},
-	}
-	assert.NoError(t2.Insert(t.Context()))
-	assert.NotPanics(func() {
-		err := t1.CircularDependencies(ctx)
-		assert.Contains(err.Error(), "dependency cycle detected")
-	})
 }
 
 func TestSiblingDependency(t *testing.T) {
@@ -1334,14 +1254,6 @@ func TestSiblingDependency(t *testing.T) {
 		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(t4.Insert(t.Context()))
-	dependencies := map[string]*Task{
-		"t2": &t2,
-		"t3": &t3,
-		"t4": &t4,
-	}
-	state, err := t1.BlockedState(dependencies)
-	assert.NoError(err)
-	assert.Equal(evergreen.TaskStatusPending, state)
 }
 
 func TestBulkInsert(t *testing.T) {
@@ -5494,4 +5406,67 @@ func TestSetGeneratedJSONStorageMethod(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestCalculateOnDemandCost(t *testing.T) {
+	runtimeSeconds := 3600.0
+	distroCost := distro.CostData{
+		OnDemandRate: 0.1,
+	}
+	financeConfig := evergreen.CostConfig{
+		OnDemandDiscount: 0.2,
+	}
+	runtimeHours := runtimeSeconds / 3600.0
+	expectedCost := runtimeHours * distroCost.OnDemandRate * (1 - financeConfig.OnDemandDiscount)
+	actualCost := CalculateOnDemandCost(runtimeSeconds, distroCost, financeConfig)
+	assert.Equal(t, float32(expectedCost), float32(actualCost))
+}
+
+func TestCalculateAdjustedTaskCost(t *testing.T) {
+	runtimeSeconds := 3600.0
+	distroCost := distro.CostData{
+		OnDemandRate:    0.20,
+		SavingsPlanRate: 0.10,
+	}
+	financeConfig := evergreen.CostConfig{
+		FinanceFormula:      0.6,
+		SavingsPlanDiscount: 0.5,
+		OnDemandDiscount:    0.4,
+	}
+	runtimeHours := runtimeSeconds / 3600.0
+	savingsPlanPortion := financeConfig.FinanceFormula * distroCost.SavingsPlanRate * financeConfig.SavingsPlanDiscount
+	onDemandPortion := (1 - financeConfig.FinanceFormula) * distroCost.OnDemandRate * (1 - financeConfig.OnDemandDiscount)
+	expectedCost := (savingsPlanPortion + onDemandPortion) * runtimeHours
+	actualCost := CalculateAdjustedTaskCost(runtimeSeconds, distroCost, financeConfig)
+	assert.InDelta(t, expectedCost, actualCost, 0.001)
+}
+
+func TestCalculateTaskCost(t *testing.T) {
+	runtimeSeconds := 3600.0
+	distroCost := distro.CostData{
+		OnDemandRate:    0.20,
+		SavingsPlanRate: 0.10,
+	}
+	financeConfig := evergreen.CostConfig{
+		FinanceFormula:      0.6,
+		SavingsPlanDiscount: 0.5,
+		OnDemandDiscount:    0.04,
+	}
+	taskCost := CalculateTaskCost(runtimeSeconds, distroCost, financeConfig)
+	expectedOnDemand := CalculateOnDemandCost(runtimeSeconds, distroCost, financeConfig)
+	expectedAdjusted := CalculateAdjustedTaskCost(runtimeSeconds, distroCost, financeConfig)
+	assert.Equal(t, expectedOnDemand, taskCost.OnDemandCost)
+	assert.Equal(t, expectedAdjusted, taskCost.AdjustedCost)
+	assert.False(t, taskCost.IsZero())
+}
+
+func TestTaskCostIsZero(t *testing.T) {
+	zeroTaskCost := TaskCost{}
+	assert.True(t, zeroTaskCost.IsZero())
+	nonZeroOnDemand := TaskCost{OnDemandCost: 0.1}
+	assert.False(t, nonZeroOnDemand.IsZero())
+	nonZeroAdjusted := TaskCost{AdjustedCost: 0.1}
+	assert.False(t, nonZeroAdjusted.IsZero())
+	nonZeroBoth := TaskCost{OnDemandCost: 0.1, AdjustedCost: 0.2}
+	assert.False(t, nonZeroBoth.IsZero())
 }

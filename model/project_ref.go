@@ -143,6 +143,9 @@ type ProjectRef struct {
 	LastAutoRestartedTaskAt time.Time `bson:"last_auto_restarted_task_at"`
 	// NumAutoRestartedTasks is the number of tasks this project has restarted automatically in the past 24-hour period.
 	NumAutoRestartedTasks int `bson:"num_auto_restarted_tasks"`
+
+	// Test selection settings
+	TestSelection TestSelectionSettings `bson:"test_selection,omitempty" json:"test_selection,omitzero" yaml:"test_selection,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -453,6 +456,15 @@ type GithubProjectConflicts struct {
 
 type EmailAlertData struct {
 	Recipients []string `bson:"recipients"`
+}
+
+type TestSelectionSettings struct {
+	// Allowed determines if test selection featuers can be used in this project
+	// at all.
+	Allowed *bool `bson:"allowed,omitempty" json:"allowed,omitzero" yaml:"allowed,omitempty"`
+	// DefaultEnabled indicates whether test selection is enabled or disabled by
+	// default for tasks in this project.
+	DefaultEnabled *bool `bson:"default_enabled,omitempty" json:"default_enabled,omitzero" yaml:"default_enabled,omitempty"`
 }
 
 var (

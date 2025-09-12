@@ -365,14 +365,13 @@ func TestIgnoresAllFiles(t *testing.T) {
 }
 
 func TestPopulateExpansions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	require := require.New(t)
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
+
+	require.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
 		task.Collection, ParserProjectCollection))
 	defer func() {
-		assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
+		require.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
 			task.Collection, ParserProjectCollection))
 	}()
 
@@ -399,7 +398,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Owner:      "my_org",
 		Repo:       "my_repo",
 	}
-	assert.NoError(projectRef.Insert(t.Context()))
+	require.NoError(projectRef.Insert(t.Context()))
 	v := &Version{
 		Id:                  "v1",
 		Branch:              "main",
@@ -411,7 +410,7 @@ func TestPopulateExpansions(t *testing.T) {
 			Tag: "release",
 		},
 	}
-	assert.NoError(v.Insert(t.Context()))
+	require.NoError(v.Insert(t.Context()))
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",
@@ -423,9 +422,9 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:      "mci",
 	}
 
-	expansions, err := PopulateExpansions(ctx, taskDoc, &h, "")
-	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 26)
+	expansions, err := PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	require.Len(map[string]string(expansions), 26)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -452,17 +451,17 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("github_author"))
 
-	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
+	require.NoError(VersionUpdateOne(t.Context(), bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
 	p := patch.Patch{
 		Version: v.Id,
 	}
-	require.NoError(t, p.Insert(t.Context()))
+	require.NoError(p.Insert(t.Context()))
 
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "")
-	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 26)
+	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	require.Len(map[string]string(expansions), 26)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
 	assert.Equal("my_repo", expansions.Get("github_repo"))
@@ -470,9 +469,9 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("github_pr_number"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
-	require.NoError(t, db.ClearCollections(patch.Collection))
+	require.NoError(db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
+	require.NoError(VersionUpdateOne(t.Context(), bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubMergeRequester},
 	}))
 	p = patch.Patch{
@@ -485,28 +484,28 @@ func TestPopulateExpansions(t *testing.T) {
 			HeadCommit: "merge_head_commit",
 		},
 	}
-	require.NoError(t, p.Insert(t.Context()))
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "")
-	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 28)
+	require.NoError(p.Insert(t.Context()))
+	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	require.Len(map[string]string(expansions), 28)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("github_merge_queue", expansions.Get("requester"))
 	assert.Equal("my_org", expansions.Get("github_org"))
 	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("merge_head_branch", expansions.Get("github_head_branch"))
-	require.NoError(t, db.ClearCollections(patch.Collection))
+	require.NoError(db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
+	require.NoError(VersionUpdateOne(t.Context(), bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
 	p = patch.Patch{
 		Version: v.Id,
 	}
-	require.NoError(t, p.Insert(t.Context()))
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "")
-	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 28)
+	require.NoError(p.Insert(t.Context()))
+	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	require.Len(map[string]string(expansions), 30)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
@@ -514,29 +513,36 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.True(expansions.Exists("github_repo"))
 	assert.True(expansions.Exists("github_author"))
 	assert.True(expansions.Exists("github_pr_number"))
+	assert.True(expansions.Exists("github_pr_head_branch"))
+	assert.True(expansions.Exists("github_pr_base_branch"))
 	assert.True(expansions.Exists("github_commit"))
-	require.NoError(t, db.ClearCollections(patch.Collection))
+	require.NoError(db.ClearCollections(patch.Collection))
 
 	patchDoc := &patch.Patch{
 		Version: v.Id,
 		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:  42,
-			BaseOwner: "my_org",
-			BaseRepo:  "my_repo",
-			Author:    "octocat",
-			HeadHash:  "abc123",
+			PRNumber:   42,
+			BaseOwner:  "my_org",
+			BaseRepo:   "my_repo",
+			Author:     "octocat",
+			HeadHash:   "abc123",
+			BaseBranch: "main",
+			HeadBranch: "zackary_bisect",
 		},
 	}
-	assert.NoError(patchDoc.Insert(t.Context()))
+	require.NoError(patchDoc.Insert(t.Context()))
 
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "")
-	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 28)
+	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	require.Len(map[string]string(expansions), 30)
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
+	assert.Equal("42", expansions.Get("github_pr_number"))
+	assert.Equal("main", expansions.Get("github_pr_base_branch"))
+	assert.Equal("zackary_bisect", expansions.Get("github_pr_head_branch"))
 	assert.Equal("abc123", expansions.Get("github_commit"))
 	assert.Equal("my_org", expansions.Get("github_org"))
 
@@ -552,12 +558,12 @@ func TestPopulateExpansions(t *testing.T) {
 		Id:     "upstreamProject",
 		Branch: "idk",
 	}
-	assert.NoError(upstreamProject.Insert(t.Context()))
+	require.NoError(upstreamProject.Insert(t.Context()))
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "")
-	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 37)
+	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+	require.Len(map[string]string(expansions), 39)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
@@ -2784,6 +2790,21 @@ func (s *projectSuite) TestBuildVariantPathsMatchAny() {
 		Convey("my current problem should match", func() {
 			bv := &BuildVariant{Paths: []string{"!README.md"}}
 			files = []string{"evergreen.yml"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("if a parent directory is ignored and child directory is not-ignored, file should be fetched", func() {
+			bv := &BuildVariant{Paths: []string{"!server/**", "server/conf/**"}}
+			files = []string{"server/conf/conf-test-e2e.properties"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
+		})
+		Convey("if a parent directory is enabled and child directory is ignored, file in the child directory should be ignored", func() {
+			bv := &BuildVariant{Paths: []string{"server/**", "!server/conf/**"}}
+			files = []string{"server/conf/conf-test-e2e.properties"}
+			So(bv.ChangedFilesMatchPaths(files), ShouldBeFalse)
+		})
+		Convey("if a parent directory is enabled and file is un-ignored, file should be fetched", func() {
+			bv := &BuildVariant{Paths: []string{"server/**", "!server/conf/**", "server/conf/conf-test*.properties"}}
+			files = []string{"server/conf/conf-test-e2e.properties"}
 			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
 		})
 	})

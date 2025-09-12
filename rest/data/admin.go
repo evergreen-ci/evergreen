@@ -43,27 +43,6 @@ func GetNecessaryServiceFlags(ctx context.Context) (evergreen.ServiceFlags, erro
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
-	if oldSettings.ServiceFlags.AdminParameterStoreDisabled {
-		return trySetEvergreenSettings(ctx, changes, oldSettings, u, persist, false)
-	} else {
-		settings, err := trySetEvergreenSettings(ctx, changes, oldSettings, u, persist, true)
-		if err != nil {
-			grip.Debug(errors.Wrap(err, "DEVPROD-8842: error trying to set evergreen settings with parameter store"))
-			// Only fallback to non-parameter store if there was an error
-			return trySetEvergreenSettings(ctx, changes, oldSettings, u, persist, false)
-		}
-		if settings == nil {
-			grip.Debug(errors.New("DEVPROD-8842: settings returned nil after trying to set evergreen settings with parameter store"))
-			// Only fallback to non-parameter store if settings is nil
-			return trySetEvergreenSettings(ctx, changes, oldSettings, u, persist, false)
-		}
-		// If successful, return the settings with parameter store redaction applied
-		return settings, nil
-	}
-}
-
-func trySetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
-	oldSettings *evergreen.Settings, u *user.DBUser, persist, useParameterStore bool) (*evergreen.Settings, error) {
 	settingsAPI := restModel.NewConfigModel()
 	err := settingsAPI.BuildFromService(oldSettings)
 	if err != nil {
@@ -98,20 +77,18 @@ func trySetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSet
 			return nil, errors.Wrap(err, "new admin settings are invalid")
 		}
 
-		if useParameterStore {
-			paramUpdatedSettings := newSettings
-			paramMgr := evergreen.GetEnvironment().ParameterManager()
-			// Find and store all secret fields in the parameter store
-			// Use pointer to newSettings so we can modify the struct fields
-			settingsValue := reflect.ValueOf(&paramUpdatedSettings).Elem()
-			settingsType := reflect.TypeOf(paramUpdatedSettings)
-			catcher := grip.NewBasicCatcher()
-			evergreen.StoreAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", catcher)
-			if catcher.HasErrors() {
-				return nil, errors.Wrap(catcher.Resolve(), "storing admin settings in parameter store")
-			} else {
-				newSettings = paramUpdatedSettings
-			}
+		paramUpdatedSettings := newSettings
+		paramMgr := evergreen.GetEnvironment().ParameterManager()
+		// Find and store all secret fields in the parameter store
+		// Use pointer to newSettings so we can modify the struct fields
+		settingsValue := reflect.ValueOf(&paramUpdatedSettings).Elem()
+		settingsType := reflect.TypeOf(paramUpdatedSettings)
+		catcher := grip.NewBasicCatcher()
+		evergreen.StoreAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", catcher)
+		if catcher.HasErrors() {
+			return nil, errors.Wrap(catcher.Resolve(), "storing admin settings in parameter store")
+		} else {
+			newSettings = paramUpdatedSettings
 		}
 
 		err = evergreen.UpdateConfig(ctx, &newSettings)

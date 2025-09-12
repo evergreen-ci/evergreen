@@ -22,6 +22,7 @@ func NewConfigModel() *APIAdminSettings {
 		Cedar:               &APICedarConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
+		Cost:                &APICostConfig{},
 		FWS:                 &APIFWSConfig{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
@@ -70,6 +71,7 @@ type APIAdminSettings struct {
 	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
 	DomainName              *string                       `json:"domain_name,omitempty"`
 	Expansions              map[string]string             `json:"expansions,omitempty"`
+	Cost                    *APICostConfig                `json:"cost,omitempty"`
 	FWS                     *APIFWSConfig                 `json:"fws,omitempty"`
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
@@ -651,6 +653,7 @@ func (a *APIAuthConfig) ToService() (any, error) {
 type APIBucketsConfig struct {
 	LogBucket              APIBucketConfig  `json:"log_bucket"`
 	LogBucketLongRetention APIBucketConfig  `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks   APIBucketConfig  `json:"log_bucket_failed_tasks"`
 	LongRetentionProjects  []string         `json:"long_retention_projects"`
 	TestResultsBucket      APIBucketConfig  `json:"test_results_bucket"`
 	InternalBuckets        []string         `json:"internal_buckets"`
@@ -687,6 +690,11 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
 		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
 		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
+
+		a.LogBucketFailedTasks.Name = utility.ToStringPtr(v.LogBucketFailedTasks.Name)
+		a.LogBucketFailedTasks.Type = utility.ToStringPtr(string(v.LogBucketFailedTasks.Type))
+		a.LogBucketFailedTasks.DBName = utility.ToStringPtr(v.LogBucketFailedTasks.DBName)
+		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 
@@ -728,6 +736,12 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketLongRetention.Type)),
 			DBName:  utility.FromStringPtr(a.LogBucketLongRetention.DBName),
 			RoleARN: utility.FromStringPtr(a.LogBucketLongRetention.RoleARN),
+		},
+		LogBucketFailedTasks: evergreen.BucketConfig{
+			Name:    utility.FromStringPtr(a.LogBucketFailedTasks.Name),
+			Type:    evergreen.BucketType(utility.FromStringPtr(a.LogBucketFailedTasks.Type)),
+			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
+			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
 		LongRetentionProjects: a.LongRetentionProjects,
 		TestResultsBucket: evergreen.BucketConfig{
@@ -2185,9 +2199,7 @@ type APIServiceFlags struct {
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
-	AdminParameterStoreDisabled     bool `json:"admin_parameter_store_disabled"`
-	LegacyUITaskPageDisabled        bool `json:"legacy_ui_task_page_disabled"`
-	LegacyUITaskHistoryPageDisabled bool `json:"legacy_ui_task_history_page_disabled"`
+	LegacyUIAdminPageDisabled       bool `json:"legacy_ui_admin_page_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2618,9 +2630,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
-		as.AdminParameterStoreDisabled = v.AdminParameterStoreDisabled
-		as.LegacyUITaskPageDisabled = v.LegacyUITaskPageDisabled
-		as.LegacyUITaskHistoryPageDisabled = v.LegacyUITaskHistoryPageDisabled
+		as.LegacyUIAdminPageDisabled = v.LegacyUIAdminPageDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2665,9 +2675,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
-		AdminParameterStoreDisabled:     as.AdminParameterStoreDisabled,
-		LegacyUITaskPageDisabled:        as.LegacyUITaskPageDisabled,
-		LegacyUITaskHistoryPageDisabled: as.LegacyUITaskHistoryPageDisabled,
+		LegacyUIAdminPageDisabled:       as.LegacyUIAdminPageDisabled,
 	}, nil
 }
 
@@ -3077,4 +3085,34 @@ func (a *APIAWSAccountRoleMapping) ToService() evergreen.AWSAccountRoleMapping {
 		Account: utility.FromStringPtr(a.Account),
 		Role:    utility.FromStringPtr(a.Role),
 	}
+}
+
+type APICostConfig struct {
+	FinanceFormula      *float64 `json:"finance_formula"`
+	SavingsPlanDiscount *float64 `json:"savings_plan_discount"`
+	OnDemandDiscount    *float64 `json:"on_demand_discount"`
+}
+
+func (a *APICostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case *evergreen.CostConfig:
+		a.FinanceFormula = &v.FinanceFormula
+		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
+		a.OnDemandDiscount = &v.OnDemandDiscount
+	case evergreen.CostConfig:
+		a.FinanceFormula = &v.FinanceFormula
+		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
+		a.OnDemandDiscount = &v.OnDemandDiscount
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+	return nil
+}
+
+func (a *APICostConfig) ToService() (any, error) {
+	return evergreen.CostConfig{
+		FinanceFormula:      utility.FromFloat64Ptr(a.FinanceFormula),
+		SavingsPlanDiscount: utility.FromFloat64Ptr(a.SavingsPlanDiscount),
+		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
+	}, nil
 }
