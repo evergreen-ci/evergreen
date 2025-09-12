@@ -1,0 +1,9 @@
+query IncludedLocalModules {
+  patch(patchId: "5f74d99ab2373627c047c5e5") {
+    id
+    includedLocalModules {
+      module
+      fileName
+    }
+  }
+}
