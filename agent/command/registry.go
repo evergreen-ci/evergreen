@@ -49,6 +49,7 @@ func init() {
 		evergreen.ShellExecCommandName:          shellExecFactory,
 		"subprocess.exec":                       subprocessExecFactory,
 		"setup.initial":                         initialSetupFactory,
+		"test_selection.get":                    testSelectionGetFactory,
 		"timeout.update":                        timeoutUpdateFactory,
 	}
 
