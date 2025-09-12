@@ -3,7 +3,7 @@ mutation {
     opts: {
       distro: {
         name: "fake"
-        imageId: "rhel71-power8"
+        imageId: ""
         adminOnly: false
         aliases: ["new-alias"]
         arch: LINUX_PPC_64_BIT
