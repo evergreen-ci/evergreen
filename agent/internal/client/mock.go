@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -89,6 +90,12 @@ type Mock struct {
 	// Mock data returned from methods
 	LastMessageSent  time.Time
 	DownstreamParams []patchModel.Parameter
+
+	// SelectTests mock fields
+	SelectTestsCalled   bool
+	SelectTestsRequest  restmodel.SelectTestsRequest
+	SelectTestsResponse []string
+	SelectTestsError    error
 
 	mu sync.RWMutex
 }
@@ -597,6 +604,16 @@ func (s *mockSender) Flush(_ context.Context) error { return nil }
 
 func (c *Mock) UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error {
 	return nil
+}
+
+// SelectTests mocks the test selection API call
+func (c *Mock) SelectTests(ctx context.Context, taskData TaskData, request restmodel.SelectTestsRequest) ([]string, error) {
+	c.SelectTestsCalled = true
+	c.SelectTestsRequest = request
+	if c.SelectTestsError != nil {
+		return nil, c.SelectTestsError
+	}
+	return c.SelectTestsResponse, nil
 }
 
 func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error) {
