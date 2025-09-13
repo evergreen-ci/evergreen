@@ -4,13 +4,6 @@
             "_id": {
                 "$oid": "5f74d99ab2373627c047c5e5"
             },
-            "triggers": {
-                "child_patches": [
-                    "5ecedafb562343215a7ff297",
-                    "5e4ff3abe3c3317e352062e4",
-                    "52420b363ff1222d23000002"
-                ]
-            },
             "desc": "main: EVG-7823 add a commit queue message (#4048)",
             "branch": "evergreen",
             "githash": "a1d2c8f70bf5c543de8b9641ac1ec08def1ddb26",
@@ -91,5 +84,11 @@
                 }
             ]
         }
-    ]
+    ],
+    "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ]
 }
