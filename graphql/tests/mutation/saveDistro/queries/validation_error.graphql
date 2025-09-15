@@ -3,7 +3,7 @@ mutation {
     opts: {
       distro: {
         name: "rhel71-power8-large"
-        imageId: "rhel71-power8"
+        imageId: ""
         adminOnly: false
         workDir: ""
         mountpoints: ["/"]
