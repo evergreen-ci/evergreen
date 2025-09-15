@@ -606,7 +606,6 @@ that all execute independently:
    use the "tunable" implementation, which uses a point-based
    algorithm that makes it possible to tune the factors that impact
    the ordering of a task. The tunable factors are:
-
    - _Target Time_ is the ideal maximum number of minutes that a
      task should be in the queue.
    - _Patch Factor_ how much to weight patches over non-patch builds.
