@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/evergreen-ci/utility"
@@ -31,7 +32,7 @@ func TestCleanup(t *testing.T) {
 
 	const imageName = "public.ecr.aws/docker/library/hello-world:latest"
 	for name, test := range map[string]func(*testing.T){
-		"cleanContainers": func(t *testing.T) {
+		"CleanContainers": func(t *testing.T) {
 			var resp container.CreateResponse
 			resp, err = dockerClient.ContainerCreate(t.Context(), &container.Config{
 				Image: imageName,
@@ -43,21 +44,21 @@ func TestCleanup(t *testing.T) {
 			require.NoError(t, err)
 			require.Positive(t, info.ContainersRunning)
 
-			assert.NoError(t, cleanContainers(t.Context(), dockerClient))
+			assert.NoError(t, cleanContainers(t.Context(), dockerClient, grip.NewJournaler("")))
 
 			info, err = dockerClient.Info(t.Context())
 			assert.NoError(t, err)
 			assert.Zero(t, info.Containers)
 		},
-		"cleanImages": func(t *testing.T) {
-			assert.NoError(t, cleanImages(t.Context(), dockerClient))
+		"CleanImages": func(t *testing.T) {
+			assert.NoError(t, cleanImages(t.Context(), dockerClient, grip.NewJournaler("")))
 
 			var info types.Info
 			info, err = dockerClient.Info(t.Context())
 			assert.NoError(t, err)
 			assert.Zero(t, info.Images)
 		},
-		"cleanVolumes": func(t *testing.T) {
+		"CleanVolumes": func(t *testing.T) {
 			_, err = dockerClient.VolumeCreate(t.Context(), volume.CreateOptions{})
 			require.NoError(t, err)
 			volumes, err := dockerClient.VolumeList(t.Context(), volume.ListOptions{})
@@ -69,6 +70,28 @@ func TestCleanup(t *testing.T) {
 			volumes, err = dockerClient.VolumeList(t.Context(), volume.ListOptions{})
 			assert.NoError(t, err)
 			assert.Empty(t, volumes.Volumes)
+		},
+		"CleanNetworks": func(t *testing.T) {
+			_, err := dockerClient.NetworkCreate(t.Context(), "test-network", types.NetworkCreate{})
+			require.NoError(t, err)
+
+			customNetworkFilter := filters.NewArgs(filters.KeyValuePair{
+				Key:   "type",
+				Value: "custom",
+			})
+			networks, err := dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
+				Filters: customNetworkFilter,
+			})
+			require.NoError(t, err)
+			require.NotEmpty(t, networks)
+
+			assert.NoError(t, cleanNetworks(t.Context(), dockerClient, grip.NewJournaler("")))
+
+			networks, err = dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
+				Filters: customNetworkFilter,
+			})
+			assert.NoError(t, err)
+			assert.Empty(t, networks)
 		},
 		"Cleanup": func(t *testing.T) {
 			resp, err := dockerClient.ContainerCreate(t.Context(), &container.Config{
@@ -87,6 +110,18 @@ func TestCleanup(t *testing.T) {
 			require.NoError(t, err)
 			require.NotEmpty(t, volumes.Volumes)
 
+			_, err = dockerClient.NetworkCreate(t.Context(), "test-network", types.NetworkCreate{})
+			require.NoError(t, err)
+			customNetworkFilter := filters.NewArgs(filters.KeyValuePair{
+				Key:   "type",
+				Value: "custom",
+			})
+			networks, err := dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
+				Filters: customNetworkFilter,
+			})
+			require.NoError(t, err)
+			require.NotEmpty(t, networks)
+
 			assert.NoError(t, Cleanup(t.Context(), grip.NewJournaler("")))
 
 			info, err = dockerClient.Info(t.Context())
@@ -97,6 +132,12 @@ func TestCleanup(t *testing.T) {
 			volumes, err = dockerClient.VolumeList(t.Context(), volume.ListOptions{})
 			assert.NoError(t, err)
 			assert.Empty(t, volumes.Volumes)
+
+			networks, err = dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
+				Filters: customNetworkFilter,
+			})
+			assert.NoError(t, err)
+			assert.Empty(t, networks)
 		},
 	} {
 		// Retry pulling the Docker image to work around rate limits on
