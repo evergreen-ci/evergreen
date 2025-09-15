@@ -17,6 +17,8 @@
 
 * `TASK_TO_TEAM_MAPPING` (value: `"task to team mapping"`)
 
+* `GENERATOR_TASK` (value: `"generator task"`)
+
 * `DEFAULT_TEAM` (value: `"default team"`)
 
 

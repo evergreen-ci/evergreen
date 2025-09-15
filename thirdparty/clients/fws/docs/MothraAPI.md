@@ -5,8 +5,9 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**GetAllTeamsApiMothraAllTeamsGet**](MothraAPI.md#GetAllTeamsApiMothraAllTeamsGet) | **Get** /api/mothra/all_teams | Get All Teams
-[**GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet**](MothraAPI.md#GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet) | **Get** /api/mothra/team_by_github_team/{github_team} | Get Team By Github Team
+[**GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet**](MothraAPI.md#GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet) | **Get** /api/mothra/codeowner_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path} | Get Codeowners By Repo And Filepath
 [**GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet**](MothraAPI.md#GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet) | **Get** /api/mothra/team_by_name_and_project/{name}/{project} | Get Team By Name And Project
+[**GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet**](MothraAPI.md#GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet) | **Get** /api/mothra/team_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path} | Get Team By Repo And Filepath
 [**GetTeamByTagApiMothraTeamByTagTagGet**](MothraAPI.md#GetTeamByTagApiMothraTeamByTagTagGet) | **Get** /api/mothra/team_by_tag/{tag} | Get Team By Tag
 [**GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGet**](MothraAPI.md#GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGet) | **Get** /api/mothra/team_projects_by_name/{name} | Get Team Projects By Name
 
@@ -73,11 +74,11 @@ No authorization required
 [[Back to README]](../README.md)
 
 
-## GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet
+## GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet
 
-> TeamData GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet(ctx, githubTeam).Execute()
+> []*string GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet(ctx, org, repoName, branch, filePath).Execute()
 
-Get Team By Github Team
+Get Codeowners By Repo And Filepath
 
 
 
@@ -94,17 +95,20 @@ import (
 )
 
 func main() {
-	githubTeam := "githubTeam_example" // string | 
+	org := "org_example" // string | 
+	repoName := "repoName_example" // string | 
+	branch := "branch_example" // string | 
+	filePath := "filePath_example" // string | 
 
 	configuration := openapiclient.NewConfiguration()
 	apiClient := openapiclient.NewAPIClient(configuration)
-	resp, r, err := apiClient.MothraAPI.GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet(context.Background(), githubTeam).Execute()
+	resp, r, err := apiClient.MothraAPI.GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet(context.Background(), org, repoName, branch, filePath).Execute()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `MothraAPI.GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error when calling `MothraAPI.GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet``: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet`: TeamData
-	fmt.Fprintf(os.Stdout, "Response from `MothraAPI.GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet`: %v\n", resp)
+	// response from `GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet`: []*string
+	fmt.Fprintf(os.Stdout, "Response from `MothraAPI.GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet`: %v\n", resp)
 }
 ```
 
@@ -114,20 +118,26 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**githubTeam** | **string** |  | 
+**org** | **string** |  | 
+**repoName** | **string** |  | 
+**branch** | **string** |  | 
+**filePath** | **string** |  | 
 
 ### Other Parameters
 
-Other parameters are passed through a pointer to a apiGetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetRequest struct via the builder pattern
+Other parameters are passed through a pointer to a apiGetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest struct via the builder pattern
 
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 
 
+
+
+
 ### Return type
 
-[**TeamData**](TeamData.md)
+**[]*string**
 
 ### Authorization
 
@@ -195,6 +205,85 @@ Other parameters are passed through a pointer to a apiGetTeamByNameAndProjectApi
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+
+
+
+### Return type
+
+[**TeamData**](TeamData.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet
+
+> TeamData GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet(ctx, org, repoName, branch, filePath).Execute()
+
+Get Team By Repo And Filepath
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/evergreen-ci/evergreen"
+)
+
+func main() {
+	org := "org_example" // string | 
+	repoName := "repoName_example" // string | 
+	branch := "branch_example" // string | 
+	filePath := "filePath_example" // string | 
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	resp, r, err := apiClient.MothraAPI.GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet(context.Background(), org, repoName, branch, filePath).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `MothraAPI.GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+	// response from `GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet`: TeamData
+	fmt.Fprintf(os.Stdout, "Response from `MothraAPI.GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**org** | **string** |  | 
+**repoName** | **string** |  | 
+**branch** | **string** |  | 
+**filePath** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiGetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
 
 
 
