@@ -236,7 +236,7 @@ push to each pull request. To do that, add a trigger aliases to the
 "GitHub Trigger Alias" section. Before an alias can be added, it needs
 to be defined in the "Patch Trigger Aliases" section.
 
-![github_trigger_alias.png](../images/github_trigger_alias.png)
+![github_pr_trigger_alias.png](../images/github_pr_trigger_alias.png)
 
 For security reasons, commits by users outside of your organization will
 not automatically be run. A patch will still be created and must be
@@ -429,8 +429,9 @@ a configuration like this could be added to **Evergreen's project page:**
 
 ![patch_trigger_alias_example.png](../images/patch-trigger-alias-example.png)
 
-This makes it possible to optionally add tasks matching the defined regex to any patch, and because
-"Add to GitHub Trigger Alias" is checked, these tasks will be included as part of PR patches.
+This makes it possible to optionally add tasks matching the defined regex to any patch.
+
+You can select "Schedule in GitHub Pull Requests" or "Schedule in GitHub Merge Queue" to have these tasks run automatically for each PR or merge queue patch.
 
 Additionally, because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.
 
@@ -605,6 +606,7 @@ that all execute independently:
    use the "tunable" implementation, which uses a point-based
    algorithm that makes it possible to tune the factors that impact
    the ordering of a task. The tunable factors are:
+
    - _Target Time_ is the ideal maximum number of minutes that a
      task should be in the queue.
    - _Patch Factor_ how much to weight patches over non-patch builds.
