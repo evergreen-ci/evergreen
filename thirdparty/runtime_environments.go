@@ -109,8 +109,10 @@ type OSInfoResponse struct {
 
 // OSInfo stores operating system information.
 type OSInfo struct {
+	// Name of the OS field.
+	Name string `json:"name"`
+	// Value associated with the OS field.
 	Version string `json:"version"`
-	Name    string `json:"name"`
 }
 
 // OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
@@ -177,8 +179,11 @@ type APIPackageResponse struct {
 
 // Package represents a package's information.
 type Package struct {
-	Name    string `json:"name"`
+	// Name of the package.
+	Name string `json:"name"`
+	// Version of the package.
 	Version string `json:"version"`
+	// Manager of the package (e.g. pip).
 	Manager string `json:"manager"`
 }
 
@@ -247,8 +252,11 @@ type APIToolchainResponse struct {
 
 // Toolchain represents a toolchain's information.
 type Toolchain struct {
-	Name    string `json:"name"`
+	// Name of the toolchain.
+	Name string `json:"name"`
+	// Version of the toolchain.
 	Version string `json:"version"`
+	// Path to the toolchain.
 	Manager string `json:"manager"`
 }
 
@@ -317,8 +325,11 @@ type APIFileResponse struct {
 
 // File represents a files's information.
 type File struct {
-	Name    string `json:"name"`
+	// Name of the file.
+	Name string `json:"name"`
+	// File SHA-256.
 	Version string `json:"version"`
+	// Path to the file.
 	Manager string `json:"manager"`
 }
 
