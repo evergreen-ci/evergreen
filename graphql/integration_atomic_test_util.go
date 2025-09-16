@@ -34,7 +34,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -592,7 +591,6 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
 		"mutation/updateVolume":         {spawnTestHostAndVolume},
 		"mutation/schedulePatch":        {persistTestSettings},
-		"mutation/saveDistro":           {configureImageVisibilityAPI},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
@@ -612,12 +610,6 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 			exec(t)
 		}
 	}
-}
-
-func configureImageVisibilityAPI(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig)
-	require.NoError(t, testConfig.RuntimeEnvironments.Set(t.Context()))
 }
 
 func spawnTestHostAndVolume(t *testing.T) {
