@@ -3,6 +3,7 @@ enum ImageEventType {
   OPERATING_SYSTEM
   PACKAGE
   TOOLCHAIN
+  FILE
 }
 
 enum ImageEventEntryAction {
