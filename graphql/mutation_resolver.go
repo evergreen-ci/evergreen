@@ -153,14 +153,25 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
-	_, err = data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), true)
+	newSettings, err := data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
 	}
+	if err = newSettings.Validate(); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
+	}
 
-	newSettings, err := evergreen.GetConfig(ctx)
+	oldSettingsRedacted, err := evergreen.GetConfigWithoutSecrets(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting updated Evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	apiAdminSettings := restModel.NewConfigModel()
+	if err := apiAdminSettings.BuildFromService(newSettings); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
+	}
+	newSettings, err = data.SetEvergreenSettings(ctx, apiAdminSettings, oldSettingsRedacted, mustHaveUser(ctx), true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
 	}
 
 	updatedAdminSettings := restModel.NewConfigModel()
