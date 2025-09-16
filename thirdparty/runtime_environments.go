@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -68,8 +69,8 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -137,8 +138,8 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -207,8 +208,8 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -277,8 +278,8 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -346,8 +347,8 @@ func (c *RuntimeEnvironmentsClient) GetFiles(ctx context.Context, opts FileFilte
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -409,8 +410,8 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -481,8 +482,8 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
