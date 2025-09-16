@@ -33,12 +33,14 @@ const (
 	ImageEventTypeOperatingSystem ImageEventType = "OPERATING_SYSTEM"
 	ImageEventTypePackage         ImageEventType = "PACKAGE"
 	ImageEventTypeToolchain       ImageEventType = "TOOLCHAIN"
+	ImageEventTypeFile            ImageEventType = "FILE"
 )
 
 const (
 	APITypeOS         = "OS"
 	APITypePackages   = "Packages"
 	APITypeToolchains = "Toolchains"
+	APITypeFiles      = "Files"
 )
 
 // RuntimeEnvironmentsClient is a client that can communicate with the Runtime Environments API.
@@ -305,6 +307,75 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 	return toolchains, nil
 }
 
+// APIFileResponse represents a response from the /rest/api/v1/ami/files route.
+type APIFileResponse struct {
+	Data          []File `json:"data"`
+	FilteredCount int    `json:"filtered_count"`
+	TotalCount    int    `json:"total_count"`
+}
+
+// File represents a files's information.
+type File struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Manager string `json:"manager"`
+}
+
+// FileFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
+type FileFilterOptions struct {
+	AMI   string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
+	Name  string `json:"-"` // Filter by the name of the file (ex. something.pem).
+}
+
+// GetFiles returns a list of files from the AMI and filters in the FileFilterOptions.
+func (c *RuntimeEnvironmentsClient) GetFiles(ctx context.Context, opts FileFilterOptions) (*APIFileResponse, error) {
+	if opts.AMI == "" {
+		return nil, errors.New("no AMI provided")
+	}
+	params := url.Values{}
+	params.Set("id", opts.AMI)
+	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	params.Set("data_name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/files?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		apiErr := errors.New(string(msg))
+		grip.Debug(message.WrapError(apiErr, message.Fields{
+			"message":     "bad response code from image visibility API",
+			"reason":      runtimeEnvironmentsAPIAlert,
+			"params":      params,
+			"status_code": resp.StatusCode,
+		}))
+		return nil, errors.Errorf("getting toolchains: %s", apiErr.Error())
+	}
+	files := &APIFileResponse{}
+	if err := gimlet.GetJSON(resp.Body, &files); err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+			"reason":  runtimeEnvironmentsAPIAlert,
+			"params":  params,
+		}))
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	return files, nil
+}
+
 // APIDiffResponse represents a response from the /rest/api/v1/ami/diff route.
 type APIDiffResponse struct {
 	Data          []ImageDiffChange `json:"data"`
@@ -367,7 +438,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes.Data {
-		if c.Type == APITypeOS || c.Type == APITypePackages || c.Type == APITypeToolchains {
+		if c.Type == APITypeOS || c.Type == APITypePackages || c.Type == APITypeToolchains || c.Type == APITypeFiles {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
@@ -567,6 +638,8 @@ func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
 		eventType = ImageEventTypePackage
 	case APITypeToolchains:
 		eventType = ImageEventTypeToolchain
+	case APITypeFiles:
+		eventType = ImageEventTypeFile
 	default:
 		return nil, errors.New(fmt.Sprintf("item '%s' has unrecognized event type '%s'", diff.Name, diff.Type))
 	}

@@ -84,6 +84,32 @@ func (apiToolchain *APIToolchain) ToService() *thirdparty.Toolchain {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// APIImageFile is the model to be returned by the API whenever files are fetched.
+type APIImageFile struct {
+	Name    *string `json:"name"`
+	Path    *string `json:"path"`
+	Version *string `json:"version"`
+}
+
+// BuildFromService converts from service level thirdparty.File to an APIImageFile.
+func (apiFile *APIImageFile) BuildFromService(file thirdparty.File) {
+	apiFile.Name = utility.ToStringPtr(file.Name)
+	apiFile.Path = utility.ToStringPtr(file.Manager)
+	apiFile.Version = utility.ToStringPtr(file.Version)
+}
+
+// ToService returns a service layer file using the data from APIImageFile.
+func (apiFile *APIImageFile) ToService() *thirdparty.File {
+	file := thirdparty.File{
+		Name:    utility.FromStringPtr(apiFile.Name),
+		Manager: utility.FromStringPtr(apiFile.Path),
+		Version: utility.FromStringPtr(apiFile.Version),
+	}
+	return &file
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // APIImageEventEntry is the model to be returned by the API whenever image event entries are fetched.
 type APIImageEventEntry struct {
 	Name   *string                          `json:"name"`

@@ -92,6 +92,28 @@ func TestToolchains(t *testing.T) {
 	assert.Equal(t, 49, res.TotalCount)
 }
 
+func TestFiles(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig)
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	ami := "ami-00db9124d254b2a91"
+	image := model.APIImage{
+		AMI: &ami,
+	}
+	opts := thirdparty.FileFilterOptions{
+		AMI:   ami,
+		Limit: 1,
+	}
+	res, err := config.Resolvers.Image().Files(ctx, &image, opts)
+	require.NoError(t, err)
+	require.Len(t, res.Data, 1)
+	require.NotNil(t, res.Data[0])
+	assert.Equal(t, 295, res.FilteredCount)
+	assert.Equal(t, 295, res.TotalCount)
+}
+
 func TestEvents(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)
