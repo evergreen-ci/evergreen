@@ -303,7 +303,8 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.AddError(j.incrementIdleTime(ctx))
+	lastIdle, err := j.incrementIdleTime(ctx)
+	j.AddError(err)
 
 	terminationMessage := message.Fields{
 		"message":            "host successfully terminated",
@@ -314,6 +315,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"ip_association_id":  j.host.IPAssociationID,
 		"job":                j.ID(),
 		"reason":             j.TerminationReason,
+		"last_idle_secs":     lastIdle.Seconds(),
 		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),
 		"total_started_secs": j.host.TerminationTime.Sub(j.host.StartTime).Seconds(),
 		"total_uptime_secs":  j.host.TerminationTime.Sub(j.host.CreationTime).Seconds(),
@@ -370,18 +372,22 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
+func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) (time.Duration, error) {
 	idleTime := j.host.WastedComputeTime()
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
 	if err != nil {
-		return errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
+		return 0, errors.Wrapf(err, "getting cloud host for host '%s'", j.HostID)
 	}
 	if pad := cloudHost.CloudMgr.TimeTilNextPayment(j.host); pad > time.Second {
 		idleTime += pad
 	}
 
-	return j.host.IncIdleTime(ctx, idleTime)
+	if err := j.host.IncIdleTime(ctx, idleTime); err != nil {
+		return 0, err
+	}
+
+	return idleTime, nil
 }
 
 func (j *hostTerminationJob) cleanupIntentHost(ctx context.Context) error {
