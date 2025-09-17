@@ -99,7 +99,6 @@ mutation SaveAdminSettingsOther {
     domainName
     githubPRCreatorOrg
     shutdownWaitSeconds
-    githubWebhookSecret
     perfMonitoringKanopyURL
     perfMonitoringURL
     pprofPort
@@ -141,7 +140,6 @@ mutation SaveAdminSettingsOther {
         secretARN
       }
     }
-    expansions
     hostJasper {
       binaryName
       downloadFileName

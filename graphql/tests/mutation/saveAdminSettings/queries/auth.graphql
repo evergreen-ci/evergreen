@@ -35,7 +35,6 @@ mutation {
         }
         multi: { readWrite: ["okta"], readOnly: ["github"] }
         okta: {
-          clientSecret: "client_secret"
           issuer: "issuer"
           scopes: ["scope1", "scope2"]
           userGroup: "user_group"
@@ -75,7 +74,6 @@ mutation {
       }
       okta {
         clientId
-        clientSecret
         issuer
         scopes
         userGroup
