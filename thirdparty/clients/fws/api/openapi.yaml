@@ -120,21 +120,48 @@ paths:
       summary: Get All Teams
       tags:
       - mothra
-  /api/mothra/team_by_github_team/{github_team}:
+  /api/mothra/team_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path}:
     get:
       description: |-
-        Get the owning team data by GitHub team name.
+        Get the owning team data by repository name and file path.
 
-        :param github_team: The GitHub team name.
+        :param org: The GitHub organization name.
+        :param repo_name: The repository name.
+        :param branch: The branch name.
+        :param file_path: The file path.
         :return: The owning team data.
-      operationId: get_team_by_github_team_api_mothra_team_by_github_team__github_team__get
+      operationId: get_team_by_repo_and_filepath_api_mothra_team_by_repo_and_filepath__org___repo_name___branch___file_path__get
       parameters:
       - explode: false
         in: path
-        name: github_team
+        name: org
         required: true
         schema:
-          title: Github Team
+          title: Org
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: repo_name
+        required: true
+        schema:
+          title: Repo Name
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: branch
+        required: true
+        schema:
+          title: Branch
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: file_path
+        required: true
+        schema:
+          title: File Path
           type: string
         style: simple
       responses:
@@ -150,7 +177,70 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
-      summary: Get Team By Github Team
+      summary: Get Team By Repo And Filepath
+      tags:
+      - mothra
+  /api/mothra/codeowner_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path}:
+    get:
+      description: |-
+        Get the codeowners Github team(s) by repository name and file path.
+
+        :param org: The GitHub organization name.
+        :param repo_name: The repository name.
+        :param branch: The branch name
+        :param file_path: The filepath
+        :return: The codeowners GitHub team(s).
+      operationId: get_codeowners_by_repo_and_filepath_api_mothra_codeowner_by_repo_and_filepath__org___repo_name___branch___file_path__get
+      parameters:
+      - explode: false
+        in: path
+        name: org
+        required: true
+        schema:
+          title: Org
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: repo_name
+        required: true
+        schema:
+          title: Repo Name
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: branch
+        required: true
+        schema:
+          title: Branch
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: file_path
+        required: true
+        schema:
+          title: File Path
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  nullable: true
+                  type: string
+                type: array
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Get Codeowners By Repo And Filepath
       tags:
       - mothra
   /api/owner/by_foliage_logic/{task_id}:
@@ -325,6 +415,7 @@ components:
       - task tag
       - build variant tag
       - task to team mapping
+      - generator task
       - default team
       title: AssignmentTypeEnum
       type: string

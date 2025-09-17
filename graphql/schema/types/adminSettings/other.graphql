@@ -13,6 +13,7 @@ type BucketConfig {
 input BucketsConfigInput {
   logBucket: BucketConfigInput
   logBucketLongRetention: BucketConfigInput
+  logBucketFailedTasks: BucketConfigInput
   longRetentionProjects: [String!]
   testResultsBucket: BucketConfigInput
   internalBuckets: [String!]
@@ -22,6 +23,7 @@ input BucketsConfigInput {
 type BucketsConfig {
   logBucket: BucketConfig
   logBucketLongRetention: BucketConfig
+  logBucketFailedTasks: BucketConfig
   longRetentionProjects: [String!]
   testResultsBucket: BucketConfig
   internalBuckets: [String!]

@@ -10,7 +10,6 @@
               "aliases": ["new-alias"],
               "disableShallowClone": true,
               "isCluster": true,
-              "imageId": "rhel71-power8",
               "name": "rhel71-power8-large",
               "note": "This is an updated note",
               "warningNote": "This is a warning",
