@@ -3,7 +3,7 @@ mutation {
     opts: {
       distro: {
         name: "rhel71-power8-large"
-        imageId: "rhel71-ppc"
+        imageId: ""
         adminOnly: true
         aliases: ["new-alias"]
         arch: LINUX_PPC_64_BIT
@@ -106,7 +106,6 @@ mutation {
       aliases
       disableShallowClone
       isCluster
-      imageId
       name
       note
       warningNote

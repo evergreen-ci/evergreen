@@ -140,7 +140,7 @@ func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 	}
 
 	catcher.Wrap(addMemoryMetrics(meter), "adding memory metrics")
-	catcher.Wrap(addNetworkMetrics(meter), "adding network metrics")
+	catcher.Wrap(addNetworkMetrics(ctx, meter), "adding network metrics")
 	catcher.Wrap(addProcessMetrics(meter), "adding process metrics")
 
 	return catcher.Resolve()
@@ -254,15 +254,12 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 	}
 
 	type diskInstruments struct {
-		diskIORead           metric.Int64ObservableCounter
-		diskIOWrite          metric.Int64ObservableCounter
-		diskOperationsRead   metric.Int64ObservableCounter
-		diskOperationsWrite  metric.Int64ObservableCounter
-		diskIOTime           metric.Float64ObservableCounter
-		diskWeightedIO       metric.Float64ObservableCounter // will be nil if not supported
-		diskUsageAvailable   metric.Int64ObservableUpDownCounter
-		diskUsageUsed        metric.Int64ObservableUpDownCounter
-		diskUsageUtilization metric.Float64ObservableGauge
+		diskIORead          metric.Int64ObservableCounter
+		diskIOWrite         metric.Int64ObservableCounter
+		diskOperationsRead  metric.Int64ObservableCounter
+		diskOperationsWrite metric.Int64ObservableCounter
+		diskIOTime          metric.Float64ObservableCounter
+		diskWeightedIO      metric.Float64ObservableCounter // will be nil if not supported
 	}
 	diskInstrumentMap := map[string]diskInstruments{}
 	var allInstruments []metric.Observable
@@ -301,38 +298,34 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			}
 		}
 
-		// Disk usage metrics:
-		diskUsageAvailable, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.%s", diskUsageAvailableInstrument, sanitizedDiskName), metric.WithUnit("By"))
-		if err != nil {
-			return errors.Wrapf(err, "making disk usage available counter for disk '%s'", diskName)
-		}
-
-		diskUsageUsed, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.%s", diskUsageUsedInstrumentPrefix, sanitizedDiskName), metric.WithUnit("By"))
-		if err != nil {
-			return errors.Wrapf(err, "making disk usage used counter for disk '%s'", diskName)
-		}
-
-		diskUsageUtilization, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s", diskUsageUtilizationInstrument, sanitizedDiskName), metric.WithUnit("%"))
-		if err != nil {
-			return errors.Wrapf(err, "making disk utilization gauge for disk '%s'", diskName)
-		}
-
 		diskInstrumentMap[diskName] = diskInstruments{
-			diskIORead:           diskIORead,
-			diskIOWrite:          diskIOWrite,
-			diskOperationsRead:   diskOperationsRead,
-			diskOperationsWrite:  diskOperationsWrite,
-			diskIOTime:           diskIOTime,
-			diskWeightedIO:       diskWeightedIO,
-			diskUsageAvailable:   diskUsageAvailable,
-			diskUsageUsed:        diskUsageUsed,
-			diskUsageUtilization: diskUsageUtilization,
+			diskIORead:          diskIORead,
+			diskIOWrite:         diskIOWrite,
+			diskOperationsRead:  diskOperationsRead,
+			diskOperationsWrite: diskOperationsWrite,
+			diskIOTime:          diskIOTime,
+			diskWeightedIO:      diskWeightedIO,
 		}
-		allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime, diskUsageAvailable, diskUsageUsed, diskUsageUtilization)
+		allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime)
 
 		if isWeightedIOSupported() {
 			allInstruments = append(allInstruments, diskWeightedIO)
 		}
+	}
+
+	rootDiskUsageAvailable, err := meter.Int64ObservableUpDownCounter(diskUsageAvailableInstrument, metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk usage available counter")
+	}
+
+	rootDiskUsageUsed, err := meter.Int64ObservableUpDownCounter(diskUsageUsedInstrumentPrefix, metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk usage used counter")
+	}
+
+	rootDiskUsageUtilization, err := meter.Float64ObservableGauge(diskUsageUtilizationInstrument, metric.WithUnit("%"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk utilization gauge")
 	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
@@ -344,7 +337,8 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			counter, ok := ioCountersMap[diskName]
 			if !ok {
 				// If the disk is no longer present there are no readings for it.
-				return nil
+				// Skip this disk.
+				continue
 			}
 			observer.ObserveInt64(instruments.diskIORead, int64(counter.ReadBytes))
 			observer.ObserveInt64(instruments.diskIOWrite, int64(counter.WriteBytes))
@@ -358,19 +352,16 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			if instruments.diskWeightedIO != nil {
 				observer.ObserveFloat64(instruments.diskWeightedIO, float64(counter.WeightedIO))
 			}
-
-			// Disk usage stats:
-			usageStats, err := disk.UsageWithContext(ctx, "/")
-			if err != nil {
-				// If there was a problem getting disk usage stats,
-				// just log it rather thanerroring.
-				grip.Error(errors.Wrap(err, "getting disk usage stats"))
-				continue
-			}
-			observer.ObserveInt64(instruments.diskUsageAvailable, int64(usageStats.Free))
-			observer.ObserveInt64(instruments.diskUsageUsed, int64(usageStats.Used))
-			observer.ObserveFloat64(instruments.diskUsageUtilization, usageStats.UsedPercent)
 		}
+
+		usageStats, err := disk.UsageWithContext(ctx, "/")
+		if err != nil {
+			return errors.Wrap(err, "getting total disk usage")
+		}
+
+		observer.ObserveInt64(rootDiskUsageAvailable, int64(usageStats.Free))
+		observer.ObserveInt64(rootDiskUsageUsed, int64(usageStats.Used))
+		observer.ObserveFloat64(rootDiskUsageUtilization, usageStats.UsedPercent)
 		return nil
 	}, allInstruments...)
 	if err != nil {
@@ -380,30 +371,88 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 	return nil
 }
 
-func addNetworkMetrics(meter metric.Meter) error {
-	networkIOTransmit, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metric.WithUnit("by"))
+func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
+	transmit, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metric.WithUnit("By"))
 	if err != nil {
-		return errors.Wrap(err, "making network io transmit counter")
+		return errors.Wrap(err, "making transmit counter")
+	}
+	receive, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.receive", networkIOInstrumentPrefix), metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrap(err, "making receive counter")
+	}
+	transmitBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.transmit_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
+	if err != nil {
+		return errors.Wrap(err, "making transmit gauge")
+	}
+	receiveBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.receive_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
+	if err != nil {
+		return errors.Wrap(err, "making receive gauge")
+	}
+	maxTransmitBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.max_transmit_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
+	if err != nil {
+		return errors.Wrap(err, "making max transmit gauge")
+	}
+	maxReceiveBps, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.max_receive_bps", networkIOInstrumentPrefix), metric.WithUnit("By/s"))
+	if err != nil {
+		return errors.Wrap(err, "making max receive gauge")
 	}
 
-	networkIOReceive, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.receive", networkIOInstrumentPrefix), metric.WithUnit("by"))
-	if err != nil {
-		return errors.Wrap(err, "making network io receive counter")
+	var lastTransmit, lastReceive uint64
+	var lastTime time.Time
+	var maxTransmit, maxReceive float64
+
+	if cs, err := net.IOCountersWithContext(ctx, false); err == nil && len(cs) == 1 {
+		lastTransmit = cs[0].BytesSent
+		lastReceive = cs[0].BytesRecv
+		lastTime = time.Now()
+	} else if err != nil {
+		return errors.Wrap(err, "getting initial network stats")
+	} else {
+		return errors.New("network counters had an unexpected length")
 	}
+
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
+		now := time.Now()
+
 		counters, err := net.IOCountersWithContext(ctx, false)
 		if err != nil {
 			return errors.Wrap(err, "getting network stats")
 		}
 		if len(counters) != 1 {
-			return errors.Wrap(err, "network counters had an unexpected length")
+			return errors.New("network counters had an unexpected length")
 		}
+		stats := counters[0]
+		observer.ObserveInt64(transmit, int64(stats.BytesSent))
+		observer.ObserveInt64(receive, int64(stats.BytesRecv))
 
-		observer.ObserveInt64(networkIOTransmit, int64(counters[0].BytesSent))
-		observer.ObserveInt64(networkIOReceive, int64(counters[0].BytesRecv))
-
+		if !lastTime.IsZero() {
+			dt := now.Sub(lastTime).Seconds()
+			if dt > 0 {
+				txBps := float64(stats.BytesSent-lastTransmit) / dt
+				rxBps := float64(stats.BytesRecv-lastReceive) / dt
+				if txBps < 0 {
+					txBps = 0
+				}
+				if rxBps < 0 {
+					rxBps = 0
+				}
+				observer.ObserveFloat64(transmitBps, txBps)
+				observer.ObserveFloat64(receiveBps, rxBps)
+				if txBps > maxTransmit {
+					maxTransmit = txBps
+				}
+				if rxBps > maxReceive {
+					maxReceive = rxBps
+				}
+				observer.ObserveFloat64(maxTransmitBps, maxTransmit)
+				observer.ObserveFloat64(maxReceiveBps, maxReceive)
+			}
+		}
+		lastTransmit = stats.BytesSent
+		lastReceive = stats.BytesRecv
+		lastTime = now
 		return nil
-	}, networkIOTransmit, networkIOReceive)
+	}, transmit, receive, transmitBps, receiveBps, maxTransmitBps, maxReceiveBps)
 	return errors.Wrap(err, "registering network io callback")
 }
 
