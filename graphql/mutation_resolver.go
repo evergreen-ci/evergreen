@@ -153,11 +153,11 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
-	newSettingsUnfiltered, err := data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), false)
+	newSettingsUnredacted, err := data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
 	}
-	if err = newSettingsUnfiltered.Validate(); err != nil {
+	if err = newSettingsUnredacted.Validate(); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
 	}
 
@@ -166,16 +166,16 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	newApiAdminSettings := restModel.NewConfigModel()
-	if err := newApiAdminSettings.BuildFromService(newSettingsUnfiltered); err != nil {
+	if err := newApiAdminSettings.BuildFromService(newSettingsUnredacted); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
 	}
-	newSettingsFiltered, err := data.SetEvergreenSettings(ctx, newApiAdminSettings, oldSettingsRedacted, mustHaveUser(ctx), true)
+	newSettingsRedacted, err := data.SetEvergreenSettings(ctx, newApiAdminSettings, oldSettingsRedacted, mustHaveUser(ctx), true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting updated Evergreen configuration: %s", err.Error()))
 	}
 
 	updatedAdminSettings := restModel.NewConfigModel()
-	if err := updatedAdminSettings.BuildFromService(newSettingsFiltered); err != nil {
+	if err := updatedAdminSettings.BuildFromService(newSettingsRedacted); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
 	}
 	return updatedAdminSettings, nil
