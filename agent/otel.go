@@ -298,22 +298,6 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			}
 		}
 
-		// Disk usage metrics:
-		diskUsageAvailable, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.%s", diskUsageAvailableInstrument, sanitizedDiskName), metric.WithUnit("By"))
-		if err != nil {
-			return errors.Wrapf(err, "making disk usage available counter for disk '%s'", diskName)
-		}
-
-		diskUsageUsed, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.%s", diskUsageUsedInstrumentPrefix, sanitizedDiskName), metric.WithUnit("By"))
-		if err != nil {
-			return errors.Wrapf(err, "making disk usage used counter for disk '%s'", diskName)
-		}
-
-		diskUsageUtilization, err := meter.Float64ObservableGauge(fmt.Sprintf("%s.%s", diskUsageUtilizationInstrument, sanitizedDiskName), metric.WithUnit("%"))
-		if err != nil {
-			return errors.Wrapf(err, "making disk utilization gauge for disk '%s'", diskName)
-		}
-
 		diskInstrumentMap[diskName] = diskInstruments{
 			diskIORead:          diskIORead,
 			diskIOWrite:         diskIOWrite,
@@ -322,7 +306,7 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			diskIOTime:          diskIOTime,
 			diskWeightedIO:      diskWeightedIO,
 		}
-		allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime, diskUsageAvailable, diskUsageUsed, diskUsageUtilization)
+		allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime)
 
 		if isWeightedIOSupported() {
 			allInstruments = append(allInstruments, diskWeightedIO)
