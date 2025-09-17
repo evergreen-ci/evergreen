@@ -34,7 +34,7 @@ func TestMetrics(t *testing.T) {
 			var metrics metricdata.ResourceMetrics
 			assert.NoError(t, reader.Collect(ctx, &metrics))
 			require.NotEmpty(t, metrics.ScopeMetrics)
-			require.Len(t, metrics.ScopeMetrics[0].Metrics, 2)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 6)
 			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
