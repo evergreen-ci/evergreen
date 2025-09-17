@@ -254,15 +254,12 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 	}
 
 	type diskInstruments struct {
-		diskIORead           metric.Int64ObservableCounter
-		diskIOWrite          metric.Int64ObservableCounter
-		diskOperationsRead   metric.Int64ObservableCounter
-		diskOperationsWrite  metric.Int64ObservableCounter
-		diskIOTime           metric.Float64ObservableCounter
-		diskWeightedIO       metric.Float64ObservableCounter // will be nil if not supported
-		diskUsageAvailable   metric.Int64ObservableUpDownCounter
-		diskUsageUsed        metric.Int64ObservableUpDownCounter
-		diskUsageUtilization metric.Float64ObservableGauge
+		diskIORead          metric.Int64ObservableCounter
+		diskIOWrite         metric.Int64ObservableCounter
+		diskOperationsRead  metric.Int64ObservableCounter
+		diskOperationsWrite metric.Int64ObservableCounter
+		diskIOTime          metric.Float64ObservableCounter
+		diskWeightedIO      metric.Float64ObservableCounter // will be nil if not supported
 	}
 	diskInstrumentMap := map[string]diskInstruments{}
 	var allInstruments []metric.Observable
@@ -318,21 +315,33 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 		}
 
 		diskInstrumentMap[diskName] = diskInstruments{
-			diskIORead:           diskIORead,
-			diskIOWrite:          diskIOWrite,
-			diskOperationsRead:   diskOperationsRead,
-			diskOperationsWrite:  diskOperationsWrite,
-			diskIOTime:           diskIOTime,
-			diskWeightedIO:       diskWeightedIO,
-			diskUsageAvailable:   diskUsageAvailable,
-			diskUsageUsed:        diskUsageUsed,
-			diskUsageUtilization: diskUsageUtilization,
+			diskIORead:          diskIORead,
+			diskIOWrite:         diskIOWrite,
+			diskOperationsRead:  diskOperationsRead,
+			diskOperationsWrite: diskOperationsWrite,
+			diskIOTime:          diskIOTime,
+			diskWeightedIO:      diskWeightedIO,
 		}
 		allInstruments = append(allInstruments, diskIORead, diskIOWrite, diskOperationsRead, diskOperationsWrite, diskIOTime, diskUsageAvailable, diskUsageUsed, diskUsageUtilization)
 
 		if isWeightedIOSupported() {
 			allInstruments = append(allInstruments, diskWeightedIO)
 		}
+	}
+
+	rootDiskUsageAvailable, err := meter.Int64ObservableUpDownCounter(diskUsageAvailableInstrument, metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk usage available counter")
+	}
+
+	rootDiskUsageUsed, err := meter.Int64ObservableUpDownCounter(diskUsageUsedInstrumentPrefix, metric.WithUnit("By"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk usage used counter")
+	}
+
+	rootDiskUsageUtilization, err := meter.Float64ObservableGauge(diskUsageUtilizationInstrument, metric.WithUnit("%"))
+	if err != nil {
+		return errors.Wrapf(err, "making total disk utilization gauge")
 	}
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
@@ -344,7 +353,8 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			counter, ok := ioCountersMap[diskName]
 			if !ok {
 				// If the disk is no longer present there are no readings for it.
-				return nil
+				// Skip this disk.
+				continue
 			}
 			observer.ObserveInt64(instruments.diskIORead, int64(counter.ReadBytes))
 			observer.ObserveInt64(instruments.diskIOWrite, int64(counter.WriteBytes))
@@ -358,19 +368,16 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 			if instruments.diskWeightedIO != nil {
 				observer.ObserveFloat64(instruments.diskWeightedIO, float64(counter.WeightedIO))
 			}
-
-			// Disk usage stats:
-			usageStats, err := disk.UsageWithContext(ctx, "/")
-			if err != nil {
-				// If there was a problem getting disk usage stats,
-				// just log it rather thanerroring.
-				grip.Error(errors.Wrap(err, "getting disk usage stats"))
-				continue
-			}
-			observer.ObserveInt64(instruments.diskUsageAvailable, int64(usageStats.Free))
-			observer.ObserveInt64(instruments.diskUsageUsed, int64(usageStats.Used))
-			observer.ObserveFloat64(instruments.diskUsageUtilization, usageStats.UsedPercent)
 		}
+
+		usageStats, err := disk.UsageWithContext(ctx, "/")
+		if err != nil {
+			return errors.Wrap(err, "getting total disk usage")
+		}
+
+		observer.ObserveInt64(rootDiskUsageAvailable, int64(usageStats.Free))
+		observer.ObserveInt64(rootDiskUsageUsed, int64(usageStats.Used))
+		observer.ObserveFloat64(rootDiskUsageUtilization, usageStats.UsedPercent)
 		return nil
 	}, allInstruments...)
 	if err != nil {
