@@ -352,6 +352,10 @@ type Task struct {
 	// CachedProjectStorageMethod is a cached value how the parser project for this task's version was
 	// stored at the time this task was created. If this is empty, the default storage method is StorageMethodDB.
 	CachedProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"cached_project_storage_method" json:"cached_project_storage_method,omitempty"`
+
+	// TestSelectionEnabled indicates whether test selection is enabled for this
+	// task.
+	TestSelectionEnabled bool `bson:"test_selection_enabled" json:"test_selection_enabled"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.

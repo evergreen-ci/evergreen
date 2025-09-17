@@ -79,8 +79,9 @@ All URIs are relative to *http://localhost*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 *MothraAPI* | [**GetAllTeamsApiMothraAllTeamsGet**](docs/MothraAPI.md#getallteamsapimothraallteamsget) | **Get** /api/mothra/all_teams | Get All Teams
-*MothraAPI* | [**GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet**](docs/MothraAPI.md#getteambygithubteamapimothrateambygithubteamgithubteamget) | **Get** /api/mothra/team_by_github_team/{github_team} | Get Team By Github Team
+*MothraAPI* | [**GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet**](docs/MothraAPI.md#getcodeownersbyrepoandfilepathapimothracodeownerbyrepoandfilepathorgreponamebranchfilepathget) | **Get** /api/mothra/codeowner_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path} | Get Codeowners By Repo And Filepath
 *MothraAPI* | [**GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGet**](docs/MothraAPI.md#getteambynameandprojectapimothrateambynameandprojectnameprojectget) | **Get** /api/mothra/team_by_name_and_project/{name}/{project} | Get Team By Name And Project
+*MothraAPI* | [**GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet**](docs/MothraAPI.md#getteambyrepoandfilepathapimothrateambyrepoandfilepathorgreponamebranchfilepathget) | **Get** /api/mothra/team_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path} | Get Team By Repo And Filepath
 *MothraAPI* | [**GetTeamByTagApiMothraTeamByTagTagGet**](docs/MothraAPI.md#getteambytagapimothrateambytagtagget) | **Get** /api/mothra/team_by_tag/{tag} | Get Team By Tag
 *MothraAPI* | [**GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGet**](docs/MothraAPI.md#getteamprojectsbynameapimothrateamprojectsbynamenameget) | **Get** /api/mothra/team_projects_by_name/{name} | Get Team Projects By Name
 *OwnerAPI* | [**ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet**](docs/OwnerAPI.md#byfoliagelogicapiownerbyfoliagelogictaskidget) | **Get** /api/owner/by_foliage_logic/{task_id} | By Foliage Logic

@@ -122,53 +122,68 @@ func (a *MothraAPIService) GetAllTeamsApiMothraAllTeamsGetExecute(r ApiGetAllTea
 	return localVarReturnValue, localVarHTTPResponse, nil
 }
 
-type ApiGetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetRequest struct {
+type ApiGetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest struct {
 	ctx context.Context
 	ApiService *MothraAPIService
-	githubTeam string
+	org string
+	repoName string
+	branch string
+	filePath string
 }
 
-func (r ApiGetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetRequest) Execute() (*TeamData, *http.Response, error) {
-	return r.ApiService.GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetExecute(r)
+func (r ApiGetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest) Execute() ([]*string, *http.Response, error) {
+	return r.ApiService.GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetExecute(r)
 }
 
 /*
-GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet Get Team By Github Team
+GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet Get Codeowners By Repo And Filepath
 
-Get the owning team data by GitHub team name.
+Get the codeowners Github team(s) by repository name and file path.
 
-:param github_team: The GitHub team name.
-:return: The owning team data.
+:param org: The GitHub organization name.
+:param repo_name: The repository name.
+:param branch: The branch name
+:param file_path: The filepath
+:return: The codeowners GitHub team(s).
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param githubTeam
- @return ApiGetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetRequest
+ @param org
+ @param repoName
+ @param branch
+ @param filePath
+ @return ApiGetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest
 */
-func (a *MothraAPIService) GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet(ctx context.Context, githubTeam string) ApiGetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetRequest {
-	return ApiGetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetRequest{
+func (a *MothraAPIService) GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet(ctx context.Context, org string, repoName string, branch string, filePath string) ApiGetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest {
+	return ApiGetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest{
 		ApiService: a,
 		ctx: ctx,
-		githubTeam: githubTeam,
+		org: org,
+		repoName: repoName,
+		branch: branch,
+		filePath: filePath,
 	}
 }
 
 // Execute executes the request
-//	@return	TeamData
-func (a *MothraAPIService) GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetExecute(r ApiGetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGetRequest) (*TeamData, *http.Response, error) {
+//	@return	[]*string
+func (a *MothraAPIService) GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetExecute(r ApiGetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest) ([]*string, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
 		localVarPostBody     interface{}
 		formFiles            []formFile
-		localVarReturnValue  *TeamData
+		localVarReturnValue  []*string
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MothraAPIService.GetTeamByGithubTeamApiMothraTeamByGithubTeamGithubTeamGet")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MothraAPIService.GetCodeownersByRepoAndFilepathApiMothraCodeownerByRepoAndFilepathOrgRepoNameBranchFilePathGet")
 	if err != nil {
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/api/mothra/team_by_github_team/{github_team}"
-	localVarPath = strings.Replace(localVarPath, "{"+"github_team"+"}", url.PathEscape(parameterValueToString(r.githubTeam, "githubTeam")), -1)
+	localVarPath := localBasePath + "/api/mothra/codeowner_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path}"
+	localVarPath = strings.Replace(localVarPath, "{"+"org"+"}", url.PathEscape(parameterValueToString(r.org, "org")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"repo_name"+"}", url.PathEscape(parameterValueToString(r.repoName, "repoName")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"branch"+"}", url.PathEscape(parameterValueToString(r.branch, "branch")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"file_path"+"}", url.PathEscape(parameterValueToString(r.filePath, "filePath")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -286,6 +301,137 @@ func (a *MothraAPIService) GetTeamByNameAndProjectApiMothraTeamByNameAndProjectN
 	localVarPath := localBasePath + "/api/mothra/team_by_name_and_project/{name}/{project}"
 	localVarPath = strings.Replace(localVarPath, "{"+"name"+"}", url.PathEscape(parameterValueToString(r.name, "name")), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"project"+"}", url.PathEscape(parameterValueToString(r.project, "project")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return localVarReturnValue, nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		if localVarHTTPResponse.StatusCode == 422 {
+			var v HTTPValidationError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
+}
+
+type ApiGetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest struct {
+	ctx context.Context
+	ApiService *MothraAPIService
+	org string
+	repoName string
+	branch string
+	filePath string
+}
+
+func (r ApiGetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest) Execute() (*TeamData, *http.Response, error) {
+	return r.ApiService.GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetExecute(r)
+}
+
+/*
+GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet Get Team By Repo And Filepath
+
+Get the owning team data by repository name and file path.
+
+:param org: The GitHub organization name.
+:param repo_name: The repository name.
+:param branch: The branch name.
+:param file_path: The file path.
+:return: The owning team data.
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param org
+ @param repoName
+ @param branch
+ @param filePath
+ @return ApiGetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest
+*/
+func (a *MothraAPIService) GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet(ctx context.Context, org string, repoName string, branch string, filePath string) ApiGetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest {
+	return ApiGetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		org: org,
+		repoName: repoName,
+		branch: branch,
+		filePath: filePath,
+	}
+}
+
+// Execute executes the request
+//	@return	TeamData
+func (a *MothraAPIService) GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetExecute(r ApiGetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGetRequest) (*TeamData, *http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *TeamData
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "MothraAPIService.GetTeamByRepoAndFilepathApiMothraTeamByRepoAndFilepathOrgRepoNameBranchFilePathGet")
+	if err != nil {
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/api/mothra/team_by_repo_and_filepath/{org}/{repo_name}/{branch}/{file_path}"
+	localVarPath = strings.Replace(localVarPath, "{"+"org"+"}", url.PathEscape(parameterValueToString(r.org, "org")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"repo_name"+"}", url.PathEscape(parameterValueToString(r.repoName, "repoName")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"branch"+"}", url.PathEscape(parameterValueToString(r.branch, "branch")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"file_path"+"}", url.PathEscape(parameterValueToString(r.filePath, "filePath")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

@@ -237,11 +237,15 @@ func (u *DBUser) AddPublicKey(ctx context.Context, keyName, keyValue string) err
 	update := bson.M{
 		"$push": bson.M{PubKeysKey: key},
 	}
-
+	// If the DB state is nil, we need to use a $set operation rather than a $push.
+	if u.PubKeys == nil {
+		update = bson.M{
+			"$set": bson.M{PubKeysKey: []PubKey{key}},
+		}
+	}
 	if err := UpdateOneContext(ctx, userWithoutKey, update); err != nil {
 		return err
 	}
-
 	u.PubKeys = append(u.PubKeys, key)
 	return nil
 }

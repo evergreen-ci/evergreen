@@ -80,12 +80,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// get commit information
-	var projectToken string
-	_, projectToken, err = getProjectMethodAndToken(ctx, comm, td, conf, "", false)
+	cloneToken, err := getCloneToken(ctx, comm, conf, "")
 	if err != nil {
 		return errors.Wrap(err, "getting token")
 	}
-	params := pushParams{token: projectToken}
+	params := pushParams{token: cloneToken}
 	// push module patches
 	for _, modulePatch := range p.Patches {
 		if modulePatch.ModuleName == "" {

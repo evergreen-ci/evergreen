@@ -32,11 +32,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-08-26"
+	ClientVersion = "2025-09-08"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-09-03"
+	AgentVersion = "2025-09-10"
 )
 
 const (
@@ -810,7 +810,8 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 	return opts
 }
 
-// supported banner themes in Evergreen
+// Supported banner themes in Evergreen.
+// Empty is a valid banner theme that should not be deleted.
 type BannerTheme string
 
 const (
@@ -818,6 +819,7 @@ const (
 	Information  BannerTheme = "INFORMATION"
 	Warning      BannerTheme = "WARNING"
 	Important    BannerTheme = "IMPORTANT"
+	Empty        BannerTheme = ""
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {

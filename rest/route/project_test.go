@@ -533,6 +533,29 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Error(err, "secret should have been deleted from the vault")
 }
 
+func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
+	ctx := s.T().Context()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	jsonBody := []byte(`{"enabled": true, "test_selection": {"allowed": true, "default_enabled": false}}`)
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(http.StatusOK, resp.Status())
+
+	pRef, err := data.FindProjectById(s.T().Context(), "dimoxinil", false, false)
+	s.NoError(err)
+	s.Require().NotNil(pRef.TestSelection.Allowed)
+	s.True(*pRef.TestSelection.Allowed)
+	s.Require().NotNil(pRef.TestSelection.DefaultEnabled)
+	s.False(*pRef.TestSelection.DefaultEnabled)
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for PUT /rest/v2/projects/{project_id}

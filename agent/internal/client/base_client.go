@@ -26,7 +26,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -234,9 +233,8 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 
 func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
 	info := requestInfo{
-		method:             http.MethodGet,
-		taskData:           &taskData,
-		retryOnInvalidBody: true, // This route has returned an invalid body for older distros. See DEVPROD-7885.
+		method:   http.MethodGet,
+		taskData: &taskData,
 	}
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -759,10 +757,6 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 // StartTask marks the task as started, and sends traceId and diskDevices to be stored with the task.
 func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData, traceID string, diskDevices []string) error {
-	grip.Info(message.Fields{
-		"message": "started StartTask",
-		"task_id": taskData.ID,
-	})
 	taskStartRequest := &apimodels.TaskStartRequest{
 		TraceID:     traceID,
 		DiskDevices: diskDevices,
@@ -777,10 +771,6 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData, tra
 		return util.RespError(resp, errors.Wrap(err, "starting task").Error())
 	}
 	defer resp.Body.Close()
-	grip.Info(message.Fields{
-		"message": "finished StartTask",
-		"task_id": taskData.ID,
-	})
 	return nil
 }
 

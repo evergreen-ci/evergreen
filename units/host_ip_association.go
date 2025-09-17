@@ -20,6 +20,7 @@ import (
 const (
 	hostIPAssociationJobName     = "host-ip-association"
 	hostIPAssociationMaxAttempts = 3
+	hostIPAssociationMaxTime     = 10 * time.Minute
 )
 
 func init() {
@@ -61,6 +62,9 @@ func NewHostIPAssociationJob(env evergreen.Environment, h *host.Host, ts string)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(hostIPAssociationMaxAttempts),
+	})
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: hostIPAssociationMaxTime,
 	})
 	return j
 }

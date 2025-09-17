@@ -250,7 +250,7 @@ type cloneOptions struct {
 func clone(opts cloneOptions) error {
 	// Check repository existence if no token is provided
 	if opts.token == "" {
-		resp, err := http.Get(thirdparty.FormGitURLForApp("github.com", opts.owner, opts.repository, opts.token))
+		resp, err := http.Get(thirdparty.FormGitURLForApp(opts.owner, opts.repository, opts.token))
 		if err != nil {
 			return errors.Errorf("failed to check if %s/%s exists: %v", opts.owner, opts.repository, err)
 		}
@@ -262,9 +262,9 @@ func clone(opts cloneOptions) error {
 	var cloneArgs []string
 	// clone the repo first
 	if opts.isAppToken {
-		cloneArgs = []string{"clone", thirdparty.FormGitURLForApp("github.com", opts.owner, opts.repository, opts.token)}
+		cloneArgs = []string{"clone", thirdparty.FormGitURLForApp(opts.owner, opts.repository, opts.token)}
 	} else {
-		cloneArgs = []string{"clone", thirdparty.FormGitURL("github.com", opts.owner, opts.repository, opts.token)}
+		cloneArgs = []string{"clone", thirdparty.FormGitURL(opts.owner, opts.repository, opts.token)}
 	}
 
 	if opts.depth > 0 {

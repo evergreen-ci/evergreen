@@ -223,8 +223,8 @@ github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92/go.mod h1:MmdhY
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57 h1:CIUR6i5YWJ/z5RbZ11UomO7aZxQjeHqAjOqGwPh7sCY=
 github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57/go.mod h1:lbmNkNEkJEuhIdctIEbJhx4hMzjRvbUg172mQRvNnKo=
 github.com/evergreen-ci/gimlet v0.0.0-20220401150826-5898de01dbd8/go.mod h1:LfnJ3oYEVFUHwIPoAotvn9bbtAT+lAaCpH5YYnyxluk=
-github.com/evergreen-ci/gimlet v0.0.0-20250610151514-2545690ba23c h1:Er6V1wCD3NjpR2rseX7v6jnfMEc4Vtxjx9u2JPUYwy0=
-github.com/evergreen-ci/gimlet v0.0.0-20250610151514-2545690ba23c/go.mod h1:4huQs+YFXGH15ShslJvN2eUC3TnmAgzAnn+vP51jPiU=
+github.com/evergreen-ci/gimlet v0.0.0-20250910142308-de441c80fcc8 h1:jrd9e1+Z83ZgXhb4z+VeDkxFRLuG6+Hmne3vu7Acts0=
+github.com/evergreen-ci/gimlet v0.0.0-20250910142308-de441c80fcc8/go.mod h1:4huQs+YFXGH15ShslJvN2eUC3TnmAgzAnn+vP51jPiU=
 github.com/evergreen-ci/lru v0.0.0-20250224223041-c0d64dfbee1d h1:MuXYpCV887NYLiRj5ijRKRf7XpGQm84Op6kbdsNnIzM=
 github.com/evergreen-ci/lru v0.0.0-20250224223041-c0d64dfbee1d/go.mod h1:GkF2zgx62MGjwUKyQOUHSJ5KRekHh0K3TP/fP35cfqM=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
@@ -237,8 +237,8 @@ github.com/evergreen-ci/poplar v0.0.0-20250710150300-8483281f1c7d h1:E6ptMvYEC3g
 github.com/evergreen-ci/poplar v0.0.0-20250710150300-8483281f1c7d/go.mod h1:4FYcKrbVgR7DoHpDQEuGYK24X5nmy0UPSR5PD2nUUt0=
 github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b h1:QNI8OFjXDpAys399HGdY4VxsMJqwuPNuauV96k8Ygbs=
 github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b/go.mod h1:XPKWkKSyH41qKMl33gEV9Zq00en3MTZlvyZ5/1MSEek=
-github.com/evergreen-ci/test-selection-client v0.0.0-20250331142509-2af2d0f91c8b h1:u9QPcL6hmnR6tKiJW+Js/bRhFZolDTXPE8MSoqkv1+8=
-github.com/evergreen-ci/test-selection-client v0.0.0-20250331142509-2af2d0f91c8b/go.mod h1:qg5e4Faft68yLXo/dGsCoaGqn4+IqLUtbdy1UM2BbKI=
+github.com/evergreen-ci/test-selection-client v0.0.0-20250909142252-2fdfa736f3ca h1:Anq1OU5tXWAx4zbESnmMhCvH/3w3yXXjLlep3c5KWfQ=
+github.com/evergreen-ci/test-selection-client v0.0.0-20250909142252-2fdfa736f3ca/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
 github.com/evergreen-ci/utility v0.0.0-20250604173729-c1b32de37d48 h1:xvB8GHNdC6wMsReqxNdmtlA8JU+hanPxHcDZ0wdkTTM=
 github.com/evergreen-ci/utility v0.0.0-20250604173729-c1b32de37d48/go.mod h1:AGAekBl7zMjMvHB6yqkVkE81JuHBxBPaPozF49DsU70=

@@ -20,8 +20,12 @@ func TestRepoBuildFromService(t *testing.T) {
 		PRTestingEnabled:    utility.FalsePtr(),
 		CommitQueue: model.CommitQueueParams{
 			MergeMethod: "Squash", // being partially populated shouldn't prevent enabled from being defaulted
-		}},
-	}
+		},
+		TestSelection: model.TestSelectionSettings{
+			Allowed:        utility.FalsePtr(),
+			DefaultEnabled: utility.TruePtr(),
+		},
+	}}
 	apiRef := &APIProjectRef{}
 	assert.NoError(t, apiRef.BuildFromService(t.Context(), repoRef.ProjectRef))
 	// not defaulted yet
@@ -36,6 +40,10 @@ func TestRepoBuildFromService(t *testing.T) {
 
 	require.NotNil(t, apiRef.CommitQueue.Enabled)
 	assert.False(t, *apiRef.CommitQueue.Enabled)
+
+	require.NotNil(t, apiRef.TestSelection.Allowed)
+	assert.False(t, *apiRef.TestSelection.Allowed)
+	assert.True(t, utility.FromBoolPtr(apiRef.TestSelection.DefaultEnabled))
 }
 
 func TestRecursivelyDefaultBooleans(t *testing.T) {
