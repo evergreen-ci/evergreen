@@ -2,12 +2,14 @@ input BucketConfigInput {
   name: String
   testResultsPrefix: String
   roleARN: String @redactSecrets
+  type: String
 }
 
 type BucketConfig {
   name: String
   testResultsPrefix: String
   roleARN: String @requireAdmin
+  type: String
 }
 
 input BucketsConfigInput {
