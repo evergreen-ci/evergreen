@@ -62,13 +62,12 @@ func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnviron
 	return &c
 }
 
-// DoRequest makes a request to the image visibility API.
+// DoRequest makes a request to the Runtime Environments API.
 func (c *RuntimeEnvironmentsClient) DoRequest(ctx context.Context, route string, encodedParams string) ([]byte, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/ami%s", c.BaseURL, route)
 	if len(encodedParams) > 0 {
-		apiURL += "?" + encodedParams
+		apiURL += fmt.Sprintf("?%s", encodedParams)
 	}
-
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
