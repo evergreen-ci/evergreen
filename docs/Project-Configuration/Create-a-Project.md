@@ -31,17 +31,9 @@ If you do not see the `New Project` button on the [project settings page](https:
 2. Click New Project. If you want to copy the current project, click Duplicate Current Project. Otherwise, click Create New Project.
 3. Enter the project name, repo org ("Owner"), and repo name ("Repo"). Note that only creating projects that track MongoDB owned organizations is supported. If the organization you need is not in the GitHub Organization drop-down, reach out to the Evergreen team to see if it can be supported. Forks are not supported by Evergreen.
 4. **If you want to use the performance plugin, you need to check this box now.** In this case also, the identifier cannot be modified, so please choose carefully.
-5. If this project needs an S3 bucket, click the check mark to open a JIRA ticket. (You should see the JIRA ticket under "reported by me.") Refer to [Project S3 Bucket Lifecycle Policy](#project-s3-bucket-lifecycle-policy) for details on the bucket's lifecycle policy.
+5. If this project needs an S3 bucket, click the check mark to open a JIRA ticket. (You should see the JIRA ticket under "reported by me.")
 
 6. Click "Create New Project".
-
-### Project S3 Bucket Lifecycle Policy
-
-The S3 bucket created for your project will have the following lifecycle policy:
-
-- Day 0 - Object uploaded
-- Day 60 - Object moved to Standard-IA
-- Day 365 - Object expires
 
 ## Project Limitations
 
