@@ -96,6 +96,7 @@ type Patch {
   variants: [String!]!
   variantsTasks: [VariantTask!]!
   versionFull: Version
+  includedLocalModules: [IncludedLocalModule!]!
 }
 
 type ChildPatchAlias {
@@ -119,6 +120,12 @@ type PatchTriggerAlias {
 type VariantTask {
   name: String!
   tasks: [String!]!
+}
+
+# This represents a local module included for a patch using --set-module
+type IncludedLocalModule {
+  module: String!
+  fileName: String!
 }
 
 # This is also used by the Project type

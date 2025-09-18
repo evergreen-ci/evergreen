@@ -129,18 +129,11 @@ mutation SaveAdminSettings {
   }) {
     providers {
       aws {
-        ec2Keys {
-          name
-          key
-          secret
-        }
         subnets {
           az
           subnetId
         }
         parserProject {
-          key
-          secret
           bucket
           prefix
           generatedJSONPrefix

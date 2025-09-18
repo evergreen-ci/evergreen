@@ -66,6 +66,8 @@ type APIPatch struct {
 	ChildPatchAliases    []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester            *string              `json:"requester"`
 	MergedFrom           *string              `json:"merged_from"`
+
+	LocalModuleIncludes []APILocalModuleInclude `json:"local_module_includes,omitempty"`
 }
 
 type DownstreamTasks struct {
@@ -129,6 +131,11 @@ type APIRawModule struct {
 	Diff string `json:"diff"`
 	// The githash for the module
 	Githash string `json:"githash"`
+}
+
+type APILocalModuleInclude struct {
+	Module   string `json:"module"`
+	FileName string `json:"filename"`
 }
 
 // ToService converts a service layer parameter using the data from APIParameter
@@ -244,6 +251,15 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	}
 	apiPatch.Tasks = tasks
 	variantTasks := []VariantTask{}
+
+	localModuleIncludes := []APILocalModuleInclude{}
+	for _, lmi := range p.LocalModuleIncludes {
+		localModuleIncludes = append(localModuleIncludes, APILocalModuleInclude{
+			Module:   lmi.Module,
+			FileName: lmi.FileName,
+		})
+	}
+	apiPatch.LocalModuleIncludes = localModuleIncludes
 
 	// We remove the execution tasks from selected display tasks to avoid duplication.
 	execTasksToRemove := []string{}
@@ -465,6 +481,14 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 		})
 	}
 	res.VariantsTasks = variantTasks
+
+	res.LocalModuleIncludes = []patch.LocalModuleInclude{}
+	for _, lmi := range apiPatch.LocalModuleIncludes {
+		res.LocalModuleIncludes = append(res.LocalModuleIncludes, patch.LocalModuleInclude{
+			Module:   lmi.Module,
+			FileName: lmi.FileName,
+		})
+	}
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))

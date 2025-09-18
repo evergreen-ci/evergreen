@@ -52,20 +52,17 @@ mutation {
         allFields
         fieldsSet
       }
-      token
       level
       name
     }
     splunk {
       splunkConnectionInfo {
         serverUrl
-        token
         channel
       }
     }
     runtimeEnvironments {
       baseUrl
-      apiKey
     }
     testSelection {
       url

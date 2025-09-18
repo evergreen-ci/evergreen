@@ -15,7 +15,7 @@ import (
 )
 
 func TestMetrics(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	testCases := map[string]func(t *testing.T, meter metric.Meter, reader sdk.Reader){
@@ -30,11 +30,11 @@ func TestMetrics(t *testing.T) {
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
 		"NetworkMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addNetworkMetrics(meter))
+			assert.NoError(t, addNetworkMetrics(t.Context(), meter))
 			var metrics metricdata.ResourceMetrics
 			assert.NoError(t, reader.Collect(ctx, &metrics))
 			require.NotEmpty(t, metrics.ScopeMetrics)
-			require.Len(t, metrics.ScopeMetrics[0].Metrics, 2)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 6)
 			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)

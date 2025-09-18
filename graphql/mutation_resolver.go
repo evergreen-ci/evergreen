@@ -149,22 +149,33 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 
 // SaveAdminSettings is the resolver for the saveAdminSettings field.
 func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings restModel.APIAdminSettings) (*restModel.APIAdminSettings, error) {
-	oldSettings, err := evergreen.GetConfigWithoutSecrets(ctx)
+	oldSettings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
-	_, err = data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), true)
+	newSettingsUnredacted, err := data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
 	}
+	if err = newSettingsUnredacted.Validate(); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
+	}
 
-	newSettings, err := evergreen.GetConfig(ctx)
+	oldSettingsRedacted, err := evergreen.GetConfigWithoutSecrets(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting updated Evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	newApiAdminSettings := restModel.NewConfigModel()
+	if err := newApiAdminSettings.BuildFromService(newSettingsUnredacted); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
+	}
+	newSettingsRedacted, err := data.SetEvergreenSettings(ctx, newApiAdminSettings, oldSettingsRedacted, mustHaveUser(ctx), true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting updated Evergreen configuration: %s", err.Error()))
 	}
 
 	updatedAdminSettings := restModel.NewConfigModel()
-	if err := updatedAdminSettings.BuildFromService(newSettings); err != nil {
+	if err := updatedAdminSettings.BuildFromService(newSettingsRedacted); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
 	}
 	return updatedAdminSettings, nil

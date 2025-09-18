@@ -1,0 +1,94 @@
+{
+    "patches": [
+        {
+            "_id": {
+                "$oid": "5f74d99ab2373627c047c5e5"
+            },
+            "desc": "main: EVG-7823 add a commit queue message (#4048)",
+            "branch": "evergreen",
+            "githash": "a1d2c8f70bf5c543de8b9641ac1ec08def1ddb26",
+            "patch_number": 234,
+            "author": "admin",
+            "version": "5f74d99ab2373627c047c5e5",
+            "status": "success",
+            "create_time": {
+                "$date": "2020-09-30T19:16:42.44Z"
+            },
+            "start_time": {
+                "$date": "2020-09-30T21:30:05.654Z"
+            },
+            "finish_time": {
+                "$date": "2020-09-30T21:32:16.13Z"
+            },
+            "project_storage_method": "db",
+            "build_variants": [
+                "ubuntu1604"
+            ],
+            "tasks": [
+                "test-command",
+                "test-util",
+                "test-db"
+            ],
+            "variants_tasks": [
+                {
+                    "variant": "ubuntu1604",
+                    "tasks": [
+                        "test-command",
+                        "test-util",
+                        "test-db"
+                    ],
+                    "displaytasks": [
+                        {
+                            "name": "asdf"
+                        }
+                    ]
+                }
+            ],
+            "sync_at_end_opts": {
+                "timeout": 3600000000000
+            },
+            "patches": [
+                {
+                    "name": "",
+                    "githash": "a1d2c8f70bf5c543de8b9641ac1ec08def1ddb26",
+                    "patch_set": {
+                        "patch_file_id": "5e4ff3ab850e6136624eaf95",
+                        "commit_messages": [
+                            "main: EVG-7823 add a commit queue message (#4048)"
+                        ],
+                        "summary": [
+                            {
+                                "filename": "self-tests.yml",
+                                "additions": 6,
+                                "deletions": 0,
+                                "description": "main: EVG-7823 add a commit queue message (#4048)"
+                            }
+                        ]
+                    },
+                    "is_mbox": true
+                }
+            ],
+            "parameters": [
+                {
+                    "key": "my_param",
+                    "value": "my_value"
+                }
+            ],
+            "activated": true,
+            "alias": "",
+            "merge_patch": "",
+            "local_module_includes": [
+                {
+                    "filename": "some_module_file.json",
+                    "module": "some_module"
+                }
+            ]
+        }
+    ],
+    "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ]
+}

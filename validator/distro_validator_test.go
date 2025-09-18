@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckDistro(t *testing.T) {
@@ -739,4 +740,31 @@ func TestValidateAliases(t *testing.T) {
 		ContainerPool: "",
 		Aliases:       []string{"alias_1", "alias_2"},
 	}, []string{}, []string{}))
+}
+
+func TestValidateImageID(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig)
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(t.Context()))
+
+	validationErrs, err := validateImageID(t.Context(), &distro.Distro{
+		Id:      "distro",
+		ImageID: "a-totally-made-up-image-name",
+	})
+	assert.NotNil(t, validationErrs)
+	assert.Nil(t, err)
+
+	validationErrs, err = validateImageID(t.Context(), &distro.Distro{
+		Id:      "distro",
+		ImageID: "ubuntu2404",
+	})
+	assert.Nil(t, validationErrs)
+	assert.Nil(t, err)
+
+	validationErrs, err = validateImageID(t.Context(), &distro.Distro{
+		Id:      "distro",
+		ImageID: "",
+	})
+	assert.Nil(t, validationErrs)
+	assert.Nil(t, err)
 }

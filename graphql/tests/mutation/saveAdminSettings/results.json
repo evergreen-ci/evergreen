@@ -195,20 +195,17 @@
                   "field2": false
                 }
               },
-              "token": "slackToken",
               "level": "EMERGENCY",
               "name": "Slack Notifications"
             },
             "splunk": {
               "splunkConnectionInfo": {
                 "serverUrl": "https://splunk.example.com",
-                "token": "SplunkToken",
                 "channel": "#splunk-channel"
               }
             },
             "runtimeEnvironments": {
-              "baseUrl": "https://runtime.example.com",
-              "apiKey": "newApiKey"
+              "baseUrl": "https://runtime.example.com"
             },
             "testSelection": {
               "url": "https://test-selection.example.com"
@@ -265,7 +262,6 @@
               },
               "okta": {
                 "clientId": "",
-                "clientSecret": "client_secret",
                 "issuer": "issuer",
                 "scopes": ["scope1", "scope2"],
                 "userGroup": "user_group",
@@ -352,7 +348,6 @@
             "domainName": "test.example.com",
             "githubPRCreatorOrg": "test-org",
             "shutdownWaitSeconds": 10,
-            "githubWebhookSecret": "test-secret",
             "perfMonitoringKanopyURL": "https://perf.kanopy.example.com",
             "perfMonitoringURL": "https://perf.mutation.com",
             "pprofPort": "8080",
@@ -395,9 +390,6 @@
                 "name": "mutation-spawn-key",
                 "secretARN": "test secret arn"
               }
-            },
-            "expansions": {
-              "mutation_key": "mutation_expansion_value"
             },
             "hostJasper": {
               "binaryName": "mutation-jasper",
@@ -467,18 +459,6 @@
           "saveAdminSettings": {
             "providers": {
               "aws": {
-                "ec2Keys": [
-                  {
-                    "name": "test-key-1",
-                    "key": "21039487102938470912837",
-                    "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                  },
-                  {
-                    "name": "test-key-2",
-                    "key": "120938471209384701298",
-                    "secret": "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY"
-                  }
-                ],
                 "subnets": [
                   {
                     "az": "us-east-1a",
@@ -490,8 +470,6 @@
                   }
                 ],
                 "parserProject": {
-                  "key": "AKIAIOSFODNN7EXAMPLE",
-                  "secret": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                   "bucket": "evergreen-parser-projects",
                   "prefix": "parser-projects/",
                   "generatedJSONPrefix": "generated-json/"
