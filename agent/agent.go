@@ -1138,41 +1138,50 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
+// bucketConfigsChanged returns true if either the task or test bucket config
+// name changed between two TaskOutput snapshots.
+func bucketConfigsChanged(oldOut, newOut task.TaskOutput) bool {
+	return oldOut.TaskLogs.BucketConfig.Name != newOut.TaskLogs.BucketConfig.Name ||
+		oldOut.TestLogs.BucketConfig.Name != newOut.TestLogs.BucketConfig.Name
+}
+
 // rotateLoggerToFailedBucket closes the current task logger and reinitializes with
 // the current bucket config name for task and test logs.
 func (a *Agent) rotateLoggerToFailedBucket(ctx context.Context, tc *taskContext) error {
 	if tc == nil || tc.taskConfig == nil || tc.taskConfig.Task.TaskOutputInfo == nil {
-		return errors.New("cannot rotate logger: task output info missing")
-	}
-	if tc.logger != nil && !tc.logger.Closed() {
-		flushCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-		defer cancel()
-		_ = tc.logger.Flush(flushCtx)
-		_ = tc.logger.Close()
+		return errors.New("cannot rotate logger: missing task output info")
 	}
 
+	oldSnapshot := *tc.taskConfig.Task.TaskOutputInfo
+
 	if tc.task.ID != "" {
-		if updatedTask, err := a.comm.GetTask(ctx, tc.task); err != nil {
+		if updated, err := a.comm.GetTask(ctx, tc.task); err == nil && updated != nil {
+			if name := updated.TaskOutputInfo.TaskLogs.BucketConfig.Name; name != "" {
+				tc.taskConfig.Task.TaskOutputInfo.TaskLogs.BucketConfig.Name = name
+			}
+			if name := updated.TaskOutputInfo.TestLogs.BucketConfig.Name; name != "" {
+				tc.taskConfig.Task.TaskOutputInfo.TestLogs.BucketConfig.Name = name
+			}
+		} else if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "refreshing task after failure to get updated failed bucket config",
 				"task_id": tc.task.ID,
 			}))
-		} else if updatedTask != nil && updatedTask.TaskOutputInfo != nil {
-			if tc.taskConfig.Task.TaskOutputInfo != nil {
-				if updatedTask.TaskOutputInfo.TaskLogs.BucketConfig.Name != "" {
-					tc.taskConfig.Task.TaskOutputInfo.TaskLogs.BucketConfig = updatedTask.TaskOutputInfo.TaskLogs.BucketConfig
-				}
-				if updatedTask.TaskOutputInfo.TestLogs.BucketConfig.Name != "" {
-					tc.taskConfig.Task.TaskOutputInfo.TestLogs.BucketConfig = updatedTask.TaskOutputInfo.TestLogs.BucketConfig
-				}
-			}
 		}
 	}
-	// Recreate logger with updated bucket config.
-	if err := a.startLogging(ctx, tc); err != nil {
-		return errors.Wrap(err, "restarting logger for failed bucket")
+
+	newSnapshot := *tc.taskConfig.Task.TaskOutputInfo
+	if !bucketConfigsChanged(oldSnapshot, newSnapshot) {
+		return nil
 	}
-	return nil
+
+	if tc.logger != nil && !tc.logger.Closed() {
+		flushCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		_ = tc.logger.Flush(flushCtx)
+		cancel()
+		_ = tc.logger.Close()
+	}
+	return errors.Wrap(a.startLogging(ctx, tc), "restarting logger for failed bucket")
 }
 
 func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
