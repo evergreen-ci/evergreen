@@ -23,11 +23,10 @@ func (apiOSInfo *APIOSInfo) BuildFromService(osInfo thirdparty.OSInfo) {
 
 // ToService returns a service layer OS info using the data from APIOSInfo.
 func (apiOSInfo *APIOSInfo) ToService() *thirdparty.OSInfo {
-	osInfo := thirdparty.OSInfo{
+	return &thirdparty.OSInfo{
 		Name:    utility.FromStringPtr(apiOSInfo.Name),
 		Version: utility.FromStringPtr(apiOSInfo.Version),
 	}
-	return &osInfo
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,12 +47,11 @@ func (apiPackage *APIPackage) BuildFromService(pkg thirdparty.Package) {
 
 // ToService returns a service layer package using the data from APIPackage.
 func (apiPackage *APIPackage) ToService() *thirdparty.Package {
-	pkg := thirdparty.Package{
+	return &thirdparty.Package{
 		Name:    utility.FromStringPtr(apiPackage.Name),
 		Manager: utility.FromStringPtr(apiPackage.Manager),
 		Version: utility.FromStringPtr(apiPackage.Version),
 	}
-	return &pkg
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,12 +72,36 @@ func (apiToolchain *APIToolchain) BuildFromService(toolchain thirdparty.Toolchai
 
 // ToService returns a service layer toolchain using the data from APIToolchain.
 func (apiToolchain *APIToolchain) ToService() *thirdparty.Toolchain {
-	toolchain := thirdparty.Toolchain{
+	return &thirdparty.Toolchain{
 		Name:    utility.FromStringPtr(apiToolchain.Name),
 		Manager: utility.FromStringPtr(apiToolchain.Path),
 		Version: utility.FromStringPtr(apiToolchain.Version),
 	}
-	return &toolchain
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// APIImageFile is the model to be returned by the API whenever files are fetched.
+type APIImageFile struct {
+	Name    *string `json:"name"`
+	Path    *string `json:"path"`
+	Version *string `json:"version"`
+}
+
+// BuildFromService converts from service level thirdparty.File to an APIImageFile.
+func (apiFile *APIImageFile) BuildFromService(file thirdparty.File) {
+	apiFile.Name = utility.ToStringPtr(file.Name)
+	apiFile.Path = utility.ToStringPtr(file.Manager)
+	apiFile.Version = utility.ToStringPtr(file.Version)
+}
+
+// ToService returns a service layer file using the data from APIImageFile.
+func (apiFile *APIImageFile) ToService() *thirdparty.File {
+	return &thirdparty.File{
+		Name:    utility.FromStringPtr(apiFile.Name),
+		Manager: utility.FromStringPtr(apiFile.Path),
+		Version: utility.FromStringPtr(apiFile.Version),
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,14 +126,13 @@ func (apiImageEventEntry *APIImageEventEntry) BuildFromService(imageEventEntry t
 
 // ToService returns a service layer image event entry using the data from APIImageEventEntry.
 func (apiImageEventEntry *APIImageEventEntry) ToService() *thirdparty.ImageEventEntry {
-	imageEventEntry := thirdparty.ImageEventEntry{
+	return &thirdparty.ImageEventEntry{
 		Name:   utility.FromStringPtr(apiImageEventEntry.Name),
 		Before: utility.FromStringPtr(apiImageEventEntry.Before),
 		After:  utility.FromStringPtr(apiImageEventEntry.After),
 		Type:   apiImageEventEntry.Type,
 		Action: apiImageEventEntry.Action,
 	}
-	return &imageEventEntry
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,10 +189,9 @@ func (apiImage *APIImage) BuildFromService(image thirdparty.DistroImage) {
 
 // ToService returns a service layer image using the data from APIImage.
 func (apiImage *APIImage) ToService() *thirdparty.DistroImage {
-	image := thirdparty.DistroImage{
+	return &thirdparty.DistroImage{
 		ID:           utility.FromStringPtr(apiImage.ID),
 		AMI:          utility.FromStringPtr(apiImage.AMI),
 		LastDeployed: utility.FromTimePtr(apiImage.LastDeployed),
 	}
-	return &image
 }

@@ -176,6 +176,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.CopyDistroOpts
   CopyProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.CopyProjectOpts
+  CostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
+  CostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
+  CostData:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
+  CostDataInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
   CreateProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   DispatcherSettings:
@@ -418,14 +426,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   IceCreamSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
-  CostConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
-  CostConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
-  CostData:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
-  CostDataInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
   Image:
     model: github.com/evergreen-ci/evergreen/rest/model.APIImage
   ImageEvent:
@@ -436,6 +436,10 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventEntryAction
   ImageEventType:
     model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventType
+  ImageFile:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImageFile
+  ImageFileOpts:
+    model: github.com/evergreen-ci/evergreen/thirdparty.FileFilterOptions
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:

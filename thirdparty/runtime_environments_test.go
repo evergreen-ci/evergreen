@@ -1,7 +1,6 @@
 package thirdparty
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -10,23 +9,18 @@ import (
 )
 
 func TestGetImageNames(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	result, err := c.GetImageNames(ctx)
+	result, err := c.GetImageNames(t.Context())
 	assert.NoError(err)
 	assert.NotEmpty(result)
 	assert.NotContains(result, "")
 }
 
 func TestGetOSInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -87,9 +81,7 @@ func TestGetOSInfo(t *testing.T) {
 }
 
 func TestGetPackages(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -148,9 +140,7 @@ func TestGetPackages(t *testing.T) {
 }
 
 func TestGetToolchains(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -206,10 +196,65 @@ func TestGetToolchains(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestGetImageDiff(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestGetFiles(t *testing.T) {
+	ctx := t.Context()
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
+	// Verify that we can get files data with limit and page.
+	ami := "ami-004f48d4a1cec6cf1"
+	opts := FileFilterOptions{
+		AMI:   ami,
+		Page:  0,
+		Limit: 2,
+	}
+	result, err := c.GetFiles(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 2)
+	assert.Equal(4, result.FilteredCount)
+	assert.Equal(4, result.TotalCount)
+
+	// Verify that we filter correctly by name.
+	opts = FileFilterOptions{
+		AMI:  ami,
+		Page: 0,
+		Name: "trust",
+	}
+	result, err = c.GetFiles(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 1)
+	assert.Equal(1, result.FilteredCount)
+	assert.Equal(4, result.TotalCount)
+
+	// Verify that there are no results for a nonexistent file.
+	opts = FileFilterOptions{
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "xyz",
+	}
+	result, err = c.GetFiles(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Empty(result.Data)
+	assert.Equal(0, result.FilteredCount)
+	assert.Equal(4, result.TotalCount)
+
+	// Verify that there are no errors with FileFilterOptions only including the AMI.
+	_, err = c.GetFiles(ctx, FileFilterOptions{AMI: ami})
+	require.NoError(t, err)
+
+	// Verify that there is an error with no AMI provided.
+	_, err = c.GetFiles(ctx, FileFilterOptions{})
+	require.Error(t, err)
+}
+
+func TestGetImageDiff(t *testing.T) {
+	ctx := t.Context()
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -224,7 +269,7 @@ func TestGetImageDiff(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	for _, change := range result {
-		assert.True(change.Type == APITypeOS || change.Type == APITypePackages || change.Type == APITypeToolchains)
+		assert.True(change.Type == APITypeOS || change.Type == APITypePackages || change.Type == APITypeToolchains || change.Type == APITypeFiles)
 	}
 
 	// Verify that getImageDiff finds no differences between the same AMI.
@@ -238,8 +283,7 @@ func TestGetImageDiff(t *testing.T) {
 }
 
 func TestGetHistory(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
@@ -270,12 +314,9 @@ func TestGetHistory(t *testing.T) {
 }
 
 func TestGetEvents(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-
 	testutil.ConfigureIntegrationTest(t, config)
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
@@ -309,7 +350,7 @@ func TestGetEvents(t *testing.T) {
 	for _, r := range result {
 		for _, entry := range r.Entries {
 			assert.True(entry.Action == ImageEventEntryActionAdded || entry.Action == ImageEventEntryActionDeleted || entry.Action == ImageEventEntryActionUpdated)
-			assert.True(entry.Type == ImageEventTypeOperatingSystem || entry.Type == ImageEventTypePackage || entry.Type == ImageEventTypeToolchain)
+			assert.True(entry.Type == ImageEventTypeOperatingSystem || entry.Type == ImageEventTypePackage || entry.Type == ImageEventTypeToolchain || entry.Type == ImageEventTypeFile)
 		}
 	}
 }
@@ -347,12 +388,21 @@ func TestBuildImageEventEntry(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, ImageEventEntryActionUpdated, result.Action)
 	assert.Equal(t, ImageEventTypeToolchain, result.Type)
+
+	diff = ImageDiffChange{
+		Type:          APITypeFiles,
+		BeforeVersion: "1.0",
+		AfterVersion:  "2.0",
+	}
+	result, err = buildImageEventEntry(diff)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, ImageEventEntryActionUpdated, result.Action)
+	assert.Equal(t, ImageEventTypeFile, result.Type)
 }
 
 func TestGetImageInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)

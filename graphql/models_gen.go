@@ -236,6 +236,12 @@ type ImageEventsPayload struct {
 	EventLogEntries []*model.APIImageEvent `json:"eventLogEntries"`
 }
 
+type ImageFilesPayload struct {
+	Data          []*model.APIImageFile `json:"data"`
+	FilteredCount int                   `json:"filteredCount"`
+	TotalCount    int                   `json:"totalCount"`
+}
+
 type ImageOperatingSystemPayload struct {
 	Data          []*model.APIOSInfo `json:"data"`
 	FilteredCount int                `json:"filteredCount"`
