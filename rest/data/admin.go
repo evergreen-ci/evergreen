@@ -56,7 +56,11 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 		// get the property name and find its value within the settings struct
 		propName := changesReflect.Type().Field(i).Name
 		changedVal := changesReflect.FieldByName(propName)
-		if changedVal.IsNil() {
+		if changedVal.IsZero() {
+			continue
+		}
+		// If we have a pointer type, check if it's value is zero before applying the change.
+		if changedVal.Kind() == reflect.Ptr && changedVal.Elem().IsZero() {
 			continue
 		}
 
