@@ -127,7 +127,6 @@ type OSInfoResponse struct {
 
 // OSInfo stores operating system information.
 type OSInfo struct {
-	// Name of the OS field.
 	Name string `json:"name"`
 	// Value associated with the OS field.
 	Version string `json:"version"`
@@ -179,9 +178,7 @@ type APIPackageResponse struct {
 
 // Package represents a package's information.
 type Package struct {
-	// Name of the package.
-	Name string `json:"name"`
-	// Version of the package.
+	Name    string `json:"name"`
 	Version string `json:"version"`
 	// Manager of the package (e.g. pip).
 	Manager string `json:"manager"`
@@ -234,9 +231,7 @@ type APIToolchainResponse struct {
 
 // Toolchain represents a toolchain's information.
 type Toolchain struct {
-	// Name of the toolchain.
-	Name string `json:"name"`
-	// Version of the toolchain.
+	Name    string `json:"name"`
 	Version string `json:"version"`
 	// Path to the toolchain.
 	Manager string `json:"manager"`
@@ -289,7 +284,6 @@ type APIFileResponse struct {
 
 // File represents a file's information.
 type File struct {
-	// Name of the file.
 	Name string `json:"name"`
 	// File SHA-256.
 	Version string `json:"version"`
