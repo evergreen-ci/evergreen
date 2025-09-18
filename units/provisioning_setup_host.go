@@ -821,7 +821,7 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 	}
 
 	// Filter for EBS devices, by matching model key.
-	// This avoids accidentally attaching ephemeral instance storage
+	// This avoids accidentally attaching ephemeral instance storage.
 	filteredDevices := []blockDevice{}
 	for _, device := range devices {
 		if strings.Contains(device.Model, "Amazon Elastic Block Store") {
