@@ -271,10 +271,6 @@ models:
         value: github.com/evergreen-ci/evergreen.HostAllocatorUseDefaultFeedback
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
-  ImageFile:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIImageFile
-  ImageFileOpts:
-    model: github.com/evergreen-ci/evergreen/thirdparty.FileFilterOptions
   FileDiff:
     model: github.com/evergreen-ci/evergreen/rest/model.FileDiff
   FinderSettings:
@@ -440,6 +436,10 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventEntryAction
   ImageEventType:
     model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventType
+  ImageFile:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImageFile
+  ImageFileOpts:
+    model: github.com/evergreen-ci/evergreen/thirdparty.FileFilterOptions
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:

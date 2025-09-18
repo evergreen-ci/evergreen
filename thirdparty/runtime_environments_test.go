@@ -21,7 +21,6 @@ func TestGetImageNames(t *testing.T) {
 
 func TestGetOSInfo(t *testing.T) {
 	ctx := t.Context()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -83,7 +82,6 @@ func TestGetOSInfo(t *testing.T) {
 
 func TestGetPackages(t *testing.T) {
 	ctx := t.Context()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -143,7 +141,6 @@ func TestGetPackages(t *testing.T) {
 
 func TestGetToolchains(t *testing.T) {
 	ctx := t.Context()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -201,7 +198,6 @@ func TestGetToolchains(t *testing.T) {
 
 func TestGetFiles(t *testing.T) {
 	ctx := t.Context()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -259,7 +255,6 @@ func TestGetFiles(t *testing.T) {
 
 func TestGetImageDiff(t *testing.T) {
 	ctx := t.Context()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -320,10 +315,8 @@ func TestGetHistory(t *testing.T) {
 
 func TestGetEvents(t *testing.T) {
 	ctx := t.Context()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-
 	testutil.ConfigureIntegrationTest(t, config)
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
@@ -410,7 +403,6 @@ func TestBuildImageEventEntry(t *testing.T) {
 
 func TestGetImageInfo(t *testing.T) {
 	ctx := t.Context()
-
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)

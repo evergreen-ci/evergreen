@@ -287,7 +287,7 @@ type APIFileResponse struct {
 	TotalCount    int    `json:"total_count"`
 }
 
-// File represents a files's information.
+// File represents a file's information.
 type File struct {
 	// Name of the file.
 	Name string `json:"name"`
