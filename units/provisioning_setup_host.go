@@ -37,6 +37,7 @@ const (
 	provisionRetryLimit = 40
 	mountRetryLimit     = 10
 	mountSleepDuration  = time.Second * 10
+	amazonEBSIdent      = "Amazon Elastic Block Store"
 	setupHostJobName    = "provisioning-setup-host"
 	scpTimeout          = time.Minute
 )
@@ -824,7 +825,7 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 	// This avoids accidentally attaching ephemeral instance storage.
 	filteredDevices := []blockDevice{}
 	for _, device := range devices {
-		if strings.Contains(device.Model, "Amazon Elastic Block Store") {
+		if strings.Contains(device.Model, amazonEBSIdent) {
 			filteredDevices = append(filteredDevices, device)
 		}
 	}
