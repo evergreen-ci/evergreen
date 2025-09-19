@@ -26,7 +26,7 @@ Artifact retention rates depend on which bucket they are stored in. Different pr
 #### Logs
 
 - **S3 Logs for failed tasks:** deleted after **180 days**.
-- **S3 Logs for successful tasks:** deleted after **90 days** (coming soon).
+- **S3 Logs for successful tasks:** deleted after **90 days** (coming soon, please see [DEVPROD-20335](https://jira.mongodb.org/browse/DEVPROD-20335)).
 
 #### Test Results
 
