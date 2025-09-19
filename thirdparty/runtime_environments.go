@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -33,12 +34,14 @@ const (
 	ImageEventTypeOperatingSystem ImageEventType = "OPERATING_SYSTEM"
 	ImageEventTypePackage         ImageEventType = "PACKAGE"
 	ImageEventTypeToolchain       ImageEventType = "TOOLCHAIN"
+	ImageEventTypeFile            ImageEventType = "FILE"
 )
 
 const (
 	APITypeOS         = "OS"
 	APITypePackages   = "Packages"
 	APITypeToolchains = "Toolchains"
+	APITypeFiles      = "Files"
 )
 
 // RuntimeEnvironmentsClient is a client that can communicate with the Runtime Environments API.
@@ -59,15 +62,18 @@ func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnviron
 	return &c
 }
 
-// GetImageNames returns a list of strings containing the names of all images from the Runtime Environments API.
-func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string, error) {
-	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/list", c.BaseURL)
+// DoRequest makes a request to the Runtime Environments API.
+func (c *RuntimeEnvironmentsClient) DoRequest(ctx context.Context, route string, encodedParams string) ([]byte, error) {
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami%s", c.BaseURL, route)
+	if len(encodedParams) > 0 {
+		apiURL += fmt.Sprintf("?%s", encodedParams)
+	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
+	request.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+	request.Header.Add(evergreen.APIKeyHeader, c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -83,13 +89,27 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 		}))
 		return nil, apiErr
 	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading bytes from response body")
+	}
+	return body, nil
+}
+
+// GetImageNames returns a list of strings containing the names of all images from the Runtime Environments API.
+func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string, error) {
+	body, err := c.DoRequest(ctx, "/list", "")
+	if err != nil {
+		return nil, errors.Wrap(err, "executing request to API")
+	}
+
 	var images []string
-	if err := gimlet.GetJSON(resp.Body, &images); err != nil {
+	if err = json.Unmarshal(body, &images); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
-		return nil, errors.Wrap(err, "decoding http body")
+		return nil, errors.Wrap(err, "unmarshalling request body")
 	}
 	if len(images) == 0 {
 		return nil, errors.New("no corresponding images")
@@ -106,8 +126,9 @@ type OSInfoResponse struct {
 
 // OSInfo stores operating system information.
 type OSInfo struct {
+	Name string `json:"name"`
+	// Value associated with the OS field.
 	Version string `json:"version"`
-	Name    string `json:"name"`
 }
 
 // OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
@@ -130,37 +151,19 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
 	params.Set("data_name", opts.Name)
-	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/os?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+
+	body, err := c.DoRequest(ctx, "/os", params.Encode())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "executing request to API")
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.New(string(msg))
-		grip.Debug(message.WrapError(apiErr, message.Fields{
-			"message":     "bad response code from image visibility API",
-			"reason":      runtimeEnvironmentsAPIAlert,
-			"params":      params,
-			"status_code": resp.StatusCode,
-		}))
-		return nil, apiErr
-	}
+
 	osInfo := &OSInfoResponse{}
-	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
+	if err = json.Unmarshal(body, &osInfo); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
-			"params":  params,
 		}))
-		return nil, errors.Wrap(err, "decoding http body")
+		return nil, errors.Wrap(err, "unmarshalling request body")
 	}
 	return osInfo, nil
 }
@@ -176,6 +179,7 @@ type APIPackageResponse struct {
 type Package struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	// Manager of the package (e.g. pip).
 	Manager string `json:"manager"`
 }
 
@@ -200,37 +204,19 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
 	params.Set("data_name", opts.Name)
-	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/packages?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+
+	body, err := c.DoRequest(ctx, "/packages", params.Encode())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "executing request to API")
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.New(string(msg))
-		grip.Debug(message.WrapError(apiErr, message.Fields{
-			"message":     "bad response code from image visibility API",
-			"reason":      runtimeEnvironmentsAPIAlert,
-			"params":      params,
-			"status_code": resp.StatusCode,
-		}))
-		return nil, apiErr
-	}
+
 	packages := &APIPackageResponse{}
-	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
+	if err = json.Unmarshal(body, &packages); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
-			"params":  params,
 		}))
-		return nil, errors.Wrap(err, "decoding http body")
+		return nil, errors.Wrap(err, "unmarshalling request body")
 	}
 	return packages, nil
 }
@@ -246,6 +232,7 @@ type APIToolchainResponse struct {
 type Toolchain struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	// Path to the toolchain.
 	Manager string `json:"manager"`
 }
 
@@ -270,39 +257,74 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
 	params.Set("data_name", opts.Name)
-	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/toolchains?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+
+	body, err := c.DoRequest(ctx, "/toolchains", params.Encode())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "executing request to API")
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.New(string(msg))
-		grip.Debug(message.WrapError(apiErr, message.Fields{
-			"message":     "bad response code from image visibility API",
-			"reason":      runtimeEnvironmentsAPIAlert,
-			"params":      params,
-			"status_code": resp.StatusCode,
-		}))
-		return nil, errors.Errorf("getting toolchains: %s", apiErr.Error())
-	}
+
 	toolchains := &APIToolchainResponse{}
-	if err := gimlet.GetJSON(resp.Body, &toolchains); err != nil {
+	if err = json.Unmarshal(body, &toolchains); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
-			"params":  params,
 		}))
-		return nil, errors.Wrap(err, "decoding http body")
+		return nil, errors.Wrap(err, "unmarshalling request body")
 	}
 	return toolchains, nil
+}
+
+// APIFileResponse represents a response from the /rest/api/v1/ami/files route.
+type APIFileResponse struct {
+	Data          []File `json:"data"`
+	FilteredCount int    `json:"filtered_count"`
+	TotalCount    int    `json:"total_count"`
+}
+
+// File represents a file's information.
+type File struct {
+	Name string `json:"name"`
+	// File SHA-256.
+	Version string `json:"version"`
+	// Path to the file.
+	Manager string `json:"manager"`
+}
+
+// FileFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
+type FileFilterOptions struct {
+	AMI   string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
+	Name  string `json:"-"` // Filter by the name of the file (ex. something.pem).
+}
+
+// GetFiles returns a list of files from the AMI and filters in the FileFilterOptions.
+func (c *RuntimeEnvironmentsClient) GetFiles(ctx context.Context, opts FileFilterOptions) (*APIFileResponse, error) {
+	if opts.AMI == "" {
+		return nil, errors.New("no AMI provided")
+	}
+	params := url.Values{}
+	params.Set("id", opts.AMI)
+	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	params.Set("data_name", opts.Name)
+
+	body, err := c.DoRequest(ctx, "/files", params.Encode())
+	if err != nil {
+		return nil, errors.Wrap(err, "executing request to API")
+	}
+
+	files := &APIFileResponse{}
+	if err = json.Unmarshal(body, &files); err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+			"reason":  runtimeEnvironmentsAPIAlert,
+		}))
+		return nil, errors.Wrap(err, "unmarshalling request body")
+	}
+	return files, nil
 }
 
 // APIDiffResponse represents a response from the /rest/api/v1/ami/diff route.
@@ -333,41 +355,23 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	params.Set("before_id", opts.AMIBefore)
 	params.Set("after_id", opts.AMIAfter)
 	params.Set("limit", "1000000000") // Artificial limit set high because API has default limit of 10.
-	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/diff?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+
+	body, err := c.DoRequest(ctx, "/diff", params.Encode())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "executing request to API")
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.New(string(msg))
-		grip.Debug(message.WrapError(apiErr, message.Fields{
-			"message":     "bad response code from image visibility API",
-			"reason":      runtimeEnvironmentsAPIAlert,
-			"params":      params,
-			"status_code": resp.StatusCode,
-		}))
-		return nil, apiErr
-	}
+
 	changes := &APIDiffResponse{}
-	if err := gimlet.GetJSON(resp.Body, &changes); err != nil {
+	if err = json.Unmarshal(body, &changes); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
-			"params":  params,
 		}))
-		return nil, errors.Wrap(err, "decoding http body")
+		return nil, errors.Wrap(err, "unmarshalling request body")
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes.Data {
-		if c.Type == APITypeOS || c.Type == APITypePackages || c.Type == APITypeToolchains {
+		if c.Type == APITypeOS || c.Type == APITypePackages || c.Type == APITypeToolchains || c.Type == APITypeFiles {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
@@ -405,37 +409,19 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
-	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/history?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+
+	body, err := c.DoRequest(ctx, "/history", params.Encode())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "executing request to API")
 	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.New(string(msg))
-		grip.Debug(message.WrapError(apiErr, message.Fields{
-			"message":     "bad response code from image visibility API",
-			"reason":      runtimeEnvironmentsAPIAlert,
-			"params":      params,
-			"status_code": resp.StatusCode,
-		}))
-		return nil, apiErr
-	}
+
 	amiHistory := &APIHistoryResponse{}
-	if err := gimlet.GetJSON(resp.Body, &amiHistory); err != nil {
+	if err = json.Unmarshal(body, &amiHistory); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
-			"params":  params,
 		}))
-		return nil, errors.Wrap(err, "decoding http body")
+		return nil, errors.Wrap(err, "unmarshalling request body")
 	}
 	return amiHistory.Data, nil
 }
@@ -567,6 +553,8 @@ func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
 		eventType = ImageEventTypePackage
 	case APITypeToolchains:
 		eventType = ImageEventTypeToolchain
+	case APITypeFiles:
+		eventType = ImageEventTypeFile
 	default:
 		return nil, errors.New(fmt.Sprintf("item '%s' has unrecognized event type '%s'", diff.Name, diff.Type))
 	}

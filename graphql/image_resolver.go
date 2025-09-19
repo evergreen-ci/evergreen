@@ -65,6 +65,31 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 	}, nil
 }
 
+// Files is the resolver for the files field.
+func (r *imageResolver) Files(ctx context.Context, obj *model.APIImage, opts thirdparty.FileFilterOptions) (*ImageFilesPayload, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	opts.AMI = utility.FromStringPtr(obj.AMI)
+	res, err := c.GetFiles(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting files for image '%s': %s", utility.FromStringPtr(obj.ID), err.Error()))
+	}
+	apiFiles := []*model.APIImageFile{}
+	for _, file := range res.Data {
+		apiFile := model.APIImageFile{}
+		apiFile.BuildFromService(file)
+		apiFiles = append(apiFiles, &apiFile)
+	}
+	return &ImageFilesPayload{
+		Data:          apiFiles,
+		FilteredCount: res.FilteredCount,
+		TotalCount:    res.TotalCount,
+	}, nil
+}
+
 // LatestTask is the resolver for the latestTask field.
 func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*model.APITask, error) {
 	imageID := utility.FromStringPtr(obj.ID)

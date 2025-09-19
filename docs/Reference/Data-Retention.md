@@ -3,6 +3,7 @@
 ## Overview
 
 - **Primary Storage (MongoDB, S3):**
+
   - **Live Task & Host Data:** Retained for **365 days**
 
 - **Data Warehouse (Trino):**
@@ -20,14 +21,12 @@
 
 #### Artifacts
 
-- **S3:**
-  - Transitioned to Standard-IA after **30 days**
-  - Permanently deleted after **365 days**
-- **MongoDB (Task Artifacts):** Expire after **365 days** based on `create_time`.
+Artifact retention rates depend on which bucket they are stored in. Different projects have different retention rates for their default bucket, and projects may use more than one bucket.
 
 #### Logs
 
-- **S3 Logs:** Deleted after **365 days**.
+- **S3 Logs for failed tasks:** deleted after **180 days**.
+- **S3 Logs for successful tasks:** deleted after **90 days** (coming soon).
 
 #### Test Results
 
@@ -47,6 +46,7 @@
 ### Additional Notes
 
 - **Data Warehouse (Trino):**
+
   - Default retention for data in `dev_prod_live` and `dev_prod_staging` is **1825 days**.
   - Custom per-dataset policies may be applied as necessary.
 
