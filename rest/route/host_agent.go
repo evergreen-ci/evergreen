@@ -1342,6 +1342,13 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Description: evergreen.TaskDescriptionAborted,
 		}
 	}
+	// If the task failed, move its logs to the failed bucket if the project is not
+	// configured to use long term retention.
+	if details.Status == evergreen.TaskFailed && !t.UsesLongRetentionBucket(h.env.Settings()) {
+		if err := t.MoveTestAndTaskLogsToFailedBucket(ctx, h.env.Settings()); err != nil {
+			grip.Error(errors.Wrap(err, "moving logs to failed bucket"))
+		}
+	}
 
 	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details)
 	if err != nil {
