@@ -3,7 +3,6 @@
 ## Overview
 
 - **Primary Storage (MongoDB, S3):**
-
   - **Live Task & Host Data:** Retained for **365 days**
 
 - **Data Warehouse (Trino):**
@@ -46,7 +45,6 @@ Artifact retention rates depend on which bucket they are stored in. Different pr
 ### Additional Notes
 
 - **Data Warehouse (Trino):**
-
   - Default retention for data in `dev_prod_live` and `dev_prod_staging` is **1825 days**.
   - Custom per-dataset policies may be applied as necessary.
 
