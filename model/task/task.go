@@ -4290,6 +4290,7 @@ func (t *Task) GetEstimatedCost(ctx context.Context) (TaskCost, error) {
 	return CalculateTaskCost(runtimeSeconds, costData, financeConfig), nil
 }
 
+// MoveLogsByNamesToBucket moves task + test logs to the specified bucket
 func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput) error {
 	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
 		// test logs and task logs will always be in the same bucket
@@ -4326,12 +4327,16 @@ func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "moving logs to failed bucket")
 	}
 
+	// Update the task output info with the new bucket config. This will be persisted in
+	// markEnd and the agent will rotate the logger to the new config so the rest of
+	// the agent logs go directly to the failed bucket.
 	task.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
 	task.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
 	return nil
 
 }
 
+// MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
 func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings) error {
 	if t.UsesLongRetentionBucket(settings) {
 		return nil

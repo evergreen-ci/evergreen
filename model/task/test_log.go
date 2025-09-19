@@ -76,7 +76,7 @@ func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log
 	}
 
 	// Get the appropriate bucket config for this project
-	bucketConfig, _ := getBucketConfigForProject(task.Project, output.TestLogs.BucketConfig)
+	bucketConfig := getBucketConfigForProject(task.Project, output.TestLogs.BucketConfig)
 
 	testLogOutput := TestLogOutput{
 		Version:        output.TestLogs.Version,
