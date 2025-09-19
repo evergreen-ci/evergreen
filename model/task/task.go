@@ -4296,6 +4296,10 @@ func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergre
 		// test logs and task logs will always be in the same bucket
 		return errors.New("test log and task log buckets do not match")
 	}
+	failedCfg := settings.Buckets.LogBucketFailedTasks
+	if failedCfg.Name == "" {
+		return errors.New("failed bucket is not configured")
+	}
 	srcBucket, err := newBucket(ctx, output.TestLogs.BucketConfig, output.TestLogs.AWSCredentials)
 	if err != nil {
 		return errors.Wrap(err, "getting regular test log bucket")
@@ -4316,8 +4320,6 @@ func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "getting chunk keys for log names")
 	}
 	allKeys := keys
-
-	failedCfg := settings.Buckets.LogBucketFailedTasks
 	failedBucket, err := newBucket(ctx, failedCfg, output.TestLogs.AWSCredentials)
 	if err != nil {
 		return errors.Wrap(err, "getting failed bucket")
