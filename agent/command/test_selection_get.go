@@ -79,7 +79,6 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		Tests:        c.Tests,
 	}
 
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	selectedTests, err := comm.SelectTests(ctx, conf.TaskData(), request)
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
