@@ -1156,11 +1156,14 @@ func (a *Agent) rotateLoggerToFailedBucket(ctx context.Context, tc *taskContext)
 
 	if tc.task.ID != "" {
 		if updated, err := a.comm.GetTask(ctx, tc.task); err == nil && updated != nil {
-			if name := updated.TaskOutputInfo.TaskLogs.BucketConfig.Name; name != "" {
-				tc.taskConfig.Task.TaskOutputInfo.TaskLogs.BucketConfig.Name = name
-			}
-			if name := updated.TaskOutputInfo.TestLogs.BucketConfig.Name; name != "" {
-				tc.taskConfig.Task.TaskOutputInfo.TestLogs.BucketConfig.Name = name
+			updated := updated.TaskOutputInfo
+			if updated != nil {
+				if name := updated.TaskLogs.BucketConfig.Name; name != "" {
+					tc.taskConfig.Task.TaskOutputInfo.TaskLogs.BucketConfig.Name = name
+				}
+				if name := updated.TestLogs.BucketConfig.Name; name != "" {
+					tc.taskConfig.Task.TaskOutputInfo.TestLogs.BucketConfig.Name = name
+				}
 			}
 		} else if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
