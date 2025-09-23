@@ -46,7 +46,7 @@ func setupTestEnv(t *testing.T) (context.Context, context.CancelFunc, *internal.
 	return ctx, cancel, conf, comm, logger
 }
 
-func TestParseFailsWithMissingOutputFile(t *testing.T) {
+func TestTestSelectionGetParseFailsWithMissingOutputFile(t *testing.T) {
 	cmd := &testSelectionGet{}
 	params := map[string]any{}
 	require.Error(t, cmd.ParseParams(params))
