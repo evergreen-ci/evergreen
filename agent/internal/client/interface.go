@@ -112,7 +112,7 @@ type SharedCommunicator interface {
 
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 
-	// SelectTests calls the test selection API to get a filtered list of tests to run
+	// SelectTests calls the test selection API to get a filtered list of tests to run.
 	SelectTests(ctx context.Context, taskData TaskData, request restmodel.SelectTestsRequest) ([]string, error)
 
 	// CreateInstallationTokenForClone creates an installation token for the given owner and repo if there is a GitHub app installed.

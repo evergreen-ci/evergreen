@@ -13,28 +13,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type TestSelectionGetSuite struct {
-	cancel func()
-	conf   *internal.TaskConfig
-	comm   *client.Mock
-	logger client.LoggerProducer
-	ctx    context.Context
-
-	cmd *testSelectionGet
-	suite.Suite
-}
-
-func TestTestSelectionGetSuite(t *testing.T) {
-	suite.Run(t, new(TestSelectionGetSuite))
-}
-
-func (s *TestSelectionGetSuite) SetupSuite() {
-	s.comm = client.NewMock("http://localhost.com")
-	s.comm.SelectTestsResponse = []string{"test1", "test3"}
-	s.conf = &internal.TaskConfig{
+func setupTestEnv(t *testing.T) (context.Context, context.CancelFunc, *internal.TaskConfig, *client.Mock, client.LoggerProducer) {
+	comm := client.NewMock("http://localhost.com")
+	comm.SelectTestsResponse = []string{"test1", "test3"}
+	conf := &internal.TaskConfig{
 		Task: task.Task{
 			Id:           "task_id",
 			Secret:       "task_secret",
@@ -43,116 +29,103 @@ func (s *TestSelectionGetSuite) SetupSuite() {
 			BuildVariant: "build_variant",
 			DisplayName:  "display_name",
 		},
-		ProjectRef: model.ProjectRef{
-			Id: "project_id",
-		},
+		ProjectRef: model.ProjectRef{Id: "project_id"},
 	}
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
-	s.NoError(err)
-	s.logger = logger
+	tmpDir := t.TempDir()
+	conf.WorkDir = tmpDir
+	f, err := os.Create(filepath.Join(tmpDir, "test.json"))
+	require.NoError(t, err)
+	_ = f.Close()
 
-	tmpDir := s.T().TempDir()
-	s.conf.WorkDir = tmpDir
-	testFile, err := os.Create(filepath.Join(tmpDir, "test.json"))
-	s.NoError(err)
-	defer testFile.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	conf.Task.TestSelectionEnabled = true
+	conf.ProjectRef.TestSelection.Allowed = utility.TruePtr()
+	return ctx, cancel, conf, comm, logger
 }
 
-func (s *TestSelectionGetSuite) SetupTest() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.conf.Task.TestSelectionEnabled = true
-	s.conf.ProjectRef = model.ProjectRef{
-		TestSelection: model.TestSelectionSettings{
-			Allowed: utility.TruePtr(),
-		},
-	}
-	s.cmd = &testSelectionGet{}
+func TestParseFailsWithMissingOutputFile(t *testing.T) {
+	cmd := &testSelectionGet{}
+	params := map[string]any{}
+	require.Error(t, cmd.ParseParams(params))
 }
 
-func (s *TestSelectionGetSuite) TearDownTest() {
-	s.cancel()
-}
-
-func (s *TestSelectionGetSuite) TestParseFailsWithMissingOutputFile() {
-	params := map[string]any{
-		"project":       "test_project",
-		"requester":     "patch_request",
-		"build_variant": "test_variant",
-		"task_id":       "task_123",
-		"task_name":     "test_task",
-	}
-	s.Error(s.cmd.ParseParams(params))
-}
-
-func (s *TestSelectionGetSuite) TestParseSucceedsWithValidParams() {
+func TestParseSucceedsWithValidParams(t *testing.T) {
+	cmd := &testSelectionGet{}
 	params := map[string]any{
 		"output_file": "test.json",
 	}
-	s.NoError(s.cmd.ParseParams(params))
-	s.Equal("test.json", s.cmd.OutputFile)
-	s.Empty(s.cmd.Tests)
+	require.NoError(t, cmd.ParseParams(params))
+	assert.Equal(t, "test.json", cmd.OutputFile)
+	assert.Empty(t, cmd.Tests)
 
 	params["tests"] = []string{"test1", "test2"}
-	s.NoError(s.cmd.ParseParams(params))
-	s.Equal("test.json", s.cmd.OutputFile)
-	s.Equal([]string{"test1", "test2"}, s.cmd.Tests)
+	require.NoError(t, cmd.ParseParams(params))
+	assert.Equal(t, "test.json", cmd.OutputFile)
+	assert.Equal(t, []string{"test1", "test2"}, cmd.Tests)
 }
 
-func (s *TestSelectionGetSuite) TestSkipsWhenTestSelectionNotAllowed() {
-	s.cmd.OutputFile = "test.json"
+func TestSkipsWhenTestSelectionNotAllowed(t *testing.T) {
+	ctx, cancel, conf, comm, logger := setupTestEnv(t)
+	defer cancel()
+	cmd := &testSelectionGet{OutputFile: "test.json"}
 
 	// Test selection not allowed in project settings
-	s.conf.ProjectRef.TestSelection.Allowed = utility.FalsePtr()
-	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	conf.ProjectRef.TestSelection.Allowed = utility.FalsePtr()
+	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 
-	output := TestSelectionOutput{}
-	err := utility.ReadJSONFile(s.cmd.OutputFile, &output)
-	s.NoError(err)
-	s.Empty(output.Tests)
+	var output TestSelectionOutput
+	require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+	assert.Empty(t, output.Tests)
 
 	// Test selection allowed in project settings but not enabled for task
-	s.conf.ProjectRef.TestSelection.Allowed = utility.TruePtr()
-	s.conf.Task.TestSelectionEnabled = false
-	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	conf.ProjectRef.TestSelection.Allowed = utility.TruePtr()
+	conf.Task.TestSelectionEnabled = false
+	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 
 	output = TestSelectionOutput{}
-	err = utility.ReadJSONFile(s.cmd.OutputFile, &output)
-	s.NoError(err)
-	s.Empty(output.Tests)
+	require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+	assert.Empty(t, output.Tests)
 }
 
-func (s *TestSelectionGetSuite) TestCallsAPIWhenEnabled() {
-	s.cmd.OutputFile = "test.json"
-	s.cmd.Tests = []string{"test1", "test2"}
+func TestCallsAPIWhenEnabled(t *testing.T) {
+	ctx, cancel, conf, comm, logger := setupTestEnv(t)
+	defer cancel()
+	cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
 
-	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 
 	// Should return the expected tests from the mock API.
-	data, err := os.ReadFile(s.cmd.OutputFile)
-	s.NoError(err)
+	data, err := os.ReadFile(cmd.OutputFile)
+	require.NoError(t, err)
 	var output TestSelectionOutput
-	s.NoError(json.Unmarshal(data, &output))
-	s.Len(output.Tests, 2)
-	s.Equal("test1", output.Tests[0]["name"])
-	s.Equal("test3", output.Tests[1]["name"])
+	require.NoError(t, json.Unmarshal(data, &output))
+	require.Len(t, output.Tests, 2)
+	assert.Equal(t, "test1", output.Tests[0]["name"])
+	assert.Equal(t, "test3", output.Tests[1]["name"])
 
 	// Verify the API was called with correct parameters from TaskConfig
-	s.True(s.comm.SelectTestsCalled)
-	s.Equal(s.conf.Task.Project, s.comm.SelectTestsRequest.Project)
-	s.Equal(s.conf.Task.Requester, s.comm.SelectTestsRequest.Requester)
-	s.Equal(s.conf.Task.BuildVariant, s.comm.SelectTestsRequest.BuildVariant)
-	s.Equal(s.conf.Task.Id, s.comm.SelectTestsRequest.TaskID)
-	s.Equal(s.conf.Task.DisplayName, s.comm.SelectTestsRequest.TaskName)
-	s.Equal([]string{"test1", "test2"}, s.comm.SelectTestsRequest.Tests)
+	assert.True(t, comm.SelectTestsCalled)
+	assert.Equal(t, conf.Task.Project, comm.SelectTestsRequest.Project)
+	assert.Equal(t, conf.Task.Requester, comm.SelectTestsRequest.Requester)
+	assert.Equal(t, conf.Task.BuildVariant, comm.SelectTestsRequest.BuildVariant)
+	assert.Equal(t, conf.Task.Id, comm.SelectTestsRequest.TaskID)
+	assert.Equal(t, conf.Task.DisplayName, comm.SelectTestsRequest.TaskName)
+	assert.Equal(t, []string{"test1", "test3"}, comm.SelectTestsRequest.Tests)
 }
 
-func (s *TestSelectionGetSuite) TestHandlesAPIError() {
-	s.cmd.OutputFile = "test.json"
+func TestHandlesAPIError(t *testing.T) {
+	ctx, cancel, conf, comm, logger := setupTestEnv(t)
+	defer cancel()
+	cmd := &testSelectionGet{OutputFile: "test.json"}
 
 	// Mock API error
-	s.comm.SelectTestsError = errors.New("test error")
+	comm.SelectTestsError = errors.New("test error")
 
-	err := s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
-	s.Error(err)
-	s.Contains(err.Error(), "calling test selection API")
+	err := cmd.Execute(ctx, comm, logger, conf)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "test error")
+	assert.Contains(t, err.Error(), "calling test selection API")
 }

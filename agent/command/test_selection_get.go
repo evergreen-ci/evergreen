@@ -56,7 +56,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 
 	// Re-validate the command here, in case an expansion is not defined.
 	if err := c.validate(); err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "validating command")
 	}
 
 	// Resolve the output file path early so it's available for writing empty results
@@ -105,8 +105,5 @@ func (c *testSelectionGet) writeTestList(tests []string) error {
 	}
 
 	err := utility.WriteJSONFile(c.OutputFile, output)
-	if err != nil {
-		return errors.Wrap(err, "writing test selection output to file")
-	}
-	return nil
+	return errors.Wrap(err, "writing test selection output to file")
 }
