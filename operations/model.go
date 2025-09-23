@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -159,6 +160,9 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
+	if err = checkCLIVersion(c); err != nil {
+		return nil, err
+	}
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
@@ -253,6 +257,24 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 	return s.APIServerHost
 }
 
+func checkCLIVersion(c client.Communicator) error {
+	clients, err := c.GetClientConfig(context.Background())
+	if err != nil {
+		grip.Debug(errors.Wrap(err, "getting client config info"))
+	}
+	if clients.OldestAllowedCLIVersion != "" {
+		isCLIVersionTooOld, err := isFirstDateBefore(evergreen.ClientVersion, clients.OldestAllowedCLIVersion)
+		if err != nil {
+			grip.Warning(errors.Wrap(err, "checking if client is older than the latest version"))
+		}
+		if isCLIVersionTooOld {
+			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
+				"Run '%s get-update --install' to update.\n", evergreen.ClientVersion, clients.OldestAllowedCLIVersion, os.Args[0])
+		}
+	}
+	return nil
+}
+
 // printUserMessages prints any available info messages.
 func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdate bool) {
 	banner, err := c.GetBannerMessage(ctx)
@@ -275,6 +297,20 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 			}
 		}
 	}
+}
+
+func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
+	// The layout string specifies the format of the input date strings.
+	layout := "2006-01-02"
+	t1, err := time.Parse(layout, dateString1)
+	if err != nil {
+		return false, fmt.Errorf("error parsing first date '%s': %w", dateString1, err)
+	}
+	t2, err := time.Parse(layout, dateString2)
+	if err != nil {
+		return false, fmt.Errorf("error parsing second date '%s': %w", dateString2, err)
+	}
+	return t1.Before(t2), nil
 }
 
 func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {
