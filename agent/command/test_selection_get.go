@@ -88,7 +88,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	return c.writeTestList(selectedTests)
 }
 
-// isTestSelectionAllowed checks if test selection is allowed in the project and the running task
+// isTestSelectionAllowed checks if test selection is allowed in the project and the running task.
 func (c *testSelectionGet) isTestSelectionAllowed(conf *internal.TaskConfig) bool {
 	return utility.FromBoolPtr(conf.ProjectRef.TestSelection.Allowed) && conf.Task.TestSelectionEnabled
 }
