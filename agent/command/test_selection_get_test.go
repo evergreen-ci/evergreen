@@ -103,8 +103,8 @@ func TestCallsAPIWhenEnabled(t *testing.T) {
 	var output TestSelectionOutput
 	require.NoError(t, json.Unmarshal(data, &output))
 	require.Len(t, output.Tests, 2)
-	assert.Equal(t, "test1", output.Tests[0]["name"])
-	assert.Equal(t, "test3", output.Tests[1]["name"])
+	assert.Equal(t, "test1", output.Tests[0].Name)
+	assert.Equal(t, "test3", output.Tests[1].Name)
 
 	// Verify the API was called with correct parameters from TaskConfig
 	assert.True(t, comm.SelectTestsCalled)

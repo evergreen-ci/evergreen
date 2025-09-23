@@ -14,9 +14,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TestSelectionOutput represents the output JSON structure
+// // TestSelectionOutput represents the output JSON structure
+// type TestSelectionOutput struct {
+// 	Tests []map[string]string `json:"tests"`
+// }
+
+type TestOutput struct {
+	Name string `json:"name"`
+}
+
 type TestSelectionOutput struct {
-	Tests []map[string]string `json:"tests"`
+	Tests []TestOutput `json:"tests"`
 }
 
 type testSelectionGet struct {
@@ -95,9 +103,9 @@ func (c *testSelectionGet) isTestSelectionAllowed(conf *internal.TaskConfig) boo
 
 // writeTestList writes the list of tests to the output file as JSON in the required format.
 func (c *testSelectionGet) writeTestList(tests []string) error {
-	testObjects := make([]map[string]string, len(tests))
+	testObjects := make([]TestOutput, len(tests))
 	for i, testName := range tests {
-		testObjects[i] = map[string]string{"name": testName}
+		testObjects[i] = TestOutput{Name: testName}
 	}
 
 	output := TestSelectionOutput{
