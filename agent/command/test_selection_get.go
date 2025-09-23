@@ -59,7 +59,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		return errors.Wrap(err, "validating command")
 	}
 
-	// Resolve the output file path early so it's available for writing empty results
+	// Resolve the output file path early so it's available for writing empty results.
 	if !filepath.IsAbs(c.OutputFile) {
 		c.OutputFile = GetWorkingDirectory(conf, c.OutputFile)
 	}
