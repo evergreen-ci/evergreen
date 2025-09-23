@@ -622,7 +622,6 @@ func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	return nil
 }
 
-// SelectTests calls the test selection API to get a filtered list of tests to run
 func (c *baseCommunicator) SelectTests(ctx context.Context, taskData TaskData, request restmodel.SelectTestsRequest) ([]string, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
