@@ -37,7 +37,7 @@ func setupTestEnv(t *testing.T) (context.Context, context.CancelFunc, *internal.
 	require.NoError(t, err)
 	_ = f.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
 
