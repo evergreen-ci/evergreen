@@ -93,7 +93,7 @@ func (c *testSelectionGet) isTestSelectionAllowed(conf *internal.TaskConfig) boo
 	return utility.FromBoolPtr(conf.ProjectRef.TestSelection.Allowed) && conf.Task.TestSelectionEnabled
 }
 
-// writeTestList writes the list of tests to the output file as JSON in the required format
+// writeTestList writes the list of tests to the output file as JSON in the required format.
 func (c *testSelectionGet) writeTestList(tests []string) error {
 	testObjects := make([]map[string]string, len(tests))
 	for i, testName := range tests {
