@@ -262,7 +262,7 @@ func checkCLIVersion(c client.Communicator) error {
 	if err != nil {
 		grip.Debug(errors.Wrap(err, "getting client config info"))
 	}
-	if clients.OldestAllowedCLIVersion != "" {
+	if clients != nil && clients.OldestAllowedCLIVersion != "" {
 		isCLIVersionTooOld, err := isFirstDateBefore(evergreen.ClientVersion, clients.OldestAllowedCLIVersion)
 		if err != nil {
 			grip.Warning(errors.Wrap(err, "checking if client is older than the latest version"))
