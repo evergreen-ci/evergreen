@@ -60,11 +60,17 @@ func TestParseSucceedsWithValidParams(t *testing.T) {
 	require.NoError(t, cmd.ParseParams(params))
 	assert.Equal(t, "test.json", cmd.OutputFile)
 	assert.Empty(t, cmd.Tests)
+	assert.Empty(t, cmd.UsageRate)
+	assert.Empty(t, cmd.Strategies)
 
 	params["tests"] = []string{"test1", "test2"}
+	params["usage_rate"] = "0.5"
+	params["strategies"] = "strategy1,strategy2,strategy3"
 	require.NoError(t, cmd.ParseParams(params))
 	assert.Equal(t, "test.json", cmd.OutputFile)
 	assert.Equal(t, []string{"test1", "test2"}, cmd.Tests)
+	assert.Equal(t, "0.5", cmd.UsageRate)
+	assert.Equal(t, "strategy1,strategy2,strategy3", cmd.Strategies)
 }
 
 func TestSkipsWhenTestSelectionNotAllowed(t *testing.T) {
