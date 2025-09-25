@@ -960,6 +960,98 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
+		grip.Debug(message.Fields{
+			"message":      "Project",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": projectInfo.Project,
+		})
+		grip.Debug(message.Fields{
+			"message":      "ProjectRef",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": projectInfo.Ref,
+		})
+		grip.Debug(message.Fields{
+			"message":      "Version",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": v,
+		})
+		grip.Debug(message.Fields{
+			"message":      "TaskIDs",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": taskIds,
+		})
+		grip.Debug(message.Fields{
+			"message":      "TaskNames",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": taskNames,
+		})
+		grip.Debug(message.Fields{
+			"message":      "BuildVariantName",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": buildvariant.Name,
+		})
+		grip.Debug(message.Fields{
+			"message":      "ActivateBuild",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": utility.FromBoolPtr(v.Activated),
+		})
+		grip.Debug(message.Fields{
+			"message":      "SourceRev",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": sourceRev,
+		})
+		grip.Debug(message.Fields{
+			"message":      "DefinitionID",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": metadata.TriggerDefinitionID,
+		})
+		grip.Debug(message.Fields{
+			"message":      "Aliases",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": aliases,
+		})
+		grip.Debug(message.Fields{
+			"message":      "DistroAliases",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": distroAliases,
+		})
+		grip.Debug(message.Fields{
+			"message":      "TaskCreateTime",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": v.CreateTime,
+		})
+		grip.Debug(message.Fields{
+			"message":      "GithubChecksAliases",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": aliasesMatchingVariant,
+		})
+
 		creationInfo := model.TaskCreationInfo{
 			Project:             projectInfo.Project,
 			ProjectRef:          projectInfo.Ref,
