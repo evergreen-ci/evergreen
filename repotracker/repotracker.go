@@ -248,6 +248,14 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 
+		grip.Debug(message.Fields{
+			"message":            "getting project config",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		var versionErrs *VersionErrors
 		pInfo, err := repoTracker.GetProjectConfig(ctx, revision)
 		if err != nil {
@@ -306,6 +314,14 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		var ignore bool
 		var filenames []string
 
+		grip.Debug(message.Fields{
+			"message":            "getting changed files",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		// Always get changed files for build variant filtering
 		filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 		if err != nil {
@@ -332,8 +348,24 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			IntermediateProject: pInfo.IntermediateProject,
 			Config:              pInfo.Config,
 		}
+		grip.Debug(message.Fields{
+			"message":            "starting version creation",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
+			grip.Debug(message.Fields{
+				"message":            "finished1 version creation",
+				"ticket":             "DEVPROD-22453",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+			})
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating version",
 				"runner":             RunnerName,
@@ -346,6 +378,14 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			// in a half-broken state.
 			continue
 		}
+		grip.Debug(message.Fields{
+			"message":            "finished2 version creation",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build break subscriptions",
@@ -607,6 +647,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
+	grip.Debug(message.Fields{
+		"message":  "creating shell version",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": metadata.Revision,
+	})
 	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
@@ -682,6 +728,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		}
 	}
 
+	grip.Debug(message.Fields{
+		"message":  "creating version items",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": metadata.Revision,
+	})
 	return v, errors.Wrap(createVersionItems(ctx, v, metadata, projectInfo, aliases), "error creating version items")
 }
 
@@ -891,6 +943,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
 
+	grip.Debug(message.Fields{
+		"message":  "constructing variants",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		var aliasesMatchingVariant model.ProjectAliases
@@ -1043,12 +1101,24 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	env := evergreen.GetEnvironment()
 
+	grip.Debug(message.Fields{
+		"message":  "upserting PP",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
 	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 	}
 	v.ProjectStorageMethod = ppStorageMethod
 
+	grip.Debug(message.Fields{
+		"message":  "defining transaction",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
 		if err != nil {
@@ -1139,6 +1209,12 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 	const minBackoffInterval = 1 * time.Second
 	const maxBackoffInterval = 60 * time.Second
 
+	grip.Debug(message.Fields{
+		"message":  "starting transaction",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": versionId,
+	})
 	client := evergreen.GetEnvironment().Client()
 	errs := grip.NewBasicCatcher()
 	interval := backoff.Backoff{
@@ -1147,6 +1223,13 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 		Factor: 2,
 	}
 	for i := 0; i < retryCount; i++ {
+		grip.Debug(message.Fields{
+			"message":     "retrying transaction",
+			"ticket":      "DEVPROD-22453",
+			"runner":      RunnerName,
+			"revision":    versionId,
+			"retry_count": i,
+		})
 		err := client.UseSession(ctx, sessionFunc)
 		if err == nil {
 			return nil
