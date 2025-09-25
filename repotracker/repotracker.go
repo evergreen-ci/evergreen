@@ -1138,21 +1138,19 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		grip.Debug(message.Fields{
-			"message":      "creating build",
-			"ticket":       "DEVPROD-22453",
-			"runner":       RunnerName,
-			"revision":     v.Revision,
-			"creationInfo": creationInfo,
+			"message":  "creating build",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
 		})
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)
 		grip.Debug(message.Fields{
-			"message":      "created build",
-			"ticket":       "DEVPROD-22453",
-			"runner":       RunnerName,
-			"revision":     v.Revision,
-			"creationInfo": creationInfo,
-			"b":            b,
-			"tasks":        tasks,
+			"message":  "created build",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+			"b":        b,
+			"tasks":    tasks,
 		})
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -1167,13 +1165,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if len(tasks) == 0 {
 			debuggingData[buildvariant.Name] = "no tasks for buildvariant"
 			grip.Debug(message.Fields{
-				"message":      "no tasks",
-				"ticket":       "DEVPROD-22453",
-				"runner":       RunnerName,
-				"revision":     v.Revision,
-				"creationInfo": creationInfo,
-				"b":            b,
-				"tasks":        tasks,
+				"message":  "no tasks",
+				"ticket":   "DEVPROD-22453",
+				"runner":   RunnerName,
+				"revision": v.Revision,
+				"b":        b,
+				"tasks":    tasks,
 			})
 			continue
 		}
