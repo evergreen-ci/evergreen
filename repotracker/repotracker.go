@@ -964,7 +964,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	})
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
 	grip.Debug(message.Fields{
-		"message":        "computed taskIds",
+		"message":        "computed taskIds length",
 		"ticket":         "DEVPROD-22453",
 		"runner":         RunnerName,
 		"revision":       v.Revision,
