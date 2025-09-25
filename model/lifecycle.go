@@ -582,6 +582,13 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 // is responsible for inserting the created build and task documents
 func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
 	// avoid adding all tasks in the case of no tasks matching aliases
+	grip.Debug(message.Fields{
+		"message":      "starting CreateBuildFromVersionNoInsert",
+		"ticket":       "DEVPROD-22453",
+		"runner":       "repotracker",
+		"revision":     creationInfo.Version.Revision,
+		"creationInfo": creationInfo,
+	})
 	if len(creationInfo.Aliases) > 0 && len(creationInfo.TaskNames) == 0 {
 		return nil, nil, nil
 	}
@@ -639,10 +646,25 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 	// create all the necessary tasks for the build
 	creationInfo.BuildVariant = buildVariant
 	creationInfo.Build = b
+	grip.Debug(message.Fields{
+		"message":      "starting createTasksForBuild",
+		"ticket":       "DEVPROD-22453",
+		"runner":       "repotracker",
+		"revision":     creationInfo.Version.Revision,
+		"creationInfo": creationInfo,
+	})
 	tasksForBuild, err := createTasksForBuild(ctx, creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", b.Id)
 	}
+	grip.Debug(message.Fields{
+		"message":       "finished createTasksForBuild",
+		"ticket":        "DEVPROD-22453",
+		"runner":        "repotracker",
+		"revision":      creationInfo.Version.Revision,
+		"creationInfo":  creationInfo,
+		"tasksForBuild": tasksForBuild,
+	})
 
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
@@ -663,6 +685,13 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 		}
 		tasks = append(tasks, *taskP)
 	}
+	grip.Debug(message.Fields{
+		"message":      "starting CreateTasksCache",
+		"ticket":       "DEVPROD-22453",
+		"runner":       "repotracker",
+		"revision":     creationInfo.Version.Revision,
+		"creationInfo": creationInfo,
+	})
 	b.Tasks = CreateTasksCache(tasks)
 	b.Activated = containsActivatedTask
 	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
@@ -703,6 +732,13 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		tgMap[tg.Name] = tg
 	}
 
+	grip.Debug(message.Fields{
+		"message":      "starting iterating through tasks in createTasksForBuild",
+		"ticket":       "DEVPROD-22453",
+		"runner":       "repotracker",
+		"revision":     creationInfo.Version.Revision,
+		"creationInfo": creationInfo,
+	})
 	for _, task := range creationInfo.BuildVariant.Tasks {
 		// Verify that the config isn't malformed.
 		if task.Name != "" && !task.IsGroup {
@@ -748,6 +784,13 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 	// create all the actual tasks
 	taskMap := make(map[string]*task.Task)
+	grip.Debug(message.Fields{
+		"message":      "constructing tasks in createTasksForBuild",
+		"ticket":       "DEVPROD-22453",
+		"runner":       "repotracker",
+		"revision":     creationInfo.Version.Revision,
+		"creationInfo": creationInfo,
+	})
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(creationInfo.Build.BuildVariant, t.Name)
 		newTask, err := createOneTask(ctx, id, creationInfo, t)
@@ -771,6 +814,13 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	// Create and update display tasks
 	tasks := task.Tasks{}
 	loggedExecutionTaskNotFound := false
+	grip.Debug(message.Fields{
+		"message":      "constructing display tasks in createTasksForBuild",
+		"ticket":       "DEVPROD-22453",
+		"runner":       "repotracker",
+		"revision":     creationInfo.Version.Revision,
+		"creationInfo": creationInfo,
+	})
 	for _, dt := range creationInfo.BuildVariant.DisplayTasks {
 		id := displayTable.GetId(creationInfo.Build.BuildVariant, dt.Name)
 		if id == "" {
@@ -844,6 +894,13 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			tasks = append(tasks, newDisplayTask)
 		}
 	}
+	grip.Debug(message.Fields{
+		"message":      "addSingleHostTaskGroupDependencies in createTasksForBuild",
+		"ticket":       "DEVPROD-22453",
+		"runner":       "repotracker",
+		"revision":     creationInfo.Version.Revision,
+		"creationInfo": creationInfo,
+	})
 	addSingleHostTaskGroupDependencies(taskMap, creationInfo.Project, execTable)
 
 	for _, t := range taskMap {
