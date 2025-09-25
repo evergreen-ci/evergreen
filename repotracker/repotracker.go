@@ -977,12 +977,22 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		grip.Debug(message.Fields{
-			"message":  "creating build",
-			"ticket":   "DEVPROD-22453",
-			"runner":   RunnerName,
-			"revision": v.Revision,
+			"message":      "creating build",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": creationInfo,
 		})
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)
+		grip.Debug(message.Fields{
+			"message":      "created build",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": creationInfo,
+			"b":            b,
+			"tasks":        tasks,
+		})
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build",
@@ -995,6 +1005,15 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 		if len(tasks) == 0 {
 			debuggingData[buildvariant.Name] = "no tasks for buildvariant"
+			grip.Debug(message.Fields{
+				"message":      "no tasks",
+				"ticket":       "DEVPROD-22453",
+				"runner":       RunnerName,
+				"revision":     v.Revision,
+				"creationInfo": creationInfo,
+				"b":            b,
+				"tasks":        tasks,
+			})
 			continue
 		}
 		buildsToCreate = append(buildsToCreate, *b)
@@ -1046,6 +1065,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			},
 		})
 	}
+	grip.Debug(message.Fields{
+		"message":  "SetNumDependents",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	// We must set the NumDependents field for tasks prior to inserting them in the DB.
 	model.SetNumDependents(tasksToCreate)
 
