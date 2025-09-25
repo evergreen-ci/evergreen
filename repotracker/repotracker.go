@@ -941,7 +941,76 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}))
 	}
 
+	grip.Debug(message.Fields{
+		"message":       "preparing NewTaskIdConfigForRepotrackerVersion",
+		"ticket":        "DEVPROD-22453",
+		"runner":        RunnerName,
+		"revision":      v.Revision,
+		"pairsToCreate": pairsToCreate,
+	})
+	grip.Debug(message.Fields{
+		"message":  "preparing NewTaskIdConfigForRepotrackerVersion",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+		"v":        v,
+	})
+	grip.Debug(message.Fields{
+		"message":             "preparing NewTaskIdConfigForRepotrackerVersion",
+		"ticket":              "DEVPROD-22453",
+		"runner":              RunnerName,
+		"revision":            v.Revision,
+		"projectInfo.Project": projectInfo.Project,
+	})
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
+	grip.Debug(message.Fields{
+		"message":        "computed taskIds",
+		"ticket":         "DEVPROD-22453",
+		"runner":         RunnerName,
+		"revision":       v.Revision,
+		"execIds":        len(taskIds.ExecutionTasks.GetIdsForAllTasks()),
+		"displayTaskIds": len(taskIds.DisplayTasks.GetIdsForAllTasks()),
+	})
+	grip.Debug(message.Fields{
+		"message":            "computed taskIds",
+		"ticket":             "DEVPROD-22453",
+		"runner":             RunnerName,
+		"revision":           v.Revision,
+		"execIdsFull":        taskIds.ExecutionTasks.GetIdsForAllTasks(),
+		"displayTaskIdsFull": taskIds.DisplayTasks.GetIdsForAllTasks(),
+	})
+	grip.Debug(message.Fields{
+		"message":  "full taskIds",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+		"taskIds":  taskIds,
+	})
+	numPrints := 0
+	if len(taskIds.ExecutionTasks.GetIdsForAllTasks()) > 0 {
+		for tvPair, name := range taskIds.ExecutionTasks {
+			if numPrints > 5 {
+				break
+			}
+			grip.Debug(message.Fields{
+				"message":  "individual taskIds",
+				"ticket":   "DEVPROD-22453",
+				"runner":   RunnerName,
+				"revision": v.Revision,
+				"name":     name,
+				"tvPair":   tvPair,
+			})
+			grip.Debug(message.Fields{
+				"message":   "individual taskIds length",
+				"ticket":    "DEVPROD-22453",
+				"runner":    RunnerName,
+				"revision":  v.Revision,
+				"nameLen":   len(name),
+				"tvPairLen": len(tvPair.TaskName) + len(tvPair.Variant),
+			})
+			numPrints++
+		}
+	}
 
 	grip.Debug(message.Fields{
 		"message":  "constructing variants",
