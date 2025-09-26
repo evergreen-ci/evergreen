@@ -97,6 +97,8 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	// consistent across multiple runs of the same task.
 	if c.rate != 0 {
 		rng := rand.New(rand.NewSource(int64(conf.Task.Id[0])))
+		// Random float in [0.0, 1.0) will always have a
+		// usage_rate percentage chance of no-oping.
 		if rng.Float64() < c.rate {
 			logger.Execution().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
 			return c.writeTestList([]string{})
