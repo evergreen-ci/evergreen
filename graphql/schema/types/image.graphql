@@ -3,6 +3,7 @@ enum ImageEventType {
   OPERATING_SYSTEM
   PACKAGE
   TOOLCHAIN
+  FILE
 }
 
 enum ImageEventEntryAction {
@@ -31,6 +32,12 @@ input ToolchainOpts {
   page: Int
 }
 
+input ImageFileOpts {
+  name: String
+  limit: Int
+  page: Int
+}
+
 ###### TYPES ######
 """
 Image is returned by the image query.
@@ -41,6 +48,7 @@ type Image {
   ami: String!
   distros: [Distro!]!
   events(limit: Int!, page: Int!): ImageEventsPayload!
+  files(opts: ImageFileOpts!): ImageFilesPayload!
   lastDeployed: Time!
   latestTask: Task
   operatingSystem(opts: OperatingSystemOpts!): ImageOperatingSystemPayload!
@@ -78,6 +86,18 @@ type ImageToolchainsPayload {
 }
 
 type Toolchain {
+  name: String!
+  path: String!
+  version: String!
+}
+
+type ImageFilesPayload {
+  data: [ImageFile!]!
+  filteredCount: Int!
+  totalCount: Int!
+}
+
+type ImageFile {
   name: String!
   path: String!
   version: String!

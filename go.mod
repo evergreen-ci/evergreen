@@ -21,8 +21,8 @@ require (
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20250313151408-76b756321eda
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
-	github.com/evergreen-ci/gimlet v0.0.0-20250910142308-de441c80fcc8
-	github.com/evergreen-ci/pail v0.0.0-20250716202146-f95483ecb8e9
+	github.com/evergreen-ci/gimlet v0.0.0-20250610151514-2545690ba23c
+	github.com/evergreen-ci/pail v0.0.0-20250903180955-74649b5e3818
 	github.com/evergreen-ci/poplar v0.0.0-20250710150300-8483281f1c7d
 	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/utility v0.0.0-20250604173729-c1b32de37d48

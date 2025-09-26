@@ -43,7 +43,7 @@ models:
   Arch:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      LINUX_64_BIT: 
+      LINUX_64_BIT:
         value: github.com/evergreen-ci/evergreen.ArchLinuxAmd64
       LINUX_ARM_64_BIT:
         value: github.com/evergreen-ci/evergreen.ArchLinuxArm64
@@ -105,7 +105,7 @@ models:
   BootstrapMethod:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      LEGACY_SSH: 
+      LEGACY_SSH:
         value: github.com/evergreen-ci/evergreen/model/distro.BootstrapMethodLegacySSH
       SSH:
         value: github.com/evergreen-ci/evergreen/model/distro.BootstrapMethodSSH
@@ -154,7 +154,7 @@ models:
   CommunicationMethod:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      LEGACY_SSH: 
+      LEGACY_SSH:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodLegacySSH
       SSH:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodSSH
@@ -176,6 +176,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.CopyDistroOpts
   CopyProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.CopyProjectOpts
+  CostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
+  CostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
+  CostData:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
+  CostDataInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
   CreateProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   DispatcherSettings:
@@ -185,7 +193,7 @@ models:
   DispatcherVersion:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      REVISED_WITH_DEPENDENCIES: 
+      REVISED_WITH_DEPENDENCIES:
         value: github.com/evergreen-ci/evergreen.DispatcherVersionRevisedWithDependencies
   Distro:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDistro
@@ -255,7 +263,7 @@ models:
   FeedbackRule:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      WAITS_OVER_THRESH: 
+      WAITS_OVER_THRESH:
         value: github.com/evergreen-ci/evergreen.HostAllocatorWaitsOverThreshFeedback
       NO_FEEDBACK:
         value: github.com/evergreen-ci/evergreen.HostAllocatorNoFeedback
@@ -272,13 +280,13 @@ models:
   FinderVersion:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      LEGACY: 
+      LEGACY:
         value: github.com/evergreen-ci/evergreen.FinderVersionLegacy
-      PARALLEL: 
+      PARALLEL:
         value: github.com/evergreen-ci/evergreen.FinderVersionParallel
-      PIPELINE: 
+      PIPELINE:
         value: github.com/evergreen-ci/evergreen.FinderVersionPipeline
-      ALTERNATE: 
+      ALTERNATE:
         value: github.com/evergreen-ci/evergreen.FinderVersionAlternate
   FWSConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFWSConfig
@@ -331,7 +339,7 @@ models:
   HostAllocatorVersion:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      UTILIZATION: 
+      UTILIZATION:
         value: github.com/evergreen-ci/evergreen.HostAllocatorUtilization
   HostEventLogData:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
@@ -410,7 +418,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostInitConfig
   HostInitConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostInitConfig
-  HostJasperConfig: 
+  HostJasperConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostJasperConfig
   HostJasperConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIHostJasperConfig
@@ -418,14 +426,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   IceCreamSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
-  CostConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
-  CostConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
-  CostData:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
-  CostDataInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICostData
   Image:
     model: github.com/evergreen-ci/evergreen/rest/model.APIImage
   ImageEvent:
@@ -436,6 +436,10 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventEntryAction
   ImageEventType:
     model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventType
+  ImageFile:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImageFile
+  ImageFileOpts:
+    model: github.com/evergreen-ci/evergreen/thirdparty.FileFilterOptions
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:
@@ -466,7 +470,7 @@ models:
     model: github.com/evergreen-ci/evergreen/thirdparty.JiraTicket
   KanopyAuthConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
-  KanopyAuthConfigInput:  
+  KanopyAuthConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
   LogBuffering:
     model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
@@ -493,13 +497,13 @@ models:
   ModuleCodeChange:
     model: github.com/evergreen-ci/evergreen/rest/model.APIModulePatch
   MultiAuthConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
   MultiAuthConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIMultiAuthConfig
   NaiveAuthConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig 
+    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig
   NaiveAuthConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig 
+    model: github.com/evergreen-ci/evergreen/rest/model.APINaiveAuthConfig
   Note:
     model: github.com/evergreen-ci/evergreen/rest/model.APINote
   Notifications:
@@ -523,7 +527,7 @@ models:
   OverallocatedRule:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      TERMINATE: 
+      TERMINATE:
         value: github.com/evergreen-ci/evergreen.HostsOverallocatedTerminate
       IGNORE:
         value: github.com/evergreen-ci/evergreen.HostsOverallocatedIgnore
@@ -541,7 +545,7 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
-  ParameterStoreConfig: 
+  ParameterStoreConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameterStoreConfig
   ParameterStoreConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameterStoreConfig
@@ -562,6 +566,10 @@ models:
     fields:
       projectIdentifier:
         resolver: true
+      includedLocalModules:
+        resolver: true
+  IncludedLocalModule:
+    model: github.com/evergreen-ci/evergreen/rest/model.APILocalModuleInclude
   PatchTriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
   PatchTriggerAliasInput:
@@ -595,7 +603,7 @@ models:
   PlannerVersion:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      TUNABLE: 
+      TUNABLE:
         value: github.com/evergreen-ci/evergreen.PlannerVersionTunable
   Pod:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPod
@@ -614,7 +622,7 @@ models:
   PriorityLevel:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      EMERGENCY: 
+      EMERGENCY:
         value: github.com/evergreen-ci/evergreen.PriorityLevelEmergency
       ALERT:
         value: github.com/evergreen-ci/evergreen.PriorityLevelAlert
@@ -688,7 +696,7 @@ models:
   Provider:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      DOCKER: 
+      DOCKER:
         value: github.com/evergreen-ci/evergreen.ProviderNameDocker
       EC2_FLEET:
         value: github.com/evergreen-ci/evergreen.ProviderNameEc2Fleet
@@ -747,7 +755,7 @@ models:
   RoundingRule:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
-      UP: 
+      UP:
         value: github.com/evergreen-ci/evergreen.HostAllocatorRoundUp
       DOWN:
         value: github.com/evergreen-ci/evergreen.HostAllocatorRoundDown
@@ -780,9 +788,9 @@ models:
   SelectorInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   ServiceFlags:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   ServiceFlagsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags  
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   SingleTaskDistroConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SingleTaskDistroConfigInput:

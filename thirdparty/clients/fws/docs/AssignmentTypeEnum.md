@@ -17,7 +17,11 @@
 
 * `TASK_TO_TEAM_MAPPING` (value: `"task to team mapping"`)
 
+* `GENERATOR_TASK` (value: `"generator task"`)
+
 * `DEFAULT_TEAM` (value: `"default team"`)
+
+* `NONE` (value: `"none"`)
 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

@@ -27,7 +27,9 @@ const (
 	TASK_TAG AssignmentTypeEnum = "task tag"
 	BUILD_VARIANT_TAG AssignmentTypeEnum = "build variant tag"
 	TASK_TO_TEAM_MAPPING AssignmentTypeEnum = "task to team mapping"
+	GENERATOR_TASK AssignmentTypeEnum = "generator task"
 	DEFAULT_TEAM AssignmentTypeEnum = "default team"
+	NONE AssignmentTypeEnum = "none"
 )
 
 // All allowed values of AssignmentTypeEnum enum
@@ -39,7 +41,9 @@ var AllowedAssignmentTypeEnumEnumValues = []AssignmentTypeEnum{
 	"task tag",
 	"build variant tag",
 	"task to team mapping",
+	"generator task",
 	"default team",
+	"none",
 }
 
 func (v *AssignmentTypeEnum) UnmarshalJSON(src []byte) error {

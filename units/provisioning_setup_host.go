@@ -37,6 +37,7 @@ const (
 	provisionRetryLimit = 40
 	mountRetryLimit     = 10
 	mountSleepDuration  = time.Second * 10
+	amazonEBSIdent      = "Amazon Elastic Block Store"
 	setupHostJobName    = "provisioning-setup-host"
 	scpTimeout          = time.Minute
 )
@@ -803,12 +804,13 @@ type blockDevice struct {
 	FSType     string        `json:"fstype"`
 	UUID       string        `json:"uuid"`
 	MountPoint string        `json:"mountpoint"`
+	Model      string        `json:"model"`
 	Children   []blockDevice `json:"children"`
 }
 
 func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, h *host.Host) (blockDevice, error) {
 	lsblkOutput, err := h.RunJasperProcess(ctx, env, &options.Create{
-		Args: []string{"lsblk", "--fs", "--json"},
+		Args: []string{"lsblk", "--fs", "--json", "-o", "+MODEL"},
 	})
 	if err != nil {
 		return blockDevice{}, errors.Wrap(err, "running lsblk")
@@ -818,11 +820,21 @@ func getMostRecentlyAddedDevice(ctx context.Context, env evergreen.Environment, 
 	if err != nil {
 		return blockDevice{}, errors.Wrap(err, "parsing lsblk output")
 	}
-	if len(devices) == 0 {
+
+	// Filter for EBS devices, by matching model key.
+	// This avoids accidentally attaching ephemeral instance storage.
+	filteredDevices := []blockDevice{}
+	for _, device := range devices {
+		if strings.Contains(device.Model, amazonEBSIdent) {
+			filteredDevices = append(filteredDevices, device)
+		}
+	}
+
+	if len(filteredDevices) == 0 {
 		return blockDevice{}, errors.New("output contained no devices")
 	}
 
-	lastDevice := devices[len(devices)-1]
+	lastDevice := filteredDevices[len(filteredDevices)-1]
 	if len(lastDevice.Children) != 0 || !utility.StringSliceContains([]string{"", h.Distro.HomeDir()}, lastDevice.MountPoint) {
 		return blockDevice{}, errors.New("device hasn't been attached yet")
 	}

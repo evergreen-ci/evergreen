@@ -20,14 +20,12 @@
 
 #### Artifacts
 
-- **S3:**
-  - Transitioned to Standard-IA after **30 days**
-  - Permanently deleted after **365 days**
-- **MongoDB (Task Artifacts):** Expire after **365 days** based on `create_time`.
+Artifact retention rates depend on which bucket they are stored in. Different projects have different retention rates for their default bucket, and projects may use more than one bucket.
 
 #### Logs
 
-- **S3 Logs:** Deleted after **365 days**.
+- **S3 Logs for failed tasks:** deleted after **180 days**.
+- **S3 Logs for successful tasks:** deleted after **90 days** (coming soon).
 
 #### Test Results
 

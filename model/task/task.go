@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"regexp"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -28,7 +31,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.opentelemetry.io/otel/attribute"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -2352,6 +2354,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
 				DisplayStatusCacheKey: t.DisplayStatusCache,
+				TaskOutputInfoKey:     t.TaskOutputInfo,
 			},
 			"$unset": bson.M{
 				ContainerAllocatedTimeKey: 1,
@@ -4285,4 +4288,74 @@ func (t *Task) GetEstimatedCost(ctx context.Context) (TaskCost, error) {
 
 	runtimeSeconds := estimatedDuration.Seconds()
 	return CalculateTaskCost(runtimeSeconds, costData, financeConfig), nil
+}
+
+// MoveLogsByNamesToBucket moves task + test logs to the specified bucket
+func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput) error {
+	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
+		// test logs and task logs will always be in the same bucket
+		return errors.New("test log and task log buckets do not match")
+	}
+	failedCfg := settings.Buckets.LogBucketFailedTasks
+	if failedCfg.Name == "" {
+		return errors.New("failed bucket is not configured")
+	}
+	srcBucket, err := newBucket(ctx, output.TestLogs.BucketConfig, output.TestLogs.AWSCredentials)
+	if err != nil {
+		return errors.Wrap(err, "getting regular test log bucket")
+	}
+
+	logService := log.NewLogServiceV0(srcBucket)
+
+	logNames := make([]string, 0, 4)
+	// add task logs
+	for _, logType := range []TaskLogType{TaskLogTypeAgent, TaskLogTypeSystem, TaskLogTypeTask} {
+		logNames = append(logNames, getLogName(*task, logType, output.TaskLogs.ID()))
+	}
+	// add test logs
+	logNames = append(logNames, fmt.Sprintf("%s/%s/%d/%s", task.Project, task.Id, task.Execution, output.TestLogs.ID()))
+
+	keys, err := logService.GetChunkKeys(ctx, logNames)
+	if err != nil {
+		return errors.Wrap(err, "getting chunk keys for log names")
+	}
+	allKeys := keys
+	failedBucket, err := newBucket(ctx, failedCfg, output.TestLogs.AWSCredentials)
+	if err != nil {
+		return errors.Wrap(err, "getting failed bucket")
+	}
+
+	if err = logService.MoveObjectsToBucket(ctx, allKeys, failedBucket); err != nil {
+		return errors.Wrap(err, "moving logs to failed bucket")
+	}
+
+	// Update the task output info with the new bucket config. This will be persisted in
+	// markEnd and the agent will rotate the logger to the new config so the rest of
+	// the agent logs go directly to the failed bucket.
+	task.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
+	task.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
+	return nil
+
+}
+
+// MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
+func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings) error {
+	if t.UsesLongRetentionBucket(settings) {
+		return nil
+	}
+	output, ok := t.GetTaskOutputSafe()
+	if !ok {
+		return nil
+	}
+
+	return t.MoveLogsByNamesToBucket(ctx, settings, output)
+
+}
+
+// UsesLongRetentionBucket returns true if the task failed and is not in LongRetentionProjects.
+func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
+	if settings != nil && slices.Contains(settings.Buckets.LongRetentionProjects, t.Project) {
+		return true
+	}
+	return false
 }

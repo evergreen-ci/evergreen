@@ -264,3 +264,29 @@ func (s *logServiceV0) getParser(logName string) LineParser {
 		}, nil
 	}
 }
+
+// GetChunkKeys returns all log chunk keys for the given log names.
+func (s *logServiceV0) GetChunkKeys(ctx context.Context, logNames []string) ([]string, error) {
+	chunkGroups, _, _, err := s.getLogChunks(ctx, logNames)
+	if err != nil {
+		return nil, err
+	}
+	var keys []string
+	for _, group := range chunkGroups {
+		for _, chunk := range group.chunks {
+			keys = append(keys, chunk.key)
+		}
+	}
+	return keys, nil
+}
+
+// MoveObjectsToBucket moves all objects with the given keys from this log service's bucket to the destination bucket.
+func (s *logServiceV0) MoveObjectsToBucket(ctx context.Context, objectKeys []string, destBucket pail.Bucket) error {
+	if len(objectKeys) == 0 {
+		return nil // nothing to move
+	}
+	if err := s.bucket.MoveObjects(ctx, destBucket, objectKeys, objectKeys); err != nil {
+		return errors.Wrap(err, "bulk moving log chunk objects")
+	}
+	return nil
+}

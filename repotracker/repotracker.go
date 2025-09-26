@@ -248,6 +248,14 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 
+		grip.DebugWhen(ref.Id == model.ProjectToDebug, message.Fields{
+			"message":            "getting project config",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		var versionErrs *VersionErrors
 		pInfo, err := repoTracker.GetProjectConfig(ctx, revision)
 		if err != nil {
@@ -306,6 +314,14 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		var ignore bool
 		var filenames []string
 
+		grip.DebugWhen(ref.Id == model.ProjectToDebug, message.Fields{
+			"message":            "getting changed files",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		// Always get changed files for build variant filtering
 		filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 		if err != nil {
@@ -332,8 +348,24 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			IntermediateProject: pInfo.IntermediateProject,
 			Config:              pInfo.Config,
 		}
+		grip.DebugWhen(ref.Id == model.ProjectToDebug, message.Fields{
+			"message":            "starting version creation",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
+			grip.DebugWhen(ref.Id == model.ProjectToDebug, message.Fields{
+				"message":            "finished1 version creation",
+				"ticket":             "DEVPROD-22453",
+				"runner":             RunnerName,
+				"project":            ref.Id,
+				"project_identifier": ref.Identifier,
+				"revision":           revision,
+			})
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating version",
 				"runner":             RunnerName,
@@ -346,6 +378,14 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			// in a half-broken state.
 			continue
 		}
+		grip.DebugWhen(ref.Id == model.ProjectToDebug, message.Fields{
+			"message":            "finished2 version creation",
+			"ticket":             "DEVPROD-22453",
+			"runner":             RunnerName,
+			"project":            ref.Id,
+			"project_identifier": ref.Identifier,
+			"revision":           revision,
+		})
 		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build break subscriptions",
@@ -607,6 +647,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
+	grip.DebugWhen(metadata.Revision.Revision == model.ShaToDebug, message.Fields{
+		"message":  "creating shell version",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": metadata.Revision,
+	})
 	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
@@ -682,6 +728,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		}
 	}
 
+	grip.DebugWhen(metadata.Revision.Revision == model.ShaToDebug, message.Fields{
+		"message":  "creating version items",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": metadata.Revision,
+	})
 	return v, errors.Wrap(createVersionItems(ctx, v, metadata, projectInfo, aliases), "error creating version items")
 }
 
@@ -846,7 +898,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				var match bool
 				name, tags, ok := projectInfo.Project.GetTaskNameAndTags(t)
 				if !ok {
-					grip.Debug(message.Fields{
+					grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
 						"message": "task doesn't exist in project",
 						"project": projectInfo.Project.Identifier,
 						"task":    t,
@@ -889,8 +941,83 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}))
 	}
 
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":       "preparing NewTaskIdConfigForRepotrackerVersion",
+		"ticket":        "DEVPROD-22453",
+		"runner":        RunnerName,
+		"revision":      v.Revision,
+		"pairsToCreate": pairsToCreate,
+	})
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":  "preparing NewTaskIdConfigForRepotrackerVersion",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+		"v":        v,
+	})
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":             "preparing NewTaskIdConfigForRepotrackerVersion",
+		"ticket":              "DEVPROD-22453",
+		"runner":              RunnerName,
+		"revision":            v.Revision,
+		"projectInfo.Project": projectInfo.Project,
+	})
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":        "computed taskIds length",
+		"ticket":         "DEVPROD-22453",
+		"runner":         RunnerName,
+		"revision":       v.Revision,
+		"execIds":        len(taskIds.ExecutionTasks.GetIdsForAllTasks()),
+		"displayTaskIds": len(taskIds.DisplayTasks.GetIdsForAllTasks()),
+	})
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":            "computed taskIds",
+		"ticket":             "DEVPROD-22453",
+		"runner":             RunnerName,
+		"revision":           v.Revision,
+		"execIdsFull":        taskIds.ExecutionTasks.GetIdsForAllTasks(),
+		"displayTaskIdsFull": taskIds.DisplayTasks.GetIdsForAllTasks(),
+	})
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":  "full taskIds",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+		"taskIds":  taskIds,
+	})
+	numPrints := 0
+	if len(taskIds.ExecutionTasks.GetIdsForAllTasks()) > 0 {
+		for tvPair, name := range taskIds.ExecutionTasks {
+			if numPrints > 5 {
+				break
+			}
+			grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+				"message":  "individual taskIds",
+				"ticket":   "DEVPROD-22453",
+				"runner":   RunnerName,
+				"revision": v.Revision,
+				"name":     name,
+				"tvPair":   tvPair,
+			})
+			grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+				"message":   "individual taskIds length",
+				"ticket":    "DEVPROD-22453",
+				"runner":    RunnerName,
+				"revision":  v.Revision,
+				"nameLen":   len(name),
+				"tvPairLen": len(tvPair.TaskName) + len(tvPair.Variant),
+			})
+			numPrints++
+		}
+	}
 
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":  "constructing variants",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		var aliasesMatchingVariant model.ProjectAliases
@@ -902,6 +1029,98 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "Project",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": projectInfo.Project,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "ProjectRef",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": projectInfo.Ref,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "Version",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": v,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "TaskIDs",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": taskIds,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "TaskNames",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": taskNames,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "BuildVariantName",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": buildvariant.Name,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "ActivateBuild",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": utility.FromBoolPtr(v.Activated),
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "SourceRev",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": sourceRev,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "DefinitionID",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": metadata.TriggerDefinitionID,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "Aliases",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": aliases,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "DistroAliases",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": distroAliases,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "TaskCreateTime",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": v.CreateTime,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":      "GithubChecksAliases",
+			"ticket":       "DEVPROD-22453",
+			"runner":       RunnerName,
+			"revision":     v.Revision,
+			"creationInfo": aliasesMatchingVariant,
+		})
+
 		creationInfo := model.TaskCreationInfo{
 			Project:             projectInfo.Project,
 			ProjectRef:          projectInfo.Ref,
@@ -918,7 +1137,34 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			GithubChecksAliases: aliasesMatchingVariant,
 		}
 
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":  "creating build",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+		})
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":  "created build without data",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":  "created build inspecting length",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+			"tasks":    len(tasks),
+		})
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":  "created build",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+			"b":        b,
+			"tasks":    tasks,
+		})
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build",
@@ -931,8 +1177,22 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 		if len(tasks) == 0 {
 			debuggingData[buildvariant.Name] = "no tasks for buildvariant"
+			grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+				"message":  "no tasks",
+				"ticket":   "DEVPROD-22453",
+				"runner":   RunnerName,
+				"revision": v.Revision,
+				"b":        b,
+				"tasks":    tasks,
+			})
 			continue
 		}
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":  "creating buildsToCreate and tasksToCreate",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+		})
 		buildsToCreate = append(buildsToCreate, *b)
 		taskNameToId := map[string]string{}
 		for _, t := range tasks {
@@ -940,13 +1200,37 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			tasksToCreate = append(tasksToCreate, t)
 		}
 
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":  "ChangedFilesMatchPaths",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+		})
 		// Determine if this build variant should be ignored due to path filtering.
 		ignoreBuildVariant := !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
 
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
+		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+			"message":  "Considering batchtime",
+			"ticket":   "DEVPROD-22453",
+			"runner":   RunnerName,
+			"revision": v.Revision,
+		})
 		if evergreen.ShouldConsiderBatchtime(v.Requester) && !ignoreBuildVariant {
+			grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+				"message":  "Checking batchtime",
+				"ticket":   "DEVPROD-22453",
+				"runner":   RunnerName,
+				"revision": v.Revision,
+			})
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, v.CreateTime, time.Now())
+			grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+				"message":  "Finished checking batchtime",
+				"ticket":   "DEVPROD-22453",
+				"runner":   RunnerName,
+				"revision": v.Revision,
+			})
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
@@ -954,7 +1238,19 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
+				grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+					"message":  "Checking batchtime for task",
+					"ticket":   "DEVPROD-22453",
+					"runner":   RunnerName,
+					"revision": v.Revision,
+				})
 				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(ctx, &bvt, v.CreateTime, time.Now())
+				grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+					"message":  "Finished checking batchtime for task",
+					"ticket":   "DEVPROD-22453",
+					"runner":   RunnerName,
+					"revision": v.Revision,
+				})
 				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,
@@ -982,6 +1278,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			},
 		})
 	}
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":  "SetNumDependents",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	// We must set the NumDependents field for tasks prior to inserting them in the DB.
 	model.SetNumDependents(tasksToCreate)
 
@@ -1012,12 +1314,24 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	env := evergreen.GetEnvironment()
 
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":  "upserting PP",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	ppStorageMethod, err := model.ParserProjectUpsertOneWithS3Fallback(ctx, env.Settings(), evergreen.ProjectStorageMethodDB, projectInfo.IntermediateProject)
 	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 	}
 	v.ProjectStorageMethod = ppStorageMethod
 
+	grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
+		"message":  "defining transaction",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": v.Revision,
+	})
 	txFunc := func(sessCtx mongo.SessionContext) error {
 		err := sessCtx.StartTransaction()
 		if err != nil {
@@ -1108,6 +1422,12 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 	const minBackoffInterval = 1 * time.Second
 	const maxBackoffInterval = 60 * time.Second
 
+	grip.DebugWhen(strings.Contains(versionId, model.ShaToDebug), message.Fields{
+		"message":  "starting transaction",
+		"ticket":   "DEVPROD-22453",
+		"runner":   RunnerName,
+		"revision": versionId,
+	})
 	client := evergreen.GetEnvironment().Client()
 	errs := grip.NewBasicCatcher()
 	interval := backoff.Backoff{
@@ -1116,6 +1436,13 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 		Factor: 2,
 	}
 	for i := 0; i < retryCount; i++ {
+		grip.DebugWhen(strings.Contains(versionId, model.ShaToDebug), message.Fields{
+			"message":     "retrying transaction",
+			"ticket":      "DEVPROD-22453",
+			"runner":      RunnerName,
+			"revision":    versionId,
+			"retry_count": i,
+		})
 		err := client.UseSession(ctx, sessionFunc)
 		if err == nil {
 			return nil

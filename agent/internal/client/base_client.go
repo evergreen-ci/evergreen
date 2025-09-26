@@ -622,6 +622,26 @@ func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamPa
 	return nil
 }
 
+func (c *baseCommunicator) SelectTests(ctx context.Context, taskData TaskData, request restmodel.SelectTestsRequest) ([]string, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+	}
+	info.path = "select/tests"
+	resp, err := c.retryRequest(ctx, info, request)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "calling test selection API").Error())
+	}
+	defer resp.Body.Close()
+
+	var response restmodel.SelectTestsRequest
+	if err := utility.ReadJSON(resp.Body, &response); err != nil {
+		return nil, errors.Wrap(err, "reading test selection response")
+	}
+
+	return response.Tests, nil
+}
+
 func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData) (*manifest.Manifest, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
