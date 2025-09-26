@@ -881,12 +881,6 @@ func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Ve
 		} else if v.Requester == evergreen.GitTagRequester {
 			rev = fmt.Sprintf("%s_%s", sourceRev, v.TriggeredByGitTag.Tag)
 		}
-		grip.Debug(message.Fields{
-			"message":  "starting bv iteration",
-			"ticket":   "DEVPROD-22453",
-			"revision": v.Revision,
-			"bvTasks":  bv.Tasks,
-		})
 		for _, t := range bv.Tasks {
 			// omit tasks excluded from the version
 			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
@@ -899,12 +893,6 @@ func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Ve
 					}
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
-					grip.Debug(message.Fields{
-						"message":  "added ID",
-						"ticket":   "DEVPROD-22453",
-						"revision": v.Revision,
-						"id":       util.CleanName(taskId),
-					})
 				}
 			} else {
 				if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
@@ -913,12 +901,6 @@ func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Ve
 				// create a unique Id for each task
 				taskId := generateId(t.Name, projectIdentifier, &bv, rev, v)
 				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
-				grip.Debug(message.Fields{
-					"message":  "added ID",
-					"ticket":   "DEVPROD-22453",
-					"revision": v.Revision,
-					"id":       util.CleanName(taskId),
-				})
 			}
 
 		}

@@ -2576,7 +2576,7 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			dependencies := dependenciesForTaskUnit(testCase.taskUnits)
+			dependencies := dependenciesForTaskUnit(testCase.taskUnits, &Project{})
 			assert.Len(t, dependencies, len(testCase.expectedDependencies))
 			for _, expectedDep := range testCase.expectedDependencies {
 				assert.Contains(t, dependencies, expectedDep)
