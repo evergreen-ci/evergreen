@@ -1156,7 +1156,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"runner":   RunnerName,
 			"revision": v.Revision,
 			"tasks":    len(tasks),
-			"b":        len(b.Tasks),
 		})
 		grip.DebugWhen(v.Revision == model.ShaToDebug, message.Fields{
 			"message":  "created build",
