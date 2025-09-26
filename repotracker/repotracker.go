@@ -33,6 +33,9 @@ const (
 	DefaultMaxRepoRevisionsToSearch   = 50
 )
 
+const shaToDebug = "4460599de82c3f131f9f20db585846d8b188260d"
+const projectToDebug = "68a607d7b02fbf0007b810ba"
+
 // RepoTracker is used to manage polling repository changes and storing such
 // changes. It contains a number of interfaces that specify behavior required by
 // client implementations
@@ -248,7 +251,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 
-		grip.Debug(message.Fields{
+		grip.DebugWhen(ref.Id == projectToDebug, message.Fields{
 			"message":            "getting project config",
 			"ticket":             "DEVPROD-22453",
 			"runner":             RunnerName,
@@ -314,7 +317,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		var ignore bool
 		var filenames []string
 
-		grip.Debug(message.Fields{
+		grip.DebugWhen(ref.Id == projectToDebug, message.Fields{
 			"message":            "getting changed files",
 			"ticket":             "DEVPROD-22453",
 			"runner":             RunnerName,
@@ -348,7 +351,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			IntermediateProject: pInfo.IntermediateProject,
 			Config:              pInfo.Config,
 		}
-		grip.Debug(message.Fields{
+		grip.DebugWhen(ref.Id == projectToDebug, message.Fields{
 			"message":            "starting version creation",
 			"ticket":             "DEVPROD-22453",
 			"runner":             RunnerName,
@@ -358,7 +361,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		})
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
-			grip.Debug(message.Fields{
+			grip.DebugWhen(ref.Id == projectToDebug, message.Fields{
 				"message":            "finished1 version creation",
 				"ticket":             "DEVPROD-22453",
 				"runner":             RunnerName,
@@ -378,7 +381,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			// in a half-broken state.
 			continue
 		}
-		grip.Debug(message.Fields{
+		grip.DebugWhen(ref.Id == projectToDebug, message.Fields{
 			"message":            "finished2 version creation",
 			"ticket":             "DEVPROD-22453",
 			"runner":             RunnerName,
@@ -647,7 +650,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	grip.Debug(message.Fields{
+	grip.DebugWhen(metadata.Revision.Revision == shaToDebug, message.Fields{
 		"message":  "creating shell version",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -728,7 +731,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		}
 	}
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(metadata.Revision.Revision == shaToDebug, message.Fields{
 		"message":  "creating version items",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -898,7 +901,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				var match bool
 				name, tags, ok := projectInfo.Project.GetTaskNameAndTags(t)
 				if !ok {
-					grip.Debug(message.Fields{
+					grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 						"message": "task doesn't exist in project",
 						"project": projectInfo.Project.Identifier,
 						"task":    t,
@@ -941,21 +944,21 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}))
 	}
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":       "preparing NewTaskIdConfigForRepotrackerVersion",
 		"ticket":        "DEVPROD-22453",
 		"runner":        RunnerName,
 		"revision":      v.Revision,
 		"pairsToCreate": pairsToCreate,
 	})
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":  "preparing NewTaskIdConfigForRepotrackerVersion",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
 		"revision": v.Revision,
 		"v":        v,
 	})
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":             "preparing NewTaskIdConfigForRepotrackerVersion",
 		"ticket":              "DEVPROD-22453",
 		"runner":              RunnerName,
@@ -963,7 +966,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"projectInfo.Project": projectInfo.Project,
 	})
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":        "computed taskIds length",
 		"ticket":         "DEVPROD-22453",
 		"runner":         RunnerName,
@@ -971,7 +974,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"execIds":        len(taskIds.ExecutionTasks.GetIdsForAllTasks()),
 		"displayTaskIds": len(taskIds.DisplayTasks.GetIdsForAllTasks()),
 	})
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":            "computed taskIds",
 		"ticket":             "DEVPROD-22453",
 		"runner":             RunnerName,
@@ -979,7 +982,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		"execIdsFull":        taskIds.ExecutionTasks.GetIdsForAllTasks(),
 		"displayTaskIdsFull": taskIds.DisplayTasks.GetIdsForAllTasks(),
 	})
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":  "full taskIds",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -992,7 +995,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			if numPrints > 5 {
 				break
 			}
-			grip.Debug(message.Fields{
+			grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 				"message":  "individual taskIds",
 				"ticket":   "DEVPROD-22453",
 				"runner":   RunnerName,
@@ -1000,7 +1003,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"name":     name,
 				"tvPair":   tvPair,
 			})
-			grip.Debug(message.Fields{
+			grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 				"message":   "individual taskIds length",
 				"ticket":    "DEVPROD-22453",
 				"runner":    RunnerName,
@@ -1012,7 +1015,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 	}
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":  "constructing variants",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -1029,91 +1032,91 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "Project",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": projectInfo.Project,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "ProjectRef",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": projectInfo.Ref,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "Version",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": v,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "TaskIDs",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": taskIds,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "TaskNames",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": taskNames,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "BuildVariantName",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": buildvariant.Name,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "ActivateBuild",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": utility.FromBoolPtr(v.Activated),
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "SourceRev",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": sourceRev,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "DefinitionID",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": metadata.TriggerDefinitionID,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "Aliases",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": aliases,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "DistroAliases",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": distroAliases,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "TaskCreateTime",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
 			"revision":     v.Revision,
 			"creationInfo": v.CreateTime,
 		})
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":      "GithubChecksAliases",
 			"ticket":       "DEVPROD-22453",
 			"runner":       RunnerName,
@@ -1137,14 +1140,14 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			GithubChecksAliases: aliasesMatchingVariant,
 		}
 
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":  "creating build",
 			"ticket":   "DEVPROD-22453",
 			"runner":   RunnerName,
 			"revision": v.Revision,
 		})
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)
-		grip.Debug(message.Fields{
+		grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 			"message":  "created build",
 			"ticket":   "DEVPROD-22453",
 			"runner":   RunnerName,
@@ -1164,7 +1167,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 		if len(tasks) == 0 {
 			debuggingData[buildvariant.Name] = "no tasks for buildvariant"
-			grip.Debug(message.Fields{
+			grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 				"message":  "no tasks",
 				"ticket":   "DEVPROD-22453",
 				"runner":   RunnerName,
@@ -1223,7 +1226,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			},
 		})
 	}
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":  "SetNumDependents",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -1259,7 +1262,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	env := evergreen.GetEnvironment()
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":  "upserting PP",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -1271,7 +1274,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}
 	v.ProjectStorageMethod = ppStorageMethod
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(v.Revision == shaToDebug, message.Fields{
 		"message":  "defining transaction",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -1367,7 +1370,7 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 	const minBackoffInterval = 1 * time.Second
 	const maxBackoffInterval = 60 * time.Second
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(strings.Contains(versionId, shaToDebug), message.Fields{
 		"message":  "starting transaction",
 		"ticket":   "DEVPROD-22453",
 		"runner":   RunnerName,
@@ -1381,7 +1384,7 @@ func transactionWithRetries(ctx context.Context, versionId string, sessionFunc f
 		Factor: 2,
 	}
 	for i := 0; i < retryCount; i++ {
-		grip.Debug(message.Fields{
+		grip.DebugWhen(strings.Contains(versionId, shaToDebug), message.Fields{
 			"message":     "retrying transaction",
 			"ticket":      "DEVPROD-22453",
 			"runner":      RunnerName,
