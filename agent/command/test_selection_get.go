@@ -40,6 +40,9 @@ type testSelectionGet struct {
 	// The default is 1 (i.e. always request test selection).
 	UsageRate string `mapstructure:"usage_rate" plugin:"expand"`
 
+	// rate is the parsed float value of UsageRate.
+	rate float64
+
 	// Strategies is an optional comma-separated string that specifies
 	// a comma-separated list of strategy names to use.
 	Strategies string `mapstructure:"strategies" plugin:"expand"`
@@ -65,6 +68,7 @@ func (c *testSelectionGet) validate() error {
 		rate, err := strconv.ParseFloat(c.UsageRate, 64)
 		catcher.Add(err)
 		catcher.NewWhen(rate < 0 || rate > 1, "usage rate must be between 0 and 1")
+		c.rate = rate
 	}
 	return catcher.Resolve()
 }
@@ -91,13 +95,9 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 
 	// No-op based on usage rate. Use the task's random seed so that it's
 	// consistent across multiple runs of the same task.
-	if c.UsageRate != "" {
-		rate, err := strconv.ParseFloat(c.UsageRate, 64)
-		if err != nil {
-			return errors.Wrap(err, "parsing usage rate")
-		}
+	if c.rate != 0 {
 		rng := rand.New(rand.NewSource(int64(conf.Task.Id[0])))
-		if rng.Float64() < rate {
+		if rng.Float64() < c.rate {
 			logger.Execution().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
 			return c.writeTestList([]string{})
 		}

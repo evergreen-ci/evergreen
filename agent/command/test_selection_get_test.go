@@ -70,6 +70,7 @@ func TestParseSucceedsWithValidParams(t *testing.T) {
 	assert.Equal(t, "test.json", cmd.OutputFile)
 	assert.Equal(t, []string{"test1", "test2"}, cmd.Tests)
 	assert.Equal(t, "0.5", cmd.UsageRate)
+	assert.Equal(t, 0.5, cmd.rate)
 	assert.Equal(t, "strategy1,strategy2,strategy3", cmd.Strategies)
 }
 
