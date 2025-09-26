@@ -72,8 +72,8 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 	defer utility.PutHTTPClient(httpClient)
 	c := newTestSelectionClient(httpClient)
 
-	_, resp, err := c.StateTransitionAPI.MarkTestsRandomByDesignApiTestSelectionTransitionTestsProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
-		IsRandom(isQuarantined).
+	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedApiTestSelectionTransitionTestsProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
+		IsManuallyQuarantined(isQuarantined).
 		RequestBody([]string{testName}).
 		Execute()
 	if resp != nil {
