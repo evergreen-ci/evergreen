@@ -29,6 +29,9 @@ const (
 	AllStatuses     = "*"
 )
 
+const ShaToDebug = "4460599de82c3f131f9f20db585846d8b188260d"
+const ProjectToDebug = "68a607d7b02fbf0007b810ba"
+
 type RestartOptions struct {
 	DryRun    bool      `bson:"dry_run" json:"dry_run"`
 	StartTime time.Time `bson:"start_time" json:"start_time"`
@@ -645,7 +648,7 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 	// create all the necessary tasks for the build
 	creationInfo.BuildVariant = buildVariant
 	creationInfo.Build = b
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":  "starting createTasksForBuild",
 		"ticket":   "DEVPROD-22453",
 		"runner":   "repotracker",
@@ -655,7 +658,7 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", b.Id)
 	}
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":       "finished createTasksForBuild",
 		"ticket":        "DEVPROD-22453",
 		"runner":        "repotracker",
@@ -682,13 +685,27 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 		}
 		tasks = append(tasks, *taskP)
 	}
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":  "starting CreateTasksCache",
 		"ticket":   "DEVPROD-22453",
 		"runner":   "repotracker",
 		"revision": creationInfo.Version.Revision,
 	})
 	b.Tasks = CreateTasksCache(tasks)
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
+		"message":       "finished CreateTasksCache",
+		"ticket":        "DEVPROD-22453",
+		"runner":        "repotracker",
+		"revision":      creationInfo.Version.Revision,
+		"tasks":         len(b.Tasks),
+		"tasksForBuild": len(tasksForBuild),
+	})
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
+		"message":  "finished CreateTasksCache",
+		"ticket":   "DEVPROD-22453",
+		"runner":   "repotracker",
+		"revision": creationInfo.Version.Revision,
+	})
 	b.Activated = containsActivatedTask
 	b.HasUnfinishedEssentialTask = hasUnfinishedEssentialTask
 	return b, tasksForBuild, nil
@@ -728,7 +745,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		tgMap[tg.Name] = tg
 	}
 
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":      "starting iterating through tasks in createTasksForBuild",
 		"ticket":       "DEVPROD-22453",
 		"runner":       "repotracker",
@@ -736,7 +753,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		"execTable":    execTable,
 		"displayTable": displayTable,
 	})
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":  "starting iterating through tasks in createTasksForBuild without taskIDs",
 		"ticket":   "DEVPROD-22453",
 		"runner":   "repotracker",
@@ -787,7 +804,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 	// create all the actual tasks
 	taskMap := make(map[string]*task.Task)
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":  "constructing tasks in createTasksForBuild",
 		"ticket":   "DEVPROD-22453",
 		"runner":   "repotracker",
@@ -816,7 +833,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	// Create and update display tasks
 	tasks := task.Tasks{}
 	loggedExecutionTaskNotFound := false
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":  "constructing display tasks in createTasksForBuild",
 		"ticket":   "DEVPROD-22453",
 		"runner":   "repotracker",
@@ -895,7 +912,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			tasks = append(tasks, newDisplayTask)
 		}
 	}
-	grip.Debug(message.Fields{
+	grip.DebugWhen(creationInfo.Version.Revision == ShaToDebug, message.Fields{
 		"message":  "addSingleHostTaskGroupDependencies in createTasksForBuild",
 		"ticket":   "DEVPROD-22453",
 		"runner":   "repotracker",
