@@ -85,6 +85,7 @@ type APIAdminSettings struct {
 	LoggerConfig            *APILoggerConfig              `json:"logger_config,omitempty"`
 	LogPath                 *string                       `json:"log_path,omitempty"`
 	Notify                  *APINotifyConfig              `json:"notify,omitempty"`
+	OldestAllowedCLIVersion *string                       `json:"oldest_allowed_cli_version"`
 	Overrides               *APIOverridesConfig           `json:"overrides,omitempty"`
 	ParameterStore          *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
 	PerfMonitoringURL       *string                       `json:"perf_monitoring_url"`
@@ -155,6 +156,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.BannerTheme = &tmp
 		as.ConfigDir = &v.ConfigDir
 		as.DomainName = utility.ToStringPtr(v.DomainName)
+		as.OldestAllowedCLIVersion = utility.ToStringPtr(v.OldestAllowedCLIVersion)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
 		as.PerfMonitoringURL = &v.PerfMonitoringURL
@@ -262,6 +264,7 @@ func (as *APIAdminSettings) ToService() (any, error) {
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
+	settings.OldestAllowedCLIVersion = utility.FromStringPtr(as.OldestAllowedCLIVersion)
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
 	}

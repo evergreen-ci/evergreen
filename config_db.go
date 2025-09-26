@@ -45,6 +45,7 @@ var (
 	pluginsNewKey              = bsonutil.MustHaveTag(Settings{}, "PluginsNew")
 	loggerConfigKey            = bsonutil.MustHaveTag(Settings{}, "LoggerConfig")
 	logPathKey                 = bsonutil.MustHaveTag(Settings{}, "LogPath")
+	oldestAllowedCLIVersionKey = bsonutil.MustHaveTag(Settings{}, "OldestAllowedCLIVersion")
 	pprofPortKey               = bsonutil.MustHaveTag(Settings{}, "PprofPort")
 	perfMonitoringURLKey       = bsonutil.MustHaveTag(Settings{}, "PerfMonitoringURL")
 	perfMonitoringKanopyURLKey = bsonutil.MustHaveTag(Settings{}, "PerfMonitoringKanopyURL")

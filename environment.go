@@ -275,7 +275,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
-	catcher.Add(e.initClientConfig(ctx, versionID, clientS3Bucket, tracer))
+	catcher.Add(e.initClientConfig(ctx, versionID, clientS3Bucket, e.settings.OldestAllowedCLIVersion, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
 	catcher.Add(e.createRemoteQueues(ctx, tracer))
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
@@ -788,11 +788,11 @@ func (e *envState) initQueues(ctx context.Context, tracer trace.Tracer) []error 
 // If versionID is non-empty the ClientConfig will contain links to
 // the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func (e *envState) initClientConfig(ctx context.Context, versionID, clientS3Bucket string, tracer trace.Tracer) error {
+func (e *envState) initClientConfig(ctx context.Context, versionID, clientS3Bucket, oldestAllowedCLIVersion string, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitClientConfig")
 	defer span.End()
 
-	e.clientConfig = &ClientConfig{LatestRevision: ClientVersion}
+	e.clientConfig = &ClientConfig{LatestRevision: ClientVersion, OldestAllowedCLIVersion: oldestAllowedCLIVersion}
 
 	if versionID != "" && clientS3Bucket != "" {
 		prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)

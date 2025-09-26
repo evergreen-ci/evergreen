@@ -22,9 +22,10 @@ type ClientBinary struct {
 }
 
 type ClientConfig struct {
-	ClientBinaries []ClientBinary
-	LatestRevision string
-	S3URLPrefix    string
+	ClientBinaries          []ClientBinary
+	LatestRevision          string
+	S3URLPrefix             string
+	OldestAllowedCLIVersion string
 }
 
 func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix string) {

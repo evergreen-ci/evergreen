@@ -32,7 +32,7 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-09-08"
+	ClientVersion = "2025-09-23"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
@@ -93,6 +93,7 @@ type Settings struct {
 	LoggerConfig            LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath                 string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	Notify                  NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	OldestAllowedCLIVersion string                    `yaml:"oldest_allowed_cli_version" bson:"oldest_allowed_cli_version" json:"oldest_allowed_cli_version"`
 	Overrides               OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
 	ParameterStore          ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
 	PerfMonitoringURL       string                    `yaml:"perf_monitoring_url" bson:"perf_monitoring_url" json:"perf_monitoring_url"`
@@ -146,6 +147,7 @@ func (c *Settings) Set(ctx context.Context) error {
 			disabledGQLQueriesKey:      c.DisabledGQLQueries,
 			kanopySSHKeyPathKey:        c.KanopySSHKeyPath,
 			logPathKey:                 c.LogPath,
+			oldestAllowedCLIVersionKey: c.OldestAllowedCLIVersion,
 			perfMonitoringURLKey:       c.PerfMonitoringURL,
 			perfMonitoringKanopyURLKey: c.PerfMonitoringKanopyURL,
 			pprofPortKey:               c.PprofPort,
