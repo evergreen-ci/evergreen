@@ -2427,6 +2427,7 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		expectedDependencies []task.DependencyEdge
 		taskUnits            []BuildVariantTaskUnit
+		project              *Project
 	}{
 		"WithExplicitVariants": {
 			taskUnits: []BuildVariantTaskUnit{
@@ -2574,9 +2575,117 @@ func TestDependenciesForTaskUnit(t *testing.T) {
 				{Status: task.AllStatuses, From: task.TaskNode{Name: "compile", Variant: "ubuntu"}, To: task.TaskNode{Name: "setup", Variant: "ubuntu"}},
 			},
 		},
+		"WithSingleHostTaskGroup": {
+			taskUnits: []BuildVariantTaskUnit{
+				{
+					Name:      "task1",
+					Variant:   "ubuntu",
+					GroupName: "my_task_group",
+				},
+				{
+					Name:      "task2",
+					Variant:   "ubuntu",
+					GroupName: "my_task_group",
+				},
+				{
+					Name:      "task3",
+					Variant:   "ubuntu",
+					GroupName: "my_task_group",
+				},
+			},
+			project: &Project{
+				TaskGroups: []TaskGroup{
+					{
+						Name:     "my_task_group",
+						MaxHosts: 1,
+						Tasks:    []string{"task1", "task2", "task3"},
+					},
+				},
+			},
+			expectedDependencies: []task.DependencyEdge{
+				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
+				{From: task.TaskNode{Name: "task3", Variant: "ubuntu"}, To: task.TaskNode{Name: "task2", Variant: "ubuntu"}},
+			},
+		},
+		"WithMultiHostTaskGroup": {
+			taskUnits: []BuildVariantTaskUnit{
+				{
+					Name:      "task1",
+					Variant:   "ubuntu",
+					GroupName: "my_task_group",
+				},
+				{
+					Name:      "task2",
+					Variant:   "ubuntu",
+					GroupName: "my_task_group",
+				},
+			},
+			project: &Project{
+				TaskGroups: []TaskGroup{
+					{
+						Name:     "my_task_group",
+						MaxHosts: 5,
+						Tasks:    []string{"task1", "task2"},
+					},
+				},
+			},
+			expectedDependencies: []task.DependencyEdge{},
+		},
+		"WithTaskGroupNotFound": {
+			taskUnits: []BuildVariantTaskUnit{
+				{
+					Name:      "task1",
+					Variant:   "ubuntu",
+					GroupName: "nonexistent_group",
+				},
+			},
+			project:              &Project{},
+			expectedDependencies: []task.DependencyEdge{},
+		},
+		"WithSingleHostTaskGroupAndExistingDependencies": {
+			taskUnits: []BuildVariantTaskUnit{
+				{
+					Name:      "task2",
+					Variant:   "ubuntu",
+					GroupName: "my_task_group",
+					DependsOn: []TaskUnitDependency{
+						{
+							Name:    "external_task",
+							Variant: "ubuntu",
+						},
+					},
+				},
+				{
+					Name:    "external_task",
+					Variant: "ubuntu",
+				},
+				{
+					Name:      "task1",
+					Variant:   "ubuntu",
+					GroupName: "my_task_group",
+				},
+			},
+			project: &Project{
+				TaskGroups: []TaskGroup{
+					{
+						Name:     "my_task_group",
+						MaxHosts: 1,
+						Tasks:    []string{"task1", "task2"},
+					},
+				},
+			},
+			expectedDependencies: []task.DependencyEdge{
+				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "task1", Variant: "ubuntu"}},
+				{From: task.TaskNode{Name: "task2", Variant: "ubuntu"}, To: task.TaskNode{Name: "external_task", Variant: "ubuntu"}},
+			},
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			dependencies := dependenciesForTaskUnit(testCase.taskUnits, &Project{})
+			project := testCase.project
+			if project == nil {
+				project = &Project{}
+			}
+			dependencies := dependenciesForTaskUnit(testCase.taskUnits, project)
 			assert.Len(t, dependencies, len(testCase.expectedDependencies))
 			for _, expectedDep := range testCase.expectedDependencies {
 				assert.Contains(t, dependencies, expectedDep)
