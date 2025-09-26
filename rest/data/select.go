@@ -64,20 +64,3 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	}
 	return selectedTests, nil
 }
-
-// SetTestQuarantined marks the test as quarantined or unquarantined in the test
-// selection service.
-func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testName string, isQuarantined bool) error {
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-	c := newTestSelectionClient(httpClient)
-
-	_, resp, err := c.StateTransitionAPI.MarkTestsRandomByDesignApiTestSelectionTransitionTestsProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
-		IsRandom(isQuarantined).
-		RequestBody([]string{testName}).
-		Execute()
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	return errors.Wrap(err, "forwarding request to test selection service")
-}
