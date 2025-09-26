@@ -2,7 +2,9 @@ package command
 
 import (
 	"context"
+	"math/rand"
 	"path/filepath"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -13,11 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-// // TestSelectionOutput represents the output JSON structure
-// type TestSelectionOutput struct {
-// 	Tests []map[string]string `json:"tests"`
-// }
 
 type TestOutput struct {
 	Name string `json:"name"`
@@ -36,6 +33,20 @@ type testSelectionGet struct {
 	// Optional.
 	Tests []string `mapstructure:"tests" plugin:"expand"`
 
+	// UsageRate is an optional string that specifies a proportion
+	// between 0 and 1 of how often to actually use test selection.
+	// For example, if usage_rate is 0.4, it'll actually request a list of
+	// recommended tests 40% of the time; otherwise, it'll be a no-op.
+	// The default is 1 (i.e. always request test selection).
+	UsageRate string `mapstructure:"usage_rate" plugin:"expand"`
+
+	// rate is the parsed float value of UsageRate.
+	rate float64
+
+	// Strategies is an optional comma-separated string that specifies
+	// a comma-separated list of strategy names to use.
+	Strategies string `mapstructure:"strategies" plugin:"expand"`
+
 	base
 }
 
@@ -53,7 +64,12 @@ func (c *testSelectionGet) ParseParams(params map[string]any) error {
 func (c *testSelectionGet) validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(c.OutputFile == "", "must specify output file")
-
+	if c.UsageRate != "" {
+		rate, err := strconv.ParseFloat(c.UsageRate, 64)
+		catcher.Add(err)
+		catcher.NewWhen(rate < 0 || rate > 1, "usage rate must be between 0 and 1")
+		c.rate = rate
+	}
 	return catcher.Resolve()
 }
 
@@ -75,6 +91,18 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if !c.isTestSelectionAllowed(conf) {
 		logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
 		return c.writeTestList([]string{})
+	}
+
+	// No-op based on usage rate. Use the task's random seed so that it's
+	// consistent across multiple runs of the same task.
+	if c.rate != 0 {
+		rng := rand.New(rand.NewSource(int64(conf.Task.Id[0])))
+		// Random float in [0.0, 1.0) will always have a
+		// usage_rate percentage chance of no-oping.
+		if rng.Float64() < c.rate {
+			logger.Execution().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
+			return c.writeTestList([]string{})
+		}
 	}
 
 	// Build the request using task information from TaskConfig.
