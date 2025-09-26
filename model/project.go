@@ -2114,8 +2114,7 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 	for _, t := range tasks {
 		g.AddTaskNode(t.toTaskNode())
 	}
-
-	for _, dependencyEdge := range dependenciesForTaskUnit(tasks) {
+	for _, dependencyEdge := range dependenciesForTaskUnit(tasks, p) {
 		g.AddEdge(dependencyEdge.From, dependencyEdge.To, dependencyEdge.Status)
 	}
 
@@ -2124,9 +2123,22 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 }
 
 // dependenciesForTaskUnit returns a slice of dependencies between tasks in the project.
-func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.DependencyEdge {
+func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []task.DependencyEdge {
 	var dependencies []task.DependencyEdge
 	for _, dependentTask := range taskUnits {
+		if dependentTask.GroupName != "" {
+			tg := p.FindTaskGroup(dependentTask.GroupName)
+			if tg == nil || tg.MaxHosts > 1 {
+				continue
+			}
+			for i := len(tg.Tasks) - 1; i >= 0; i-- {
+				// Check the task display names since no display name will appear twice
+				// within the same task group
+				if dependentTask.Name == tg.Tasks[i] && i < len(tg.Tasks)-1 {
+					dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i+1], Variant: dependentTask.Variant})
+				}
+			}
+		}
 		for _, dep := range dependentTask.DependsOn {
 			// Use the current variant if none is specified.
 			if dep.Variant == "" {
