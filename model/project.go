@@ -881,12 +881,6 @@ func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Ve
 		} else if v.Requester == evergreen.GitTagRequester {
 			rev = fmt.Sprintf("%s_%s", sourceRev, v.TriggeredByGitTag.Tag)
 		}
-		grip.Debug(message.Fields{
-			"message":  "starting bv iteration",
-			"ticket":   "DEVPROD-22453",
-			"revision": v.Revision,
-			"bvTasks":  bv.Tasks,
-		})
 		for _, t := range bv.Tasks {
 			// omit tasks excluded from the version
 			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
@@ -899,12 +893,6 @@ func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Ve
 					}
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
-					grip.Debug(message.Fields{
-						"message":  "added ID",
-						"ticket":   "DEVPROD-22453",
-						"revision": v.Revision,
-						"id":       util.CleanName(taskId),
-					})
 				}
 			} else {
 				if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
@@ -913,12 +901,6 @@ func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Ve
 				// create a unique Id for each task
 				taskId := generateId(t.Name, projectIdentifier, &bv, rev, v)
 				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
-				grip.Debug(message.Fields{
-					"message":  "added ID",
-					"ticket":   "DEVPROD-22453",
-					"revision": v.Revision,
-					"id":       util.CleanName(taskId),
-				})
 			}
 
 		}
@@ -2114,8 +2096,7 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 	for _, t := range tasks {
 		g.AddTaskNode(t.toTaskNode())
 	}
-
-	for _, dependencyEdge := range dependenciesForTaskUnit(tasks) {
+	for _, dependencyEdge := range dependenciesForTaskUnit(tasks, p) {
 		g.AddEdge(dependencyEdge.From, dependencyEdge.To, dependencyEdge.Status)
 	}
 
@@ -2124,9 +2105,24 @@ func (p *Project) DependencyGraph() task.DependencyGraph {
 }
 
 // dependenciesForTaskUnit returns a slice of dependencies between tasks in the project.
-func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.DependencyEdge {
+func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []task.DependencyEdge {
 	var dependencies []task.DependencyEdge
 	for _, dependentTask := range taskUnits {
+		if dependentTask.GroupName != "" {
+			tg := p.FindTaskGroup(dependentTask.GroupName)
+			if tg == nil || tg.MaxHosts > 1 {
+				continue
+			}
+			// Single host task groups are a special case of dependencies because they implicitly form a linear
+			// dependency chain on the prior task group tasks
+			for i := len(tg.Tasks) - 1; i >= 0; i-- {
+				// Check the task display names since no display name will appear twice
+				// within the same task group
+				if dependentTask.Name == tg.Tasks[i] && i > 0 {
+					dependentTask.DependsOn = append(dependentTask.DependsOn, TaskUnitDependency{Name: tg.Tasks[i-1], Variant: dependentTask.Variant})
+				}
+			}
+		}
 		for _, dep := range dependentTask.DependsOn {
 			// Use the current variant if none is specified.
 			if dep.Variant == "" {
