@@ -615,6 +615,19 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 		}
 	}
 
+	for _, bv := range patchDoc.RegexTestSelectionBuildVariants {
+		_, err := regexp.Compile(bv)
+		if err != nil {
+			return errors.Wrapf(err, "compiling test selection buildvariant regex '%s'", bv)
+		}
+	}
+	for _, t := range patchDoc.RegexTestSelectionTasks {
+		_, err := regexp.Compile(t)
+		if err != nil {
+			return errors.Wrapf(err, "compiling test selection task regex '%s'", t)
+		}
+	}
+
 	if len(patchDoc.VariantsTasks) == 0 {
 		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
 	}

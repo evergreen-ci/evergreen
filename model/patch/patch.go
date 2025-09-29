@@ -119,25 +119,30 @@ type LocalModuleInclude struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id                 mgobson.ObjectId `bson:"_id,omitempty"`
-	Description        string           `bson:"desc"`
-	Path               string           `bson:"path,omitempty"`
-	Githash            string           `bson:"githash"`
-	Hidden             bool             `bson:"hidden"`
-	PatchNumber        int              `bson:"patch_number"`
-	Author             string           `bson:"author"`
-	Version            string           `bson:"version"`
-	Status             string           `bson:"status"`
-	CreateTime         time.Time        `bson:"create_time"`
-	StartTime          time.Time        `bson:"start_time"`
-	FinishTime         time.Time        `bson:"finish_time"`
-	BuildVariants      []string         `bson:"build_variants"`
-	RegexBuildVariants []string         `bson:"regex_build_variants"`
-	Tasks              []string         `bson:"tasks"`
-	RegexTasks         []string         `bson:"regex_tasks"`
-	VariantsTasks      []VariantTasks   `bson:"variants_tasks"`
-	Patches            []ModulePatch    `bson:"patches"`
-	Parameters         []Parameter      `bson:"parameters,omitempty"`
+	Id                              mgobson.ObjectId `bson:"_id,omitempty"`
+	Description                     string           `bson:"desc"`
+	Path                            string           `bson:"path,omitempty"`
+	Githash                         string           `bson:"githash"`
+	Hidden                          bool             `bson:"hidden"`
+	PatchNumber                     int              `bson:"patch_number"`
+	Author                          string           `bson:"author"`
+	Version                         string           `bson:"version"`
+	Status                          string           `bson:"status"`
+	CreateTime                      time.Time        `bson:"create_time"`
+	StartTime                       time.Time        `bson:"start_time"`
+	FinishTime                      time.Time        `bson:"finish_time"`
+	BuildVariants                   []string         `bson:"build_variants"`
+	TestSelectionBuildVariants      []string         `bson:"test_selection_build_variants"`
+	RegexBuildVariants              []string         `bson:"regex_build_variants"`
+	RegexTestSelectionBuildVariants []string         `bson:"regex_test_selection_build_variants"`
+	Tasks                           []string         `bson:"tasks"`
+	TestSelectionTasks              []string         `bson:"test_selection_tasks"`
+	RegexTasks                      []string         `bson:"regex_tasks"`
+	RegexTestSelectionTasks         []string         `bson:"regex_test_selection_tasks"`
+	VariantsTasks                   []VariantTasks   `bson:"variants_tasks"`
+	TestSelectionVariantsTasks      []VariantTasks   `bson:"test_selection_variants_tasks"`
+	Patches                         []ModulePatch    `bson:"patches"`
+	Parameters                      []Parameter      `bson:"parameters,omitempty"`
 	// Activated indicates whether or not the patch is finalized (i.e.
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.

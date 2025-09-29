@@ -41,6 +41,13 @@ type cliIntent struct {
 	// RegexTasks is a list of regular expressions to match tasks associated with the patch.
 	RegexTasks []string `bson:"regex_tasks,omitempty"`
 
+	// RegexTestSelectionVariants is a list of regular expressions to match
+	// build variants that should use test selection.
+	RegexTestSelectionBuildVariants []string `bson:"regex_test_selection_build_variants,omitempty"`
+	// RegexTestSelectionTasks is a list of regular expressions to match tasks
+	// that should use test selection.
+	RegexTestSelectionTasks []string `bson:"regex_test_selection_tasks,omitempty"`
+
 	// Parameters is a list of parameters to use with the task.
 	Parameters []Parameter `bson:"parameters,omitempty"`
 
@@ -173,22 +180,24 @@ func (g *cliIntent) GetCalledBy() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{
-		Description:         c.Description,
-		Author:              c.User,
-		Project:             c.ProjectID,
-		Githash:             c.BaseHash,
-		Path:                c.Path,
-		Status:              evergreen.VersionCreated,
-		BuildVariants:       c.BuildVariants,
-		RegexBuildVariants:  c.RegexBuildVariants,
-		Parameters:          c.Parameters,
-		Alias:               c.Alias,
-		Triggers:            TriggerInfo{Aliases: c.TriggerAliases},
-		Tasks:               c.Tasks,
-		RegexTasks:          c.RegexTasks,
-		Patches:             []ModulePatch{},
-		GitInfo:             c.GitInfo,
-		LocalModuleIncludes: c.LocalModuleIncludes,
+		Description:                     c.Description,
+		Author:                          c.User,
+		Project:                         c.ProjectID,
+		Githash:                         c.BaseHash,
+		Path:                            c.Path,
+		Status:                          evergreen.VersionCreated,
+		BuildVariants:                   c.BuildVariants,
+		RegexBuildVariants:              c.RegexBuildVariants,
+		RegexTestSelectionBuildVariants: c.RegexTestSelectionBuildVariants,
+		Parameters:                      c.Parameters,
+		Alias:                           c.Alias,
+		Triggers:                        TriggerInfo{Aliases: c.TriggerAliases},
+		Tasks:                           c.Tasks,
+		RegexTasks:                      c.RegexTasks,
+		RegexTestSelectionTasks:         c.RegexTestSelectionTasks,
+		Patches:                         []ModulePatch{},
+		GitInfo:                         c.GitInfo,
+		LocalModuleIncludes:             c.LocalModuleIncludes,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -204,26 +213,28 @@ func (c *cliIntent) NewPatch() *Patch {
 }
 
 type CLIIntentParams struct {
-	User                string
-	Path                string
-	Project             string
-	BaseGitHash         string
-	Module              string
-	PatchContent        string
-	Description         string
-	Finalize            bool
-	GitInfo             *GitMetadata
-	Parameters          []Parameter
-	Variants            []string
-	Tasks               []string
-	RegexVariants       []string
-	RegexTasks          []string
-	Alias               string
-	TriggerAliases      []string
-	RepeatDefinition    bool
-	RepeatFailed        bool
-	RepeatPatchId       string
-	LocalModuleIncludes []LocalModuleInclude
+	User                       string
+	Path                       string
+	Project                    string
+	BaseGitHash                string
+	Module                     string
+	PatchContent               string
+	Description                string
+	Finalize                   bool
+	GitInfo                    *GitMetadata
+	Parameters                 []Parameter
+	Variants                   []string
+	Tasks                      []string
+	RegexVariants              []string
+	RegexTasks                 []string
+	RegexTestSelectionVariants []string
+	RegexTestSelectionTasks    []string
+	Alias                      string
+	TriggerAliases             []string
+	RepeatDefinition           bool
+	RepeatFailed               bool
+	RepeatPatchId              string
+	LocalModuleIncludes        []LocalModuleInclude
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -249,28 +260,30 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 
 	return &cliIntent{
-		DocumentID:          mgobson.NewObjectId().Hex(),
-		IntentType:          CliIntentType,
-		PatchContent:        params.PatchContent,
-		Path:                params.Path,
-		Description:         params.Description,
-		BuildVariants:       params.Variants,
-		Tasks:               params.Tasks,
-		RegexBuildVariants:  params.RegexVariants,
-		RegexTasks:          params.RegexTasks,
-		Parameters:          params.Parameters,
-		User:                params.User,
-		ProjectID:           params.Project,
-		BaseHash:            params.BaseGitHash,
-		Finalize:            params.Finalize,
-		Module:              params.Module,
-		Alias:               params.Alias,
-		TriggerAliases:      params.TriggerAliases,
-		GitInfo:             params.GitInfo,
-		RepeatDefinition:    params.RepeatDefinition,
-		RepeatFailed:        params.RepeatFailed,
-		RepeatPatchId:       params.RepeatPatchId,
-		LocalModuleIncludes: params.LocalModuleIncludes,
+		DocumentID:                      mgobson.NewObjectId().Hex(),
+		IntentType:                      CliIntentType,
+		PatchContent:                    params.PatchContent,
+		Path:                            params.Path,
+		Description:                     params.Description,
+		BuildVariants:                   params.Variants,
+		Tasks:                           params.Tasks,
+		RegexBuildVariants:              params.RegexVariants,
+		RegexTasks:                      params.RegexTasks,
+		RegexTestSelectionBuildVariants: params.RegexTestSelectionVariants,
+		RegexTestSelectionTasks:         params.RegexTestSelectionTasks,
+		Parameters:                      params.Parameters,
+		User:                            params.User,
+		ProjectID:                       params.Project,
+		BaseHash:                        params.BaseGitHash,
+		Finalize:                        params.Finalize,
+		Module:                          params.Module,
+		Alias:                           params.Alias,
+		TriggerAliases:                  params.TriggerAliases,
+		GitInfo:                         params.GitInfo,
+		RepeatDefinition:                params.RepeatDefinition,
+		RepeatFailed:                    params.RepeatFailed,
+		RepeatPatchId:                   params.RepeatPatchId,
+		LocalModuleIncludes:             params.LocalModuleIncludes,
 	}, nil
 }
 

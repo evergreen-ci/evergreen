@@ -1036,6 +1036,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 	}
 
 	// Build variant and tasks override regex.
+	// kim: TODO: add test for test selection BVs/tasks
 	patchDoc = patch.Patch{
 		BuildVariants:      []string{"all"},
 		Tasks:              []string{"all"},
@@ -1049,6 +1050,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 	s.Len(variantTasks, 2)
 
 	// Regex build variants and tasks.
+	// kim: TODO: add test for test selection BVs/tasks
 	patchDoc = patch.Patch{
 		RegexBuildVariants: []string{".*"},
 		RegexTasks:         []string{"_1$"},
@@ -1115,6 +1117,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 	}
 
 	// Alias adds on to the selected regex tasks.
+	// kim: TODO: add test for test selection BVs/tasks
 	patchDoc = patch.Patch{
 		RegexBuildVariants: []string{".*"},
 		RegexTasks:         []string{"_1$"},
