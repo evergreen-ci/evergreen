@@ -65,30 +65,32 @@ type patchParams struct {
 	Alias   string
 	// isUsingLocalAlias indicates that the user-specified alias matches a local
 	// alias.
-	isUsingLocalAlias   bool
-	Variants            []string
-	Tasks               []string
-	RegexVariants       []string
-	RegexTasks          []string
-	Description         string
-	SkipConfirm         bool
-	Finalize            bool
-	Browse              bool
-	Large               bool
-	ShowSummary         bool
-	AutoDescription     bool
-	Uncommitted         bool
-	PreserveCommits     bool
-	Ref                 string
-	TriggerAliases      []string
-	Parameters          []patch.Parameter
-	RepeatDefinition    bool
-	RepeatFailed        bool
-	RepeatPatchId       string
-	GithubAuthor        string
-	PatchAuthor         string
-	IncludeModules      bool
-	LocalModuleIncludes []patch.LocalModuleInclude
+	isUsingLocalAlias          bool
+	Variants                   []string
+	Tasks                      []string
+	RegexVariants              []string
+	RegexTasks                 []string
+	RegexTestSelectionVariants []string
+	RegexTestSelectionTasks    []string
+	Description                string
+	SkipConfirm                bool
+	Finalize                   bool
+	Browse                     bool
+	Large                      bool
+	ShowSummary                bool
+	AutoDescription            bool
+	Uncommitted                bool
+	PreserveCommits            bool
+	Ref                        string
+	TriggerAliases             []string
+	Parameters                 []patch.Parameter
+	RepeatDefinition           bool
+	RepeatFailed               bool
+	RepeatPatchId              string
+	GithubAuthor               string
+	PatchAuthor                string
+	IncludeModules             bool
+	LocalModuleIncludes        []patch.LocalModuleInclude
 }
 
 type patchSubmission struct {
