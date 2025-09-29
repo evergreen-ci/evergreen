@@ -2113,6 +2113,8 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit, p *Project) []tas
 			if tg == nil || tg.MaxHosts > 1 {
 				continue
 			}
+			// Single host task groups are a special case of dependencies because they implicitly form a linear
+			// dependency chain on the prior task group tasks
 			for i := len(tg.Tasks) - 1; i >= 0; i-- {
 				// Check the task display names since no display name will appear twice
 				// within the same task group
