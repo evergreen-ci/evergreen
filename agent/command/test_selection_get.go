@@ -150,6 +150,6 @@ func (c *testSelectionGet) writeTestList(tests []string) error {
 // createSeed creates a seed for the random number generator based on the task ID.
 func createSeed(taskID string) int64 {
 	h := md5.New()
-	io.WriteString(h, taskID)
+	_, _ = io.WriteString(h, taskID)
 	return int64(binary.BigEndian.Uint64(h.Sum(nil)))
 }
