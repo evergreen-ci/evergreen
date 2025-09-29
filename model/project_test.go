@@ -996,7 +996,14 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{"all"},
 	}
 
-	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params := PatchVTParams{
+		Patch:         &patchDoc,
+		Requester:     patchDoc.GetRequester(),
+		BuildVariants: patchDoc.BuildVariants,
+		Tasks:         patchDoc.Tasks,
+		IncludeDeps:   true,
+	}
+	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, bvs)
 	s.Len(tasks, 7)
@@ -1036,7 +1043,6 @@ func (s *projectSuite) TestResolvePatchVTs() {
 	}
 
 	// Build variant and tasks override regex.
-	// kim: TODO: add test for test selection BVs/tasks
 	patchDoc = patch.Patch{
 		BuildVariants:      []string{"all"},
 		Tasks:              []string{"all"},
@@ -1044,7 +1050,16 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params = PatchVTParams{
+		Patch:              &patchDoc,
+		Requester:          patchDoc.GetRequester(),
+		BuildVariants:      patchDoc.BuildVariants,
+		Tasks:              patchDoc.Tasks,
+		RegexBuildVariants: patchDoc.RegexBuildVariants,
+		RegexTasks:         patchDoc.RegexTasks,
+		IncludeDeps:        true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.Len(tasks, 7)
 	s.Len(variantTasks, 2)
@@ -1056,7 +1071,14 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params = PatchVTParams{
+		Patch:              &patchDoc,
+		Requester:          patchDoc.GetRequester(),
+		RegexBuildVariants: patchDoc.RegexBuildVariants,
+		RegexTasks:         patchDoc.RegexTasks,
+		IncludeDeps:        true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1078,7 +1100,14 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params = PatchVTParams{
+		Patch:         &patchDoc,
+		Requester:     patchDoc.GetRequester(),
+		BuildVariants: patchDoc.BuildVariants,
+		RegexTasks:    patchDoc.RegexTasks,
+		IncludeDeps:   true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1100,7 +1129,14 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params = PatchVTParams{
+		Patch:         &patchDoc,
+		Requester:     patchDoc.GetRequester(),
+		BuildVariants: patchDoc.BuildVariants,
+		RegexTasks:    patchDoc.RegexTasks,
+		IncludeDeps:   true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1117,13 +1153,20 @@ func (s *projectSuite) TestResolvePatchVTs() {
 	}
 
 	// Alias adds on to the selected regex tasks.
-	// kim: TODO: add test for test selection BVs/tasks
 	patchDoc = patch.Patch{
 		RegexBuildVariants: []string{".*"},
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "aTags", true)
+	params = PatchVTParams{
+		Patch:              &patchDoc,
+		Requester:          patchDoc.GetRequester(),
+		RegexBuildVariants: patchDoc.RegexBuildVariants,
+		RegexTasks:         patchDoc.RegexTasks,
+		Alias:              "aTags",
+		IncludeDeps:        true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1147,7 +1190,14 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params = PatchVTParams{
+		Patch:         &patchDoc,
+		Requester:     patchDoc.GetRequester(),
+		BuildVariants: patchDoc.BuildVariants,
+		Tasks:         patchDoc.Tasks,
+		IncludeDeps:   true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 1)
 	s.Contains(bvs, "bv_2")
 	s.Len(tasks, 3)
@@ -1170,7 +1220,14 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1", "b_task_2"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params = PatchVTParams{
+		Patch:         &patchDoc,
+		Requester:     patchDoc.GetRequester(),
+		BuildVariants: patchDoc.BuildVariants,
+		Tasks:         patchDoc.Tasks,
+		IncludeDeps:   true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1197,7 +1254,15 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
+	params = PatchVTParams{
+		Patch:         &patchDoc,
+		Requester:     patchDoc.GetRequester(),
+		BuildVariants: patchDoc.BuildVariants,
+		Tasks:         patchDoc.Tasks,
+		RegexTasks:    patchDoc.RegexTasks,
+		IncludeDeps:   true,
+	}
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), params)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
