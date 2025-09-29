@@ -2,6 +2,9 @@ package command
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/binary"
+	"io"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -96,7 +99,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	// No-op based on usage rate. Use the task's random seed so that it's
 	// consistent across multiple runs of the same task.
 	if c.rate != 0 {
-		rng := rand.New(rand.NewSource(int64(conf.Task.Id[0])))
+		rng := rand.New(rand.NewSource(createSeed(conf.Task.Id)))
 		// Random float in [0.0, 1.0) will always have a
 		// usage_rate percentage chance of no-oping.
 		if rng.Float64() < c.rate {
@@ -142,4 +145,11 @@ func (c *testSelectionGet) writeTestList(tests []string) error {
 
 	err := utility.WriteJSONFile(c.OutputFile, output)
 	return errors.Wrap(err, "writing test selection output to file")
+}
+
+// createSeed creates a seed for the random number generator based on the task ID.
+func createSeed(taskID string) int64 {
+	h := md5.New()
+	io.WriteString(h, taskID)
+	return int64(binary.BigEndian.Uint64(h.Sum(nil)))
 }
