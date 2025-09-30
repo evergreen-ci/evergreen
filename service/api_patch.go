@@ -96,28 +96,30 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 }
 
 type patchData struct {
-	Description                string                     `json:"desc"`
-	Path                       string                     `json:"path"`
-	Project                    string                     `json:"project"`
-	GitMetadata                *patch.GitMetadata         `json:"git_metadata"`
-	PatchBytes                 []byte                     `json:"patch_bytes"`
-	Githash                    string                     `json:"githash"`
-	Parameters                 []patch.Parameter          `json:"parameters"`
-	Variants                   []string                   `json:"buildvariants_new"`
-	Tasks                      []string                   `json:"tasks"`
-	RegexVariants              []string                   `json:"regex_buildvariants"`
-	RegexTasks                 []string                   `json:"regex_tasks"`
-	RegexTestSelectionVariants []string                   `json:"regex_test_selection_buildvariants"`
-	RegexTestSelectionTasks    []string                   `json:"regex_test_selection_tasks"`
-	Finalize                   bool                       `json:"finalize"`
-	TriggerAliases             []string                   `json:"trigger_aliases"`
-	Alias                      string                     `json:"alias"`
-	RepeatFailed               bool                       `json:"repeat_failed"`
-	RepeatDefinition           bool                       `json:"reuse_definition"`
-	RepeatPatchId              string                     `json:"repeat_patch_id"`
-	GithubAuthor               string                     `json:"github_author"`
-	PatchAuthor                string                     `json:"patch_author"`
-	LocalModuleIncludes        []patch.LocalModuleInclude `json:"local_module_includes"`
+	Description                        string                     `json:"desc"`
+	Path                               string                     `json:"path"`
+	Project                            string                     `json:"project"`
+	GitMetadata                        *patch.GitMetadata         `json:"git_metadata"`
+	PatchBytes                         []byte                     `json:"patch_bytes"`
+	Githash                            string                     `json:"githash"`
+	Parameters                         []patch.Parameter          `json:"parameters"`
+	Variants                           []string                   `json:"buildvariants_new"`
+	Tasks                              []string                   `json:"tasks"`
+	RegexVariants                      []string                   `json:"regex_buildvariants"`
+	RegexTasks                         []string                   `json:"regex_tasks"`
+	RegexTestSelectionVariants         []string                   `json:"regex_test_selection_buildvariants"`
+	RegexTestSelectionExcludedVariants []string                   `json:"regex_test_selection_excluded_buildvariants"`
+	RegexTestSelectionTasks            []string                   `json:"regex_test_selection_tasks"`
+	RegexTestSelectionExcludedTasks    []string                   `json:"regex_test_selection_excluded_tasks"`
+	Finalize                           bool                       `json:"finalize"`
+	TriggerAliases                     []string                   `json:"trigger_aliases"`
+	Alias                              string                     `json:"alias"`
+	RepeatFailed                       bool                       `json:"repeat_failed"`
+	RepeatDefinition                   bool                       `json:"reuse_definition"`
+	RepeatPatchId                      string                     `json:"repeat_patch_id"`
+	GithubAuthor                       string                     `json:"github_author"`
+	PatchAuthor                        string                     `json:"patch_author"`
+	LocalModuleIncludes                []patch.LocalModuleInclude `json:"local_module_includes"`
 }
 
 // submitPatch creates the Patch document, adds the patched project config to it,
@@ -174,28 +176,30 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:                       author,
-		Project:                    pref.Id,
-		Path:                       data.Path,
-		BaseGitHash:                data.Githash,
-		Module:                     r.FormValue("module"),
-		PatchContent:               patchString,
-		Description:                data.Description,
-		Finalize:                   data.Finalize,
-		Parameters:                 data.Parameters,
-		Variants:                   data.Variants,
-		Tasks:                      data.Tasks,
-		RegexVariants:              data.RegexVariants,
-		RegexTasks:                 data.RegexTasks,
-		RegexTestSelectionVariants: data.RegexTestSelectionVariants,
-		RegexTestSelectionTasks:    data.RegexTestSelectionTasks,
-		Alias:                      data.Alias,
-		TriggerAliases:             data.TriggerAliases,
-		GitInfo:                    data.GitMetadata,
-		RepeatDefinition:           data.RepeatDefinition,
-		RepeatFailed:               data.RepeatFailed,
-		RepeatPatchId:              data.RepeatPatchId,
-		LocalModuleIncludes:        data.LocalModuleIncludes,
+		User:                               author,
+		Project:                            pref.Id,
+		Path:                               data.Path,
+		BaseGitHash:                        data.Githash,
+		Module:                             r.FormValue("module"),
+		PatchContent:                       patchString,
+		Description:                        data.Description,
+		Finalize:                           data.Finalize,
+		Parameters:                         data.Parameters,
+		Variants:                           data.Variants,
+		Tasks:                              data.Tasks,
+		RegexVariants:                      data.RegexVariants,
+		RegexTasks:                         data.RegexTasks,
+		RegexTestSelectionVariants:         data.RegexTestSelectionVariants,
+		RegexTestSelectionExcludedVariants: data.RegexTestSelectionExcludedVariants,
+		RegexTestSelectionTasks:            data.RegexTestSelectionTasks,
+		RegexTestSelectionExcludedTasks:    data.RegexTestSelectionExcludedTasks,
+		Alias:                              data.Alias,
+		TriggerAliases:                     data.TriggerAliases,
+		GitInfo:                            data.GitMetadata,
+		RepeatDefinition:                   data.RepeatDefinition,
+		RepeatFailed:                       data.RepeatFailed,
+		RepeatPatchId:                      data.RepeatPatchId,
+		LocalModuleIncludes:                data.LocalModuleIncludes,
 	})
 
 	if err != nil {

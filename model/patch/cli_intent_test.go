@@ -14,17 +14,19 @@ import (
 type CliIntentSuite struct {
 	suite.Suite
 
-	patchContent               string
-	description                string
-	variants                   []string
-	tasks                      []string
-	regexTestSelectionVariants []string
-	regexTestSelectionTasks    []string
-	module                     string
-	user                       string
-	projectID                  string
-	hash                       string
-	alias                      string
+	patchContent                       string
+	description                        string
+	variants                           []string
+	tasks                              []string
+	regexTestSelectionVariants         []string
+	regexTestSelectionExcludedVariants []string
+	regexTestSelectionTasks            []string
+	regexTestSelectionExcludedTasks    []string
+	module                             string
+	user                               string
+	projectID                          string
+	hash                               string
+	alias                              string
 }
 
 func TestCliIntentSuite(t *testing.T) {
@@ -38,8 +40,10 @@ func (s *CliIntentSuite) SetupSuite() {
 	s.module = "module"
 	s.tasks = []string{"task1", "Task2"}
 	s.variants = []string{"variant1", "variant2"}
-	s.regexTestSelectionTasks = []string{"task1", ".*2"}
-	s.regexTestSelectionVariants = []string{"variant1", ".*2"}
+	s.regexTestSelectionTasks = []string{"task.*"}
+	s.regexTestSelectionExcludedTasks = []string{".*2"}
+	s.regexTestSelectionVariants = []string{"variant.*"}
+	s.regexTestSelectionExcludedVariants = []string{".*2"}
 	s.projectID = "project"
 	s.description = "desc"
 	s.alias = "alias"
@@ -52,18 +56,20 @@ func (s *CliIntentSuite) SetupTest() {
 
 func (s *CliIntentSuite) TestNewCliIntent() {
 	intent, err := NewCliIntent(CLIIntentParams{
-		User:                       s.user,
-		Project:                    s.projectID,
-		BaseGitHash:                s.hash,
-		Module:                     s.module,
-		PatchContent:               s.patchContent,
-		Description:                s.description,
-		Finalize:                   true,
-		Variants:                   s.variants,
-		Tasks:                      s.tasks,
-		Alias:                      s.alias,
-		RegexTestSelectionVariants: s.regexTestSelectionVariants,
-		RegexTestSelectionTasks:    s.regexTestSelectionTasks,
+		User:                               s.user,
+		Project:                            s.projectID,
+		BaseGitHash:                        s.hash,
+		Module:                             s.module,
+		PatchContent:                       s.patchContent,
+		Description:                        s.description,
+		Finalize:                           true,
+		Variants:                           s.variants,
+		Tasks:                              s.tasks,
+		Alias:                              s.alias,
+		RegexTestSelectionVariants:         s.regexTestSelectionVariants,
+		RegexTestSelectionExcludedVariants: s.regexTestSelectionExcludedVariants,
+		RegexTestSelectionTasks:            s.regexTestSelectionTasks,
+		RegexTestSelectionExcludedTasks:    s.regexTestSelectionExcludedTasks,
 	})
 	s.NotNil(intent)
 	s.NoError(err)
@@ -89,7 +95,9 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Equal(cIntent.DocumentID, intent.ID())
 	s.Equal(s.alias, cIntent.Alias)
 	s.Equal(s.regexTestSelectionVariants, cIntent.RegexTestSelectionBuildVariants)
+	s.Equal(s.regexTestSelectionExcludedVariants, cIntent.RegexTestSelectionExcludedBuildVariants)
 	s.Equal(s.regexTestSelectionTasks, cIntent.RegexTestSelectionTasks)
+	s.Equal(s.regexTestSelectionExcludedTasks, cIntent.RegexTestSelectionExcludedTasks)
 
 	intent, err = NewCliIntent(CLIIntentParams{
 		User:         s.user,
@@ -284,16 +292,20 @@ func findCliIntents(ctx context.Context, processed bool) ([]*cliIntent, error) {
 
 func (s *CliIntentSuite) TestNewPatch() {
 	intent, err := NewCliIntent(CLIIntentParams{
-		User:         s.user,
-		Project:      s.projectID,
-		BaseGitHash:  s.hash,
-		Module:       s.module,
-		PatchContent: s.patchContent,
-		Description:  s.description,
-		Finalize:     true,
-		Variants:     s.variants,
-		Tasks:        s.tasks,
-		Alias:        s.alias,
+		User:                               s.user,
+		Project:                            s.projectID,
+		BaseGitHash:                        s.hash,
+		Module:                             s.module,
+		PatchContent:                       s.patchContent,
+		Description:                        s.description,
+		Finalize:                           true,
+		Variants:                           s.variants,
+		Tasks:                              s.tasks,
+		RegexTestSelectionVariants:         s.regexTestSelectionVariants,
+		RegexTestSelectionExcludedVariants: s.regexTestSelectionExcludedVariants,
+		RegexTestSelectionTasks:            s.regexTestSelectionTasks,
+		RegexTestSelectionExcludedTasks:    s.regexTestSelectionExcludedTasks,
+		Alias:                              s.alias,
 	})
 	s.NoError(err)
 	s.NotNil(intent)
@@ -312,6 +324,10 @@ func (s *CliIntentSuite) TestNewPatch() {
 	s.Zero(patchDoc.FinishTime)
 	s.Equal(s.variants, patchDoc.BuildVariants)
 	s.Equal(s.tasks, patchDoc.Tasks)
+	s.Equal(s.regexTestSelectionVariants, patchDoc.RegexTestSelectionBuildVariants)
+	s.Equal(s.regexTestSelectionExcludedVariants, patchDoc.RegexTestSelectionExcludedBuildVariants)
+	s.Equal(s.regexTestSelectionTasks, patchDoc.RegexTestSelectionTasks)
+	s.Equal(s.regexTestSelectionExcludedTasks, patchDoc.RegexTestSelectionExcludedTasks)
 	s.Empty(patchDoc.VariantsTasks)
 	s.Empty(patchDoc.Patches)
 	s.False(patchDoc.Activated)
