@@ -1628,7 +1628,7 @@ tasks:
 	s.NoError(err)
 
 	s.Empty(p.Triggers.ChildPatches)
-	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
+	s.NoError(processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
 	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
@@ -1695,7 +1695,7 @@ tasks:
 	s.Require().Len(projectRef.PatchTriggerAliases, 1)
 	projectRef.PatchTriggerAliases[0].DownstreamRevision = "abc"
 
-	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
+	s.NoError(processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
 	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
@@ -1755,7 +1755,7 @@ tasks:
 	s.NoError(err)
 
 	s.Empty(p.Triggers.ChildPatches)
-	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
+	s.Error(processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 
 	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
