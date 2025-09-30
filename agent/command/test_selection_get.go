@@ -110,23 +110,13 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		c.OutputFile = GetWorkingDirectory(conf, c.OutputFile)
 	}
 
-	calledAPI := false
-	defer trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
-
 	enabled := c.isTestSelectionAllowed(conf)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
 	trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionInputTestsAttribute, c.Tests))
-	if c.Strategies != "" {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.String(testSelectionStrategiesAttribute, c.Strategies))
-	}
-	if c.UsageRate != "" {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
-	}
-
-	if !enabled {
-		logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
-		return c.writeTestList([]string{})
-	}
+	// if !enabled {
+	// 	logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
+	// 	return c.writeTestList([]string{})
+	// }
 
 	// No-op based on usage rate. Use the task's random seed so that it's
 	// consistent across multiple runs of the same task.
@@ -138,6 +128,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 			logger.Execution().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
 			return c.writeTestList([]string{})
 		}
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
 	}
 
 	// Build the request using task information from TaskConfig.
@@ -153,14 +144,14 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if c.Strategies != "" {
 		trimmedStrategies := strings.TrimSpace(c.Strategies)
 		request.Strategies = strings.Split(trimmedStrategies, ",")
+		trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionStrategiesAttribute, request.Strategies))
 	}
 
 	startTime := time.Now()
 	selectedTests, err := comm.SelectTests(ctx, conf.TaskData(), request)
 	durationMs := time.Since(startTime).Milliseconds()
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(testSelectionDurationMsAttribute, durationMs))
-
-	calledAPI = true // nolint:ineffassign // Used in defer.
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, true))
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
