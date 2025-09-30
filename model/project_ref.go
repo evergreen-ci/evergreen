@@ -632,6 +632,10 @@ func (p *ProjectRef) AliasesNeeded() bool {
 	return p.IsGithubChecksEnabled() || p.IsGitTagVersionsEnabled() || p.IsGithubChecksEnabled() || p.IsPRTestingEnabled()
 }
 
+func (p *ProjectRef) IsTestSelectionDefaultEnabled() bool {
+	return utility.FromBoolPtr(p.TestSelection.DefaultEnabled)
+}
+
 const (
 	ProjectRefCollection     = "project_ref"
 	ProjectTriggerLevelTask  = "task"

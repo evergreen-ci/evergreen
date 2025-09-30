@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -1220,6 +1221,11 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		tg.InjectInfo(t)
 	}
 
+	// kim: TODO: decide if test selection is enabled for the task based on
+	// whether BV can use test selection, default enabled, and test
+	// selection include/exclude. Should match on task name, parent display
+	// name (if any), and task group name (if any).
+
 	return t, nil
 }
 
@@ -1490,6 +1496,56 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 	return sortedLayer
 }
 
+func nameMatchesAnyRegexp(name string, regexps []*regexp.Regexp) bool {
+	for _, re := range regexps {
+		if re.MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
+
+func toRegexps(strs []string) ([]*regexp.Regexp, error) {
+	regexps := make([]*regexp.Regexp, 0, len(strs))
+	for _, s := range strs {
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return nil, errors.Wrapf(err, "compiling regexp '%s'", s)
+		}
+		regexps = append(regexps, re)
+	}
+	return regexps, nil
+}
+
+// kim; TODO: test this logic a bunch
+func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreationInfo) bool {
+	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
+	isTestSelectionIncludeSet := len(creationInfo.TestSelectionIncludeBVs) > 0 || len(creationInfo.TestSelectionIncludeTasks) > 0
+
+	if isTestSelectionIncludeSet {
+		// kim: NOTE: this is highest precedence because the user explicitly
+		// requested to include variants/tasks.
+		// kim: TODO: check if the variant is NOT excluded and is explicitly
+		// included, OR if the task is explicitly included and no variants
+		// are included.
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionExcludeBVs)
+		if nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionIncludeBVs) && !isExcluded {
+			return true
+		} else if len(creationInfo.TestSelectionIncludeBVs) == 0 && !isExcluded {
+			return true
+		}
+	} else if isTestSelectionDefaultEnabled {
+		// kim: NOTE: this is the default. Can be overridden by including
+		// explicit variants/tasks.
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionExcludeBVs)
+		if !isExcluded {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
@@ -1526,9 +1582,12 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		variantsProcessed[pair.Variant] = true
 		// kim: TODO: check if variant should enable test selection for its
 		// tasks. If just variants specified and no tasks, whole variants are
-		// included/excluded. If variants and tasks are both specified, specific tasks
-		// within that variant are included/excluded. If variants not specified
-		// at all, fall back to checking project default enabled/disabled.
+		// included/excluded. If variants and tasks are both specified, specific
+		// tasks within that variant are included/excluded. If variants not
+		// specified at all, fall back to checking project default
+		// enabled/disabled. Need to be careful to make sure
+		// include/exclude/default is handled properly.
+
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := creationInfo.Pairs.ExecTasks.TaskNames(pair.Variant)
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
@@ -1546,6 +1605,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
+			// kim: TODO: double-check to ensure that pair.Variant is the BV
+			// name.
+			CanBuildVariantEnableTestSelection: canBuildVariantEnableTestSelection(pair.Variant, creationInfo),
 		}
 
 		grip.Info(message.Fields{
@@ -1728,6 +1790,9 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		creationInfo.TaskNames = tasksToAdd
 		creationInfo.DisplayNames = displayTasksToAdd
 		creationInfo.DistroAliases = distroAliases
+		// kim: TODO: double-check to ensure that b.BuildVariant is the BV
+		// name.
+		creationInfo.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
 		_, tasks, err := addTasksToBuild(ctx, creationInfo)
 		if err != nil {
 			return nil, nil, err

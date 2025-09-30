@@ -682,6 +682,23 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, errors.Wrapf(err, "getting create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
 	}
 
+	testSelectionIncludeBVs, err := toRegexps(p.RegexTestSelectionBuildVariants)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection build variant regexes")
+	}
+	testSelectionExcludeBVs, err := toRegexps(p.RegexTestSelectionExcludedBuildVariants)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection excluded build variant regexes")
+	}
+	testSelectionIncludeTasks, err := toRegexps(p.RegexTestSelectionTasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection task regexes")
+	}
+	testSelectionExcludeTasks, err := toRegexps(p.RegexTestSelectionExcludedTasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection excluded task regexes")
+	}
+
 	buildsToInsert := build.Builds{}
 	tasksToInsert := task.Tasks{}
 	for _, vt := range p.VariantsTasks {
@@ -711,7 +728,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			// tasks selected by the alias must finish in order for the
 			// build/version to be finished.
 			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
+			TestSelectionIncludeBVs:             testSelectionIncludeBVs,
+			TestSelectionExcludeBVs:             testSelectionExcludeBVs,
+			TestSelectionIncludeTasks:           testSelectionIncludeTasks,
+			TestSelectionExcludeTasks:           testSelectionExcludeTasks,
 		}
+		buildCreationArgs.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(vt.Variant, buildCreationArgs)
 		var build *build.Build
 		var tasks task.Tasks
 		build, tasks, err = CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)

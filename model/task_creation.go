@@ -1,6 +1,7 @@
 package model
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -35,4 +36,9 @@ type TaskCreationInfo struct {
 	// in order for the build/version to be finished. Tasks with specific
 	// activation conditions (e.g. cron, activate) are not considered essential.
 	ActivatedTasksAreEssentialToSucceed bool
+	CanBuildVariantEnableTestSelection  bool
+	TestSelectionIncludeBVs             []*regexp.Regexp
+	TestSelectionExcludeBVs             []*regexp.Regexp
+	TestSelectionIncludeTasks           []*regexp.Regexp
+	TestSelectionExcludeTasks           []*regexp.Regexp
 }
