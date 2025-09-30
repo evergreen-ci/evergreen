@@ -1693,30 +1693,7 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
 func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, alias string) {
-	params := PatchVTParams{
-		Patch:              patchDoc,
-		Requester:          patchDoc.GetRequester(),
-		BuildVariants:      patchDoc.BuildVariants,
-		Tasks:              patchDoc.Tasks,
-		RegexTasks:         patchDoc.RegexTasks,
-		RegexBuildVariants: patchDoc.RegexBuildVariants,
-		Alias:              alias,
-		IncludeDeps:        true,
-	}
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, params)
-	// kim: NOTE: this doesn't necessarily need to be done because the regex can
-	// simply match which variants/tasks matter in
-	// CreateBuildFromVersionNoInsert. It's more efficient as well since it
-	// doesn't need to iterate through the entire list of variants/tasks a
-	// second time.
-	testSelectionParams := PatchVTParams{
-		Patch:              patchDoc,
-		Requester:          patchDoc.GetRequester(),
-		RegexTasks:         patchDoc.RegexTestSelectionTasks,
-		RegexBuildVariants: patchDoc.RegexTestSelectionBuildVariants,
-		IncludeDeps:        true,
-	}
-	patchDoc.TestSelectionBuildVariants, patchDoc.TestSelectionTasks, patchDoc.TestSelectionVariantsTasks = p.ResolvePatchVTs(ctx, testSelectionParams)
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), alias, true)
 
 	// Connect the execution tasks to the display tasks.
 	displayTasksToExecTasks := map[string][]string{}
@@ -1741,17 +1718,21 @@ func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch
 	patchDoc.VariantsTasks = vts
 }
 
-// PatchVTParams holds parameters used to resolve build variants and tasks for
-// a patch.
-type PatchVTParams struct {
-	Patch              *patch.Patch
-	Requester          string
-	BuildVariants      []string
-	Tasks              []string
-	RegexTasks         []string
-	RegexBuildVariants []string
-	Alias              string
-	IncludeDeps        bool
+type patchVTParams struct {
+	patchDoc    *patch.Patch
+	requester   string
+	bvs         []string
+	tasks       []string
+	regexTasks  []string
+	regexBVs    []string
+	alias       string
+	includeDeps bool
+}
+
+type resolvedPatchVTs struct {
+	resolvedBVs   []string
+	resolvedTasks []string
+	vts           []patch.VariantTasks
 }
 
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of
@@ -1760,16 +1741,13 @@ type PatchVTParams struct {
 // variant. If includeDeps is set, it will also resolve task dependencies. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-// kim: TODO: double check that this has no side effects on the patch doc.
-func (p *Project) ResolvePatchVTs(ctx context.Context, params PatchVTParams) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
-	// func (p *Project) ResolvePatchVTs(ctx context.Context, params patchVTParams) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
-	patchDoc := params.Patch
-	requester := params.Requester
-	alias := params.Alias
-	includeDeps := params.IncludeDeps
-
+// kim: TODO: refactor to use patchVTParams so the regexBVs and regexTasks can
+// be configured for non test selection and test selection.
+// kim: TODO: refactor this to return resolvedPatchVTs as well for non test
+// selection and test selection.
+func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
-	for _, bv := range params.BuildVariants {
+	for _, bv := range patchDoc.BuildVariants {
 		// Tags should start with "."
 		if strings.HasPrefix(bv, ".") {
 			bvTags = append(bvTags, bv[1:])
@@ -1777,7 +1755,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, params PatchVTParams) (re
 			bvs = append(bvs, bv)
 		}
 	}
-	for _, t := range params.Tasks {
+	for _, t := range patchDoc.Tasks {
 		// Tags should start with "."
 		if strings.HasPrefix(t, ".") {
 			taskTags = append(taskTags, t[1:])
@@ -1795,7 +1773,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, params PatchVTParams) (re
 		if len(bvTags) > 0 {
 			bvs = append(bvs, p.findBuildVariantsWithTag(bvTags)...)
 		}
-		for _, bv := range params.RegexBuildVariants {
+		for _, bv := range patchDoc.RegexBuildVariants {
 			bvRegex, err := regexp.Compile(bv)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -1818,7 +1796,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, params PatchVTParams) (re
 		if len(taskTags) > 0 {
 			tasks = append(tasks, p.findProjectTasksWithTag(taskTags)...)
 		}
-		for _, t := range params.RegexTasks {
+		for _, t := range patchDoc.RegexTasks {
 			tRegex, err := regexp.Compile(t)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -1833,6 +1811,39 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, params PatchVTParams) (re
 		}
 	}
 
+	var testSelectionBVs []string
+	for _, bv := range patchDoc.RegexTestSelectionBuildVariants {
+		bvRegex, err := regexp.Compile(bv)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "could not compile buildvariant test selection regex",
+				"regex":    bv,
+				"project":  p.Identifier,
+				"patch_id": patchDoc.Id,
+			}))
+			continue
+		}
+		testSelectionBVs = append(testSelectionBVs, p.findMatchingBuildVariants(bvRegex)...)
+	}
+	var testSelectionTasks []string
+	for _, t := range patchDoc.RegexTestSelectionTasks {
+		tRegex, err := regexp.Compile(t)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "could not compile task test selection regex",
+				"regex":    t,
+				"project":  p.Identifier,
+				"patch_id": patchDoc.Id,
+			}))
+			continue
+		}
+		testSelectionTasks = append(testSelectionTasks, p.findMatchingProjectTasks(tRegex)...)
+	}
+
+	// kim: TODO: need to do some kind of similar logic for test selection
+	// variants/tasks, ideally without too much copy-pasting. Consider turning
+	// this into some helper functions to build the two TaskVariantPairs.
+	// Possibly can just call ResolvePatchVTs twice with different inputs.
 	var pairs TaskVariantPairs
 	for _, bvName := range bvs {
 		for _, t := range tasks {
@@ -1843,6 +1854,20 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, params PatchVTParams) (re
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: bvName, TaskName: t})
 			} else if p.GetDisplayTask(bvName, t) != nil {
 				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: bvName, TaskName: t})
+			}
+		}
+	}
+
+	var testSelectionPairs TaskVariantPairs
+	for _, bvName := range testSelectionBVs {
+		for _, t := range testSelectionTasks {
+			if bvt := p.FindTaskForVariant(t, bvName); bvt != nil {
+				if bvt.IsDisabled() || bvt.SkipOnRequester(requester) {
+					continue
+				}
+				testSelectionPairs.ExecTasks = append(testSelectionPairs.ExecTasks, TVPair{Variant: bvName, TaskName: t})
+			} else if p.GetDisplayTask(bvName, t) != nil {
+				testSelectionPairs.DisplayTasks = append(testSelectionPairs.DisplayTasks, TVPair{Variant: bvName, TaskName: t})
 			}
 		}
 	}
@@ -1878,6 +1903,17 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, params PatchVTParams) (re
 			"project": p.Identifier,
 		}))
 	}
+	testSelectionPairs = p.extractDisplayTasks(testSelectionPairs)
+	if includeDeps {
+		var err error
+		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "error including dependencies",
+			"project": p.Identifier,
+		}))
+	}
+
+	// kim: TODO: convert to the expected result and return from this
 
 	vts = pairs.TVPairsToVariantTasks()
 	bvs, tasks = patch.ResolveVariantTasks(vts)
