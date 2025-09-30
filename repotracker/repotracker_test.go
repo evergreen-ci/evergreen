@@ -3,7 +3,6 @@ package repotracker
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"testing"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"

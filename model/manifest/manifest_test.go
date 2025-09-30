@@ -65,7 +65,7 @@ func TestFindFromVersion(t *testing.T) {
 	assert.Contains(t, err.Error(), "no corresponding patch")
 
 	p2 := patch.Patch{
-		Id: patch.NewId(manifestID2), 
+		Id: patch.NewId(manifestID2),
 		Patches: []patch.ModulePatch{
 			{
 				ModuleName: moduleName,
