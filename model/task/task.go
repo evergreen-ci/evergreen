@@ -1756,7 +1756,7 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 		}}),
 	)
 	// If no documents were modified, fallback to adding the new StepbackInfo.
-	if r.ModifiedCount == 0 {
+	if err == nil && r.ModifiedCount == 0 {
 		return AddGeneratedStepbackInfoForGenerator(ctx, taskId, s)
 	}
 	return err
