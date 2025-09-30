@@ -14,15 +14,17 @@ import (
 type CliIntentSuite struct {
 	suite.Suite
 
-	patchContent string
-	description  string
-	variants     []string
-	tasks        []string
-	module       string
-	user         string
-	projectID    string
-	hash         string
-	alias        string
+	patchContent               string
+	description                string
+	variants                   []string
+	tasks                      []string
+	regexTestSelectionVariants []string
+	regexTestSelectionTasks    []string
+	module                     string
+	user                       string
+	projectID                  string
+	hash                       string
+	alias                      string
 }
 
 func TestCliIntentSuite(t *testing.T) {
@@ -36,6 +38,8 @@ func (s *CliIntentSuite) SetupSuite() {
 	s.module = "module"
 	s.tasks = []string{"task1", "Task2"}
 	s.variants = []string{"variant1", "variant2"}
+	s.regexTestSelectionTasks = []string{"task1", ".*2"}
+	s.regexTestSelectionVariants = []string{"variant1", ".*2"}
 	s.projectID = "project"
 	s.description = "desc"
 	s.alias = "alias"
@@ -48,16 +52,18 @@ func (s *CliIntentSuite) SetupTest() {
 
 func (s *CliIntentSuite) TestNewCliIntent() {
 	intent, err := NewCliIntent(CLIIntentParams{
-		User:         s.user,
-		Project:      s.projectID,
-		BaseGitHash:  s.hash,
-		Module:       s.module,
-		PatchContent: s.patchContent,
-		Description:  s.description,
-		Finalize:     true,
-		Variants:     s.variants,
-		Tasks:        s.tasks,
-		Alias:        s.alias,
+		User:                       s.user,
+		Project:                    s.projectID,
+		BaseGitHash:                s.hash,
+		Module:                     s.module,
+		PatchContent:               s.patchContent,
+		Description:                s.description,
+		Finalize:                   true,
+		Variants:                   s.variants,
+		Tasks:                      s.tasks,
+		Alias:                      s.alias,
+		RegexTestSelectionVariants: s.regexTestSelectionVariants,
+		RegexTestSelectionTasks:    s.regexTestSelectionTasks,
 	})
 	s.NotNil(intent)
 	s.NoError(err)
@@ -82,6 +88,8 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Zero(cIntent.CreatedAt)
 	s.Equal(cIntent.DocumentID, intent.ID())
 	s.Equal(s.alias, cIntent.Alias)
+	s.Equal(s.regexTestSelectionVariants, cIntent.RegexTestSelectionBuildVariants)
+	s.Equal(s.regexTestSelectionTasks, cIntent.RegexTestSelectionTasks)
 
 	intent, err = NewCliIntent(CLIIntentParams{
 		User:         s.user,
