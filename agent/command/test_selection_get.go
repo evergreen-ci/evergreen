@@ -113,10 +113,10 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	enabled := c.isTestSelectionAllowed(conf)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
 	trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionInputTestsAttribute, c.Tests))
-	// if !enabled {
-	// 	logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
-	// 	return c.writeTestList([]string{})
-	// }
+	if !enabled {
+		logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
+		return c.writeTestList([]string{})
+	}
 
 	// No-op based on usage rate. Use the task's random seed so that it's
 	// consistent across multiple runs of the same task.
