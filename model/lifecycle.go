@@ -1524,6 +1524,11 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			continue
 		}
 		variantsProcessed[pair.Variant] = true
+		// kim: TODO: check if variant should enable test selection for its
+		// tasks. If just variants specified and no tasks, whole variants are
+		// included/excluded. If variants and tasks are both specified, specific tasks
+		// within that variant are included/excluded. If variants not specified
+		// at all, fall back to checking project default enabled/disabled.
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := creationInfo.Pairs.ExecTasks.TaskNames(pair.Variant)
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
