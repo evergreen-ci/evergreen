@@ -621,10 +621,22 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 			return errors.Wrapf(err, "compiling test selection buildvariant regex '%s'", bv)
 		}
 	}
+	for _, bv := range patchDoc.RegexTestSelectionExcludeBuildVariants {
+		_, err := regexp.Compile(bv)
+		if err != nil {
+			return errors.Wrapf(err, "compiling test selection exclude buildvariant regex '%s'", bv)
+		}
+	}
 	for _, t := range patchDoc.RegexTestSelectionTasks {
 		_, err := regexp.Compile(t)
 		if err != nil {
 			return errors.Wrapf(err, "compiling test selection task regex '%s'", t)
+		}
+	}
+	for _, t := range patchDoc.RegexTestSelectionExcludeTasks {
+		_, err := regexp.Compile(t)
+		if err != nil {
+			return errors.Wrapf(err, "compiling test selection exclude task regex '%s'", t)
 		}
 	}
 

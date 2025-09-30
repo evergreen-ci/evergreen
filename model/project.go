@@ -1756,7 +1756,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 			bvRegex, err := regexp.Compile(bv)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message":   "could not compile buildvariant regex",
+					"message":   "compiling buildvariant regex",
 					"regex":     bv,
 					"project":   p.Identifier,
 					"patch_doc": patchDoc.Id,
@@ -1779,7 +1779,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 			tRegex, err := regexp.Compile(t)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message":   "could not compile task regex",
+					"message":   "compiling task regex",
 					"regex":     t,
 					"project":   p.Identifier,
 					"patch_doc": patchDoc.Id,
@@ -1789,7 +1789,6 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 			tasks = append(tasks, p.findMatchingProjectTasks(tRegex)...)
 		}
 	}
-
 	var pairs TaskVariantPairs
 	for _, bvName := range bvs {
 		for _, t := range tasks {
