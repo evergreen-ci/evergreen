@@ -696,10 +696,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 
-		// kim: TODO: call this with test selection variants/tasks to check
-		// which tasks should have test selection enabled. The logic inside can
-		// decide if a specific task uses test selection based on the
-		// variant/task name being created.
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
 			ProjectRef:       creationInfo.ProjectRef,
