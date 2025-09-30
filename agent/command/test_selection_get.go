@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -116,6 +117,11 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		TaskID:       conf.Task.Id,
 		TaskName:     conf.Task.DisplayName,
 		Tests:        c.Tests,
+	}
+
+	if c.Strategies != "" {
+		trimmedStrategies := strings.TrimSpace(c.Strategies)
+		request.Strategies = strings.Split(trimmedStrategies, ",")
 	}
 
 	selectedTests, err := comm.SelectTests(ctx, conf.TaskData(), request)
