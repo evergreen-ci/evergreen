@@ -132,15 +132,15 @@ type Patch struct {
 	StartTime                       time.Time        `bson:"start_time"`
 	FinishTime                      time.Time        `bson:"finish_time"`
 	BuildVariants                   []string         `bson:"build_variants"`
-	TestSelectionBuildVariants      []string         `bson:"test_selection_build_variants"`
 	RegexBuildVariants              []string         `bson:"regex_build_variants"`
-	RegexTestSelectionBuildVariants []string         `bson:"regex_test_selection_build_variants"`
+	TestSelectionBuildVariants      []string         `bson:"test_selection_build_variants,omitempty"`
+	RegexTestSelectionBuildVariants []string         `bson:"regex_test_selection_build_variants,omitempty"`
 	Tasks                           []string         `bson:"tasks"`
-	TestSelectionTasks              []string         `bson:"test_selection_tasks"`
+	TestSelectionTasks              []string         `bson:"test_selection_tasks,omitempty"`
+	RegexTestSelectionTasks         []string         `bson:"regex_test_selection_tasks,omitempty"`
 	RegexTasks                      []string         `bson:"regex_tasks"`
-	RegexTestSelectionTasks         []string         `bson:"regex_test_selection_tasks"`
 	VariantsTasks                   []VariantTasks   `bson:"variants_tasks"`
-	TestSelectionVariantsTasks      []VariantTasks   `bson:"test_selection_variants_tasks"`
+	TestSelectionVariantsTasks      []VariantTasks   `bson:"test_selection_variants_tasks,omitempty"`
 	Patches                         []ModulePatch    `bson:"patches"`
 	Parameters                      []Parameter      `bson:"parameters,omitempty"`
 	// Activated indicates whether or not the patch is finalized (i.e.
