@@ -107,7 +107,7 @@ type patchData struct {
 	Tasks                      []string                   `json:"tasks"`
 	RegexVariants              []string                   `json:"regex_buildvariants"`
 	RegexTasks                 []string                   `json:"regex_tasks"`
-	RegexTestSelectionVariants []string                   `json:"regex_test_selection_variants"`
+	RegexTestSelectionVariants []string                   `json:"regex_test_selection_buildvariants"`
 	RegexTestSelectionTasks    []string                   `json:"regex_test_selection_tasks"`
 	Finalize                   bool                       `json:"finalize"`
 	TriggerAliases             []string                   `json:"trigger_aliases"`
@@ -174,26 +174,28 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:                author,
-		Project:             pref.Id,
-		Path:                data.Path,
-		BaseGitHash:         data.Githash,
-		Module:              r.FormValue("module"),
-		PatchContent:        patchString,
-		Description:         data.Description,
-		Finalize:            data.Finalize,
-		Parameters:          data.Parameters,
-		Variants:            data.Variants,
-		Tasks:               data.Tasks,
-		RegexVariants:       data.RegexVariants,
-		RegexTasks:          data.RegexTasks,
-		Alias:               data.Alias,
-		TriggerAliases:      data.TriggerAliases,
-		GitInfo:             data.GitMetadata,
-		RepeatDefinition:    data.RepeatDefinition,
-		RepeatFailed:        data.RepeatFailed,
-		RepeatPatchId:       data.RepeatPatchId,
-		LocalModuleIncludes: data.LocalModuleIncludes,
+		User:                       author,
+		Project:                    pref.Id,
+		Path:                       data.Path,
+		BaseGitHash:                data.Githash,
+		Module:                     r.FormValue("module"),
+		PatchContent:               patchString,
+		Description:                data.Description,
+		Finalize:                   data.Finalize,
+		Parameters:                 data.Parameters,
+		Variants:                   data.Variants,
+		Tasks:                      data.Tasks,
+		RegexVariants:              data.RegexVariants,
+		RegexTasks:                 data.RegexTasks,
+		RegexTestSelectionVariants: data.RegexTestSelectionVariants,
+		RegexTestSelectionTasks:    data.RegexTestSelectionTasks,
+		Alias:                      data.Alias,
+		TriggerAliases:             data.TriggerAliases,
+		GitInfo:                    data.GitMetadata,
+		RepeatDefinition:           data.RepeatDefinition,
+		RepeatFailed:               data.RepeatFailed,
+		RepeatPatchId:              data.RepeatPatchId,
+		LocalModuleIncludes:        data.LocalModuleIncludes,
 	})
 
 	if err != nil {

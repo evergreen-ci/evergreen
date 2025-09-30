@@ -1704,6 +1704,11 @@ func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch
 		IncludeDeps:        true,
 	}
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, params)
+	// kim: NOTE: this doesn't necessarily need to be done because the regex can
+	// simply match which variants/tasks matter in
+	// CreateBuildFromVersionNoInsert. It's more efficient as well since it
+	// doesn't need to iterate through the entire list of variants/tasks a
+	// second time.
 	testSelectionParams := PatchVTParams{
 		Patch:              patchDoc,
 		Requester:          patchDoc.GetRequester(),

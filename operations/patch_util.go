@@ -94,50 +94,54 @@ type patchParams struct {
 }
 
 type patchSubmission struct {
-	projectName         string
-	patchData           string
-	description         string
-	base                string
-	alias               string
-	path                string
-	variants            []string
-	tasks               []string
-	regexVariants       []string
-	regexTasks          []string
-	finalize            bool
-	parameters          []patch.Parameter
-	triggerAliases      []string
-	gitMetadata         patch.GitMetadata
-	repeatDefinition    bool
-	repeatFailed        bool
-	repeatPatchId       string
-	githubAuthor        string
-	patchAuthor         string
-	localModuleIncludes []patch.LocalModuleInclude
+	projectName                string
+	patchData                  string
+	description                string
+	base                       string
+	alias                      string
+	path                       string
+	variants                   []string
+	tasks                      []string
+	regexVariants              []string
+	regexTasks                 []string
+	regexTestSelectionVariants []string
+	regexTestSelectionTasks    []string
+	finalize                   bool
+	parameters                 []patch.Parameter
+	triggerAliases             []string
+	gitMetadata                patch.GitMetadata
+	repeatDefinition           bool
+	repeatFailed               bool
+	repeatPatchId              string
+	githubAuthor               string
+	patchAuthor                string
+	localModuleIncludes        []patch.LocalModuleInclude
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
 	patchSub := patchSubmission{
-		projectName:         p.Project,
-		patchData:           diffData.fullPatch,
-		description:         p.Description,
-		base:                diffData.base,
-		variants:            p.Variants,
-		tasks:               p.Tasks,
-		regexVariants:       p.RegexVariants,
-		regexTasks:          p.RegexTasks,
-		alias:               p.Alias,
-		finalize:            p.Finalize,
-		parameters:          p.Parameters,
-		triggerAliases:      p.TriggerAliases,
-		gitMetadata:         diffData.gitMetadata,
-		repeatDefinition:    p.RepeatDefinition,
-		repeatFailed:        p.RepeatFailed,
-		repeatPatchId:       p.RepeatPatchId,
-		path:                p.Path,
-		githubAuthor:        p.GithubAuthor,
-		patchAuthor:         p.PatchAuthor,
-		localModuleIncludes: p.LocalModuleIncludes,
+		projectName:                p.Project,
+		patchData:                  diffData.fullPatch,
+		description:                p.Description,
+		base:                       diffData.base,
+		variants:                   p.Variants,
+		tasks:                      p.Tasks,
+		regexVariants:              p.RegexVariants,
+		regexTasks:                 p.RegexTasks,
+		regexTestSelectionVariants: p.RegexTestSelectionVariants,
+		regexTestSelectionTasks:    p.RegexTestSelectionTasks,
+		alias:                      p.Alias,
+		finalize:                   p.Finalize,
+		parameters:                 p.Parameters,
+		triggerAliases:             p.TriggerAliases,
+		gitMetadata:                diffData.gitMetadata,
+		repeatDefinition:           p.RepeatDefinition,
+		repeatFailed:               p.RepeatFailed,
+		repeatPatchId:              p.RepeatPatchId,
+		path:                       p.Path,
+		githubAuthor:               p.GithubAuthor,
+		patchAuthor:                p.PatchAuthor,
+		localModuleIncludes:        p.LocalModuleIncludes,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
