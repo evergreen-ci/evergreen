@@ -29,16 +29,6 @@ func TestMetrics(t *testing.T) {
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
-		"NetworkMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addNetworkMetrics(t.Context(), meter))
-			var metrics metricdata.ResourceMetrics
-			assert.NoError(t, reader.Collect(ctx, &metrics))
-			require.NotEmpty(t, metrics.ScopeMetrics)
-			require.Len(t, metrics.ScopeMetrics[0].Metrics, 6)
-			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
-			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
-			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
-		},
 	}
 
 	if runtime.GOOS != "darwin" {
@@ -79,6 +69,16 @@ func TestMetrics(t *testing.T) {
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[1].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[1].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		}
+		testCases["NetworkMetrics"] = func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
+			assert.NoError(t, addNetworkMetrics(t.Context(), meter))
+			var metrics metricdata.ResourceMetrics
+			assert.NoError(t, reader.Collect(ctx, &metrics))
+			require.NotEmpty(t, metrics.ScopeMetrics)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 6)
+			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
+			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
+			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
+		}
 	} else {
 		testCases["ProcessMetrics"] = func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
 			assert.NoError(t, addProcessMetrics(meter))
@@ -87,6 +87,16 @@ func TestMetrics(t *testing.T) {
 			require.NotEmpty(t, metrics.ScopeMetrics)
 			require.Len(t, metrics.ScopeMetrics[0].Metrics, 1)
 			assert.Equal(t, processCountPrefix, metrics.ScopeMetrics[0].Metrics[0].Name)
+			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
+			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
+		}
+		testCases["NetworkMetrics"] = func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
+			assert.NoError(t, addNetworkMetrics(t.Context(), meter))
+			var metrics metricdata.ResourceMetrics
+			assert.NoError(t, reader.Collect(ctx, &metrics))
+			require.NotEmpty(t, metrics.ScopeMetrics)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 2)
+			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		}
