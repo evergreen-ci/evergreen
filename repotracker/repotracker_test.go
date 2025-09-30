@@ -3,6 +3,7 @@ package repotracker
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"testing"
 	"time"
 
@@ -1717,11 +1718,16 @@ func TestCreateManifest(t *testing.T) {
 	}
 
 	patchVersion := model.Version{
-		Id:         "aaaaaaaaaaff001122334455",
+		Id:         "aaaaaaaaaaff001122334456",
 		Revision:   "1bb42195fd415f144abbae509a5d5bef80d829b7",
 		Identifier: "proj",
 		Requester:  evergreen.GithubPRRequester,
 	}
+
+	patch := patch.Patch{
+		Id: bson.ObjectIdHex("aaaaaaaaaaff001122334456"),
+	}
+	require.NoError(t, patch.Insert(t.Context()))
 
 	// no revision specified
 	proj := model.Project{
