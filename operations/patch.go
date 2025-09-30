@@ -21,16 +21,16 @@ import (
 )
 
 const (
-	patchDescriptionFlagName           = "description"
-	patchVerboseFlagName               = "verbose"
-	patchTriggerAliasFlag              = "trigger-alias"
-	repeatDefinitionFlag               = "repeat"
-	repeatFailedDefinitionFlag         = "repeat-failed"
-	repeatPatchIdFlag                  = "repeat-patch"
-	includeModulesFlag                 = "include-modules"
-	autoDescriptionFlag                = "auto-description"
-	regexTestSelectionVariantsFlagName = "regex-test-selection-variants"
-	regexTestSelectionTasksFlagName    = "regex-test-selection-tasks"
+	patchDescriptionFlagName             = "description"
+	patchVerboseFlagName                 = "verbose"
+	patchTriggerAliasFlag                = "trigger-alias"
+	repeatDefinitionFlag                 = "repeat"
+	repeatFailedDefinitionFlag           = "repeat-failed"
+	repeatPatchIdFlag                    = "repeat-patch"
+	includeModulesFlag                   = "include-modules"
+	autoDescriptionFlag                  = "auto-description"
+	testSelectionIncludeVariantsFlagName = "test-selection-include-variants"
+	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -86,12 +86,12 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Usage: "regex task names",
 			},
 			cli.StringSliceFlag{
-				Name:  joinFlagNames(regexTestSelectionVariantsFlagName, "tsv"),
-				Usage: "regex variant names to use test selection",
+				Name:  joinFlagNames(testSelectionIncludeVariantsFlagName, "tsv"),
+				Usage: "regex variant names that should have test selection enabled",
 			},
 			cli.StringSliceFlag{
-				Name:  joinFlagNames(regexTestSelectionTasksFlagName, "tst"),
-				Usage: "regex task names to use test selection",
+				Name:  joinFlagNames(testSelectionIncludeTasksFlagName, "tst"),
+				Usage: "regex task names that should have test selection enabled",
 			},
 		))
 }
@@ -134,8 +134,8 @@ func Patch() cli.Command {
 				Tasks:                      utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				RegexVariants:              utility.SplitCommas(c.StringSlice(regexVariantsFlagName)),
 				RegexTasks:                 utility.SplitCommas(c.StringSlice(regexTasksFlagName)),
-				RegexTestSelectionVariants: utility.SplitCommas(c.StringSlice(regexTestSelectionVariantsFlagName)),
-				RegexTestSelectionTasks:    utility.SplitCommas(c.StringSlice(regexTestSelectionTasksFlagName)),
+				RegexTestSelectionVariants: utility.SplitCommas(c.StringSlice(testSelectionIncludeVariantsFlagName)),
+				RegexTestSelectionTasks:    utility.SplitCommas(c.StringSlice(testSelectionIncludeTasksFlagName)),
 				SkipConfirm:                c.Bool(skipConfirmFlagName) || outputJSON,
 				Description:                c.String(patchDescriptionFlagName),
 				AutoDescription:            c.Bool(autoDescriptionFlag),
@@ -208,14 +208,6 @@ func Patch() cli.Command {
 			}
 			if hasVariants && !hasTasks {
 				grip.Warningf("warning - you specified variants without specifying tasks")
-			}
-			hasTestSelectionVariants := len(params.RegexTestSelectionVariants) > 0
-			hasTestSelectionTasks := len(params.RegexTestSelectionTasks) > 0
-			if hasTestSelectionVariants && !hasTestSelectionTasks {
-				grip.Warningf("warning - you specified test selection variants without specifying test selection tasks")
-			}
-			if hasTestSelectionTasks && !hasTestSelectionVariants {
-				grip.Warningf("warning - you specified test selection tasks without specifying test selection variants")
 			}
 
 			isReusing := params.RepeatDefinition || params.RepeatFailed
