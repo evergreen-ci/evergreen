@@ -1248,7 +1248,7 @@ func setTestSelectionEnabledForTasks(tasks map[string]*task.Task, displayTaskIDs
 }
 
 func isTestSelectionEnabledForTask(t *task.Task, displayTaskIDsToNames map[string]string, creationInfo TaskCreationInfo) (bool, error) {
-	if !creationInfo.CanBuildVariantEnableTestSelection {
+	if !creationInfo.TestSelection.CanBuildVariantEnableTestSelection {
 		return false, nil
 	}
 
@@ -1265,14 +1265,14 @@ func isTestSelectionEnabledForTask(t *task.Task, displayTaskIDsToNames map[strin
 	}
 
 	for _, name := range namesToCheck {
-		if nameMatchesAnyRegexp(name, creationInfo.TestSelectionExcludeTasks) {
+		if nameMatchesAnyRegexp(name, creationInfo.TestSelection.ExcludeTasks) {
 			return false, nil
 		}
 	}
 
-	if len(creationInfo.TestSelectionIncludeTasks) > 0 {
+	if len(creationInfo.TestSelection.IncludeTasks) > 0 {
 		for _, name := range namesToCheck {
-			if nameMatchesAnyRegexp(name, creationInfo.TestSelectionIncludeTasks) {
+			if nameMatchesAnyRegexp(name, creationInfo.TestSelection.IncludeTasks) {
 				return true, nil
 			}
 		}
@@ -1549,6 +1549,8 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 	return sortedLayer
 }
 
+// nameMatchesAnyRegexp checks if the given string matches any of the given
+// regexps.
 func nameMatchesAnyRegexp(name string, regexps []*regexp.Regexp) bool {
 	for _, re := range regexps {
 		if re.MatchString(name) {
@@ -1556,18 +1558,6 @@ func nameMatchesAnyRegexp(name string, regexps []*regexp.Regexp) bool {
 		}
 	}
 	return false
-}
-
-func toRegexps(strs []string) ([]*regexp.Regexp, error) {
-	regexps := make([]*regexp.Regexp, 0, len(strs))
-	for _, s := range strs {
-		re, err := regexp.Compile(s)
-		if err != nil {
-			return nil, errors.Wrapf(err, "compiling regexp '%s'", s)
-		}
-		regexps = append(regexps, re)
-	}
-	return regexps, nil
 }
 
 // canBuildVariantEnableTestSelection determines if the tasks within a build
@@ -1580,19 +1570,19 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 		return false
 	}
 	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
-	isTestSelectionIncludeSet := len(creationInfo.TestSelectionIncludeBVs) > 0 || len(creationInfo.TestSelectionIncludeTasks) > 0
+	isTestSelectionIncludeSet := len(creationInfo.TestSelection.IncludeBuildVariants) > 0 || len(creationInfo.TestSelection.IncludeTasks) > 0
 
 	if isTestSelectionIncludeSet {
 		// If the user explicitly chooses variants/tasks to run, then the
 		// default enabled/disabled setting is overridden.
-		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionExcludeBVs)
-		if nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionIncludeBVs) && !isExcluded {
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelection.ExcludeBuildVariants)
+		if nameMatchesAnyRegexp(bvName, creationInfo.TestSelection.IncludeBuildVariants) && !isExcluded {
 			return true
-		} else if len(creationInfo.TestSelectionIncludeBVs) == 0 && !isExcluded {
+		} else if len(creationInfo.TestSelection.IncludeBuildVariants) == 0 && !isExcluded {
 			return true
 		}
 	} else if isTestSelectionDefaultEnabled {
-		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionExcludeBVs)
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelection.ExcludeBuildVariants)
 		if !isExcluded {
 			return true
 		}
@@ -1639,6 +1629,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		taskNames := creationInfo.Pairs.ExecTasks.TaskNames(pair.Variant)
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !creationInfo.ActivationInfo.variantHasSpecificActivation(pair.Variant)
+		tsParams := creationInfo.TestSelection
+		tsParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(pair.Variant, creationInfo)
 		buildCreationArgs := TaskCreationInfo{
 			Project:                             creationInfo.Project,
 			ProjectRef:                          creationInfo.ProjectRef,
@@ -1652,11 +1644,13 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
-			TestSelectionIncludeBVs:             creationInfo.TestSelectionIncludeBVs,
-			TestSelectionExcludeBVs:             creationInfo.TestSelectionExcludeBVs,
-			TestSelectionIncludeTasks:           creationInfo.TestSelectionIncludeTasks,
-			TestSelectionExcludeTasks:           creationInfo.TestSelectionExcludeTasks,
-			CanBuildVariantEnableTestSelection:  canBuildVariantEnableTestSelection(pair.Variant, creationInfo),
+			TestSelection:                       tsParams,
+			// kim: TODO: remove
+			// TestSelectionIncludeBVs:             creationInfo.TestSelectionIncludeBVs,
+			// TestSelectionExcludeBVs:             creationInfo.TestSelectionExcludeBVs,
+			// TestSelectionIncludeTasks:           creationInfo.TestSelectionIncludeTasks,
+			// TestSelectionExcludeTasks:           creationInfo.TestSelectionExcludeTasks,
+			// CanBuildVariantEnableTestSelection:  canBuildVariantEnableTestSelection(pair.Variant, creationInfo),
 		}
 
 		grip.Info(message.Fields{
@@ -1839,7 +1833,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		creationInfo.TaskNames = tasksToAdd
 		creationInfo.DisplayNames = displayTasksToAdd
 		creationInfo.DistroAliases = distroAliases
-		creationInfo.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
+		creationInfo.TestSelection.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
 		_, tasks, err := addTasksToBuild(ctx, creationInfo)
 		if err != nil {
 			return nil, nil, err
