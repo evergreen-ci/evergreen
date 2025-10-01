@@ -70,7 +70,7 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 }
 
 // FindFromVersion finds a manifest associated with a given version. If none is found,
-// it will fall back to the base commit version's manifest.
+// it will fall back to the base commit version's manifest. It also sets the patch's module overrides (if any).
 func FindFromVersion(ctx context.Context, versionID, project, revision, requester string) (*Manifest, error) {
 	manifest, err := FindOne(ctx, ById(versionID))
 	if err != nil {
