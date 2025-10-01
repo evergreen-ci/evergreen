@@ -15,9 +15,10 @@ func (a *APICLIUpdate) BuildFromService(c evergreen.ClientConfig) {
 }
 
 type APIClientConfig struct {
-	ClientBinaries   []APIClientBinary `json:"client_binaries,omitempty"`
-	S3ClientBinaries []APIClientBinary `json:"s3_client_binaries,omitempty"`
-	LatestRevision   *string           `json:"latest_revision"`
+	ClientBinaries          []APIClientBinary `json:"client_binaries,omitempty"`
+	S3ClientBinaries        []APIClientBinary `json:"s3_client_binaries,omitempty"`
+	LatestRevision          *string           `json:"latest_revision"`
+	OldestAllowedCLIVersion *string           `json:"oldest_allowed_cli_version"`
 }
 
 func (a *APIClientConfig) BuildFromService(c evergreen.ClientConfig) {
@@ -25,14 +26,14 @@ func (a *APIClientConfig) BuildFromService(c evergreen.ClientConfig) {
 	for i := range a.ClientBinaries {
 		a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i])
 	}
-
+	a.OldestAllowedCLIVersion = utility.ToStringPtr(c.OldestAllowedCLIVersion)
 	a.LatestRevision = utility.ToStringPtr(c.LatestRevision)
 }
 
 func (a *APIClientConfig) ToService() evergreen.ClientConfig {
 	c := evergreen.ClientConfig{}
 	c.LatestRevision = utility.FromStringPtr(a.LatestRevision)
-
+	c.OldestAllowedCLIVersion = utility.FromStringPtr(a.OldestAllowedCLIVersion)
 	c.ClientBinaries = make([]evergreen.ClientBinary, len(a.ClientBinaries))
 	for i := range c.ClientBinaries {
 		c.ClientBinaries[i] = a.ClientBinaries[i].ToService()

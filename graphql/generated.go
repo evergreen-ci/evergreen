@@ -192,6 +192,7 @@ type ComplexityRoot struct {
 		LogPath                 func(childComplexity int) int
 		LoggerConfig            func(childComplexity int) int
 		Notify                  func(childComplexity int) int
+		OldestAllowedCLIVersion func(childComplexity int) int
 		ParameterStore          func(childComplexity int) int
 		PerfMonitoringKanopyURL func(childComplexity int) int
 		PerfMonitoringURL       func(childComplexity int) int
@@ -3140,6 +3141,14 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Notify(childComplexity), true
+
+	case "AdminSettings.oldestAllowedCLIVersion":
+		if e.complexity.AdminSettings.OldestAllowedCLIVersion == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.OldestAllowedCLIVersion(childComplexity), true
+
 	case "AdminSettings.parameterStore":
 		if e.complexity.AdminSettings.ParameterStore == nil {
 			break
@@ -18715,6 +18724,47 @@ func (ec *executionContext) fieldContext_AdminSettings_notify(_ context.Context,
 				return ec.fieldContext_NotifyConfig_bufferIntervalSeconds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NotifyConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_oldestAllowedCLIVersion(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_oldestAllowedCLIVersion(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OldestAllowedCLIVersion, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_oldestAllowedCLIVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35973,6 +36023,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
 			case "notify":
 				return ec.fieldContext_AdminSettings_notify(ctx, field)
+			case "oldestAllowedCLIVersion":
+				return ec.fieldContext_AdminSettings_oldestAllowedCLIVersion(ctx, field)
 			case "parameterStore":
 				return ec.fieldContext_AdminSettings_parameterStore(ctx, field)
 			case "perfMonitoringKanopyURL":
@@ -49653,6 +49705,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_loggerConfig(ctx, field)
 			case "notify":
 				return ec.fieldContext_AdminSettings_notify(ctx, field)
+			case "oldestAllowedCLIVersion":
+				return ec.fieldContext_AdminSettings_oldestAllowedCLIVersion(ctx, field)
 			case "parameterStore":
 				return ec.fieldContext_AdminSettings_parameterStore(ctx, field)
 			case "perfMonitoringKanopyURL":
@@ -74338,7 +74392,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74589,6 +74643,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Notify = data
+		case "oldestAllowedCLIVersion":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oldestAllowedCLIVersion"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OldestAllowedCLIVersion = data
 		case "parameterStore":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parameterStore"))
 			data, err := ec.unmarshalOParameterStoreConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParameterStoreConfig(ctx, v)
@@ -85249,6 +85310,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_loggerConfig(ctx, field, obj)
 		case "notify":
 			out.Values[i] = ec._AdminSettings_notify(ctx, field, obj)
+		case "oldestAllowedCLIVersion":
+			out.Values[i] = ec._AdminSettings_oldestAllowedCLIVersion(ctx, field, obj)
 		case "parameterStore":
 			out.Values[i] = ec._AdminSettings_parameterStore(ctx, field, obj)
 		case "perfMonitoringKanopyURL":
