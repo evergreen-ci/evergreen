@@ -82,6 +82,7 @@ input AdminSettingsInput {
   logPath: String
   loggerConfig: LoggerConfigInput
   notify: NotifyConfigInput
+  oldestAllowedCLIVersion: String
   parameterStore: ParameterStoreConfigInput
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
@@ -136,6 +137,7 @@ type AdminSettings {
   logPath: String
   loggerConfig: LoggerConfig
   notify: NotifyConfig
+  oldestAllowedCLIVersion: String
   parameterStore: ParameterStoreConfig
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
