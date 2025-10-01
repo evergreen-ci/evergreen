@@ -36,6 +36,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	// Middleware
 	requireUser := gimlet.NewRequireAuthHandler()
+	requireUserOrTask := NewUserOrTaskAuthMiddleware()
 	requireValidGithubPayload := NewGithubAuthMiddleware()
 	requireValidSNSPayload := NewSNSAuthMiddleware()
 	requireTask := NewTaskAuthMiddleware()
@@ -214,7 +215,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(requireUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
 	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUsersWithRole())
-	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUser).RouteHandler(makeSelectTestsHandler(env))
+	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUserOrTask).RouteHandler(makeSelectTestsHandler(env))
 	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchCLIVersionRoute(env))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostStatusByDistroRoute())
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchNotifcationStatusRoute())

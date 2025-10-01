@@ -21,14 +21,18 @@ import (
 )
 
 const (
-	patchDescriptionFlagName   = "description"
-	patchVerboseFlagName       = "verbose"
-	patchTriggerAliasFlag      = "trigger-alias"
-	repeatDefinitionFlag       = "repeat"
-	repeatFailedDefinitionFlag = "repeat-failed"
-	repeatPatchIdFlag          = "repeat-patch"
-	includeModulesFlag         = "include-modules"
-	autoDescriptionFlag        = "auto-description"
+	patchDescriptionFlagName             = "description"
+	patchVerboseFlagName                 = "verbose"
+	patchTriggerAliasFlag                = "trigger-alias"
+	repeatDefinitionFlag                 = "repeat"
+	repeatFailedDefinitionFlag           = "repeat-failed"
+	repeatPatchIdFlag                    = "repeat-patch"
+	includeModulesFlag                   = "include-modules"
+	autoDescriptionFlag                  = "auto-description"
+	testSelectionIncludeVariantsFlagName = "test-selection-include-variants"
+	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
+	testSelectionExcludeVariantsFlagName = "test-selection-exclude-variants"
+	testSelectionExcludeTasksFlagName    = "test-selection-exclude-tasks"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -83,6 +87,22 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Name:  joinFlagNames(regexTasksFlagName, "rt"),
 				Usage: "regex task names",
 			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(testSelectionIncludeVariantsFlagName, "tsv"),
+				Usage: "regex variant names that should have test selection enabled",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(testSelectionIncludeTasksFlagName, "tst"),
+				Usage: "regex task names that should have test selection enabled",
+			},
+			cli.StringSliceFlag{
+				Name:  testSelectionExcludeVariantsFlagName,
+				Usage: "regex variant names that should have test selection disabled (overrides included variants)",
+			},
+			cli.StringSliceFlag{
+				Name:  testSelectionExcludeTasksFlagName,
+				Usage: "regex task names that should have test selection disabled (overrides included tasks)",
+			},
 		))
 }
 
@@ -118,27 +138,31 @@ func Patch() cli.Command {
 			}
 			args := c.Args()
 			params := &patchParams{
-				Project:          c.String(projectFlagName),
-				Path:             c.String(pathFlagName),
-				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				RegexVariants:    utility.SplitCommas(c.StringSlice(regexVariantsFlagName)),
-				RegexTasks:       utility.SplitCommas(c.StringSlice(regexTasksFlagName)),
-				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
-				Description:      c.String(patchDescriptionFlagName),
-				AutoDescription:  c.Bool(autoDescriptionFlag),
-				Browse:           c.Bool(patchBrowseFlagName),
-				ShowSummary:      c.Bool(patchVerboseFlagName),
-				Large:            c.Bool(largeFlagName),
-				Alias:            c.String(patchAliasFlagName),
-				Ref:              c.String(refFlagName),
-				Uncommitted:      c.Bool(uncommittedChangesFlag),
-				PreserveCommits:  c.Bool(preserveCommitsFlag),
-				TriggerAliases:   utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
-				RepeatPatchId:    c.String(repeatPatchIdFlag),
-				RepeatDefinition: c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
-				RepeatFailed:     c.Bool(repeatFailedDefinitionFlag),
-				IncludeModules:   c.Bool(includeModulesFlag),
+				Project:                            c.String(projectFlagName),
+				Path:                               c.String(pathFlagName),
+				Variants:                           utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:                              utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				RegexVariants:                      utility.SplitCommas(c.StringSlice(regexVariantsFlagName)),
+				RegexTasks:                         utility.SplitCommas(c.StringSlice(regexTasksFlagName)),
+				RegexTestSelectionVariants:         utility.SplitCommas(c.StringSlice(testSelectionIncludeVariantsFlagName)),
+				RegexTestSelectionExcludedVariants: utility.SplitCommas(c.StringSlice(testSelectionExcludeVariantsFlagName)),
+				RegexTestSelectionTasks:            utility.SplitCommas(c.StringSlice(testSelectionIncludeTasksFlagName)),
+				RegexTestSelectionExcludedTasks:    utility.SplitCommas(c.StringSlice(testSelectionExcludeTasksFlagName)),
+				SkipConfirm:                        c.Bool(skipConfirmFlagName) || outputJSON,
+				Description:                        c.String(patchDescriptionFlagName),
+				AutoDescription:                    c.Bool(autoDescriptionFlag),
+				Browse:                             c.Bool(patchBrowseFlagName),
+				ShowSummary:                        c.Bool(patchVerboseFlagName),
+				Large:                              c.Bool(largeFlagName),
+				Alias:                              c.String(patchAliasFlagName),
+				Ref:                                c.String(refFlagName),
+				Uncommitted:                        c.Bool(uncommittedChangesFlag),
+				PreserveCommits:                    c.Bool(preserveCommitsFlag),
+				TriggerAliases:                     utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
+				RepeatPatchId:                      c.String(repeatPatchIdFlag),
+				RepeatDefinition:                   c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:                       c.Bool(repeatFailedDefinitionFlag),
+				IncludeModules:                     c.Bool(includeModulesFlag),
 			}
 
 			var err error

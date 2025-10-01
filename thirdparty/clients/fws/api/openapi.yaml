@@ -417,6 +417,7 @@ components:
       - task to team mapping
       - generator task
       - default team
+      - none
       title: AssignmentTypeEnum
       type: string
     FinalAssignmentResults:

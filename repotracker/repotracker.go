@@ -902,6 +902,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version":            v.Id,
 			"variant":            buildvariant.Name,
 		}))
+
 		creationInfo := model.TaskCreationInfo{
 			Project:             projectInfo.Project,
 			ProjectRef:          projectInfo.Ref,

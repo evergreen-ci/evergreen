@@ -801,3 +801,21 @@ func allowCORS(next http.HandlerFunc) http.HandlerFunc {
 	}
 	return AddCORSHeaders(origins, next)
 }
+
+type userOrTaskAuthMiddleware struct{}
+
+// NewUserOrTaskAuthMiddleware returns a middleware that verifies the request is authenticated as a user or task.
+func NewUserOrTaskAuthMiddleware() gimlet.Middleware {
+	return &userOrTaskAuthMiddleware{}
+}
+
+func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	if authenticator := gimlet.GetAuthenticator(ctx); authenticator != nil {
+		if user := gimlet.GetUser(ctx); user != nil && authenticator.CheckAuthenticated(user) {
+			next(rw, r)
+			return
+		}
+	}
+	NewTaskAuthMiddleware().ServeHTTP(rw, r, next)
+}

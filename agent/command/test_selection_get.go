@@ -2,7 +2,15 @@ package command
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/binary"
+	"fmt"
+	"io"
+	"math/rand"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -12,12 +20,23 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
-// // TestSelectionOutput represents the output JSON structure
-// type TestSelectionOutput struct {
-// 	Tests []map[string]string `json:"tests"`
-// }
+const (
+	testSelectionGetAttribute = "evergreen.command.test_selection.get"
+)
+
+var (
+	testSelectionEnabledAttribute          = fmt.Sprintf("%s.enabled", testSelectionGetAttribute)
+	testSelectionCalledAttribute           = fmt.Sprintf("%s.called", testSelectionGetAttribute)
+	testSelectionInputTestsAttribute       = fmt.Sprintf("%s.input_tests", testSelectionGetAttribute)
+	testSelectionStrategiesAttribute       = fmt.Sprintf("%s.strategies", testSelectionGetAttribute)
+	testSelectionUsageRateAttribute        = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
+	testSelectionNumTestsReturnedAttribute = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
+	testSelectionDurationMsAttribute       = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
+)
 
 type TestOutput struct {
 	Name string `json:"name"`
@@ -36,6 +55,20 @@ type testSelectionGet struct {
 	// Optional.
 	Tests []string `mapstructure:"tests" plugin:"expand"`
 
+	// UsageRate is an optional string that specifies a proportion
+	// between 0 and 1 of how often to actually use test selection.
+	// For example, if usage_rate is 0.4, it'll actually request a list of
+	// recommended tests 40% of the time; otherwise, it'll be a no-op.
+	// The default is 1 (i.e. always request test selection).
+	UsageRate string `mapstructure:"usage_rate" plugin:"expand"`
+
+	// rate is the parsed float value of UsageRate.
+	rate float64
+
+	// Strategies is an optional comma-separated string that specifies
+	// a comma-separated list of strategy names to use.
+	Strategies string `mapstructure:"strategies" plugin:"expand"`
+
 	base
 }
 
@@ -53,11 +86,21 @@ func (c *testSelectionGet) ParseParams(params map[string]any) error {
 func (c *testSelectionGet) validate() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.NewWhen(c.OutputFile == "", "must specify output file")
-
+	if c.UsageRate != "" {
+		rate, err := strconv.ParseFloat(c.UsageRate, 64)
+		catcher.Add(err)
+		catcher.NewWhen(rate < 0 || rate > 1, "usage rate must be between 0 and 1")
+		c.rate = rate
+	}
 	return catcher.Resolve()
 }
 
 func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	calledAPI := false
+	defer func() {
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
+	}()
+
 	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
@@ -72,9 +115,25 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		c.OutputFile = GetWorkingDirectory(conf, c.OutputFile)
 	}
 
-	if !c.isTestSelectionAllowed(conf) {
+	enabled := c.isTestSelectionAllowed(conf)
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionInputTestsAttribute, c.Tests))
+	if !enabled {
 		logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
 		return c.writeTestList([]string{})
+	}
+
+	// No-op based on usage rate. Use the task's random seed so that it's
+	// consistent across multiple runs of the same task.
+	if c.rate != 0 {
+		rng := rand.New(rand.NewSource(createSeed(conf.Task.Id)))
+		// Random float in [0.0, 1.0) will always have a
+		// usage_rate percentage chance of no-oping.
+		if rng.Float64() < c.rate {
+			logger.Execution().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
+			return c.writeTestList([]string{})
+		}
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
 	}
 
 	// Build the request using task information from TaskConfig.
@@ -87,10 +146,21 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		Tests:        c.Tests,
 	}
 
+	if c.Strategies != "" {
+		trimmedStrategies := strings.TrimSpace(c.Strategies)
+		request.Strategies = strings.Split(trimmedStrategies, ",")
+		trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionStrategiesAttribute, request.Strategies))
+	}
+
+	startTime := time.Now()
 	selectedTests, err := comm.SelectTests(ctx, conf.TaskData(), request)
+	durationMs := time.Since(startTime).Milliseconds()
+	calledAPI = true
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(testSelectionDurationMsAttribute, durationMs))
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionNumTestsReturnedAttribute, len(selectedTests)))
 
 	// Write the results to the output file.
 	return c.writeTestList(selectedTests)
@@ -114,4 +184,11 @@ func (c *testSelectionGet) writeTestList(tests []string) error {
 
 	err := utility.WriteJSONFile(c.OutputFile, output)
 	return errors.Wrap(err, "writing test selection output to file")
+}
+
+// createSeed creates a seed for the random number generator based on the task ID.
+func createSeed(taskID string) int64 {
+	h := md5.New()
+	_, _ = io.WriteString(h, taskID)
+	return int64(binary.BigEndian.Uint64(h.Sum(nil)))
 }

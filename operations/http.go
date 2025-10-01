@@ -514,47 +514,55 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
 	// and non utf-8 characters will be preserved.
 	data := struct {
-		Description         string                     `json:"desc"`
-		Project             string                     `json:"project"`
-		Path                string                     `json:"path"`
-		PatchBytes          []byte                     `json:"patch_bytes"`
-		Githash             string                     `json:"githash"`
-		Alias               string                     `json:"alias"`
-		Variants            []string                   `json:"buildvariants_new"`
-		Tasks               []string                   `json:"tasks"`
-		RegexVariants       []string                   `json:"regex_buildvariants"`
-		RegexTasks          []string                   `json:"regex_tasks"`
-		Finalize            bool                       `json:"finalize"`
-		TriggerAliases      []string                   `json:"trigger_aliases"`
-		Parameters          []patch.Parameter          `json:"parameters"`
-		GitMetadata         patch.GitMetadata          `json:"git_metadata"`
-		RepeatDefinition    bool                       `json:"reuse_definition"`
-		RepeatFailed        bool                       `json:"repeat_failed"`
-		RepeatPatchId       string                     `json:"repeat_patch_id"`
-		GithubAuthor        string                     `json:"github_author"`
-		PatchAuthor         string                     `json:"patch_author"`
-		LocalModuleIncludes []patch.LocalModuleInclude `json:"local_module_includes"`
+		Description                        string                     `json:"desc"`
+		Project                            string                     `json:"project"`
+		Path                               string                     `json:"path"`
+		PatchBytes                         []byte                     `json:"patch_bytes"`
+		Githash                            string                     `json:"githash"`
+		Alias                              string                     `json:"alias"`
+		Variants                           []string                   `json:"buildvariants_new"`
+		Tasks                              []string                   `json:"tasks"`
+		RegexVariants                      []string                   `json:"regex_buildvariants"`
+		RegexTasks                         []string                   `json:"regex_tasks"`
+		RegexTestSelectionVariants         []string                   `json:"regex_test_selection_buildvariants"`
+		RegexTestSelectionExcludedVariants []string                   `json:"regex_test_selection_excluded_buildvariants"`
+		RegexTestSelectionTasks            []string                   `json:"regex_test_selection_tasks"`
+		RegexTestSelectionExcludedTasks    []string                   `json:"regex_test_selection_excluded_tasks"`
+		Finalize                           bool                       `json:"finalize"`
+		TriggerAliases                     []string                   `json:"trigger_aliases"`
+		Parameters                         []patch.Parameter          `json:"parameters"`
+		GitMetadata                        patch.GitMetadata          `json:"git_metadata"`
+		RepeatDefinition                   bool                       `json:"reuse_definition"`
+		RepeatFailed                       bool                       `json:"repeat_failed"`
+		RepeatPatchId                      string                     `json:"repeat_patch_id"`
+		GithubAuthor                       string                     `json:"github_author"`
+		PatchAuthor                        string                     `json:"patch_author"`
+		LocalModuleIncludes                []patch.LocalModuleInclude `json:"local_module_includes"`
 	}{
-		Description:         incomingPatch.description,
-		Project:             incomingPatch.projectName,
-		Path:                incomingPatch.path,
-		PatchBytes:          []byte(incomingPatch.patchData),
-		Githash:             incomingPatch.base,
-		Alias:               incomingPatch.alias,
-		Variants:            incomingPatch.variants,
-		Tasks:               incomingPatch.tasks,
-		RegexVariants:       incomingPatch.regexVariants,
-		RegexTasks:          incomingPatch.regexTasks,
-		Finalize:            incomingPatch.finalize,
-		TriggerAliases:      incomingPatch.triggerAliases,
-		Parameters:          incomingPatch.parameters,
-		GitMetadata:         incomingPatch.gitMetadata,
-		RepeatDefinition:    incomingPatch.repeatDefinition,
-		RepeatFailed:        incomingPatch.repeatFailed,
-		RepeatPatchId:       incomingPatch.repeatPatchId,
-		GithubAuthor:        incomingPatch.githubAuthor,
-		PatchAuthor:         incomingPatch.patchAuthor,
-		LocalModuleIncludes: incomingPatch.localModuleIncludes,
+		Description:                        incomingPatch.description,
+		Project:                            incomingPatch.projectName,
+		Path:                               incomingPatch.path,
+		PatchBytes:                         []byte(incomingPatch.patchData),
+		Githash:                            incomingPatch.base,
+		Alias:                              incomingPatch.alias,
+		Variants:                           incomingPatch.variants,
+		Tasks:                              incomingPatch.tasks,
+		RegexVariants:                      incomingPatch.regexVariants,
+		RegexTasks:                         incomingPatch.regexTasks,
+		RegexTestSelectionVariants:         incomingPatch.regexTestSelectionVariants,
+		RegexTestSelectionExcludedVariants: incomingPatch.regexTestSelectionExcludedVariants,
+		RegexTestSelectionTasks:            incomingPatch.regexTestSelectionTasks,
+		RegexTestSelectionExcludedTasks:    incomingPatch.regexTestSelectionExcludedTasks,
+		Finalize:                           incomingPatch.finalize,
+		TriggerAliases:                     incomingPatch.triggerAliases,
+		Parameters:                         incomingPatch.parameters,
+		GitMetadata:                        incomingPatch.gitMetadata,
+		RepeatDefinition:                   incomingPatch.repeatDefinition,
+		RepeatFailed:                       incomingPatch.repeatFailed,
+		RepeatPatchId:                      incomingPatch.repeatPatchId,
+		GithubAuthor:                       incomingPatch.githubAuthor,
+		PatchAuthor:                        incomingPatch.patchAuthor,
+		LocalModuleIncludes:                incomingPatch.localModuleIncludes,
 	}
 
 	rPipe, wPipe := io.Pipe()
