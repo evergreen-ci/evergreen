@@ -603,39 +603,33 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	for _, bv := range patchDoc.RegexBuildVariants {
-		_, err := regexp.Compile(bv)
-		if err != nil {
+		if _, err := regexp.Compile(bv); err != nil {
 			return errors.Wrapf(err, "compiling buildvariant regex '%s'", bv)
 		}
 	}
 	for _, t := range patchDoc.RegexTasks {
-		_, err := regexp.Compile(t)
-		if err != nil {
+		if _, err := regexp.Compile(t); err != nil {
 			return errors.Wrapf(err, "compiling task regex '%s'", t)
 		}
 	}
 
 	for _, bv := range patchDoc.RegexTestSelectionBuildVariants {
-		_, err := regexp.Compile(bv)
-		if err != nil {
+		if _, err := regexp.Compile(bv); err != nil {
 			return errors.Wrapf(err, "compiling test selection buildvariant regex '%s'", bv)
 		}
 	}
 	for _, bv := range patchDoc.RegexTestSelectionExcludedBuildVariants {
-		_, err := regexp.Compile(bv)
-		if err != nil {
+		if _, err := regexp.Compile(bv); err != nil {
 			return errors.Wrapf(err, "compiling test selection exclude buildvariant regex '%s'", bv)
 		}
 	}
 	for _, t := range patchDoc.RegexTestSelectionTasks {
-		_, err := regexp.Compile(t)
-		if err != nil {
+		if _, err := regexp.Compile(t); err != nil {
 			return errors.Wrapf(err, "compiling test selection task regex '%s'", t)
 		}
 	}
 	for _, t := range patchDoc.RegexTestSelectionExcludedTasks {
-		_, err := regexp.Compile(t)
-		if err != nil {
+		if _, err := regexp.Compile(t); err != nil {
 			return errors.Wrapf(err, "compiling test selection exclude task regex '%s'", t)
 		}
 	}
