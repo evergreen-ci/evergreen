@@ -855,9 +855,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	// not existing tasks. If a task already existed and is now being regrouped
 	// under a new display task, its test selection state will not be
 	// re-evaluated to avoid changing the behavior of the task.
-	// kim: NOTE: should test this carefully with display tasks. It should check
-	// test selection enabled for new tasks, and correctly handle whether it's
-	// grouped under a new or already-existing display task.
 	setTestSelectionEnabledForTasks(taskMap, displayTaskIDsToNames, creationInfo)
 
 	for _, t := range taskMap {
@@ -1234,10 +1231,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		tg.InjectInfo(t)
 	}
 
-	// kim: NOTE: can't decide if test selection is enabled here because of
-	// display tasks. If display tasks count towards matching include/exclude
-	// regexps, then we need to wait until the display tasks are created.
-
 	return t, nil
 }
 
@@ -1612,7 +1605,6 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
 // Returns task IDs for activated tasks and for activated dependencies.
-// kim: TODO: add tests to ensure test selection enable is set correctly.
 func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, []string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-builds")
 	defer span.End()
@@ -1643,13 +1635,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			continue
 		}
 		variantsProcessed[pair.Variant] = true
-		// kim: NOTE: If just variants specified and no tasks, whole variants
-		// are included/excluded. If variants and tasks are both specified,
-		// specific tasks within that variant are included/excluded. If variants
-		// not specified at all, fall back to checking project default
-		// enabled/disabled. Need to be careful to make sure
-		// include/exclude/default is handled properly.
-
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := creationInfo.Pairs.ExecTasks.TaskNames(pair.Variant)
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
@@ -1788,7 +1773,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns task IDs for activated
 // tasks and task IDs for activated dependencies.
-// kim: TODO: add tests to ensure test selection enable is set correctly.
 func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) ([]string, []string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-tasks")
 	defer span.End()
