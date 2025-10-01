@@ -351,27 +351,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 				return errors.Wrap(err, "making test selection params for task creation")
 			}
 			creationInfo.TestSelection = *tsParams
-			// kim: TODO: remove
-			// testSelectionIncludeBVs, err := toRegexps(patchDoc.RegexTestSelectionBuildVariants)
-			// if err != nil {
-			//     return errors.Wrap(err, "compiling test selection build variant regexes")
-			// }
-			// testSelectionExcludeBVs, err := toRegexps(patchDoc.RegexTestSelectionExcludedBuildVariants)
-			// if err != nil {
-			//     return errors.Wrap(err, "compiling test selection excluded build variant regexes")
-			// }
-			// testSelectionIncludeTasks, err := toRegexps(patchDoc.RegexTestSelectionTasks)
-			// if err != nil {
-			//     return errors.Wrap(err, "compiling test selection task regexes")
-			// }
-			// testSelectionExcludeTasks, err := toRegexps(patchDoc.RegexTestSelectionExcludedTasks)
-			// if err != nil {
-			//     return errors.Wrap(err, "compiling test selection excluded task regexes")
-			// }
-			// creationInfo.TestSelectionIncludeBVs = testSelectionIncludeBVs
-			// creationInfo.TestSelectionExcludeBVs = testSelectionExcludeBVs
-			// creationInfo.TestSelectionIncludeTasks = testSelectionIncludeTasks
-			// creationInfo.TestSelectionExcludeTasks = testSelectionExcludeTasks
 		}
 	}
 

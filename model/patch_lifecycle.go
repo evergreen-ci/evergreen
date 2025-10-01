@@ -173,23 +173,6 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 		}
 
 		if len(patchVariantTasks) > 0 {
-			// kim: TODO: remove
-			// testSelectionIncludeBVs, err := toRegexps(p.RegexTestSelectionBuildVariants)
-			// if err != nil {
-			//     return http.StatusInternalServerError, errors.Wrap(err, "compiling test selection build variant regexes")
-			// }
-			// testSelectionExcludeBVs, err := toRegexps(p.RegexTestSelectionExcludedBuildVariants)
-			// if err != nil {
-			//     return http.StatusInternalServerError, errors.Wrap(err, "compiling test selection excluded build variant regexes")
-			// }
-			// testSelectionIncludeTasks, err := toRegexps(p.RegexTestSelectionTasks)
-			// if err != nil {
-			//     return http.StatusInternalServerError, errors.Wrap(err, "compiling test selection task regexes")
-			// }
-			// testSelectionExcludeTasks, err := toRegexps(p.RegexTestSelectionExcludedTasks)
-			// if err != nil {
-			//     return http.StatusInternalServerError, errors.Wrap(err, "compiling test selection excluded task regexes")
-			// }
 			tsParams, err := newTestSelectionParams(p)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "making test selection parameters for task creation")
@@ -203,11 +186,6 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 				ActivationInfo: specificActivationInfo{},
 				GeneratedBy:    "",
 				TestSelection:  *tsParams,
-				// kim: TODO: remove
-				// TestSelectionIncludeBVs:   testSelectionIncludeBVs,
-				// TestSelectionExcludeBVs:   testSelectionExcludeBVs,
-				// TestSelectionIncludeTasks: testSelectionIncludeTasks,
-				// TestSelectionExcludeTasks: testSelectionExcludeTasks,
 			}
 			err = addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
@@ -699,24 +677,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 	variantsProcessed := map[string]bool{}
 
-	// kim: TODO: remove
-	// testSelectionIncludeBVs, err := toRegexps(p.RegexTestSelectionBuildVariants)
-	// if err != nil {
-	//     return nil, errors.Wrap(err, "compiling test selection build variant regexes")
-	// }
-	// testSelectionExcludeBVs, err := toRegexps(p.RegexTestSelectionExcludedBuildVariants)
-	// if err != nil {
-	//     return nil, errors.Wrap(err, "compiling test selection excluded build variant regexes")
-	// }
-	// testSelectionIncludeTasks, err := toRegexps(p.RegexTestSelectionTasks)
-	// if err != nil {
-	//     return nil, errors.Wrap(err, "compiling test selection task regexes")
-	// }
-	// testSelectionExcludeTasks, err := toRegexps(p.RegexTestSelectionExcludedTasks)
-	// if err != nil {
-	//     return nil, errors.Wrap(err, "compiling test selection excluded task regexes")
-	// }
-
 	tsParams, err := newTestSelectionParams(p)
 	if err != nil {
 		return nil, errors.Wrap(err, "making test selection parameters for task creation")
@@ -727,11 +687,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		Project:       project,
 		ProjectRef:    projectRef,
 		TestSelection: *tsParams,
-		// kim: TODO: remove
-		// TestSelectionIncludeBVs:   testSelectionIncludeBVs,
-		// TestSelectionExcludeBVs:   testSelectionExcludeBVs,
-		// TestSelectionIncludeTasks: testSelectionIncludeTasks,
-		// TestSelectionExcludeTasks: testSelectionExcludeTasks,
 	}
 	createTime, err := getTaskCreateTime(ctx, creationInfo)
 	if err != nil {
@@ -770,14 +725,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			// build/version to be finished.
 			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
 			TestSelection:                       tsParams,
-			// kim: TODO: remove
-			// TestSelectionIncludeBVs:             creationInfo.TestSelectionIncludeBVs,
-			// TestSelectionExcludeBVs:             creationInfo.TestSelectionExcludeBVs,
-			// TestSelectionIncludeTasks:           creationInfo.TestSelectionIncludeTasks,
-			// TestSelectionExcludeTasks:           creationInfo.TestSelectionExcludeTasks,
 		}
-		// kim: TODO: remove
-		// buildCreationArgs.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(vt.Variant, buildCreationArgs)
 		var build *build.Build
 		var tasks task.Tasks
 		build, tasks, err = CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)

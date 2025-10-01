@@ -1645,12 +1645,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
 			TestSelection:                       tsParams,
-			// kim: TODO: remove
-			// TestSelectionIncludeBVs:             creationInfo.TestSelectionIncludeBVs,
-			// TestSelectionExcludeBVs:             creationInfo.TestSelectionExcludeBVs,
-			// TestSelectionIncludeTasks:           creationInfo.TestSelectionIncludeTasks,
-			// TestSelectionExcludeTasks:           creationInfo.TestSelectionExcludeTasks,
-			// CanBuildVariantEnableTestSelection:  canBuildVariantEnableTestSelection(pair.Variant, creationInfo),
 		}
 
 		grip.Info(message.Fields{
