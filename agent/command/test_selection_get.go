@@ -97,6 +97,10 @@ func (c *testSelectionGet) validate() error {
 
 func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	calledAPI := false
+	defer func() {
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
+	}()
+
 	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
@@ -114,10 +118,10 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	enabled := c.isTestSelectionAllowed(conf)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
 	trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionInputTestsAttribute, c.Tests))
-	if !enabled {
-		logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
-		return c.writeTestList([]string{})
-	}
+	// if !enabled {
+	// 	logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
+	// 	return c.writeTestList([]string{})
+	// }
 
 	// No-op based on usage rate. Use the task's random seed so that it's
 	// consistent across multiple runs of the same task.
@@ -156,9 +160,6 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
-	defer func() {
-		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
-	}()
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionNumTestsReturnedAttribute, len(selectedTests)))
 
 	// Write the results to the output file.
