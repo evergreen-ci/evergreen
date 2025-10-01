@@ -52,27 +52,27 @@ type TestSelectionParams struct {
 }
 
 func newTestSelectionParams(p *patch.Patch) (*TestSelectionParams, error) {
-	testSelectionIncludeBVs, err := toRegexps(p.RegexTestSelectionBuildVariants)
+	includeBVs, err := toRegexps(p.RegexTestSelectionBuildVariants)
 	if err != nil {
 		return nil, errors.Wrap(err, "compiling test selection build variant regexes")
 	}
-	testSelectionExcludeBVs, err := toRegexps(p.RegexTestSelectionExcludedBuildVariants)
+	excludeBVs, err := toRegexps(p.RegexTestSelectionExcludedBuildVariants)
 	if err != nil {
 		return nil, errors.Wrap(err, "compiling test selection excluded build variant regexes")
 	}
-	testSelectionIncludeTasks, err := toRegexps(p.RegexTestSelectionTasks)
+	includeTasks, err := toRegexps(p.RegexTestSelectionTasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "compiling test selection task regexes")
 	}
-	testSelectionExcludeTasks, err := toRegexps(p.RegexTestSelectionExcludedTasks)
+	excludeTasks, err := toRegexps(p.RegexTestSelectionExcludedTasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "compiling test selection excluded task regexes")
 	}
 	return &TestSelectionParams{
-		IncludeBuildVariants: testSelectionIncludeBVs,
-		ExcludeBuildVariants: testSelectionExcludeBVs,
-		IncludeTasks:         testSelectionIncludeTasks,
-		ExcludeTasks:         testSelectionExcludeTasks,
+		IncludeBuildVariants: includeBVs,
+		ExcludeBuildVariants: excludeBVs,
+		IncludeTasks:         includeTasks,
+		ExcludeTasks:         excludeTasks,
 	}, nil
 }
 
