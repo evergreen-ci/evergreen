@@ -36,9 +36,9 @@ type TaskCreationInfo struct {
 	// in order for the build/version to be finished. Tasks with specific
 	// activation conditions (e.g. cron, activate) are not considered essential.
 	ActivatedTasksAreEssentialToSucceed bool
-	CanBuildVariantEnableTestSelection  bool
-	TestSelectionIncludeBVs             []*regexp.Regexp
-	TestSelectionExcludeBVs             []*regexp.Regexp
-	TestSelectionIncludeTasks           []*regexp.Regexp
-	TestSelectionExcludeTasks           []*regexp.Regexp
+	CanBuildVariantEnableTestSelection  bool             // Whether or not any of the tasks in the build variant can use test selection.
+	TestSelectionIncludeBVs             []*regexp.Regexp // Regexes for build variants to include when enabling test selection.
+	TestSelectionExcludeBVs             []*regexp.Regexp // Regexes for build variants to exclude when enabling test selection.
+	TestSelectionIncludeTasks           []*regexp.Regexp // Regexes for tasks to include when enabling test selection.
+	TestSelectionExcludeTasks           []*regexp.Regexp // Regexes for tasks to exclude when enabling test selection.
 }
