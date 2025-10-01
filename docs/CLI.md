@@ -413,7 +413,7 @@ requirement before executing commands.
 
 If your CLI version is older than the minimum allowed version, you'll receive an error message like:
 
-```
+```text
 CLI version 'YYYY-MM-DD' is older than the oldest allowed CLI version 'YYYY-MM-DD'.
 Run 'evergreen get-update --install' to update.
 ```
