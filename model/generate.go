@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -338,6 +339,34 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		// If the parent generator is required to finish, then its generated
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
+	}
+	if evergreen.IsPatchRequester(v.Requester) {
+		patchDoc, err := patch.FindOneId(ctx, v.Id)
+		if err != nil {
+			return errors.Wrapf(err, "finding patch '%s'", v.Id)
+		}
+		if patchDoc != nil {
+			testSelectionIncludeBVs, err := toRegexps(patchDoc.RegexTestSelectionBuildVariants)
+			if err != nil {
+				return errors.Wrap(err, "compiling test selection build variant regexes")
+			}
+			testSelectionExcludeBVs, err := toRegexps(patchDoc.RegexTestSelectionExcludedBuildVariants)
+			if err != nil {
+				return errors.Wrap(err, "compiling test selection excluded build variant regexes")
+			}
+			testSelectionIncludeTasks, err := toRegexps(patchDoc.RegexTestSelectionTasks)
+			if err != nil {
+				return errors.Wrap(err, "compiling test selection task regexes")
+			}
+			testSelectionExcludeTasks, err := toRegexps(patchDoc.RegexTestSelectionExcludedTasks)
+			if err != nil {
+				return errors.Wrap(err, "compiling test selection excluded task regexes")
+			}
+			creationInfo.TestSelectionIncludeBVs = testSelectionIncludeBVs
+			creationInfo.TestSelectionExcludeBVs = testSelectionExcludeBVs
+			creationInfo.TestSelectionIncludeTasks = testSelectionIncludeTasks
+			creationInfo.TestSelectionExcludeTasks = testSelectionExcludeTasks
+		}
 	}
 
 	activatedTasksInExistingBuilds, activatedDependenciesFromTasksInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)

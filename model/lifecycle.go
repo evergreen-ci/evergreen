@@ -1643,11 +1643,10 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			continue
 		}
 		variantsProcessed[pair.Variant] = true
-		// kim: TODO: check if variant should enable test selection for its
-		// tasks. If just variants specified and no tasks, whole variants are
-		// included/excluded. If variants and tasks are both specified, specific
-		// tasks within that variant are included/excluded. If variants not
-		// specified at all, fall back to checking project default
+		// kim: NOTE: If just variants specified and no tasks, whole variants
+		// are included/excluded. If variants and tasks are both specified,
+		// specific tasks within that variant are included/excluded. If variants
+		// not specified at all, fall back to checking project default
 		// enabled/disabled. Need to be careful to make sure
 		// include/exclude/default is handled properly.
 
@@ -1668,6 +1667,10 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
+			TestSelectionIncludeBVs:             creationInfo.TestSelectionIncludeBVs,
+			TestSelectionExcludeBVs:             creationInfo.TestSelectionExcludeBVs,
+			TestSelectionIncludeTasks:           creationInfo.TestSelectionIncludeTasks,
+			TestSelectionExcludeTasks:           creationInfo.TestSelectionExcludeTasks,
 			CanBuildVariantEnableTestSelection:  canBuildVariantEnableTestSelection(pair.Variant, creationInfo),
 		}
 
