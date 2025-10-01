@@ -96,6 +96,7 @@ func (c *testSelectionGet) validate() error {
 }
 
 func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	calledAPI := false
 	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
@@ -150,11 +151,14 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	startTime := time.Now()
 	selectedTests, err := comm.SelectTests(ctx, conf.TaskData(), request)
 	durationMs := time.Since(startTime).Milliseconds()
+	calledAPI = true
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(testSelectionDurationMsAttribute, durationMs))
-	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, true))
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
+	defer func() {
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
+	}()
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionNumTestsReturnedAttribute, len(selectedTests)))
 
 	// Write the results to the output file.
