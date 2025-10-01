@@ -901,6 +901,57 @@ func (s *EC2Suite) TestStartInstance() {
 	}
 }
 
+func (s *EC2Suite) TestRebootInstance() {
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.Require().True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
+	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{}
+
+	unstartableHosts := []*host.Host{
+		{
+			Id:     "host-provisioning",
+			Status: evergreen.HostProvisioning,
+		},
+		{
+			Id:     "host-stopping",
+			Status: evergreen.HostStopping,
+		},
+		{
+			Id:     "host-stopped",
+			Status: evergreen.HostStopped,
+		},
+	}
+	for _, h := range unstartableHosts {
+		h.Distro = s.distro
+		s.Require().NoError(h.Insert(s.ctx))
+	}
+	for _, h := range unstartableHosts {
+		s.Error(s.onDemandManager.RebootInstance(s.ctx, h, evergreen.User))
+	}
+
+	startableHosts := []*host.Host{
+		{
+			Id:     "host-running",
+			Status: evergreen.HostRunning,
+		},
+	}
+	for _, h := range startableHosts {
+		h.Distro = s.distro
+		s.NoError(h.Insert(s.ctx))
+	}
+	for _, h := range startableHosts {
+		s.NoError(s.onDemandManager.RebootInstance(s.ctx, h, evergreen.User))
+
+		found, err := host.FindOne(s.ctx, host.ById(h.Id))
+		s.NoError(err)
+		s.Equal(evergreen.HostRunning, found.Status)
+		s.Equal("public_dns_name", found.Host)
+		s.Equal("12.34.56.78", found.IPv4)
+		s.False(found.SleepSchedule.ShouldKeepOff)
+	}
+}
+
 func (s *EC2Suite) TestGetDNSName() {
 	s.h.Host = "public_dns_name"
 	dns, err := s.onDemandManager.GetDNSName(s.ctx, s.h)

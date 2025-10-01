@@ -64,6 +64,9 @@ type AWSClient interface {
 	// StartInstances is a wrapper for ec2.StartInstances.
 	StartInstances(context.Context, *ec2.StartInstancesInput) (*ec2.StartInstancesOutput, error)
 
+	// RebootInstances is a wrapper for ec2.RebootInstances.
+	RebootInstances(context.Context, *ec2.RebootInstancesInput) (*ec2.RebootInstancesOutput, error)
+
 	// CreateVolume is a wrapper for ec2.CreateVolume.
 	CreateVolume(context.Context, *ec2.CreateVolumeInput) (*ec2.CreateVolumeOutput, error)
 
@@ -417,6 +420,31 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 		func() (bool, error) {
 			msg := makeAWSLogMessage("StartInstances", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.StartInstances(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// RebootInstances is a wrapper for ec2.RebootInstances.
+func (c *awsClientImpl) RebootInstances(ctx context.Context, input *ec2.RebootInstancesInput) (*ec2.RebootInstancesOutput, error) {
+	var output *ec2.RebootInstancesOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("RebootInstances", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.RebootInstances(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
@@ -1080,6 +1108,7 @@ type awsClientMock struct { //nolint
 	*ec2.TerminateInstancesInput
 	*ec2.StopInstancesInput
 	*ec2.StartInstancesInput
+	*ec2.RebootInstancesInput
 	*ec2.CreateVolumeInput
 	*ec2.DeleteVolumeInput
 	*ec2.AttachVolumeInput
@@ -1233,6 +1262,25 @@ func (c *awsClientMock) StartInstances(ctx context.Context, input *ec2.StartInst
 		LaunchTime:       aws.Time(time.Now()),
 	}
 	return &ec2.StartInstancesOutput{}, nil
+}
+
+// RebootInstances is a mock for ec2.RebootInstances.
+func (c *awsClientMock) RebootInstances(ctx context.Context, input *ec2.RebootInstancesInput) (*ec2.RebootInstancesOutput, error) {
+	c.RebootInstancesInput = input
+	c.Instance = &types.Instance{
+		InstanceId: aws.String("id"),
+		State: &types.InstanceState{
+			Name: types.InstanceStateNameRunning,
+		},
+		Placement: &types.Placement{
+			AvailabilityZone: aws.String("us-east-1a"),
+		},
+		PublicDnsName:    aws.String("public_dns_name"),
+		PublicIpAddress:  aws.String("127.0.0.1"),
+		PrivateIpAddress: aws.String("12.34.56.78"),
+		LaunchTime:       aws.Time(time.Now()),
+	}
+	return &ec2.RebootInstancesOutput{}, nil
 }
 
 // CreateVolume is a mock for ec2.CreateVolume.

@@ -276,6 +276,10 @@ func (m *dockerManager) StartInstance(ctx context.Context, host *host.Host, user
 	return errors.New("StartInstance is not supported for Docker provider")
 }
 
+func (m *dockerManager) RebootInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("RebootInstance is not supported for Docker provider")
+}
+
 // Configure populates a dockerManager by reading relevant settings from the
 // config object.
 func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) error {

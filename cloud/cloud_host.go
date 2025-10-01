@@ -46,6 +46,10 @@ func (cloudHost *CloudHost) StartInstance(ctx context.Context, user string) erro
 	return cloudHost.CloudMgr.StartInstance(ctx, cloudHost.Host, user)
 }
 
+func (cloudHost *CloudHost) RebootInstance(ctx context.Context, user string) error {
+	return cloudHost.CloudMgr.RebootInstance(ctx, cloudHost.Host, user)
+}
+
 func (cloudHost *CloudHost) GetInstanceState(ctx context.Context) (CloudInstanceState, error) {
 	return cloudHost.CloudMgr.GetInstanceState(ctx, cloudHost.Host)
 }
