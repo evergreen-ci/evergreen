@@ -806,8 +806,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 				if execTask.Activated {
 					displayTaskActivated = true
 				}
-				// kim: TODO: confirm that display task ID is set on all
-				// execution tasks being created after this line.
 				taskMap[execTaskId].DisplayTaskId = utility.ToStringPtr(id)
 			} else {
 				// exec task already exists so update its parent ID in the database
@@ -1579,17 +1577,21 @@ func toRegexps(strs []string) ([]*regexp.Regexp, error) {
 	return regexps, nil
 }
 
-// kim; TODO: test this logic a bunch
+// canBuildVariantEnableTestSelection determines if the tasks within a build
+// variant are eligible for test selection. This does not determine which
+// particular tasks within the build variant have it enabled, just whether
+// anything would rule out the build variant from being able to use test
+// selection.
 func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreationInfo) bool {
+	if !creationInfo.ProjectRef.IsTestSelectionAllowed() {
+		return false
+	}
 	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
 	isTestSelectionIncludeSet := len(creationInfo.TestSelectionIncludeBVs) > 0 || len(creationInfo.TestSelectionIncludeTasks) > 0
 
 	if isTestSelectionIncludeSet {
-		// kim: NOTE: this is highest precedence because the user explicitly
-		// requested to include variants/tasks.
-		// kim: TODO: check if the variant is NOT excluded and is explicitly
-		// included, OR if the task is explicitly included and no variants
-		// are included.
+		// If the user explicitly chooses variants/tasks to run, then the
+		// default enabled/disabled setting is overridden.
 		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionExcludeBVs)
 		if nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionIncludeBVs) && !isExcluded {
 			return true
@@ -1597,8 +1599,6 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 			return true
 		}
 	} else if isTestSelectionDefaultEnabled {
-		// kim: NOTE: this is the default. Can be overridden by including
-		// explicit variants/tasks.
 		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionExcludeBVs)
 		if !isExcluded {
 			return true
