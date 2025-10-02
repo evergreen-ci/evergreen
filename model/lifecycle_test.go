@@ -3115,7 +3115,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
 					regexp.MustCompile("bv1"),
 					regexp.MustCompile("bv2"),
@@ -3131,7 +3131,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
 					regexp.MustCompile("bv1"),
 					regexp.MustCompile("bv2"),
@@ -3148,7 +3148,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
 					regexp.MustCompile("bv1"),
 					regexp.MustCompile("bv2"),
@@ -3166,7 +3166,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					DefaultEnabled: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				ExcludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv2")},
 			},
 		}
@@ -3179,7 +3179,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
 					regexp.MustCompile("bv1"),
 					regexp.MustCompile("bv2"),
@@ -3196,7 +3196,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				IncludeTasks: []*regexp.Regexp{regexp.MustCompile("t1")},
 			},
 		}
@@ -3212,7 +3212,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv1")},
 			},
 		}
@@ -3226,7 +3226,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					DefaultEnabled: utility.TruePtr(),
 				},
 			},
-			TestSelection: TestSelectionParams{
+			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv1")},
 			},
 		}
@@ -3258,62 +3258,62 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 func TestIsTestSelectionEnabledForTask(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo){
 		"ReturnsTrueIfTaskIncludedInTestSelection": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
-			creationInfo.TestSelection.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
+			creationInfo.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.True(t, isTestSelectionEnabled)
 		},
 		"ReturnsTrueIfParentDisplayTaskIncludedInTestSelection": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
 			tsk.DisplayTaskId = utility.ToStringPtr("display_task_id1")
-			creationInfo.TestSelection.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("dt1")}
+			creationInfo.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("dt1")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.True(t, isTestSelectionEnabled)
 		},
 		"ReturnsTrueIfTaskGroupIsIncludedInTestSelection": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
 			tsk.TaskGroup = "tg1"
-			creationInfo.TestSelection.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("tg1")}
+			creationInfo.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("tg1")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.True(t, isTestSelectionEnabled)
 		},
 		"ReturnsFalseIfTaskIsNotIncludedInTestSelection": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
-			creationInfo.TestSelection.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t2")}
+			creationInfo.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t2")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.False(t, isTestSelectionEnabled)
 		},
 		"ReturnsFalseIfTaskIsIncludedByNameButDisplayTaskIsExcluded": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
 			tsk.DisplayTaskId = utility.ToStringPtr("display_task_id1")
-			creationInfo.TestSelection.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
-			creationInfo.TestSelection.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("dt1")}
+			creationInfo.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
+			creationInfo.TestSelectionParams.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("dt1")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.False(t, isTestSelectionEnabled)
 		},
 		"ReturnsFalseIfTaskIsIncludedByNameButTaskGroupIsExcluded": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
 			tsk.TaskGroup = "tg1"
-			creationInfo.TestSelection.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
-			creationInfo.TestSelection.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("tg1")}
+			creationInfo.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
+			creationInfo.TestSelectionParams.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("tg1")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.False(t, isTestSelectionEnabled)
 		},
 		"ReturnsFalseIfTaskIsExcluded": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
-			creationInfo.TestSelection.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
+			creationInfo.TestSelectionParams.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.False(t, isTestSelectionEnabled)
 		},
 		"ReturnsTrueIfVariantCanEnableTestSelectionAndTaskIsNotExcluded": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
-			creationInfo.TestSelection.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("t2")}
+			creationInfo.TestSelectionParams.ExcludeTasks = []*regexp.Regexp{regexp.MustCompile("t2")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.True(t, isTestSelectionEnabled)
 		},
 		"ReturnsFalseIfBVCannotEnableTestSelection": func(t *testing.T, tsk *task.Task, displayTasks map[string]string, creationInfo TaskCreationInfo) {
-			creationInfo.TestSelection.CanBuildVariantEnableTestSelection = false
-			creationInfo.TestSelection.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
+			creationInfo.TestSelectionParams.CanBuildVariantEnableTestSelection = false
+			creationInfo.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("t1")}
 			isTestSelectionEnabled, err := isTestSelectionEnabledForTask(tsk, displayTasks, creationInfo)
 			assert.NoError(t, err)
 			assert.False(t, isTestSelectionEnabled)
@@ -3326,7 +3326,7 @@ func TestIsTestSelectionEnabledForTask(t *testing.T) {
 			}
 			displayTasks := map[string]string{"display_task_id1": "dt1"}
 			creationInfo := TaskCreationInfo{
-				TestSelection: TestSelectionParams{
+				TestSelectionParams: TestSelectionParams{
 					CanBuildVariantEnableTestSelection: true,
 				},
 			}

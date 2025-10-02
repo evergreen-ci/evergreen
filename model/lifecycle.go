@@ -1250,7 +1250,7 @@ func setTestSelectionEnabledForTasks(tasks map[string]*task.Task, displayTaskIDs
 }
 
 func isTestSelectionEnabledForTask(t *task.Task, displayTaskIDsToNames map[string]string, creationInfo TaskCreationInfo) (bool, error) {
-	if !creationInfo.TestSelection.CanBuildVariantEnableTestSelection {
+	if !creationInfo.TestSelectionParams.CanBuildVariantEnableTestSelection {
 		return false, nil
 	}
 
@@ -1267,14 +1267,16 @@ func isTestSelectionEnabledForTask(t *task.Task, displayTaskIDsToNames map[strin
 	}
 
 	for _, name := range namesToCheck {
-		if nameMatchesAnyRegexp(name, creationInfo.TestSelection.ExcludeTasks) {
+		// Check exclusions first because excluding a task always takes
+		// precedence over including it.
+		if nameMatchesAnyRegexp(name, creationInfo.TestSelectionParams.ExcludeTasks) {
 			return false, nil
 		}
 	}
 
-	if len(creationInfo.TestSelection.IncludeTasks) > 0 {
+	if len(creationInfo.TestSelectionParams.IncludeTasks) > 0 {
 		for _, name := range namesToCheck {
-			if nameMatchesAnyRegexp(name, creationInfo.TestSelection.IncludeTasks) {
+			if nameMatchesAnyRegexp(name, creationInfo.TestSelectionParams.IncludeTasks) {
 				return true, nil
 			}
 		}
@@ -1572,19 +1574,21 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 		return false
 	}
 	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
-	isTestSelectionIncludeSet := len(creationInfo.TestSelection.IncludeBuildVariants) > 0 || len(creationInfo.TestSelection.IncludeTasks) > 0
+	isTestSelectionIncludeSet := len(creationInfo.TestSelectionParams.IncludeBuildVariants) > 0 || len(creationInfo.TestSelectionParams.IncludeTasks) > 0
 
 	if isTestSelectionIncludeSet {
 		// If the user explicitly chooses variants/tasks to run, then the
 		// default enabled/disabled setting is overridden.
-		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelection.ExcludeBuildVariants)
-		if nameMatchesAnyRegexp(bvName, creationInfo.TestSelection.IncludeBuildVariants) && !isExcluded {
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionParams.ExcludeBuildVariants)
+		// Check exclusions first because excluding a build variant always takes
+		// precedence over including it.
+		if nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionParams.IncludeBuildVariants) && !isExcluded {
 			return true
-		} else if len(creationInfo.TestSelection.IncludeBuildVariants) == 0 && !isExcluded {
+		} else if len(creationInfo.TestSelectionParams.IncludeBuildVariants) == 0 && !isExcluded {
 			return true
 		}
 	} else if isTestSelectionDefaultEnabled {
-		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelection.ExcludeBuildVariants)
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionParams.ExcludeBuildVariants)
 		if !isExcluded {
 			return true
 		}
@@ -1631,7 +1635,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		taskNames := creationInfo.Pairs.ExecTasks.TaskNames(pair.Variant)
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !creationInfo.ActivationInfo.variantHasSpecificActivation(pair.Variant)
-		tsParams := creationInfo.TestSelection
+		tsParams := creationInfo.TestSelectionParams
 		tsParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(pair.Variant, creationInfo)
 		buildCreationArgs := TaskCreationInfo{
 			Project:                             creationInfo.Project,
@@ -1646,7 +1650,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
-			TestSelection:                       tsParams,
+			TestSelectionParams:                 tsParams,
 		}
 
 		grip.Info(message.Fields{
@@ -1829,7 +1833,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		creationInfo.TaskNames = tasksToAdd
 		creationInfo.DisplayNames = displayTasksToAdd
 		creationInfo.DistroAliases = distroAliases
-		creationInfo.TestSelection.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
+		creationInfo.TestSelectionParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
 		_, tasks, err := addTasksToBuild(ctx, creationInfo)
 		if err != nil {
 			return nil, nil, err

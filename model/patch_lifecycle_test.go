@@ -843,7 +843,7 @@ func TestAddNewPatch(t *testing.T) {
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
 		GeneratedBy:    "",
-		TestSelection: TestSelectionParams{
+		TestSelectionParams: TestSelectionParams{
 			IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("variant")},
 			IncludeTasks:         []*regexp.Regexp{regexp.MustCompile("task1")},
 		},

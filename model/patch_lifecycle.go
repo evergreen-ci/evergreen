@@ -179,13 +179,13 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			}
 			// Add new tasks to existing builds, if necessary
 			creationInfo := TaskCreationInfo{
-				Project:        project,
-				ProjectRef:     proj,
-				Version:        version,
-				Pairs:          tasks,
-				ActivationInfo: specificActivationInfo{},
-				GeneratedBy:    "",
-				TestSelection:  *tsParams,
+				Project:             project,
+				ProjectRef:          proj,
+				Version:             version,
+				Pairs:               tasks,
+				ActivationInfo:      specificActivationInfo{},
+				GeneratedBy:         "",
+				TestSelectionParams: *tsParams,
 			}
 			err = addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
@@ -683,10 +683,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 
 	creationInfo := TaskCreationInfo{
-		Version:       patchVersion,
-		Project:       project,
-		ProjectRef:    projectRef,
-		TestSelection: *tsParams,
+		Version:             patchVersion,
+		Project:             project,
+		ProjectRef:          projectRef,
+		TestSelectionParams: *tsParams,
 	}
 	createTime, err := getTaskCreateTime(ctx, creationInfo)
 	if err != nil {
@@ -707,7 +707,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 
-		tsParams := creationInfo.TestSelection
+		tsParams := creationInfo.TestSelectionParams
 		tsParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(vt.Variant, creationInfo)
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
@@ -724,7 +724,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			// tasks selected by the alias must finish in order for the
 			// build/version to be finished.
 			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
-			TestSelection:                       tsParams,
+			TestSelectionParams:                 tsParams,
 		}
 		var build *build.Build
 		var tasks task.Tasks

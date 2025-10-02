@@ -350,7 +350,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 			if err != nil {
 				return errors.Wrap(err, "making test selection params for task creation")
 			}
-			creationInfo.TestSelection = *tsParams
+			creationInfo.TestSelectionParams = *tsParams
 		}
 	}
 
