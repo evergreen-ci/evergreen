@@ -173,14 +173,19 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 		}
 
 		if len(patchVariantTasks) > 0 {
+			tsParams, err := newTestSelectionParams(p)
+			if err != nil {
+				return http.StatusInternalServerError, errors.Wrap(err, "making test selection parameters for task creation")
+			}
 			// Add new tasks to existing builds, if necessary
 			creationInfo := TaskCreationInfo{
-				Project:        project,
-				ProjectRef:     proj,
-				Version:        version,
-				Pairs:          tasks,
-				ActivationInfo: specificActivationInfo{},
-				GeneratedBy:    "",
+				Project:             project,
+				ProjectRef:          proj,
+				Version:             version,
+				Pairs:               tasks,
+				ActivationInfo:      specificActivationInfo{},
+				GeneratedBy:         "",
+				TestSelectionParams: *tsParams,
 			}
 			err = addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
@@ -672,10 +677,16 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 	variantsProcessed := map[string]bool{}
 
+	tsParams, err := newTestSelectionParams(p)
+	if err != nil {
+		return nil, errors.Wrap(err, "making test selection parameters for task creation")
+	}
+
 	creationInfo := TaskCreationInfo{
-		Version:    patchVersion,
-		Project:    project,
-		ProjectRef: projectRef,
+		Version:             patchVersion,
+		Project:             project,
+		ProjectRef:          projectRef,
+		TestSelectionParams: *tsParams,
 	}
 	createTime, err := getTaskCreateTime(ctx, creationInfo)
 	if err != nil {
@@ -696,6 +707,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 
+		tsParams := creationInfo.TestSelectionParams
+		tsParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(vt.Variant, creationInfo)
 		buildCreationArgs := TaskCreationInfo{
 			Project:          creationInfo.Project,
 			ProjectRef:       creationInfo.ProjectRef,
@@ -711,6 +724,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			// tasks selected by the alias must finish in order for the
 			// build/version to be finished.
 			ActivatedTasksAreEssentialToSucceed: requester == evergreen.GithubPRRequester,
+			TestSelectionParams:                 tsParams,
 		}
 		var build *build.Build
 		var tasks task.Tasks
