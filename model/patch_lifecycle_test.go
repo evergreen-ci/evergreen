@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -643,7 +644,7 @@ index a45dff8..83a8f81 100644
 --- a/evergreen.yml
 +++ b/evergreen.yml
 @@ -5,7 +5,7 @@ stepback: true
- 
+
  include:
    - filename: include1.yml
 -  - filename: include2.yml
@@ -686,11 +687,11 @@ index bd66c6e..b671f40 100644
 +++ b/evergreen.yml
 @@ -4,7 +4,7 @@ ignore:
  stepback: true
- 
+
  includes:
 -  - include1.yml
 +  - renamed.yml
- 
+
  pre_error_fails_task: true
  pre: &pre
 diff --git a/include1.yml b/renamed.yml
@@ -762,9 +763,6 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 }
 
 func TestAddNewPatch(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 
 	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, user.Collection))
@@ -799,6 +797,9 @@ func TestAddNewPatch(t *testing.T) {
 	ref := ProjectRef{
 		Id:         "project",
 		Identifier: "project_name",
+		TestSelection: TestSelectionSettings{
+			Allowed: utility.TruePtr(),
+		},
 	}
 	assert.NoError(ref.Insert(t.Context()))
 
@@ -842,8 +843,12 @@ func TestAddNewPatch(t *testing.T) {
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
 		GeneratedBy:    "",
+		TestSelection: TestSelectionParams{
+			IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("variant")},
+			IncludeTasks:         []*regexp.Regexp{regexp.MustCompile("task1")},
+		},
 	}
-	_, _, err := addNewBuilds(ctx, creationInfo, nil)
+	_, _, err := addNewBuilds(t.Context(), creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(t.Context(), db.Q{})
 	assert.NoError(err)
@@ -856,13 +861,13 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Equal("variant", dbVersion.BuildVariants[0].BuildVariant)
 	assert.Equal("My Variant Display", dbVersion.BuildVariants[0].DisplayName)
 
-	_, _, err = addNewTasksToExistingBuilds(ctx, creationInfo, []build.Build{*dbBuild}, "")
+	_, _, err = addNewTasksToExistingBuilds(t.Context(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(4, dbUser.NumScheduledPatchTasks)
-	dbTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(dbBuild.Id)))
+	dbTasks, err := task.FindAll(t.Context(), db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	require.Len(t, dbTasks, 4)
@@ -870,6 +875,10 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Equal("task1", dbTasks[1].DisplayName)
 	assert.Equal("task2", dbTasks[2].DisplayName)
 	assert.Equal("task3", dbTasks[3].DisplayName)
+	assert.False(dbTasks[0].TestSelectionEnabled)
+	assert.True(dbTasks[1].TestSelectionEnabled)
+	assert.True(dbTasks[2].TestSelectionEnabled)
+	assert.False(dbTasks[3].TestSelectionEnabled)
 	for _, t := range dbTasks {
 		if t.DisplayOnly {
 			assert.Zero(t.ExecutionPlatform)
@@ -881,9 +890,6 @@ func TestAddNewPatch(t *testing.T) {
 }
 
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 
 	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
@@ -944,16 +950,16 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		ActivationInfo: specificActivationInfo{},
 		GeneratedBy:    "",
 	}
-	_, _, err := addNewBuilds(context.Background(), creationInfo, nil)
+	_, _, err := addNewBuilds(t.Context(), creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, _, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
+	_, _, err = addNewTasksToExistingBuilds(t.Context(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
-	dbTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(dbBuild.Id)))
+	dbTasks, err := task.FindAll(t.Context(), db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)
