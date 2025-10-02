@@ -405,6 +405,27 @@ evergreen get-update --auto
 
 Specify the optional `--auto` argument to enable automatic CLI upgrades before each command if your current binary is out of date. Once this is done, all future commands will auto update if necessary without the need for specifying this flag.
 
+### Minimum CLI Version
+
+Evergreen admins can enforce a minimum CLI version requirement to ensure all users are running a sufficiently recent
+version of the CLI. When configured, the CLI will automatically check its version against the server's minimum
+requirement before executing commands.
+
+If your CLI version is older than the minimum allowed version, you'll receive an error message like:
+
+```text
+CLI version 'YYYY-MM-DD' is older than the oldest allowed CLI version 'YYYY-MM-DD'.
+Run 'evergreen get-update --install' to update.
+```
+
+To resolve this issue, simply run the suggested command to update your CLI:
+
+```bash
+evergreen get-update --install
+```
+
+This feature helps maintain compatibility and ensures all users have access to important bug fixes and security updates.
+
 ### Fetch
 
 The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately. The default cloning depth for fetch is 1000.
