@@ -83,7 +83,7 @@ func TestSkipsWhenTestSelectionNotAllowed(t *testing.T) {
 	conf.ProjectRef.TestSelection.Allowed = utility.FalsePtr()
 	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 
-	var output TestSelectionOutput
+	var output testSelectionOutputFile
 	require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
 	assert.Empty(t, output.Tests)
 
@@ -92,7 +92,7 @@ func TestSkipsWhenTestSelectionNotAllowed(t *testing.T) {
 	conf.Task.TestSelectionEnabled = false
 	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 
-	output = TestSelectionOutput{}
+	output = testSelectionOutputFile{}
 	require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
 	assert.Empty(t, output.Tests)
 }
@@ -107,7 +107,7 @@ func TestCallsAPIWhenEnabled(t *testing.T) {
 	// Should return the expected tests from the mock API.
 	data, err := os.ReadFile(cmd.OutputFile)
 	require.NoError(t, err)
-	var output TestSelectionOutput
+	var output testSelectionOutputFile
 	require.NoError(t, json.Unmarshal(data, &output))
 	require.Len(t, output.Tests, 2)
 	assert.Equal(t, "test1", output.Tests[0].Name)

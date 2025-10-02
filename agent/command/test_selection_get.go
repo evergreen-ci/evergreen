@@ -38,12 +38,16 @@ var (
 	testSelectionDurationMsAttribute       = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
 )
 
-type TestOutput struct {
+type testSelectionInputFile struct {
+	Tests []string `json:"tests"`
+}
+
+type testOutput struct {
 	Name string `json:"name"`
 }
 
-type TestSelectionOutput struct {
-	Tests []TestOutput `json:"tests"`
+type testSelectionOutputFile struct {
+	Tests []testOutput `json:"tests"`
 }
 
 type testSelectionGet struct {
@@ -54,6 +58,10 @@ type testSelectionGet struct {
 	// Tests is a list of test names to pass into the TSS API.
 	// Optional.
 	Tests []string `mapstructure:"tests" plugin:"expand"`
+
+	// TestsFile is an path to a file containing a JSON array of test names.
+	// Optional.
+	TestsFile string `mapstructure:"tests_file" plugin:"expand"`
 
 	// UsageRate is an optional string that specifies a proportion
 	// between 0 and 1 of how often to actually use test selection.
@@ -92,6 +100,7 @@ func (c *testSelectionGet) validate() error {
 		catcher.NewWhen(rate < 0 || rate > 1, "usage rate must be between 0 and 1")
 		c.rate = rate
 	}
+	catcher.NewWhen(len(c.Tests) > 0 && c.TestsFile != "", "cannot specify both tests and tests_file")
 	return catcher.Resolve()
 }
 
@@ -115,6 +124,10 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		c.OutputFile = GetWorkingDirectory(conf, c.OutputFile)
 	}
 
+	if c.TestsFile != "" && !filepath.IsAbs(c.TestsFile) {
+		c.TestsFile = GetWorkingDirectory(conf, c.TestsFile)
+	}
+
 	enabled := c.isTestSelectionAllowed(conf)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
 	trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionInputTestsAttribute, c.Tests))
@@ -134,6 +147,14 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 			return c.writeTestList([]string{})
 		}
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
+	}
+
+	if c.TestsFile != "" {
+		testsFromFile, err := c.parseTestsFromFile()
+		if err != nil {
+			return errors.Wrap(err, "parsing tests from file")
+		}
+		c.Tests = testsFromFile
 	}
 
 	// Build the request using task information from TaskConfig.
@@ -173,12 +194,12 @@ func (c *testSelectionGet) isTestSelectionAllowed(conf *internal.TaskConfig) boo
 
 // writeTestList writes the list of tests to the output file as JSON in the required format.
 func (c *testSelectionGet) writeTestList(tests []string) error {
-	testObjects := make([]TestOutput, len(tests))
+	testObjects := make([]testOutput, len(tests))
 	for i, testName := range tests {
-		testObjects[i] = TestOutput{Name: testName}
+		testObjects[i] = testOutput{Name: testName}
 	}
 
-	output := TestSelectionOutput{
+	output := testSelectionOutputFile{
 		Tests: testObjects,
 	}
 
@@ -191,4 +212,21 @@ func createSeed(taskID string) int64 {
 	h := md5.New()
 	_, _ = io.WriteString(h, taskID)
 	return int64(binary.BigEndian.Uint64(h.Sum(nil)))
+}
+
+// parseTestsFromFile reads the tests from the input test JSON file if any and
+// returns the list of parsed tests.
+// kim: TODO: add unit test.
+// kim: TODO: test in staging.
+func (c *testSelectionGet) parseTestsFromFile() ([]string, error) {
+	if c.TestsFile == "" {
+		return nil, nil
+	}
+
+	var output testSelectionInputFile
+	if err := utility.ReadJSONFile(c.TestsFile, &output); err != nil {
+		return nil, errors.Wrap(err, "reading tests from JSON file")
+	}
+
+	return output.Tests, nil
 }
