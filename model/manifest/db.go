@@ -69,17 +69,18 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 	})
 }
 
+// FindFromVersion finds a manifest associated with a given version. If none is found,
+// it will fall back to the base commit version's manifest. It also sets the patch's module overrides (if any).
 func FindFromVersion(ctx context.Context, versionID, project, revision, requester string) (*Manifest, error) {
 	manifest, err := FindOne(ctx, ById(versionID))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding manifest")
 	}
 	if manifest != nil {
-		return manifest, nil
+		return manifestWithModuleOverrides(ctx, manifest, versionID, requester)
 	}
 
-	// the version wasn't from the repotracker
-	// find the base commit's manifest
+	// fallback to the base commit's manifest
 	manifest, err = FindOne(ctx, ByBaseProjectAndRevision(project, revision))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding manifest")
@@ -87,9 +88,13 @@ func FindFromVersion(ctx context.Context, versionID, project, revision, requeste
 	if manifest == nil {
 		return nil, nil
 	}
+	return manifestWithModuleOverrides(ctx, manifest, versionID, requester)
+}
 
+func manifestWithModuleOverrides(ctx context.Context, manifest *Manifest, versionID, requester string) (*Manifest, error) {
+	var err error
+	var p *patch.Patch
 	if evergreen.IsPatchRequester(requester) {
-		var p *patch.Patch
 		p, err = patch.FindOneId(ctx, versionID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
@@ -104,6 +109,5 @@ func FindFromVersion(ctx context.Context, versionID, project, revision, requeste
 			}
 		}
 	}
-
 	return manifest, err
 }

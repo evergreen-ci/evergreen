@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -18,6 +20,22 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	testSelectionGetAttribute = "evergreen.command.test_selection.get"
+)
+
+var (
+	testSelectionEnabledAttribute          = fmt.Sprintf("%s.enabled", testSelectionGetAttribute)
+	testSelectionCalledAttribute           = fmt.Sprintf("%s.called", testSelectionGetAttribute)
+	testSelectionInputTestsAttribute       = fmt.Sprintf("%s.input_tests", testSelectionGetAttribute)
+	testSelectionStrategiesAttribute       = fmt.Sprintf("%s.strategies", testSelectionGetAttribute)
+	testSelectionUsageRateAttribute        = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
+	testSelectionNumTestsReturnedAttribute = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
+	testSelectionDurationMsAttribute       = fmt.Sprintf("%s.duration_ms", testSelectionGetAttribute)
 )
 
 type TestOutput struct {
@@ -78,6 +96,11 @@ func (c *testSelectionGet) validate() error {
 }
 
 func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	calledAPI := false
+	defer func() {
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionCalledAttribute, calledAPI))
+	}()
+
 	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
@@ -92,7 +115,10 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		c.OutputFile = GetWorkingDirectory(conf, c.OutputFile)
 	}
 
-	if !c.isTestSelectionAllowed(conf) {
+	enabled := c.isTestSelectionAllowed(conf)
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionInputTestsAttribute, c.Tests))
+	if !enabled {
 		logger.Execution().Info("Test selection is not allowed/enabled, writing empty test list")
 		return c.writeTestList([]string{})
 	}
@@ -107,6 +133,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 			logger.Execution().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
 			return c.writeTestList([]string{})
 		}
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
 	}
 
 	// Build the request using task information from TaskConfig.
@@ -122,12 +149,18 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	if c.Strategies != "" {
 		trimmedStrategies := strings.TrimSpace(c.Strategies)
 		request.Strategies = strings.Split(trimmedStrategies, ",")
+		trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionStrategiesAttribute, request.Strategies))
 	}
 
+	startTime := time.Now()
 	selectedTests, err := comm.SelectTests(ctx, conf.TaskData(), request)
+	durationMs := time.Since(startTime).Milliseconds()
+	calledAPI = true
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int64(testSelectionDurationMsAttribute, durationMs))
 	if err != nil {
 		return errors.Wrap(err, "calling test selection API")
 	}
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionNumTestsReturnedAttribute, len(selectedTests)))
 
 	// Write the results to the output file.
 	return c.writeTestList(selectedTests)
