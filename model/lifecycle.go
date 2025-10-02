@@ -855,7 +855,9 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	// not existing tasks. If a task already existed and is now being regrouped
 	// under a new display task, its test selection state will not be
 	// re-evaluated to avoid changing the behavior of the task.
-	setTestSelectionEnabledForTasks(taskMap, displayTaskIDsToNames, creationInfo)
+	if err := setTestSelectionEnabledForTasks(taskMap, displayTaskIDsToNames, creationInfo); err != nil {
+		return nil, errors.Wrap(err, "setting test selection enabled for newly-created tasks")
+	}
 
 	for _, t := range taskMap {
 		tasks = append(tasks, t)
