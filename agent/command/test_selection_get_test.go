@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -17,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestEnv(t *testing.T) (context.Context, context.CancelFunc, *internal.TaskConfig, *client.Mock, client.LoggerProducer) {
+func setupTestEnv(t *testing.T) (*internal.TaskConfig, *client.Mock, client.LoggerProducer) {
 	comm := client.NewMock("http://localhost.com")
 	comm.SelectTestsResponse = []string{"test1", "test3"}
 	conf := &internal.TaskConfig{
@@ -35,15 +34,14 @@ func setupTestEnv(t *testing.T) (context.Context, context.CancelFunc, *internal.
 	conf.WorkDir = tmpDir
 	f, err := os.Create(filepath.Join(tmpDir, "test.json"))
 	require.NoError(t, err)
-	_ = f.Close()
+	require.NoError(t, f.Close())
 
-	ctx, cancel := context.WithCancel(t.Context())
-	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	logger, err := comm.GetLoggerProducer(t.Context(), &conf.Task, nil)
 	require.NoError(t, err)
 
 	conf.Task.TestSelectionEnabled = true
 	conf.ProjectRef.TestSelection.Allowed = utility.TruePtr()
-	return ctx, cancel, conf, comm, logger
+	return conf, comm, logger
 }
 
 func TestTestSelectionGetParseFailsWithMissingOutputFile(t *testing.T) {
@@ -74,14 +72,23 @@ func TestParseSucceedsWithValidParams(t *testing.T) {
 	assert.Equal(t, "strategy1,strategy2,strategy3", cmd.Strategies)
 }
 
+func TestParseFailsWithBothTestsListAndTestFile(t *testing.T) {
+	cmd := &testSelectionGet{}
+	params := map[string]any{
+		"output_file": "test.json",
+		"tests":       []string{"test1", "test2"},
+		"tests_file":  "tests.txt",
+	}
+	assert.Error(t, cmd.ParseParams(params))
+}
+
 func TestSkipsWhenTestSelectionNotAllowed(t *testing.T) {
-	ctx, cancel, conf, comm, logger := setupTestEnv(t)
-	defer cancel()
+	conf, comm, logger := setupTestEnv(t)
 	cmd := &testSelectionGet{OutputFile: "test.json"}
 
 	// Test selection not allowed in project settings
 	conf.ProjectRef.TestSelection.Allowed = utility.FalsePtr()
-	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
+	require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
 
 	var output testSelectionOutputFile
 	require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
@@ -90,7 +97,7 @@ func TestSkipsWhenTestSelectionNotAllowed(t *testing.T) {
 	// Test selection allowed in project settings but not enabled for task
 	conf.ProjectRef.TestSelection.Allowed = utility.TruePtr()
 	conf.Task.TestSelectionEnabled = false
-	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
+	require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
 
 	output = testSelectionOutputFile{}
 	require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
@@ -98,11 +105,35 @@ func TestSkipsWhenTestSelectionNotAllowed(t *testing.T) {
 }
 
 func TestCallsAPIWhenEnabled(t *testing.T) {
-	ctx, cancel, conf, comm, logger := setupTestEnv(t)
-	defer cancel()
+	conf, comm, logger := setupTestEnv(t)
 	cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
 
-	require.NoError(t, cmd.Execute(ctx, comm, logger, conf))
+	require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+	// Should return the expected tests from the mock API.
+	data, err := os.ReadFile(cmd.OutputFile)
+	require.NoError(t, err)
+	var output testSelectionOutputFile
+	require.NoError(t, json.Unmarshal(data, &output))
+	require.Len(t, output.Tests, 2)
+	assert.Equal(t, "test1", output.Tests[0].Name)
+	assert.Equal(t, "test3", output.Tests[1].Name)
+
+	// Verify the API was called with correct parameters from TaskConfig
+	assert.True(t, comm.SelectTestsCalled)
+	assert.Equal(t, conf.Task.Project, comm.SelectTestsRequest.Project)
+	assert.Equal(t, conf.Task.Requester, comm.SelectTestsRequest.Requester)
+	assert.Equal(t, conf.Task.BuildVariant, comm.SelectTestsRequest.BuildVariant)
+	assert.Equal(t, conf.Task.Id, comm.SelectTestsRequest.TaskID)
+	assert.Equal(t, conf.Task.DisplayName, comm.SelectTestsRequest.TaskName)
+	assert.Equal(t, []string{"test1", "test3"}, comm.SelectTestsRequest.Tests)
+}
+
+func TestPassesTestsToAPI(t *testing.T) {
+	conf, comm, logger := setupTestEnv(t)
+	cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
+
+	require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
 
 	// Should return the expected tests from the mock API.
 	data, err := os.ReadFile(cmd.OutputFile)
@@ -124,14 +155,13 @@ func TestCallsAPIWhenEnabled(t *testing.T) {
 }
 
 func TestHandlesAPIError(t *testing.T) {
-	ctx, cancel, conf, comm, logger := setupTestEnv(t)
-	defer cancel()
+	conf, comm, logger := setupTestEnv(t)
 	cmd := &testSelectionGet{OutputFile: "test.json"}
 
 	// Mock API error
 	comm.SelectTestsError = errors.New("test error")
 
-	err := cmd.Execute(ctx, comm, logger, conf)
+	err := cmd.Execute(t.Context(), comm, logger, conf)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "test error")
 	assert.Contains(t, err.Error(), "calling test selection API")
