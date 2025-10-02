@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -771,11 +772,13 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	// Create and update display tasks
 	tasks := task.Tasks{}
 	loggedExecutionTaskNotFound := false
+	displayTaskIDsToNames := map[string]string{}
 	for _, dt := range creationInfo.BuildVariant.DisplayTasks {
 		id := displayTable.GetId(creationInfo.Build.BuildVariant, dt.Name)
 		if id == "" {
 			continue
 		}
+		displayTaskIDsToNames[id] = dt.Name
 		execTasksThatNeedParentId := []string{}
 		execTaskIds := []string{}
 		displayTaskActivated := false
@@ -844,7 +847,17 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			tasks = append(tasks, newDisplayTask)
 		}
 	}
+
 	addSingleHostTaskGroupDependencies(taskMap, creationInfo.Project, execTable)
+
+	// Determine which newly-created tasks should use test selection.
+	// Note that this will only consider test selection for newly-created tasks,
+	// not existing tasks. If a task already existed and is now being regrouped
+	// under a new display task, its test selection state will not be
+	// re-evaluated to avoid changing the behavior of the task.
+	if err := setTestSelectionEnabledForTasks(taskMap, displayTaskIDsToNames, creationInfo); err != nil {
+		return nil, errors.Wrap(err, "setting test selection enabled for newly-created tasks")
+	}
 
 	for _, t := range taskMap {
 		tasks = append(tasks, t)
@@ -1223,6 +1236,56 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	return t, nil
 }
 
+// setTestSelectionEnabledForTasks sets the test selection enabled state for
+// the given tasks.
+func setTestSelectionEnabledForTasks(tasks map[string]*task.Task, displayTaskIDsToNames map[string]string, creationInfo TaskCreationInfo) error {
+	for _, t := range tasks {
+		enabled, err := isTestSelectionEnabledForTask(t, displayTaskIDsToNames, creationInfo)
+		if err != nil {
+			return errors.Wrapf(err, "checking if test selection is enabled for task '%s'", t.Id)
+		}
+		t.TestSelectionEnabled = enabled
+	}
+	return nil
+}
+
+func isTestSelectionEnabledForTask(t *task.Task, displayTaskIDsToNames map[string]string, creationInfo TaskCreationInfo) (bool, error) {
+	if !creationInfo.TestSelectionParams.CanBuildVariantEnableTestSelection {
+		return false, nil
+	}
+
+	// Test selection is enabled for a task if the task name, its task group, or
+	// its parent display task name matches.
+	namesToCheck := []string{t.DisplayName}
+	if t.TaskGroup != "" {
+		namesToCheck = append(namesToCheck, t.TaskGroup)
+	}
+	if utility.FromStringPtr(t.DisplayTaskId) != "" {
+		if dtName, ok := displayTaskIDsToNames[utility.FromStringPtr(t.DisplayTaskId)]; ok {
+			namesToCheck = append(namesToCheck, dtName)
+		}
+	}
+
+	for _, name := range namesToCheck {
+		// Check exclusions first because excluding a task always takes
+		// precedence over including it.
+		if nameMatchesAnyRegexp(name, creationInfo.TestSelectionParams.ExcludeTasks) {
+			return false, nil
+		}
+	}
+
+	if len(creationInfo.TestSelectionParams.IncludeTasks) > 0 {
+		for _, name := range namesToCheck {
+			if nameMatchesAnyRegexp(name, creationInfo.TestSelectionParams.IncludeTasks) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	return true, nil
+}
+
 func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant) (string, []string, error) {
 	if len(buildVarTask.RunOn) > 0 {
 		secondaryDistros := []string{}
@@ -1490,6 +1553,50 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 	return sortedLayer
 }
 
+// nameMatchesAnyRegexp checks if the given string matches any of the given
+// regexps.
+func nameMatchesAnyRegexp(name string, regexps []*regexp.Regexp) bool {
+	for _, re := range regexps {
+		if re.MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
+
+// canBuildVariantEnableTestSelection determines if the tasks within a build
+// variant are eligible for test selection. This does not determine which
+// particular tasks within the build variant have it enabled, just whether
+// anything would rule out the build variant from being able to use test
+// selection.
+func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreationInfo) bool {
+	if !creationInfo.ProjectRef.IsTestSelectionAllowed() {
+		return false
+	}
+	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
+	isTestSelectionIncludeSet := len(creationInfo.TestSelectionParams.IncludeBuildVariants) > 0 || len(creationInfo.TestSelectionParams.IncludeTasks) > 0
+
+	if isTestSelectionIncludeSet {
+		// If the user explicitly chooses variants/tasks to run, then the
+		// default enabled/disabled setting is overridden.
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionParams.ExcludeBuildVariants)
+		// Check exclusions first because excluding a build variant always takes
+		// precedence over including it.
+		if nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionParams.IncludeBuildVariants) && !isExcluded {
+			return true
+		} else if len(creationInfo.TestSelectionParams.IncludeBuildVariants) == 0 && !isExcluded {
+			return true
+		}
+	} else if isTestSelectionDefaultEnabled {
+		isExcluded := nameMatchesAnyRegexp(bvName, creationInfo.TestSelectionParams.ExcludeBuildVariants)
+		if !isExcluded {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
@@ -1528,6 +1635,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		taskNames := creationInfo.Pairs.ExecTasks.TaskNames(pair.Variant)
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !creationInfo.ActivationInfo.variantHasSpecificActivation(pair.Variant)
+		tsParams := creationInfo.TestSelectionParams
+		tsParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(pair.Variant, creationInfo)
 		buildCreationArgs := TaskCreationInfo{
 			Project:                             creationInfo.Project,
 			ProjectRef:                          creationInfo.ProjectRef,
@@ -1541,6 +1650,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
+			TestSelectionParams:                 tsParams,
 		}
 
 		grip.Info(message.Fields{
@@ -1723,6 +1833,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		creationInfo.TaskNames = tasksToAdd
 		creationInfo.DisplayNames = displayTasksToAdd
 		creationInfo.DistroAliases = distroAliases
+		creationInfo.TestSelectionParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
 		_, tasks, err := addTasksToBuild(ctx, creationInfo)
 		if err != nil {
 			return nil, nil, err

@@ -1,11 +1,14 @@
 package model
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 // TaskCreationInfo contains the needed parameters to construct new builds and tasks for a given version.
@@ -35,4 +38,52 @@ type TaskCreationInfo struct {
 	// in order for the build/version to be finished. Tasks with specific
 	// activation conditions (e.g. cron, activate) are not considered essential.
 	ActivatedTasksAreEssentialToSucceed bool
+	TestSelectionParams                 TestSelectionParams // Task creation parameters for test selection
+}
+
+// TestSelectionParams contains parameters for enabling test selection on tasks
+// in a build variant.
+type TestSelectionParams struct {
+	CanBuildVariantEnableTestSelection bool             // Whether or not any of the tasks in the build variant can use test selection.
+	IncludeBuildVariants               []*regexp.Regexp // Regexes for build variants to include when enabling test selection.
+	ExcludeBuildVariants               []*regexp.Regexp // Regexes for build variants to exclude when enabling test selection.
+	IncludeTasks                       []*regexp.Regexp // Regexes for tasks to include when enabling test selection.
+	ExcludeTasks                       []*regexp.Regexp // Regexes for tasks to exclude when enabling test selection.
+}
+
+func newTestSelectionParams(p *patch.Patch) (*TestSelectionParams, error) {
+	includeBVs, err := toRegexps(p.RegexTestSelectionBuildVariants)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection build variant regexes")
+	}
+	excludeBVs, err := toRegexps(p.RegexTestSelectionExcludedBuildVariants)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection excluded build variant regexes")
+	}
+	includeTasks, err := toRegexps(p.RegexTestSelectionTasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection task regexes")
+	}
+	excludeTasks, err := toRegexps(p.RegexTestSelectionExcludedTasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "compiling test selection excluded task regexes")
+	}
+	return &TestSelectionParams{
+		IncludeBuildVariants: includeBVs,
+		ExcludeBuildVariants: excludeBVs,
+		IncludeTasks:         includeTasks,
+		ExcludeTasks:         excludeTasks,
+	}, nil
+}
+
+func toRegexps(strs []string) ([]*regexp.Regexp, error) {
+	regexps := make([]*regexp.Regexp, 0, len(strs))
+	for _, s := range strs {
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return nil, errors.Wrapf(err, "compiling regexp '%s'", s)
+		}
+		regexps = append(regexps, re)
+	}
+	return regexps, nil
 }
