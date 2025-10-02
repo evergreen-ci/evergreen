@@ -663,6 +663,24 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
+  - name: verify-gqlgen
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["gqlgen"]
+          working_dir: evergreen
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            [
+              "-c",
+              "if [[ $(git diff) ]]; then echo 'Error: make gqlgen generated changes. Please run make gqlgen and commit the changes.'; exit 1; fi",
+            ]
+          working_dir: evergreen
   - name: lint-markdown
     tags: ["linter"]
     commands:
