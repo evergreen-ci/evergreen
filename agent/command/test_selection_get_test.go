@@ -154,6 +154,22 @@ func TestPassesTestsToAPI(t *testing.T) {
 	assert.Equal(t, []string{"test1", "test3"}, comm.SelectTestsRequest.Tests)
 }
 
+func TestPassesTestsFromFileToAPI(t *testing.T) {
+	conf, comm, logger := setupTestEnv(t)
+	tests := []string{"test1", "test2", "test3", "test4"}
+	inputTests := testSelectionInputFile{
+		Tests: tests,
+	}
+	inputFile := filepath.Join(conf.WorkDir, "input_tests.json")
+	require.NoError(t, utility.WriteJSONFile(inputFile, inputTests))
+
+	cmd := &testSelectionGet{OutputFile: "test.json", TestsFile: inputFile}
+	require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+	assert.True(t, comm.SelectTestsCalled)
+	assert.Equal(t, tests, comm.SelectTestsRequest.Tests)
+}
+
 func TestHandlesAPIError(t *testing.T) {
 	conf, comm, logger := setupTestEnv(t)
 	cmd := &testSelectionGet{OutputFile: "test.json"}
