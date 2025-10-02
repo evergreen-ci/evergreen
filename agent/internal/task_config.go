@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -291,6 +292,9 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	if tc.DisplayTaskInfo != nil {
 		attributes[evergreen.DisplayTaskIDOtelAttribute] = tc.DisplayTaskInfo.ID
 		attributes[evergreen.DisplayTaskNameOtelAttribute] = tc.DisplayTaskInfo.Name
+	}
+	if !utility.IsZeroTime(tc.Task.ActivatedTime) {
+		attributes[evergreen.TaskActivatedTimeOtelAttribute] = tc.Task.ActivatedTime.Format(time.RFC3339)
 	}
 	return attributes
 }

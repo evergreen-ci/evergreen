@@ -494,6 +494,7 @@ const (
 	TaskFailingCommandOtelAttribute = "evergreen.task.failing_command"
 	TaskDescriptionOtelAttribute    = "evergreen.task.description"
 	TaskTagsOtelAttribute           = "evergreen.task.tags"
+	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
 
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
