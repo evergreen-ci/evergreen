@@ -225,7 +225,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/subscriptions").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetSubscription())
 	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTaskRoute(parsleyURL, opts.URL))
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(requireUser, addProject, editTasks).RouteHandler(makeModifyTaskRoute())
-	app.AddRoute("/tasks/{task_id}/artifacts/url").Version(2).Patch().Wrap(requireUser, requireProjectAdmin, editTasks).RouteHandler(makeUpdateArtifactURLRoute())
+	app.AddRoute("/tasks/{task_id}/artifacts/url").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editTasks).RouteHandler(makeUpdateArtifactURLRoute())
 	app.AddRoute("/tasks/{task_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByTask())
 	app.AddRoute("/tasks/{task_id}/annotation").Version(2).Put().Wrap(requireUser, editAnnotations).RouteHandler(makePutAnnotationsByTask())
 	app.AddRoute("/tasks/{task_id}/annotation").Version(2).Patch().Wrap(requireUser, editAnnotations).RouteHandler(makePatchAnnotationsByTask())
