@@ -216,3 +216,33 @@ The Spruce hosts page offers three batch actions applicable to hosts:
 3. Reprovision
 
    Hosts need to have a few starter files on the file system before they can run tasks. Sometimes static hosts can get into bad states (e.g. the file system is corrupted) and stop functioning correctly. Reprovisioning a host will repopulate these files for static hosts.
+
+## Mounting Additional Storage
+
+When attaching new storage to your spawn host, follow these steps:
+
+1. Verify attached devices:
+   ```bash
+   lsblk  # List block devices
+   ```
+
+2. Create a mount point:
+   ```bash
+   sudo mkdir /path/to/mount/point
+   ```
+
+3. Mount the device:
+   ```bash
+   sudo mount /dev/device-name /path/to/mount/point
+   ```
+
+4. Verify the mount:
+   ```bash
+   lsblk | grep mount-point
+   df -khl /path/to/mount/point
+   ```
+
+Notes:
+- Only format new storage using `mkfs.xfs` if it's a brand new volume
+- Avoid formatting existing volumes to prevent data loss
+- Choose a meaningful mount point, such as `/data/project-name`
