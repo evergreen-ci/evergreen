@@ -241,6 +241,7 @@ When attaching new storage to your spawn host, follow these steps:
    ```
 
 4. Verify the mount:
+
    ```bash
    lsblk | grep mount-point
    df -khl /path/to/mount/point
