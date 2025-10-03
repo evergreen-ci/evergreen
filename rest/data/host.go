@@ -231,7 +231,7 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUs
 	return http.StatusOK, nil
 }
 
-// RebootSpawnHost enqueues a job to reboot a stopped spawn host.
+// RebootSpawnHost enqueues a job to reboot a spawn host.
 func RebootSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
 	if h.Status != evergreen.HostRunning {
 		return http.StatusBadRequest, errors.Errorf("host '%s' cannot be rebooted because because its status ('%s') is not a rebootable state", h.Id, h.Status)
