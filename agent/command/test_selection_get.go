@@ -216,8 +216,6 @@ func createSeed(taskID string) int64 {
 
 // parseTestsFromFile reads the tests from the input test JSON file if any and
 // returns the list of parsed tests.
-// kim: TODO: add unit test.
-// kim: TODO: test in staging.
 func (c *testSelectionGet) parseTestsFromFile() ([]string, error) {
 	if c.TestsFile == "" {
 		return nil, nil
