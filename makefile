@@ -400,14 +400,6 @@ generate-fws-client:
 
 phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client generate-fws-client download-fws-config
 
-# sanitizes a json file by hashing string values. Note that this will not work well with
-# string data that only has a subset of valid values
-ifneq (,$(multi))
-multiarg = --multi
-endif
-scramble:
-	python cmd/scrambled-eggs/scramble.py $(file) $(multiarg)
-
 # mongodb utility targets
 mongodb/.get-mongodb:
 	rm -rf mongodb
