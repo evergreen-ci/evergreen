@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -406,7 +407,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
+	if err = processTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
 		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
 			j.gitHubError = noChildPatchTasksOrVariants
 		}
@@ -764,7 +765,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 	return nil
 }
 
-func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
+func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
 	if len(aliasNames) == 0 {
 		return nil
 	}
@@ -775,6 +776,16 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		parentAsModule     string
 		downstreamRevision string
 	}
+
+	var u *user.DBUser
+	var err error
+	if p.Author != "" {
+		u, err = user.FindOneByIdContext(ctx, p.Author)
+		if err != nil {
+			return errors.Wrap(err, "getting user")
+		}
+	}
+
 	aliasGroups := make(map[aliasGroup][]patch.PatchTriggerDefinition)
 	for _, aliasName := range aliasNames {
 		alias, found := projectRef.GetPatchTriggerAlias(aliasName)
@@ -782,6 +793,16 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
 		}
 		// group patches on project, status, parentAsModule, and revision
+		opts := gimlet.PermissionOpts{
+			Resource:      alias.ChildProject,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionPatches,
+			RequiredLevel: evergreen.PatchSubmit.Value,
+		}
+		if u != nil && !u.HasPermission(opts) {
+			return errors.Errorf("user is not authorized to submit patches on child project '%s'", alias.ChildProject)
+		}
+
 		group := aliasGroup{
 			project:            alias.ChildProject,
 			status:             alias.Status,

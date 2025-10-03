@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy/registry"
@@ -1577,6 +1578,24 @@ index ca20f6c..224168e 100644
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
+	roleManager := s.env.RoleManager()
+	childProjScope := gimlet.Scope{
+		ID:        "childProjScope",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"childProj"},
+	}
+	s.Require().NoError(roleManager.AddScope(childProjScope))
+
+	childProjRole := gimlet.Role{
+		ID:          "childProj_patcher",
+		Scope:       childProjScope.ID,
+		Permissions: gimlet.Permissions{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
+
+	githubUser := &user.DBUser{Id: evergreen.GithubPatchUser}
+	s.Require().NoError(githubUser.AddRole(s.ctx, childProjRole.ID))
+
 	latestVersion := model.Version{
 		Id:         "childProj-some-version",
 		Identifier: "childProj",
@@ -1628,7 +1647,7 @@ tasks:
 	s.NoError(err)
 
 	s.Empty(p.Triggers.ChildPatches)
-	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
+	s.NoError(processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
 	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
@@ -1646,6 +1665,24 @@ tasks:
 }
 
 func (s *PatchIntentUnitsSuite) TestTriggerAliasWithDownstreamRevision() {
+	roleManager := s.env.RoleManager()
+	childProjScope := gimlet.Scope{
+		ID:        "childProjScope2",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"childProj"},
+	}
+	s.Require().NoError(roleManager.AddScope(childProjScope))
+
+	childProjRole := gimlet.Role{
+		ID:          "childProj_patcher2",
+		Scope:       childProjScope.ID,
+		Permissions: gimlet.Permissions{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
+
+	githubUser := &user.DBUser{Id: evergreen.GithubPatchUser}
+	s.Require().NoError(githubUser.AddRole(s.ctx, childProjRole.ID))
+
 	specificRevision := model.Version{
 		Id:         "childProj-some-version",
 		Identifier: "childProj",
@@ -1695,7 +1732,7 @@ tasks:
 	s.Require().Len(projectRef.PatchTriggerAliases, 1)
 	projectRef.PatchTriggerAliases[0].DownstreamRevision = "abc"
 
-	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
+	s.NoError(processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
 	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
@@ -1713,6 +1750,24 @@ tasks:
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMatchAnyVariantTasks() {
+	roleManager := s.env.RoleManager()
+	childProjScope := gimlet.Scope{
+		ID:        "childProjScope3",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"childProj"},
+	}
+	s.Require().NoError(roleManager.AddScope(childProjScope))
+
+	childProjRole := gimlet.Role{
+		ID:          "childProj_patcher3",
+		Scope:       childProjScope.ID,
+		Permissions: gimlet.Permissions{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
+
+	githubUser := &user.DBUser{Id: evergreen.GithubPatchUser}
+	s.Require().NoError(githubUser.AddRole(s.ctx, childProjRole.ID))
+
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
 		Project: s.project,
@@ -1755,7 +1810,7 @@ tasks:
 	s.NoError(err)
 
 	s.Empty(p.Triggers.ChildPatches)
-	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
+	s.Error(processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 
 	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
