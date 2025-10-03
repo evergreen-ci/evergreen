@@ -150,7 +150,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	} else if c.rate == 0 && c.UsageRate != "" {
 		// If the user explicitly set usage_rate to 0, always no-op.
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
-		logger.Execution().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
+		logger.Task().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
 		return c.writeTestList([]string{})
 	}
 
