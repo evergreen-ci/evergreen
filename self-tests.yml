@@ -667,11 +667,8 @@ tasks:
     tags: ["linter"]
     commands:
       - func: get-project-and-modules
-      - command: subprocess.exec
-        params:
-          binary: make
-          args: ["gqlgen"]
-          working_dir: evergreen
+      - func: run-make
+        vars: { target: "gqlgen" }
       - command: subprocess.exec
         params:
           binary: bash
