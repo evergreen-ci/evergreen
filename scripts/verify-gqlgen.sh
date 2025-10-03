@@ -11,5 +11,11 @@ if [ "$before" = "$after" ]; then
     exit 0
 else
     echo "Error: make gqlgen generated changes. Please run 'make gqlgen' and commit the changes."
+    echo ""
+    echo "Files modified:"
+    git diff --name-only --diff-filter=M
+    echo ""
+    echo "Changes:"
+    git diff --diff-filter=M
     exit 1
 fi
