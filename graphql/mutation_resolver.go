@@ -932,6 +932,8 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		httpStatus, err = data.StopSpawnHost(ctx, env, usr, h, shouldKeepOff)
 	case SpawnHostStatusActionsTerminate:
 		httpStatus, err = data.TerminateSpawnHost(ctx, env, usr, h)
+	case SpawnHostStatusActionsReboot:
+		httpStatus, err = data.RebootSpawnHost(ctx, env, usr, h)
 	default:
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding matching status for action '%s'", action))
 	}

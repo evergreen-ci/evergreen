@@ -231,6 +231,28 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUs
 	return http.StatusOK, nil
 }
 
+// RebootSpawnHost enqueues a job to reboot a spawn host.
+func RebootSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host) (int, error) {
+	if h.Status != evergreen.HostRunning {
+		return http.StatusBadRequest, errors.Errorf("host '%s' cannot be rebooted because because its status ('%s') is not a rebootable state", h.Id, h.Status)
+	}
+
+	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
+	rebootJob := units.NewSpawnhostRebootJob(units.SpawnHostModifyJobOptions{
+		Host:      h,
+		Source:    evergreen.ModifySpawnHostManual,
+		User:      u.Id,
+		Timestamp: ts,
+	})
+	if err := units.EnqueueSpawnHostModificationJob(ctx, env, rebootJob); err != nil {
+		if amboy.IsDuplicateJobScopeError(err) {
+			err = errHostStatusChangeConflict
+		}
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
+}
+
 // StartSpawnHost enqueues a job to modify a spawn host.
 func ModifySpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, opts host.HostModifyOptions) (int, error) {
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
