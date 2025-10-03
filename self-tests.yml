@@ -357,6 +357,14 @@ functions:
         env:
           GOPATH: ${workdir}/gopath
 
+  verify-gqlgen:
+    - command: subprocess.exec
+      params:
+        working_dir: evergreen
+        binary: bash
+        args: ["scripts/verify-gqlgen.sh"]
+        include_expansions_in_env: ["GOROOT"]
+
   check-go-vulnerabilities:
     - command: subprocess.exec
       params:
@@ -663,6 +671,11 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
+  - name: verify-gqlgen
+    tags: ["linter"]
+    commands:
+      - func: get-project-and-modules
+      - func: verify-gqlgen
   - name: lint-markdown
     tags: ["linter"]
     commands:

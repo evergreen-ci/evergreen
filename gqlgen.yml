@@ -356,6 +356,8 @@ models:
         value: github.com/evergreen-ci/evergreen/model/event.EventHostStarted
       HOST_STOPPED:
         value: github.com/evergreen-ci/evergreen/model/event.EventHostStopped
+      HOST_REBOOTED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostRebooted
       HOST_MODIFIED:
         value: github.com/evergreen-ci/evergreen/model/event.EventHostModified
       HOST_AGENT_DEPLOYED:
