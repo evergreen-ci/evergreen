@@ -145,6 +145,18 @@ func TestTestSelectionGet(t *testing.T) {
 			assert.Contains(t, err.Error(), "test error")
 			assert.Contains(t, err.Error(), "calling test selection API")
 		},
+		"AlwaysRunsTestSelectionWhenUsageRateIsSetToAnUndefinedExpansion": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			cmd := &testSelectionGet{OutputFile: "test.json", UsageRate: "${undefined_expansion}"}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+			assert.True(t, comm.SelectTestsCalled)
+		},
+		"NeverRunsTestSelectionWhenUsageRateIsExplicitlySetToZero": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			cmd := &testSelectionGet{OutputFile: "test.json", UsageRate: "0"}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+			assert.False(t, comm.SelectTestsCalled)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			comm := client.NewMock("http://localhost.com")

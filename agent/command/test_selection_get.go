@@ -31,7 +31,7 @@ const (
 var (
 	testSelectionEnabledAttribute          = fmt.Sprintf("%s.enabled", testSelectionGetAttribute)
 	testSelectionCalledAttribute           = fmt.Sprintf("%s.called", testSelectionGetAttribute)
-	testSelectionInputTestsAttribute       = fmt.Sprintf("%s.input_tests", testSelectionGetAttribute)
+	testSelectionInputNumTestsAttribute    = fmt.Sprintf("%s.input_num_tests", testSelectionGetAttribute)
 	testSelectionStrategiesAttribute       = fmt.Sprintf("%s.strategies", testSelectionGetAttribute)
 	testSelectionUsageRateAttribute        = fmt.Sprintf("%s.usage_rate", testSelectionGetAttribute)
 	testSelectionNumTestsReturnedAttribute = fmt.Sprintf("%s.num_tests_returned", testSelectionGetAttribute)
@@ -130,7 +130,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 
 	enabled := c.isTestSelectionAllowed(conf)
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
-	trace.SpanFromContext(ctx).SetAttributes(attribute.StringSlice(testSelectionInputTestsAttribute, c.Tests))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionInputNumTestsAttribute, len(c.Tests)))
 	if !enabled {
 		logger.Task().Info("Test selection is not allowed/enabled, writing empty test list")
 		return c.writeTestList([]string{})
@@ -139,6 +139,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	// No-op based on usage rate. Use the task's random seed so that it's
 	// consistent across multiple runs of the same task.
 	if c.rate != 0 {
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
 		rng := rand.New(rand.NewSource(createSeed(conf.Task.Id)))
 		// Random float in [0.0, 1.0) will always have a
 		// usage_rate percentage chance of no-oping.
@@ -146,7 +147,11 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 			logger.Task().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
 			return c.writeTestList([]string{})
 		}
+	} else if c.rate == 0 && c.UsageRate != "" {
+		// If the user explicitly set usage_rate to 0, always no-op.
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
+		logger.Task().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
+		return c.writeTestList([]string{})
 	}
 
 	if c.TestsFile != "" {
@@ -155,6 +160,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 			return errors.Wrap(err, "parsing tests from file")
 		}
 		c.Tests = testsFromFile
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionInputNumTestsAttribute, len(c.Tests)))
 	}
 
 	// Build the request using task information from TaskConfig.
