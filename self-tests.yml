@@ -357,6 +357,14 @@ functions:
         env:
           GOPATH: ${workdir}/gopath
 
+  verify-gqlgen:
+    - command: subprocess.exec
+      params:
+        working_dir: evergreen
+        binary: bash
+        args: ["scripts/verify-gqlgen.sh"]
+        include_expansions_in_env: ["GOROOT"]
+
   check-go-vulnerabilities:
     - command: subprocess.exec
       params:
@@ -667,17 +675,7 @@ tasks:
     tags: ["linter"]
     commands:
       - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "gqlgen" }
-      - command: subprocess.exec
-        params:
-          binary: bash
-          args:
-            [
-              "-c",
-              "if [[ $(git diff) ]]; then echo 'Error: make gqlgen generated changes. Please run make gqlgen and commit the changes.'; exit 1; fi",
-            ]
-          working_dir: evergreen
+      - func: verify-gqlgen
   - name: lint-markdown
     tags: ["linter"]
     commands:
