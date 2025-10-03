@@ -117,6 +117,10 @@ func (staticMgr *staticManager) StartInstance(ctx context.Context, host *host.Ho
 	return errors.New("StartInstance is not supported for static provider")
 }
 
+func (staticMgr *staticManager) RebootInstance(ctx context.Context, host *host.Host, user string) error {
+	return errors.New("RebootInstance is not supported for static provider")
+}
+
 func (staticMgr *staticManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil

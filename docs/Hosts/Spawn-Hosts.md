@@ -203,6 +203,7 @@ The Spruce hosts page offers three batch actions applicable to hosts:
 1. Update Status
 
    You can force a state change to these statuses:
+
    - Decommissioned: Terminate a host after it's done running its current task.
    - Quarantined: Stop a host from running tasks without terminating it or shutting it down. This is to do ops work on it like temporary maintenance, debugging, etc. Once the maintenance is done, it's usually set back to running to pick up tasks like normal. Quarantined is used almost exclusively for static hosts.
    - Terminate: Shut down the host.
@@ -216,3 +217,37 @@ The Spruce hosts page offers three batch actions applicable to hosts:
 3. Reprovision
 
    Hosts need to have a few starter files on the file system before they can run tasks. Sometimes static hosts can get into bad states (e.g. the file system is corrupted) and stop functioning correctly. Reprovisioning a host will repopulate these files for static hosts.
+
+## Mounting Additional Storage
+
+When attaching new storage to your spawn host, follow these steps:
+
+1. Verify attached devices:
+
+   ```bash
+   lsblk  # List block devices
+   ```
+
+2. Create a mount point:
+
+   ```bash
+   sudo mkdir /path/to/mount/point
+   ```
+
+3. Mount the device:
+
+   ```bash
+   sudo mount /dev/device-name /path/to/mount/point
+   ```
+
+4. Verify the mount:
+   ```bash
+   lsblk | grep mount-point
+   df -khl /path/to/mount/point
+   ```
+
+Notes:
+
+- Only format new storage using `mkfs.xfs` if it's a brand new volume, because formatting will erase all existing data on the device.
+- Avoid formatting existing volumes to prevent data loss
+- Choose a meaningful mount point, such as `/data/project-name`

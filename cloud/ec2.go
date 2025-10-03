@@ -1080,6 +1080,57 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	return errors.Wrap(h.SetRunning(ctx, user), "marking host as running")
 }
 
+// RebootInstance reboots an EC2 instance.
+func (m *ec2Manager) RebootInstance(ctx context.Context, h *host.Host, user string) error {
+	if h.Status != evergreen.HostRunning {
+		return errors.Errorf("host cannot be rebooted because its status ('%s') is not a rebootable state", h.Status)
+	}
+
+	if err := m.setupClient(ctx); err != nil {
+		return errors.Wrap(err, "creating client")
+	}
+
+	_, err := m.client.RebootInstances(ctx, &ec2.RebootInstancesInput{
+		InstanceIds: []string{h.Id},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "rebooting EC2 instance '%s'", h.Id)
+	}
+
+	// Instances reboot asynchronously, so before we can say the host is running,
+	// we have to poll the status until it's actually running.
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			info, err := m.GetInstanceState(ctx, h)
+			if err != nil {
+				return false, errors.Wrap(err, "getting instance status")
+			}
+			if info.Status == StatusRunning {
+				return false, nil
+			}
+			return true, errors.Errorf("host is not started, current status is '%s' because '%s'", info.Status, info.StateReason)
+		}, utility.RetryOptions{
+			MaxAttempts: checkSuccessAttempts,
+			MinDelay:    checkSuccessInitPeriod,
+			MaxDelay:    checkSuccessMaxDelay,
+		})
+
+	if err != nil {
+		return errors.Wrap(err, "checking if spawn host rebooted")
+	}
+
+	grip.Info(message.Fields{
+		"message":       "rebooted instance",
+		"user":          user,
+		"host_provider": h.Distro.Provider,
+		"host_id":       h.Id,
+		"distro":        h.Distro.Id,
+	})
+
+	return errors.Wrap(h.SetRunning(ctx, user), "marking host as running")
+}
+
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
 	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")

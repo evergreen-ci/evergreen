@@ -51,6 +51,9 @@ type Manager interface {
 	// StartInstance starts a stopped instance.
 	StartInstance(context.Context, *host.Host, string) error
 
+	// RebootInstance reboots (stops and restarts) an instance.
+	RebootInstance(ctx context.Context, h *host.Host, user string) error
+
 	// GetDNSName returns the DNS name of a host.
 	GetDNSName(context.Context, *host.Host) (string, error)
 

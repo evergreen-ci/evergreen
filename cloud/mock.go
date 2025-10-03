@@ -314,6 +314,24 @@ func (m *mockManager) StartInstance(ctx context.Context, host *host.Host, user s
 	return errors.WithStack(host.SetRunning(ctx, user))
 }
 
+func (m *mockManager) RebootInstance(ctx context.Context, host *host.Host, user string) error {
+	if host.Status != evergreen.HostRunning {
+		return errors.Errorf("cannot reboot host '%s' because the host status is '%s' which is not a rebootable state", host.Id, host.Status)
+	}
+
+	l := m.mutex
+	l.Lock()
+	defer l.Unlock()
+	instance, ok := m.Instances[host.Id]
+	if !ok {
+		return errors.Errorf("unable to fetch host '%s'", host.Id)
+	}
+	instance.Status = StatusRunning
+	m.Instances[host.Id] = instance
+
+	return errors.WithStack(host.SetRunning(ctx, user))
+}
+
 func (m *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil

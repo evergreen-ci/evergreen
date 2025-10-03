@@ -334,6 +334,11 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 	return errors.New("can't start instances for EC2 fleet provider")
 }
 
+// RebootInstance should do nothing for EC2 Fleet.
+func (m *ec2FleetManager) RebootInstance(ctx context.Context, h *host.Host, user string) error {
+	return errors.New("can't reboot instances for EC2 fleet provider")
+}
+
 // AssociateIP associates the host with its allocated IP address.
 func (m *ec2FleetManager) AssociateIP(ctx context.Context, h *host.Host) error {
 	if h.IPAllocationID == "" {
