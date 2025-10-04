@@ -125,3 +125,20 @@ func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	err := db.FindAllQ(ctx, Collection, query, &entries)
 	return entries, err
 }
+
+// UpdateFileLink updates the link for a single artifact file matching task ID, execution,
+// file name, and current link. Returns db.ErrNotFound if no file matched.
+func UpdateFileLink(ctx context.Context, taskID string, execution int, fileName, currentLink, newLink string) error {
+	filter := bson.M{
+		TaskIdKey:    taskID,
+		ExecutionKey: execution,
+		FilesKey: bson.M{"$elemMatch": bson.M{
+			NameKey: fileName,
+			LinkKey: currentLink,
+		}},
+	}
+	update := bson.M{"$set": bson.M{
+		bsonutil.GetDottedKeyName(FilesKey, "$", LinkKey): newLink,
+	}}
+	return db.UpdateContext(ctx, Collection, filter, update)
+}
