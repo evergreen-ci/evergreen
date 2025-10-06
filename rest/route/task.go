@@ -173,13 +173,13 @@ func makeUpdateArtifactURLRoute() gimlet.RouteHandler { return &updateArtifactUR
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/artifacts/url [patch]
 //	@Security		Api-User || Api-Key
-//	@Param			task_id		path	string	true	"Task ID"
-//	@Param			execution	query	int	false	"0-based execution number; if omitted updates latest execution"
-//	@Param			{object}	body	updateArtifactURLHandler	true	"artifact_name: string, current_url: string, new_url: string"
-//	@Success		200		{object}	model.APITask	"Task including updated artifacts"
-//	@Failure		400		{object}	gimlet.ErrorResponse	"Invalid input"
-//	@Failure		404		{object}	gimlet.ErrorResponse	"Task or artifact not found"
-//	@Failure		500		{object}	gimlet.ErrorResponse	"Internal error"
+//	@Param			task_id		path		string						true	"Task ID"
+//	@Param			execution	query		int							false	"0-based execution number; if omitted updates latest execution"
+//	@Param			{object}	body		updateArtifactURLHandler	true	"artifact_name: string, current_url: string, new_url: string"
+//	@Success		200			{object}	model.APITask				"Task including updated artifacts"
+//	@Failure		400			{object}	gimlet.ErrorResponse		"Invalid input"
+//	@Failure		404			{object}	gimlet.ErrorResponse		"Task or artifact not found"
+//	@Failure		500			{object}	gimlet.ErrorResponse		"Internal error"
 
 func (h *updateArtifactURLHandler) Factory() gimlet.RouteHandler { return &updateArtifactURLHandler{} }
 
