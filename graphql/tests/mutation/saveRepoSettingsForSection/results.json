@@ -48,6 +48,21 @@
           }
         }
       }
+    },
+    {
+      "query_file": "test_selection_section.graphql",
+      "result": {
+        "data": {
+          "saveRepoSettingsForSection": {
+            "projectRef": {
+              "testSelection": {
+                "allowed": true,
+                "defaultEnabled": false
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

@@ -61,20 +61,20 @@
     }
   ],
   "fake_parameters": [
-      {
-        "_id": "/evg-test/vars/sandbox_project_id/hello",
-        "value": "world",
-        "last_updated": {
-          "$date": "2025-01-15T00:00:00.000Z"
-        }
-      },
-      {
-        "_id": "/evg-test/vars/sandbox_project_id/foo",
-        "value": "bar",
-        "last_updated": {
-          "$date": "2025-01-15T00:00:00.000Z"
-        }
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/hello",
+      "value": "world",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
       }
+    },
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/foo",
+      "value": "bar",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    }
   ],
   "parameter_records": [
     {

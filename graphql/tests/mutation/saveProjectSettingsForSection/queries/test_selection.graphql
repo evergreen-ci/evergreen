@@ -1,0 +1,20 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectId: "sandbox_project_id"
+      projectRef: {
+        id: "sandbox_project_id"
+        testSelection: { allowed: true, defaultEnabled: false }
+      }
+    }
+    section: TEST_SELECTION
+  ) {
+    projectRef {
+      id
+      testSelection {
+        allowed
+        defaultEnabled
+      }
+    }
+  }
+}

@@ -255,6 +255,22 @@
           }
         }
       }
+    },
+    {
+      "query_file": "test_selection.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "testSelection": {
+                "allowed": true,
+                "defaultEnabled": false
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }
