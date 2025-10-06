@@ -80,17 +80,9 @@ func shouldRunForVariant(bvs []string, bv string) bool {
 	return len(bvs) == 0 || utility.StringSliceContains(bvs, bv)
 }
 
-// getAssumedRoleARN checks if the provided session token
+// getAssumedRoleInfo checks if the provided session token
 // is associated with an assumed role. If it is, it returns
-// the role ARN.
-func getAssumedRoleARN(conf *internal.TaskConfig, sessionToken string) string {
-	if sessionToken == "" {
-		return ""
-	}
-
-	return conf.AssumeRoleInformation[sessionToken].RoleARN
-}
-
+// the role information
 func getAssumedRoleInfo(conf *internal.TaskConfig, sessionToken string) *internal.AssumeRoleInformation {
 	if sessionToken == "" {
 		return nil
