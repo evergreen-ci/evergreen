@@ -1818,6 +1818,78 @@ tasks:
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 }
 
+func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithInadequatePermissions() {
+	roleManager := s.env.RoleManager()
+	childProjScope := gimlet.Scope{
+		ID:        "childProjScope4",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"childProj"},
+	}
+	s.Require().NoError(roleManager.AddScope(childProjScope))
+
+	childProjRole := gimlet.Role{
+		ID:          "childProj_viewer",
+		Scope:       childProjScope.ID,
+		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
+
+	testUser := &user.DBUser{
+		Id: "test-user-no-permissions",
+	}
+	s.Require().NoError(testUser.Insert(s.ctx))
+	s.Require().NoError(testUser.AddRole(s.ctx, childProjRole.ID))
+
+	p := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: s.project,
+		Author:  testUser.Id,
+		Githash: s.hash,
+	}
+	s.NoError(p.Insert(s.ctx))
+	pp := &model.ParserProject{
+		Id: p.Id.Hex(),
+	}
+	s.NoError(pp.Insert(s.ctx))
+
+	latestVersion := model.Version{
+		Id:         "childProj-some-version-4",
+		Identifier: "childProj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	s.Require().NoError(latestVersion.Insert(s.ctx))
+
+	latestVersionParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
+buildvariants:
+- name: my-build-variant
+  display_name: my-build-variant
+  run_on:
+    - some-distro
+  tasks:
+    - my-task
+tasks:
+- name: my-task`), latestVersionParserProject))
+	latestVersionParserProject.Id = latestVersion.Id
+	s.Require().NoError(latestVersionParserProject.Insert(s.ctx))
+
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
+	s.Require().NotNil(projectRef)
+	s.NoError(err)
+
+	s.Empty(p.Triggers.ChildPatches)
+
+	err = processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"})
+	s.Error(err, "should error when user doesn't have adequate permissions")
+	s.Contains(err.Error(), "user is not authorized to submit patches on child project")
+
+	s.Empty(p.Triggers.ChildPatches)
+
+	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
+	s.NoError(err)
+	s.Empty(dbPatch.Triggers.ChildPatches)
+}
+
 func TestMakeMergeQueueDescription(t *testing.T) {
 	mergeGroup := thirdparty.GithubMergeGroup{HeadSHA: "0e312ffabcdefghijklmnop", HeadCommit: "I'm a commit!"}
 	assert.Equal(t, "GitHub Merge Queue: I'm a commit! (0e312ff)", makeMergeQueueDescription(mergeGroup))
