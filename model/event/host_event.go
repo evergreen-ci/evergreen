@@ -38,6 +38,7 @@ const (
 	EventSpawnHostCreatedError                       = "SPAWN_HOST_CREATED_ERROR"
 	EventHostStarted                                 = "HOST_STARTED"
 	EventHostStopped                                 = "HOST_STOPPED"
+	EventHostRebooted                                = "HOST_REBOOTED"
 	EventHostModified                                = "HOST_MODIFIED"
 	EventHostAgentDeployed                           = "HOST_AGENT_DEPLOYED"
 	EventHostAgentDeployFailed                       = "HOST_AGENT_DEPLOY_FAILED"
@@ -177,6 +178,18 @@ func LogHostStopSucceeded(ctx context.Context, hostID, source string) {
 // stopping.
 func LogHostStopError(ctx context.Context, hostID, source, logs string) {
 	LogHostEvent(ctx, hostID, EventHostStopped, HostEventData{Successful: false, Source: source, Logs: logs})
+}
+
+// LogHostRebootSucceeded logs an event indicating that the host was successfully
+// rebooted.
+func LogHostRebootSucceeded(ctx context.Context, hostID, source string) {
+	LogHostEvent(ctx, hostID, EventHostRebooted, HostEventData{Successful: true, Source: source})
+}
+
+// LogHostRebootError logs an event indicating that the host errored while
+// rebooting.
+func LogHostRebootError(ctx context.Context, hostID, source, logs string) {
+	LogHostEvent(ctx, hostID, EventHostRebooted, HostEventData{Successful: false, Source: source, Logs: logs})
 }
 
 // LogHostModifySucceeded logs an event indicating that the host was

@@ -2,6 +2,7 @@ enum SpawnHostStatusActions {
   START
   STOP
   TERMINATE
+  REBOOT
 }
 
 ###### INPUTS ######

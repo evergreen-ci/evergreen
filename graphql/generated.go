@@ -3141,14 +3141,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Notify(childComplexity), true
-
 	case "AdminSettings.oldestAllowedCLIVersion":
 		if e.complexity.AdminSettings.OldestAllowedCLIVersion == nil {
 			break
 		}
 
 		return e.complexity.AdminSettings.OldestAllowedCLIVersion(childComplexity), true
-
 	case "AdminSettings.parameterStore":
 		if e.complexity.AdminSettings.ParameterStore == nil {
 			break
@@ -18730,31 +18728,19 @@ func (ec *executionContext) fieldContext_AdminSettings_notify(_ context.Context,
 }
 
 func (ec *executionContext) _AdminSettings_oldestAllowedCLIVersion(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AdminSettings_oldestAllowedCLIVersion(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.OldestAllowedCLIVersion, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_oldestAllowedCLIVersion,
+		func(ctx context.Context) (any, error) {
+			return obj.OldestAllowedCLIVersion, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
 }
 
 func (ec *executionContext) fieldContext_AdminSettings_oldestAllowedCLIVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -106411,6 +106397,7 @@ var (
 		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
 		"HOST_STARTED":                                     event.EventHostStarted,
 		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_REBOOTED":                                    event.EventHostRebooted,
 		"HOST_MODIFIED":                                    event.EventHostModified,
 		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
 		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
@@ -106446,6 +106433,7 @@ var (
 		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
 		event.EventHostStarted:                                 "HOST_STARTED",
 		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostRebooted:                                "HOST_REBOOTED",
 		event.EventHostModified:                                "HOST_MODIFIED",
 		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
 		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
@@ -112262,6 +112250,7 @@ var (
 		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
 		"HOST_STARTED":                                     event.EventHostStarted,
 		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_REBOOTED":                                    event.EventHostRebooted,
 		"HOST_MODIFIED":                                    event.EventHostModified,
 		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
 		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
@@ -112297,6 +112286,7 @@ var (
 		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
 		event.EventHostStarted:                                 "HOST_STARTED",
 		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostRebooted:                                "HOST_REBOOTED",
 		event.EventHostModified:                                "HOST_MODIFIED",
 		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
 		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",

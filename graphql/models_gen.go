@@ -1366,17 +1366,19 @@ const (
 	SpawnHostStatusActionsStart     SpawnHostStatusActions = "START"
 	SpawnHostStatusActionsStop      SpawnHostStatusActions = "STOP"
 	SpawnHostStatusActionsTerminate SpawnHostStatusActions = "TERMINATE"
+	SpawnHostStatusActionsReboot    SpawnHostStatusActions = "REBOOT"
 )
 
 var AllSpawnHostStatusActions = []SpawnHostStatusActions{
 	SpawnHostStatusActionsStart,
 	SpawnHostStatusActionsStop,
 	SpawnHostStatusActionsTerminate,
+	SpawnHostStatusActionsReboot,
 }
 
 func (e SpawnHostStatusActions) IsValid() bool {
 	switch e {
-	case SpawnHostStatusActionsStart, SpawnHostStatusActionsStop, SpawnHostStatusActionsTerminate:
+	case SpawnHostStatusActionsStart, SpawnHostStatusActionsStop, SpawnHostStatusActionsTerminate, SpawnHostStatusActionsReboot:
 		return true
 	}
 	return false
