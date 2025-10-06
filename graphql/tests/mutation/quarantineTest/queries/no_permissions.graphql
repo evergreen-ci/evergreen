@@ -1,0 +1,5 @@
+mutation {
+  quarantineTest(opts: { taskId: "no_permissions", testName: "1234" }) {
+    success
+  }
+}

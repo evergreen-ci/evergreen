@@ -287,3 +287,12 @@ type TaskOwnerTeam {
   teamName: String!
   jiraProject: String!
 }
+
+input QuarantineTestInput {
+  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  testName: String!
+}
+
+type QuarantineTestPayload {
+  success: Boolean!
+}

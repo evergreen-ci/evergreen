@@ -1,0 +1,15 @@
+{
+  "tasks": [
+    {
+      "_id": "no_permissions",
+      "execution": 1,
+      "branch": "evergreen"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ]
+}

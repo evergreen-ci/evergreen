@@ -95,9 +95,12 @@ type Mutation {
   setTaskPriority(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): Task!
   setTaskPriorities(taskPriorities: [TaskPriority!]!): [Task!]!
   unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
+  
+  # test
+  quarantineTest(opts: QuarantineTestInput!): QuarantineTestPayload!
 
   # user
-  addFavoriteProject( opts: AddFavoriteProjectInput!): Project!
+  addFavoriteProject(opts: AddFavoriteProjectInput!): Project!
   clearMySubscriptions: Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
