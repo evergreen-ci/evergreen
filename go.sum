@@ -517,8 +517,8 @@ github.com/pquerna/cachecontrol v0.2.0/go.mod h1:NrUG3Z7Rdu85UNR3vm7SOsl1nFIeSiQ
 github.com/prashantv/gostub v1.1.0 h1:BTyx3RfQjRHnUWaGF9oQos79AlQ5k8WNktv7VGvVH4g=
 github.com/prashantv/gostub v1.1.0/go.mod h1:A5zLQHz7ieHGG7is6LLXLz7I8+3LZzsrV0P1IAHhP5U=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
-github.com/ravilushqa/otelgqlgen v0.18.0 h1:nkIiKeho8rZYIk7mmMixyA8xA+1f5iSgTlZc6WBKlgQ=
-github.com/ravilushqa/otelgqlgen v0.18.0/go.mod h1:ebH89mbrQz6UOe/05zSS6d4oYsFgcP6692OkbkH8A9g=
+github.com/ravilushqa/otelgqlgen v0.19.0 h1:LbgdvOeZLW3y6qJoZHu2qd1srsB2aYRDiY8moPfmZkQ=
+github.com/ravilushqa/otelgqlgen v0.19.0/go.mod h1:89WViMNkh5tnf6PYQGDFQDyLdhpQSlDdQ2/lYkdnlHg=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb h1:0OJCKQDYBoiOW3Fn+dENmiGQXU8CmIUJqS+B1rZVNbU=
 github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb/go.mod h1:9CDhL7uDVy8vEVDNPJzxq89dPaPBWP6hxQcC8woBHus=
