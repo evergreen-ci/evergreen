@@ -186,7 +186,9 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 	}
 
 	if expiration, found := getAssumedRoleExpiration(conf, c.AwsSessionToken); found {
-		c.assumedRoleARN = getAssumedRoleARN(conf, c.AwsSessionToken)
+		if info := getAssumedRoleInfo(conf, c.AwsSessionToken); info != nil {
+			c.assumedRoleARN = info.RoleARN
+		}
 		c.existingCredentials = &aws.Credentials{
 			AccessKeyID:     c.AwsKey,
 			SecretAccessKey: c.AwsSecret,
