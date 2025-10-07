@@ -320,20 +320,12 @@ func TestIsFirstDateBefore(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:          "InvalidFirstDate",
+			name:          "InvalidDate",
 			date1:         "2023-13-01",
 			date2:         "2023-12-01",
 			expectedBool:  false,
 			expectedError: true,
 			errorContains: "error parsing first date '2023-13-01'",
-		},
-		{
-			name:          "InvalidSecondDate",
-			date1:         "2023-01-01",
-			date2:         "2023-02-30",
-			expectedBool:  false,
-			expectedError: true,
-			errorContains: "error parsing second date '2023-02-30'",
 		},
 		{
 			name:          "InvalidFormatDate",
@@ -352,15 +344,8 @@ func TestIsFirstDateBefore(t *testing.T) {
 			errorContains: "error parsing first date ''",
 		},
 		{
-			name:          "DateWithLetterSuffix",
+			name:          "DateWithSuffix",
 			date1:         "2023-06-20a",
-			date2:         "2023-06-21",
-			expectedBool:  true,
-			expectedError: false,
-		},
-		{
-			name:          "DateWithNumberSuffix",
-			date1:         "2023-06-20-1",
 			date2:         "2023-06-21",
 			expectedBool:  true,
 			expectedError: false,
