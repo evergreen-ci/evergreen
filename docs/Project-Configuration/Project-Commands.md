@@ -257,8 +257,8 @@ The JSON file format is as follows:
         "test_file":"test_1",
         "log_info": {
             "log_name": "tests/test_1.log",
-            "logs_to_merge": ["global", "hooks/test_1.log"]
-            "rendering_type": "resmoke",
+            "logs_to_merge": ["global", "hooks/test_1.log"],
+            "rendering_type": "resmoke"
         },
         "start":1398782500.359, //epoch_time
         "end":1398782500.681 //epoch_time
@@ -1477,6 +1477,46 @@ in `env` or via `add_to_path`) is a special variable that has two effects:
   is not found in the default runtime environment's `PATH`, it will try
   searching for a matching executable `binary` in any of the paths in
   `add_to_path` or in the `PATH` specified in `env`.
+
+## test_selection.get
+
+This command allows a task to get a recommended list of tests from the [test selection
+service](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/385846915/Test+Selection+Services). The command will
+populate an output JSON file, which your task can use to decide which tests should run.
+
+This command can only be used if [test selection is enabled by the project](Project-and-Distro-Settings#test-selection-settings).
+
+```yaml
+- command: test_selection.get
+  params:
+    output_file: path/to/output/file.json
+```
+
+Parameters:
+
+- `output_file`: the JSON output file containing the list of recommended tests. The schema for this file is:
+    ```json
+    {
+        "tests": [
+          {"name": "test1"},
+          {"name": "test2"},
+          ...
+        ]
+    }
+    ```
+- `tests`: a string list of input tests for test selection to consider. Optional. Cannot be combined with `tests_file`
+- `tests_file`: a JSON file containing a list of input tests to consider. Optional. Cannot be combined with `tests`. The
+  expected schema for this file is:
+    ```json
+    {
+        "tests": ["test1", "test2", ...]
+    }
+    ```
+- `strategies`: A comma-separated list of strategy names to use. Optional. If no strategy is explicitly chosen, test
+  selection by default will return the same set of tests that were given in the input (via `tests` or `tests_file`).
+- `usage_rate`: Define a string proportion (between 0 and 1) of how often the command should actually request a list of
+  recommended tests. Even if it does not request a list of recommended tests, it will still produce an output file but
+  that file will not contain any tests. Optional. If undefined, the command will always run.
 
 ## timeout.update
 

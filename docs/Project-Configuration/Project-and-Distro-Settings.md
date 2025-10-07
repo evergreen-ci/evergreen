@@ -40,7 +40,7 @@ for entire guilds. The project admins (or Evergreen admins, if no
 project admins exist) are then able to approve/reject requested access
 for their project.
 
-In order to access this functionality, you must look up the the MANA resource
+In order to access this functionality, you must look up the MANA resource
 with the type `Evergreen Project` with the name of the project that
 permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/).
 Using the filter icon to only view resources of type `Evergreen Project` makes this easier.
