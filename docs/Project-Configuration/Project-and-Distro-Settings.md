@@ -776,3 +776,19 @@ task_annotation_settings:
     endpoint: "/api/route"
     secret: ""
 ```
+
+## Test Selection Settings
+
+Test selection is an experimental feature to help projects reduce testing that provides low signal. For example, if you
+submit a patch for your change but one of the tests fails due to a known issue that's not related to your change, then
+the test did not need to run because it's giving a false negative signal about your patch's mergeability. This can
+improve the signal of a project's tests, reduce time for versions to finish, and save on the cost of running low-signal
+tasks.
+
+<!-- kim: TODO: adjust these docs to actually reflect what the UI looks like. -->
+
+To enable test selection to be used in your project, go to "Test Selection" -> "Enabled" and enable it. Doing this will
+allow patches in the project to use the [test selection command](Project-Commands#test_selectionget) (note: only supported in patches currently).
+
+To enable test selection by default in all patches, go to "Test Selection" -> "Enabled by Default". Doing this will
+enable the usage of the [test selection command](Project-Commands#test_selectionget) in all patches by default.
