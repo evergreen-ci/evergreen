@@ -209,7 +209,7 @@
       }
     },
     {
-      "query_file": "github_permission_groups.graphql",
+      "query_file": "github_permission_groups_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
@@ -237,7 +237,7 @@
       }
     },
     {
-      "query_file": "github_app_settings.graphql",
+      "query_file": "github_app_settings_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
@@ -257,7 +257,7 @@
       }
     },
     {
-      "query_file": "test_selection.graphql",
+      "query_file": "test_selection_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
