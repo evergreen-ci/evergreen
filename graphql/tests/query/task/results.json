@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "query_file": "task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "1",
+            "buildVariant": "ubuntu1604",
+            "displayName": "test-thirdparty-docker",
+            "requester": "github_pull_request",
+            "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+            "testSelectionEnabled": true
+          }
+        }
+      }
+    }
+  ]
+}

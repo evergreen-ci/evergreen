@@ -134,6 +134,7 @@ type Task {
   taskLogs: TaskLogs!
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
+  testSelectionEnabled: Boolean!
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
