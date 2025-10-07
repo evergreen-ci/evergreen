@@ -421,6 +421,15 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+type QuarantineTestInput struct {
+	TaskID   string `json:"taskId"`
+	TestName string `json:"testName"`
+}
+
+type QuarantineTestPayload struct {
+	Success bool `json:"success"`
+}
+
 type Query struct {
 }
 
