@@ -1652,7 +1652,9 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 
 	header := make(http.Header)
 	header.Add(evergreen.APIUserHeader, c.apiUser)
-	header.Add(evergreen.APIKeyHeader, c.apiKey)
+	if c.apiKey != "" {
+		header.Add(evergreen.APIKeyHeader, c.apiKey)
+	}
 	if c.jwt != "" {
 		header.Add(evergreen.AuthorizationHeader, "Bearer "+c.jwt)
 	}
