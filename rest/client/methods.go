@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-oidc"
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -21,7 +22,10 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
 )
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
@@ -1706,4 +1710,24 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	}
 
 	return nil, nil
+}
+
+func (c *communicatorImpl) GetOIDCToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error) {
+	httpClient := utility.GetDefaultHTTPRetryableClient()
+	defer utility.PutHTTPClient(httpClient)
+
+	ctx = oidc.ClientContext(ctx, httpClient)
+
+	// The Dex client logs using logrus. The client doesn't
+	// have any way to turn off debug logs within it's API.
+	// We set the output to io.Discard to suppress debug logs.
+	logrus.SetOutput(io.Discard)
+
+	client, err := dex.NewClient(append(opts, dex.WithContext(ctx), dex.WithRefresh())...)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	return client.Token()
 }
