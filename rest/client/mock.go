@@ -14,7 +14,9 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
+	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 )
 
 // Mock mocks EvergreenREST for testing.
@@ -343,6 +345,10 @@ func (c *Mock) GetUiV2URL(ctx context.Context) (string, error) {
 }
 
 func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
+	return nil, nil
+}
+
+func (c *Mock) GetOIDCToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error) {
 	return nil, nil
 }
 
