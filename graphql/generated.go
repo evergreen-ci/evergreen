@@ -1368,6 +1368,7 @@ type ComplexityRoot struct {
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
+		TestSelection                      func(childComplexity int) int
 		TracksPushEvents                   func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
@@ -1563,6 +1564,7 @@ type ComplexityRoot struct {
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
+		TestSelection                      func(childComplexity int) int
 		TracksPushEvents                   func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
@@ -1576,6 +1578,11 @@ type ComplexityRoot struct {
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
+	}
+
+	RepoTestSelectionSettings struct {
+		Allowed        func(childComplexity int) int
+		DefaultEnabled func(childComplexity int) int
 	}
 
 	RepoWorkstationConfig struct {
@@ -2081,6 +2088,11 @@ type ComplexityRoot struct {
 
 	TestSelectionConfig struct {
 		URL func(childComplexity int) int
+	}
+
+	TestSelectionSettings struct {
+		Allowed        func(childComplexity int) int
+		DefaultEnabled func(childComplexity int) int
 	}
 
 	TicketFields struct {
@@ -8177,6 +8189,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.TaskAnnotationSettings(childComplexity), true
+	case "Project.testSelection":
+		if e.complexity.Project.TestSelection == nil {
+			break
+		}
+
+		return e.complexity.Project.TestSelection(childComplexity), true
 	case "Project.tracksPushEvents":
 		if e.complexity.Project.TracksPushEvents == nil {
 			break
@@ -9223,6 +9241,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.TaskAnnotationSettings(childComplexity), true
+	case "RepoRef.testSelection":
+		if e.complexity.RepoRef.TestSelection == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.TestSelection(childComplexity), true
 	case "RepoRef.tracksPushEvents":
 		if e.complexity.RepoRef.TracksPushEvents == nil {
 			break
@@ -9284,6 +9308,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoSettings.Vars(childComplexity), true
+
+	case "RepoTestSelectionSettings.allowed":
+		if e.complexity.RepoTestSelectionSettings.Allowed == nil {
+			break
+		}
+
+		return e.complexity.RepoTestSelectionSettings.Allowed(childComplexity), true
+	case "RepoTestSelectionSettings.defaultEnabled":
+		if e.complexity.RepoTestSelectionSettings.DefaultEnabled == nil {
+			break
+		}
+
+		return e.complexity.RepoTestSelectionSettings.DefaultEnabled(childComplexity), true
 
 	case "RepoWorkstationConfig.gitClone":
 		if e.complexity.RepoWorkstationConfig.GitClone == nil {
@@ -11385,6 +11422,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TestSelectionConfig.URL(childComplexity), true
 
+	case "TestSelectionSettings.allowed":
+		if e.complexity.TestSelectionSettings.Allowed == nil {
+			break
+		}
+
+		return e.complexity.TestSelectionSettings.Allowed(childComplexity), true
+	case "TestSelectionSettings.defaultEnabled":
+		if e.complexity.TestSelectionSettings.DefaultEnabled == nil {
+			break
+		}
+
+		return e.complexity.TestSelectionSettings.DefaultEnabled(childComplexity), true
+
 	case "TicketFields.assignedTeam":
 		if e.complexity.TicketFields.AssignedTeam == nil {
 			break
@@ -12643,6 +12693,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTestFilter,
 		ec.unmarshalInputTestFilterOptions,
 		ec.unmarshalInputTestSelectionConfigInput,
+		ec.unmarshalInputTestSelectionSettingsInput,
 		ec.unmarshalInputTestSortOptions,
 		ec.unmarshalInputToolchainOpts,
 		ec.unmarshalInputTracerSettingsInput,
@@ -28806,6 +28857,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -28919,6 +28972,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_RepoRef_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_RepoRef_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -36777,6 +36832,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -36922,6 +36979,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -37067,6 +37126,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -37212,6 +37273,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -37525,6 +37588,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -39815,6 +39880,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -40077,6 +40144,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -43135,6 +43204,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -47560,6 +47631,41 @@ func (ec *executionContext) fieldContext_Project_taskAnnotationSettings(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_testSelection(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_testSelection,
+		func(ctx context.Context) (any, error) {
+			return obj.TestSelection, nil
+		},
+		nil,
+		ec.marshalOTestSelectionSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_testSelection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "allowed":
+				return ec.fieldContext_TestSelectionSettings_allowed(ctx, field)
+			case "defaultEnabled":
+				return ec.fieldContext_TestSelectionSettings_defaultEnabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TestSelectionSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_tracksPushEvents(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -48642,6 +48748,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -49113,6 +49221,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -50887,6 +50997,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -54001,6 +54113,41 @@ func (ec *executionContext) fieldContext_RepoRef_taskAnnotationSettings(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_testSelection(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoRef_testSelection,
+		func(ctx context.Context) (any, error) {
+			return obj.TestSelection, nil
+		},
+		nil,
+		ec.marshalORepoTestSelectionSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_testSelection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "allowed":
+				return ec.fieldContext_RepoTestSelectionSettings_allowed(ctx, field)
+			case "defaultEnabled":
+				return ec.fieldContext_RepoTestSelectionSettings_defaultEnabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RepoTestSelectionSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_tracksPushEvents(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -54406,6 +54553,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_RepoRef_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_RepoRef_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -54502,6 +54651,64 @@ func (ec *executionContext) fieldContext_RepoSettings_vars(_ context.Context, fi
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTestSelectionSettings_allowed(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTestSelectionSettings_allowed,
+		func(ctx context.Context) (any, error) {
+			return obj.Allowed, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTestSelectionSettings_allowed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoTestSelectionSettings_defaultEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoTestSelectionSettings_defaultEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultEnabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoTestSelectionSettings_defaultEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoTestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61551,6 +61758,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -65908,6 +66117,64 @@ func (ec *executionContext) fieldContext_TestSelectionConfig_url(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _TestSelectionSettings_allowed(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestSelectionSettings_allowed,
+		func(ctx context.Context) (any, error) {
+			return obj.Allowed, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestSelectionSettings_allowed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestSelectionSettings_defaultEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITestSelectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestSelectionSettings_defaultEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultEnabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestSelectionSettings_defaultEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestSelectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TicketFields_assignedTeam(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -69807,6 +70074,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
+			case "testSelection":
+				return ec.fieldContext_Project_testSelection(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -80066,7 +80335,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80367,6 +80636,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TaskAnnotationSettings = data
+		case "testSelection":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
+			data, err := ec.unmarshalOTestSelectionSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TestSelection = data
 		case "tracksPushEvents":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tracksPushEvents"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -80835,7 +81111,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81101,6 +81377,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TaskAnnotationSettings = data
+		case "testSelection":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("testSelection"))
+			data, err := ec.unmarshalOTestSelectionSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TestSelection = data
 		case "tracksPushEvents":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tracksPushEvents"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -83604,6 +83887,40 @@ func (ec *executionContext) unmarshalInputTestSelectionConfigInput(ctx context.C
 				return it, err
 			}
 			it.URL = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTestSelectionSettingsInput(ctx context.Context, obj any) (model.APITestSelectionSettings, error) {
+	var it model.APITestSelectionSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"allowed", "defaultEnabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "allowed":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowed"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Allowed = data
+		case "defaultEnabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultEnabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultEnabled = data
 		}
 	}
 
@@ -94567,6 +94884,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "testSelection":
+			out.Values[i] = ec._Project_testSelection(ctx, field, obj)
 		case "tracksPushEvents":
 			out.Values[i] = ec._Project_tracksPushEvents(ctx, field, obj)
 		case "triggers":
@@ -96754,6 +97073,8 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "testSelection":
+			out.Values[i] = ec._RepoRef_testSelection(ctx, field, obj)
 		case "tracksPushEvents":
 			out.Values[i] = ec._RepoRef_tracksPushEvents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -96980,6 +97301,50 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var repoTestSelectionSettingsImplementors = []string{"RepoTestSelectionSettings"}
+
+func (ec *executionContext) _RepoTestSelectionSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APITestSelectionSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repoTestSelectionSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepoTestSelectionSettings")
+		case "allowed":
+			out.Values[i] = ec._RepoTestSelectionSettings_allowed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "defaultEnabled":
+			out.Values[i] = ec._RepoTestSelectionSettings_defaultEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -101419,6 +101784,44 @@ func (ec *executionContext) _TestSelectionConfig(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var testSelectionSettingsImplementors = []string{"TestSelectionSettings"}
+
+func (ec *executionContext) _TestSelectionSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APITestSelectionSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, testSelectionSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TestSelectionSettings")
+		case "allowed":
+			out.Values[i] = ec._TestSelectionSettings_allowed(ctx, field, obj)
+		case "defaultEnabled":
+			out.Values[i] = ec._TestSelectionSettings_defaultEnabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -113509,6 +113912,10 @@ func (ec *executionContext) unmarshalORepoSettingsInput2ᚖgithubᚗcomᚋevergr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalORepoTestSelectionSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx context.Context, sel ast.SelectionSet, v model.APITestSelectionSettings) graphql.Marshaler {
+	return ec._RepoTestSelectionSettings(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalORepotrackerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRepoTrackerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIRepoTrackerConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -114248,6 +114655,15 @@ func (ec *executionContext) unmarshalOTestSelectionConfigInput2ᚖgithubᚗcom�
 	}
 	res, err := ec.unmarshalInputTestSelectionConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTestSelectionSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx context.Context, sel ast.SelectionSet, v model.APITestSelectionSettings) graphql.Marshaler {
+	return ec._TestSelectionSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOTestSelectionSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITestSelectionSettings(ctx context.Context, v any) (model.APITestSelectionSettings, error) {
+	res, err := ec.unmarshalInputTestSelectionSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOTestSortOptions2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestSortOptionsᚄ(ctx context.Context, v any) ([]*TestSortOptions, error) {

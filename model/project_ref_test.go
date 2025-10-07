@@ -1463,6 +1463,14 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.GitHubDynamicTokenPermissionGroups)
 		},
+		ProjectPageTestSelectionSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageTestSelectionSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.TestSelection.Allowed)
+			assert.Nil(t, pRefFromDb.TestSelection.DefaultEnabled)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection,

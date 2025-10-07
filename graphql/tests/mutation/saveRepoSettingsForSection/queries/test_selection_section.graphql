@@ -1,0 +1,19 @@
+mutation {
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
+      projectRef: {
+        id: "sandbox_repo_id"
+        testSelection: { allowed: true, defaultEnabled: false }
+      }
+    }
+    section: TEST_SELECTION
+  ) {
+    projectRef {
+      testSelection {
+        allowed
+        defaultEnabled
+      }
+    }
+  }
+}
