@@ -256,8 +256,8 @@ func TestShouldGenerateJWT(t *testing.T) {
 		expectedResult bool
 	}{
 		{
-			name:           "DoNotRunKanopyOIDC",
-			settings:       &ClientSettings{DoNotRunKanopyOIDC: true},
+			name:           "DoNotUseJWT",
+			settings:       &ClientSettings{DoNotUseJWT: true},
 			expectedResult: false,
 		},
 		{
