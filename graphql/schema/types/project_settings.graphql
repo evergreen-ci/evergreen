@@ -11,6 +11,7 @@ enum ProjectSettingsSection {
   PLUGINS
   CONTAINERS
   VIEWS_AND_FILTERS
+  TEST_SELECTION
 
   # GitHub sections.
   GITHUB_AND_COMMIT_QUEUE
@@ -77,6 +78,7 @@ input ProjectInput {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
+  testSelection: TestSelectionSettingsInput
   tracksPushEvents: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
