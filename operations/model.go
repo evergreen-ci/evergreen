@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -100,7 +101,7 @@ type ClientSettings struct {
 	JWT                        string                      `json:"jwt" yaml:"jwt,omitempty"`
 	UncommittedChanges         bool                        `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI             bool                        `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
-	DoNotRunKanopyOIDC         bool                        `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
+	DoNotUseJWT                bool                        `json:"do_not_use_jwt" yaml:"do_not_use_jwt,omitempty"`
 	PreserveCommits            bool                        `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects                   []ClientProjectConf         `json:"projects" yaml:"projects,omitempty"`
 	LoadedFrom                 string                      `json:"-" yaml:"-"`
@@ -185,15 +186,15 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
 	if shouldGenerate {
-		if s.JWT, err = runKanopyOIDCLogin(reason); err != nil {
-			grip.Warningf("Failed to get JWT token: %s", err)
-			return c, err
+		grip.Info(optOut)
+		if err := s.SetOAuthToken(ctx, c); err != nil {
+			return c, errors.Wrap(err, "setting OAuth token")
 		}
-
-		c.SetJWT(s.JWT)
-		// in order to use the JWT token, we need to set the API server host to the corp api server host
+		c.SetJWT(s.OAuth.AccessToken)
+		c.SetAPIKey("")
+		// To use JWT's, we need to use the corp API server host
+		// URL.
 		c.SetAPIServerHost(s.getApiServerHost(true))
-
 	} else {
 		if reason != "" {
 			grip.Info(reason)
@@ -203,16 +204,8 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	return c, nil
 }
 
-func printKanopyAuthHeader(start bool) {
-	title := strings.Repeat("*", 23)
-	if start {
-		title = " Kanopy Authentication "
-	}
-	grip.Info("\n" + strings.Repeat("*", 40) + title + strings.Repeat("*", 40) + "\n")
-}
-
 func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) (bool, string) {
-	if s.DoNotRunKanopyOIDC {
+	if s.DoNotUseJWT {
 		return false, ""
 	}
 
@@ -584,4 +577,14 @@ func (s *ClientSettings) SetDefaultProject(cwd, project string) {
 func (s *ClientSettings) SetAutoUpgradeCLI() {
 	s.AutoUpgradeCLI = true
 	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
+}
+
+func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
+	_, err := comm.GetOIDCToken(ctx,
+		dex.WithIssuer(s.OAuth.Issuer),
+		dex.WithClientID(s.OAuth.ClientID),
+		dex.WithConnectorID(s.OAuth.ConnectorID),
+		dex.WithTokenLoader(&configurationTokenLoader{conf: s}),
+	)
+	return errors.Wrap(err, "setting OAuth token")
 }
