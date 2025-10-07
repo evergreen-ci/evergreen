@@ -288,3 +288,113 @@ func TestShouldGenerateJWT(t *testing.T) {
 		})
 	}
 }
+
+func TestIsFirstDateBefore(t *testing.T) {
+	tests := []struct {
+		name          string
+		date1         string
+		date2         string
+		expectedBool  bool
+		expectedError bool
+		errorContains string
+	}{
+		{
+			name:          "FirstDateBeforeSecond",
+			date1:         "2023-01-15",
+			date2:         "2023-06-20",
+			expectedBool:  true,
+			expectedError: false,
+		},
+		{
+			name:          "FirstDateAfterSecond",
+			date1:         "2024-08-10",
+			date2:         "2024-03-05",
+			expectedBool:  false,
+			expectedError: false,
+		},
+		{
+			name:          "SameDates",
+			date1:         "2023-12-25",
+			date2:         "2023-12-25",
+			expectedBool:  false,
+			expectedError: false,
+		},
+		{
+			name:          "InvalidFirstDate",
+			date1:         "2023-13-01",
+			date2:         "2023-12-01",
+			expectedBool:  false,
+			expectedError: true,
+			errorContains: "error parsing first date '2023-13-01'",
+		},
+		{
+			name:          "InvalidSecondDate",
+			date1:         "2023-01-01",
+			date2:         "2023-02-30",
+			expectedBool:  false,
+			expectedError: true,
+			errorContains: "error parsing second date '2023-02-30'",
+		},
+		{
+			name:          "InvalidFormatDate",
+			date1:         "01-15-2023",
+			date2:         "2023-06-20",
+			expectedBool:  false,
+			expectedError: true,
+			errorContains: "error parsing first date '01-15-2023'",
+		},
+		{
+			name:          "EmptyDate",
+			date1:         "",
+			date2:         "2023-06-20",
+			expectedBool:  false,
+			expectedError: true,
+			errorContains: "error parsing first date ''",
+		},
+		{
+			name:          "DateWithLetterSuffix",
+			date1:         "2023-06-20a",
+			date2:         "2023-06-21",
+			expectedBool:  true,
+			expectedError: false,
+		},
+		{
+			name:          "DateWithNumberSuffix",
+			date1:         "2023-06-20-1",
+			date2:         "2023-06-21",
+			expectedBool:  true,
+			expectedError: false,
+		},
+		{
+			name:          "BothDatesWithSuffixes",
+			date1:         "2024-08-10a",
+			date2:         "2024-08-11-1",
+			expectedBool:  true,
+			expectedError: false,
+		},
+		{
+			name:          "IdenticalDatesWithDifferentSuffixes",
+			date1:         "2024-08-10",
+			date2:         "2024-08-10a",
+			expectedBool:  false,
+			expectedError: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := isFirstDateBefore(test.date1, test.date2)
+
+			if test.expectedError {
+				assert.Error(t, err)
+				if test.errorContains != "" {
+					assert.Contains(t, err.Error(), test.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, test.expectedBool, result)
+		})
+	}
+}
