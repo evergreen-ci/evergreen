@@ -28,6 +28,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const (
+	refreshTokenClaimed = "claimed by another client"
+)
+
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
 func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	info := requestInfo{
@@ -1716,22 +1720,59 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
-func (c *communicatorImpl) GetOAuthToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error) {
+func (c *communicatorImpl) GetOAuthToken(ctx context.Context, loader dex.TokenLoader, opts ...dex.ClientOption) (*oauth2.Token, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
-
 	ctx = oidc.ClientContext(ctx, httpClient)
+
+	opts = append(opts,
+		dex.WithContext(ctx),
+		dex.WithRefresh(),
+	)
 
 	// The Dex client logs using logrus. The client doesn't
 	// have any way to turn off debug logs within it's API.
 	// We set the output to io.Discard to suppress debug logs.
 	logrus.SetOutput(io.Discard)
 
-	client, err := dex.NewClient(append(opts, dex.WithContext(ctx), dex.WithRefresh())...)
+	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	// This attempt tries to get a token or refresh using the refresh token.
+	token, err := client.Token()
+	if err == nil {
+		return token, nil
+	}
+	// Sometimes, the refresh token is invalid or claimed by another client.
+	// In this case, we need to run through the auth flow again without using
+	// the refresh token.
+	if !strings.Contains(err.Error(), refreshTokenClaimed) {
+		return nil, err
+	}
+
+	// This client prevents the Dex client from using the refresh token.
+	client, err = dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderWithoutRefresh{loader}))...)
 	if err != nil {
 		return nil, err
 	}
 	defer client.Close()
 
 	return client.Token()
+}
+
+type tokenLoaderWithoutRefresh struct {
+	dex.TokenLoader
+}
+
+func (t *tokenLoaderWithoutRefresh) LoadToken(_ string) (*oauth2.Token, error) {
+	token, err := t.TokenLoader.LoadToken("")
+	if err != nil {
+		return nil, err
+	}
+	// Clear the refresh token to prevent the Dex client from trying to use it.
+	token.RefreshToken = ""
+	return token, nil
 }
