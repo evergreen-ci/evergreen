@@ -160,7 +160,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if err = checkCLIVersion(c); err != nil {
+	if err = checkCLIVersion(ctx, c); err != nil {
 		return nil, err
 	}
 	if printMessages {
@@ -257,8 +257,8 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 	return s.APIServerHost
 }
 
-func checkCLIVersion(c client.Communicator) error {
-	clients, err := c.GetClientConfig(context.Background())
+func checkCLIVersion(ctx context.Context, c client.Communicator) error {
+	clients, err := c.GetClientConfig(ctx)
 	if err != nil {
 		grip.Debug(errors.Wrap(err, "getting client config info"))
 	}
