@@ -89,7 +89,7 @@ func (c *communicatorImpl) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
 }
 
-// SetOAuth sets the JWT for authentication.
+// SetOAuth sets the OAuth token for authentication.
 func (c *communicatorImpl) SetOAuth(oauth string) {
 	c.oauth = oauth
 }
