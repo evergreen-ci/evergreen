@@ -42,7 +42,7 @@ func fetchAllProjectConfigs() cli.Command {
 			}
 			defer client.Close()
 
-			ac, rc, err := settings.getLegacyClients()
+			ac, rc, err := settings.getLegacyClients(client)
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}

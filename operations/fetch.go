@@ -131,7 +131,7 @@ func Fetch() cli.Command {
 			}
 			defer client.Close()
 
-			ac, rc, err := conf.getLegacyClients()
+			ac, rc, err := conf.getLegacyClients(client)
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}

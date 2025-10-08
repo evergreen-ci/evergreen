@@ -42,7 +42,7 @@ func LastGreen() cli.Command {
 			}
 			defer client.Close()
 
-			_, rc, err := conf.getLegacyClients()
+			_, rc, err := conf.getLegacyClients(client)
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}

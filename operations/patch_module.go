@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -53,11 +54,6 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			ac, rc, err := conf.getLegacyClients()
-			if err != nil {
-				return errors.Wrap(err, "setting up legacy Evergreen client")
-			}
-
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -66,6 +62,10 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
 			defer comm.Close()
+			ac, rc, err := conf.getLegacyClients(comm)
+			if err != nil {
+				return errors.Wrap(err, "setting up legacy Evergreen client")
+			}
 
 			var existingPatch *patch.Patch
 			if patchID == "" {
@@ -85,11 +85,11 @@ func PatchSetModule() cli.Command {
 				return errors.Wrapf(err, "getting patch '%s'", patchID)
 			}
 
-			module, err := conf.getModule(patchID, moduleName)
+			module, err := conf.getModule(comm, patchID, moduleName)
 			if err != nil {
 				return err
 			}
-			if err := addModuleToPatch(params, args, conf, existingPatch, module, ""); err != nil {
+			if err := addModuleToPatch(comm, params, args, conf, existingPatch, module, ""); err != nil {
 				return err
 			}
 			if params.Finalize {
@@ -109,7 +109,7 @@ func PatchSetModule() cli.Command {
 	}
 }
 
-func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
+func addModuleToPatch(comm client.Communicator, params *patchParams, args cli.Args, conf *ClientSettings,
 	p *patch.Patch, module *model.Module, modulePath string) error {
 	patchId := p.Id.Hex()
 
@@ -159,7 +159,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 		patch:   diffData.fullPatch,
 		base:    diffData.base,
 	}
-	ac, _, err := conf.getLegacyClients()
+	ac, _, err := conf.getLegacyClients(comm)
 	if err != nil {
 		return errors.Wrap(err, "setting up legacy Evergreen client")
 	}
@@ -187,8 +187,15 @@ func PatchRemoveModule() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			comm, err := conf.setupRestCommunicator(ctx, false)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
+			defer comm.Close()
 
-			ac, _, err := conf.getLegacyClients()
+			ac, _, err := conf.getLegacyClients(comm)
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
