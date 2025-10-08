@@ -29,7 +29,7 @@ type Communicator interface {
 	// Client authentication methods (for users)
 	SetAPIUser(string)
 	SetAPIKey(string)
-	SetJWT(string)
+	SetOAuth(string)
 	SetAPIServerHost(string)
 	// Client authentication methods (for hosts)
 	SetHostID(string)

@@ -85,7 +85,7 @@ type OAuth struct {
 	ConnectorID string `json:"connector_id" yaml:"connector_id,omitempty"`
 
 	// These are dynamic fields that are populated when a user logs in.
-	// AccessToken is the JWT token used to authenticate with the Evergreen API.
+	// AccessToken is the token used to authenticate with the Evergreen API.
 	AccessToken string `json:"access_token" yaml:"access_token,omitempty"`
 	// RefreshToken is used to get a new access token when the current one expires.
 	RefreshToken string `json:"refresh_token" yaml:"refresh_token,omitempty"`
@@ -108,7 +108,7 @@ type ClientSettings struct {
 	User                       string                      `json:"user" yaml:"user,omitempty"`
 	UncommittedChanges         bool                        `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI             bool                        `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
-	DoNotUseJWT                bool                        `json:"do_not_use_jwt" yaml:"do_not_use_jwt,omitempty"`
+	DoNotUseOAuth              bool                        `json:"do_not_use_oauth" yaml:"do_not_use_oauth,omitempty"`
 	PreserveCommits            bool                        `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects                   []ClientProjectConf         `json:"projects" yaml:"projects,omitempty"`
 	LoadedFrom                 string                      `json:"-" yaml:"-"`
@@ -191,16 +191,15 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
 
-	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
+	shouldGenerate, reason := s.shouldGenerateOAuthAccessToken(ctx, c)
 	if shouldGenerate {
 		grip.Info(optOut)
 		if err := s.SetOAuthToken(ctx, c); err != nil {
 			return c, errors.Wrap(err, "setting OAuth token")
 		}
-		c.SetJWT(s.OAuth.AccessToken)
+		c.SetOAuth(s.OAuth.AccessToken)
 		c.SetAPIKey("")
-		// To use JWT's, we need to use the corp API server host
-		// URL.
+		// To use OAuth tokens, we need to use the corp URL.
 		c.SetAPIServerHost(s.getApiServerHost(true))
 	} else {
 		if reason != "" {
@@ -211,17 +210,17 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	return c, nil
 }
 
-func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) (bool, string) {
-	if s.DoNotUseJWT {
+func (s *ClientSettings) shouldGenerateOAuthAccessToken(ctx context.Context, c client.Communicator) (bool, string) {
+	if s.DoNotUseOAuth {
 		return false, ""
 	}
 
 	if s.APIKey == "" {
-		return true, "No API key found in local Evergreen YAML, defaulting to a JWT token."
+		return true, "No API key found in local Evergreen YAML, defaulting to an OAuth token."
 	}
 
 	// always use the non-corp url for getting the service flags
-	// because the corp url needs a JWT token which we haven't generated yet
+	// because the corp url needs an OAuth token which we haven't generated yet
 	originalAPIServerHost := s.APIServerHost
 	c.SetAPIServerHost(s.getApiServerHost(false))
 
@@ -366,7 +365,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          root + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		JWT:                s.OAuth.AccessToken,
+		OAuthAccessToken:   s.OAuth.AccessToken,
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
@@ -376,7 +375,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		JWT:                s.OAuth.AccessToken,
+		OAuthAccessToken:   s.OAuth.AccessToken,
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
