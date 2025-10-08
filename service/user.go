@@ -126,7 +126,7 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 			Issuer      string `json:"issuer" yaml:"issuer"`
 			ClientID    string `json:"client_id" yaml:"client_id"`
 			ConnectorID string `json:"connector_id" yaml:"connector_id"`
-		}
+		} `json:"oauth" yaml:"oauth"`
 	}{
 		User: creds.Username,
 		Key:  key,
