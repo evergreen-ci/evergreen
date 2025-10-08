@@ -78,14 +78,12 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 		return nil, err
 	}
 
-	// The API user and key are mutually exclusive with the OAuth token, so only set them if
-	// they are both set.
-	if ac.User != "" && ac.APIKey != "" {
-		req.Header.Add(evergreen.APIUserHeader, ac.User)
-		req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
-	}
+	// The API user and key are mutually exclusive with the OAuth token.
 	if ac.OAuthAccessToken != "" {
 		req.Header.Add(evergreen.KanopyTokenHeader, "Bearer "+ac.OAuthAccessToken)
+	} else if ac.User != "" && ac.APIKey != "" {
+		req.Header.Add(evergreen.APIUserHeader, ac.User)
+		req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
 	}
 	if ac.stagingEnvironment != "" {
 		req.Header.Add(evergreen.EnvironmentHeader, ac.stagingEnvironment)
