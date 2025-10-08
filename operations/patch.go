@@ -274,7 +274,7 @@ func Patch() cli.Command {
 						grip.Error(err)
 						continue
 					}
-					if err = addModuleToPatch(comm, params, args, conf, newPatch, &module, modulePath); err != nil {
+					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
 						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
 					}
 				}
