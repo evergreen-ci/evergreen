@@ -84,6 +84,14 @@ type OAuth struct {
 	ClientID    string `json:"client_id" yaml:"client_id,omitempty"`
 	ConnectorID string `json:"connector_id" yaml:"connector_id,omitempty"`
 
+	// These are dynamic fields that are populated when a user logs in.
+	// AccessToken is the JWT token used to authenticate with the Evergreen API.
+	AccessToken string `json:"access_token" yaml:"access_token,omitempty"`
+	// RefreshToken is used to get a new access token when the current one expires.
+	RefreshToken string `json:"refresh_token" yaml:"refresh_token,omitempty"`
+	// Expiry is the time when the access token expires.
+	Expiry time.Time `json:"expiry" yaml:"expiry,omitempty"`
+
 	// These are helpers that users can set.
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
 	// This setting is the final authority on the flow.
@@ -589,6 +597,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),
 		dex.WithTokenLoader(&configurationTokenLoader{conf: s}),
+		dex.WithNoBrowser(s.OAuth.DoNotUseBrowser),
 	)
 	return errors.Wrap(err, "setting OAuth token")
 }
