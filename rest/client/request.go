@@ -47,10 +47,10 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		}
 	}
 
-	if c.apiUser != "" {
+	// The API user and key are mutually exclusive with JWT, so only set them if
+	// they are both set.
+	if c.apiUser != "" && c.apiKey != "" {
 		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
-	}
-	if c.apiKey != "" {
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
 	if c.jwt != "" {
