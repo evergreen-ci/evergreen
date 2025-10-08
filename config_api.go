@@ -29,6 +29,8 @@ type ClientConfig struct {
 
 	// These settings are to support a seemless migration for
 	// the switch to OAuth. They can be removed in DEVPROD-17405.
+	// The corresponding fields inside the APIClientConfig struct
+	// should also be removed then.
 	OAuthIssuer      string
 	OAuthClientID    string
 	OAuthConnectorID string
