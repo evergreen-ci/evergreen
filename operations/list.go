@@ -113,7 +113,7 @@ func listProjects(ctx context.Context, confPath string) error {
 	}
 	defer client.Close()
 
-	ac, _, err := conf.getLegacyClients()
+	ac, _, err := conf.getLegacyClients(client)
 	if err != nil {
 		return errors.Wrap(err, "setting up legacy Evergreen client")
 	}
@@ -158,7 +158,7 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 
 	var variants []model.BuildVariant
 	if project != "" {
-		ac, _, err := conf.getLegacyClients()
+		ac, _, err := conf.getLegacyClients(client)
 		if err != nil {
 			return errors.Wrap(err, "setting up legacy Evergreen client")
 		}
@@ -212,7 +212,7 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 
 	var tasks []model.ProjectTask
 	if project != "" {
-		ac, _, err := conf.getLegacyClients()
+		ac, _, err := conf.getLegacyClients(client)
 		if err != nil {
 			return errors.Wrap(err, "setting up legacy Evergreen client")
 		}

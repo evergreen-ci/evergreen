@@ -32,7 +32,7 @@ func PatchFinalize() cli.Command {
 			}
 			defer client.Close()
 
-			ac, _, err := conf.getLegacyClients()
+			ac, _, err := conf.getLegacyClients(client)
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}

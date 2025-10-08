@@ -98,7 +98,6 @@ type ClientSettings struct {
 	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
 	User                       string                      `json:"user" yaml:"user,omitempty"`
-	JWT                        string                      `json:"jwt" yaml:"jwt,omitempty"`
 	UncommittedChanges         bool                        `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI             bool                        `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
 	DoNotUseJWT                bool                        `json:"do_not_use_jwt" yaml:"do_not_use_jwt,omitempty"`
@@ -346,20 +345,25 @@ func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
 	return t1.Before(t2), nil
 }
 
-func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {
+func (s *ClientSettings) getLegacyClients(comm client.Communicator) (*legacyClient, *legacyClient, error) {
 	// create client for the REST APIs
 	apiURL, err := url.Parse(s.APIServerHost)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "parsing API server URL from settings file")
 	}
 
-	root := s.getApiServerHost(s.JWT != "")
+	if err := s.SetOAuthToken(context.Background(), comm); err != nil {
+		fmt.Println("Warning: could not set OAuth token:", err)
+	}
+
+	root := s.getApiServerHost(s.OAuth.AccessToken != "")
 	ac := &legacyClient{
 		APIRoot:            root,
 		APIRootV2:          root + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		JWT:                s.JWT,
+		JWT:                s.OAuth.AccessToken,
+		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
@@ -368,15 +372,19 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		JWT:                s.JWT,
+		JWT:                s.OAuth.AccessToken,
+		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
+
+	fmt.Println("1/AC ROOT:", ac.APIRoot)
+	fmt.Println("2/RC ROOT:", rc.APIRoot)
 
 	return ac, rc, nil
 }
 
-func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, error) {
-	_, rc, err := s.getLegacyClients()
+func (s *ClientSettings) getModule(client client.Communicator, patchId, moduleName string) (*model.Module, error) {
+	_, rc, err := s.getLegacyClients(client)
 	if err != nil {
 		return nil, errors.Wrap(err, "setting up legacy Evergreen client")
 	}
