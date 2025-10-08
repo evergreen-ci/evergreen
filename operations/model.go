@@ -201,7 +201,9 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	useOAuth, reason := s.shouldUseOAuth(ctx, c)
 	if useOAuth {
-		grip.Info(optOut)
+		if printMessages {
+			grip.Info(optOut)
+		}
 		if err := s.SetOAuthToken(ctx, c); err != nil {
 			return c, errors.Wrap(err, "setting OAuth token")
 		}
@@ -209,10 +211,8 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		c.SetAPIKey("")
 		// To use OAuth tokens, we need to use the corp URL.
 		c.SetAPIServerHost(s.getApiServerHost(true))
-	} else {
-		if reason != "" {
-			grip.Info(reason)
-		}
+	} else if reason != "" && printMessages {
+		grip.Info(reason)
 	}
 
 	return c, nil
