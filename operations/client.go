@@ -3,12 +3,9 @@ package operations
 import (
 	"context"
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"golang.org/x/oauth2"
 )
 
 func Client() cli.Command {
@@ -125,44 +122,4 @@ func getOAuthToken() cli.Command {
 			return nil
 		},
 	}
-}
-
-// configurationTokenLoader stores the OAuth tokens in the ClientSettings struct.
-// It writes the updated tokens back to the config file when SaveToken is called.
-type configurationTokenLoader struct {
-	conf *ClientSettings
-}
-
-// The string parameters are suggested config paths to handle multiple
-// configurations, but they are ignored because we only need one config file.
-func (c *configurationTokenLoader) LoadToken(_ string) (*oauth2.Token, error) {
-	if c == nil || c.conf == nil {
-		return nil, os.ErrNotExist
-	}
-	return &oauth2.Token{
-		AccessToken:  c.conf.OAuth.AccessToken,
-		RefreshToken: c.conf.OAuth.RefreshToken,
-		Expiry:       c.conf.OAuth.Expiry,
-		ExpiresIn:    c.conf.OAuth.Expiry.Unix(),
-	}, nil
-}
-
-func (c *configurationTokenLoader) SaveToken(_ string, token *oauth2.Token) error {
-	if c == nil || c.conf == nil || token == nil {
-		return os.ErrNotExist
-	}
-	c.conf.OAuth.AccessToken = token.AccessToken
-	c.conf.OAuth.RefreshToken = token.RefreshToken
-	c.conf.OAuth.Expiry = token.Expiry
-	return c.conf.Write("")
-}
-
-func (c *configurationTokenLoader) DeleteToken(_ string) error {
-	if c == nil || c.conf == nil {
-		return errors.New("no configuration to save token to")
-	}
-	c.conf.OAuth.AccessToken = ""
-	c.conf.OAuth.RefreshToken = ""
-	c.conf.OAuth.Expiry = time.Time{}
-	return c.conf.Write("")
 }
