@@ -191,8 +191,8 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
 
-	shouldGenerate, reason := s.shouldGenerateOAuthAccessToken(ctx, c)
-	if shouldGenerate {
+	useOAuth, reason := s.shouldUseOAuth(ctx, c)
+	if useOAuth {
 		grip.Info(optOut)
 		if err := s.SetOAuthToken(ctx, c); err != nil {
 			return c, errors.Wrap(err, "setting OAuth token")
@@ -210,7 +210,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	return c, nil
 }
 
-func (s *ClientSettings) shouldGenerateOAuthAccessToken(ctx context.Context, c client.Communicator) (bool, string) {
+func (s *ClientSettings) shouldUseOAuth(ctx context.Context, c client.Communicator) (should bool, reason string) {
 	if s.DoNotUseOAuth {
 		return false, ""
 	}
