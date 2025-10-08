@@ -160,7 +160,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if err = checkCLIVersion(ctx, c); err != nil {
+	if err = s.checkCLIVersion(ctx, c); err != nil {
 		return nil, err
 	}
 	if printMessages {
@@ -257,12 +257,15 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 	return s.APIServerHost
 }
 
-func checkCLIVersion(ctx context.Context, c client.Communicator) error {
+func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communicator) error {
 	clients, err := c.GetClientConfig(ctx)
 	if err != nil {
 		grip.Debug(errors.Wrap(err, "getting client config info"))
 	}
-	if clients != nil && clients.OldestAllowedCLIVersion != "" {
+	if clients == nil {
+		return nil
+	}
+	if clients.OldestAllowedCLIVersion != "" {
 		isCLIVersionTooOld, err := isFirstDateBefore(evergreen.ClientVersion, clients.OldestAllowedCLIVersion)
 		if err != nil {
 			grip.Warning(errors.Wrap(err, "checking if client is older than the latest version"))
@@ -271,6 +274,10 @@ func checkCLIVersion(ctx context.Context, c client.Communicator) error {
 			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
 				"Run '%s get-update --install' to update.\n", evergreen.ClientVersion, clients.OldestAllowedCLIVersion, os.Args[0])
 		}
+	}
+	if clients.OAuthIssuer != "" {
+		// TODO (DEVPROD-20071): set OAuth fields here after
+		// https://github.com/evergreen-ci/evergreen/pull/9440 is merged.
 	}
 	return nil
 }
