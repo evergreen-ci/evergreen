@@ -604,6 +604,8 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }
 
+// SetOAuthToken sets the OAuth token for authentication.
+// It saves the token to the client settings file if it is successfully retrieved.
 func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
 	// The TokenLoader is responsible for loading and saving the token
 	// to the client settings file.
