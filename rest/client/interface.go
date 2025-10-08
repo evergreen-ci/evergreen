@@ -146,8 +146,8 @@ type Communicator interface {
 	// Validate validates a project configuration file.
 	Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error)
 
-	// GetOIDCToken retrieves an OIDC token with the given options.
-	GetOIDCToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error)
+	// GetOAuthToken retrieves an OIDC token with the given options.
+	GetOAuthToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error)
 }
 
 // GetTaskLogsOptions are the options for fetching task logs for a given task.

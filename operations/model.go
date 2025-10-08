@@ -589,7 +589,9 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 }
 
 func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
-	_, err := comm.GetOIDCToken(ctx,
+	// The TokenLoader is responsible for loading and saving the token
+	// to the client settings file.
+	_, err := comm.GetOAuthToken(ctx,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),

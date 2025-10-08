@@ -1716,7 +1716,7 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
-func (c *communicatorImpl) GetOIDCToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error) {
+func (c *communicatorImpl) GetOAuthToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 
