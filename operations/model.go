@@ -381,9 +381,6 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
-	fmt.Println("1/AC ROOT:", ac.APIRoot)
-	fmt.Println("2/RC ROOT:", rc.APIRoot)
-
 	return ac, rc, nil
 }
 
