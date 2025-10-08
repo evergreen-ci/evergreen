@@ -348,7 +348,7 @@ func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID 
 	return nil, nil
 }
 
-func (c *Mock) GetOIDCToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error) {
+func (c *Mock) GetOAuthToken(ctx context.Context, opts ...dex.ClientOption) (*oauth2.Token, error) {
 	return nil, nil
 }
 
