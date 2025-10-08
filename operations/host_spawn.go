@@ -489,7 +489,7 @@ func hostConfigure() cli.Command {
 			}
 			defer client.Close()
 
-			ac, _, err := conf.getLegacyClients(client)
+			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
