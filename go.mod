@@ -65,7 +65,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0
 	go.opentelemetry.io/proto/otlp v1.8.0
 	golang.org/x/crypto v0.42.0
-	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/oauth2 v0.30.0
 	golang.org/x/text v0.29.0
 	golang.org/x/tools v0.37.0 // indirect
 	gonum.org/v1/gonum v0.16.0
@@ -197,6 +197,7 @@ require (
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.0
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/sirupsen/logrus v1.9.3
 	go.uber.org/automaxprocs v1.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -209,7 +210,6 @@ require (
 	github.com/coreos/go-oidc/v3 v3.16.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 )
