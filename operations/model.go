@@ -19,6 +19,7 @@ import (
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -200,7 +201,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	}
 
 	useOAuth, reason := s.shouldUseOAuth(ctx, c)
-	if useOAuth {
+	if useOAuth || true {
 		if printMessages {
 			grip.Info(optOut)
 		}
@@ -610,11 +611,51 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 	// The TokenLoader is responsible for loading and saving the token
 	// to the client settings file.
 	_, err := comm.GetOAuthToken(ctx,
+		&configurationTokenLoader{conf: s},
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),
-		dex.WithTokenLoader(&configurationTokenLoader{conf: s}),
 		dex.WithNoBrowser(s.OAuth.DoNotUseBrowser),
 	)
 	return errors.Wrap(err, "setting OAuth token")
+}
+
+// configurationTokenLoader stores the OAuth tokens in the ClientSettings struct.
+// It writes the updated tokens back to the config file when SaveToken is called.
+type configurationTokenLoader struct {
+	conf *ClientSettings
+}
+
+// The string parameters are suggested config paths to handle multiple
+// configurations, but they are ignored because we only need one config file.
+func (c *configurationTokenLoader) LoadToken(_ string) (*oauth2.Token, error) {
+	if c == nil || c.conf == nil {
+		return nil, os.ErrNotExist
+	}
+	return &oauth2.Token{
+		AccessToken:  c.conf.OAuth.AccessToken,
+		RefreshToken: c.conf.OAuth.RefreshToken,
+		Expiry:       c.conf.OAuth.Expiry,
+		ExpiresIn:    c.conf.OAuth.Expiry.Unix(),
+	}, nil
+}
+
+func (c *configurationTokenLoader) SaveToken(_ string, token *oauth2.Token) error {
+	if c == nil || c.conf == nil || token == nil {
+		return os.ErrNotExist
+	}
+	c.conf.OAuth.AccessToken = token.AccessToken
+	c.conf.OAuth.RefreshToken = token.RefreshToken
+	c.conf.OAuth.Expiry = token.Expiry
+	return c.conf.Write("")
+}
+
+func (c *configurationTokenLoader) DeleteToken(_ string) error {
+	if c == nil || c.conf == nil {
+		return errors.New("no configuration to save token to")
+	}
+	c.conf.OAuth.AccessToken = ""
+	c.conf.OAuth.RefreshToken = ""
+	c.conf.OAuth.Expiry = time.Time{}
+	return c.conf.Write("")
 }
