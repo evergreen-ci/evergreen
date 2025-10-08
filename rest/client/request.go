@@ -47,14 +47,12 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		}
 	}
 
-	// The API user and key are mutually exclusive with JWT, so only set them if
-	// they are both set.
-	if c.apiUser != "" && c.apiKey != "" {
-		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
-		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
-	}
+	// The API user and key are mutually exclusive with the OAuth token.
 	if c.oauth != "" {
 		r.Header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.oauth)
+	} else if c.apiUser != "" && c.apiKey != "" {
+		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
+		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
 	if c.hostID != "" && c.hostSecret != "" {
 		r.Header.Add(evergreen.HostHeader, c.hostID)

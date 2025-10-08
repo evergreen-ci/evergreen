@@ -1651,14 +1651,12 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	}
 
 	header := make(http.Header)
-	// The API user and key are mutually exclusive with JWT, so only set them if
-	// they are both set.
-	if c.apiUser != "" && c.apiKey != "" {
-		header.Add(evergreen.APIUserHeader, c.apiUser)
-		header.Add(evergreen.APIKeyHeader, c.apiKey)
-	}
+	// The API user and key are mutually exclusive with the OAuth token.
 	if c.oauth != "" {
 		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.oauth)
+	} else if c.apiUser != "" && c.apiKey != "" {
+		header.Add(evergreen.APIUserHeader, c.apiUser)
+		header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }

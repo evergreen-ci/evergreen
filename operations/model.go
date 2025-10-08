@@ -98,6 +98,14 @@ type OAuth struct {
 	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser,omitempty"`
 }
 
+// AccessTokenIfNotExpired returns the access token if it is not expired, otherwise it returns an empty string.
+func (oa *OAuth) AccessTokenIfNotExpired() string {
+	if oa == nil || oa.Expiry.Before(time.Now()) {
+		return ""
+	}
+	return oa.AccessToken
+}
+
 // Client represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
@@ -353,19 +361,28 @@ func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
 }
 
 func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {
+	// We set up the rest communicator to check the CLI version and set the OAuth token if needed.
+	// The logic/route for the OAuth token is imbedded in the rest communicator
+	// so it's simpler to just create a whole rest communicator here.
+	restComm, err := s.setupRestCommunicator(context.Background(), false)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "setting up REST communicator")
+	}
+	restComm.Close()
+
 	// create client for the REST APIs
-	apiURL, err := url.Parse(s.APIServerHost)
+	root := s.getApiServerHost(s.OAuth.AccessTokenIfNotExpired() != "")
+	apiURL, err := url.Parse(root)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "parsing API server URL from settings file")
 	}
 
-	root := s.getApiServerHost(s.OAuth.AccessToken != "")
 	ac := &legacyClient{
 		APIRoot:            root,
 		APIRootV2:          root + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		OAuthAccessToken:   s.OAuth.AccessToken,
+		OAuthAccessToken:   s.OAuth.AccessTokenIfNotExpired(),
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
@@ -375,7 +392,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		OAuthAccessToken:   s.OAuth.AccessToken,
+		OAuthAccessToken:   s.OAuth.AccessTokenIfNotExpired(),
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
