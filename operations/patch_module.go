@@ -53,6 +53,10 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+			ac, rc, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "setting up legacy Evergreen client")
+			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -61,10 +65,6 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
 			defer comm.Close()
-			ac, rc, err := conf.getLegacyClients()
-			if err != nil {
-				return errors.Wrap(err, "setting up legacy Evergreen client")
-			}
 
 			var existingPatch *patch.Patch
 			if patchID == "" {
