@@ -166,7 +166,7 @@ func TestCLIFetchSource(t *testing.T) {
 		comm, err := client.setupRestCommunicator(ctx, true)
 		require.NoError(t, err)
 		defer comm.Close()
-		ac, rc, err := client.getLegacyClients(comm)
+		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
 
 		// Set up a test patch that contains module changes
@@ -259,10 +259,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm, err := client.setupRestCommunicator(ctx, true)
-		require.NoError(t, err)
-		defer comm.Close()
-		_, rc, err := client.getLegacyClients(comm)
+		_, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
 
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
@@ -379,10 +376,7 @@ func TestCLIFunctions(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm, err := client.setupRestCommunicator(ctx, true)
-		require.NoError(t, err)
-		defer comm.Close()
-		ac, _, err := client.getLegacyClients(comm)
+		ac, _, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
 
 		Convey("check that creating a patch works", func() {

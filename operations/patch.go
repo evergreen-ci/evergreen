@@ -202,7 +202,7 @@ func Patch() cli.Command {
 			}
 			defer comm.Close()
 
-			ac, rc, err := conf.getLegacyClients(comm)
+			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
@@ -471,7 +471,7 @@ func PatchFile() cli.Command {
 			}
 			defer comm.Close()
 
-			ac, rc, err := conf.getLegacyClients(comm)
+			ac, rc, err := conf.getLegacyClients()
 
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")

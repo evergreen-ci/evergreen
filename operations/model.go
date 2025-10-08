@@ -345,15 +345,11 @@ func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
 	return t1.Before(t2), nil
 }
 
-func (s *ClientSettings) getLegacyClients(comm client.Communicator) (*legacyClient, *legacyClient, error) {
+func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {
 	// create client for the REST APIs
 	apiURL, err := url.Parse(s.APIServerHost)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "parsing API server URL from settings file")
-	}
-
-	if err := s.SetOAuthToken(context.Background(), comm); err != nil {
-		fmt.Println("Warning: could not set OAuth token:", err)
 	}
 
 	root := s.getApiServerHost(s.OAuth.AccessToken != "")
@@ -383,8 +379,8 @@ func (s *ClientSettings) getLegacyClients(comm client.Communicator) (*legacyClie
 	return ac, rc, nil
 }
 
-func (s *ClientSettings) getModule(client client.Communicator, patchId, moduleName string) (*model.Module, error) {
-	_, rc, err := s.getLegacyClients(client)
+func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, error) {
+	_, rc, err := s.getLegacyClients()
 	if err != nil {
 		return nil, errors.Wrap(err, "setting up legacy Evergreen client")
 	}
