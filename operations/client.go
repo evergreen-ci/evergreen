@@ -133,7 +133,9 @@ type configurationTokenLoader struct {
 	conf *ClientSettings
 }
 
-func (c *configurationTokenLoader) LoadToken(_ string) (*oauth2.Token, error) {
+// The string parameters are suggested config paths to handle multiple
+// configurations, but they are ignored because we only need one config file.
+func (c *configurationTokenLoader) LoadToken(string) (*oauth2.Token, error) {
 	if c == nil || c.conf == nil {
 		return nil, os.ErrNotExist
 	}
@@ -145,7 +147,7 @@ func (c *configurationTokenLoader) LoadToken(_ string) (*oauth2.Token, error) {
 	}, nil
 }
 
-func (c *configurationTokenLoader) SaveToken(_ string, token *oauth2.Token) error {
+func (c *configurationTokenLoader) SaveToken(string, token *oauth2.Token) error {
 	if c == nil || c.conf == nil || token == nil {
 		return os.ErrNotExist
 	}
@@ -155,7 +157,7 @@ func (c *configurationTokenLoader) SaveToken(_ string, token *oauth2.Token) erro
 	return c.conf.Write("")
 }
 
-func (c *configurationTokenLoader) DeleteToken(_ string) error {
+func (c *configurationTokenLoader) DeleteToken(string) error {
 	if c == nil || c.conf == nil {
 		return errors.New("no configuration to save token to")
 	}
