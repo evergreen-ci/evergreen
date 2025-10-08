@@ -70,7 +70,8 @@ func (c *MultiAuthConfig) IsZero() bool {
 
 // KanopyAuthConfig configures the auth method that validates and consumes the JWT
 // that Kanopy provides with information about the user. Kanopy deals with authentication
-// so all we need to do is extract the information they provide about the user.
+// so all we need to do is extract the information they provide about the user. This is
+// for the UI, rather than the API.
 type KanopyAuthConfig struct {
 	// HeaderName is the name of the header that contains the JWT with information about the user.
 	HeaderName string `bson:"header_name" json:"header_name" yaml:"header_name"`
@@ -81,6 +82,17 @@ type KanopyAuthConfig struct {
 	KeysetURL string `bson:"keyset_url" json:"keyset_url" yaml:"keyset_url"`
 }
 
+// OAuthConfig configures the auth method that uses a generic OAuth provider.
+// This is for the API, rather than the UI.
+type OAuthConfig struct {
+	// Issuer is the expected OAuth issuer.
+	Issuer string `bson:"issuer" json:"issuer" yaml:"issuer"`
+	// ClientID is the OAuth client ID.
+	ClientID string `bson:"client_id" json:"client_id" yaml:"client_id"`
+	// ConnectorID is the OAuth connector ID.
+	ConnectorID string `bson:"connector_id" json:"connector_id" yaml:"connector_id"`
+}
+
 // AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
 	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
@@ -88,6 +100,7 @@ type AuthConfig struct {
 	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 	Multi                   *MultiAuthConfig  `bson:"multi" json:"multi" yaml:"multi"`
 	Kanopy                  *KanopyAuthConfig `bson:"kanopy" json:"kanopy" yaml:"kanopy"`
+	OAuth                   *OAuthConfig      `bson:"oauth,omitempty" json:"oauth" yaml:"oauth"`
 	AllowServiceUsers       bool              `bson:"allow_service_users" json:"allow_service_users" yaml:"allow_service_users"`
 	PreferredType           string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
 	BackgroundReauthMinutes int               `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`

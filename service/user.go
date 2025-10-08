@@ -118,15 +118,29 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := struct {
-		User string `json:"user" yaml:"user" `
-		Key  string `json:"api_key" yaml:"api_key"`
-		UI   string `json:"ui_server_host" yaml:"ui_server_host"`
-		API  string `json:"api_server_host" yaml:"api_server_host"`
+		User  string `json:"user" yaml:"user" `
+		Key   string `json:"api_key" yaml:"api_key"`
+		UI    string `json:"ui_server_host" yaml:"ui_server_host"`
+		API   string `json:"api_server_host" yaml:"api_server_host"`
+		OAuth struct {
+			Issuer      string `json:"issuer" yaml:"issuer"`
+			ClientID    string `json:"client_id" yaml:"client_id"`
+			ConnectorID string `json:"connector_id" yaml:"connector_id"`
+		}
 	}{
 		User: creds.Username,
 		Key:  key,
 		UI:   uis.RootURL,
 		API:  uis.RootURL + "/api",
+		OAuth: struct {
+			Issuer      string `json:"issuer" yaml:"issuer"`
+			ClientID    string `json:"client_id" yaml:"client_id"`
+			ConnectorID string `json:"connector_id" yaml:"connector_id"`
+		}{
+			Issuer:      uis.Settings.AuthConfig.OAuth.Issuer,
+			ClientID:    uis.Settings.AuthConfig.OAuth.ClientID,
+			ConnectorID: uis.Settings.AuthConfig.OAuth.ConnectorID,
+		},
 	}
 
 	if ct := r.Header.Get("content-type"); strings.Contains(ct, "yaml") {
