@@ -20,13 +20,13 @@ func Client() cli.Command {
 			getAPIKey(),
 			getAPIUrl(),
 			getUIUrl(),
-			getJWT(),
+			getOAuthToken(),
 		},
 	}
 }
 
 const (
-	optOut = "Evergreen CLI will attempt to retrieve or generate a JWT token. To opt out of this, set 'do_not_generate_jwt' to true in your config file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160."
+	optOut = "Evergreen CLI will attempt to retrieve or generate a OAuth token. To opt out of this, set 'do_not_use_oauth' to true in your config file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160."
 )
 
 func getUser() cli.Command {
@@ -97,10 +97,10 @@ func getUIUrl() cli.Command {
 	}
 }
 
-func getJWT() cli.Command {
+func getOAuthToken() cli.Command {
 	return cli.Command{
-		Name:  "get-jwt",
-		Usage: "gets a valid JWT token to authenticate with Evergreen's REST API",
+		Name:  "get-oauth-token",
+		Usage: "gets a valid OAuth token to authenticate with Evergreen's REST API",
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

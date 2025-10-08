@@ -117,7 +117,7 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 		UIServerHost:  "http://dev-evg.mongodb.com",
 		APIKey:        "testapikey",
 		User:          "testuser",
-		DoNotUseJWT:   true,
+		DoNotUseOAuth: true,
 	}
 	settingsFile, err := os.CreateTemp("", "settings")
 	So(err, ShouldBeNil)

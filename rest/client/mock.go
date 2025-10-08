@@ -360,7 +360,7 @@ func (c *Mock) SetHostID(hostID string) {}
 
 func (c *Mock) SetHostSecret(hostSecret string) {}
 
-func (c *Mock) SetJWT(jwt string) {}
+func (c *Mock) SetOAuth(oauth string) {}
 
 func (c *Mock) SetAPIServerHost(serverURL string) {}
 

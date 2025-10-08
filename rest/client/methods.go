@@ -1596,10 +1596,11 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 	}
 
 	header := make(http.Header)
-	header.Add(evergreen.APIUserHeader, c.apiUser)
-	header.Add(evergreen.APIKeyHeader, c.apiKey)
-	if c.jwt != "" {
-		header.Add(evergreen.AuthorizationHeader, "Bearer "+c.jwt)
+	if c.oauth != "" {
+		header.Add(evergreen.AuthorizationHeader, "Bearer "+c.oauth)
+	} else if c.apiUser != "" && c.apiKey != "" {
+		header.Add(evergreen.APIUserHeader, c.apiUser)
+		header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
@@ -1653,12 +1654,11 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	header := make(http.Header)
 	// The API user and key are mutually exclusive with JWT, so only set them if
 	// they are both set.
-	if c.apiUser != "" && c.apiKey != "" {
+	if c.oauth != "" {
+		header.Add(evergreen.AuthorizationHeader, "Bearer "+c.oauth)
+	} else if c.apiUser != "" && c.apiKey != "" {
 		header.Add(evergreen.APIUserHeader, c.apiUser)
 		header.Add(evergreen.APIKeyHeader, c.apiKey)
-	}
-	if c.jwt != "" {
-		header.Add(evergreen.AuthorizationHeader, "Bearer "+c.jwt)
 	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
