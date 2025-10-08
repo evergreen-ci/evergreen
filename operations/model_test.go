@@ -247,7 +247,7 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 	assert.False(conf.UncommittedChanges)
 }
 
-func TestShouldGenerateOAuthAccessToken(t *testing.T) {
+func TestShouldUseOAuth(t *testing.T) {
 	tests := []struct {
 		name           string
 		settings       *ClientSettings
@@ -283,7 +283,7 @@ func TestShouldGenerateOAuthAccessToken(t *testing.T) {
 				},
 				MockServiceFlagErr: test.flagsErr,
 			}
-			result, _ := test.settings.shouldGenerateOAuthAccessToken(t.Context(), mock)
+			result, _ := test.settings.shouldUseOAuth(t.Context(), mock)
 			assert.Equal(t, test.expectedResult, result)
 		})
 	}
