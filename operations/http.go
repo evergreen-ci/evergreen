@@ -80,13 +80,14 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 		return nil, err
 	}
 
+	if ac.User != "" {
+		req.Header.Add(evergreen.APIUserHeader, ac.User)
+	}
+	if ac.APIKey != "" {
+		req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
+	}
 	if ac.JWT != "" {
 		req.Header.Add(evergreen.AuthorizationHeader, "Bearer "+ac.JWT)
-	}
-
-	if ac.User != "" && ac.APIKey != "" {
-		req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
-		req.Header.Add(evergreen.APIUserHeader, ac.User)
 	}
 	if ac.stagingEnvironment != "" {
 		req.Header.Add(evergreen.EnvironmentHeader, ac.stagingEnvironment)
