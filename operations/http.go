@@ -80,10 +80,10 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 		return nil, err
 	}
 
-	if ac.User != "" {
+	// The API user and key are mutually exclusive with JWT, so only set them if
+	// they are both set.
+	if ac.User != "" && ac.APIKey != "" {
 		req.Header.Add(evergreen.APIUserHeader, ac.User)
-	}
-	if ac.APIKey != "" {
 		req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
 	}
 	if ac.JWT != "" {

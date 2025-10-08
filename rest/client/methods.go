@@ -1651,8 +1651,10 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	}
 
 	header := make(http.Header)
-	header.Add(evergreen.APIUserHeader, c.apiUser)
-	if c.apiKey != "" {
+	// The API user and key are mutually exclusive with JWT, so only set them if
+	// they are both set.
+	if c.apiUser != "" && c.apiKey != "" {
+		header.Add(evergreen.APIUserHeader, c.apiUser)
 		header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
 	if c.jwt != "" {
