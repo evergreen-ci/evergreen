@@ -75,6 +75,28 @@ func isValidPath(path string) bool {
 	return true
 }
 
+// OAuth contains the configuration and tokens for OAuth authentication
+// with the Evergreen API.
+type OAuth struct {
+	// These are static fields needed to configure the OAuth client.
+	Issuer      string `json:"issuer" yaml:"issuer,omitempty"`
+	ClientID    string `json:"client_id" yaml:"client_id,omitempty"`
+	ConnectorID string `json:"connector_id" yaml:"connector_id,omitempty"`
+
+	// These are dynamic fields that are populated when a user logs in.
+	// AccessToken is the token used to authenticate with the Evergreen API.
+	AccessToken string `json:"access_token" yaml:"access_token,omitempty"`
+	// RefreshToken is used to get a new access token when the current one expires.
+	RefreshToken string `json:"refresh_token" yaml:"refresh_token,omitempty"`
+	// Expiry is the time when the access token expires.
+	Expiry time.Time `json:"expiry" yaml:"expiry,omitempty"`
+
+	// These are helpers that users can set.
+	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
+	// This setting is the final authority on the flow.
+	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser,omitempty"`
+}
+
 // Client represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
@@ -93,6 +115,8 @@ type ClientSettings struct {
 	DisableAutoDefaulting      bool                        `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
 	ProjectsForDirectory       map[string]string           `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
 	LastRevisionCriteriaGroups []lastRevisionCriteriaGroup `json:"last_revision_criteria_groups,omitempty" yaml:"last_revision_criteria_groups,omitempty"`
+
+	OAuth OAuth `json:"oauth,omitempty" yaml:"oauth,omitempty"`
 
 	// StagingEnvironment configures which staging environment to point to.
 	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`
@@ -276,8 +300,15 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 		}
 	}
 	if clients.OAuthIssuer != "" {
-		// TODO (DEVPROD-20071): set OAuth fields here after
-		// https://github.com/evergreen-ci/evergreen/pull/9440 is merged.
+		s.OAuth.ClientID = clients.OAuthClientID
+		s.OAuth.ConnectorID = clients.OAuthConnectorID
+		s.OAuth.Issuer = clients.OAuthIssuer
+
+		// save the configuration file
+		if err := s.Write(""); err != nil {
+			// This shouldn't prevent users from using the CLI so just log a warning.
+			grip.Warning(errors.Wrap(err, "saving configuration file"))
+		}
 	}
 	return nil
 }
