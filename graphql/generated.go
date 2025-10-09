@@ -2178,10 +2178,13 @@ type ComplexityRoot struct {
 	}
 
 	UserConfig struct {
-		APIKey        func(childComplexity int) int
-		APIServerHost func(childComplexity int) int
-		UIServerHost  func(childComplexity int) int
-		User          func(childComplexity int) int
+		APIKey           func(childComplexity int) int
+		APIServerHost    func(childComplexity int) int
+		OauthClientID    func(childComplexity int) int
+		OauthConnectorID func(childComplexity int) int
+		OauthIssuer      func(childComplexity int) int
+		UIServerHost     func(childComplexity int) int
+		User             func(childComplexity int) int
 	}
 
 	UserSettings struct {
@@ -11779,6 +11782,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserConfig.APIServerHost(childComplexity), true
+	case "UserConfig.oauth_client_id":
+		if e.complexity.UserConfig.OauthClientID == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.OauthClientID(childComplexity), true
+	case "UserConfig.oauth_connector_id":
+		if e.complexity.UserConfig.OauthConnectorID == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.OauthConnectorID(childComplexity), true
+	case "UserConfig.oauth_issuer":
+		if e.complexity.UserConfig.OauthIssuer == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.OauthIssuer(childComplexity), true
 	case "UserConfig.ui_server_host":
 		if e.complexity.UserConfig.UIServerHost == nil {
 			break
@@ -52006,6 +52027,12 @@ func (ec *executionContext) fieldContext_Query_userConfig(_ context.Context, fie
 				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
 			case "user":
 				return ec.fieldContext_UserConfig_user(ctx, field)
+			case "oauth_issuer":
+				return ec.fieldContext_UserConfig_oauth_issuer(ctx, field)
+			case "oauth_client_id":
+				return ec.fieldContext_UserConfig_oauth_client_id(ctx, field)
+			case "oauth_connector_id":
+				return ec.fieldContext_UserConfig_oauth_connector_id(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserConfig", field.Name)
 		},
@@ -68174,6 +68201,93 @@ func (ec *executionContext) _UserConfig_user(ctx context.Context, field graphql.
 }
 
 func (ec *executionContext) fieldContext_UserConfig_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserConfig_oauth_issuer(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserConfig_oauth_issuer,
+		func(ctx context.Context) (any, error) {
+			return obj.OauthIssuer, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserConfig_oauth_issuer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserConfig_oauth_client_id(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserConfig_oauth_client_id,
+		func(ctx context.Context) (any, error) {
+			return obj.OauthClientID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserConfig_oauth_client_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserConfig_oauth_connector_id(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserConfig_oauth_connector_id,
+		func(ctx context.Context) (any, error) {
+			return obj.OauthConnectorID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UserConfig",
 		Field:      field,
@@ -102257,6 +102371,21 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 			}
 		case "user":
 			out.Values[i] = ec._UserConfig_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "oauth_issuer":
+			out.Values[i] = ec._UserConfig_oauth_issuer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "oauth_client_id":
+			out.Values[i] = ec._UserConfig_oauth_client_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "oauth_connector_id":
+			out.Values[i] = ec._UserConfig_oauth_connector_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

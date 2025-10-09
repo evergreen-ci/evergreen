@@ -817,6 +817,11 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 		UIServerHost:  settings.Ui.Url,
 		APIServerHost: settings.Api.URL + "/api",
 	}
+	if settings.AuthConfig.OAuth != nil {
+		config.OauthIssuer = settings.AuthConfig.OAuth.Issuer
+		config.OauthClientID = settings.AuthConfig.OAuth.ClientID
+		config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
+	}
 	return config, nil
 }
 

@@ -100,7 +100,7 @@ type AuthConfig struct {
 	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 	Multi                   *MultiAuthConfig  `bson:"multi" json:"multi" yaml:"multi"`
 	Kanopy                  *KanopyAuthConfig `bson:"kanopy" json:"kanopy" yaml:"kanopy"`
-	OAuth                   *OAuthConfig      `bson:"oauth,omitempty" json:"oauth" yaml:"oauth"`
+	OAuth                   *OAuthConfig      `bson:"oauth" json:"oauth" yaml:"oauth"`
 	AllowServiceUsers       bool              `bson:"allow_service_users" json:"allow_service_users" yaml:"allow_service_users"`
 	PreferredType           string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
 	BackgroundReauthMinutes int               `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
