@@ -117,7 +117,7 @@ type ClientSettings struct {
 	User                       string                      `json:"user" yaml:"user,omitempty"`
 	UncommittedChanges         bool                        `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI             bool                        `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
-	DoNotUseOAuth              bool                        `json:"do_not_use_oauth" yaml:"do_not_use_oauth,omitempty"`
+	DoNotUseOAuth              bool                        `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
 	PreserveCommits            bool                        `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects                   []ClientProjectConf         `json:"projects" yaml:"projects,omitempty"`
 	LoadedFrom                 string                      `json:"-" yaml:"-"`
