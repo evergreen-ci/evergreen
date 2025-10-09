@@ -201,7 +201,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	}
 
 	useOAuth, reason := s.shouldUseOAuth(ctx, c)
-	if useOAuth || true {
+	if useOAuth {
 		if printMessages {
 			grip.Info(optOut)
 		}
