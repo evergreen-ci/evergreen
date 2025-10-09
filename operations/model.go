@@ -202,7 +202,9 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	useOAuth, reason := s.shouldUseOAuth(ctx, c)
 	if useOAuth {
-		if printMessages {
+		// If it's expired, print the opt-out message as the
+		// OAuth flow will start.
+		if s.OAuth.Expiry.Before(time.Now()) && printMessages {
 			grip.Info(optOut)
 		}
 		if err := s.SetOAuthToken(ctx, c); err != nil {
