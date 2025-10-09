@@ -66,12 +66,13 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 	var req *http.Request
 	var err error
 
-	switch apiVersion {
-	case 1:
+	if apiVersion == 1 {
 		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRoot, path), body)
-	case 2:
+	} else if apiVersion == 2 {
 		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRootV2, path), body)
-	default:
+	} else if apiVersion == -1 {
+		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.UIRoot, path), body)
+	} else {
 		return nil, errors.Errorf("invalid apiVersion")
 	}
 	if err != nil {
