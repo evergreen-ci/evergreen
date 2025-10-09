@@ -132,15 +132,11 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 		Key:  key,
 		UI:   uis.RootURL,
 		API:  uis.RootURL + "/api",
-		OAuth: struct {
-			Issuer      string `json:"issuer" yaml:"issuer"`
-			ClientID    string `json:"client_id" yaml:"client_id"`
-			ConnectorID string `json:"connector_id" yaml:"connector_id"`
-		}{
-			Issuer:      uis.Settings.AuthConfig.OAuth.Issuer,
-			ClientID:    uis.Settings.AuthConfig.OAuth.ClientID,
-			ConnectorID: uis.Settings.AuthConfig.OAuth.ConnectorID,
-		},
+	}
+	if uis.Settings.AuthConfig.OAuth != nil {
+		out.OAuth.Issuer = uis.Settings.AuthConfig.OAuth.Issuer
+		out.OAuth.ClientID = uis.Settings.AuthConfig.OAuth.ClientID
+		out.OAuth.ConnectorID = uis.Settings.AuthConfig.OAuth.ConnectorID
 	}
 
 	if ct := r.Header.Get("content-type"); strings.Contains(ct, "yaml") {
