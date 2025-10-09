@@ -23,7 +23,7 @@ func Client() cli.Command {
 }
 
 const (
-	optOut = "Evergreen CLI will attempt to retrieve or generate an OAuth token. To opt out of this, set 'do_not_use_oauth' to true in your config file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160."
+	optOut = "Evergreen CLI will attempt to retrieve or generate an OAuth token. To opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160."
 )
 
 func getUser() cli.Command {
