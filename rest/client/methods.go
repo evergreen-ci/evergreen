@@ -1718,7 +1718,7 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
-func (c *communicatorImpl) GetOAuthToken(ctx context.Context, loader dex.TokenLoader, opts ...dex.ClientOption) (*oauth2.Token, error) {
+func (c *communicatorImpl) GetOAuthToken(ctx context.Context, loader dex.TokenLoader, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 	ctx = oidc.ClientContext(ctx, httpClient)
@@ -1727,6 +1727,13 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, loader dex.TokenLo
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
 	)
+
+	if doNotUseBrowser {
+		opts = append(opts,
+			dex.WithNoBrowser(true),
+			dex.WithFlow("device"),
+		)
+	}
 
 	// The Dex client logs using logrus. The client doesn't
 	// have any way to turn off debug logs within it's API.

@@ -27,7 +27,7 @@ const (
 
 Evergreen is in the process of migrating to OAuth for authentication. Your browser should open to complete authentication.
 
-If you do not wish to have your browser opened automatically, you can "do_not_use_browser: true" inside your client configuration file, often located at ~/.evergreen.yml.
+If you do not wish to have your browser opened automatically, you can "oauth.do_not_use_browser: true" inside your client configuration file, often located at ~/.evergreen.yml.
 
 If you would like to temporarily opt out of using OAuth, you can set "do_not_run_kanopy_oidc: true" in your client configuration file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160.
 
