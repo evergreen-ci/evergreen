@@ -294,7 +294,7 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 				"Run '%s get-update --install' to update.\n", evergreen.ClientVersion, clients.OldestAllowedCLIVersion, os.Args[0])
 		}
 	}
-	if clients.OAuthIssuer != "" {
+	if clients.OAuthIssuer != "" && s.OAuth.Issuer == "" {
 		s.OAuth.ClientID = clients.OAuthClientID
 		s.OAuth.ConnectorID = clients.OAuthConnectorID
 		s.OAuth.Issuer = clients.OAuthIssuer
