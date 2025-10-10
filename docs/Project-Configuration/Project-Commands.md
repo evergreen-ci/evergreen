@@ -251,22 +251,22 @@ The JSON file format is as follows:
 
 ```json
 {
-    "results":[
+  "results": [
     {
-        "status":"pass",
-        "test_file":"test_1",
-        "log_info": {
-            "log_name": "tests/test_1.log",
-            "logs_to_merge": ["global", "hooks/test_1.log"],
-            "rendering_type": "resmoke"
-        },
-        "start":1398782500.359, //epoch_time
-        "end":1398782500.681 //epoch_time
+      "status": "pass",
+      "test_file": "test_1",
+      "log_info": {
+        "log_name": "tests/test_1.log",
+        "logs_to_merge": ["global", "hooks/test_1.log"],
+        "rendering_type": "resmoke"
+      },
+      "start": 1398782500.359, //epoch_time
+      "end": 1398782500.681 //epoch_time
     },
     {
-        "etc":"..."
-    },
-    ]
+      "etc": "..."
+    }
+  ]
 }
 ```
 
@@ -1498,25 +1498,25 @@ Parameters:
 
 - `output_file`: the JSON output file containing the list of recommended tests. The schema for this file is:
 
-    ```json
-    {
-        "tests": [
-          {"name": "test1"},
-          {"name": "test2"},
-          ...
-        ]
-    }
-    ```
+  ```json
+  {
+      "tests": [
+        {"name": "test1"},
+        {"name": "test2"},
+        ...
+      ]
+  }
+  ```
 
 - `tests`: a string list of input tests for test selection to consider. Optional. Cannot be combined with `tests_file`
 - `tests_file`: a JSON file containing a list of input tests to consider. Optional. Cannot be combined with `tests`. The
   expected schema for this file is:
 
-    ```json
-    {
-        "tests": ["test1", "test2", ...]
-    }
-    ```
+  ```json
+  {
+      "tests": ["test1", "test2", ...]
+  }
+  ```
 
 - `strategies`: A comma-separated list of strategy names to use. Optional. If no strategy is explicitly chosen, test
   selection by default will return the same set of tests that were given in the input (via `tests` or `tests_file`).
