@@ -333,8 +333,15 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 }
 
 func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
-	// The layout string specifies the format of the input date strings.
 	layout := "2006-01-02"
+	// Extract just the date portion if the string is long enough.
+	// This allows values such as "2024-08-10a" to be parsed as "2024-08-10"
+	if len(dateString1) >= 10 {
+		dateString1 = dateString1[:10]
+	}
+	if len(dateString2) >= 10 {
+		dateString2 = dateString2[:10]
+	}
 	t1, err := time.Parse(layout, dateString1)
 	if err != nil {
 		return false, fmt.Errorf("error parsing first date '%s': %w", dateString1, err)
@@ -360,7 +367,6 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		User:               s.User,
 		APIKey:             s.APIKey,
 		JWT:                s.JWT,
-		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
@@ -370,7 +376,6 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		User:               s.User,
 		APIKey:             s.APIKey,
 		JWT:                s.JWT,
-		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 

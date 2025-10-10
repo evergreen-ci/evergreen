@@ -163,6 +163,11 @@ input WorkstationConfigInput {
   setupCommands: [WorkstationSetupCommandInput!]
 }
 
+input TestSelectionSettingsInput {
+  allowed: Boolean
+  defaultEnabled: Boolean
+}
+
 input WorkstationSetupCommandInput {
   command: String!
   directory: String
@@ -288,6 +293,7 @@ type Project {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
+  testSelection: TestSelectionSettings
   tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
@@ -337,4 +343,9 @@ type ParsleyFilter {
 type GithubAppAuth {
   appId: Int
   privateKey: String
+}
+
+type TestSelectionSettings {
+  allowed: Boolean
+  defaultEnabled: Boolean
 }

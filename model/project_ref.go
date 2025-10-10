@@ -521,6 +521,7 @@ var (
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
+	projectRefTestSelectionKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TestSelection")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -664,6 +665,7 @@ const (
 	ProjectPagePluginSection            = "PLUGINS"
 	ProjectPageContainerSection         = "CONTAINERS"
 	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
+	ProjectPageTestSelectionSection     = "TEST_SELECTION"
 	ProjectPageGithubAndCQSection       = "GITHUB_AND_COMMIT_QUEUE"
 	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
 	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
@@ -2350,6 +2352,14 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				"$set": bson.M{
 					projectRefParsleyFiltersKey:    p.ParsleyFilters,
 					projectRefProjectHealthViewKey: p.ProjectHealthView,
+				},
+			})
+	case ProjectPageTestSelectionSection:
+		err = db.UpdateContext(ctx, coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefTestSelectionKey: p.TestSelection,
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:

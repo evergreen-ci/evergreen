@@ -421,6 +421,15 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+type QuarantineTestInput struct {
+	TaskID   string `json:"taskId"`
+	TestName string `json:"testName"`
+}
+
+type QuarantineTestPayload struct {
+	Success bool `json:"success"`
+}
+
 type Query struct {
 }
 
@@ -1186,6 +1195,7 @@ const (
 	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
 	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
 	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionTestSelection        ProjectSettingsSection = "TEST_SELECTION"
 	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
 	ProjectSettingsSectionGithubAppSettings    ProjectSettingsSection = "GITHUB_APP_SETTINGS"
 	ProjectSettingsSectionGithubPermissions    ProjectSettingsSection = "GITHUB_PERMISSIONS"
@@ -1203,6 +1213,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionContainers,
 	ProjectSettingsSectionViewsAndFilters,
+	ProjectSettingsSectionTestSelection,
 	ProjectSettingsSectionGithubAndCommitQueue,
 	ProjectSettingsSectionGithubAppSettings,
 	ProjectSettingsSectionGithubPermissions,
@@ -1210,7 +1221,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
 		return true
 	}
 	return false

@@ -737,6 +737,8 @@ models:
         resolver: true
   RepoSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  RepoTestSelectionSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   RepotrackerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRepoTrackerConfig
   RepotrackerConfigInput:
@@ -939,6 +941,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
+  TestSelectionSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
+  TestSelectionSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITestSelectionSettings
   TicketFields:
     model: github.com/evergreen-ci/evergreen/thirdparty.TicketFields
   Toolchain:
