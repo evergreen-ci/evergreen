@@ -201,7 +201,6 @@ why you'd like your host to be permanently exempt from the uptime schedule.
 The Spruce hosts page offers three batch actions applicable to hosts:
 
 1. Update Status
-
    You can force a state change to these statuses:
 
    - Decommissioned: Terminate a host after it's done running its current task.
