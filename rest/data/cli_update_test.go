@@ -60,8 +60,11 @@ func (s *cliUpdateConnectorSuite) Test() {
 	s.Require().NotNil(v)
 	s.Require().NotNil(v.ClientConfig.LatestRevision)
 	s.Equal(latestRevision, *v.ClientConfig.LatestRevision)
+	s.Require().NotNil(v.ClientConfig.OAuthIssuer)
 	s.Equal("https://example.com", *v.ClientConfig.OAuthIssuer)
+	s.Require().NotNil(v.ClientConfig.OAuthClientID)
 	s.Equal("client_id", *v.ClientConfig.OAuthClientID)
+	s.Require().NotNil(v.ClientConfig.OAuthConnectorID)
 	s.Equal("connector_id", *v.ClientConfig.OAuthConnectorID)
 }
 
