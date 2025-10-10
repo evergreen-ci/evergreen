@@ -121,14 +121,20 @@ Note that `set-module` command will not work for module includes and this flag m
 evergreen patch --include-modules
 ```
 
-To run a patch with [test selection enabled](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings) in a subset of those tasks, you can use the `--tsv` and `--tst` flags. Those will specify a regexp subset of the variants/tasks that run in the patch where test selection will be enabled.
+## Test Selection
+
+To run a patch with [test selection enabled](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings) in a subset of those tasks, you can use the `--test-selection-include-variants`/`--tsv` and `--test-selection-include-tasks`/`--tst` flags. Those will specify a regexp subset of the variants/tasks that run in the patch where test selection will be enabled. You can also specify `--test-selection-exclude-variants` and `--test-selection-exclude-tasks` to define regexp variants/tasks where test selection should _not_ run (exclusion takes precedence over inclusion).
 
 ```bash
 # Create a patch that runs all tasks in my-variant and enables test selection in one specific task called my-task.
 evergreen patch -v my-variant --rt .* --tsv '^my-variant$' --tst '^my-task$'
+
+# Create a patch that runs all tasks in my-variant and enables test selection in all tasks except for my-task.
+evergreen patch -v my-variant --rt .* --tsv '^my-variant$' --tst '.*' --test-selection-exclude-tasks '^my-task$'
 ```
 
 Note that for test selection to be used in the patch, your project must first have [the test selection feature enabled at the project level](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings).
+
 
 ## Working Tree Changes
 

@@ -785,12 +785,11 @@ the test did not need to run because it's giving a false negative signal about y
 improve the signal of a project's tests, reduce time for versions to finish, and save on the cost of running low-signal
 tasks.
 
-<!-- kim: TODO: adjust these docs to actually reflect what the UI looks like. -->
-
 To allow any test selection features to be used in your project, first go to "Test Selection" -> "Project-Level Test
 Selection" and enable it. Doing this will allow any test selection features to be used. Patches in the project may use
 the [test selection command](Project-Commands#test_selectionget) (note: only supported in patches currently).
 
 To enable test selection by default for all patch tasks, go to "Test Selection" -> "Task-Level Test Selection" and
 enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
-patch tasks by default.
+patch tasks by default. This default can still be overridden by choosing specific variants/tasks in which to enable test
+selection from [the CLI](../CLI.md#test-selection).
