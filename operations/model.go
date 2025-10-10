@@ -386,7 +386,6 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		User:               s.User,
 		APIKey:             s.APIKey,
 		OAuthAccessToken:   s.OAuth.AccessTokenIfNotExpired(),
-		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
@@ -396,7 +395,6 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		User:               s.User,
 		APIKey:             s.APIKey,
 		OAuthAccessToken:   s.OAuth.AccessTokenIfNotExpired(),
-		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
