@@ -129,6 +129,7 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 			task.ProjectKey:      k.Project,
 			task.BuildVariantKey: k.BuildVariant,
 			task.DisplayNameKey:  k.DisplayName,
+			task.StatusKey:       evergreen.TaskSucceeded,
 		})
 	}
 	query := db.Query(bson.M{"$or": orQueries}).Sort([]string{"-" + task.FinishTimeKey})
