@@ -135,7 +135,6 @@ evergreen patch -v my-variant --rt .* --tsv '^my-variant$' --tst '.*' --test-sel
 
 Note that for test selection to be used in the patch, your project must first have [the test selection feature enabled at the project level](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings).
 
-
 ## Working Tree Changes
 
 By default patches will include only committed changes, not changes in Git's working tree or index. To include changes from the working tree use the `--uncommitted, -u` flag or set a default by inserting `patch_uncommitted_changes: true` in the `~/.evergreen.yml` file.

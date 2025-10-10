@@ -1497,6 +1497,7 @@ This command can only be used if [the test selection feature is enabled by the p
 Parameters:
 
 - `output_file`: the JSON output file containing the list of recommended tests. The schema for this file is:
+
     ```json
     {
         "tests": [
@@ -1506,14 +1507,17 @@ Parameters:
         ]
     }
     ```
+
 - `tests`: a string list of input tests for test selection to consider. Optional. Cannot be combined with `tests_file`
 - `tests_file`: a JSON file containing a list of input tests to consider. Optional. Cannot be combined with `tests`. The
   expected schema for this file is:
+
     ```json
     {
         "tests": ["test1", "test2", ...]
     }
     ```
+
 - `strategies`: A comma-separated list of strategy names to use. Optional. If no strategy is explicitly chosen, test
   selection by default will return the same set of tests that were given in the input (via `tests` or `tests_file`).
 - `usage_rate`: Define a string proportion (between 0 and 1) of how often the command should actually request a list of
