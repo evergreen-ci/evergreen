@@ -130,6 +130,9 @@ type UserConfig {
   api_server_host: String!
   ui_server_host: String!
   user: String!
+  oauth_issuer: String!
+  oauth_client_id: String!
+  oauth_connector_id: String!
 }
 
 type UpdateParsleySettingsPayload {

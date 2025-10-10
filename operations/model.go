@@ -75,6 +75,20 @@ func isValidPath(path string) bool {
 	return true
 }
 
+// OAuth contains the configuration and tokens for OAuth authentication
+// with the Evergreen API.
+type OAuth struct {
+	// These are static fields needed to configure the OAuth client.
+	Issuer      string `json:"issuer" yaml:"issuer,omitempty"`
+	ClientID    string `json:"client_id" yaml:"client_id,omitempty"`
+	ConnectorID string `json:"connector_id" yaml:"connector_id,omitempty"`
+
+	// These are helpers that users can set.
+	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
+	// This setting is the final authority on the flow.
+	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser,omitempty"`
+}
+
 // Client represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
@@ -93,6 +107,8 @@ type ClientSettings struct {
 	DisableAutoDefaulting      bool                        `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
 	ProjectsForDirectory       map[string]string           `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
 	LastRevisionCriteriaGroups []lastRevisionCriteriaGroup `json:"last_revision_criteria_groups,omitempty" yaml:"last_revision_criteria_groups,omitempty"`
+
+	OAuth OAuth `json:"oauth,omitempty" yaml:"oauth,omitempty"`
 
 	// StagingEnvironment configures which staging environment to point to.
 	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`
@@ -160,7 +176,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if err = checkCLIVersion(c); err != nil {
+	if err = s.checkCLIVersion(ctx, c); err != nil {
 		return nil, err
 	}
 	if printMessages {
@@ -257,12 +273,18 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 	return s.APIServerHost
 }
 
-func checkCLIVersion(c client.Communicator) error {
-	clients, err := c.GetClientConfig(context.Background())
+// checkCLIVersion checks if the CLI version is too old and errors if it is.
+// It also temporarily sets the OAuth fields in the client settings and saves it.
+// This is to support migrating to OAuth authentication for DEVPROD-4160.
+func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communicator) error {
+	clients, err := c.GetClientConfig(ctx)
 	if err != nil {
 		grip.Debug(errors.Wrap(err, "getting client config info"))
 	}
-	if clients != nil && clients.OldestAllowedCLIVersion != "" {
+	if clients == nil {
+		return nil
+	}
+	if clients.OldestAllowedCLIVersion != "" {
 		isCLIVersionTooOld, err := isFirstDateBefore(evergreen.ClientVersion, clients.OldestAllowedCLIVersion)
 		if err != nil {
 			grip.Warning(errors.Wrap(err, "checking if client is older than the latest version"))
@@ -270,6 +292,17 @@ func checkCLIVersion(c client.Communicator) error {
 		if isCLIVersionTooOld {
 			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
 				"Run '%s get-update --install' to update.\n", evergreen.ClientVersion, clients.OldestAllowedCLIVersion, os.Args[0])
+		}
+	}
+	if clients.OAuthIssuer != "" && s.OAuth.Issuer == "" {
+		s.OAuth.ClientID = clients.OAuthClientID
+		s.OAuth.ConnectorID = clients.OAuthConnectorID
+		s.OAuth.Issuer = clients.OAuthIssuer
+
+		// save the configuration file
+		if err := s.Write(""); err != nil {
+			// This shouldn't prevent users from using the CLI so just log a warning.
+			grip.Warning(errors.Wrap(err, "saving configuration file"))
 		}
 	}
 	return nil
