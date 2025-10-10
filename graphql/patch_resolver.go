@@ -101,26 +101,62 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project variants and tasks for patch '%s': %s", p.Id.Hex(), err.Error()))
 	}
 	var res []*GeneratedTaskCountResults
+	type taskQueryKey struct {
+		Project      string
+		BuildVariant string
+		DisplayName  string
+	}
+	var queryKeys []taskQueryKey
 	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
 		for _, taskUnit := range buildVariant.Tasks {
 			if _, ok := generatorTasks[taskUnit.Name]; ok {
-				dbTask, err := task.FindOne(ctx, db.Query(bson.M{
-					task.ProjectKey:      proj.DisplayName,
-					task.BuildVariantKey: buildVariant.Name,
-					task.DisplayNameKey:  taskUnit.Name,
-					task.GenerateTaskKey: true,
-				}).Sort([]string{"-" + task.FinishTimeKey}))
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' in build variant '%s': %s", taskUnit.Name, buildVariant.Name, err.Error()))
-				}
-				if dbTask != nil {
-					res = append(res, &GeneratedTaskCountResults{
-						BuildVariantName: utility.ToStringPtr(buildVariant.Name),
-						TaskName:         utility.ToStringPtr(taskUnit.Name),
-						EstimatedTasks:   utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks),
-					})
-				}
+				queryKeys = append(queryKeys, taskQueryKey{
+					Project:      proj.DisplayName,
+					BuildVariant: buildVariant.Name,
+					DisplayName:  taskUnit.Name,
+				})
 			}
+		}
+	}
+	if len(queryKeys) == 0 {
+		return res, nil
+	}
+
+	// Batch fetch all relevant tasks in one query
+	var orQueries []bson.M
+	for _, k := range queryKeys {
+		orQueries = append(orQueries, bson.M{
+			task.ProjectKey:      k.Project,
+			task.BuildVariantKey: k.BuildVariant,
+			task.DisplayNameKey:  k.DisplayName,
+		})
+	}
+	query := db.Query(bson.M{"$or": orQueries}).Sort([]string{"-" + task.FinishTimeKey})
+	dbTasks, err := task.FindAll(ctx, query)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting generated tasks: %s", err.Error()))
+	}
+
+	// Use map for quick lookup of tasks by composite key, favoring most recent (sorted query)
+	taskMap := make(map[taskQueryKey]*task.Task)
+	for _, t := range dbTasks {
+		k := taskQueryKey{
+			Project:      t.Project,
+			BuildVariant: t.BuildVariant,
+			DisplayName:  t.DisplayName,
+		}
+		if _, exists := taskMap[k]; !exists {
+			taskMap[k] = &t
+		}
+	}
+
+	for _, k := range queryKeys {
+		if dbTask, ok := taskMap[k]; ok {
+			res = append(res, &GeneratedTaskCountResults{
+				BuildVariantName: utility.ToStringPtr(k.BuildVariant),
+				TaskName:         utility.ToStringPtr(k.DisplayName),
+				EstimatedTasks:   utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks),
+			})
 		}
 	}
 	return res, nil
