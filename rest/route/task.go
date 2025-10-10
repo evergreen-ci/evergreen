@@ -155,13 +155,22 @@ func makeModifyTaskRoute() gimlet.RouteHandler {
 type updateArtifactURLHandler struct {
 	taskID    string
 	execution *int // optional, defaults to latest task execution
-	body      struct {
-		ArtifactName string `json:"artifact_name"`
-		CurrentURL   string `json:"current_url"`
-		NewURL       string `json:"new_url"`
-	}
-	task *task.Task
-	user gimlet.User
+	body      updateArtifactURLRequest
+	task      *task.Task
+	user      gimlet.User
+}
+
+// updateArtifactURLRequest represents the request body for updating a single
+// artifact file's URL for a specific task execution.
+type updateArtifactURLRequest struct {
+	// ArtifactName is the name of the artifact file whose URL will be updated.
+	ArtifactName string `json:"artifact_name"`
+	// CurrentURL is the existing URL for the artifact file. This is used to
+	// disambiguate files with the same name and to avoid overwriting if the
+	// caller's view of the current state is stale.
+	CurrentURL string `json:"current_url"`
+	// NewURL is the new URL that will replace the current URL.
+	NewURL string `json:"new_url"`
 }
 
 func makeUpdateArtifactURLRoute() gimlet.RouteHandler { return &updateArtifactURLHandler{} }
@@ -175,7 +184,7 @@ func makeUpdateArtifactURLRoute() gimlet.RouteHandler { return &updateArtifactUR
 //	@Security		Api-User || Api-Key
 //	@Param			task_id		path		string						true	"Task ID"
 //	@Param			execution	query		int							false	"0-based execution number; if omitted updates latest execution"
-//	@Param			{object}	body		updateArtifactURLHandler	true	"artifact_name: string, current_url: string, new_url: string"
+//	@Param			{object}	body		updateArtifactURLRequest	true	"parameters"
 //	@Success		200			{object}	model.APITask				"Task including updated artifacts"
 //	@Failure		400			{object}	gimlet.ErrorResponse		"Invalid input"
 //	@Failure		404			{object}	gimlet.ErrorResponse		"Task or artifact not found"

@@ -83,8 +83,7 @@ func (s *TaskAbortSuite) TestAbort() {
 }
 
 func TestFetchArtifacts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -215,8 +214,7 @@ func TestGetDisplayTask(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection))
 			defer func() {
@@ -264,8 +262,7 @@ func TestGeneratedTasksGetHandler(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection))
 
@@ -298,13 +295,23 @@ func TestGeneratedTasksGetHandler(t *testing.T) {
 func TestUpdateArtifactURLHandler(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T){
 		"SuccessAndExecutionOverride": func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
 
 			tsk := task.Task{Id: "t1", BuildId: "b1", DisplayName: "disp", Execution: 0}
 			require.NoError(t, tsk.Insert(t.Context()))
-			entry := artifact.Entry{TaskId: tsk.Id, TaskDisplayName: tsk.DisplayName, BuildId: tsk.BuildId, Execution: 0, Files: []artifact.File{{Name: "f1", Link: "http://old.com/a"}}}
+			entry := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name: "f1",
+						Link: "http://old.com/a",
+					},
+				},
+			}
 			require.NoError(t, entry.Upsert(t.Context()))
 
 			projCtx := serviceModel.Context{Task: &tsk}
@@ -340,6 +347,18 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			assert.Error(t, err)
 
 			entry1 := artifact.Entry{TaskId: tsk.Id, TaskDisplayName: tsk.DisplayName, BuildId: tsk.BuildId, Execution: 1, Files: []artifact.File{{Name: "f1", Link: "http://old.com/a1"}}}
+			entry1 = artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       1,
+				Files: []artifact.File{
+					{
+						Name: "f1",
+						Link: "http://old.com/a1",
+					},
+				},
+			}
 			require.NoError(t, entry1.Upsert(t.Context()))
 			require.NoError(t, db.Update(task.Collection, bson.M{"_id": tsk.Id}, bson.M{"$set": bson.M{"execution": 1}}))
 			refreshed, err := task.FindOneId(ctx, tsk.Id)
@@ -366,13 +385,23 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			assert.True(t, updated)
 		},
 		"NotFoundScenarios": func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
 
 			tsk := task.Task{Id: "nf1", BuildId: "b1", DisplayName: "disp", Execution: 0}
 			require.NoError(t, tsk.Insert(t.Context()))
-			entry := artifact.Entry{TaskId: tsk.Id, TaskDisplayName: tsk.DisplayName, BuildId: tsk.BuildId, Execution: 0, Files: []artifact.File{{Name: "afile", Link: "http://old.example/x"}}}
+			entry := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name: "afile",
+						Link: "http://old.example/x",
+					},
+				},
+			}
 			require.NoError(t, entry.Upsert(t.Context()))
 
 			projCtx := serviceModel.Context{Task: &tsk}
@@ -400,18 +429,39 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, respBadURL.Status())
 		},
 		"DefaultsToLatestExecution": func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
 
 			// Task with two executions; latest is 2
 			tsk := task.Task{Id: "late1", BuildId: "b1", DisplayName: "disp", Execution: 2}
 			require.NoError(t, tsk.Insert(t.Context()))
 			// Execution 0
-			entry0 := artifact.Entry{TaskId: tsk.Id, TaskDisplayName: tsk.DisplayName, BuildId: tsk.BuildId, Execution: 0, Files: []artifact.File{{Name: "afile", Link: "http://old.example/x0"}}}
+			entry0 := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name: "afile",
+						Link: "http://old.example/x0",
+					},
+				},
+			}
 			require.NoError(t, entry0.Upsert(t.Context()))
 			// Execution 2 (latest)
-			entry2 := artifact.Entry{TaskId: tsk.Id, TaskDisplayName: tsk.DisplayName, BuildId: tsk.BuildId, Execution: 2, Files: []artifact.File{{Name: "afile", Link: "http://old.example/x2"}}}
+			entry2 := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       2,
+				Files: []artifact.File{
+					{
+						Name: "afile",
+						Link: "http://old.example/x2",
+					},
+				},
+			}
 			require.NoError(t, entry2.Upsert(t.Context()))
 
 			projCtx := serviceModel.Context{Task: &tsk}
