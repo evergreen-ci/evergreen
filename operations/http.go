@@ -33,7 +33,6 @@ type legacyClient struct {
 	// embedding in the Kanopy token header
 	JWT                string
 	APIRootV2          string
-	UIRoot             string
 	stagingEnvironment string
 }
 
