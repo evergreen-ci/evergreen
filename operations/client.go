@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -22,16 +23,14 @@ func Client() cli.Command {
 	}
 }
 
-const (
-	optOut = `********************************************************************************
-
-Evergreen is in the process of migrating to OAuth for authentication. Your browser should open to complete authentication.
+var (
+	optOut = strings.Repeat("*", 80) + `
 
 If you do not wish to have your browser opened automatically, you can "oauth.do_not_use_browser: true" inside your client configuration file, often located at ~/.evergreen.yml.
 
 If you would like to temporarily opt out of using OAuth, you can set "do_not_run_kanopy_oidc: true" in your client configuration file. Opting out is only available temporarily until deprecation, please see DEVPROD-4160.
 
-********************************************************************************`
+` + strings.Repeat("*", 80)
 )
 
 func getUser() cli.Command {
