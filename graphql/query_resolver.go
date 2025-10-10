@@ -812,16 +812,19 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)
 	settings := evergreen.GetEnvironment().Settings()
 	config := &UserConfig{
-		User:          usr.Username(),
-		APIKey:        usr.GetAPIKey(),
-		UIServerHost:  settings.Ui.Url,
-		APIServerHost: settings.Api.URL + "/api",
+		User:   usr.Username(),
+		APIKey: usr.GetAPIKey(),
 	}
-	if settings.AuthConfig.OAuth != nil {
-		config.OauthIssuer = settings.AuthConfig.OAuth.Issuer
-		config.OauthClientID = settings.AuthConfig.OAuth.ClientID
-		config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
+	if settings != nil {
+		config.UIServerHost = settings.Ui.Url
+		config.APIServerHost = settings.Api.URL + "/api"
+		if settings.AuthConfig.OAuth != nil {
+			config.OauthIssuer = settings.AuthConfig.OAuth.Issuer
+			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
+			config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
+		}
 	}
+
 	return config, nil
 }
 
