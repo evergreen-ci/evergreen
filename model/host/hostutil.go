@@ -1133,7 +1133,7 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		APIServerHost: settings.Api.URL + "/api",
 		UIServerHost:  settings.Ui.Url,
 	}
-	if settings.AuthConfig.OAuth != nil {
+	if settings != nil && settings.AuthConfig.OAuth != nil {
 		conf.OAuth.Issuer = settings.AuthConfig.OAuth.Issuer
 		conf.OAuth.ClientID = settings.AuthConfig.OAuth.ClientID
 		conf.OAuth.ConnectorID = settings.AuthConfig.OAuth.ConnectorID

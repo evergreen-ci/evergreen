@@ -962,6 +962,13 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 			BinaryName: "jasper_cli",
 			Port:       12345,
 		},
+		AuthConfig: evergreen.AuthConfig{
+			OAuth: &evergreen.OAuthConfig{
+				Issuer:      "https://www.example.com",
+				ClientID:    "client_id",
+				ConnectorID: "connector_id",
+			},
+		},
 	}
 
 	cmd, err := h.SpawnHostSetupCommands(t.Context(), settings)
@@ -969,7 +976,8 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 
 	expected := "mkdir -m 777 -p /home/user/cli_bin" +
 		" && (sudo chown -R user /home/user/.evergreen.yml || true)" +
-		" && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n\" > /home/user/.evergreen.yml" +
+		" && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n" +
+		"oauth:\n    issuer: https://www.example.com\n    client_id: client_id\n    connector_id: connector_id\n\" > /home/user/.evergreen.yml" +
 		" && chmod +x /home/user/evergreen" +
 		" && cp /home/user/evergreen /home/user/cli_bin" +
 		" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)" +
