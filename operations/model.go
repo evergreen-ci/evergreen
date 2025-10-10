@@ -86,12 +86,17 @@ type OAuth struct {
 	ConnectorID string `json:"connector_id" yaml:"connector_id,omitempty"`
 
 	// These are dynamic fields that are populated when a user logs in.
+	// These are not written to the yaml but instead managed by the OAuth flow.
 	// AccessToken is the token used to authenticate with the Evergreen API.
-	AccessToken string `json:"access_token" yaml:"access_token,omitempty"`
+	AccessToken string `json:"-" yaml:"-"`
 	// RefreshToken is used to get a new access token when the current one expires.
-	RefreshToken string `json:"refresh_token" yaml:"refresh_token,omitempty"`
+	RefreshToken string `json:"-" yaml:"-"`
 	// Expiry is the time when the access token expires.
-	Expiry time.Time `json:"expiry" yaml:"expiry,omitempty"`
+	Expiry time.Time `json:"-" yaml:"-"`
+
+	// TokenFilePath is the location that holds the OAuth token.
+	// This is set for user convenience, but is not used by the OAuth flow.
+	TokenFilePath string `json:"token_file_path" yaml:"token_file_path,omitempty"`
 
 	// These are helpers that users can set.
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
@@ -611,7 +616,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 	// The TokenLoader is responsible for loading and saving the token
 	// to the client settings file.
 	_, err := comm.GetOAuthToken(ctx,
-		&configurationTokenLoader{conf: s},
+		&configurationTokenLoader{conf: s, fileLoader: &dex.FileTokenLoader{}},
 		s.OAuth.DoNotUseBrowser,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
@@ -624,38 +629,53 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 // It writes the updated tokens back to the config file when SaveToken is called.
 type configurationTokenLoader struct {
 	conf *ClientSettings
+
+	fileLoader *dex.FileTokenLoader
 }
 
 // The string parameters are suggested config paths to handle multiple
 // configurations, but they are ignored because we only need one config file.
-func (c *configurationTokenLoader) LoadToken(_ string) (*oauth2.Token, error) {
-	if c == nil || c.conf == nil {
+func (c *configurationTokenLoader) LoadToken(path string) (*oauth2.Token, error) {
+	if !c.isValid() {
 		return nil, os.ErrNotExist
 	}
-	return &oauth2.Token{
-		AccessToken:  c.conf.OAuth.AccessToken,
-		RefreshToken: c.conf.OAuth.RefreshToken,
-		Expiry:       c.conf.OAuth.Expiry,
-		ExpiresIn:    c.conf.OAuth.Expiry.Unix(),
-	}, nil
+
+	token, err := c.fileLoader.LoadToken(path)
+	if err == nil && token != nil {
+		c.conf.OAuth.AccessToken = token.AccessToken
+		c.conf.OAuth.RefreshToken = token.RefreshToken
+		c.conf.OAuth.Expiry = token.Expiry
+
+		if c.conf.OAuth.TokenFilePath != path {
+			c.conf.OAuth.TokenFilePath = path
+			// save the configuration file
+			if err := c.conf.Write(""); err != nil {
+				// This shouldn't prevent users from using the CLI so just log a warning.
+				grip.Warning(errors.Wrap(err, "saving configuration file"))
+			}
+		}
+	}
+
+	return token, err
 }
 
-func (c *configurationTokenLoader) SaveToken(_ string, token *oauth2.Token) error {
-	if c == nil || c.conf == nil || token == nil {
+func (c *configurationTokenLoader) SaveToken(path string, token *oauth2.Token) error {
+	if !c.isValid() || token == nil {
 		return os.ErrNotExist
 	}
-	c.conf.OAuth.AccessToken = token.AccessToken
-	c.conf.OAuth.RefreshToken = token.RefreshToken
-	c.conf.OAuth.Expiry = token.Expiry
-	return c.conf.Write("")
+	return c.fileLoader.SaveToken(path, token)
 }
 
-func (c *configurationTokenLoader) DeleteToken(_ string) error {
-	if c == nil || c.conf == nil {
+func (c *configurationTokenLoader) DeleteToken(path string) error {
+	if !c.isValid() {
 		return errors.New("no configuration to save token to")
 	}
 	c.conf.OAuth.AccessToken = ""
 	c.conf.OAuth.RefreshToken = ""
 	c.conf.OAuth.Expiry = time.Time{}
-	return c.conf.Write("")
+	return c.fileLoader.DeleteToken(path)
+}
+
+func (c *configurationTokenLoader) isValid() bool {
+	return c != nil && c.conf != nil && c.fileLoader != nil
 }
