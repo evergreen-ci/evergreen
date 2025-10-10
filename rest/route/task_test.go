@@ -346,8 +346,7 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			err := hBad.Parse(ctxWithProj, badReq)
 			assert.Error(t, err)
 
-			entry1 := artifact.Entry{TaskId: tsk.Id, TaskDisplayName: tsk.DisplayName, BuildId: tsk.BuildId, Execution: 1, Files: []artifact.File{{Name: "f1", Link: "http://old.com/a1"}}}
-			entry1 = artifact.Entry{
+			entry1 := artifact.Entry{
 				TaskId:          tsk.Id,
 				TaskDisplayName: tsk.DisplayName,
 				BuildId:         tsk.BuildId,
