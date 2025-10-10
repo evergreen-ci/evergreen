@@ -334,7 +334,6 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		User:               s.User,
 		APIKey:             s.APIKey,
 		JWT:                s.JWT,
-		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
@@ -344,7 +343,6 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		User:               s.User,
 		APIKey:             s.APIKey,
 		JWT:                s.JWT,
-		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
