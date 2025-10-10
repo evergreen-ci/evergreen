@@ -74,7 +74,7 @@ metadata:
 spec:
   type: graphql
   lifecycle: experimental
-  owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
+  owner: group:default/oktagroup_63a4baf4355dd783744f0b8d  # 10gen-evergreen-ui okta group
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graphql
