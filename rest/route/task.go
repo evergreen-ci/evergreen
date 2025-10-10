@@ -220,7 +220,7 @@ func (h *updateArtifactURLHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *updateArtifactURLHandler) Run(ctx context.Context) gimlet.Responder {
-	// if a specific execution was not provided, use the task's current execution
+	// if a specific execution was not provided, use the task's latest execution
 	exec := h.task.Execution
 	if h.execution != nil {
 		exec = *h.execution
