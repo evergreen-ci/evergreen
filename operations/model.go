@@ -273,6 +273,9 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 	return s.APIServerHost
 }
 
+// checkCLIVersion checks if the CLI version is too old and errors if it is.
+// It also temporarily sets the OAuth fields in the client settings and saves it.
+// This is to support migrating to OAuth authentication for DEVPROD-4160.
 func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communicator) error {
 	clients, err := c.GetClientConfig(ctx)
 	if err != nil {
