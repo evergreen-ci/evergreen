@@ -24,6 +24,7 @@ var (
 	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
 	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
 	AuthKanopyKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Kanopy")
+	AuthOAuthKey                   = bsonutil.MustHaveTag(AuthConfig{}, "OAuth")
 	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
 	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
 	AuthAllowServiceUsersKey       = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
@@ -120,6 +121,7 @@ func (c *AuthConfig) Set(ctx context.Context) error {
 			AuthGithubKey:                  c.Github,
 			AuthMultiKey:                   c.Multi,
 			AuthKanopyKey:                  c.Kanopy,
+			AuthOAuthKey:                   c.OAuth,
 			authPreferredTypeKey:           c.PreferredType,
 			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
 			AuthAllowServiceUsersKey:       c.AllowServiceUsers,
