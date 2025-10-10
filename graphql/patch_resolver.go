@@ -111,7 +111,7 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 		for _, taskUnit := range buildVariant.Tasks {
 			if _, ok := generatorTasks[taskUnit.Name]; ok {
 				queryKeys = append(queryKeys, taskQueryKey{
-					Project:      proj.DisplayName,
+					Project:      p.Project,
 					BuildVariant: buildVariant.Name,
 					DisplayName:  taskUnit.Name,
 				})
