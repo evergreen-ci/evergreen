@@ -165,9 +165,7 @@ type updateArtifactURLHandler struct {
 type updateArtifactURLRequest struct {
 	// ArtifactName is the name of the artifact file whose URL will be updated.
 	ArtifactName string `json:"artifact_name"`
-	// CurrentURL is the existing URL for the artifact file. This is used to
-	// disambiguate files with the same name and to avoid overwriting if the
-	// caller's view of the current state is stale.
+	// CurrentURL is the existing URL for the artifact file.
 	CurrentURL string `json:"current_url"`
 	// NewURL is the new URL that will replace the current URL.
 	NewURL string `json:"new_url"`
@@ -235,7 +233,8 @@ func (h *updateArtifactURLHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating artifact URL"))
 	}
 
-	taskForResponse, err := task.FindByIdExecution(ctx, h.task.Id, &exec)
+	// FindByIdExecution will find the latest execution if h.execution is nil
+	taskForResponse, err := task.FindByIdExecution(ctx, h.task.Id, h.execution)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s' execution after artifact update", h.task.Id))
 	}
