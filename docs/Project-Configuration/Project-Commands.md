@@ -1480,11 +1480,13 @@ in `env` or via `add_to_path`) is a special variable that has two effects:
 
 ## test_selection.get
 
+**Note: this feature is experimental and subject to change.**
+
 This command allows a task to get a recommended list of tests from the [test selection
 service](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/385846915/Test+Selection+Services). The command will
 populate an output JSON file, which your task can use to decide which tests should run.
 
-This command can only be used if [test selection is enabled by the project](Project-and-Distro-Settings#test-selection-settings).
+This command can only be used if [the test selection feature is enabled by the project](Project-and-Distro-Settings#test-selection-settings).
 
 ```yaml
 - command: test_selection.get
@@ -1517,6 +1519,15 @@ Parameters:
 - `usage_rate`: Define a string proportion (between 0 and 1) of how often the command should actually request a list of
   recommended tests. Even if it does not request a list of recommended tests, it will still produce an output file but
   that file will not contain any tests. Optional. If undefined, the command will always run.
+
+### Example Integration of test_selection.get
+
+Just adding this command will not immediately change which tests run or what test results are produced in your task. All
+it does is produce a file containing the list of tests that the test selection service recommends running. Your
+project's testing infrastructure will need to be updated to read and use the file to decide which tests to run.
+
+A working simple example of the test selection command can be found [here](https://github.com/evergreen-ci/commit-queue-sandbox/blob/686ec45e27533294398ca0e83788f2b427cc6a2e/evergreen.yml#L337-L352).
+Note that your integration may look very different, this is just meant to be a starting point.
 
 ## timeout.update
 

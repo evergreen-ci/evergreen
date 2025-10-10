@@ -787,8 +787,10 @@ tasks.
 
 <!-- kim: TODO: adjust these docs to actually reflect what the UI looks like. -->
 
-To enable test selection to be used in your project, go to "Test Selection" -> "Enabled" and enable it. Doing this will
-allow patches in the project to use the [test selection command](Project-Commands#test_selectionget) (note: only supported in patches currently).
+To allow any test selection features to be used in your project, first go to "Test Selection" -> "Project-Level Test
+Selection" and enable it. Doing this will allow any test selection features to be used. Patches in the project may use
+the [test selection command](Project-Commands#test_selectionget) (note: only supported in patches currently).
 
-To enable test selection by default in all patches, go to "Test Selection" -> "Enabled by Default". Doing this will
-enable the usage of the [test selection command](Project-Commands#test_selectionget) in all patches by default.
+To enable test selection by default for all patch tasks, go to "Test Selection" -> "Task-Level Test Selection" and
+enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
+patch tasks by default.

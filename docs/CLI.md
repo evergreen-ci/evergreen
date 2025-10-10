@@ -90,7 +90,7 @@ To use the same tasks and variants defined for the previous patch created for th
 evergreen patch --reuse
 ```
 
-To repeat a specific patch id, you can use the '--repeat-patch' flag.
+To repeat a specific patch id, you can use the `--repeat-patch` flag.
 
 ```bash
 evergreen patch --repeat-patch <patch_id>
@@ -102,7 +102,7 @@ Similarly, using the `--repeat-failed` flag will perform the same behavior as th
 evergreen patch --repeat-failed
 ```
 
-To repeat the failed of a specific patch, the '--repeat-failed' flag can be used with the '--repeat-patch' flag to specify the patch id.
+To repeat the failed of a specific patch, the `--repeat-failed` flag can be used with the `--repeat-patch` flag to specify the patch id.
 
 ```bash
 evergreen patch --repeat-failed --repeat-patch <patch_id>
@@ -120,6 +120,15 @@ Note that `set-module` command will not work for module includes and this flag m
 ```bash
 evergreen patch --include-modules
 ```
+
+To run a patch with [test selection enabled](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings) in a subset of those tasks, you can use the `--tsv` and `--tst` flags. Those will specify a regexp subset of the variants/tasks that run in the patch where test selection will be enabled.
+
+```bash
+# Create a patch that runs all tasks in my-variant and enables test selection in one specific task called my-task.
+evergreen patch -v my-variant --rt .* --tsv '^my-variant$' --tst '^my-task$'
+```
+
+Note that for test selection to be used in the patch, your project must first have [the test selection feature enabled at the project level](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings).
 
 ## Working Tree Changes
 
