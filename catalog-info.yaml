@@ -9,6 +9,9 @@ metadata:
     - url: https://spruce.mongodb.com
       title: Evergreen UI
       icon: dashboard
+    - url: https://docs.devprod.prod.corp.mongodb.com/evergreen
+      title: Docs on Pine
+      icon: dashboard
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
@@ -32,6 +35,9 @@ metadata:
     - url: http://github.com/evergreen-ci/evergreen
       title: evergreen-ci/evergreen
       icon: github
+    - url: https://docs.devprod.prod.corp.mongodb.com/evergreen
+      title: Docs on Pine
+      icon: dashboard
 spec:
   type: service
   owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
@@ -71,6 +77,9 @@ metadata:
     - url: https://evergreen.mongodb.com/graphql
       title: GraphQL Playground
       icon: externalLink
+    - url: https://docs.devprod.prod.corp.mongodb.com/evergreen
+      title: Docs on Pine
+      icon: dashboard
 spec:
   type: graphql
   lifecycle: experimental
