@@ -117,6 +117,7 @@ func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor 
 		if t == nil {
 			return nil, errors.Errorf("task '%s' not found", e.ResourceId)
 		}
+		// kim: NOTE: this is where task-level trigger is processed.
 		return triggerDownstreamProjectsForTask(ctx, t, e, processor)
 	case event.BuildStateChange:
 		if e.ResourceType != event.ResourceTypeBuild {
@@ -136,6 +137,7 @@ func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor 
 		if b == nil {
 			return nil, errors.Errorf("build '%s' not found", e.ResourceId)
 		}
+		// kim: NOTE: this is where BV-level trigger is processed.
 		return triggerDownstreamProjectsForBuild(ctx, b, e, processor)
 	default:
 		return nil, nil
@@ -296,8 +298,18 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 	return versions, catcher.Resolve()
 }
 
-// TriggerDownstreamProjectsForPush triggers downstream projects for a push event from a repo that does not
-// have repotracker enabled.
+// TriggerDownstreamProjectsForPush triggers downstream projects when a new
+// commit is pushed.
+// kim: NOTE: the comment above is probably outdated, this is always how
+// downstream push-level triggers are processed. The downside of doing it this
+// way is that it can miss commits. The repotracker has a way to backfill
+// previous commits that it missed because it didn't run. But this only runs if
+// the push event is received and runs uninterrupted. We should consider having
+// a mechanism to "backfill" downstream triggers as well. One simple thought is
+// this could be achieved by refactoring this and moving it into the
+// repotracker, so that it can run this for every commit it picks up. A lot of
+// the GitHub push event data is likely retrieved when the repotracker retrieves
+// the commit anyway, so it shouldn't require extra API calls.
 func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) error {
 	downstreamProjects, err := model.FindDownstreamProjects(ctx, projectId)
 	if err != nil {
