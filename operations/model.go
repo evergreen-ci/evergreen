@@ -626,7 +626,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 }
 
 // configurationTokenLoader stores the OAuth tokens in the ClientSettings struct.
-// It writes the updated tokens back to the config file when SaveToken is called.
+// It stores them in the given file loader to have a persistent disk cache.
 type configurationTokenLoader struct {
 	conf *ClientSettings
 
