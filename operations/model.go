@@ -19,7 +19,6 @@ import (
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -611,71 +610,28 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 }
 
 // SetOAuthToken sets the OAuth token for authentication.
-// It saves the token to the client settings file if it is successfully retrieved.
 func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
-	// The TokenLoader is responsible for loading and saving the token
-	// to the client settings file.
-	_, err := comm.GetOAuthToken(ctx,
-		&configurationTokenLoader{conf: s, fileLoader: &dex.FileTokenLoader{}},
+	token, path, err := comm.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),
 	)
-	return errors.Wrap(err, "setting OAuth token")
-}
-
-// configurationTokenLoader stores the OAuth tokens in the ClientSettings struct.
-// It stores them in the given file loader to have a persistent disk cache.
-type configurationTokenLoader struct {
-	conf *ClientSettings
-
-	fileLoader *dex.FileTokenLoader
-}
-
-// The string parameters are suggested config paths to handle multiple
-// configurations, but they are ignored because we only need one config file.
-func (c *configurationTokenLoader) LoadToken(path string) (*oauth2.Token, error) {
-	if !c.isValid() {
-		return nil, os.ErrNotExist
+	if err != nil {
+		return errors.Wrap(err, "setting OAuth token")
 	}
 
-	token, err := c.fileLoader.LoadToken(path)
-	if err == nil && token != nil {
-		c.conf.OAuth.AccessToken = token.AccessToken
-		c.conf.OAuth.RefreshToken = token.RefreshToken
-		c.conf.OAuth.Expiry = token.Expiry
-
-		if c.conf.OAuth.TokenFilePath != path {
-			c.conf.OAuth.TokenFilePath = path
-			// save the configuration file
-			if err := c.conf.Write(""); err != nil {
-				// This shouldn't prevent users from using the CLI so just log a warning.
-				grip.Warning(errors.Wrap(err, "saving configuration file"))
-			}
+	s.OAuth.AccessToken = token.AccessToken
+	s.OAuth.RefreshToken = token.RefreshToken
+	s.OAuth.Expiry = token.Expiry
+	if path != "" && s.OAuth.TokenFilePath != path {
+		s.OAuth.TokenFilePath = path
+		if err := s.Write(""); err != nil {
+			// This shouldn't prevent the current operation from succeeding
+			// so just log a warning.
+			grip.Warning(errors.Wrap(err, "saving configuration file"))
 		}
 	}
 
-	return token, err
-}
-
-func (c *configurationTokenLoader) SaveToken(path string, token *oauth2.Token) error {
-	if !c.isValid() || token == nil {
-		return os.ErrNotExist
-	}
-	return c.fileLoader.SaveToken(path, token)
-}
-
-func (c *configurationTokenLoader) DeleteToken(path string) error {
-	if !c.isValid() {
-		return errors.New("no configuration to save token to")
-	}
-	c.conf.OAuth.AccessToken = ""
-	c.conf.OAuth.RefreshToken = ""
-	c.conf.OAuth.Expiry = time.Time{}
-	return c.fileLoader.DeleteToken(path)
-}
-
-func (c *configurationTokenLoader) isValid() bool {
-	return c != nil && c.conf != nil && c.fileLoader != nil
+	return nil
 }

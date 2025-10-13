@@ -348,8 +348,8 @@ func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID 
 	return nil, nil
 }
 
-func (c *Mock) GetOAuthToken(ctx context.Context, loader dex.TokenLoader, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, error) {
-	return nil, nil
+func (c *Mock) GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
+	return nil, "", nil
 }
 
 func (c *Mock) RevokeGitHubDynamicAccessTokens(ctx context.Context, taskId string, tokens []string) error {
