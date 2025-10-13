@@ -463,7 +463,7 @@ type TestSelectionSettings struct {
 	// at all.
 	Allowed *bool `bson:"allowed,omitempty" json:"allowed,omitzero" yaml:"allowed,omitempty"`
 	// DefaultEnabled indicates whether test selection is enabled or disabled by
-	// default for tasks in this project.
+	// default for patch tasks in this project.
 	DefaultEnabled *bool `bson:"default_enabled,omitempty" json:"default_enabled,omitzero" yaml:"default_enabled,omitempty"`
 }
 
