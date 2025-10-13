@@ -1718,10 +1718,12 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
-func (c *communicatorImpl) GetOAuthToken(ctx context.Context, loader dex.TokenLoader, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, error) {
+func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 	ctx = oidc.ClientContext(ctx, httpClient)
+
+	loader := &dex.FileTokenLoader{}
 
 	opts = append(opts,
 		dex.WithContext(ctx),
@@ -1742,30 +1744,31 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, loader dex.TokenLo
 
 	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer client.Close()
 
 	// This attempt tries to get a token or refresh using the refresh token.
 	token, err := client.Token()
 	if err == nil {
-		return token, nil
+		return token, client.TokenFilePath(), nil
 	}
 	// Sometimes, the refresh token is invalid or claimed by another client.
 	// In this case, we need to run through the auth flow again without using
 	// the refresh token.
 	if !strings.Contains(err.Error(), refreshTokenClaimed) {
-		return nil, err
+		return nil, "", err
 	}
 
 	// This client prevents the Dex client from using the refresh token.
 	client, err = dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderWithoutRefresh{loader}))...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer client.Close()
 
-	return client.Token()
+	token, err = client.Token()
+	return token, client.TokenFilePath(), err
 }
 
 type tokenLoaderWithoutRefresh struct {
