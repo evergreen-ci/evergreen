@@ -134,6 +134,7 @@ type Task {
   taskLogs: TaskLogs!
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
+  testSelectionEnabled: Boolean!
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
@@ -286,4 +287,13 @@ type TaskOwnerTeam {
   messages: String!
   teamName: String!
   jiraProject: String!
+}
+
+input QuarantineTestInput {
+  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  testName: String!
+}
+
+type QuarantineTestPayload {
+  success: Boolean!
 }

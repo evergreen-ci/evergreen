@@ -315,7 +315,10 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 
 	if expiration, found := getAssumedRoleExpiration(conf, s3pc.AwsSessionToken); found {
-		s3pc.assumedRoleARN = getAssumedRoleARN(conf, s3pc.AwsSessionToken)
+		if info := getAssumedRoleInfo(conf, s3pc.AwsSessionToken); info != nil {
+			s3pc.assumedRoleARN = info.RoleARN
+			s3pc.externalID = info.ExternalID
+		}
 		s3pc.existingCredentials = &aws.Credentials{
 			AccessKeyID:     s3pc.AwsKey,
 			SecretAccessKey: s3pc.AwsSecret,

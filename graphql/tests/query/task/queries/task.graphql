@@ -1,0 +1,10 @@
+{
+  task(taskId: "1") {
+    id
+    buildVariant
+    displayName
+    requester
+    revision
+    testSelectionEnabled
+  }
+}

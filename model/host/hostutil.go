@@ -1122,11 +1122,23 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		APIKey        string `yaml:"api_key"`
 		APIServerHost string `yaml:"api_server_host"`
 		UIServerHost  string `yaml:"ui_server_host"`
+		OAuth         struct {
+			Issuer      string `json:"issuer" yaml:"issuer"`
+			ClientID    string `json:"client_id" yaml:"client_id"`
+			ConnectorID string `json:"connector_id" yaml:"connector_id"`
+		} `json:"oauth,omitempty" yaml:"oauth,omitempty"`
 	}{
-		User:          owner.Id,
-		APIKey:        owner.APIKey,
-		APIServerHost: settings.Api.URL + "/api",
-		UIServerHost:  settings.Ui.Url,
+		User:   owner.Id,
+		APIKey: owner.APIKey,
+	}
+	if settings != nil {
+		conf.APIServerHost = settings.Api.URL + "/api"
+		conf.UIServerHost = settings.Ui.Url
+		if settings.AuthConfig.OAuth != nil {
+			conf.OAuth.Issuer = settings.AuthConfig.OAuth.Issuer
+			conf.OAuth.ClientID = settings.AuthConfig.OAuth.ClientID
+			conf.OAuth.ConnectorID = settings.AuthConfig.OAuth.ConnectorID
+		}
 	}
 
 	return yaml.Marshal(conf)

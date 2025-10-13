@@ -103,6 +103,7 @@ type CommandCleanup struct {
 
 type AssumeRoleInformation struct {
 	RoleARN    string
+	ExternalID string
 	Expiration time.Time
 }
 

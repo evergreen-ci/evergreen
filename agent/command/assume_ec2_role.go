@@ -86,6 +86,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context, comm client.Communicator, l
 	if err == nil {
 		conf.AssumeRoleInformation[creds.SessionToken] = internal.AssumeRoleInformation{
 			RoleARN:    r.RoleARN,
+			ExternalID: creds.ExternalID,
 			Expiration: expiration,
 		}
 	} else {

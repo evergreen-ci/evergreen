@@ -55,12 +55,13 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 		},
 		"Success": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			expiration := time.Now()
+			externalID := "ext_id"
 			comm.AssumeRoleResponse = &apimodels.AWSCredentials{
 				AccessKeyID:     "access_key_id",
 				SecretAccessKey: "secret_access_key",
 				SessionToken:    "session_token",
 				Expiration:      expiration.Format(time.RFC3339),
-				ExternalID:      "external_id",
+				ExternalID:      externalID,
 			}
 
 			c := &ec2AssumeRole{
@@ -75,6 +76,7 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.Equal(t, expiration.Format(time.RFC3339), conf.NewExpansions.Get(globals.AWSRoleExpiration))
 
 			assert.Equal(t, c.RoleARN, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].RoleARN)
+			assert.Equal(t, externalID, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].ExternalID)
 			assert.WithinDuration(t, expiration, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].Expiration, time.Second)
 
 			t.Run("KeysAreRedacted", func(t *testing.T) {

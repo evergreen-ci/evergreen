@@ -973,6 +973,26 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, projectFromDB)
 			assert.Len(t, projectFromDB.ParsleyFilters, 2)
 		},
+		model.ProjectPageTestSelectionSection: func(t *testing.T, ref model.ProjectRef) {
+			apiProjectRef := restModel.APIProjectRef{
+				TestSelection: restModel.APITestSelectionSettings{
+					Allowed:        utility.ToBoolPtr(true),
+					DefaultEnabled: utility.ToBoolPtr(false),
+				},
+			}
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTestSelectionSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, projectFromDB)
+			assert.Equal(t, true, utility.FromBoolPtr(projectFromDB.TestSelection.Allowed))
+			assert.Equal(t, false, utility.FromBoolPtr(projectFromDB.TestSelection.DefaultEnabled))
+		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection,
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,

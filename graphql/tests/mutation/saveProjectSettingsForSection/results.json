@@ -209,7 +209,7 @@
       }
     },
     {
-      "query_file": "github_permission_groups.graphql",
+      "query_file": "github_permission_groups_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
@@ -237,7 +237,7 @@
       }
     },
     {
-      "query_file": "github_app_settings.graphql",
+      "query_file": "github_app_settings_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
@@ -250,6 +250,22 @@
               "githubPermissionGroupByRequester": {
                 "ad_hoc": "permission-group-2",
                 "gitter_request": "permission-group-1"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "test_selection_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "testSelection": {
+                "allowed": true,
+                "defaultEnabled": false
               }
             }
           }

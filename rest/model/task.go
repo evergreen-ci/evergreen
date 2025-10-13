@@ -121,15 +121,16 @@ type APITask struct {
 	// "gitter_request" (caused by git commit, aka the repotracker requester),
 	// "trigger_request" (Project Trigger versions) , "merge_test" (commit queue
 	// patches), "ad_hoc" (periodic builds)
-	Requester         *string         `json:"requester"`
-	TestResults       []APITest       `json:"test_results"`
-	Aborted           bool            `json:"aborted"`
-	AbortInfo         APIAbortInfo    `json:"abort_info"`
-	AMI               *string         `json:"ami"`
-	MustHaveResults   bool            `json:"must_have_test_results"`
-	BaseTask          APIBaseTaskInfo `json:"base_task"`
-	ResetWhenFinished bool            `json:"reset_when_finished"`
-	HasAnnotations    bool            `json:"has_annotations"`
+	Requester            *string         `json:"requester"`
+	TestResults          []APITest       `json:"test_results"`
+	Aborted              bool            `json:"aborted"`
+	AbortInfo            APIAbortInfo    `json:"abort_info"`
+	AMI                  *string         `json:"ami"`
+	MustHaveResults      bool            `json:"must_have_test_results"`
+	BaseTask             APIBaseTaskInfo `json:"base_task"`
+	ResetWhenFinished    bool            `json:"reset_when_finished"`
+	HasAnnotations       bool            `json:"has_annotations"`
+	TestSelectionEnabled bool            `json:"test_selection_enabled"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -370,7 +371,8 @@ func (at *APITask) buildTask(t *task.Task) error {
 			User:       t.AbortInfo.User,
 			PRClosed:   t.AbortInfo.PRClosed,
 		},
-		HasAnnotations: t.HasAnnotations,
+		HasAnnotations:       t.HasAnnotations,
+		TestSelectionEnabled: t.TestSelectionEnabled,
 	}
 
 	at.ContainerOpts.BuildFromService(t.ContainerOpts)
@@ -577,6 +579,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 		Archived:             at.Archived,
 		OverrideDependencies: at.OverrideDependencies,
 		HasAnnotations:       at.HasAnnotations,
+		TestSelectionEnabled: at.TestSelectionEnabled,
 	}
 
 	if at.TaskCost != nil {
