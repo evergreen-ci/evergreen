@@ -1578,7 +1578,6 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 		// be available for other requesters, but this acts as a temporary
 		// safety guard to prevent an experimental feature from affecting
 		// non-patch versions.
-		// kim: TODO: add test for this
 		return false
 	}
 
