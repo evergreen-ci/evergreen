@@ -3115,6 +3115,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
+			},
 			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
 					regexp.MustCompile("bv1"),
@@ -3130,6 +3133,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 				TestSelection: TestSelectionSettings{
 					Allowed: utility.TruePtr(),
 				},
+			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
 			},
 			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
@@ -3147,6 +3153,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 				TestSelection: TestSelectionSettings{
 					Allowed: utility.TruePtr(),
 				},
+			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
 			},
 			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
@@ -3166,6 +3175,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					DefaultEnabled: utility.TruePtr(),
 				},
 			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
+			},
 			TestSelectionParams: TestSelectionParams{
 				ExcludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv2")},
 			},
@@ -3178,6 +3190,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 				TestSelection: TestSelectionSettings{
 					Allowed: utility.TruePtr(),
 				},
+			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
 			},
 			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{
@@ -3196,6 +3211,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
+			},
 			TestSelectionParams: TestSelectionParams{
 				IncludeTasks: []*regexp.Regexp{regexp.MustCompile("t1")},
 			},
@@ -3212,6 +3230,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
+			},
 			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv1")},
 			},
@@ -3226,6 +3247,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					DefaultEnabled: utility.TruePtr(),
 				},
 			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
+			},
 			TestSelectionParams: TestSelectionParams{
 				IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv1")},
 			},
@@ -3239,6 +3263,26 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed: utility.TruePtr(),
 				},
 			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
+			},
+		}
+		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+	})
+	t.Run("ReturnsFalseForNonPatchVersion", func(t *testing.T) {
+		creationInfo := TaskCreationInfo{
+			ProjectRef: &ProjectRef{
+				TestSelection: TestSelectionSettings{
+					Allowed:        utility.TruePtr(),
+					DefaultEnabled: utility.TruePtr(),
+				},
+			},
+			Version: &Version{
+				Requester: evergreen.RepotrackerVersionRequester,
+			},
+			TestSelectionParams: TestSelectionParams{
+				IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv1")},
+			},
 		}
 		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
 	})
@@ -3249,6 +3293,9 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 					Allowed:        utility.TruePtr(),
 					DefaultEnabled: utility.TruePtr(),
 				},
+			},
+			Version: &Version{
+				Requester: evergreen.PatchVersionRequester,
 			},
 		}
 		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
