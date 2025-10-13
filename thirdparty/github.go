@@ -1416,7 +1416,8 @@ func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNum
 	return pr, nil
 }
 
-// GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
+// GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff.
+// This can fail if the PR is too large.
 func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
 	caller := "GetGithubPullRequestDiff"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1448,6 +1449,48 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	}
 
 	return diff, summaries, nil
+}
+
+// GetGitHubPullRequestFiles gets the list of file names changed in the given
+// pull request. If all is true, it will paginate through all results.
+// Otherwise, it will return only the page of results given by opts (using
+// defaults if it's nil).
+func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch, all bool, opts *github.ListOptions) ([]*github.CommitFile, error) {
+	owner := gh.BaseOwner
+	repo := gh.BaseRepo
+	caller := "GetGitHubPullRequestFiles"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	// kim: TODO: have to paginate through the results for >3000 files changed.
+
+	if opts == nil {
+		// By default, return the most files allowed (3000 is the max files that
+		// can be returned per request) to reduce API calls.
+		opts = &github.ListOptions{PerPage: 3000}
+	}
+	files, resp, err := githubClient.PullRequests.ListFiles(ctx, owner, repo, gh.PRNumber, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
 
 func ValidatePR(pr *github.PullRequest) error {
