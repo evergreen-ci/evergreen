@@ -149,7 +149,7 @@ func makeModifyTaskRoute() gimlet.RouteHandler {
 
 // //////////////////////////////////////////////////////////////////////
 //
-// Handler for fetching build by id
+// Handler for updating a single artifact file's URL for a specific task execution.
 //
 //	PATCH /tasks/{task_id}/artifacts/url
 type updateArtifactURLHandler struct {
@@ -176,7 +176,7 @@ func makeUpdateArtifactURLRoute() gimlet.RouteHandler { return &updateArtifactUR
 // Factory creates an instance of the artifact URL update handler.
 //
 //	@Summary		Update an artifact file URL
-//	@Description	Update the URL of a single artifact file for a task execution. If the execution query parameter is omitted, the task's latest execution is used. The artifact file is matched by name and its current URL.
+//	@Description	Update the URL of a single artifact file for a task execution. If the execution query parameter is omitted, the task's latest execution is used. The artifact file is matched by name and its current URL. Pre signed URLs are currently not supported.
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/artifacts/url [patch]
 //	@Security		Api-User || Api-Key
