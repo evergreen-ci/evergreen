@@ -194,7 +194,7 @@ require (
 	github.com/fraugster/parquet-go v0.11.0
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/handlers v1.5.2
-	github.com/kanopy-platform/kanopy-oidc-lib v0.1.0
+	github.com/kanopy-platform/kanopy-oidc-lib v0.1.1-0.20251013201128-c71aaee8ec3a
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.3
