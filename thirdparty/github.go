@@ -1416,8 +1416,9 @@ func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNum
 	return pr, nil
 }
 
-// GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff.
-// This can fail if the PR is too large.
+// GetGithubPullRequestDiff downloads a raw diff from a Github Pull Request.
+// This can fail if the PR is too large (e.g. greater than 300 files). See
+// GetGitHubPullRequestFiles.
 func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
 	caller := "GetGithubPullRequestDiff"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1451,8 +1452,11 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	return diff, summaries, nil
 }
 
-// GetGitHubPullRequestFiles gets the full list of summaries of the changed
-// files for the given pull request.
+// GetGitHubPullRequestFiles gets the full list of the changed files for the
+// given pull request. This can get at most 3000 files changed, which is more
+// than GetGithubPullRequestDiff (which only works for up to300 files). The
+// GitHub API is limited so it cannot return all files if there are more than
+// 3000 changed files.
 func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, error) {
 	owner := gh.BaseOwner
 	repo := gh.BaseRepo
