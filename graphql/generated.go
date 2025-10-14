@@ -76002,30 +76002,11 @@ func (ec *executionContext) unmarshalInputAuthConfigInput(ctx context.Context, o
 			}
 		case "oauth":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oauth"))
-			directive0 := func(ctx context.Context) (any, error) {
-				return ec.unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx, v)
-			}
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *model.APIOAuthConfig
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*model.APIOAuthConfig); ok {
-				it.OAuth = data
-			} else if tmp == nil {
-				it.OAuth = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIOAuthConfig`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.OAuth = data
 		case "preferredType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("preferredType"))
 			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOPreferredAuthType2ᚖstring(ctx, v) }
@@ -79797,76 +79778,25 @@ func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, 
 		switch k {
 		case "issuer":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issuer"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.Issuer = data
-			} else if tmp == nil {
-				it.Issuer = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.Issuer = data
 		case "clientId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.ClientID = data
-			} else if tmp == nil {
-				it.ClientID = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.ClientID = data
 		case "connectorId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("connectorId"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(*string); ok {
-				it.ConnectorID = data
-			} else if tmp == nil {
-				it.ConnectorID = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.ConnectorID = data
 		}
 	}
 
