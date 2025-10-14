@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -138,7 +137,7 @@ func (r *patchResolver) Parameters(ctx context.Context, obj *restModel.APIPatch)
 	projectId := utility.FromStringPtr(obj.ProjectId)
 	projVars, err := model.FindMergedProjectVars(ctx, projectId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectId)
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project vars for project '%s': %s", projectId, err.Error()))
 	}
 
 	redactKeys := config.LoggerConfig.RedactKeys
