@@ -159,7 +159,8 @@ func FindOneProjectVars(ctx context.Context, projectId string) (*ProjectVars, er
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	// Ignore if the context has been cancelled because ABC?
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	projectVarsFromPS, err := projectVars.findParameterStore(ctx)
@@ -677,7 +678,9 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	projectVars.PrivateVars = map[string]bool{}
 	projectVars.AdminOnlyVars = map[string]bool{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	// Ignore the context cancellation to ensure that the parameters are
+	// deleted from Parameter Store.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultParameterStoreAccessTimeout)
 	defer cancel()
 	if _, err := projectVars.upsertParameterStore(ctx); err != nil {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
