@@ -110,8 +110,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 
 	for len(revisions) < maxRevisionsToSearch {
 		var err error
-		// kim: NOTE: this is where we get the latest commits from GitHub,
-		// including any older missed ones.
 		commits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch, time.Time{}, commitPage)
 		if err != nil {
@@ -134,9 +132,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 				firstCommit = commit
 			}
 
-			// kim: NOTE: all of this data is pretty much the same as the GitHub
-			// push event head commit data, so this commit data is suitable as a
-			// replacement for the GitHub webhook push event data.
 			if commit.Commit == nil || commit.Commit.Author == nil ||
 				commit.Commit.Author.Name == nil ||
 				commit.Commit.Author.Email == nil ||

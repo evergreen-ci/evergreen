@@ -85,11 +85,8 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return err
 	}
 	if len(refs) == 0 {
-		// kim: NOTE: this checks if the branch is actually being tracked by any
-		// branch projects before handling the push event. If there's no branch
-		// project tracking this branch, then we ignore the push event.
 		grip.Info(message.Fields{
-			"source":  "github hook",
+			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
 			"owner":   *event.Repo.Owner.Name,
@@ -111,23 +108,6 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 			continue
 		}
 
-		// kim: NOTE: this is reliable only as long as GitHub webhooks are
-		// reliable, which they aren't. The repotracker handles backfilling, but
-		// this solely relies on GitHub webhook best-effort delivery. Consider
-		// moving to the repotracker so it can backfill commits.
-		// kim: NOTE: I confirmed that GitHub webhooks suck. See the
-		// head_commit.id in Splunk to see the commit that triggered the
-		// webhook:
-		// - For a commit that didn't trigger a downstream version, that commit
-		// never sent a push event webhook: https://mongodb.splunkcloud.com/en-US/app/search/search?earliest=1756353600&latest=1756440000&q=search%20index%3Devergreen%20e1ac7309648c348989108bf7aac659f1d97f5d42%20%22GitHub%20hook%22%20event%3Dpush%20ref%3Drefs%2Fheads%2Fmaster&display.page.search.mode=verbose&dispatch.sample_ratio=1&workload_pool=&sid=1759952039.99844
-		// - For a commit that did trigger a downstream version, that commit did
-		// send a push event webhook: https://mongodb.splunkcloud.com/en-US/app/search/search?q=search%20index%3Devergreen%2038f3d1c7731218f8d49d7f274a2e5fa7d05b01fd%20%22GitHub%20hook%22%20event%3Dpush%20ref%3Drefs%2Fheads%2Fmaster&display.page.search.mode=verbose&dispatch.sample_ratio=1&workload_pool=&earliest=1759896000&latest=1759982400&sid=1759952123.99879
-		// It appears GitHub push events are allowed to send multiple commits in
-		// a single batch (see event.Commits NOT event.HeadCommit). The
-		// implication is that we should handle all commits in the push event
-		// individually, not just the head commit.
-		// kim: NOTE: event.Commits in the list are ordered least to most
-		// recent, so processing it in order should be fine.
 		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
 		catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
 

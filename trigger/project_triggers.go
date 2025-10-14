@@ -2,33 +2,18 @@ package trigger
 
 import (
 	"context"
-	"runtime/debug"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version.
 // If the trigger is a push event, the triggering version will be nonexistent.
-// kim: NOTE: this is the main logic to create a downstream version for a push
-// trigger. Task/BV triggers are handled on task/BV finish events.
-// kim: TODO: figure out where exactly this gets triggered on commit push. I
-// would expect it to happen somewhere in the repotracker code, but I don't see
-// it being triggered there from quick inspection.
 func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.Version, error) {
-	grip.DebugWhen(args.TriggerType == model.ProjectTriggerLevelPush, message.Fields{
-		"message": "kim: triggering downstream version for push event",
-		"args":    args,
-		"stack":   string(debug.Stack()),
-	})
 	if args.SourceVersion == nil && args.TriggerType != model.ProjectTriggerLevelPush {
-		// kim: NOTE: all this means is that task/BV-level triggers must have a
-		// source version that triggered the downstream version creation.
 		return nil, errors.Errorf("unable to find source version in downstream project '%s'", args.DownstreamProject.Id)
 	}
 
@@ -49,11 +34,6 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.New("must specify a file to define downstream project config")
 	}
 
-	// create version
-	// kim: NOTE: this implies that it'll only create one version. If downstream
-	// triggers for push are in fact created by
-	// TriggerDownstreamProjectsForPush (which does appear to be the case from
-	// staging), then that means it will miss older versions.
 	projectInfo.Ref = &args.DownstreamProject
 	v, err := repotracker.CreateVersionFromConfig(context.Background(), &projectInfo, metadata, false, nil)
 	if err != nil {
@@ -112,11 +92,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 
 func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
-		SourceVersion: args.SourceVersion,
-		// kim: NOTE: this is not set in mms-alert-deploy-triggers, so it should
-		// always activate the downstream version once it's created. However,
-		// the issue looks like the downstream version isn't created at all, so
-		// the issue is liekly not with the version activation logic.
+		SourceVersion:       args.SourceVersion,
 		Activate:            !args.UnscheduleDownstreamVersions,
 		TriggerID:           args.TriggerID,
 		TriggerType:         args.TriggerType,

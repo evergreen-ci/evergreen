@@ -192,9 +192,6 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 		"resource_type": e.ResourceType,
 	}))
 
-	// kim: NOTE: this evaluates triggering downstream versions for push. But it
-	// also means that an event has to happen for the downstream version to be
-	// processed.
 	v, err := trigger.EvalProjectTriggers(ctx, e, trigger.TriggerDownstreamVersion)
 	grip.InfoWhen(len(v) > 0, message.Fields{
 		"job_id":        j.ID(),
