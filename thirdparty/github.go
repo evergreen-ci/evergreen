@@ -1451,11 +1451,9 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	return diff, summaries, nil
 }
 
-// GetGitHubPullRequestFiles gets the list of file names changed in the given
-// pull request. If all is true, it will paginate through all results.
-// Otherwise, it will return only the page of results given by opts (using
-// defaults if it's nil).
-func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch, all bool, opts *github.ListOptions) ([]*github.CommitFile, error) {
+// GetGitHubPullRequestFiles gets the full list of summaries of the changed
+// files for the given pull request.
+func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, error) {
 	owner := gh.BaseOwner
 	repo := gh.BaseRepo
 	caller := "GetGitHubPullRequestFiles"
@@ -1474,23 +1472,56 @@ func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch, all bool, op
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	// kim: TODO: have to paginate through the results for >3000 files changed.
-
-	if opts == nil {
-		// By default, return the most files allowed (3000 is the max files that
-		// can be returned per request) to reduce API calls.
-		opts = &github.ListOptions{PerPage: 3000}
-	}
-	files, resp, err := githubClient.PullRequests.ListFiles(ctx, owner, repo, gh.PRNumber, opts)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return nil, err
+	// By default, return the most files allowed (100 is the max files that
+	// can be returned per request) to reduce API calls.
+	const maxFilesPerPage = 100
+	opts := &github.ListOptions{
+		PerPage: maxFilesPerPage,
+		Page:    1,
 	}
 
-	return files, nil
+	var summaries []Summary
+	// kim: NOTE: this similar limitations as GetGithubPullRequestDiff because
+	// it stops returning results at the 3000th file changed (page=30,
+	// per_page=100). Note that the GitHub UI also stops at the 3000th file.
+	// However, for the sake of this bug, 3k files is potentially enough, and
+	// any rare enormous changes can just over-test a little with a warning.
+	// Official GitHub answer is to use git diff for enormous changes: https://stackoverflow.com/a/14960810
+	for true {
+		files, resp, err := githubClient.PullRequests.ListFiles(ctx, owner, repo, gh.PRNumber, opts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting page %d of pull request files", opts.Page)
+		}
+		if len(files) == 0 {
+			// kim; TODO: verify response format when there are no files changed
+			// or no files remaining.
+			break
+		}
+
+		summaries = append(summaries, getPatchSummariesFromCommitFiles(files)...)
+	}
+
+	return summaries, nil
+}
+
+func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
+	summaries := make([]Summary, 0, len(files))
+	for _, file := range files {
+		if file == nil || file.Filename == nil || file.Patch == nil {
+			continue
+		}
+		summary := Summary{
+			Name:      file.GetFilename(),
+			Additions: file.GetAdditions(),
+			Deletions: file.GetDeletions(),
+		}
+		summaries = append(summaries, summary)
+	}
+	return summaries
 }
 
 func ValidatePR(pr *github.PullRequest) error {

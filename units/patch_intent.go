@@ -988,13 +988,33 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
-		// kim: NOTE: in this case, the patch won't have a diff visible in
-		// Evergreen, but the patch can still run.
+
+		// kim: NOTE: in this case, the GH patch won't have a diff visible in
+		// Evergreen, but the patch can still run because it clones from GH.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
-			// kim: TODO: fall back to just compiling a list of changed files in
-			// thie case.
+			summaries, err = thirdparty.GetGitHubPullRequestFiles(ctx, patchDoc.GithubPatchData)
+			if err != nil {
+				return isMember, errors.Wrap(err, "getting PR files for large diff")
+			}
+			// kim: TODO: verify if git diff-related features (like changes tab
+			// and git.get_project) work without having an actual grid file
+			// associated with it. Otherwise, will have to have a special case
+			// for just including the patch files without the full diff.
+			patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+				ModuleName: "",
+				Githash:    patchDoc.Githash,
+				PatchSet: patch.PatchSet{
+					// This is intentionally not setting the patch file ID
+					// because the PR is extremely long, so writing those files
+					// to GridFS could be slow/inefficient.
+					PatchFileId: "",
+					Summary:     summaries,
+				},
+			})
+
 			return isMember, nil
 		}
+
 		return isMember, err
 	}
 
