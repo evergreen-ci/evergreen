@@ -1452,6 +1452,12 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	return diff, summaries, nil
 }
 
+// MaxGitHubPRFilesListLength is the maximum number of files that can be
+// returned by the GitHub API for a pull request. This is a hard limit imposed
+// by the GitHub API. If the PR changes more than 3000 files, Evergreen will
+// only see at most 3000 of them.
+const MaxGitHubPRFilesListLength = 3000
+
 // GetGitHubPullRequestFiles gets the full list of the changed files for the
 // given pull request. This can get at most 3000 files changed, which is more
 // than GetGithubPullRequestDiff (which only works for up to300 files). The
@@ -1476,37 +1482,59 @@ func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	// By default, return the most files allowed (100 is the max files that
-	// can be returned per request) to reduce API calls.
-	const maxFilesPerPage = 100
-	opts := &github.ListOptions{
-		PerPage: maxFilesPerPage,
-		Page:    1,
-	}
-
+	page := 1
 	var summaries []Summary
+	// By default, return the most files allowed per request (100) to reduce API
+	// calls.
+	const maxFilesPerPage = 100
 	// kim: NOTE: this similar limitations as GetGithubPullRequestDiff because
 	// it stops returning results at the 3000th file changed (page=30,
 	// per_page=100). Note that the GitHub UI also stops at the 3000th file.
 	// However, for the sake of this bug, 3k files is potentially enough, and
 	// any rare enormous changes can just over-test a little with a warning.
 	// Official GitHub answer is to use git diff for enormous changes: https://stackoverflow.com/a/14960810
-	for true {
+	const maxNumRequestsUntilNoFiles = MaxGitHubPRFilesListLength / maxFilesPerPage
+	for range maxNumRequestsUntilNoFiles {
+		opts := &github.ListOptions{
+			PerPage: maxFilesPerPage,
+			Page:    page,
+		}
+
 		files, resp, err := githubClient.PullRequests.ListFiles(ctx, owner, repo, gh.PRNumber, opts)
 		if resp != nil {
-			defer resp.Body.Close()
+			_ = resp.Body.Close()
 			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 		}
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting page %d of pull request files", opts.Page)
 		}
 		if len(files) == 0 {
-			// kim; TODO: verify response format when there are no files changed
-			// or no files remaining.
+			grip.Info(message.Fields{
+				"message":   "kim: finished searching for PR files",
+				"num_files": len(summaries),
+				"owner":     gh.BaseOwner,
+				"repo":      gh.BaseRepo,
+				"pr_num":    gh.PRNumber,
+				"page":      page,
+			})
+			// No more files or this is the last page of files.
 			break
 		}
-
 		summaries = append(summaries, getPatchSummariesFromCommitFiles(files)...)
+
+		grip.Info(message.Fields{
+			"message":       "kim: got one page of PR files",
+			"num_files":     len(files),
+			"num_summaries": len(summaries),
+			"first_file":    files[0].GetFilename(),
+			"last_file":     files[len(files)-1].GetFilename(),
+			"owner":         gh.BaseOwner,
+			"repo":          gh.BaseRepo,
+			"pr_num":        gh.PRNumber,
+			"page":          page,
+		})
+
+		page++
 	}
 
 	return summaries, nil
@@ -1515,9 +1543,6 @@ func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, 
 func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
 	summaries := make([]Summary, 0, len(files))
 	for _, file := range files {
-		if file == nil || file.Filename == nil || file.Patch == nil {
-			continue
-		}
 		summary := Summary{
 			Name:      file.GetFilename(),
 			Additions: file.GetAdditions(),
