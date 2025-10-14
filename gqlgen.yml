@@ -570,6 +570,8 @@ models:
         resolver: true
       includedLocalModules:
         resolver: true
+      parameters:
+        resolver: true
   IncludedLocalModule:
     model: github.com/evergreen-ci/evergreen/rest/model.APILocalModuleInclude
   PatchTriggerAlias:

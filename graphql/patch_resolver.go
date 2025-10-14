@@ -3,6 +3,8 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -122,6 +124,45 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 				}
 			}
 		}
+	}
+	return res, nil
+}
+
+// Parameters is the resolver for the parameters field.
+func (r *patchResolver) Parameters(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIParameter, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+
+	projectId := utility.FromStringPtr(obj.ProjectId)
+	projVars, err := model.FindMergedProjectVars(ctx, projectId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectId)
+	}
+
+	redactKeys := config.LoggerConfig.RedactKeys
+	var res []*restModel.APIParameter
+	for _, param := range obj.Parameters {
+		redactedParam := &restModel.APIParameter{
+			Key:   param.Key,
+			Value: param.Value,
+		}
+		for _, pattern := range redactKeys {
+			if strings.Contains(strings.ToLower(utility.FromStringPtr(param.Key)), pattern) {
+				redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
+				break
+			}
+		}
+		if projVars != nil {
+			for varKey, varValue := range projVars.Vars {
+				if strings.Contains(utility.FromStringPtr(param.Value), varValue) && projVars.PrivateVars[varKey] {
+					redactedParam.Value = utility.ToStringPtr(evergreen.RedactedValue)
+					break
+				}
+			}
+		}
+		res = append(res, redactedParam)
 	}
 	return res, nil
 }
