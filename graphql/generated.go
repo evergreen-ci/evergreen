@@ -280,7 +280,6 @@ type ComplexityRoot struct {
 		Kanopy                  func(childComplexity int) int
 		Multi                   func(childComplexity int) int
 		Naive                   func(childComplexity int) int
-		OAuth                   func(childComplexity int) int
 		Okta                    func(childComplexity int) int
 		PreferredType           func(childComplexity int) int
 	}
@@ -1110,12 +1109,6 @@ type ComplexityRoot struct {
 		BufferIntervalSeconds   func(childComplexity int) int
 		BufferTargetPerInterval func(childComplexity int) int
 		SES                     func(childComplexity int) int
-	}
-
-	OAuthConfig struct {
-		ClientID    func(childComplexity int) int
-		ConnectorID func(childComplexity int) int
-		Issuer      func(childComplexity int) int
 	}
 
 	OSInfo struct {
@@ -3579,12 +3572,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AuthConfig.Naive(childComplexity), true
-	case "AuthConfig.oauth":
-		if e.complexity.AuthConfig.OAuth == nil {
-			break
-		}
-
-		return e.complexity.AuthConfig.OAuth(childComplexity), true
 	case "AuthConfig.okta":
 		if e.complexity.AuthConfig.Okta == nil {
 			break
@@ -7097,25 +7084,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.NotifyConfig.SES(childComplexity), true
-
-	case "OAuthConfig.clientId":
-		if e.complexity.OAuthConfig.ClientID == nil {
-			break
-		}
-
-		return e.complexity.OAuthConfig.ClientID(childComplexity), true
-	case "OAuthConfig.connectorId":
-		if e.complexity.OAuthConfig.ConnectorID == nil {
-			break
-		}
-
-		return e.complexity.OAuthConfig.ConnectorID(childComplexity), true
-	case "OAuthConfig.issuer":
-		if e.complexity.OAuthConfig.Issuer == nil {
-			break
-		}
-
-		return e.complexity.OAuthConfig.Issuer(childComplexity), true
 
 	case "OSInfo.name":
 		if e.complexity.OSInfo.Name == nil {
@@ -12706,7 +12674,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputNaiveAuthConfigInput,
 		ec.unmarshalInputNotificationsInput,
 		ec.unmarshalInputNotifyConfigInput,
-		ec.unmarshalInputOAuthConfigInput,
 		ec.unmarshalInputOktaConfigInput,
 		ec.unmarshalInputOperatingSystemOpts,
 		ec.unmarshalInputOwnerRepoInput,
@@ -18073,8 +18040,6 @@ func (ec *executionContext) fieldContext_AdminSettings_authConfig(_ context.Cont
 				return ec.fieldContext_AuthConfig_multi(ctx, field)
 			case "kanopy":
 				return ec.fieldContext_AuthConfig_kanopy(ctx, field)
-			case "oauth":
-				return ec.fieldContext_AuthConfig_oauth(ctx, field)
 			case "preferredType":
 				return ec.fieldContext_AuthConfig_preferredType(ctx, field)
 			case "backgroundReauthMinutes":
@@ -21431,56 +21396,6 @@ func (ec *executionContext) fieldContext_AuthConfig_kanopy(_ context.Context, fi
 				return ec.fieldContext_KanopyAuthConfig_keysetURL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type KanopyAuthConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AuthConfig_oauth(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AuthConfig_oauth,
-		func(ctx context.Context) (any, error) {
-			return obj.OAuth, nil
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RequireAdmin == nil {
-					var zeroVal *model.APIOAuthConfig
-					return zeroVal, errors.New("directive requireAdmin is not implemented")
-				}
-				return ec.directives.RequireAdmin(ctx, obj, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalOOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AuthConfig_oauth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AuthConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "issuer":
-				return ec.fieldContext_OAuthConfig_issuer(ctx, field)
-			case "clientId":
-				return ec.fieldContext_OAuthConfig_clientId(ctx, field)
-			case "connectorId":
-				return ec.fieldContext_OAuthConfig_connectorId(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type OAuthConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -41579,132 +41494,6 @@ func (ec *executionContext) fieldContext_NotifyConfig_bufferIntervalSeconds(_ co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _OAuthConfig_issuer(ctx context.Context, field graphql.CollectedField, obj *model.APIOAuthConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_OAuthConfig_issuer,
-		func(ctx context.Context) (any, error) {
-			return obj.Issuer, nil
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RequireAdmin == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive requireAdmin is not implemented")
-				}
-				return ec.directives.RequireAdmin(ctx, obj, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_OAuthConfig_issuer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "OAuthConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _OAuthConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIOAuthConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_OAuthConfig_clientId,
-		func(ctx context.Context) (any, error) {
-			return obj.ClientID, nil
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RequireAdmin == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive requireAdmin is not implemented")
-				}
-				return ec.directives.RequireAdmin(ctx, obj, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_OAuthConfig_clientId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "OAuthConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _OAuthConfig_connectorId(ctx context.Context, field graphql.CollectedField, obj *model.APIOAuthConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_OAuthConfig_connectorId,
-		func(ctx context.Context) (any, error) {
-			return obj.ConnectorID, nil
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RequireAdmin == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive requireAdmin is not implemented")
-				}
-				return ec.directives.RequireAdmin(ctx, obj, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_OAuthConfig_connectorId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "OAuthConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -75863,7 +75652,7 @@ func (ec *executionContext) unmarshalInputAuthConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"okta", "naive", "github", "multi", "kanopy", "oauth", "preferredType", "backgroundReauthMinutes", "allowServiceUsers"}
+	fieldsInOrder := [...]string{"okta", "naive", "github", "multi", "kanopy", "preferredType", "backgroundReauthMinutes", "allowServiceUsers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76000,13 +75789,6 @@ func (ec *executionContext) unmarshalInputAuthConfigInput(ctx context.Context, o
 				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-		case "oauth":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oauth"))
-			data, err := ec.unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OAuth = data
 		case "preferredType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("preferredType"))
 			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOPreferredAuthType2ᚖstring(ctx, v) }
@@ -79756,47 +79538,6 @@ func (ec *executionContext) unmarshalInputNotifyConfigInput(ctx context.Context,
 				return it, err
 			}
 			it.BufferIntervalSeconds = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, obj any) (model.APIOAuthConfig, error) {
-	var it model.APIOAuthConfig
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"issuer", "clientId", "connectorId"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "issuer":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issuer"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Issuer = data
-		case "clientId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ClientID = data
-		case "connectorId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("connectorId"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ConnectorID = data
 		}
 	}
 
@@ -86654,8 +86395,6 @@ func (ec *executionContext) _AuthConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._AuthConfig_multi(ctx, field, obj)
 		case "kanopy":
 			out.Values[i] = ec._AuthConfig_kanopy(ctx, field, obj)
-		case "oauth":
-			out.Values[i] = ec._AuthConfig_oauth(ctx, field, obj)
 		case "preferredType":
 			out.Values[i] = ec._AuthConfig_preferredType(ctx, field, obj)
 		case "backgroundReauthMinutes":
@@ -93093,55 +92832,6 @@ func (ec *executionContext) _NotifyConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._NotifyConfig_bufferTargetPerInterval(ctx, field, obj)
 		case "bufferIntervalSeconds":
 			out.Values[i] = ec._NotifyConfig_bufferIntervalSeconds(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var oAuthConfigImplementors = []string{"OAuthConfig"}
-
-func (ec *executionContext) _OAuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIOAuthConfig) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, oAuthConfigImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("OAuthConfig")
-		case "issuer":
-			out.Values[i] = ec._OAuthConfig_issuer(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "clientId":
-			out.Values[i] = ec._OAuthConfig_clientId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "connectorId":
-			out.Values[i] = ec._OAuthConfig_connectorId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -113938,21 +113628,6 @@ func (ec *executionContext) unmarshalONotifyConfigInput2ᚖgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputNotifyConfigInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIOAuthConfig) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._OAuthConfig(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx context.Context, v any) (*model.APIOAuthConfig, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputOAuthConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

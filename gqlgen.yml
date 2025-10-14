@@ -474,10 +474,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
   KanopyAuthConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIKanopyAuthConfig
-  OAuthConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIOAuthConfig
-  OAuthConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIOAuthConfig
   LogBuffering:
     model: github.com/evergreen-ci/evergreen/rest/model.APILogBuffering
   LogBufferingInput:

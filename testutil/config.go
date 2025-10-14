@@ -179,11 +179,6 @@ func MockConfig() *evergreen.Settings {
 				HeaderName: "auth_header",
 				KeysetURL:  "www.google.com",
 			},
-			OAuth: &evergreen.OAuthConfig{
-				Issuer:      "oauth_issuer",
-				ClientID:    "oauth_client_id",
-				ConnectorID: "oauth_connector_id",
-			},
 			BackgroundReauthMinutes: 60,
 		},
 		AWSInstanceRole: "role",
