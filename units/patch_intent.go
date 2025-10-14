@@ -992,14 +992,51 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		// kim: NOTE: in this case, the GH patch won't have a diff visible in
 		// Evergreen, but the patch can still run because it clones from GH.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
+			// Rather than getting the entire diff, fall back to trying to get
+			// the list of changed files.
+			grip.Info(message.Fields{
+				"message":   "kim: GitHub PR diff is too large, falling back to fetching PR files instead of raw diff",
+				"owner":     patchDoc.GithubPatchData.BaseOwner,
+				"repo":      patchDoc.GithubPatchData.BaseRepo,
+				"pr_number": patchDoc.GithubPatchData.PRNumber,
+			})
 			summaries, err = thirdparty.GetGitHubPullRequestFiles(ctx, patchDoc.GithubPatchData)
 			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":   "kim: failed to get GitHub PR files with fallback method",
+					"owner":     patchDoc.GithubPatchData.BaseOwner,
+					"repo":      patchDoc.GithubPatchData.BaseRepo,
+					"pr_number": patchDoc.GithubPatchData.PRNumber,
+				}))
 				return isMember, errors.Wrap(err, "getting PR files for large diff")
 			}
-			// kim: TODO: verify if git diff-related features (like changes tab
-			// and git.get_project) work without having an actual grid file
-			// associated with it. Otherwise, will have to have a special case
-			// for just including the patch files without the full diff.
+			if len(summaries) >= thirdparty.MaxGitHubPRFilesListLength {
+				// If the PR is extremely large (>=3k files changed), Evergreen
+				// cannot retrieve all of the changed files from GitHub. Rather
+				// than partially populating the patch changes (which can cause
+				// bugs), it's preferable to just not show any patch changes at
+				// allfor such a large PR.
+				grip.Warning(message.Fields{
+					"message":     fmt.Sprintf("kim: GitHub PR is very large (>=%d files) and Evergreen cannot retrieve all files for it, refusing to set partial list of changed files for patch", thirdparty.MaxGitHubPRFilesListLength),
+					"owner":       patchDoc.GithubPatchData.BaseOwner,
+					"repo":        patchDoc.GithubPatchData.BaseRepo,
+					"pr_number":   patchDoc.GithubPatchData.PRNumber,
+					"num_files":   len(summaries),
+					"job":         j.ID(),
+					"base_repo":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+					"patch_id":    j.PatchID,
+					"intent_id":   j.IntentID,
+					"intent_type": j.IntentType,
+				})
+				return isMember, nil
+			}
+
+			grip.Info(message.Fields{
+				"message":   "kim: successfully got GitHub PR files instead of raw diff",
+				"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+				"pr_number": patchDoc.GithubPatchData.PRNumber,
+				"num_files": len(summaries),
+			})
 			patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 				ModuleName: "",
 				Githash:    patchDoc.Githash,
@@ -1414,7 +1451,8 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 		return ignoredVariants
 	}
 
-	// kim: NOTE: this uses the changed files, but won't retutnr
+	// kim: NOTE: this uses the changed files, but won't evaluate for ignore, so
+	// it'll basically run the tasks.
 	changedFiles := patchDoc.FilesChanged()
 	if len(changedFiles) == 0 {
 		return ignoredVariants
