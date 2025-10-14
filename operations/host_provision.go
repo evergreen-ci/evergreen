@@ -119,30 +119,22 @@ func hostProvision() cli.Command {
 }
 
 func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudProvider string) (*restmodel.APIHost, error) {
-	var ec2InstanceID string
-	var hostname string
+	ec2Metadata := &restmodel.APIHostIsUpOptions{}
 	if cloud.IsEC2InstanceID(hostID) {
-		ec2InstanceID = hostID
+		ec2Metadata.Hostname = hostID
 	} else if evergreen.IsEc2Provider(cloudProvider) {
 		fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 		var err error
 
-		ec2InstanceID, err = agentutil.GetEC2InstanceID(fetchEC2InfoCtx)
+		ec2Metadata, err = agentutil.GetEC2Metadata(fetchEC2InfoCtx)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "could not fetch EC2 instance ID dynamically",
-			"host_id":        hostID,
-			"cloud_provider": cloudProvider,
-		}))
-		hostname, err = agentutil.GetEC2Hostname(fetchEC2InfoCtx)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "could not fetch EC2 hostname dynamically",
+			"message":        "could not fetch EC2 metadata dynamically",
 			"host_id":        hostID,
 			"cloud_provider": cloudProvider,
 		}))
 	}
-
-	h, err := comm.PostHostIsUp(ctx, ec2InstanceID, hostname)
+	h, err := comm.PostHostIsUp(ctx, ec2Metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "posting that the host is up")
 	}

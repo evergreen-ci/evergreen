@@ -292,9 +292,14 @@ type APIOffboardUserResults struct {
 }
 
 type APIHostIsUpOptions struct {
-	HostID        string `json:"host_id"`
-	Hostname      string `json:"hostname,omitempty"`
-	EC2InstanceID string `json:"ec2_instance_id,omitempty"`
+	HostID        string    `json:"host_id"`
+	Hostname      string    `json:"hostname,omitempty"`
+	EC2InstanceID string    `json:"ec2_instance_id,omitempty"`
+	Zone          string    `json:"zone,omitempty"`
+	PublicIPv4    string    `json:"public_ipv4,omitempty"`
+	PrivateIPv4   string    `json:"private_ipv4,omitempty"`
+	IPv6          string    `json:"ipv6,omitempty"`
+	LaunchTime    time.Time `json:"launch_time,omitempty"`
 }
 
 // APIHostProvisioningOptions represents the script to provision a host.

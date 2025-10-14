@@ -335,7 +335,7 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmod
 		}
 	}
 
-	if err := h.SetDNSName(ctx, params.Hostname); err != nil {
+	if err := h.SetEC2Metadata(ctx, params); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "setting hostname").Error(),

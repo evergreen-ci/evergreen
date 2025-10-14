@@ -13,10 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
-	"github.com/robfig/cron"
-
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
@@ -26,12 +22,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -1330,10 +1330,10 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
-// SetDNSName updates the DNS name for a given host. If the dnsName is empty,
-// this will no-op and will not unset the existing DNS name.
-func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
-	if h.Host == dnsName || dnsName == "" {
+// SetEC2Metadata updates the EC2 metadata for a given host. If the hostname on the input
+// params is empty, this will no-op and will not unset the existing DNS name.
+func (h *Host) SetEC2Metadata(ctx context.Context, params model.APIHostIsUpOptions) error {
+	if h.Host == params.Hostname || params.Hostname == "" {
 		return nil
 	}
 
@@ -1344,14 +1344,26 @@ func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				DNSKey: dnsName,
+				DNSKey:        params.Hostname,
+				ZoneKey:       params.Zone,
+				StartTimeKey:  params.LaunchTime,
+				PublicIPv4Key: params.PublicIPv4,
+				IPv4Key:       params.PrivateIPv4,
+				IPKey:         params.IPv6,
 			},
 		},
 	); err != nil {
 		return err
 	}
 
-	h.Host = dnsName
+	h.Host = params.Hostname
+	h.Zone = params.Zone
+	h.StartTime = params.LaunchTime
+	h.PublicIPv4 = params.PublicIPv4
+	h.IPv4 = params.PrivateIPv4
+	h.IP = params.IPv6
+	// TODO fix
+	//h.Volumes = params.Volumes
 
 	return nil
 }
