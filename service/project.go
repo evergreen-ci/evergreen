@@ -13,11 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
-	projectId := gimlet.GetVars(r)["project_id"]
-	newUIProjectsLink := fmt.Sprintf("%s/project/%s/settings", uis.Settings.Ui.UIv2Url, projectId)
-	http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
-}
 
 // setRevision sets the latest revision in the Repository
 // database to the revision sent from the projects page.

@@ -27,26 +27,6 @@ type logData struct {
 	User gimlet.User
 }
 
-func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	executionStr := gimlet.GetVars(r)["execution"]
-	var execution int
-	var err error
-
-	if executionStr != "" {
-		execution, err = strconv.Atoi(executionStr)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
-			return
-		}
-	}
-	if projCtx.Task == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
-	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
-}
 
 // the task's most recent log messages
 const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit

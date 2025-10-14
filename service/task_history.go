@@ -63,19 +63,6 @@ type taskBlurb struct {
 	Failures []string                `json:"failures"`
 }
 
-// Serves the task history page itself.
-func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject(r.Context())
-
-	if err != nil || project == nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
-	// it is the most relevant.
-	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
-}
 
 func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
