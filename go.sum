@@ -417,6 +417,8 @@ github.com/kanopy-platform/kanopy-oidc-lib v0.1.0 h1:AVv1MqB5goXB0TJBQ4C0fjM7jRh
 github.com/kanopy-platform/kanopy-oidc-lib v0.1.0/go.mod h1:2MslZKpACq93y7SHOqa3e5A+G3yUMnEuyOI3/1G7w2A=
 github.com/kanopy-platform/kanopy-oidc-lib v0.1.1-0.20251013201128-c71aaee8ec3a h1:AHNzzOhpmLwAn77+d7o45ZkSFqeCEhj2mcLY0Yo8QaU=
 github.com/kanopy-platform/kanopy-oidc-lib v0.1.1-0.20251013201128-c71aaee8ec3a/go.mod h1:2MslZKpACq93y7SHOqa3e5A+G3yUMnEuyOI3/1G7w2A=
+github.com/kanopy-platform/kanopy-oidc-lib v0.1.1 h1:0GSNIjrecqHvp2guh+qYzxyvMCqC/tpTOBpDsbjQGZ0=
+github.com/kanopy-platform/kanopy-oidc-lib v0.1.1/go.mod h1:2MslZKpACq93y7SHOqa3e5A+G3yUMnEuyOI3/1G7w2A=
 github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 h1:iQTw/8FWTuc7uiaSepXwyf3o52HaUYcV+Tu66S3F5GA=
 github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
