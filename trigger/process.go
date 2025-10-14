@@ -213,7 +213,7 @@ func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *even
 			}
 			v, err := processor(ctx, args)
 			if err != nil {
-				catcher.Add(err)
+				catcher.Wrapf(err, "processing downstream project trigger for task '%s'", t.Id)
 				continue
 			}
 			if v != nil {
@@ -283,7 +283,7 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 			}
 			v, err := processor(ctx, args)
 			if err != nil {
-				catcher.Add(err)
+				catcher.Wrapf(err, "processing downstream project trigger for build '%s'", b.Id)
 				continue
 			}
 			if v != nil {
@@ -335,7 +335,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 				}
 				v, err := processor(ctx, args)
 				if err != nil {
-					catcher.Add(err)
+					catcher.Wrapf(err, "processing downstream project trigger for push of upstream commit '%s'", commit.GetID())
 					continue
 				}
 				if v != nil {
