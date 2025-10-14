@@ -51,7 +51,6 @@ type Config struct {
 type ResolverRoot interface {
 	AdminSettings() AdminSettingsResolver
 	Annotation() AnnotationResolver
-	AuthConfig() AuthConfigResolver
 	ContainerPool() ContainerPoolResolver
 	Distro() DistroResolver
 	Host() HostResolver
@@ -81,7 +80,6 @@ type ResolverRoot interface {
 	Version() VersionResolver
 	Volume() VolumeResolver
 	AdminSettingsInput() AdminSettingsInputResolver
-	AuthConfigInput() AuthConfigInputResolver
 	ContainerPoolInput() ContainerPoolInputResolver
 	DistroInput() DistroInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
@@ -282,7 +280,7 @@ type ComplexityRoot struct {
 		Kanopy                  func(childComplexity int) int
 		Multi                   func(childComplexity int) int
 		Naive                   func(childComplexity int) int
-		Oauth                   func(childComplexity int) int
+		OAuth                   func(childComplexity int) int
 		Okta                    func(childComplexity int) int
 		PreferredType           func(childComplexity int) int
 	}
@@ -2380,9 +2378,6 @@ type AdminSettingsResolver interface {
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
-type AuthConfigResolver interface {
-	Oauth(ctx context.Context, obj *model.APIAuthConfig) (*OAuthConfig, error)
-}
 type ContainerPoolResolver interface {
 	Port(ctx context.Context, obj *model.APIContainerPool) (int, error)
 }
@@ -2735,9 +2730,6 @@ type VolumeResolver interface {
 
 type AdminSettingsInputResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error
-}
-type AuthConfigInputResolver interface {
-	Oauth(ctx context.Context, obj *model.APIAuthConfig, data *OAuthConfigInput) error
 }
 type ContainerPoolInputResolver interface {
 	Port(ctx context.Context, obj *model.APIContainerPool, data int) error
@@ -3588,11 +3580,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AuthConfig.Naive(childComplexity), true
 	case "AuthConfig.oauth":
-		if e.complexity.AuthConfig.Oauth == nil {
+		if e.complexity.AuthConfig.OAuth == nil {
 			break
 		}
 
-		return e.complexity.AuthConfig.Oauth(childComplexity), true
+		return e.complexity.AuthConfig.OAuth(childComplexity), true
 	case "AuthConfig.okta":
 		if e.complexity.AuthConfig.Okta == nil {
 			break
@@ -21451,14 +21443,14 @@ func (ec *executionContext) _AuthConfig_oauth(ctx context.Context, field graphql
 		field,
 		ec.fieldContext_AuthConfig_oauth,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.AuthConfig().Oauth(ctx, obj)
+			return obj.OAuth, nil
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RequireAdmin == nil {
-					var zeroVal *OAuthConfig
+					var zeroVal *model.APIOAuthConfig
 					return zeroVal, errors.New("directive requireAdmin is not implemented")
 				}
 				return ec.directives.RequireAdmin(ctx, obj, directive0)
@@ -21467,7 +21459,7 @@ func (ec *executionContext) _AuthConfig_oauth(ctx context.Context, field graphql
 			next = directive1
 			return next
 		},
-		ec.marshalOOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOAuthConfig,
+		ec.marshalOOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig,
 		true,
 		false,
 	)
@@ -21477,8 +21469,8 @@ func (ec *executionContext) fieldContext_AuthConfig_oauth(_ context.Context, fie
 	fc = &graphql.FieldContext{
 		Object:     "AuthConfig",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "issuer":
@@ -41592,7 +41584,7 @@ func (ec *executionContext) fieldContext_NotifyConfig_bufferIntervalSeconds(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _OAuthConfig_issuer(ctx context.Context, field graphql.CollectedField, obj *OAuthConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _OAuthConfig_issuer(ctx context.Context, field graphql.CollectedField, obj *model.APIOAuthConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -41606,7 +41598,7 @@ func (ec *executionContext) _OAuthConfig_issuer(ctx context.Context, field graph
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RequireAdmin == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive requireAdmin is not implemented")
 				}
 				return ec.directives.RequireAdmin(ctx, obj, directive0)
@@ -41615,7 +41607,7 @@ func (ec *executionContext) _OAuthConfig_issuer(ctx context.Context, field graph
 			next = directive1
 			return next
 		},
-		ec.marshalNString2string,
+		ec.marshalNString2ᚖstring,
 		true,
 		true,
 	)
@@ -41634,7 +41626,7 @@ func (ec *executionContext) fieldContext_OAuthConfig_issuer(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _OAuthConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *OAuthConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _OAuthConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIOAuthConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -41648,7 +41640,7 @@ func (ec *executionContext) _OAuthConfig_clientId(ctx context.Context, field gra
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RequireAdmin == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive requireAdmin is not implemented")
 				}
 				return ec.directives.RequireAdmin(ctx, obj, directive0)
@@ -41657,7 +41649,7 @@ func (ec *executionContext) _OAuthConfig_clientId(ctx context.Context, field gra
 			next = directive1
 			return next
 		},
-		ec.marshalNString2string,
+		ec.marshalNString2ᚖstring,
 		true,
 		true,
 	)
@@ -41676,7 +41668,7 @@ func (ec *executionContext) fieldContext_OAuthConfig_clientId(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _OAuthConfig_connectorId(ctx context.Context, field graphql.CollectedField, obj *OAuthConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _OAuthConfig_connectorId(ctx context.Context, field graphql.CollectedField, obj *model.APIOAuthConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
@@ -41690,7 +41682,7 @@ func (ec *executionContext) _OAuthConfig_connectorId(ctx context.Context, field 
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RequireAdmin == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive requireAdmin is not implemented")
 				}
 				return ec.directives.RequireAdmin(ctx, obj, directive0)
@@ -41699,7 +41691,7 @@ func (ec *executionContext) _OAuthConfig_connectorId(ctx context.Context, field 
 			next = directive1
 			return next
 		},
-		ec.marshalNString2string,
+		ec.marshalNString2ᚖstring,
 		true,
 		true,
 	)
@@ -76011,12 +76003,12 @@ func (ec *executionContext) unmarshalInputAuthConfigInput(ctx context.Context, o
 		case "oauth":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oauth"))
 			directive0 := func(ctx context.Context) (any, error) {
-				return ec.unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOAuthConfigInput(ctx, v)
+				return ec.unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx, v)
 			}
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RedactSecrets == nil {
-					var zeroVal *OAuthConfigInput
+					var zeroVal *model.APIOAuthConfig
 					return zeroVal, errors.New("directive redactSecrets is not implemented")
 				}
 				return ec.directives.RedactSecrets(ctx, obj, directive0)
@@ -76026,12 +76018,12 @@ func (ec *executionContext) unmarshalInputAuthConfigInput(ctx context.Context, o
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(*OAuthConfigInput); ok {
-				if err = ec.resolvers.AuthConfigInput().Oauth(ctx, &it, data); err != nil {
-					return it, err
-				}
+			if data, ok := tmp.(*model.APIOAuthConfig); ok {
+				it.OAuth = data
+			} else if tmp == nil {
+				it.OAuth = nil
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/graphql.OAuthConfigInput`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIOAuthConfig`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "preferredType":
@@ -79789,8 +79781,8 @@ func (ec *executionContext) unmarshalInputNotifyConfigInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, obj any) (OAuthConfigInput, error) {
-	var it OAuthConfigInput
+func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, obj any) (model.APIOAuthConfig, error) {
+	var it model.APIOAuthConfig
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -79805,11 +79797,11 @@ func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, 
 		switch k {
 		case "issuer":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issuer"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RedactSecrets == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive redactSecrets is not implemented")
 				}
 				return ec.directives.RedactSecrets(ctx, obj, directive0)
@@ -79819,19 +79811,21 @@ func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, 
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(string); ok {
+			if data, ok := tmp.(*string); ok {
 				it.Issuer = data
+			} else if tmp == nil {
+				it.Issuer = nil
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "clientId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RedactSecrets == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive redactSecrets is not implemented")
 				}
 				return ec.directives.RedactSecrets(ctx, obj, directive0)
@@ -79841,19 +79835,21 @@ func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, 
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(string); ok {
+			if data, ok := tmp.(*string); ok {
 				it.ClientID = data
+			} else if tmp == nil {
+				it.ClientID = nil
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "connectorId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("connectorId"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
 
 			directive1 := func(ctx context.Context) (any, error) {
 				if ec.directives.RedactSecrets == nil {
-					var zeroVal string
+					var zeroVal *string
 					return zeroVal, errors.New("directive redactSecrets is not implemented")
 				}
 				return ec.directives.RedactSecrets(ctx, obj, directive0)
@@ -79863,10 +79859,12 @@ func (ec *executionContext) unmarshalInputOAuthConfigInput(ctx context.Context, 
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(string); ok {
+			if data, ok := tmp.(*string); ok {
 				it.ConnectorID = data
+			} else if tmp == nil {
+				it.ConnectorID = nil
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		}
@@ -86727,38 +86725,7 @@ func (ec *executionContext) _AuthConfig(ctx context.Context, sel ast.SelectionSe
 		case "kanopy":
 			out.Values[i] = ec._AuthConfig_kanopy(ctx, field, obj)
 		case "oauth":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._AuthConfig_oauth(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._AuthConfig_oauth(ctx, field, obj)
 		case "preferredType":
 			out.Values[i] = ec._AuthConfig_preferredType(ctx, field, obj)
 		case "backgroundReauthMinutes":
@@ -93221,7 +93188,7 @@ func (ec *executionContext) _NotifyConfig(ctx context.Context, sel ast.Selection
 
 var oAuthConfigImplementors = []string{"OAuthConfig"}
 
-func (ec *executionContext) _OAuthConfig(ctx context.Context, sel ast.SelectionSet, obj *OAuthConfig) graphql.Marshaler {
+func (ec *executionContext) _OAuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIOAuthConfig) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, oAuthConfigImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -114044,14 +114011,14 @@ func (ec *executionContext) unmarshalONotifyConfigInput2ᚖgithubᚗcomᚋevergr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOAuthConfig(ctx context.Context, sel ast.SelectionSet, v *OAuthConfig) graphql.Marshaler {
+func (ec *executionContext) marshalOOAuthConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIOAuthConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._OAuthConfig(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOAuthConfigInput(ctx context.Context, v any) (*OAuthConfigInput, error) {
+func (ec *executionContext) unmarshalOOAuthConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOAuthConfig(ctx context.Context, v any) (*model.APIOAuthConfig, error) {
 	if v == nil {
 		return nil, nil
 	}

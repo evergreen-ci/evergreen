@@ -324,18 +324,6 @@ type NewDistroPayload struct {
 	NewDistroID string `json:"newDistroId"`
 }
 
-type OAuthConfig struct {
-	Issuer      string `json:"issuer"`
-	ClientID    string `json:"clientId"`
-	ConnectorID string `json:"connectorId"`
-}
-
-type OAuthConfigInput struct {
-	Issuer      string `json:"issuer"`
-	ClientID    string `json:"clientId"`
-	ConnectorID string `json:"connectorId"`
-}
-
 // PatchConfigure is the input to the schedulePatch mutation.
 // It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 type PatchConfigure struct {
