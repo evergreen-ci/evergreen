@@ -229,8 +229,6 @@ github.com/evergreen-ci/lru v0.0.0-20250224223041-c0d64dfbee1d h1:MuXYpCV887NYLi
 github.com/evergreen-ci/lru v0.0.0-20250224223041-c0d64dfbee1d/go.mod h1:GkF2zgx62MGjwUKyQOUHSJ5KRekHh0K3TP/fP35cfqM=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
-github.com/evergreen-ci/pail v0.0.0-20250903180955-74649b5e3818 h1:XMmCn2pVVc5Kvds72xYy8VFQmFHm+cFtfo67P93cFoM=
-github.com/evergreen-ci/pail v0.0.0-20250903180955-74649b5e3818/go.mod h1:dPgkhi/PFE8ww+Cbs/q74sJDc/oxoBNUaoUqOZIFScc=
 github.com/evergreen-ci/pail v0.0.0-20251015145110-b0fd53282d7d h1:HgpQsvOSVzDKkccvbcCJpYPJIUUUOvAKxu/sbvnklhQ=
 github.com/evergreen-ci/pail v0.0.0-20251015145110-b0fd53282d7d/go.mod h1:dPgkhi/PFE8ww+Cbs/q74sJDc/oxoBNUaoUqOZIFScc=
 github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1 h1:KkCHAMVyiM3/JHccjC9tAXE0KM80p19hlXJhaiggAdQ=
