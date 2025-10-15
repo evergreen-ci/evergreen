@@ -1458,11 +1458,12 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 // only see at most 3000 of them.
 const MaxGitHubPRFilesListLength = 3000
 
-// GetGitHubPullRequestFiles gets the full list of the changed files for the
-// given pull request. This can get at most 3000 files changed, which is more
-// than GetGithubPullRequestDiff (which only works for up to300 files). The
-// GitHub API is limited so it cannot return all files if there are more than
-// 3000 changed files.
+// GetGitHubPullRequestFiles gets the list of the changed files for the given
+// pull request. This can get at most 3000 changed files. If the pull request
+// changes more than 3000 files, the GitHub API is limited so it cannot return
+// the files beyond those first 3000. If it hits the 3000 limit, it'll return
+// the first 3000 files and no error; callers are expected to handle that limit
+// appropriately.
 func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, error) {
 	owner := gh.BaseOwner
 	repo := gh.BaseRepo
@@ -1482,62 +1483,45 @@ func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	page := 1
-	var summaries []Summary
-	// By default, return the most files allowed per request (100) to reduce API
-	// calls.
+	// Return the most files possible per request (100) to reduce API calls.
 	const maxFilesPerPage = 100
-	// kim: NOTE: this similar limitations as GetGithubPullRequestDiff because
-	// it stops returning results at the 3000th file changed (page=30,
-	// per_page=100). Note that the GitHub UI also stops at the 3000th file.
-	// However, for the sake of this bug, 3k files is potentially enough, and
-	// any rare enormous changes can just over-test a little with a warning.
-	// Official GitHub answer is to use git diff for enormous changes: https://stackoverflow.com/a/14960810
 	const maxNumRequestsUntilNoFiles = MaxGitHubPRFilesListLength / maxFilesPerPage
+
+	page := 1
+	var allSummaries []Summary
 	for range maxNumRequestsUntilNoFiles {
 		opts := &github.ListOptions{
 			PerPage: maxFilesPerPage,
 			Page:    page,
 		}
 
-		files, resp, err := githubClient.PullRequests.ListFiles(ctx, owner, repo, gh.PRNumber, opts)
-		if resp != nil {
-			_ = resp.Body.Close()
-			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		}
+		summaries, err := getPullRequestFileSummaries(ctx, githubClient, gh, opts)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting page %d of pull request files", opts.Page)
+			return nil, err
 		}
-		if len(files) == 0 {
-			grip.Info(message.Fields{
-				"message":   "kim: finished searching for PR files",
-				"num_files": len(summaries),
-				"owner":     gh.BaseOwner,
-				"repo":      gh.BaseRepo,
-				"pr_num":    gh.PRNumber,
-				"page":      page,
-			})
+		if len(summaries) == 0 {
 			// No more files or this is the last page of files.
 			break
 		}
-		summaries = append(summaries, getPatchSummariesFromCommitFiles(files)...)
 
-		grip.Info(message.Fields{
-			"message":       "kim: got one page of PR files",
-			"num_files":     len(files),
-			"num_summaries": len(summaries),
-			"first_file":    files[0].GetFilename(),
-			"last_file":     files[len(files)-1].GetFilename(),
-			"owner":         gh.BaseOwner,
-			"repo":          gh.BaseRepo,
-			"pr_num":        gh.PRNumber,
-			"page":          page,
-		})
-
+		allSummaries = append(allSummaries, summaries...)
 		page++
 	}
 
-	return summaries, nil
+	return allSummaries, nil
+}
+
+func getPullRequestFileSummaries(ctx context.Context, ghClient *githubapp.GitHubClient, gh GithubPatch, opts *github.ListOptions) ([]Summary, error) {
+	files, resp, err := ghClient.PullRequests.ListFiles(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting page %d of pull request files", opts.Page)
+	}
+
+	return getPatchSummariesFromCommitFiles(files), nil
 }
 
 func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {

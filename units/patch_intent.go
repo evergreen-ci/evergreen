@@ -1017,7 +1017,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 				// bugs), it's preferable to just not show any patch changes at
 				// allfor such a large PR.
 				grip.Warning(message.Fields{
-					"message":     fmt.Sprintf("kim: GitHub PR is very large (>=%d files) and Evergreen cannot retrieve all files for it, refusing to set partial list of changed files for patch", thirdparty.MaxGitHubPRFilesListLength),
+					"message":     fmt.Sprintf("GitHub PR is very large (>=%d files) and Evergreen cannot retrieve all files for it, refusing to set partial list of changed files for patch", thirdparty.MaxGitHubPRFilesListLength),
 					"owner":       patchDoc.GithubPatchData.BaseOwner,
 					"repo":        patchDoc.GithubPatchData.BaseRepo,
 					"pr_number":   patchDoc.GithubPatchData.PRNumber,
@@ -1455,6 +1455,10 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 	// it'll basically run the tasks.
 	changedFiles := patchDoc.FilesChanged()
 	if len(changedFiles) == 0 {
+		// The changed files might be missing if either the patch has no changes
+		// or the changed files can't be fetched from GitHub (e.g. due to the
+		// diff being too large). If the changed files can't be retrieved, be on
+		// the conservative side and don't filter out any variants.
 		return ignoredVariants
 	}
 
