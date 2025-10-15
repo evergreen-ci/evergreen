@@ -159,9 +159,6 @@ func FindOneProjectVars(ctx context.Context, projectId string) (*ProjectVars, er
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
-	defer cancel()
-
 	projectVarsFromPS, err := projectVars.findParameterStore(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project vars in Parameter Store")
