@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -97,19 +98,43 @@ func getEC2IPv6(ctx context.Context) (string, error) {
 	return ipv6, nil
 }
 
-// getEC2LaunchTime returns the instance launch time from the metadata endpoint.
-func getEC2LaunchTime(ctx context.Context) (time.Time, error) {
-	return getEC2Metadata(ctx, "instance-launch-time", func(resp *http.Response) (time.Time, error) {
+// getEC2BlockDeviceMappings returns all block device mappings from the metadata endpoint.
+func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, error) {
+	deviceList, err := getEC2Metadata(ctx, "block-device-mapping/", func(resp *http.Response) (string, error) {
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return time.Time{}, errors.Wrap(err, "reading response body")
+			return "", errors.Wrap(err, "reading response body")
 		}
-		t, err := time.Parse(time.RFC3339, string(b))
-		if err != nil {
-			return time.Time{}, errors.Wrap(err, "parsing launch time")
-		}
-		return t, nil
+		return string(b), nil
 	})
+	if err != nil {
+		return nil, nil
+	}
+
+	deviceNames := strings.Fields(deviceList)
+	if len(deviceNames) == 0 {
+		return nil, nil
+	}
+
+	var volumes []host.VolumeAttachment
+	for _, deviceName := range deviceNames {
+		volumeID, err := getEC2Metadata(ctx, "block-device-mapping/"+deviceName, func(resp *http.Response) (string, error) {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return "", errors.Wrap(err, "reading response body")
+			}
+			return strings.TrimSpace(string(b)), nil
+		})
+		if err != nil {
+			continue
+		}
+		volumes = append(volumes, host.VolumeAttachment{
+			VolumeID:   volumeID,
+			DeviceName: deviceName,
+		})
+	}
+
+	return volumes, nil
 }
 
 // GetEC2Metadata fetches necessary EC2 metadata needed for the needed for
@@ -133,10 +158,6 @@ func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 		metadata.Zone = zone
 	}
 
-	if launchTime, err := getEC2LaunchTime(ctx); err == nil {
-		metadata.LaunchTime = launchTime
-	}
-
 	if publicIPv4, err := getEC2PublicIPv4(ctx); err == nil {
 		metadata.PublicIPv4 = publicIPv4
 	}
@@ -144,10 +165,15 @@ func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	if privateIPv4, err := getEC2PrivateIPv4(ctx); err == nil {
 		metadata.PrivateIPv4 = privateIPv4
 	}
-
 	if ipv6, err := getEC2IPv6(ctx); err == nil {
 		metadata.IPv6 = ipv6
 	}
+
+	if volumes, err := getEC2BlockDeviceMappings(ctx); err == nil {
+		metadata.Volumes = volumes
+	}
+
+	metadata.LaunchTime = time.Now()
 
 	return metadata, nil
 }

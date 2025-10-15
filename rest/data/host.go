@@ -314,17 +314,17 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 
 // PostHostIsUp indicates to the app server that a host is up.
 func PostHostIsUp(ctx context.Context, env evergreen.Environment, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
-	h, err := host.FindOneByIdOrTag(ctx, params.HostID)
+	h, err := host.FindOneByIdOrTag(ctx, params.EC2InstanceID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "finding host '%s'", params.HostID).Error(),
+			Message:    errors.Wrapf(err, "finding host '%s'", params.EC2InstanceID).Error(),
 		}
 	}
 	if h == nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host '%s' not found", params.HostID),
+			Message:    fmt.Sprintf("host '%s' not found", params.EC2InstanceID),
 		}
 	}
 

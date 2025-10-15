@@ -307,13 +307,14 @@ func (opts *DockerOptions) Validate() error {
 
 // HostMetadataOptions are options related to the ec2 instance's metadata.
 type HostMetadataOptions struct {
-	Hostname      string    `json:"hostname,omitempty"`
-	EC2InstanceID string    `json:"ec2_instance_id,omitempty"`
-	Zone          string    `json:"zone,omitempty"`
-	PublicIPv4    string    `json:"public_ipv4,omitempty"`
-	PrivateIPv4   string    `json:"private_ipv4,omitempty"`
-	IPv6          string    `json:"ipv6,omitempty"`
-	LaunchTime    time.Time `json:"launch_time,omitempty"`
+	Hostname      string             `json:"hostname,omitempty"`
+	EC2InstanceID string             `json:"ec2_instance_id,omitempty"`
+	Zone          string             `json:"zone,omitempty"`
+	PublicIPv4    string             `json:"public_ipv4,omitempty"`
+	PrivateIPv4   string             `json:"private_ipv4,omitempty"`
+	IPv6          string             `json:"ipv6,omitempty"`
+	LaunchTime    time.Time          `json:"launch_time,omitempty"`
+	Volumes       []VolumeAttachment `json:"volumes,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new spawn host should be set up.
@@ -1360,6 +1361,7 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 				PublicIPv4Key: params.PublicIPv4,
 				IPv4Key:       params.PrivateIPv4,
 				IPKey:         params.IPv6,
+				VolumesKey:    params.Volumes,
 			},
 		},
 	); err != nil {
@@ -1372,8 +1374,7 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 	h.PublicIPv4 = params.PublicIPv4
 	h.IPv4 = params.PrivateIPv4
 	h.IP = params.IPv6
-	// TODO fix
-	//h.Volumes = params.Volumes
+	h.Volumes = params.Volumes
 
 	return nil
 }
