@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -119,7 +120,7 @@ func hostProvision() cli.Command {
 }
 
 func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudProvider string) (*restmodel.APIHost, error) {
-	ec2Metadata := &restmodel.APIHostIsUpOptions{}
+	ec2Metadata := host.HostMetadataOptions{}
 	if cloud.IsEC2InstanceID(hostID) {
 		ec2Metadata.Hostname = hostID
 	} else if evergreen.IsEc2Provider(cloudProvider) {

@@ -23,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -304,6 +303,18 @@ func (opts *DockerOptions) Validate() error {
 	catcher.ErrorfWhen(opts.Image == "", "image must not be empty")
 
 	return catcher.Resolve()
+}
+
+// HostMetadataOptions are options related to the ec2 instance's metadata.
+type HostMetadataOptions struct {
+	HostID        string    `json:"host_id"`
+	Hostname      string    `json:"hostname,omitempty"`
+	EC2InstanceID string    `json:"ec2_instance_id,omitempty"`
+	Zone          string    `json:"zone,omitempty"`
+	PublicIPv4    string    `json:"public_ipv4,omitempty"`
+	PrivateIPv4   string    `json:"private_ipv4,omitempty"`
+	IPv6          string    `json:"ipv6,omitempty"`
+	LaunchTime    time.Time `json:"launch_time,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new spawn host should be set up.
@@ -1332,7 +1343,7 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 
 // SetEC2Metadata updates the EC2 metadata for a given host. If the hostname on the input
 // params is empty, this will no-op and will not unset the existing DNS name.
-func (h *Host) SetEC2Metadata(ctx context.Context, params model.APIHostIsUpOptions) error {
+func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
 	if h.Host == params.Hostname || params.Hostname == "" {
 		return nil
 	}

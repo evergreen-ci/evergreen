@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -114,18 +114,18 @@ func getEC2LaunchTime(ctx context.Context) (time.Time, error) {
 
 // GetEC2Metadata fetches necessary EC2 metadata needed for the needed for
 // the /hosts/{host_id}/is_up endpoint.
-func GetEC2Metadata(ctx context.Context) (*model.APIHostIsUpOptions, error) {
-	metadata := &model.APIHostIsUpOptions{}
+func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
+	metadata := host.HostMetadataOptions{}
 
 	instanceID, err := getEC2InstanceID(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching EC2 instance ID")
+		return metadata, errors.Wrap(err, "fetching EC2 instance ID")
 	}
 	metadata.EC2InstanceID = instanceID
 
 	hostname, err := getEC2Hostname(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching EC2 hostname")
+		return metadata, errors.Wrap(err, "fetching EC2 hostname")
 	}
 	metadata.Hostname = hostname
 

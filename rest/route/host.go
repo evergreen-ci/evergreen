@@ -423,7 +423,7 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 // POST /hosts/{host_id}/is_up
 
 type hostIsUpPostHandler struct {
-	params model.APIHostIsUpOptions
+	params host.HostMetadataOptions
 	env    evergreen.Environment
 }
 
