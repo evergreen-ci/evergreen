@@ -348,14 +348,13 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 				info, err := di.Info()
 				if err != nil {
-					return err
+					return errors.Wrap(err, "getting file info while walking glob path")
 				}
 
 				addUniqueFile(path, info)
 
 				return nil
 			}
-			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
 		} else if strings.Contains(filematch, "**") {
 			globSuffix := filematch[2:]
 			walk = func(path string, di fs.DirEntry, err error) error {
@@ -372,14 +371,13 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 					info, err := di.Info()
 					if err != nil {
-						return err
+						return errors.Wrap(err, "getting file info while walking partial glob path")
 					}
 
 					addUniqueFile(path, info)
 				}
 				return nil
 			}
-			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
 		} else {
 			walk = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
@@ -401,7 +399,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 						info, err := di.Info()
 						if err != nil {
-							return err
+							return errors.Wrap(err, "getting file info while walking strict path")
 						}
 
 						addUniqueFile(path, info)
@@ -409,8 +407,8 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 				}
 				return nil
 			}
-			catcher.Wrapf(filepath.WalkDir(rootPath, walk), "matching files included in filter '%s' for patch '%s'", filematch, rootPath)
 		}
+		catcher.Wrapf(filepath.WalkDir(rootPath, walk), "matching files included in filter '%s' for path '%s'", filematch, rootPath)
 	}
 
 	return archiveContents, totalSize, catcher.Resolve()
