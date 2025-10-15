@@ -1140,7 +1140,6 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			instanceID := generateFakeEC2InstanceID()
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        h.Id,
 				Hostname:      "hostname",
 				EC2InstanceID: instanceID,
 			}
@@ -1172,7 +1171,6 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			instanceID := generateFakeEC2InstanceID()
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        h.Id,
 				Hostname:      "hostname",
 				EC2InstanceID: instanceID,
 			}
@@ -1205,7 +1203,6 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        instanceID,
 				Hostname:      "hostname",
 				EC2InstanceID: instanceID,
 			}
@@ -1235,7 +1232,6 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        instanceID,
 				EC2InstanceID: instanceID,
 			}
 
@@ -1264,9 +1260,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = host.HostMetadataOptions{
-				HostID: instanceID,
-			}
+			rh.params = host.HostMetadataOptions{}
 
 			resp := rh.Run(ctx)
 
@@ -1294,9 +1288,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = host.HostMetadataOptions{
-				HostID: instanceID,
-			}
+			rh.params = host.HostMetadataOptions{}
 
 			resp := rh.Run(ctx)
 

@@ -3,7 +3,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"github.com/mongodb/grip"
 	"io"
 	"net/http"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -152,7 +152,7 @@ func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	metadata.EC2InstanceID = instanceID
 
 	hostname, err := getEC2Hostname(ctx)
-	catcher.Wrapf(err, "fetching EC2 instance ID")
+	catcher.Wrapf(err, "fetching EC2 host name")
 	metadata.Hostname = hostname
 
 	zone, err := getEC2AvailabilityZone(ctx)
@@ -160,15 +160,15 @@ func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	metadata.Zone = zone
 
 	publicIPv4, err := getEC2PublicIPv4(ctx)
-	catcher.Wrapf(err, "fetching EC2 availability zone")
+	catcher.Wrapf(err, "fetching EC2 public ipv4")
 	metadata.PublicIPv4 = publicIPv4
 
 	privateIPv4, err := getEC2PrivateIPv4(ctx)
-	catcher.Wrapf(err, "fetching EC2 availability zone")
+	catcher.Wrapf(err, "fetching EC2 private ipv4")
 	metadata.PrivateIPv4 = privateIPv4
 
 	ipv6, err := getEC2IPv6(ctx)
-	catcher.Wrapf(err, "fetching EC2 availability zone")
+	catcher.Wrapf(err, "fetching EC2 ipv6")
 	metadata.IPv6 = ipv6
 
 	volumes, err := getEC2BlockDeviceMappings(ctx)

@@ -1375,28 +1375,6 @@ func findStartingNonTaskHosts(ctx context.Context, limit int) ([]HostsByClient, 
 	return results, nil
 }
 
-func findStartingTaskHosts(ctx context.Context, limit int) ([]HostsByClient, error) {
-	pipeline := hostsByClientPipeline([]bson.M{
-		{
-			"$match": bson.M{
-				StatusKey:      evergreen.HostStarting,
-				ProvisionedKey: false,
-				StartedByKey:   evergreen.User,
-			},
-		},
-	}, limit)
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating starting task hosts by client options")
-	}
-	results := []HostsByClient{}
-	if err = cur.All(ctx, &results); err != nil {
-		return nil, errors.Wrap(err, "decoding starting hosts by client options")
-	}
-
-	return results, nil
-}
-
 func hostsByClientPipeline(pipeline []bson.M, limit int) []bson.M {
 	return append(pipeline, []bson.M{
 		{
