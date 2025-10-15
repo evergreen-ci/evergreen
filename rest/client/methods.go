@@ -1400,6 +1400,7 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetad
 		method: http.MethodPost,
 		path:   fmt.Sprintf("/hosts/%s/is_up", c.hostID),
 	}
+	opts.HostID = c.hostID
 	r, err := c.createRequest(info, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
