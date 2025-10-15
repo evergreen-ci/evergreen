@@ -159,8 +159,7 @@ func FindOneProjectVars(ctx context.Context, projectId string) (*ProjectVars, er
 		return nil, err
 	}
 
-	// Ignore if the context has been cancelled because ABC?
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultParameterStoreAccessTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	projectVarsFromPS, err := projectVars.findParameterStore(ctx)
