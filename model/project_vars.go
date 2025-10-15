@@ -678,7 +678,8 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	projectVars.AdminOnlyVars = map[string]bool{}
 
 	// Ignore the context cancellation to ensure that the parameters are
-	// deleted from Parameter Store.
+	// deleted from Parameter Store and cleared from the database, this should be as
+	// 'atomic' as possible.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultParameterStoreAccessTimeout)
 	defer cancel()
 	if _, err := projectVars.upsertParameterStore(ctx); err != nil {
