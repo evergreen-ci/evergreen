@@ -988,68 +988,11 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
-
-		// kim: NOTE: in this case, the GH patch won't have a diff visible in
-		// Evergreen, but the patch can still run because it clones from GH.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
 			// Rather than getting the entire diff, fall back to trying to get
-			// the list of changed files.
-			grip.Info(message.Fields{
-				"message":   "kim: GitHub PR diff is too large, falling back to fetching PR files instead of raw diff",
-				"owner":     patchDoc.GithubPatchData.BaseOwner,
-				"repo":      patchDoc.GithubPatchData.BaseRepo,
-				"pr_number": patchDoc.GithubPatchData.PRNumber,
-			})
-			summaries, err = thirdparty.GetGitHubPullRequestFiles(ctx, patchDoc.GithubPatchData)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":   "kim: failed to get GitHub PR files with fallback method",
-					"owner":     patchDoc.GithubPatchData.BaseOwner,
-					"repo":      patchDoc.GithubPatchData.BaseRepo,
-					"pr_number": patchDoc.GithubPatchData.PRNumber,
-				}))
-				return isMember, errors.Wrap(err, "getting PR files for large diff")
-			}
-			if len(summaries) >= thirdparty.MaxGitHubPRFilesListLength {
-				// If the PR is extremely large (>=3k files changed), Evergreen
-				// cannot retrieve all of the changed files from GitHub. Rather
-				// than partially populating the patch changes (which can cause
-				// bugs), it's preferable to just not show any patch changes at
-				// allfor such a large PR.
-				grip.Warning(message.Fields{
-					"message":     fmt.Sprintf("GitHub PR is very large (>=%d files) and Evergreen cannot retrieve all files for it, refusing to set partial list of changed files for patch", thirdparty.MaxGitHubPRFilesListLength),
-					"owner":       patchDoc.GithubPatchData.BaseOwner,
-					"repo":        patchDoc.GithubPatchData.BaseRepo,
-					"pr_number":   patchDoc.GithubPatchData.PRNumber,
-					"num_files":   len(summaries),
-					"job":         j.ID(),
-					"base_repo":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
-					"patch_id":    j.PatchID,
-					"intent_id":   j.IntentID,
-					"intent_type": j.IntentType,
-				})
-				return isMember, nil
-			}
-
-			grip.Info(message.Fields{
-				"message":   "kim: successfully got GitHub PR files instead of raw diff",
-				"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-				"pr_number": patchDoc.GithubPatchData.PRNumber,
-				"num_files": len(summaries),
-			})
-			patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
-				ModuleName: "",
-				Githash:    patchDoc.Githash,
-				PatchSet: patch.PatchSet{
-					// This is intentionally not setting the patch file ID
-					// because the PR is extremely long, so writing those files
-					// to GridFS could be slow/inefficient.
-					PatchFileId: "",
-					Summary:     summaries,
-				},
-			})
-
-			return isMember, nil
+			// just the list of changed files. Having the names of changed files
+			// is important for path filtering.
+			return isMember, j.getChangedFilesForLargePR(ctx, patchDoc)
 		}
 
 		return isMember, err
@@ -1070,6 +1013,50 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	}
 
 	return isMember, nil
+}
+
+// getChangedFilesForLargePR attempts to populate the patch with the list of
+// changed files when the PR contains too many changed files to get the full
+// diff. If successful, it will only populate the names of changed files for the
+// patch and will not populate the full file diffs.
+func (j *patchIntentProcessor) getChangedFilesForLargePR(ctx context.Context, patchDoc *patch.Patch) error {
+	summaries, err := thirdparty.GetGitHubPullRequestFiles(ctx, patchDoc.GithubPatchData)
+	if err != nil {
+		return errors.Wrap(err, "getting PR files for large diff")
+	}
+	if len(summaries) >= thirdparty.MaxGitHubPRFilesListLength {
+		// If the PR is extremely large (>=3k files changed), Evergreen cannot
+		// retrieve all of the changed files from GitHub. Rather than partially
+		// populating the patch files (which can cause bugs), it's preferable to
+		// just not show any patch changes at all for such a large PR.
+		grip.Warning(message.Fields{
+			"message":     fmt.Sprintf("GitHub PR is very large (>=%d files) and Evergreen cannot retrieve all of its changed files, refusing to set partial list of changed files for the patch", thirdparty.MaxGitHubPRFilesListLength),
+			"owner":       patchDoc.GithubPatchData.BaseOwner,
+			"repo":        patchDoc.GithubPatchData.BaseRepo,
+			"pr_number":   patchDoc.GithubPatchData.PRNumber,
+			"num_files":   len(summaries),
+			"job":         j.ID(),
+			"base_repo":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"patch_id":    j.PatchID,
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+		})
+		return nil
+	}
+
+	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+		ModuleName: "",
+		Githash:    patchDoc.Githash,
+		PatchSet: patch.PatchSet{
+			// This is intentionally not setting the patch file ID because the
+			// GitHub API for listing PR files does not provide enough
+			// information to create a diff.
+			PatchFileId: "",
+			Summary:     summaries,
+		},
+	})
+
+	return nil
 }
 
 func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
@@ -1451,14 +1438,12 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 		return ignoredVariants
 	}
 
-	// kim: NOTE: this uses the changed files, but won't evaluate for ignore, so
-	// it'll basically run the tasks.
 	changedFiles := patchDoc.FilesChanged()
 	if len(changedFiles) == 0 {
 		// The changed files might be missing if either the patch has no changes
-		// or the changed files can't be fetched from GitHub (e.g. due to the
-		// diff being too large). If the changed files can't be retrieved, be on
-		// the conservative side and don't filter out any variants.
+		// or the changes are too large to load from GitHub. If the changed
+		// files can't be retrieved, be on the conservative side and don't
+		// filter out any variants.
 		return ignoredVariants
 	}
 
