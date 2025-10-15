@@ -348,7 +348,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 				info, err := di.Info()
 				if err != nil {
-					return errors.Wrap(err, "getting file info while walking glob path")
+					return errors.WithStack(errors.Wrap(err, "getting file info while walking glob path"))
 				}
 
 				addUniqueFile(path, info)
@@ -371,7 +371,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 					info, err := di.Info()
 					if err != nil {
-						return errors.Wrap(err, "getting file info while walking partial glob path")
+						return errors.WithStack(errors.Wrap(err, "getting file info while walking partial glob path"))
 					}
 
 					addUniqueFile(path, info)
@@ -399,7 +399,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 						info, err := di.Info()
 						if err != nil {
-							return errors.Wrap(err, "getting file info while walking strict path")
+							return errors.WithStack(errors.Wrap(err, "getting file info while walking strict path"))
 						}
 
 						addUniqueFile(path, info)
