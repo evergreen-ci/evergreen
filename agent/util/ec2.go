@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"github.com/mongodb/grip"
 	"io"
 	"net/http"
 	"strings"
@@ -118,7 +119,10 @@ func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, er
 
 	var volumes []host.VolumeAttachment
 	for _, deviceName := range deviceNames {
-		volumeID, err := getEC2Metadata(ctx, "block-device-mapping/"+deviceName, func(resp *http.Response) (string, error) {
+		if strings.HasPrefix(deviceName, "ephemeral") {
+			continue
+		}
+		volumeID, err := getEC2Metadata(ctx, fmt.Sprintf("block-device-mapping/%s", deviceName), func(resp *http.Response) (string, error) {
 			b, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return "", errors.Wrap(err, "reading response body")
@@ -142,38 +146,40 @@ func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, er
 func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	metadata := host.HostMetadataOptions{}
 
+	catcher := grip.NewBasicCatcher()
 	instanceID, err := getEC2InstanceID(ctx)
-	if err != nil {
-		return metadata, errors.Wrap(err, "fetching EC2 instance ID")
-	}
+	catcher.Wrapf(err, "fetching EC2 instance ID")
 	metadata.EC2InstanceID = instanceID
 
 	hostname, err := getEC2Hostname(ctx)
-	if err != nil {
-		return metadata, errors.Wrap(err, "fetching EC2 hostname")
-	}
+	catcher.Wrapf(err, "fetching EC2 instance ID")
 	metadata.Hostname = hostname
 
-	if zone, err := getEC2AvailabilityZone(ctx); err == nil {
-		metadata.Zone = zone
-	}
+	zone, err := getEC2AvailabilityZone(ctx)
+	catcher.Wrapf(err, "fetching EC2 availability zone")
+	metadata.Zone = zone
 
-	if publicIPv4, err := getEC2PublicIPv4(ctx); err == nil {
-		metadata.PublicIPv4 = publicIPv4
-	}
+	publicIPv4, err := getEC2PublicIPv4(ctx)
+	catcher.Wrapf(err, "fetching EC2 availability zone")
+	metadata.PublicIPv4 = publicIPv4
 
-	if privateIPv4, err := getEC2PrivateIPv4(ctx); err == nil {
-		metadata.PrivateIPv4 = privateIPv4
-	}
-	if ipv6, err := getEC2IPv6(ctx); err == nil {
-		metadata.IPv6 = ipv6
-	}
+	privateIPv4, err := getEC2PrivateIPv4(ctx)
+	catcher.Wrapf(err, "fetching EC2 availability zone")
+	metadata.PrivateIPv4 = privateIPv4
 
-	if volumes, err := getEC2BlockDeviceMappings(ctx); err == nil {
-		metadata.Volumes = volumes
-	}
+	ipv6, err := getEC2IPv6(ctx)
+	catcher.Wrapf(err, "fetching EC2 availability zone")
+	metadata.IPv6 = ipv6
+
+	volumes, err := getEC2BlockDeviceMappings(ctx)
+	catcher.Wrapf(err, "fetching EC2 volume attachments")
+	metadata.Volumes = volumes
 
 	metadata.LaunchTime = time.Now()
+
+	if catcher.HasErrors() {
+		return metadata, catcher.Resolve()
+	}
 
 	return metadata, nil
 }

@@ -18,8 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -443,10 +441,6 @@ func (rh *hostIsUpPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (rh *hostIsUpPostHandler) Run(ctx context.Context) gimlet.Responder {
-	grip.Info(message.Fields{
-		"message": "MALIK1 host is up",
-		"params":  rh.params,
-	})
 	apiHost, err := data.PostHostIsUp(ctx, rh.env, rh.params)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
