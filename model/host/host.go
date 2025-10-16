@@ -13,10 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
-	"github.com/robfig/cron"
-
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
@@ -26,12 +22,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -304,6 +303,19 @@ func (opts *DockerOptions) Validate() error {
 	catcher.ErrorfWhen(opts.Image == "", "image must not be empty")
 
 	return catcher.Resolve()
+}
+
+// HostMetadataOptions are options related to the ec2 instance's metadata.
+type HostMetadataOptions struct {
+	HostID        string             `bson:"host_id" json:"host_id"`
+	Hostname      string             `json:"hostname,omitempty"`
+	EC2InstanceID string             `json:"ec2_instance_id,omitempty"`
+	Zone          string             `json:"zone,omitempty"`
+	PublicIPv4    string             `json:"public_ipv4,omitempty"`
+	PrivateIPv4   string             `json:"private_ipv4,omitempty"`
+	IPv6          string             `json:"ipv6,omitempty"`
+	LaunchTime    time.Time          `json:"launch_time,omitzero"`
+	Volumes       []VolumeAttachment `json:"volumes,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new spawn host should be set up.
@@ -1330,28 +1342,91 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
-// SetDNSName updates the DNS name for a given host. If the dnsName is empty,
-// this will no-op and will not unset the existing DNS name.
-func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
-	if h.Host == dnsName || dnsName == "" {
+func buildEC2MetadataUpdate(hostname, zone, publicIPv4, privateIPv4, ipv6 string, launchTime time.Time, volumes []VolumeAttachment) bson.M {
+	setFields := bson.M{}
+
+	if hostname != "" {
+		setFields[DNSKey] = hostname
+	}
+	if zone != "" {
+		setFields[ZoneKey] = zone
+	}
+	if !launchTime.IsZero() {
+		setFields[StartTimeKey] = launchTime
+	}
+	if publicIPv4 != "" {
+		setFields[PublicIPv4Key] = publicIPv4
+	}
+	if privateIPv4 != "" {
+		setFields[IPv4Key] = privateIPv4
+	}
+	if ipv6 != "" {
+		setFields[IPKey] = ipv6
+	}
+	if len(volumes) > 0 {
+		setFields[VolumesKey] = volumes
+	}
+
+	return setFields
+}
+
+const numMetadataFields = 7
+
+// SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
+// fields will be set.
+func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
+	setFields := buildEC2MetadataUpdate(
+		params.Hostname,
+		params.Zone,
+		params.PublicIPv4,
+		params.PrivateIPv4,
+		params.IPv6,
+		params.LaunchTime,
+		params.Volumes,
+	)
+
+	// If there is any missing data in setFields, no-op.
+	if len(setFields) < numMetadataFields {
 		return nil
 	}
 
+	if !h.NoExpiration {
+		setFields[ProvisionedKey] = true
+		setFields[ProvisionTimeKey] = time.Now()
+	}
 	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				DNSKey: dnsName,
-			},
+			"$set": setFields,
 		},
 	); err != nil {
 		return err
 	}
 
-	h.Host = dnsName
+	if params.Hostname != "" {
+		h.Host = params.Hostname
+	}
+	if params.Zone != "" {
+		h.Zone = params.Zone
+	}
+	if !params.LaunchTime.IsZero() {
+		h.StartTime = params.LaunchTime
+	}
+	if params.PublicIPv4 != "" {
+		h.PublicIPv4 = params.PublicIPv4
+	}
+	if params.PrivateIPv4 != "" {
+		h.IPv4 = params.PrivateIPv4
+	}
+	if params.IPv6 != "" {
+		h.IP = params.IPv6
+	}
+	if len(params.Volumes) > 0 {
+		h.Volumes = params.Volumes
+	}
 
 	return nil
 }
@@ -2113,19 +2188,31 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 // cacheCloudProviderDataUpdate returns an update for caching cloud provider
 // data.
 func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
-	setFields := bson.M{
-		ZoneKey:      data.Zone,
-		StartTimeKey: data.StartedAt,
-		IPv4Key:      data.PrivateIPv4,
-		IPKey:        data.IPv6,
-		VolumesKey:   data.Volumes,
+	setFields := buildEC2MetadataUpdate(
+		data.PublicDNS,
+		data.Zone,
+		data.PublicIPv4,
+		data.PrivateIPv4,
+		data.IPv6,
+		data.StartedAt,
+		data.Volumes,
+	)
+	if data.Zone != "" {
+		setFields[ZoneKey] = data.Zone
 	}
-	if data.PublicIPv4 != "" {
-		setFields[PublicIPv4Key] = data.PublicIPv4
+	if data.StartedAt.IsZero() {
+		setFields[StartTimeKey] = data.StartedAt
 	}
-	if data.PublicDNS != "" {
-		setFields[DNSKey] = data.PublicDNS
+	if data.PrivateIPv4 != "" {
+		setFields[IPv4Key] = data.PrivateIPv4
 	}
+	if data.IPv6 != "" {
+		setFields[IPKey] = data.IPv6
+	}
+	if len(data.Volumes) != 0 {
+		setFields[VolumesKey] = data.Volumes
+	}
+
 	return bson.M{
 		"$set": setFields,
 	}

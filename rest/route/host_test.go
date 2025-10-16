@@ -1139,7 +1139,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 			instanceID := generateFakeEC2InstanceID()
 
-			rh.params = restmodel.APIHostIsUpOptions{
+			rh.params = host.HostMetadataOptions{
 				HostID:        h.Id,
 				Hostname:      "hostname",
 				EC2InstanceID: instanceID,
@@ -1171,7 +1171,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 
 			instanceID := generateFakeEC2InstanceID()
 
-			rh.params = restmodel.APIHostIsUpOptions{
+			rh.params = host.HostMetadataOptions{
 				HostID:        h.Id,
 				Hostname:      "hostname",
 				EC2InstanceID: instanceID,
@@ -1204,7 +1204,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.Status = evergreen.HostStarting
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = restmodel.APIHostIsUpOptions{
+			rh.params = host.HostMetadataOptions{
 				HostID:        instanceID,
 				Hostname:      "hostname",
 				EC2InstanceID: instanceID,
@@ -1234,7 +1234,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.Status = evergreen.HostStarting
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = restmodel.APIHostIsUpOptions{
+			rh.params = host.HostMetadataOptions{
 				HostID:        instanceID,
 				EC2InstanceID: instanceID,
 			}
@@ -1264,7 +1264,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = restmodel.APIHostIsUpOptions{
+			rh.params = host.HostMetadataOptions{
 				HostID: instanceID,
 			}
 
@@ -1294,7 +1294,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert(ctx))
 
-			rh.params = restmodel.APIHostIsUpOptions{
+			rh.params = host.HostMetadataOptions{
 				HostID: instanceID,
 			}
 

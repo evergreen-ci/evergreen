@@ -540,7 +540,7 @@ func TestHostSetDNSName(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	const newHostname = "hostname"
-	require.NoError(t, h.SetDNSName(ctx, newHostname))
+	require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{Hostname: newHostname}))
 	assert.Equal(t, newHostname, h.Host)
 
 	dbHost, err := FindOneId(ctx, h.Id)
@@ -548,7 +548,7 @@ func TestHostSetDNSName(t *testing.T) {
 	require.NotZero(t, dbHost)
 	assert.Equal(t, newHostname, dbHost.Host)
 
-	require.NoError(t, h.SetDNSName(ctx, ""))
+	require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{}))
 	assert.Equal(t, newHostname, h.Host, "existing hostname should be retained even if an empty string is passed")
 
 	dbHost, err = FindOneId(ctx, h.Id)
