@@ -213,13 +213,13 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 
 	// Create an older activated version (last activated reference point)
 	activatedVersion := &Version{
-		Id:                    "version-activated",
-		Identifier:            projectID,
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            now.Add(-10 * time.Minute),
-		Revision:              "activated123",
-		RevisionOrderNumber:   1,
-		Activated:             utility.ToBoolPtr(true), // This version is already activated
+		Id:                  "version-activated",
+		Identifier:          projectID,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          now.Add(-10 * time.Minute),
+		Revision:            "activated123",
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(true), // This version is already activated
 		BuildVariants: []VersionBuildStatus{
 			{
 				BuildVariant: "test-variant-activated",
@@ -235,13 +235,13 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 	// Create multiple unactivated versions after the activated one
 	unactivatedVersions := []*Version{
 		{
-			Id:                    "version-1",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-5 * time.Minute),
-			Revision:              "abc123",
-			RevisionOrderNumber:   2, // Higher order number (newer)
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "version-1",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-5 * time.Minute),
+			Revision:            "abc123",
+			RevisionOrderNumber: 2,                        // Higher order number (newer)
+			Activated:           utility.ToBoolPtr(false), // Not activated
 			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: "test-variant-1",
@@ -254,13 +254,13 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 			},
 		},
 		{
-			Id:                    "version-2",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-3 * time.Minute),
-			Revision:              "def456",
-			RevisionOrderNumber:   3, // Higher order number (newer)
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "version-2",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-3 * time.Minute),
+			Revision:            "def456",
+			RevisionOrderNumber: 3,                        // Higher order number (newer)
+			Activated:           utility.ToBoolPtr(false), // Not activated
 			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: "test-variant-2",
@@ -273,13 +273,13 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 			},
 		},
 		{
-			Id:                    "version-3",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-1 * time.Minute),
-			Revision:              "ghi789",
-			RevisionOrderNumber:   4, // Highest order number (newest)
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "version-3",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-1 * time.Minute),
+			Revision:            "ghi789",
+			RevisionOrderNumber: 4,                        // Highest order number (newest)
+			Activated:           utility.ToBoolPtr(false), // Not activated
 			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: "test-variant-3",
@@ -338,13 +338,13 @@ func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 	// Create multiple versions with no previously activated versions (simulating a new project)
 	versions := []*Version{
 		{
-			Id:                    "version-1",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-10 * time.Minute),
-			Revision:              "commit1",
-			RevisionOrderNumber:   1,
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "version-1",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-10 * time.Minute),
+			Revision:            "commit1",
+			RevisionOrderNumber: 1,
+			Activated:           utility.ToBoolPtr(false), // Not activated
 			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: "test-variant",
@@ -357,13 +357,13 @@ func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 			},
 		},
 		{
-			Id:                    "version-2",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-5 * time.Minute),
-			Revision:              "commit2",
-			RevisionOrderNumber:   2,
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "version-2",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-5 * time.Minute),
+			Revision:            "commit2",
+			RevisionOrderNumber: 2,
+			Activated:           utility.ToBoolPtr(false), // Not activated
 			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: "test-variant",
@@ -376,13 +376,13 @@ func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 			},
 		},
 		{
-			Id:                    "version-3",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-2 * time.Minute),
-			Revision:              "commit3",
-			RevisionOrderNumber:   3, // Most recent
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "version-3",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-2 * time.Minute),
+			Revision:            "commit3",
+			RevisionOrderNumber: 3,                        // Most recent
+			Activated:           utility.ToBoolPtr(false), // Not activated
 			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: "test-variant",
@@ -430,12 +430,12 @@ func (s *VersionActivationSuite) TestDoProjectActivationSingleCommitBehaviorPres
 
 	// Create a single version
 	version := &Version{
-		Id:                    "single-version",
-		Identifier:            projectID,
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            now.Add(-2 * time.Minute),
-		Revision:              "single123",
-		RevisionOrderNumber:   1,
+		Id:                  "single-version",
+		Identifier:          projectID,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          now.Add(-2 * time.Minute),
+		Revision:            "single123",
+		RevisionOrderNumber: 1,
 		BuildVariants: []VersionBuildStatus{
 			{
 				BuildVariant: "test-variant",
@@ -474,31 +474,31 @@ func (s *VersionActivationSuite) TestVersionsUnactivatedSinceLastActivated() {
 	// Create versions with different activation states
 	versions := []*Version{
 		{
-			Id:                    "activated-version",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-10 * time.Minute),
-			Revision:              "activated123",
-			RevisionOrderNumber:   1,
-			Activated:             utility.ToBoolPtr(true), // Activated
+			Id:                  "activated-version",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-10 * time.Minute),
+			Revision:            "activated123",
+			RevisionOrderNumber: 1,
+			Activated:           utility.ToBoolPtr(true), // Activated
 		},
 		{
-			Id:                    "unactivated-1",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-5 * time.Minute),
-			Revision:              "unactivated123",
-			RevisionOrderNumber:   2, // After activated version
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "unactivated-1",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-5 * time.Minute),
+			Revision:            "unactivated123",
+			RevisionOrderNumber: 2,                        // After activated version
+			Activated:           utility.ToBoolPtr(false), // Not activated
 		},
 		{
-			Id:                    "unactivated-2",
-			Identifier:            projectID,
-			Requester:             evergreen.RepotrackerVersionRequester,
-			CreateTime:            now.Add(-2 * time.Minute),
-			Revision:              "unactivated456",
-			RevisionOrderNumber:   3, // After activated version
-			Activated:             utility.ToBoolPtr(false), // Not activated
+			Id:                  "unactivated-2",
+			Identifier:          projectID,
+			Requester:           evergreen.RepotrackerVersionRequester,
+			CreateTime:          now.Add(-2 * time.Minute),
+			Revision:            "unactivated456",
+			RevisionOrderNumber: 3,                        // After activated version
+			Activated:           utility.ToBoolPtr(false), // Not activated
 		},
 	}
 
@@ -534,5 +534,3 @@ func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
 	require.NoError(err)
 	require.False(activated)
 }
-
-

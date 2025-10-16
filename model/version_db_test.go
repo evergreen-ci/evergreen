@@ -56,52 +56,52 @@ func TestVersionsUnactivatedSinceLastActivated(t *testing.T) {
 
 	// Create versions with different activation states
 	v1 := Version{
-		Id:                    "activated",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-10 * time.Minute),
-		RevisionOrderNumber:   1,
-		Activated:             utility.ToBoolPtr(true), // Activated
+		Id:                  "activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-10 * time.Minute),
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(true), // Activated
 	}
 	v2 := Version{
-		Id:                    "unactivated-1",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-5 * time.Minute),
-		RevisionOrderNumber:   2, // After activated version
-		Activated:             utility.ToBoolPtr(false), // Not activated
+		Id:                  "unactivated-1",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-5 * time.Minute),
+		RevisionOrderNumber: 2,                        // After activated version
+		Activated:           utility.ToBoolPtr(false), // Not activated
 	}
 	v3 := Version{
-		Id:                    "unactivated-2",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-2 * time.Minute),
-		RevisionOrderNumber:   3, // After activated version
-		Activated:             utility.ToBoolPtr(false), // Not activated
+		Id:                  "unactivated-2",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-2 * time.Minute),
+		RevisionOrderNumber: 3,                        // After activated version
+		Activated:           utility.ToBoolPtr(false), // Not activated
 	}
 	v4 := Version{
-		Id:         "wrong-requester",
-		Identifier: "proj",
-		Requester:  evergreen.AdHocRequester, // Wrong requester
-		CreateTime: ts.Add(-1 * time.Minute),
+		Id:                  "wrong-requester",
+		Identifier:          "proj",
+		Requester:           evergreen.AdHocRequester, // Wrong requester
+		CreateTime:          ts.Add(-1 * time.Minute),
 		RevisionOrderNumber: 4,
-		Activated:  utility.ToBoolPtr(false),
+		Activated:           utility.ToBoolPtr(false),
 	}
 	v5 := Version{
-		Id:         "wrong-project",
-		Identifier: "other_proj", // Wrong project
-		Requester:  evergreen.RepotrackerVersionRequester,
-		CreateTime: ts.Add(-1 * time.Minute),
+		Id:                  "wrong-project",
+		Identifier:          "other_proj", // Wrong project
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-1 * time.Minute),
 		RevisionOrderNumber: 5,
-		Activated:  utility.ToBoolPtr(false),
+		Activated:           utility.ToBoolPtr(false),
 	}
 	v6 := Version{
-		Id:                    "future-version",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(3 * time.Minute), // Created AFTER ts (race condition test)
-		RevisionOrderNumber:   6, // Higher order than activated version
-		Activated:             utility.ToBoolPtr(false),
+		Id:                  "future-version",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(3 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber: 6,                       // Higher order than activated version
+		Activated:           utility.ToBoolPtr(false),
 	}
 
 	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
@@ -129,36 +129,36 @@ func TestVersionByMostRecentActivated(t *testing.T) {
 
 	// Create versions with different activation states
 	v1 := Version{
-		Id:                    "old-activated",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-10 * time.Minute),
-		RevisionOrderNumber:   1,
-		Activated:             utility.ToBoolPtr(true), // Activated
+		Id:                  "old-activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-10 * time.Minute),
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(true), // Activated
 	}
 	v2 := Version{
-		Id:                    "recent-activated",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-5 * time.Minute),
-		RevisionOrderNumber:   2,
-		Activated:             utility.ToBoolPtr(true), // Activated (most recent)
+		Id:                  "recent-activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-5 * time.Minute),
+		RevisionOrderNumber: 2,
+		Activated:           utility.ToBoolPtr(true), // Activated (most recent)
 	}
 	v3 := Version{
-		Id:                    "unactivated",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-2 * time.Minute),
-		RevisionOrderNumber:   3,
-		Activated:             utility.ToBoolPtr(false), // Not activated
+		Id:                  "unactivated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-2 * time.Minute),
+		RevisionOrderNumber: 3,
+		Activated:           utility.ToBoolPtr(false), // Not activated
 	}
 	v4 := Version{
-		Id:                    "future-activated",
-		Identifier:            "proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
-		RevisionOrderNumber:   4,
-		Activated:             utility.ToBoolPtr(true), // Activated but in the future
+		Id:                  "future-activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber: 4,
+		Activated:           utility.ToBoolPtr(true), // Activated but in the future
 	}
 
 	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4))
@@ -176,53 +176,53 @@ func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
 
 	// Create versions with different activation states (simulating a new project)
 	v1 := Version{
-		Id:                    "unactivated-1",
-		Identifier:            "new-proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-10 * time.Minute),
-		RevisionOrderNumber:   1,
-		Activated:             utility.ToBoolPtr(false), // Not activated
+		Id:                  "unactivated-1",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-10 * time.Minute),
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(false), // Not activated
 	}
 	v2 := Version{
-		Id:                    "unactivated-2",
-		Identifier:            "new-proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-5 * time.Minute),
-		RevisionOrderNumber:   2,
-		Activated:             utility.ToBoolPtr(false), // Not activated
+		Id:                  "unactivated-2",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-5 * time.Minute),
+		RevisionOrderNumber: 2,
+		Activated:           utility.ToBoolPtr(false), // Not activated
 	}
 	v3 := Version{
-		Id:                    "unactivated-3",
-		Identifier:            "new-proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(-2 * time.Minute),
-		RevisionOrderNumber:   3,
-		Activated:             utility.ToBoolPtr(false), // Not activated
+		Id:                  "unactivated-3",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-2 * time.Minute),
+		RevisionOrderNumber: 3,
+		Activated:           utility.ToBoolPtr(false), // Not activated
 	}
 	v4 := Version{
-		Id:         "wrong-requester",
-		Identifier: "new-proj",
-		Requester:  evergreen.AdHocRequester, // Wrong requester
-		CreateTime: ts.Add(-1 * time.Minute),
+		Id:                  "wrong-requester",
+		Identifier:          "new-proj",
+		Requester:           evergreen.AdHocRequester, // Wrong requester
+		CreateTime:          ts.Add(-1 * time.Minute),
 		RevisionOrderNumber: 4,
-		Activated:  utility.ToBoolPtr(false),
+		Activated:           utility.ToBoolPtr(false),
 	}
 	v5 := Version{
-		Id:         "ignored-version",
-		Identifier: "new-proj",
-		Requester:  evergreen.RepotrackerVersionRequester,
-		CreateTime: ts.Add(-1 * time.Minute),
+		Id:                  "ignored-version",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-1 * time.Minute),
 		RevisionOrderNumber: 5,
-		Activated:  utility.ToBoolPtr(false),
-		Ignored:    true, // Ignored version
+		Activated:           utility.ToBoolPtr(false),
+		Ignored:             true, // Ignored version
 	}
 	v6 := Version{
-		Id:                    "future-version",
-		Identifier:            "new-proj",
-		Requester:             evergreen.RepotrackerVersionRequester,
-		CreateTime:            ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
-		RevisionOrderNumber:   6,
-		Activated:             utility.ToBoolPtr(false),
+		Id:                  "future-version",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber: 6,
+		Activated:           utility.ToBoolPtr(false),
 	}
 
 	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
@@ -244,8 +244,6 @@ func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
 	}
 	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
 }
-
-
 
 func TestRestartVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

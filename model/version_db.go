@@ -280,11 +280,11 @@ func VersionByMostRecentNonIgnored(projectId string, ts time.Time) db.Q {
 func VersionsUnactivatedSinceLastActivated(projectId string, ts time.Time, lastActivatedOrderNum int) db.Q {
 	return db.Query(
 		bson.M{
-			VersionRequesterKey:         evergreen.RepotrackerVersionRequester,
-			VersionIdentifierKey:        projectId,
-			VersionIgnoredKey:           bson.M{"$ne": true},
-			VersionCreateTimeKey:        bson.M{"$lte": ts},
-			VersionActivatedKey:         bson.M{"$ne": true}, // Only unactivated versions
+			VersionRequesterKey:           evergreen.RepotrackerVersionRequester,
+			VersionIdentifierKey:          projectId,
+			VersionIgnoredKey:             bson.M{"$ne": true},
+			VersionCreateTimeKey:          bson.M{"$lte": ts},
+			VersionActivatedKey:           bson.M{"$ne": true},                  // Only unactivated versions
 			VersionRevisionOrderNumberKey: bson.M{"$gt": lastActivatedOrderNum}, // Newer than last activated
 		},
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
@@ -318,8 +318,6 @@ func VersionsAllUnactivatedNonIgnored(projectId string, ts time.Time) db.Q {
 		},
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
-
-
 
 func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q {
 	return db.Query(

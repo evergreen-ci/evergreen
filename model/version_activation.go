@@ -79,12 +79,12 @@ func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, er
 			lastActivatedInfo = lastActivatedVersion.Id
 		}
 		grip.Info(message.Fields{
-			"message":              "project activation completed",
-			"project":              id,
-			"versions_checked":     len(activateVersions),
-			"versions_activated":   activatedCount,
+			"message":                "project activation completed",
+			"project":                id,
+			"versions_checked":       len(activateVersions),
+			"versions_activated":     activatedCount,
 			"last_activated_version": lastActivatedInfo,
-			"operation":            "project-activation",
+			"operation":              "project-activation",
 		})
 	}
 
