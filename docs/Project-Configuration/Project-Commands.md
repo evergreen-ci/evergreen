@@ -380,6 +380,8 @@ Parameters:
 
 The call to AssumeRole includes an external ID formatted as
 `<project_id>-<requester>`. This cannot be modified by the user.
+This may be appended to in the future, it's highly recommended to
+include a wildcard at the end of your external ID condition.
 
 - An Evergreen project's ID can be found on its General Settings page.
 - The list of requesters can be found [here](../Reference/Glossary.md#requesters).
@@ -405,8 +407,8 @@ An example of a trust policy with an external ID is below:
       },
       "Action": "sts:AssumeRole",
       "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "<project_id>-<requester>"
+        "StringLike": {
+          "sts:ExternalId": "<project_id>-<requester>*"
         }
       }
     }
@@ -414,7 +416,12 @@ An example of a trust policy with an external ID is below:
 }
 ```
 
-You can allow any requester by using `StringLike` like below:
+> **Note:** Please make sure you use `StringLike` and not `StringEquals` for the
+> `sts:ExternalId` condition. As well as including a wildcard at the end of your
+> external ID condition. This allows for future additions to the external ID
+> format without needing to update your trust policy.
+
+You can allow any requester by using the wildcard earlier in the condition:
 
 ```json
 {
