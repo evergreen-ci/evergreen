@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -102,7 +101,7 @@ func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, er
 			if err != nil {
 				return "", err
 			}
-			return strings.TrimSpace(body), nil
+			return body, nil
 		})
 		if err != nil {
 			continue
@@ -121,40 +120,49 @@ func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, er
 func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	metadata := host.HostMetadataOptions{}
 
-	catcher := grip.NewBasicCatcher()
 	instanceID, err := getEC2InstanceID(ctx)
-	catcher.Wrapf(err, "fetching EC2 instance ID")
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 instance ID")
+	}
 	metadata.EC2InstanceID = instanceID
 
 	hostname, err := getEC2Hostname(ctx)
-	catcher.Wrapf(err, "fetching EC2 host name")
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 host name")
+	}
 	metadata.Hostname = hostname
 
 	zone, err := getEC2AvailabilityZone(ctx)
-	catcher.Wrapf(err, "fetching EC2 availability zone")
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 availability zone")
+	}
 	metadata.Zone = zone
 
 	publicIPv4, err := getEC2PublicIPv4(ctx)
-	catcher.Wrapf(err, "fetching EC2 public ipv4")
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 public ipv4")
+	}
 	metadata.PublicIPv4 = publicIPv4
 
 	privateIPv4, err := getEC2PrivateIPv4(ctx)
-	catcher.Wrapf(err, "fetching EC2 private ipv4")
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 private ipv4")
+	}
 	metadata.PrivateIPv4 = privateIPv4
 
 	ipv6, err := getEC2IPv6(ctx)
-	catcher.Wrapf(err, "fetching EC2 ipv6")
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 ipv6")
+	}
 	metadata.IPv6 = ipv6
 
 	volumes, err := getEC2BlockDeviceMappings(ctx)
-	catcher.Wrapf(err, "fetching EC2 volume attachments")
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 volume attachments")
+	}
 	metadata.Volumes = volumes
 
 	metadata.LaunchTime = time.Now()
-
-	if catcher.HasErrors() {
-		return metadata, catcher.Resolve()
-	}
 
 	return metadata, nil
 }
