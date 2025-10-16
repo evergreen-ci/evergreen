@@ -59,23 +59,15 @@ func (uis *UIServer) legacyTaskHistoryPage(w http.ResponseWriter, r *http.Reques
 
 func (uis *UIServer) legacyTaskPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	executionStr := gimlet.GetVars(r)["execution"]
-	var execution int
-	var err error
+	project, err := projCtx.GetProject(r.Context())
 
-	if executionStr != "" {
-		execution, err = strconv.Atoi(executionStr)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
-			return
-		}
-	}
-	if projCtx.Task == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
+	if err != nil || project == nil {
+		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
-	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
+	// it is the most relevant.
+	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
 }
 
 func (uis *UIServer) legacyProjectsPage(w http.ResponseWriter, r *http.Request) {
