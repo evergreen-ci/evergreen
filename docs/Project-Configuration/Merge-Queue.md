@@ -224,6 +224,13 @@ patches prepended "GitHub Merge Queue:", e.g.,
 <https://spruce.mongodb.com/project/mongodb-mongo-master/patches>. There is not
 a way, however, to map directly from a GitHub PR to its patches.
 
+**Q:** Why can't I activate or deactivate tasks in my running merge queue version?
+
+**A:** This is a protection mechanism to ensure that the tasks in a merge queue version
+exactly represent the merge queue alias definition. Instead, you should rely on the 
+UI available in GitHub to modify their patches. You can remove/requeue items in the queue 
+via GitHub if needed.
+
 **Q:** What does it mean if GitHub times out my merge queue request in my PR?
 
 **A:** There is a setting called "Status check timeout" in the branch protection rules
