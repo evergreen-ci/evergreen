@@ -1342,32 +1342,46 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
+func buildEC2MetadataUpdate(hostname, zone, publicIPv4, privateIPv4, ipv6 string, launchTime time.Time, volumes []VolumeAttachment) bson.M {
+	setFields := bson.M{}
+
+	if hostname != "" {
+		setFields[DNSKey] = hostname
+	}
+	if zone != "" {
+		setFields[ZoneKey] = zone
+	}
+	if !launchTime.IsZero() {
+		setFields[StartTimeKey] = launchTime
+	}
+	if publicIPv4 != "" {
+		setFields[PublicIPv4Key] = publicIPv4
+	}
+	if privateIPv4 != "" {
+		setFields[IPv4Key] = privateIPv4
+	}
+	if ipv6 != "" {
+		setFields[IPKey] = ipv6
+	}
+	if len(volumes) > 0 {
+		setFields[VolumesKey] = volumes
+	}
+
+	return setFields
+}
+
 // SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
 // fields will be set.
 func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
-	setFields := bson.M{}
-
-	if params.Hostname != "" {
-		setFields[DNSKey] = params.Hostname
-	}
-	if params.Zone != "" {
-		setFields[ZoneKey] = params.Zone
-	}
-	if !params.LaunchTime.IsZero() {
-		setFields[StartTimeKey] = params.LaunchTime
-	}
-	if params.PublicIPv4 != "" {
-		setFields[PublicIPv4Key] = params.PublicIPv4
-	}
-	if params.PrivateIPv4 != "" {
-		setFields[IPv4Key] = params.PrivateIPv4
-	}
-	if params.IPv6 != "" {
-		setFields[IPKey] = params.IPv6
-	}
-	if len(params.Volumes) > 0 {
-		setFields[VolumesKey] = params.Volumes
-	}
+	setFields := buildEC2MetadataUpdate(
+		params.Hostname,
+		params.Zone,
+		params.PublicIPv4,
+		params.PrivateIPv4,
+		params.IPv6,
+		params.LaunchTime,
+		params.Volumes,
+	)
 
 	if len(setFields) == 0 {
 		return nil
@@ -2167,19 +2181,31 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 // cacheCloudProviderDataUpdate returns an update for caching cloud provider
 // data.
 func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
-	setFields := bson.M{
-		ZoneKey:      data.Zone,
-		StartTimeKey: data.StartedAt,
-		IPv4Key:      data.PrivateIPv4,
-		IPKey:        data.IPv6,
-		VolumesKey:   data.Volumes,
+	setFields := buildEC2MetadataUpdate(
+		data.PublicDNS,
+		data.Zone,
+		data.PublicIPv4,
+		data.PrivateIPv4,
+		data.IPv6,
+		data.StartedAt,
+		data.Volumes,
+	)
+	if data.Zone != "" {
+		setFields[ZoneKey] = data.Zone
 	}
-	if data.PublicIPv4 != "" {
-		setFields[PublicIPv4Key] = data.PublicIPv4
+	if data.StartedAt.IsZero() {
+		setFields[StartTimeKey] = data.StartedAt
 	}
-	if data.PublicDNS != "" {
-		setFields[DNSKey] = data.PublicDNS
+	if data.PrivateIPv4 != "" {
+		setFields[IPv4Key] = data.PrivateIPv4
 	}
+	if data.IPv6 != "" {
+		setFields[IPKey] = data.IPv6
+	}
+	if len(data.Volumes) != 0 {
+		setFields[VolumesKey] = data.Volumes
+	}
+
 	return bson.M{
 		"$set": setFields,
 	}
