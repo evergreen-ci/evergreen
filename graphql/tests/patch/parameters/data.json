@@ -16,6 +16,10 @@
         {
           "key": "my_parameter",
           "value": "this_is_it"
+        },
+        {
+          "key": "secret_parameter",
+          "value": "abc"
         }
       ]
     }
