@@ -1458,11 +1458,10 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 // only see at most 3000 of them.
 const MaxGitHubPRFilesListLength = 3000
 
-// GetGitHubPullRequestFiles gets the list of the changed files for the given
-// pull request. This can get at most 3000 changed files. If the pull request
-// changes more than 3000 files, the GitHub API is limited so it cannot return
-// the files beyond those first 3000. If it hits the 3000 limit, it'll return
-// the first 3000 files and no error; callers are expected to handle that limit
+// GetGitHubPullRequestFiles gets the summary list of the changed files for the
+// given pull request. Due to GitHub limitations, this can get at most 3000
+// changed files. If it hits the 3000 file retrieval limit, it'll return the
+// first 3000 files and no error; callers are expected to handle that limit
 // appropriately.
 func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, error) {
 	owner := gh.BaseOwner
