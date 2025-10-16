@@ -126,9 +126,9 @@ type s3put struct {
 	// RoleARN is an ARN that should be assumed to make the S3 request.
 	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
 
-	// UploadChecksumSha256, when set to 'true', it will upload the base64 of the sha256 checksum
+	// UploadChecksumSHA256, when set to 'true', it will upload the base64 of the SHA256 checksum
 	// of the file to S3 as well.
-	UploadChecksumSha256 string `mapstructure:"upload_checksum_sha256" plugin:"expand"`
+	UploadChecksumSHA256 string `mapstructure:"upload_checksum_sha256" plugin:"expand"`
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
@@ -136,7 +136,7 @@ type s3put struct {
 	skipMissing        bool
 	preservePath       bool
 	skipExistingBool   bool
-	checksumSha256Bool bool
+	checksumSHA256Bool bool
 	isPatchable        bool
 	isPatchOnly        bool
 
@@ -269,10 +269,10 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
-	if s3pc.UploadChecksumSha256 != "" {
-		s3pc.checksumSha256Bool, err = strconv.ParseBool(s3pc.UploadChecksumSha256)
+	if s3pc.UploadChecksumSHA256 != "" {
+		s3pc.checksumSHA256Bool, err = strconv.ParseBool(s3pc.UploadChecksumSHA256)
 		if err != nil {
-			return errors.Wrap(err, "parsing checksum sha256 parameter as a boolean")
+			return errors.Wrap(err, "parsing checksum SHA256 parameter as a boolean")
 		}
 	}
 
@@ -623,7 +623,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 		Permissions:          pail.S3Permissions(s3pc.Permissions),
 		ContentType:          s3pc.ContentType,
 		IfNotExists:          s3pc.skipExistingBool,
-		UploadChecksumSHA256: s3pc.checksumSha256Bool,
+		UploadChecksumSHA256: s3pc.checksumSHA256Bool,
 	}
 
 	if s3pc.getRoleARN() != "" {
