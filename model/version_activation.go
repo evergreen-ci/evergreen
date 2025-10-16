@@ -36,7 +36,7 @@ func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, er
 	}
 
 	if len(activateVersions) == 0 {
-		grip.Debug(message.Fields{
+		grip.Info(message.Fields{
 			"message":   "no versions to activate for repository",
 			"project":   id,
 			"operation": "project-activation",
