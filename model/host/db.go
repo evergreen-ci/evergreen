@@ -1331,8 +1331,8 @@ const defaultStartingHostsByClientLimit = 500
 
 // FindStartingHostsByClient returns a list mapping cloud provider client
 // options to hosts with those client options that are starting up. The limit
-// limits the number of hosts that can be returned. This filter only
-// considers spawn hosts/host.create hosts.
+// limits the number of hosts that can be returned. The limit is applied
+// separately for task hosts and spawn hosts/host.create hosts.
 func FindStartingHostsByClient(ctx context.Context, limit int) ([]HostsByClient, error) {
 	if limit <= 0 {
 		limit = defaultStartingHostsByClientLimit
@@ -1343,7 +1343,12 @@ func FindStartingHostsByClient(ctx context.Context, limit int) ([]HostsByClient,
 		return nil, errors.Wrap(err, "finding starting non-task hosts")
 	}
 
-	return nonTaskHosts, nil
+	taskHosts, err := findStartingTaskHosts(ctx, limit)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding starting task hosts")
+	}
+
+	return append(nonTaskHosts, taskHosts...), nil
 }
 
 // HostsByClient represents an aggregation of hosts with common cloud provider
@@ -1366,6 +1371,28 @@ func findStartingNonTaskHosts(ctx context.Context, limit int) ([]HostsByClient, 
 	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating starting spawn hosts and host.create hosts by client options")
+	}
+	results := []HostsByClient{}
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "decoding starting hosts by client options")
+	}
+
+	return results, nil
+}
+
+func findStartingTaskHosts(ctx context.Context, limit int) ([]HostsByClient, error) {
+	pipeline := hostsByClientPipeline([]bson.M{
+		{
+			"$match": bson.M{
+				StatusKey:      evergreen.HostStarting,
+				ProvisionedKey: false,
+				StartedByKey:   evergreen.User,
+			},
+		},
+	}, limit)
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating starting task hosts by client options")
 	}
 	results := []HostsByClient{}
 	if err = cur.All(ctx, &results); err != nil {

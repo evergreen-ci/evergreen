@@ -1370,6 +1370,8 @@ func buildEC2MetadataUpdate(hostname, zone, publicIPv4, privateIPv4, ipv6 string
 	return setFields
 }
 
+const numMetadataFields = 7
+
 // SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
 // fields will be set.
 func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
@@ -1383,10 +1385,15 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 		params.Volumes,
 	)
 
-	if len(setFields) == 0 {
+	// If there is any missing data in setFields, no-op.
+	if len(setFields) < numMetadataFields {
 		return nil
 	}
 
+	if !h.NoExpiration {
+		setFields[ProvisionedKey] = true
+		setFields[ProvisionTimeKey] = time.Now()
+	}
 	if err := UpdateOne(
 		ctx,
 		bson.M{

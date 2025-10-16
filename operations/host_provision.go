@@ -7,10 +7,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -120,21 +117,15 @@ func hostProvision() cli.Command {
 }
 
 func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudProvider string) (*restmodel.APIHost, error) {
-	ec2Metadata := host.HostMetadataOptions{}
-	if cloud.IsEC2InstanceID(hostID) {
-		ec2Metadata.EC2InstanceID = hostID
-	} else if evergreen.IsEc2Provider(cloudProvider) {
-		fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-		var err error
+	fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
-		ec2Metadata, err = agentutil.GetEC2Metadata(fetchEC2InfoCtx)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "could not fetch EC2 metadata dynamically",
-			"host_id":        hostID,
-			"cloud_provider": cloudProvider,
-		}))
-	}
+	ec2Metadata, err := agentutil.GetEC2Metadata(fetchEC2InfoCtx)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":        "could not fetch EC2 metadata dynamically",
+		"host_id":        hostID,
+		"cloud_provider": cloudProvider,
+	}))
 	h, err := comm.PostHostIsUp(ctx, ec2Metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "posting that the host is up")
