@@ -314,7 +314,7 @@ type HostMetadataOptions struct {
 	PublicIPv4    string             `json:"public_ipv4,omitempty"`
 	PrivateIPv4   string             `json:"private_ipv4,omitempty"`
 	IPv6          string             `json:"ipv6,omitempty"`
-	LaunchTime    time.Time          `json:"launch_time,omitempty"`
+	LaunchTime    time.Time          `json:"launch_time,omitzero"`
 	Volumes       []VolumeAttachment `json:"volumes,omitempty"`
 }
 
@@ -1342,10 +1342,34 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
-// SetEC2Metadata updates the EC2 metadata for a given host. If the hostname on the input
-// params is empty, this will no-op and will not unset the existing DNS name.
+// SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
+// fields will be set.
 func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
-	if h.Host == params.Hostname || params.Hostname == "" {
+	setFields := bson.M{}
+
+	if params.Hostname != "" {
+		setFields[DNSKey] = params.Hostname
+	}
+	if params.Zone != "" {
+		setFields[ZoneKey] = params.Zone
+	}
+	if !params.LaunchTime.IsZero() {
+		setFields[StartTimeKey] = params.LaunchTime
+	}
+	if params.PublicIPv4 != "" {
+		setFields[PublicIPv4Key] = params.PublicIPv4
+	}
+	if params.PrivateIPv4 != "" {
+		setFields[IPv4Key] = params.PrivateIPv4
+	}
+	if params.IPv6 != "" {
+		setFields[IPKey] = params.IPv6
+	}
+	if len(params.Volumes) > 0 {
+		setFields[VolumesKey] = params.Volumes
+	}
+
+	if len(setFields) == 0 {
 		return nil
 	}
 
@@ -1355,27 +1379,33 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				DNSKey:        params.Hostname,
-				ZoneKey:       params.Zone,
-				StartTimeKey:  params.LaunchTime,
-				PublicIPv4Key: params.PublicIPv4,
-				IPv4Key:       params.PrivateIPv4,
-				IPKey:         params.IPv6,
-				VolumesKey:    params.Volumes,
-			},
+			"$set": setFields,
 		},
 	); err != nil {
 		return err
 	}
 
-	h.Host = params.Hostname
-	h.Zone = params.Zone
-	h.StartTime = params.LaunchTime
-	h.PublicIPv4 = params.PublicIPv4
-	h.IPv4 = params.PrivateIPv4
-	h.IP = params.IPv6
-	h.Volumes = params.Volumes
+	if params.Hostname != "" {
+		h.Host = params.Hostname
+	}
+	if params.Zone != "" {
+		h.Zone = params.Zone
+	}
+	if !params.LaunchTime.IsZero() {
+		h.StartTime = params.LaunchTime
+	}
+	if params.PublicIPv4 != "" {
+		h.PublicIPv4 = params.PublicIPv4
+	}
+	if params.PrivateIPv4 != "" {
+		h.IPv4 = params.PrivateIPv4
+	}
+	if params.IPv6 != "" {
+		h.IP = params.IPv6
+	}
+	if len(params.Volumes) > 0 {
+		h.Volumes = params.Volumes
+	}
 
 	return nil
 }

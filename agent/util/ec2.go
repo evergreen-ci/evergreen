@@ -18,15 +18,22 @@ import (
 // EC2 instances.
 const metadataBaseURL = "http://169.254.169.254/latest/meta-data"
 
+func readBodyAsString(resp *http.Response) (string, error) {
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "reading response body")
+	}
+	return string(b), nil
+}
+
 // getEC2InstanceID returns the instance ID from the metadata endpoint if it's
 // an EC2 instance.
 func getEC2InstanceID(ctx context.Context) (string, error) {
 	return getEC2Metadata(ctx, "instance-id", func(resp *http.Response) (string, error) {
-		b, err := io.ReadAll(resp.Body)
+		instanceID, err := readBodyAsString(resp)
 		if err != nil {
-			return "", errors.Wrap(err, "reading response body")
+			return "", err
 		}
-		instanceID := string(b)
 		if instanceID == "" {
 			return "", errors.New("instance ID from response is empty")
 		}
@@ -38,12 +45,10 @@ func getEC2InstanceID(ctx context.Context) (string, error) {
 // it's an EC2 instance.
 func getEC2Hostname(ctx context.Context) (string, error) {
 	return getEC2Metadata(ctx, "public-hostname", func(resp *http.Response) (string, error) {
-		b, err := io.ReadAll(resp.Body)
+		hostname, err := readBodyAsString(resp)
 		if err != nil {
-			return "", errors.Wrap(err, "reading response body")
+			return "", err
 		}
-
-		hostname := string(b)
 		if hostname == "" {
 			return "", errors.New("hostname from response is empty")
 		}
@@ -53,46 +58,22 @@ func getEC2Hostname(ctx context.Context) (string, error) {
 
 // getEC2AvailabilityZone returns the availability zone from the metadata endpoint.
 func getEC2AvailabilityZone(ctx context.Context) (string, error) {
-	return getEC2Metadata(ctx, "placement/availability-zone", func(resp *http.Response) (string, error) {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "reading response body")
-		}
-		return string(b), nil
-	})
+	return getEC2Metadata(ctx, "placement/availability-zone", readBodyAsString)
 }
 
 // getEC2PublicIPv4 returns the public IPv4 address from the metadata endpoint.
 func getEC2PublicIPv4(ctx context.Context) (string, error) {
-	return getEC2Metadata(ctx, "public-ipv4", func(resp *http.Response) (string, error) {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "reading response body")
-		}
-		return string(b), nil
-	})
+	return getEC2Metadata(ctx, "public-ipv4", readBodyAsString)
 }
 
 // getEC2PrivateIPv4 returns the private IPv4 address from the metadata endpoint.
 func getEC2PrivateIPv4(ctx context.Context) (string, error) {
-	return getEC2Metadata(ctx, "local-ipv4", func(resp *http.Response) (string, error) {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "reading response body")
-		}
-		return string(b), nil
-	})
+	return getEC2Metadata(ctx, "local-ipv4", readBodyAsString)
 }
 
 // getEC2IPv6 returns the IPv6 address from the metadata endpoint if available.
 func getEC2IPv6(ctx context.Context) (string, error) {
-	ipv6, err := getEC2Metadata(ctx, "ipv6", func(resp *http.Response) (string, error) {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "reading response body")
-		}
-		return string(b), nil
-	})
+	ipv6, err := getEC2Metadata(ctx, "ipv6", readBodyAsString)
 	if err != nil {
 		return "", nil
 	}
@@ -101,13 +82,7 @@ func getEC2IPv6(ctx context.Context) (string, error) {
 
 // getEC2BlockDeviceMappings returns all block device mappings from the metadata endpoint.
 func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, error) {
-	deviceList, err := getEC2Metadata(ctx, "block-device-mapping/", func(resp *http.Response) (string, error) {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return "", errors.Wrap(err, "reading response body")
-		}
-		return string(b), nil
-	})
+	deviceList, err := getEC2Metadata(ctx, "block-device-mapping/", readBodyAsString)
 	if err != nil {
 		return nil, nil
 	}
@@ -123,11 +98,11 @@ func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, er
 			continue
 		}
 		volumeID, err := getEC2Metadata(ctx, fmt.Sprintf("block-device-mapping/%s", deviceName), func(resp *http.Response) (string, error) {
-			b, err := io.ReadAll(resp.Body)
+			body, err := readBodyAsString(resp)
 			if err != nil {
-				return "", errors.Wrap(err, "reading response body")
+				return "", err
 			}
-			return strings.TrimSpace(string(b)), nil
+			return strings.TrimSpace(body), nil
 		})
 		if err != nil {
 			continue

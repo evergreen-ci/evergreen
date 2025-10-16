@@ -122,7 +122,7 @@ func hostProvision() cli.Command {
 func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudProvider string) (*restmodel.APIHost, error) {
 	ec2Metadata := host.HostMetadataOptions{}
 	if cloud.IsEC2InstanceID(hostID) {
-		ec2Metadata.Hostname = hostID
+		ec2Metadata.EC2InstanceID = hostID
 	} else if evergreen.IsEc2Provider(cloudProvider) {
 		fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
