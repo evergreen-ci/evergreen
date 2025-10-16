@@ -95,17 +95,32 @@ func TestVersionsUnactivatedSinceLastActivated(t *testing.T) {
 		RevisionOrderNumber: 5,
 		Activated:  utility.ToBoolPtr(false),
 	}
+	v6 := Version{
+		Id:                    "future-version",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(3 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber:   6, // Higher order than activated version
+		Activated:             utility.ToBoolPtr(false),
+	}
 
-	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5))
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
 
 	// Test finding unactivated versions since last activated (order number 1)
 	versions, err := VersionFind(t.Context(), VersionsUnactivatedSinceLastActivated("proj", ts, 1))
 	assert.NoError(t, err)
-	assert.Len(t, versions, 2, "Should find 2 unactivated versions after the activated one")
+	assert.Len(t, versions, 2, "Should find 2 unactivated versions after the activated one (excluding future version)")
 
 	// Should be ordered by most recent first (highest order number first)
 	assert.Equal(t, "unactivated-2", versions[0].Id)
 	assert.Equal(t, "unactivated-1", versions[1].Id)
+
+	// Verify that future version (created after ts) is NOT included
+	foundIds := make(map[string]bool)
+	for _, v := range versions {
+		foundIds[v.Id] = true
+	}
+	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
 }
 
 func TestVersionByMostRecentActivated(t *testing.T) {
@@ -137,14 +152,22 @@ func TestVersionByMostRecentActivated(t *testing.T) {
 		RevisionOrderNumber:   3,
 		Activated:             utility.ToBoolPtr(false), // Not activated
 	}
+	v4 := Version{
+		Id:                    "future-activated",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber:   4,
+		Activated:             utility.ToBoolPtr(true), // Activated but in the future
+	}
 
-	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3))
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4))
 
 	// Test finding most recently activated version
 	version, err := VersionFindOne(t.Context(), VersionByMostRecentActivated("proj", ts))
 	assert.NoError(t, err)
 	assert.NotNil(t, version)
-	assert.Equal(t, "recent-activated", version.Id, "Should find the most recently activated version")
+	assert.Equal(t, "recent-activated", version.Id, "Should find the most recently activated version before ts (not future version)")
 }
 
 func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
@@ -193,18 +216,33 @@ func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
 		Activated:  utility.ToBoolPtr(false),
 		Ignored:    true, // Ignored version
 	}
+	v6 := Version{
+		Id:                    "future-version",
+		Identifier:            "new-proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber:   6,
+		Activated:             utility.ToBoolPtr(false),
+	}
 
-	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5))
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
 
 	// Test finding all unactivated versions for new project
 	versions, err := VersionFind(t.Context(), VersionsAllUnactivatedNonIgnored("new-proj", ts))
 	assert.NoError(t, err)
-	assert.Len(t, versions, 3, "Should find 3 unactivated, non-ignored versions")
+	assert.Len(t, versions, 3, "Should find 3 unactivated, non-ignored versions (excluding future version)")
 
 	// Should be ordered by most recent first (highest order number first)
 	assert.Equal(t, "unactivated-3", versions[0].Id)
 	assert.Equal(t, "unactivated-2", versions[1].Id)
 	assert.Equal(t, "unactivated-1", versions[2].Id)
+
+	// Verify that future version (created after ts) is NOT included
+	foundIds := make(map[string]bool)
+	for _, v := range versions {
+		foundIds[v.Id] = true
+	}
+	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
 }
 
 
