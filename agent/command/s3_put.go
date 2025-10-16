@@ -623,7 +623,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 		Permissions:          pail.S3Permissions(s3pc.Permissions),
 		ContentType:          s3pc.ContentType,
 		IfNotExists:          s3pc.skipExistingBool,
-		UploadChecksumSha256: s3pc.checksumSha256Bool,
+		UploadChecksumSHA256: s3pc.checksumSha256Bool,
 	}
 
 	if s3pc.getRoleARN() != "" {

@@ -370,9 +370,9 @@ func (c *s3get) fetchAndExtractTarball(ctx context.Context, f *os.File) error {
 
 func (c *s3get) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
 	opts := pail.S3Options{
-		Region:               c.Region,
-		Name:                 c.Bucket,
-		VerifyChecksumSha256: c.RequireChecksumSha256,
+		Region:                 c.Region,
+		Name:                   c.Bucket,
+		ExpectedChecksumSHA256: c.RequireChecksumSha256,
 	}
 
 	if c.getRoleARN() != "" {
