@@ -417,7 +417,8 @@ An example of a trust policy with an external ID is below:
 ```
 
 > **Note:** Please make sure you use `StringLike` and not `StringEquals` for the
-> `sts:ExternalId` condition. This allows for future additions to the external ID
+> `sts:ExternalId` condition. As well as including a wildcard at the end of your
+> external ID condition. This allows for future additions to the external ID
 > format without needing to update your trust policy.
 
 You can allow any requester by using the wildcard earlier in the condition:
