@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-
 // setRevision sets the latest revision in the Repository
 // database to the revision sent from the projects page.
 func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {

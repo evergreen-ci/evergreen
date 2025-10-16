@@ -27,7 +27,6 @@ type logData struct {
 	User gimlet.User
 }
 
-
 // the task's most recent log messages
 const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
 

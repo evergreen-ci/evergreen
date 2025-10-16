@@ -54,7 +54,7 @@ func (uis *UIServer) legacyTaskHistoryPage(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("%s/task/%s/history?execution=%s", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution), http.StatusPermanentRedirect)
+	http.Redirect(w, r, fmt.Sprintf("%s/task/%s/history?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution), http.StatusPermanentRedirect)
 }
 
 func (uis *UIServer) legacyTaskPage(w http.ResponseWriter, r *http.Request) {

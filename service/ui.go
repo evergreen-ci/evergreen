@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"

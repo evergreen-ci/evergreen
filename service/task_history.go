@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -62,7 +61,6 @@ type taskBlurb struct {
 	Details  apimodels.TaskEndDetail `json:"task_end_details"`
 	Failures []string                `json:"failures"`
 }
-
 
 func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
