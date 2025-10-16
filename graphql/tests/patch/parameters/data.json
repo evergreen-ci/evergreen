@@ -29,5 +29,14 @@
       "_id": "spruce",
       "identifier": "spruce"
     }
+  ],
+  "admin": [
+    {
+      "_id": "logger_config",
+      "redact_keys": [
+        "secret",
+        "password"
+      ]
+    }
   ]
 }
