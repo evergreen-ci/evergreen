@@ -224,7 +224,7 @@ patches prepended "GitHub Merge Queue:", e.g.,
 <https://spruce.mongodb.com/project/mongodb-mongo-master/patches>. There is not
 a way, however, to map directly from a GitHub PR to its patches.
 
-**Q:** Why can't I activate or deactivate tasks in my running merge queue version?
+**Q:** Why can't I activate, deactivate, or restart tasks in my running merge queue version?
 
 **A:** This is a protection mechanism to ensure that the tasks in a merge queue version
 exactly represent the merge queue alias definition. Instead, you should rely on the
