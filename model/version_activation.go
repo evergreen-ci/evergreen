@@ -13,26 +13,82 @@ import (
 )
 
 func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, error) {
-	// fetch the most recent, non-ignored version (before the given time) to activate
-	activateVersion, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(id, ts))
+	// Find the most recently activated version to use as a reference point
+	lastActivatedVersion, err := VersionFindOne(ctx, VersionByMostRecentActivated(id, ts))
 	if err != nil {
-		return false, errors.WithStack(err)
+		return false, errors.Wrap(err, "finding most recently activated version")
 	}
-	if activateVersion == nil {
-		grip.Info(message.Fields{
-			"message":   "no version to activate for repository",
+
+	var activateVersions []Version
+	if lastActivatedVersion == nil {
+		// No previously activated versions - this might be a new project or first activation
+		// Activate ALL unactivated non-ignored versions to ensure complete coverage
+		activateVersions, err = VersionFind(ctx, VersionsAllUnactivatedNonIgnored(id, ts))
+		if err != nil {
+			return false, errors.WithStack(err)
+		}
+	} else {
+		// Find all unactivated versions since the last activated one
+		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(id, ts, lastActivatedVersion.RevisionOrderNumber))
+		if err != nil {
+			return false, errors.WithStack(err)
+		}
+	}
+
+	if len(activateVersions) == 0 {
+		grip.Debug(message.Fields{
+			"message":   "no versions to activate for repository",
 			"project":   id,
 			"operation": "project-activation",
 		})
 		return false, nil
 	}
-	activated, err := ActivateElapsedBuildsAndTasks(ctx, activateVersion)
-	if err != nil {
-		return false, errors.WithStack(err)
+
+	// Activate all eligible versions
+	anyActivated := false
+	activatedCount := 0
+	for _, version := range activateVersions {
+		activated, err := ActivateElapsedBuildsAndTasks(ctx, &version)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "error activating version",
+				"project":   id,
+				"version":   version.Id,
+				"revision":  version.Revision,
+				"operation": "project-activation",
+			}))
+			// Continue with other versions even if one fails
+			continue
+		}
+		if activated {
+			anyActivated = true
+			activatedCount++
+			grip.Info(message.Fields{
+				"message":   "activated version",
+				"project":   id,
+				"version":   version.Id,
+				"revision":  version.Revision,
+				"operation": "project-activation",
+			})
+		}
 	}
 
-	return activated, nil
+	if anyActivated {
+		lastActivatedInfo := "none"
+		if lastActivatedVersion != nil {
+			lastActivatedInfo = lastActivatedVersion.Id
+		}
+		grip.Info(message.Fields{
+			"message":              "project activation completed",
+			"project":              id,
+			"versions_checked":     len(activateVersions),
+			"versions_activated":   activatedCount,
+			"last_activated_version": lastActivatedInfo,
+			"operation":            "project-activation",
+		})
+	}
 
+	return anyActivated, nil
 }
 
 // ActivateElapsedBuildsAndTasks activates any builds/tasks if their BatchTimes have elapsed.

@@ -50,6 +50,165 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 	assert.Equal(t, "v1", v.Id)
 }
 
+func TestVersionsUnactivatedSinceLastActivated(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+	ts := time.Now()
+
+	// Create versions with different activation states
+	v1 := Version{
+		Id:                    "activated",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-10 * time.Minute),
+		RevisionOrderNumber:   1,
+		Activated:             utility.ToBoolPtr(true), // Activated
+	}
+	v2 := Version{
+		Id:                    "unactivated-1",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-5 * time.Minute),
+		RevisionOrderNumber:   2, // After activated version
+		Activated:             utility.ToBoolPtr(false), // Not activated
+	}
+	v3 := Version{
+		Id:                    "unactivated-2",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-2 * time.Minute),
+		RevisionOrderNumber:   3, // After activated version
+		Activated:             utility.ToBoolPtr(false), // Not activated
+	}
+	v4 := Version{
+		Id:         "wrong-requester",
+		Identifier: "proj",
+		Requester:  evergreen.AdHocRequester, // Wrong requester
+		CreateTime: ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 4,
+		Activated:  utility.ToBoolPtr(false),
+	}
+	v5 := Version{
+		Id:         "wrong-project",
+		Identifier: "other_proj", // Wrong project
+		Requester:  evergreen.RepotrackerVersionRequester,
+		CreateTime: ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 5,
+		Activated:  utility.ToBoolPtr(false),
+	}
+
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5))
+
+	// Test finding unactivated versions since last activated (order number 1)
+	versions, err := VersionFind(t.Context(), VersionsUnactivatedSinceLastActivated("proj", ts, 1))
+	assert.NoError(t, err)
+	assert.Len(t, versions, 2, "Should find 2 unactivated versions after the activated one")
+
+	// Should be ordered by most recent first (highest order number first)
+	assert.Equal(t, "unactivated-2", versions[0].Id)
+	assert.Equal(t, "unactivated-1", versions[1].Id)
+}
+
+func TestVersionByMostRecentActivated(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+	ts := time.Now()
+
+	// Create versions with different activation states
+	v1 := Version{
+		Id:                    "old-activated",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-10 * time.Minute),
+		RevisionOrderNumber:   1,
+		Activated:             utility.ToBoolPtr(true), // Activated
+	}
+	v2 := Version{
+		Id:                    "recent-activated",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-5 * time.Minute),
+		RevisionOrderNumber:   2,
+		Activated:             utility.ToBoolPtr(true), // Activated (most recent)
+	}
+	v3 := Version{
+		Id:                    "unactivated",
+		Identifier:            "proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-2 * time.Minute),
+		RevisionOrderNumber:   3,
+		Activated:             utility.ToBoolPtr(false), // Not activated
+	}
+
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3))
+
+	// Test finding most recently activated version
+	version, err := VersionFindOne(t.Context(), VersionByMostRecentActivated("proj", ts))
+	assert.NoError(t, err)
+	assert.NotNil(t, version)
+	assert.Equal(t, "recent-activated", version.Id, "Should find the most recently activated version")
+}
+
+func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+	ts := time.Now()
+
+	// Create versions with different activation states (simulating a new project)
+	v1 := Version{
+		Id:                    "unactivated-1",
+		Identifier:            "new-proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-10 * time.Minute),
+		RevisionOrderNumber:   1,
+		Activated:             utility.ToBoolPtr(false), // Not activated
+	}
+	v2 := Version{
+		Id:                    "unactivated-2",
+		Identifier:            "new-proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-5 * time.Minute),
+		RevisionOrderNumber:   2,
+		Activated:             utility.ToBoolPtr(false), // Not activated
+	}
+	v3 := Version{
+		Id:                    "unactivated-3",
+		Identifier:            "new-proj",
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            ts.Add(-2 * time.Minute),
+		RevisionOrderNumber:   3,
+		Activated:             utility.ToBoolPtr(false), // Not activated
+	}
+	v4 := Version{
+		Id:         "wrong-requester",
+		Identifier: "new-proj",
+		Requester:  evergreen.AdHocRequester, // Wrong requester
+		CreateTime: ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 4,
+		Activated:  utility.ToBoolPtr(false),
+	}
+	v5 := Version{
+		Id:         "ignored-version",
+		Identifier: "new-proj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		CreateTime: ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 5,
+		Activated:  utility.ToBoolPtr(false),
+		Ignored:    true, // Ignored version
+	}
+
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5))
+
+	// Test finding all unactivated versions for new project
+	versions, err := VersionFind(t.Context(), VersionsAllUnactivatedNonIgnored("new-proj", ts))
+	assert.NoError(t, err)
+	assert.Len(t, versions, 3, "Should find 3 unactivated, non-ignored versions")
+
+	// Should be ordered by most recent first (highest order number first)
+	assert.Equal(t, "unactivated-3", versions[0].Id)
+	assert.Equal(t, "unactivated-2", versions[1].Id)
+	assert.Equal(t, "unactivated-1", versions[2].Id)
+}
+
+
+
 func TestRestartVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

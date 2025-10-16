@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -202,3 +203,336 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 		}
 	}
 }
+
+func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommits() {
+	t := s.T()
+	require := require.New(t)
+
+	projectID := "test-project-multi"
+	now := time.Now()
+
+	// Create an older activated version (last activated reference point)
+	activatedVersion := &Version{
+		Id:                    "version-activated",
+		Identifier:            projectID,
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            now.Add(-10 * time.Minute),
+		Revision:              "activated123",
+		RevisionOrderNumber:   1,
+		Activated:             utility.ToBoolPtr(true), // This version is already activated
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "test-variant-activated",
+				BuildId:      "build-activated",
+				ActivationStatus: ActivationStatus{
+					Activated:  true, // Already activated
+					ActivateAt: now.Add(-10 * time.Minute),
+				},
+			},
+		},
+	}
+
+	// Create multiple unactivated versions after the activated one
+	unactivatedVersions := []*Version{
+		{
+			Id:                    "version-1",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-5 * time.Minute),
+			Revision:              "abc123",
+			RevisionOrderNumber:   2, // Higher order number (newer)
+			Activated:             utility.ToBoolPtr(false), // Not activated
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "test-variant-1",
+					BuildId:      "build-1",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: now.Add(-6 * time.Minute), // Elapsed
+					},
+				},
+			},
+		},
+		{
+			Id:                    "version-2",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-3 * time.Minute),
+			Revision:              "def456",
+			RevisionOrderNumber:   3, // Higher order number (newer)
+			Activated:             utility.ToBoolPtr(false), // Not activated
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "test-variant-2",
+					BuildId:      "build-2",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: now.Add(-4 * time.Minute), // Elapsed
+					},
+				},
+			},
+		},
+		{
+			Id:                    "version-3",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-1 * time.Minute),
+			Revision:              "ghi789",
+			RevisionOrderNumber:   4, // Highest order number (newest)
+			Activated:             utility.ToBoolPtr(false), // Not activated
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "test-variant-3",
+					BuildId:      "build-3",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: now.Add(-2 * time.Minute), // Elapsed
+					},
+				},
+			},
+		},
+	}
+
+	// Insert the activated version first
+	require.NoError(activatedVersion.Insert(s.ctx))
+
+	// Insert all unactivated versions
+	for _, version := range unactivatedVersions {
+		require.NoError(version.Insert(s.ctx))
+	}
+
+	// Test activation - should activate all unactivated commits since the last activated one
+	activated, err := DoProjectActivation(s.ctx, projectID, now)
+	require.NoError(err)
+	require.True(activated)
+
+	// Verify all unactivated versions were activated
+	for _, originalVersion := range unactivatedVersions {
+		updatedVersion, err := VersionFindOneId(s.ctx, originalVersion.Id)
+		require.NoError(err)
+		require.NotNil(updatedVersion)
+
+		_, err = updatedVersion.GetBuildVariants(s.ctx)
+		require.NoError(err)
+
+		// Check that the build variant was activated
+		require.Len(updatedVersion.BuildVariants, 1)
+		require.True(updatedVersion.BuildVariants[0].Activated,
+			"Version %s should have been activated", originalVersion.Id)
+	}
+
+	// Verify the already activated version remains activated
+	updatedActivatedVersion, err := VersionFindOneId(s.ctx, activatedVersion.Id)
+	require.NoError(err)
+	require.NotNil(updatedActivatedVersion)
+	require.True(utility.FromBoolPtr(updatedActivatedVersion.Activated))
+}
+
+func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
+	t := s.T()
+	require := require.New(t)
+
+	projectID := "test-project-new"
+	now := time.Now()
+
+	// Create multiple versions with no previously activated versions (simulating a new project)
+	versions := []*Version{
+		{
+			Id:                    "version-1",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-10 * time.Minute),
+			Revision:              "commit1",
+			RevisionOrderNumber:   1,
+			Activated:             utility.ToBoolPtr(false), // Not activated
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "test-variant",
+					BuildId:      "build-1",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: now.Add(-11 * time.Minute), // Elapsed
+					},
+				},
+			},
+		},
+		{
+			Id:                    "version-2",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-5 * time.Minute),
+			Revision:              "commit2",
+			RevisionOrderNumber:   2,
+			Activated:             utility.ToBoolPtr(false), // Not activated
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "test-variant",
+					BuildId:      "build-2",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: now.Add(-6 * time.Minute), // Elapsed
+					},
+				},
+			},
+		},
+		{
+			Id:                    "version-3",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-2 * time.Minute),
+			Revision:              "commit3",
+			RevisionOrderNumber:   3, // Most recent
+			Activated:             utility.ToBoolPtr(false), // Not activated
+			BuildVariants: []VersionBuildStatus{
+				{
+					BuildVariant: "test-variant",
+					BuildId:      "build-3",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: now.Add(-3 * time.Minute), // Elapsed
+					},
+				},
+			},
+		},
+	}
+
+	// Insert all versions
+	for _, version := range versions {
+		require.NoError(version.Insert(s.ctx))
+	}
+
+	// Test activation - should activate ALL versions when no previously activated versions exist
+	// This ensures new projects don't miss any commits
+	activated, err := DoProjectActivation(s.ctx, projectID, now)
+	require.NoError(err)
+	require.True(activated)
+
+	// Verify ALL versions were activated (critical for new projects)
+	for _, originalVersion := range versions {
+		updatedVersion, err := VersionFindOneId(s.ctx, originalVersion.Id)
+		require.NoError(err)
+		require.NotNil(updatedVersion)
+
+		_, err = updatedVersion.GetBuildVariants(s.ctx)
+		require.NoError(err)
+
+		require.True(updatedVersion.BuildVariants[0].Activated,
+			"Version %s should be activated in new project", originalVersion.Id)
+	}
+}
+
+func (s *VersionActivationSuite) TestDoProjectActivationSingleCommitBehaviorPreserved() {
+	t := s.T()
+	require := require.New(t)
+
+	projectID := "test-project-single"
+	now := time.Now()
+
+	// Create a single version
+	version := &Version{
+		Id:                    "single-version",
+		Identifier:            projectID,
+		Requester:             evergreen.RepotrackerVersionRequester,
+		CreateTime:            now.Add(-2 * time.Minute),
+		Revision:              "single123",
+		RevisionOrderNumber:   1,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "test-variant",
+				BuildId:      "build-single",
+				ActivationStatus: ActivationStatus{
+					Activated:  false,
+					ActivateAt: now.Add(-3 * time.Minute), // Elapsed
+				},
+			},
+		},
+	}
+
+	require.NoError(version.Insert(s.ctx))
+
+	// Test activation - should work exactly as before
+	activated, err := DoProjectActivation(s.ctx, projectID, now)
+	require.NoError(err)
+	require.True(activated)
+
+	// Verify version was activated
+	updatedVersion, err := VersionFindOneId(s.ctx, "single-version")
+	require.NoError(err)
+	require.NotNil(updatedVersion)
+	_, err = updatedVersion.GetBuildVariants(s.ctx)
+	require.NoError(err)
+	require.True(updatedVersion.BuildVariants[0].Activated, "Single version should be activated")
+}
+
+func (s *VersionActivationSuite) TestVersionsUnactivatedSinceLastActivated() {
+	t := s.T()
+	require := require.New(t)
+
+	projectID := "test-project-query"
+	now := time.Now()
+
+	// Create versions with different activation states
+	versions := []*Version{
+		{
+			Id:                    "activated-version",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-10 * time.Minute),
+			Revision:              "activated123",
+			RevisionOrderNumber:   1,
+			Activated:             utility.ToBoolPtr(true), // Activated
+		},
+		{
+			Id:                    "unactivated-1",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-5 * time.Minute),
+			Revision:              "unactivated123",
+			RevisionOrderNumber:   2, // After activated version
+			Activated:             utility.ToBoolPtr(false), // Not activated
+		},
+		{
+			Id:                    "unactivated-2",
+			Identifier:            projectID,
+			Requester:             evergreen.RepotrackerVersionRequester,
+			CreateTime:            now.Add(-2 * time.Minute),
+			Revision:              "unactivated456",
+			RevisionOrderNumber:   3, // After activated version
+			Activated:             utility.ToBoolPtr(false), // Not activated
+		},
+	}
+
+	// Insert all versions
+	for _, version := range versions {
+		require.NoError(version.Insert(s.ctx))
+	}
+
+	// Test the query to find unactivated versions since last activated
+	unactivatedVersions, err := VersionFind(s.ctx, VersionsUnactivatedSinceLastActivated(projectID, now, 1))
+	require.NoError(err)
+	require.Len(unactivatedVersions, 2, "Should find 2 unactivated versions after the activated one")
+
+	// Verify the correct versions were returned
+	foundIds := make(map[string]bool)
+	for _, v := range unactivatedVersions {
+		foundIds[v.Id] = true
+	}
+	require.True(foundIds["unactivated-1"], "Should include unactivated-1")
+	require.True(foundIds["unactivated-2"], "Should include unactivated-2")
+	require.False(foundIds["activated-version"], "Should not include activated version")
+}
+
+func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
+	t := s.T()
+	require := require.New(t)
+
+	projectID := "test-project-empty"
+	now := time.Now()
+
+	// Test activation with no versions
+	activated, err := DoProjectActivation(s.ctx, projectID, now)
+	require.NoError(err)
+	require.False(activated)
+}
+
+
