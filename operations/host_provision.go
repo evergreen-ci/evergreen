@@ -120,6 +120,9 @@ func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudPr
 	fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
+	// Fetching EC2 metadata is not required for correctness, but merely an optimization
+	// that allows the host to skip the cloud host ready job if successful here. Otherwise,
+	// we fall back to polling the instance data from EC2 in the cloud host ready job.
 	ec2Metadata, err := agentutil.GetEC2Metadata(fetchEC2InfoCtx)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":        "could not fetch EC2 metadata dynamically",

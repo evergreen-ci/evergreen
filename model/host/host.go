@@ -307,15 +307,9 @@ func (opts *DockerOptions) Validate() error {
 
 // HostMetadataOptions are options related to the ec2 instance's metadata.
 type HostMetadataOptions struct {
-	HostID        string             `bson:"host_id" json:"host_id"`
-	Hostname      string             `json:"hostname,omitempty"`
-	EC2InstanceID string             `json:"ec2_instance_id,omitempty"`
-	Zone          string             `json:"zone,omitempty"`
-	PublicIPv4    string             `json:"public_ipv4,omitempty"`
-	PrivateIPv4   string             `json:"private_ipv4,omitempty"`
-	IPv6          string             `json:"ipv6,omitempty"`
-	LaunchTime    time.Time          `json:"launch_time,omitzero"`
-	Volumes       []VolumeAttachment `json:"volumes,omitempty"`
+	CloudProviderData
+	HostID        string `json:"host_id"`
+	EC2InstanceID string `json:"ec2_instance_id"`
 }
 
 // ProvisionOptions is struct containing options about how a new spawn host should be set up.
@@ -1370,18 +1364,20 @@ func buildEC2MetadataUpdate(hostname, zone, publicIPv4, privateIPv4, ipv6 string
 	return setFields
 }
 
+// numMetadataFields is the number of fields required from EC2 in order
+// to have fully-populated a host's EC2 metadata
 const numMetadataFields = 7
 
 // SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
 // fields will be set.
 func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
 	setFields := buildEC2MetadataUpdate(
-		params.Hostname,
+		params.PublicDNS,
 		params.Zone,
 		params.PublicIPv4,
 		params.PrivateIPv4,
 		params.IPv6,
-		params.LaunchTime,
+		params.StartedAt,
 		params.Volumes,
 	)
 
@@ -1390,6 +1386,9 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 		return nil
 	}
 
+	// As a special case, do not mark unexpirable hosts as provisioned. This is because the cloud host ready job
+	// filters for hosts that have not been provisioned, and that job must run for unexpirable hosts because it
+	// sets the persistent DNS name for the host, which is required.
 	if !h.NoExpiration {
 		setFields[ProvisionedKey] = true
 		setFields[ProvisionTimeKey] = time.Now()
@@ -1406,14 +1405,14 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 		return err
 	}
 
-	if params.Hostname != "" {
-		h.Host = params.Hostname
+	if params.PublicDNS != "" {
+		h.Host = params.PublicDNS
 	}
 	if params.Zone != "" {
 		h.Zone = params.Zone
 	}
-	if !params.LaunchTime.IsZero() {
-		h.StartTime = params.LaunchTime
+	if !params.StartedAt.IsZero() {
+		h.StartTime = params.StartedAt
 	}
 	if params.PublicIPv4 != "" {
 		h.PublicIPv4 = params.PublicIPv4
@@ -2159,13 +2158,13 @@ func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 // CloudProviderData represents data to cache in the host from its cloud
 // provider.
 type CloudProviderData struct {
-	Zone        string
-	StartedAt   time.Time
-	PublicDNS   string
-	PublicIPv4  string
-	PrivateIPv4 string
-	IPv6        string
-	Volumes     []VolumeAttachment
+	Zone        string             `json:"zone"`
+	StartedAt   time.Time          `json:"started_at"`
+	PublicDNS   string             `json:"public_dns"`
+	PublicIPv4  string             `json:"public_ipv4"`
+	PrivateIPv4 string             `json:"private_ipv4"`
+	IPv6        string             `json:"ipv6"`
+	Volumes     []VolumeAttachment `json:"volumes"`
 }
 
 // CacheAllCloudProviderData performs the same updates as
@@ -2175,7 +2174,17 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 	updates := make([]mongo.WriteModel, 0, len(hosts))
 	for hostID, data := range hosts {
 		filter := bson.M{IdKey: hostID}
-		update := cacheCloudProviderDataUpdate(data)
+		update := bson.M{
+			"$set": buildEC2MetadataUpdate(
+				data.PublicDNS,
+				data.Zone,
+				data.PublicIPv4,
+				data.PrivateIPv4,
+				data.IPv6,
+				data.StartedAt,
+				data.Volumes,
+			),
+		}
 		updates = append(updates, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
 	}
 	if len(updates) == 0 {
@@ -2183,39 +2192,6 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 	}
 	_, err := env.DB().Collection(Collection).BulkWrite(ctx, updates, options.BulkWrite().SetOrdered(false))
 	return err
-}
-
-// cacheCloudProviderDataUpdate returns an update for caching cloud provider
-// data.
-func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
-	setFields := buildEC2MetadataUpdate(
-		data.PublicDNS,
-		data.Zone,
-		data.PublicIPv4,
-		data.PrivateIPv4,
-		data.IPv6,
-		data.StartedAt,
-		data.Volumes,
-	)
-	if data.Zone != "" {
-		setFields[ZoneKey] = data.Zone
-	}
-	if data.StartedAt.IsZero() {
-		setFields[StartTimeKey] = data.StartedAt
-	}
-	if data.PrivateIPv4 != "" {
-		setFields[IPv4Key] = data.PrivateIPv4
-	}
-	if data.IPv6 != "" {
-		setFields[IPKey] = data.IPv6
-	}
-	if len(data.Volumes) != 0 {
-		setFields[VolumesKey] = data.Volumes
-	}
-
-	return bson.M{
-		"$set": setFields,
-	}
 }
 
 func (h *Host) Insert(ctx context.Context) error {

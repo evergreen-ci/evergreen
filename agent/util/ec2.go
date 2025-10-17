@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,16 @@ import (
 // metadataBaseURL is the URL to make requests for instance-specific metadata on
 // EC2 instances.
 const metadataBaseURL = "http://169.254.169.254/latest/meta-data"
+
+// dynamicDataBaseURL is the URL to make requests for dynamic instance data on
+// EC2 instances.
+const dynamicDataBaseURL = "http://169.254.169.254/latest/dynamic"
+
+// instanceIdentityDocument is intended to extract the pendingTime field from the EC2 dynamic
+// data response. AWS docs: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html
+type instanceIdentityDocument struct {
+	PendingTime string `json:"pendingTime"`
+}
 
 func readBodyAsString(resp *http.Response) (string, error) {
 	b, err := io.ReadAll(resp.Body)
@@ -79,6 +90,32 @@ func getEC2IPv6(ctx context.Context) (string, error) {
 	return ipv6, nil
 }
 
+// getEC2InstanceStartTime returns the instance start time from an EC2 dynamic data response
+func getEC2InstanceStartTime(ctx context.Context) (time.Time, error) {
+	return getEC2DynamicData(ctx, "instance-identity/document", func(resp *http.Response) (time.Time, error) {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return time.Time{}, errors.Wrap(err, "reading instance identity response body")
+		}
+
+		var doc instanceIdentityDocument
+		if err := json.Unmarshal(body, &doc); err != nil {
+			return time.Time{}, errors.Wrap(err, "unmarshaling instance identity")
+		}
+
+		if doc.PendingTime == "" {
+			return time.Time{}, errors.New("pendingTime field is empty")
+		}
+
+		startTime, err := time.Parse(time.RFC3339, doc.PendingTime)
+		if err != nil {
+			return time.Time{}, errors.Wrapf(err, "parsing pendingTime: %s", doc.PendingTime)
+		}
+
+		return startTime, nil
+	})
+}
+
 // getEC2BlockDeviceMappings returns all block device mappings from the metadata endpoint.
 func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, error) {
 	deviceList, err := getEC2Metadata(ctx, "block-device-mapping/", readBodyAsString)
@@ -130,7 +167,7 @@ func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	if err != nil {
 		return metadata, errors.Wrapf(err, "fetching EC2 host name")
 	}
-	metadata.Hostname = hostname
+	metadata.PublicDNS = hostname
 
 	zone, err := getEC2AvailabilityZone(ctx)
 	if err != nil {
@@ -162,25 +199,38 @@ func GetEC2Metadata(ctx context.Context) (host.HostMetadataOptions, error) {
 	}
 	metadata.Volumes = volumes
 
-	metadata.LaunchTime = time.Now()
+	startTime, err := getEC2InstanceStartTime(ctx)
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching EC2 instance start time")
+	}
+	metadata.StartedAt = startTime
 
 	return metadata, nil
 }
 
 // getEC2Metadata gets the EC2 metadata for the subpath.
 func getEC2Metadata[Output any](ctx context.Context, metadataSubpath string, parseOutput func(resp *http.Response) (Output, error)) (Output, error) {
+	return getEC2Data(ctx, metadataBaseURL, metadataSubpath, parseOutput)
+}
+
+// getEC2DynamicData gets the EC2 dynamic data for the subpath.
+func getEC2DynamicData[Output any](ctx context.Context, dynamicSubpath string, parseOutput func(resp *http.Response) (Output, error)) (Output, error) {
+	return getEC2Data(ctx, dynamicDataBaseURL, dynamicSubpath, parseOutput)
+}
+
+func getEC2Data[Output any](ctx context.Context, baseURL, subpath string, parseOutput func(resp *http.Response) (Output, error)) (Output, error) {
 	c := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(c)
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	url := fmt.Sprintf("%s/%s", metadataBaseURL, metadataSubpath)
+	url := fmt.Sprintf("%s/%s", baseURL, subpath)
 
 	var zeroOutput Output
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return zeroOutput, errors.Wrap(err, "creating metadata request")
+		return zeroOutput, errors.Wrap(err, "creating EC2 data request")
 	}
 
 	const (
@@ -199,7 +249,7 @@ func getEC2Metadata[Output any](ctx context.Context, metadataSubpath string, par
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return zeroOutput, errors.Wrap(err, "requesting EC2 instance ID from metadata endpoint")
+		return zeroOutput, errors.Wrapf(err, "requesting EC2 data from %s", baseURL)
 	}
 
 	return parseOutput(resp)
