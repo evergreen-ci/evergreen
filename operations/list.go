@@ -107,11 +107,6 @@ func listProjects(ctx context.Context, confPath string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return errors.Wrap(err, "setting up REST communicator")
-	}
-	defer client.Close()
 
 	ac, _, err := conf.getLegacyClients()
 	if err != nil {
@@ -150,11 +145,6 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return errors.Wrap(err, "setting up REST communicator")
-	}
-	defer client.Close()
 
 	var variants []model.BuildVariant
 	if project != "" {
@@ -204,11 +194,6 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return errors.Wrap(err, "setting up REST communicator")
-	}
-	defer client.Close()
 
 	var tasks []model.ProjectTask
 	if project != "" {

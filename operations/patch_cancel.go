@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -18,19 +17,10 @@ func PatchCancel() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-
-			client, err := conf.setupRestCommunicator(ctx, true)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
