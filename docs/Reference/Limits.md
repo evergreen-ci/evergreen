@@ -83,7 +83,7 @@ with fewer variants/tasks.
 
 ## Patch size
 
-Evergreen has a 100MB system limit on patch size (the diff size for the
+Evergreen has a 100MB system limit on CLI patch size (the diff size for the
 changes). In order to submit patches that are larger than 16MB from the CLI, the
 `--large` flag needs to be used. Large patches may hit the CLI’s one minute
 timeout. To work around that, users can open a PR and run the patch from there.

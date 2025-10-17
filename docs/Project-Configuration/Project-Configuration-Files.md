@@ -732,7 +732,13 @@ tasks, since only some of the commit's changed files are ignored.
 
 ##### Build Variant Path Filtering
 
-Build variants can specify `paths` patterns to define which files should trigger the variant when changed. This is the opposite of ignoring - it defines what files the variant cares about.
+Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
+changed. This is the opposite of ignoring - it defines what files the variant cares about.
+
+Full gitignore syntax is explained
+[here](https://git-scm.com/docs/gitignore). Ignored variants may still
+be scheduled manually, and their tasks will still be scheduled on
+failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
 ```yaml
 buildvariants:
@@ -755,10 +761,9 @@ When a build variant has `paths` defined:
 
 **This is not respected for variants that are generated.** We expect the generated tasks logic itself to handle this.
 
-Full gitignore syntax is explained
-[here](https://git-scm.com/docs/gitignore). Ignored variants may still
-be scheduled manually, and their tasks will still be scheduled on
-failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
+**Note: build variant path filtering is ignored on extremely large GitHub PRs with 3000+ files changed.** If a PR
+contains 3000+ changed files, `paths` will have no effect on the GitHub PR patch. The build variant will run its tasks
+even if `paths` doesn't match any of the changed files.
 
 ### Expansions
 
