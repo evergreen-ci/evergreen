@@ -1126,6 +1126,15 @@ Parameters:
     bucket: mciuploads
     region: us-east-1
     local_file: src/mongo-binaries.tgz
+# Checksum verification:
+- command: s3.get
+  params:
+    require_checksum_sha256: qUiQTy8PR5uPgZdpSzAYSw0u0cHNKh7A+4XSmaGSpEc= # base64-encoded sha256 checksum
+    role_arn: ${role_arn}
+    remote_file: ${mongo_binaries}
+    bucket: mciuploads
+    region: us-east-1
+    local_file: src/mongo-binaries.tgz
 ```
 
 Parameters:
@@ -1152,6 +1161,9 @@ Parameters:
 - `region`: AWS region of the bucket, defaults to us-east-1.
 - `build_variants`: list of buildvariants to run the command for, if
   missing/empty will run for all
+- `require_checksum_sha256`: optional base64-encoded sha256 checksum
+  to verify the downloaded file against. If the checksum does not match,
+  the command will fail.
 - `optional`: boolean: if set, won't error if the file isn't found or there's an error with downloading.
 
 ## s3.put
@@ -1199,6 +1211,15 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     visibility: signed
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
+# Checksum upload:
+- command: s3.put
+  params:
+    upload_checksum_sha256: true
+    role_arn: ${role_arn}
+    local_file: src/mongodb-binaries.tgz
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+    bucket: mciuploads
+    region: us-east-1
 ```
 
 Parameters:
@@ -1259,6 +1280,8 @@ Parameters:
 - `preserve_path`: defaults to false. If set to true, causes multi part uploads uploaded with
   `LocalFilesIncludeFilter` to preserve the original folder structure instead
   of putting all the files into the same folder
+- `upload_checksum_sha256`: defaults to false. If set to true, the command will
+  tell AWS to include the sha256 checksum of the file as metadata on the uploaded object.
 
 ## s3.put with multiple files
 
