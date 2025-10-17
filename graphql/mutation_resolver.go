@@ -1062,7 +1062,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
 	if evergreen.IsGithubMergeQueueRequester(t.Requester) {
-		return nil, InputValidationError.Send(ctx, "Merge queue tasks cannot be manually scheduled.")
+		return nil, InputValidationError.Send(ctx, "Merge queue tasks cannot be manually restarted.")
 	}
 	if err := model.ResetTaskOrDisplayTask(ctx, evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("restarting task '%s': %s", taskID, err.Error()))
