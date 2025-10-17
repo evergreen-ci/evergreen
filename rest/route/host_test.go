@@ -1140,9 +1140,9 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			instanceID := generateFakeEC2InstanceID()
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        h.Id,
-				Hostname:      "hostname",
-				EC2InstanceID: instanceID,
+				CloudProviderData: host.CloudProviderData{PublicDNS: "hostname"},
+				HostID:            h.Id,
+				EC2InstanceID:     instanceID,
 			}
 			resp := rh.Run(ctx)
 
@@ -1163,7 +1163,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NotZero(t, realHost)
 			assert.Equal(t, evergreen.HostStarting, realHost.Status, "intent host should be converted to real host when it's up")
 			assert.False(t, realHost.NeedsNewAgentMonitor)
-			assert.Equal(t, rh.params.Hostname, realHost.Host)
+			assert.Equal(t, rh.params.PublicDNS, realHost.Host)
 		},
 		"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			h.Status = evergreen.HostBuildingFailed
@@ -1172,9 +1172,9 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			instanceID := generateFakeEC2InstanceID()
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        h.Id,
-				Hostname:      "hostname",
-				EC2InstanceID: instanceID,
+				CloudProviderData: host.CloudProviderData{PublicDNS: "hostname"},
+				HostID:            h.Id,
+				EC2InstanceID:     instanceID,
 			}
 
 			resp := rh.Run(ctx)
@@ -1196,7 +1196,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NotZero(t, realHost)
 			assert.Equal(t, evergreen.HostDecommissioned, realHost.Status, "host that fails to build should be decommissioned when it comes up")
 			assert.False(t, realHost.NeedsNewAgentMonitor)
-			assert.Equal(t, rh.params.Hostname, realHost.Host)
+			assert.Equal(t, rh.params.PublicDNS, realHost.Host)
 		},
 		"SetsHostnameForNonIntentHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			instanceID := generateFakeEC2InstanceID()
@@ -1205,9 +1205,9 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 
 			rh.params = host.HostMetadataOptions{
-				HostID:        instanceID,
-				Hostname:      "hostname",
-				EC2InstanceID: instanceID,
+				CloudProviderData: host.CloudProviderData{PublicDNS: "hostname"},
+				HostID:            instanceID,
+				EC2InstanceID:     instanceID,
 			}
 
 			resp := rh.Run(ctx)
@@ -1225,7 +1225,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status, "host should not be modified if it's not an intent host")
 			assert.False(t, dbHost.NeedsNewAgentMonitor)
-			assert.Equal(t, rh.params.Hostname, dbHost.Host)
+			assert.Equal(t, rh.params.PublicDNS, dbHost.Host)
 		},
 		"DoesNotUnsetExistingHostnameIfHostnameNotProvided": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			instanceID := generateFakeEC2InstanceID()

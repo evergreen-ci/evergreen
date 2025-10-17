@@ -540,7 +540,7 @@ func TestHostSetDNSName(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	const newHostname = "hostname"
-	require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{Hostname: newHostname}))
+	require.NoError(t, h.SetEC2Metadata(ctx, HostMetadataOptions{CloudProviderData: CloudProviderData{PublicDNS: newHostname}}))
 	assert.Equal(t, newHostname, h.Host)
 
 	dbHost, err := FindOneId(ctx, h.Id)
