@@ -1169,6 +1169,8 @@ var (
 	PermissionRoleModify    = "modify_roles"
 	// Project permissions.
 	PermissionProjectSettings = "project_settings"
+	// Backstage-specific project variable permissions.
+	PermissionBackstageProjectVariables = "backstage_project_variables"
 
 	PermissionGitTagVersions = "project_git_tags"
 	PermissionTasks          = "project_tasks"
@@ -1209,6 +1211,10 @@ var (
 	ProjectSettingsNone = PermissionLevel{
 		Description: "No project settings permissions",
 		Value:       0,
+	}
+	BackstageProjectVariablesEdit = PermissionLevel{
+		Description: "Edit backstage-specific project variables",
+		Value:       10,
 	}
 	GitTagVersionsCreate = PermissionLevel{
 		Description: "Create versions with git tags",

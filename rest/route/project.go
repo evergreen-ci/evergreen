@@ -1377,3 +1377,105 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 
 	return gimlet.NewJSONResponse(res)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/projects/{project_id}/backstage_variables
+
+type backstageVariablesPostHandler struct {
+	projectID string
+	user      *user.DBUser
+	opts      backstageProjectVarsPostOptions
+}
+
+type backstageProjectVarsPostOptions struct {
+	Vars           []backstageProjectVars `json:"vars"`
+	DeleteVarNames []string               `json:"delete_var_names"`
+}
+
+type backstageProjectVars struct {
+	// The name of the backstage project variable.
+	Name string `json:"name"`
+	// The value of the backstage project variable.
+	Value string `json:"value"`
+}
+
+func makeBackstageVariablesPost() gimlet.RouteHandler {
+	return &backstageVariablesPostHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+// kim: TODO: should this really be documented if only one user can use it?
+//
+//	@Summary		Update project variables controlled and managed by Backstage. All created variables will be private.
+//	@Description	Restricted to Backstage. Updates Backstage-controlled project variables.
+//	@Tags			projects
+//	@Router			/projects/{project_id}/backstage_variables [post]
+//	@Security		Api-User || Api-Key
+//	@Param			project_id	path	string					true	"the project or repo ID"
+//	@Param			{object}	body	backstageVariablesPostHandler	false	"parameters"
+//	@Success		200
+func (p *backstageVariablesPostHandler) Factory() gimlet.RouteHandler {
+	return &backstageVariablesPostHandler{}
+}
+
+func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.projectID = gimlet.GetVars(r)["project_id"]
+	p.user = MustHaveUser(ctx)
+	if err := utility.ReadJSON(r.Body, &p.opts); err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+
+	// Only allow certain variable names to be managed by Backstage so it can't
+	// modify any arbitrary variable.
+	allowedBackstageVariableNames := []string{
+		"__default_bucket",
+		"__default_bucket_role_arn",
+	}
+	for _, projVar := range p.opts.Vars {
+		name := projVar.Name
+		if !utility.StringSliceContains(allowedBackstageVariableNames, name) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("project variable '%s' cannot be modified by Backstage", name),
+			}
+		}
+	}
+	for _, name := range p.opts.DeleteVarNames {
+		if !utility.StringSliceContains(allowedBackstageVariableNames, name) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("project variable '%s' cannot be deleted by Backstage", name),
+			}
+		}
+	}
+	return nil
+}
+
+func (p *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responder {
+	vars, err := dbModel.FindOneProjectVars(ctx, p.projectID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for project '%s'", p.projectID))
+	}
+	if vars == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project vars for project '%s' not found", p.projectID),
+		})
+	}
+	for _, projVar := range p.opts.Vars {
+		vars.Vars[projVar.Name] = projVar.Value
+	}
+	for _, name := range p.opts.DeleteVarNames {
+		delete(vars.Vars, name)
+	}
+
+	// kim: TODO: add unit tests.
+	// kim: TODO: test in staging.
+	if _, err := vars.Upsert(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "upserting new vars for project '%s'", p.projectID))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
