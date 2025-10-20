@@ -1384,7 +1384,6 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 
 type backstageVariablesPostHandler struct {
 	projectID string
-	user      *user.DBUser
 	opts      backstageProjectVarsPostOptions
 }
 
