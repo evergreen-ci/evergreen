@@ -1422,13 +1422,12 @@ func (p *backstageVariablesPostHandler) Factory() gimlet.RouteHandler {
 
 func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.projectID = gimlet.GetVars(r)["project_id"]
-	p.user = MustHaveUser(ctx)
 	if err := utility.ReadJSON(r.Body, &p.opts); err != nil {
 		return errors.Wrap(err, "reading request body")
 	}
 
-	// Only allow certain variable names to be managed by Backstage so it can't
-	// modify any arbitrary variable.
+	// Only allow a few reserved variable names to be managed by Backstage so it
+	// can't modify any arbitrary variable.
 	allowedBackstageVariableNames := []string{
 		"__default_bucket",
 		"__default_bucket_role_arn",
@@ -1450,6 +1449,13 @@ func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Reque
 			}
 		}
 	}
+	if len(p.opts.Vars) == 0 && len(p.opts.DeleteVarNames) == 0 {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "must specify at least one project variable to add or delete",
+		}
+	}
+
 	return nil
 }
 
