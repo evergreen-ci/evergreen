@@ -35,9 +35,9 @@ _Note: This tab is only visible on patch versions and not mainline commits._
 
 _Note: This tab will not show diffs for extremely large GitHub PR changes._ If it's a GitHub patch with 300-3000 files
 changed, Evergreen will only show the names of files changed but will not be able to offer the full file diffs. For
-GitHub patches with 3000+ changed files or with extremely large file diffs, Evergreen will show changed files at all.
-The tasks in the patch will still run with the correct set of changes, but you won't be able to view those changed files
-in the UI.
+GitHub patches with 3000+ changed files or with extremely large file diffs, Evergreen will not show changed files at
+all. The tasks in the patch will still run with the correct set of changes, but you won't be able to view those changed
+files in the UI.
 
 #### Downstream Projects
 
