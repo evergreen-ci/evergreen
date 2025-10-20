@@ -342,11 +342,10 @@ func TestHostDrawdown(t *testing.T) {
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
 				LastCommunicationTime: time.Now().Add(-time.Minute),
-				LastTaskCompletedTime: time.Time{}, // zero time
+				LastTaskCompletedTime: time.Time{},
 			}
 			require.NoError(t, hostWithoutLastTask.Insert(ctx))
 
-			// Add task to queue
 			taskQueue := model.TaskQueue{
 				Distro: d.Id,
 				Queue: []model.TaskQueueItem{
