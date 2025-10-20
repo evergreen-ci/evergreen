@@ -1483,5 +1483,7 @@ func (p *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "upserting new vars for project '%s'", p.projectID))
 	}
 
+	// kim: TODO: log event.
+
 	return gimlet.NewJSONResponse(struct{}{})
 }

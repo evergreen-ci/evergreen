@@ -1145,6 +1145,8 @@ const (
 	SuperUserResourceType = "super_user"
 	ProjectResourceType   = "project"
 	DistroResourceType    = "distro"
+	// Resource type for Backstage-owned project variable permissions.
+	BackstageVariablesResourceType = "backstage_project_variables"
 
 	AllProjectsScope          = "all_projects"
 	UnrestrictedProjectsScope = "unrestricted_projects"
@@ -1158,9 +1160,11 @@ type PermissionLevel struct {
 }
 
 var (
-	ValidResourceTypes = []string{SuperUserResourceType, ProjectResourceType, DistroResourceType}
+	ValidResourceTypes = []string{SuperUserResourceType, ProjectResourceType, DistroResourceType, BackstageVariablesResourceType}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
+	// Resource ID for Backstage-owned project variables.
+	BackstageVariablesPermissionsID = "backstage_project_variables"
 
 	// Admin permissions.
 	PermissionAdminSettings = "admin_settings"
@@ -1169,7 +1173,7 @@ var (
 	PermissionRoleModify    = "modify_roles"
 	// Project permissions.
 	PermissionProjectSettings = "project_settings"
-	// Backstage-specific project variable permissions.
+	// Backstage-owned project variable permissions.
 	PermissionBackstageProjectVariables = "backstage_project_variables"
 
 	PermissionGitTagVersions = "project_git_tags"
@@ -1212,6 +1216,7 @@ var (
 		Description: "No project settings permissions",
 		Value:       0,
 	}
+	// Permission level to edit Backstage-owned project variables.
 	BackstageProjectVariablesEdit = PermissionLevel{
 		Description: "Edit backstage-specific project variables",
 		Value:       10,

@@ -499,6 +499,34 @@ func RequiresProjectPermission(permission string, level evergreen.PermissionLeve
 	return gimlet.RequiresPermission(opts)
 }
 
+// kim: TODO: consider converting to special case on one service user.
+func RequiresBackstageVariablesPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
+	// kim: TODO: copy logic from admin event log middleware
+	// resources = []string{evergreen.SuperUserPermissionsID}
+	// opts.ResourceType = evergreen.SuperUserResourceType
+	// opts.Permission = evergreen.PermissionAdminSettings
+	// opts.RequiredLevel = evergreen.AdminSettingsEdit.Value
+	opts := gimlet.RequiresPermissionMiddlewareOpts{
+		RM:            evergreen.GetEnvironment().RoleManager(),
+		PermissionKey: permission,
+		ResourceType:  evergreen.BackstageVariablesResourceType,
+		RequiredLevel: level.Value,
+		// kim: TODO: figure out how to get Backstage variables permissions to
+		// work. My guess is that this will work if the Backstage variables role
+		// is associated with a special scope, like how the superuser role
+		// works.
+		// ResourceFunc: func(*http.Request) ([]string, int, error) {
+		//     return []string{evergreen.BackstageVariablesPermissionsID}, http.StatusOK, nil
+		// },
+		// Alternatively, this may work with all_projects scope because
+		// HasPermission only checks that the user has the required permission
+		// for the resource, not the resource type.
+		ResourceFunc: urlVarsToProjectScopes,
+	}
+
+	return gimlet.RequiresPermission(opts)
+}
+
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
