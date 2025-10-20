@@ -1459,6 +1459,20 @@ func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (p *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responder {
+	// kim: TODO: figure out reasonable way to get the before project settings.
+	// The above methods seem kinda complicated.
+	// pRef, err := data.FindProjectById(ctx, p.projectID)
+	// before, err := dbModel.GetProjectSettings(ctx, p.projectID)
+	// if err != nil {
+	//     return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings for project '%s'", p.projectID))
+	// }
+	// if before == nil {
+	//     return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+	//         StatusCode: http.StatusNotFound,
+	//         Message:    fmt.Sprintf("project settings for project '%s' not found", p.projectID),
+	//     })
+	// }
+
 	vars, err := dbModel.FindOneProjectVars(ctx, p.projectID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for project '%s'", p.projectID))
