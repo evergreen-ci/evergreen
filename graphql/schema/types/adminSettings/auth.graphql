@@ -4,6 +4,7 @@ enum PreferredAuthType {
   GITHUB
   MULTI
   KANOPY
+  # OAuth should not be in this list. The token verification is done by Kanopy.
 }
 
 type AuthConfig {
@@ -12,6 +13,7 @@ type AuthConfig {
   github: GitHubAuthConfig @requireAdmin
   multi: MultiAuthConfig @requireAdmin
   kanopy: KanopyAuthConfig @requireAdmin
+  oauth: OAuthConfig @requireAdmin
   preferredType: PreferredAuthType @requireAdmin
   backgroundReauthMinutes: Int
   allowServiceUsers: Boolean
@@ -58,12 +60,19 @@ type KanopyAuthConfig {
   keysetURL: String! @requireAdmin
 }
 
+type OAuthConfig {
+  issuer: String! @requireAdmin
+  clientId: String! @requireAdmin
+  connectorId: String! @requireAdmin
+}
+
 input AuthConfigInput {
   okta: OktaConfigInput @redactSecrets
   naive: NaiveAuthConfigInput @redactSecrets
   github: GitHubAuthConfigInput @redactSecrets
   multi: MultiAuthConfigInput @redactSecrets
   kanopy: KanopyAuthConfigInput @redactSecrets
+  oauth: OAuthConfigInput @redactSecrets
   preferredType: PreferredAuthType @redactSecrets
   backgroundReauthMinutes: Int
   allowServiceUsers: Boolean
@@ -108,4 +117,10 @@ input KanopyAuthConfigInput {
   headerName: String! @redactSecrets
   issuer: String! @redactSecrets
   keysetURL: String! @redactSecrets
+}
+
+input OAuthConfigInput {
+  issuer: String! @redactSecrets
+  clientId: String! @redactSecrets
+  connectorId: String! @redactSecrets
 }

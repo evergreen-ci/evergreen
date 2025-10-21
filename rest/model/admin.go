@@ -531,6 +531,7 @@ type APIAuthConfig struct {
 	Github                  *APIGithubAuthConfig `json:"github"`
 	Multi                   *APIMultiAuthConfig  `json:"multi"`
 	Kanopy                  *APIKanopyAuthConfig `json:"kanopy"`
+	OAuth                   *APIOAuthConfig      `json:"oauth"`
 	PreferredType           *string              `json:"preferred_type"`
 	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
 	AllowServiceUsers       bool                 `json:"allow_service_users"`
@@ -569,6 +570,12 @@ func (a *APIAuthConfig) BuildFromService(h any) error {
 				return errors.Wrap(err, "converting Kanopy auth settings to API model")
 			}
 		}
+		if v.OAuth != nil {
+			a.OAuth = &APIOAuthConfig{}
+			if err := a.OAuth.BuildFromService(v.OAuth); err != nil {
+				return errors.Wrap(err, "converting OAuth settings to API model")
+			}
+		}
 		a.PreferredType = utility.ToStringPtr(v.PreferredType)
 		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 		a.AllowServiceUsers = v.AllowServiceUsers
@@ -584,6 +591,7 @@ func (a *APIAuthConfig) ToService() (any, error) {
 	var github *evergreen.GithubAuthConfig
 	var multi *evergreen.MultiAuthConfig
 	var kanopy *evergreen.KanopyAuthConfig
+	var oauth *evergreen.OAuthConfig
 	var ok bool
 
 	i, err := a.Okta.ToService()
@@ -640,6 +648,16 @@ func (a *APIAuthConfig) ToService() (any, error) {
 			return nil, errors.Errorf("programmatic error: expected Kanopy auth config but got type %T", i)
 		}
 	}
+	i, err = a.OAuth.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting OAuth config to service model")
+	}
+	if i != nil {
+		oauth, ok = i.(*evergreen.OAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected OAuth config but got type %T", i)
+		}
+	}
 
 	return evergreen.AuthConfig{
 		Okta:                    okta,
@@ -647,6 +665,7 @@ func (a *APIAuthConfig) ToService() (any, error) {
 		Github:                  github,
 		Multi:                   multi,
 		Kanopy:                  kanopy,
+		OAuth:                   oauth,
 		PreferredType:           utility.FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 		AllowServiceUsers:       a.AllowServiceUsers,
@@ -1003,6 +1022,38 @@ func (a *APIKanopyAuthConfig) ToService() (any, error) {
 		HeaderName: utility.FromStringPtr(a.HeaderName),
 		Issuer:     utility.FromStringPtr(a.Issuer),
 		KeysetURL:  utility.FromStringPtr(a.KeysetURL),
+	}, nil
+}
+
+type APIOAuthConfig struct {
+	Issuer      *string `json:"issuer"`
+	ClientID    *string `json:"client_id"`
+	ConnectorID *string `json:"connector_id"`
+}
+
+func (a *APIOAuthConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case *evergreen.OAuthConfig:
+		if v == nil {
+			return nil
+		}
+		a.Issuer = utility.ToStringPtr(v.Issuer)
+		a.ClientID = utility.ToStringPtr(v.ClientID)
+		a.ConnectorID = utility.ToStringPtr(v.ConnectorID)
+	default:
+		return errors.Errorf("programmatic error: expected OAuth auth config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIOAuthConfig) ToService() (any, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return &evergreen.OAuthConfig{
+		Issuer:      utility.FromStringPtr(a.Issuer),
+		ClientID:    utility.FromStringPtr(a.ClientID),
+		ConnectorID: utility.FromStringPtr(a.ConnectorID),
 	}, nil
 }
 
