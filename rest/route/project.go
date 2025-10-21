@@ -1407,18 +1407,8 @@ func makeBackstageVariablesPost() gimlet.RouteHandler {
 	return &backstageVariablesPostHandler{}
 }
 
-// Factory creates an instance of the handler.
-//
-// kim: TODO: should this really be documented if only one user can use it?
-//
-//	@Summary		Update project variables controlled and managed by Backstage. All created variables will be private.
-//	@Description	Restricted to Backstage. Updates Backstage-controlled project variables.
-//	@Tags			projects
-//	@Router			/projects/{project_id}/backstage_variables [post]
-//	@Security		Api-User || Api-Key
-//	@Param			project_id	path	string					true	"the project or repo ID"
-//	@Param			{object}	body	backstageVariablesPostHandler	false	"parameters"
-//	@Success		200
+// This route is intentionally not documented because only Backstage has access
+// to it, not general users.
 func (p *backstageVariablesPostHandler) Factory() gimlet.RouteHandler {
 	return &backstageVariablesPostHandler{}
 }

@@ -343,8 +343,8 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
-// authenticateSpecialUser checks if a particular user has provided the required
-// authentication.
+// authenticateSpecialUser checks if a specific user has provided the required
+// authentication. Typically for authenticating special-purpose service users.
 func authenticateSpecialUser(r *http.Request, requiredUsername, username, apiKey string) gimlet.Responder {
 	if username != requiredUsername {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -485,7 +485,6 @@ type backstageMiddleware struct{}
 
 // newBackstageMiddleware returns a middleware that verifies the request
 // is coming from Backstage.
-// kim: TODO: check correctness in staging
 func newBackstageMiddleware() gimlet.Middleware {
 	return &backstageMiddleware{}
 }

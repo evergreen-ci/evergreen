@@ -452,8 +452,6 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 		}))
 		return false
 	}
-	// kim: NOTE: from all of user's roles, find the roles that have a scope
-	// that includes the resource.
 	roles, err = roleManager.FilterForResource(roles, opts.Resource, opts.ResourceType)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -462,8 +460,6 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 		return false
 	}
 	for _, role := range roles {
-		// kim: NOTE: from the roles that apply to the resource, check if any
-		// have at least the minimum permission level.
 		level, hasPermission := role.Permissions[opts.Permission]
 		if hasPermission && level >= opts.RequiredLevel {
 			return true
