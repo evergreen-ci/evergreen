@@ -86,7 +86,7 @@ func TestAssumeRole(t *testing.T) {
 	}
 	for tName, tCase := range testCases {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.RepoRefCollection))
 
 			manager := GetSTSManager(true)
 			stsManagerImpl, ok := manager.(*stsManagerImpl)
