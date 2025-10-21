@@ -142,9 +142,8 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 		idleThreshold = idleTaskGroupDrawdownCutoff
 	}
 
-	if !h.LastTaskCompletedTime.IsZero() && taskQueue.Length() > 0 {
+	if !h.LastTaskCompletedTime.IsZero() && taskQueue.DistroQueueInfo.LengthWithDependenciesMet > 0 {
 		idleThreshold = h.Distro.HostAllocatorSettings.AcceptableHostIdleTime
-
 	}
 
 	if idleTime > idleThreshold {

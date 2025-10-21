@@ -213,7 +213,7 @@ func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *even
 			}
 			v, err := processor(ctx, args)
 			if err != nil {
-				catcher.Add(err)
+				catcher.Wrapf(err, "processing downstream project trigger for task '%s'", t.Id)
 				continue
 			}
 			if v != nil {
@@ -283,7 +283,7 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 			}
 			v, err := processor(ctx, args)
 			if err != nil {
-				catcher.Add(err)
+				catcher.Wrapf(err, "processing downstream project trigger for build '%s'", b.Id)
 				continue
 			}
 			if v != nil {
@@ -296,8 +296,8 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 	return versions, catcher.Resolve()
 }
 
-// TriggerDownstreamProjectsForPush triggers downstream projects for a push event from a repo that does not
-// have repotracker enabled.
+// TriggerDownstreamProjectsForPush triggers downstream projects with push-level
+// triggers for a GitHub push event.
 func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) error {
 	downstreamProjects, err := model.FindDownstreamProjects(ctx, projectId)
 	if err != nil {
@@ -306,6 +306,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 
 	catcher := grip.NewBasicCatcher()
 	versionIds := []string{}
+	triggeredDownstreamProjectIDs := []string{}
 	for _, ref := range downstreamProjects {
 
 		for _, trigger := range ref.Triggers {
@@ -313,39 +314,57 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 				continue
 			}
 
-			args := ProcessorArgs{
-				DownstreamProject:            ref,
-				ConfigFile:                   trigger.ConfigFile,
-				TriggerType:                  model.ProjectTriggerLevelPush,
-				TriggerID:                    trigger.Project,
-				DefinitionID:                 trigger.DefinitionID,
-				Alias:                        trigger.Alias,
-				UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
-				PushRevision: model.Revision{
-					Revision:        utility.FromStringPtr(event.GetHeadCommit().ID),
-					CreateTime:      event.GetHeadCommit().Timestamp.Time,
-					Author:          utility.FromStringPtr(event.GetHeadCommit().Author.Name),
-					AuthorEmail:     utility.FromStringPtr(event.GetHeadCommit().Author.Email),
-					RevisionMessage: utility.FromStringPtr(event.GetHeadCommit().Message),
-				},
+			for _, commit := range event.Commits {
+				// A single GitHub push event can batch multiple commits, so
+				// process all of them in the downstream project.
+				args := ProcessorArgs{
+					DownstreamProject:            ref,
+					ConfigFile:                   trigger.ConfigFile,
+					TriggerType:                  model.ProjectTriggerLevelPush,
+					TriggerID:                    trigger.Project,
+					DefinitionID:                 trigger.DefinitionID,
+					Alias:                        trigger.Alias,
+					UnscheduleDownstreamVersions: trigger.UnscheduleDownstreamVersions,
+					PushRevision: model.Revision{
+						Revision:        utility.FromStringPtr(commit.ID),
+						CreateTime:      commit.Timestamp.Time,
+						Author:          utility.FromStringPtr(commit.Author.Name),
+						AuthorEmail:     utility.FromStringPtr(commit.Author.Email),
+						RevisionMessage: utility.FromStringPtr(commit.Message),
+					},
+				}
+				v, err := processor(ctx, args)
+				if err != nil {
+					catcher.Wrapf(err, "processing downstream project trigger for push of upstream commit '%s'", commit.GetID())
+					continue
+				}
+				if v != nil {
+					versionIds = append(versionIds, v.Id)
+				}
+				triggeredDownstreamProjectIDs = append(triggeredDownstreamProjectIDs, ref.Id)
 			}
-			v, err := processor(ctx, args)
-			if err != nil {
-				catcher.Add(err)
-				continue
-			}
-			if v != nil {
-				versionIds = append(versionIds, v.Id)
-			}
+
+			// A single downstream project only needs one push-level trigger on
+			// an upstream project. Since this one has processed the push,
+			// there's no need to iterate through the remaining triggers.
 			break
 		}
 	}
-	grip.InfoWhen(len(versionIds) > 0, message.Fields{
-		"source":      "GitHub hook",
-		"message":     "triggered versions for push event for project",
-		"version_ids": versionIds,
-		"project_id":  projectId,
-	})
+
+	if len(versionIds) > 0 {
+		commits := make([]string, 0, len(event.Commits))
+		for _, commit := range event.Commits {
+			commits = append(triggeredDownstreamProjectIDs, utility.FromStringPtr(commit.ID))
+		}
+		grip.Info(message.Fields{
+			"source":                           "GitHub hook",
+			"message":                          "triggered downstream versions for project push event",
+			"upstream_commits":                 commits,
+			"upstream_project_id":              projectId,
+			"downstream_version_ids":           versionIds,
+			"triggered_downstream_project_ids": triggeredDownstreamProjectIDs,
+		})
+	}
 
 	return catcher.Resolve()
 }

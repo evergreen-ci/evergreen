@@ -298,6 +298,10 @@ func TestHostDrawdown(t *testing.T) {
 				Queue: []model.TaskQueueItem{
 					{Id: "task1"},
 				},
+				DistroQueueInfo: model.DistroQueueInfo{
+					Length:                    1,
+					LengthWithDependenciesMet: 1,
+				},
 			}
 			require.NoError(t, taskQueue.Save(ctx))
 
@@ -310,6 +314,59 @@ func TestHostDrawdown(t *testing.T) {
 			assert.Equal(t, 1, num, "should only decommission hostWithoutLastTask")
 			assert.NotContains(t, hosts, hostWithLastTask.Id,
 				"should not decommission recently active host with tasks in queue")
+			assert.Contains(t, hosts, hostWithoutLastTask.Id,
+				"should not decommission stale host within idle threshold")
+
+		},
+		"HandlesIdleHostsWithTaskQueueWithNoDependenceMet": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			d.HostAllocatorSettings.AcceptableHostIdleTime = 90 * time.Second
+
+			hostWithLastTask := host.Host{
+				Id:                    "active",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Now().Add(-5 * time.Second),
+				LastTask:              "dummy_task_name1",
+			}
+			require.NoError(t, hostWithLastTask.Insert(ctx))
+
+			hostWithoutLastTask := host.Host{
+				Id:                    "stale",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Time{},
+			}
+			require.NoError(t, hostWithoutLastTask.Insert(ctx))
+
+			taskQueue := model.TaskQueue{
+				Distro: d.Id,
+				Queue: []model.TaskQueueItem{
+					{Id: "task1"},
+				},
+				DistroQueueInfo: model.DistroQueueInfo{
+					Length:                    1,
+					LengthWithDependenciesMet: 0,
+				},
+			}
+			require.NoError(t, taskQueue.Save(ctx))
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 2, num, "should decommission hostWithoutLastTask and hostWithLastTask when there are no tasks in the task queue with dependencies met")
+			assert.Contains(t, hosts, hostWithLastTask.Id,
+				"should decommission recently active host when with tasks in queue but no tasks with dependencies met")
 			assert.Contains(t, hosts, hostWithoutLastTask.Id,
 				"should not decommission stale host within idle threshold")
 

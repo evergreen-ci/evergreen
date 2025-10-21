@@ -1416,7 +1416,9 @@ func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNum
 	return pr, nil
 }
 
-// GetGithubPullRequestDiff downloads a diff from a Github Pull Request diff
+// GetGithubPullRequestDiff downloads a raw diff from a Github Pull Request.
+// This can fail if the PR is too large (e.g. greater than 300 files). See
+// GetGitHubPullRequestFiles.
 func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
 	caller := "GetGithubPullRequestDiff"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1448,6 +1450,90 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	}
 
 	return diff, summaries, nil
+}
+
+// MaxGitHubPRFilesListLength is the maximum number of files that can be
+// returned by the GitHub API for a pull request. This is a hard limit imposed
+// by the GitHub API. If the PR changes more than 3000 files, Evergreen will
+// only see at most 3000 of them.
+const MaxGitHubPRFilesListLength = 3000
+
+// GetGitHubPullRequestFiles gets the summary list of the changed files for the
+// given pull request. Due to GitHub limitations, this can get at most 3000
+// changed files. If it hits the 3000 file retrieval limit, it'll return the
+// first 3000 files and no error; callers are expected to handle that limit
+// appropriately.
+func GetGitHubPullRequestFiles(ctx context.Context, gh GithubPatch) ([]Summary, error) {
+	owner := gh.BaseOwner
+	repo := gh.BaseRepo
+	caller := "GetGitHubPullRequestFiles"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	// Return the most files possible per request (100) to reduce API calls.
+	const maxFilesPerPage = 100
+	const maxNumRequestsUntilNoFiles = MaxGitHubPRFilesListLength / maxFilesPerPage
+
+	page := 1
+	var allSummaries []Summary
+	for range maxNumRequestsUntilNoFiles {
+		opts := &github.ListOptions{
+			PerPage: maxFilesPerPage,
+			Page:    page,
+		}
+
+		summaries, err := getPullRequestFileSummaries(ctx, githubClient, gh, opts)
+		if err != nil {
+			return nil, err
+		}
+		if len(summaries) == 0 {
+			// No more files or this is the last page of files.
+			break
+		}
+
+		allSummaries = append(allSummaries, summaries...)
+		page++
+	}
+
+	return allSummaries, nil
+}
+
+func getPullRequestFileSummaries(ctx context.Context, ghClient *githubapp.GitHubClient, gh GithubPatch, opts *github.ListOptions) ([]Summary, error) {
+	files, resp, err := ghClient.PullRequests.ListFiles(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting page %d of pull request files", opts.Page)
+	}
+
+	return getPatchSummariesFromCommitFiles(files), nil
+}
+
+func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
+	summaries := make([]Summary, 0, len(files))
+	for _, file := range files {
+		summary := Summary{
+			Name:      file.GetFilename(),
+			Additions: file.GetAdditions(),
+			Deletions: file.GetDeletions(),
+		}
+		summaries = append(summaries, summary)
+	}
+	return summaries
 }
 
 func ValidatePR(pr *github.PullRequest) error {
