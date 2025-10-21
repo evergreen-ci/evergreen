@@ -1446,6 +1446,12 @@ func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Reque
 				Message:    fmt.Sprintf("project variable '%s' cannot be modified by Backstage", name),
 			}
 		}
+		if projVar.Value == "" {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("project variable '%s' cannot have an empty value", name),
+			}
+		}
 	}
 	for _, name := range p.opts.VarsToDelete {
 		if !utility.StringSliceContains(allowedBackstageVariableNames, name) {
@@ -1465,67 +1471,71 @@ func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Reque
 	return nil
 }
 
-func (p *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	// This intentionally looks up the project ref without merging because we
 	// want to modify solely the branch project's variables and not the merged
 	// project variables.
-	pRef, err := dbModel.FindBranchProjectRef(ctx, p.projectID)
+	pRef, err := dbModel.FindBranchProjectRef(ctx, h.projectID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding branch project ref '%s'", p.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding branch project ref '%s'", h.projectID))
 	}
 	if pRef == nil {
 		// Fall back to checking if the project ref ID is actually a repo ref
 		// ID.
-		pRef, err := dbModel.FindOneRepoRef(ctx, p.projectID)
+		repoRef, err := dbModel.FindOneRepoRef(ctx, h.projectID)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding repo ref '%s'", p.projectID))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding repo ref '%s'", h.projectID))
 		}
-		if pRef == nil {
+		if repoRef == nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("project or repo ref '%s' not found", p.projectID),
+				Message:    fmt.Sprintf("project or repo ref '%s' not found", h.projectID),
 			})
 		}
+		pRef = &repoRef.ProjectRef
 	}
 	before, err := dbModel.GetProjectSettings(ctx, pRef)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings for project '%s'", p.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings for project '%s'", h.projectID))
 	}
 	if before == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("project settings for project '%s' not found", p.projectID),
+			Message:    fmt.Sprintf("project settings for project '%s' not found", h.projectID),
 		})
 	}
 
-	vars := before.Vars
-	updatedVars := maps.Clone(vars.Vars)
-	for _, projVar := range p.opts.Vars {
-		updatedVars[projVar.Name] = projVar.Value
+	updatedVars, err := dbModel.FindOneProjectVars(ctx, pRef.Id)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding variables for project '%s'", pRef.Id))
 	}
-	for _, name := range p.opts.VarsToDelete {
-		delete(updatedVars, name)
+	if updatedVars == nil {
+		updatedVars = &dbModel.ProjectVars{
+			Id: pRef.Id,
+		}
 	}
-	if maps.Equal(vars.Vars, updatedVars) {
+	for _, projVar := range h.opts.Vars {
+		updatedVars.Vars[projVar.Name] = projVar.Value
+	}
+	for _, name := range h.opts.VarsToDelete {
+		delete(updatedVars.Vars, name)
+	}
+	if maps.Equal(updatedVars.Vars, before.Vars.Vars) {
 		// No-op, no changes were made.
 		return gimlet.NewJSONResponse(struct{}{})
 	}
-	vars.Vars = updatedVars
 
-	// kim: TODO: test in staging.
-	if _, err := vars.Upsert(ctx); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "upserting new vars for project '%s'", p.projectID))
+	if _, err := updatedVars.Upsert(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "upserting new vars for project '%s'", pRef.Id))
 	}
 
-	// This loads the latest project vars from the DB, which will include the
-	// project var modifications that were just made.
 	after, err := dbModel.GetProjectSettings(ctx, pRef)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting updated project settings for project '%s'", p.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting updated project settings for project '%s'", pRef.Id))
 	}
 
-	if err := dbModel.LogProjectModified(ctx, p.projectID, p.userID, before, after); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging project settings modification for project '%s'", p.projectID))
+	if err := dbModel.LogProjectModified(ctx, pRef.Id, h.userID, before, after); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging project settings modification for project '%s'", pRef.Id))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
