@@ -1517,11 +1517,9 @@ func (p *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "upserting new vars for project '%s'", p.projectID))
 	}
 
-	// kim: TODO: unit test that event log works.
-	pRefCopy := *pRef
 	// This loads the latest project vars from the DB, which will include the
 	// project var modifications that were just made.
-	after, err := dbModel.GetProjectSettings(ctx, &pRefCopy)
+	after, err := dbModel.GetProjectSettings(ctx, pRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting updated project settings for project '%s'", p.projectID))
 	}
