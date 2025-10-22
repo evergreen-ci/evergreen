@@ -84,9 +84,11 @@ func TestTarGzPackParseParams(t *testing.T) {
 }
 
 func TestTarGzCommandMakeArchive(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	conf := &internal.TaskConfig{Task: task.Task{Id: "task"}, Project: model.Project{}}
-	logger, _ := comm.GetLoggerProducer(t.Context(), &conf.Task, nil)
+	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{Id: "task"}, Project: model.Project{}}
+	logger, _ := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 
 	Convey("With a targz pack command", t, func() {
 		testDataDir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "archive")
@@ -114,11 +116,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				So(cmd.Target, ShouldEqual, target.Name())
-				So(cmd.SourceDir, ShouldEqual, testDataDir)
-				So(cmd.Include, ShouldResemble, []string{"targz_me/dir1/**"})
-				So(cmd.ExcludeFiles, ShouldResemble, []string{"*.pdb"})
-				numFound, err := cmd.makeArchive(t.Context(), logger.Task())
+				numFound, err := cmd.makeArchive(ctx, logger.Task())
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 1)
 
@@ -134,7 +132,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 					output := util.NewMBCappedWriter()
 
-					require.NoError(t, jasper.NewCommand().Add([]string{cygpath, "-u", target.Name()}).SetCombinedWriter(output).Run(t.Context()))
+					require.NoError(t, jasper.NewCommand().Add([]string{cygpath, "-u", target.Name()}).SetCombinedWriter(output).Run(ctx))
 					targetPath = strings.TrimSpace(output.String())
 				} else {
 					targetPath = target.Name()

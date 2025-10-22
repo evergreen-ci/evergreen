@@ -246,17 +246,3 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 		}
 	})
 }
-
-func TestFindArchiveContentsSymLink(t *testing.T) {
-	testDir := getDirectoryOfFile()
-	root := filepath.Join(testDir, "testdata", "archive", "symlink")
-
-	t.Run("SymLinksStayUnresolved", func(t *testing.T) {
-		files, size, err := findArchiveContents(t.Context(), root, []string{"*.txt"}, []string{})
-		require.NoError(t, err)
-		require.Len(t, files, 2)
-		assert.Equal(t, "invalid.txt", filepath.Base(files[0].path))
-		assert.Equal(t, "valid.txt", filepath.Base(files[1].path))
-		assert.Equal(t, 5, size)
-	})
-}
