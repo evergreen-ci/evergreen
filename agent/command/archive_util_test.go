@@ -251,6 +251,13 @@ func TestFindArchiveContentsSymLink(t *testing.T) {
 	testDir := getDirectoryOfFile()
 	root := filepath.Join(testDir, "testdata", "archive", "symlink")
 
+	// create a invalid.txt symlink that points outside of the root
+	invalidLinkPath := filepath.Join(root, "invalid.txt")
+	require.NoError(t, os.Symlink("/etc/passwd", invalidLinkPath))
+	t.Cleanup(func() {
+		require.NoError(t, os.Remove(invalidLinkPath))
+	})
+
 	t.Run("SymLinksStayUnresolved", func(t *testing.T) {
 		files, size, err := findArchiveContents(t.Context(), root, []string{"*.txt"}, []string{})
 		require.NoError(t, err)
