@@ -159,4 +159,3 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 	loginURL := fmt.Sprintf("%v/login", uis.RootURL)
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
-
