@@ -39,6 +39,19 @@ func (uis *UIServer) legacyTaskQueue(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) legacyTaskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+
+	if err != nil || project == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
+	// it is the most relevant.
+	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyTaskPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
 	executionStr := gimlet.GetVars(r)["execution"]
 	var execution int
 	var err error
@@ -54,20 +67,8 @@ func (uis *UIServer) legacyTaskHistoryPage(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("%s/task/%s/history?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution), http.StatusPermanentRedirect)
-}
-
-func (uis *UIServer) legacyTaskPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject(r.Context())
-
-	if err != nil || project == nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
-	// it is the most relevant.
-	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
+	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
 
 func (uis *UIServer) legacyProjectsPage(w http.ResponseWriter, r *http.Request) {
