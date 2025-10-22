@@ -78,6 +78,11 @@ type s3get struct {
 	// RoleARN is an ARN that should be assumed to make the S3 request.
 	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
 
+	// RequireChecksumSha256 will verify the sha256 checksum inside
+	// the file's metadata with the given one. The checksum is Base64
+	// encoded.
+	RequireChecksumSha256 string `mapstructure:"require_checksum_sha256" plugin:"expand"`
+
 	skipMissing bool
 
 	// assumedRoleARN is set when the command is using temporary credentials
@@ -365,8 +370,9 @@ func (c *s3get) fetchAndExtractTarball(ctx context.Context, f *os.File) error {
 
 func (c *s3get) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
 	opts := pail.S3Options{
-		Region: c.Region,
-		Name:   c.Bucket,
+		Region:                 c.Region,
+		Name:                   c.Bucket,
+		ExpectedChecksumSHA256: c.RequireChecksumSha256,
 	}
 
 	if c.getRoleARN() != "" {

@@ -22,7 +22,7 @@ require (
 	github.com/evergreen-ci/certdepot v0.0.0-20250313151408-76b756321eda
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
 	github.com/evergreen-ci/gimlet v0.0.0-20250610151514-2545690ba23c
-	github.com/evergreen-ci/pail v0.0.0-20250903180955-74649b5e3818
+	github.com/evergreen-ci/pail v0.0.0-20251016203900-e2a0324f9655
 	github.com/evergreen-ci/poplar v0.0.0-20250710150300-8483281f1c7d
 	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/utility v0.0.0-20250604173729-c1b32de37d48
@@ -190,7 +190,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
-	github.com/evergreen-ci/test-selection-client v0.0.0-20250926151834-67997d2ea33b
+	github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c
 	github.com/fraugster/parquet-go v0.11.0
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/handlers v1.5.2

@@ -72,7 +72,7 @@ input AuthConfigInput {
   github: GitHubAuthConfigInput @redactSecrets
   multi: MultiAuthConfigInput @redactSecrets
   kanopy: KanopyAuthConfigInput @redactSecrets
-  oauth: OAuthConfigInput
+  oauth: OAuthConfigInput @redactSecrets
   preferredType: PreferredAuthType @redactSecrets
   backgroundReauthMinutes: Int
   allowServiceUsers: Boolean
@@ -120,7 +120,7 @@ input KanopyAuthConfigInput {
 }
 
 input OAuthConfigInput {
-  issuer: String!
-  clientId: String!
-  connectorId: String!
+  issuer: String! @redactSecrets
+  clientId: String! @redactSecrets
+  connectorId: String! @redactSecrets
 }

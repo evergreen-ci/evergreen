@@ -270,7 +270,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
 		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
+	require.NoError(db.CreateCollections(model.ParserProjectCollection))
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -400,7 +400,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
 		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
+	require.NoError(db.CreateCollections(model.ParserProjectCollection))
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -531,13 +531,15 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 
 	assert := assert.New(t)
 	require := require.New(t)
+
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
 		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
+	require.NoError(db.CreateCollections(model.ParserProjectCollection))
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
 	assert.NoError(config.Set(ctx))
+
 	downstreamProjectRef := model.ProjectRef{
 		Id:         mgobson.NewObjectId().Hex(),
 		Identifier: "downstream",
@@ -573,31 +575,54 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
 
+	now := time.Now()
 	pushEvent := &github.PushEvent{
-		HeadCommit: &github.HeadCommit{
-			ID:      utility.ToStringPtr("3585388b1591dfca47ac26a5b9a564ec8f138a5e"),
-			Message: utility.ToStringPtr("message"),
-			Author: &github.CommitAuthor{
-				Email: utility.ToStringPtr("hello@example.com"),
-				Name:  utility.ToStringPtr("test"),
+		Commits: []*github.HeadCommit{
+			{
+				ID:      utility.ToStringPtr("3585388b1591dfca47ac26a5b9a564ec8f138a5e"),
+				Message: utility.ToStringPtr("message"),
+				Author: &github.CommitAuthor{
+					Email: utility.ToStringPtr("hello@example.com"),
+					Name:  utility.ToStringPtr("test"),
+				},
+				Timestamp: &github.Timestamp{Time: now.Add(-time.Minute)},
 			},
-			Timestamp: &github.Timestamp{Time: time.Now()},
+			{
+				ID:      utility.ToStringPtr("b27779f856b211ffaf97cbc124b7082a20ea8bc0"),
+				Message: utility.ToStringPtr("another message"),
+				Author: &github.CommitAuthor{
+					Email: utility.ToStringPtr("hello@example.com"),
+					Name:  utility.ToStringPtr("test"),
+				},
+				Timestamp: &github.Timestamp{Time: now},
+			},
 		},
 	}
 	err = TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	dbVersions, err := model.VersionFind(t.Context(), model.VersionByProjectIdAndCreateTime(downstreamProjectRef.Id, time.Now()))
 	assert.NoError(err)
-	require.Len(dbVersions, 1)
+	require.Len(dbVersions, 2)
+
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
-	assert.Equal("downstream_3585388b1591dfca47ac26a5b9a564ec8f138a5e_def1", dbVersions[0].Id)
-	assert.Equal(downstreamRevision, dbVersions[0].Revision)
+	assert.Equal("downstream_b27779f856b211ffaf97cbc124b7082a20ea8bc0_def1", dbVersions[0].Id)
+	assert.Equal("cf46076567e4949f9fc68e0634139d4ac495c89b", dbVersions[0].Revision)
 	assert.Equal(evergreen.VersionCreated, dbVersions[0].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[0].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
 	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
-	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", dbVersions[0].TriggerSHA)
+	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", dbVersions[0].TriggerSHA)
 	assert.Equal("upstream", dbVersions[0].TriggerID)
+	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
+
+	assert.Equal("downstream_3585388b1591dfca47ac26a5b9a564ec8f138a5e_def1", dbVersions[1].Id)
+	assert.Equal(downstreamRevision, dbVersions[1].Revision)
+	assert.Equal(evergreen.VersionCreated, dbVersions[1].Status)
+	assert.Equal(downstreamProjectRef.Id, dbVersions[1].Identifier)
+	assert.Equal(evergreen.TriggerRequester, dbVersions[1].Requester)
+	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[1].TriggerType)
+	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", dbVersions[1].TriggerSHA)
+	assert.Equal("upstream", dbVersions[1].TriggerID)
 
 	builds, err := build.Find(t.Context(), build.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
@@ -621,7 +646,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		assert.Equal(model.ProjectTriggerLevelPush, t.TriggerType)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(ctx, dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(ctx, dbVersions[1].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)

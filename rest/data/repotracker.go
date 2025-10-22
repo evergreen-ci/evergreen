@@ -86,7 +86,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	}
 	if len(refs) == 0 {
 		grip.Info(message.Fields{
-			"source":  "github hook",
+			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
 			"owner":   *event.Repo.Owner.Name,

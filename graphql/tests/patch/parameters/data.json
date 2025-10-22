@@ -16,6 +16,10 @@
         {
           "key": "my_parameter",
           "value": "this_is_it"
+        },
+        {
+          "key": "secret_parameter",
+          "value": "abc"
         }
       ]
     }
@@ -24,6 +28,15 @@
     {
       "_id": "spruce",
       "identifier": "spruce"
+    }
+  ],
+  "admin": [
+    {
+      "_id": "logger_config",
+      "redact_keys": [
+        "secret",
+        "password"
+      ]
     }
   ]
 }

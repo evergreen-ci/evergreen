@@ -41,8 +41,8 @@ func (r *RepoRef) Add(ctx context.Context, creator *user.DBUser) error {
 	return r.addPermissions(ctx, creator)
 }
 
-// Insert is included here so ProjectRef.Insert() isn't mistakenly used.
-func (r *RepoRef) Insert() error {
+// Insert is included here so ProjectRef.Insert(context.Context) isn't mistakenly used.
+func (r *RepoRef) Insert(_ context.Context) error {
 	return errors.New("insert not supported for repoRef")
 }
 
