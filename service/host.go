@@ -19,10 +19,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	IncludeSpawnedHosts = "includeSpawnedHosts"
-)
-
 type uiParams struct {
 	Action string `json:"action"`
 
@@ -34,125 +30,6 @@ type uiParams struct {
 
 	// additional notes that will be added to the event log_path
 	Notes string `json:"notes"`
-}
-
-func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
-	u := MustHaveUser(r)
-
-	id := gimlet.GetVars(r)["host_id"]
-
-	h, err := host.FindOneByIdOrTag(r.Context(), id)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	if h == nil {
-		http.Error(w, "Host not found", http.StatusNotFound)
-		return
-	}
-
-	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, id)
-	if RedirectIfSpruceSet(w, r, u, spruceLink, uis.Settings.Ui.UIv2Url) {
-		return
-	}
-
-	opts := gimlet.PermissionOpts{Resource: h.Distro.Id, ResourceType: evergreen.DistroResourceType}
-	permissions, err := rolemanager.HighestPermissionsForRoles(u.Roles(), evergreen.GetEnvironment().RoleManager(), opts)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	hostEventOpts := event.HostEventsOpts{
-		ID:      h.Id,
-		Tag:     h.Tag,
-		Limit:   50,
-		SortAsc: false,
-	}
-	events, err := event.Find(r.Context(), event.HostEvents(hostEventOpts))
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	runningTask := &task.Task{}
-	if h.RunningTask != "" {
-		runningTask, err = task.FindOneIdAndExecution(r.Context(), h.RunningTask, h.RunningTaskExecution)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		if runningTask == nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("task %s running on host not found", h.RunningTask))
-			return
-		}
-	}
-
-	var containers []host.Host
-	if h.HasContainers {
-		containers, err = h.GetContainers(r.Context())
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = spruceLink
-	}
-
-	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Events      []event.EventLogEntry
-		Host        *host.Host
-		Permissions gimlet.Permissions
-		RunningTask *task.Task
-		Containers  []host.Host
-		NewUILink   string
-		ViewData
-	}{events, h, permissions, runningTask, containers, newUILink, uis.GetCommonViewData(w, r, false, true)},
-		"base", "host.html", "base_angular.html", "menu.html")
-}
-
-func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
-	u := MustHaveUser(r)
-	permissions, err := rolemanager.HighestPermissionsForRolesAndResourceType(
-		u.Roles(),
-		evergreen.DistroResourceType,
-		evergreen.GetEnvironment().RoleManager(),
-	)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	includeSpawnedHosts, _ := strconv.ParseBool(r.FormValue(IncludeSpawnedHosts))
-	hosts, err := getHostsData(r.Context(), includeSpawnedHosts)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	permittedHosts := &hostsData{}
-	for i := range hosts.Hosts {
-		resourcePermissions, ok := permissions[hosts.Hosts[i].Host.Distro.Id]
-		if ok && resourcePermissions[evergreen.PermissionHosts] > 0 {
-			permittedHosts.Hosts = append(permittedHosts.Hosts, hosts.Hosts[i])
-		}
-	}
-	spruceLink := fmt.Sprintf("%s/hosts", uis.Settings.Ui.UIv2Url)
-	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = spruceLink
-	}
-
-	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Hosts               *hostsData
-		IncludeSpawnedHosts bool
-		NewUILink           string
-		ViewData
-	}{permittedHosts, includeSpawnedHosts, newUILink, uis.GetCommonViewData(w, r, false, true)},
-		"base", "hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
