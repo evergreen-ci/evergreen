@@ -75,3 +75,13 @@ func (uis *UIServer) legacyProjectsPage(w http.ResponseWriter, r *http.Request) 
 	newUIProjectsLink := fmt.Sprintf("%s/project/%s/settings", uis.Settings.Ui.UIv2Url, projectId)
 	http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacyUserSettingsPage(w http.ResponseWriter, r *http.Request) {
+	newUILink := fmt.Sprintf("%s/preferences/profile", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyNotificationsPage(w http.ResponseWriter, r *http.Request) {
+	newUILink := fmt.Sprintf("%s/preferences/notifications", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
+}
