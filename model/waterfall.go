@@ -548,13 +548,11 @@ func GetOffsetVersionOrderByRevision(ctx context.Context, revision string, proje
 // GetOffsetVersionOrderByDate returns the revision order of a system-requested version created on or before the given date,
 // incremented by 1 to account for the Waterfall query being non-inclusive.
 func GetOffsetVersionOrderByDate(ctx context.Context, date time.Time, projectId string) (int, error) {
-	// Use the end of the provided date to find the most recent version created on or before it.
-	eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
-	found, err := VersionFindOne(ctx, VersionByProjectIdAndCreateTime(projectId, eod).WithFields(VersionRevisionOrderNumberKey))
+	found, err := VersionFindOne(ctx, VersionByProjectIdAndCreateTime(projectId, date).WithFields(VersionRevisionOrderNumberKey))
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("finding version on or before date '%s': %s", eod.Format(time.DateOnly), err.Error()))
+		return 0, errors.New(fmt.Sprintf("finding version on or before date '%s': %s", date.Format(time.DateOnly), err.Error()))
 	} else if found == nil {
-		return 0, errors.New(fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly)))
+		return 0, errors.New(fmt.Sprintf("version on or before date '%s' not found", date.Format(time.DateOnly)))
 	}
 	// Increment by 1 to account for Waterfall query being non-inclusive.
 	return found.RevisionOrderNumber + 1, nil
