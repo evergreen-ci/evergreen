@@ -15,7 +15,7 @@ metadata:
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
-  owner: group:default/10genevergreenteam
+  owner: group:default/10genevergreenapp
   domain: internal-tools
 
 ---
@@ -40,7 +40,7 @@ metadata:
       icon: dashboard
 spec:
   type: service
-  owner: group:default/10genevergreenteam
+  owner: group:default/10genevergreenapp
   lifecycle: production
   system: evergreen
   domain: internal-tools
@@ -62,7 +62,7 @@ metadata:
 spec:
   type: openapi
   lifecycle: production
-  owner: group:default/10genevergreenteam
+  owner: group:default/10genevergreenapp
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
@@ -83,7 +83,7 @@ metadata:
 spec:
   type: graphql
   lifecycle: experimental
-  owner: group:default/10gen-evergreen-ui
+  owner: group:default/10genevergreenui
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graphql
