@@ -15,7 +15,7 @@ metadata:
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
-  owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
+  owner: group:default/10genevergreenteam
   domain: internal-tools
 
 ---
@@ -40,7 +40,7 @@ metadata:
       icon: dashboard
 spec:
   type: service
-  owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
+  owner: group:default/10genevergreenteam
   lifecycle: production
   system: evergreen
   domain: internal-tools
@@ -62,7 +62,7 @@ metadata:
 spec:
   type: openapi
   lifecycle: production
-  owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
+  owner: group:default/10genevergreenteam
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
@@ -83,7 +83,7 @@ metadata:
 spec:
   type: graphql
   lifecycle: experimental
-  owner: group:default/oktagroup_63a4baf4355dd783744f0b8d  # 10gen-evergreen-ui okta group
+  owner: group:default/10gen-evergreen-ui
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graphql
