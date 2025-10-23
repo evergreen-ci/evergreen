@@ -149,6 +149,8 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	close(work)
 
 	var wg sync.WaitGroup
+	// use runtime.GOMAXPROCS(0) instead of runtime.NumCPU() so that we get the number of CPUs available to Evergreen, not the number of CPUs on the node.
+	// The max procs is set to the actual number of CPUs by automaxprocs in startWebService.
 	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 		wg.Add(1)
 		go func() {
