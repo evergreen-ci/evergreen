@@ -42,7 +42,7 @@ func cacheExpectedDurations(ctx context.Context, comparator *CmpBasedTaskCompara
 	close(work)
 
 	wg := &sync.WaitGroup{}
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

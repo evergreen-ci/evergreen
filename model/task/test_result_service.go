@@ -125,7 +125,7 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...
 
 		var wg sync.WaitGroup
 		catcher := grip.NewBasicCatcher()
-		for i := 0; i < runtime.NumCPU(); i++ {
+		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 			wg.Add(1)
 			go workerDownload(ctx, toDownload, config, catcher, &wg)
 		}
