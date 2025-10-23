@@ -336,8 +336,8 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		}))
 		return
 	}
-	if resp := authenticateSpecialUser(r, alertmanagerUser, username, password); resp != nil {
-		gimlet.WriteResponse(rw, resp)
+	if errResp := authenticateSpecialUser(r, alertmanagerUser, username, password); errResp != nil {
+		gimlet.WriteResponse(rw, errResp)
 		return
 	}
 	next(rw, r)
@@ -345,6 +345,7 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 
 // authenticateSpecialUser checks if a specific user has provided the required
 // authentication. Typically for authenticating special-purpose service users.
+// Returns a non-nil response if authentication fails.
 func authenticateSpecialUser(r *http.Request, requiredUsername, username, apiKey string) gimlet.Responder {
 	if username != requiredUsername {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -474,8 +475,8 @@ func NewSageMiddleware() gimlet.Middleware {
 func (m *sageMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	apiUser := r.Header.Get(evergreen.APIUserHeader)
 	apiKey := r.Header.Get(evergreen.APIKeyHeader)
-	if resp := authenticateSpecialUser(r, sageUser, apiUser, apiKey); resp != nil {
-		gimlet.WriteResponse(rw, resp)
+	if errResp := authenticateSpecialUser(r, sageUser, apiUser, apiKey); errResp != nil {
+		gimlet.WriteResponse(rw, errResp)
 		return
 	}
 	next(rw, r)
@@ -492,8 +493,8 @@ func newBackstageMiddleware() gimlet.Middleware {
 func (m *backstageMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	apiUser := r.Header.Get(evergreen.APIUserHeader)
 	apiKey := r.Header.Get(evergreen.APIKeyHeader)
-	if resp := authenticateSpecialUser(r, backstageUser, apiUser, apiKey); resp != nil {
-		gimlet.WriteResponse(rw, resp)
+	if errResp := authenticateSpecialUser(r, backstageUser, apiUser, apiKey); errResp != nil {
+		gimlet.WriteResponse(rw, errResp)
 		return
 	}
 	next(rw, r)

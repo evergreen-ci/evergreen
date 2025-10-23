@@ -1390,16 +1390,16 @@ type backstageVariablesPostHandler struct {
 }
 
 type backstageProjectVarsPostOptions struct {
-	// Names of variables to add/modify.
-	Vars []backstageProjectVars `json:"vars"`
-	// Names of variables to delete.
+	// Names of Backstage project variables to add/modify.
+	Vars []backstageProjectVar `json:"vars"`
+	// Names of Backstage project variables to delete.
 	VarsToDelete []string `json:"vars_to_delete"`
 }
 
-type backstageProjectVars struct {
-	// The name of the backstage project variable.
+type backstageProjectVar struct {
+	// The name of the Backstage project variable.
 	Name string `json:"name"`
-	// The value of the backstage project variable.
+	// The value of the Backstage project variable.
 	Value string `json:"value"`
 }
 
@@ -1462,9 +1462,9 @@ func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (h *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responder {
-	// This intentionally looks up the project ref without merging because we
-	// want to modify solely the branch project's variables and not the merged
-	// project variables.
+	// This intentionally looks up the project ref without merging with its repo
+	// ref because the route is supposed to modify solely the branch project's
+	// own variables.
 	pRef, err := dbModel.FindBranchProjectRef(ctx, h.projectID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding branch project ref '%s'", h.projectID))
@@ -1501,7 +1501,8 @@ func (h *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responde
 	}
 	if updatedVars == nil {
 		updatedVars = &dbModel.ProjectVars{
-			Id: pRef.Id,
+			Id:   pRef.Id,
+			Vars: map[string]string{},
 		}
 	}
 	for _, projVar := range h.opts.Vars {
