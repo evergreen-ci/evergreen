@@ -433,7 +433,10 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if err != nil {
 				return "", errors.Wrap(err, "constructing Jasper command to fetch task data")
 			}
-			postFetchClient += " && " + getTaskDataCmd
+			// We write the command to a script because the user hasn't authenticated on this host yet.
+			// When the user SSH's in later, they have to run the script by running `evergreen spawnhost-fetch`.
+			scriptPath := filepath.Join(h.Distro.HomeDir(), ".evergreen-spawnhost-fetch.sh")
+			postFetchClient += " && " + fmt.Sprintf("echo '%s' > %s && chmod +x %s", getTaskDataCmd, scriptPath, scriptPath)
 		}
 	}
 
