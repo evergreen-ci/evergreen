@@ -359,9 +359,9 @@ func getSoonToBeFreeHosts(ctx context.Context, existingHosts []host.Host, future
 	close(source)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(runtime.NumCPU())
+	wg.Add(runtime.GOMAXPROCS(0))
 
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 		go func() {
 			defer recovery.LogStackTraceAndContinue("panic during future free host calculation")
 			defer wg.Done()

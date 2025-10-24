@@ -251,22 +251,22 @@ The JSON file format is as follows:
 
 ```json
 {
-    "results":[
+  "results": [
     {
-        "status":"pass",
-        "test_file":"test_1",
-        "log_info": {
-            "log_name": "tests/test_1.log",
-            "logs_to_merge": ["global", "hooks/test_1.log"]
-            "rendering_type": "resmoke",
-        },
-        "start":1398782500.359, //epoch_time
-        "end":1398782500.681 //epoch_time
+      "status": "pass",
+      "test_file": "test_1",
+      "log_info": {
+        "log_name": "tests/test_1.log",
+        "logs_to_merge": ["global", "hooks/test_1.log"],
+        "rendering_type": "resmoke"
+      },
+      "start": 1398782500.359, //epoch_time
+      "end": 1398782500.681 //epoch_time
     },
     {
-        "etc":"..."
-    },
-    ]
+      "etc": "..."
+    }
+  ]
 }
 ```
 
@@ -379,10 +379,16 @@ Parameters:
 ### AssumeRole AWS Setup
 
 The call to AssumeRole includes an external ID formatted as
-`<project_id>-<requester>`. This cannot be modified by the user.
+`<project_id>-<requester>-<repo_project_id>`. This cannot be
+modified by the user and is set by Evergreen.
+This may be appended to in the future, it's highly recommended to
+include a wildcard at the end of your external ID condition.
 
 - An Evergreen project's ID can be found on its General Settings page.
 - The list of requesters can be found [here](../Reference/Glossary.md#requesters).
+- The repo project ID is the ID of the repo ref associated with the
+  project. If the project is not associated with a repo ref, this will be blank
+  (A `-` will still be included at the end of the ExternalId).
 
 The originating role is:
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
@@ -405,8 +411,8 @@ An example of a trust policy with an external ID is below:
       },
       "Action": "sts:AssumeRole",
       "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "<project_id>-<requester>"
+        "StringLike": {
+          "sts:ExternalId": "<project_id>-<requester>*"
         }
       }
     }
@@ -414,7 +420,14 @@ An example of a trust policy with an external ID is below:
 }
 ```
 
-You can allow any requester by using `StringLike` like below:
+> **Note:** Please make sure you use `StringLike` and not `StringEquals` for the
+> `sts:ExternalId` condition. As well as including a wildcard at the end of your
+> external ID condition. This allows for future additions to the external ID
+> format without needing to update your trust policy.
+
+#### Allow any requester
+
+You can allow any requester by using the wildcard earlier in the condition:
 
 ```json
 {
@@ -428,7 +441,57 @@ You can allow any requester by using `StringLike` like below:
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringLike": {
-          "sts:ExternalId": "<project_id>-*"
+          "sts:ExternalId": "<project_id>*"
+        }
+      }
+    }
+  ]
+}
+```
+
+Or just particular requesters
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringLike": {
+          "sts:ExternalId": [
+            "<project_id>-github_merge_request*",
+            "<project_id>-trigger_request*"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Untracked Branches
+
+You can allow [untracked branches](Repo-Level-Settings.md#how-to-use-pr-testing-for-untracked-branches) by using a wildcard
+for the project_id and requester (this will also allow tracked branches under that repo project as well):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringLike": {
+          "sts:ExternalId": "*-*-<repo_project_id>*"
         }
       }
     }
@@ -1119,6 +1182,15 @@ Parameters:
     bucket: mciuploads
     region: us-east-1
     local_file: src/mongo-binaries.tgz
+# Checksum verification:
+- command: s3.get
+  params:
+    require_checksum_sha256: qUiQTy8PR5uPgZdpSzAYSw0u0cHNKh7A+4XSmaGSpEc= # base64-encoded sha256 checksum
+    role_arn: ${role_arn}
+    remote_file: ${mongo_binaries}
+    bucket: mciuploads
+    region: us-east-1
+    local_file: src/mongo-binaries.tgz
 ```
 
 Parameters:
@@ -1145,6 +1217,9 @@ Parameters:
 - `region`: AWS region of the bucket, defaults to us-east-1.
 - `build_variants`: list of buildvariants to run the command for, if
   missing/empty will run for all
+- `require_checksum_sha256`: optional base64-encoded sha256 checksum
+  to verify the downloaded file against. If the checksum does not match,
+  the command will fail.
 - `optional`: boolean: if set, won't error if the file isn't found or there's an error with downloading.
 
 ## s3.put
@@ -1192,6 +1267,15 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     visibility: signed
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
+# Checksum upload:
+- command: s3.put
+  params:
+    upload_checksum_sha256: true
+    role_arn: ${role_arn}
+    local_file: src/mongodb-binaries.tgz
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+    bucket: mciuploads
+    region: us-east-1
 ```
 
 Parameters:
@@ -1252,6 +1336,8 @@ Parameters:
 - `preserve_path`: defaults to false. If set to true, causes multi part uploads uploaded with
   `LocalFilesIncludeFilter` to preserve the original folder structure instead
   of putting all the files into the same folder
+- `upload_checksum_sha256`: defaults to false. If set to true, the command will
+  tell AWS to include the sha256 checksum of the file as metadata on the uploaded object.
 
 ## s3.put with multiple files
 
@@ -1477,6 +1563,61 @@ in `env` or via `add_to_path`) is a special variable that has two effects:
   is not found in the default runtime environment's `PATH`, it will try
   searching for a matching executable `binary` in any of the paths in
   `add_to_path` or in the `PATH` specified in `env`.
+
+## test_selection.get
+
+**Note: this feature is experimental and subject to change.**
+
+This command allows a task to get a recommended list of tests from the [test selection
+service](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/385846915/Test+Selection+Services). The command will
+populate an output JSON file, which your task can use to decide which tests should run.
+
+This command can only be used if [the test selection feature is enabled by the project](Project-and-Distro-Settings#test-selection-settings).
+
+```yaml
+- command: test_selection.get
+  params:
+    output_file: path/to/output/file.json
+```
+
+Parameters:
+
+- `output_file`: the JSON output file containing the list of recommended tests. The schema for this file is:
+
+  ```json
+  {
+      "tests": [
+        {"name": "test1"},
+        {"name": "test2"},
+        ...
+      ]
+  }
+  ```
+
+- `tests`: a string list of input tests for test selection to consider. Optional. Cannot be combined with `tests_file`
+- `tests_file`: a JSON file containing a list of input tests to consider. Optional. Cannot be combined with `tests`. The
+  expected schema for this file is:
+
+  ```json
+  {
+      "tests": ["test1", "test2", ...]
+  }
+  ```
+
+- `strategies`: A comma-separated list of strategy names to use. Optional. If no strategy is explicitly chosen, test
+  selection by default will return the same set of tests that were given in the input (via `tests` or `tests_file`).
+- `usage_rate`: Define a string proportion (between 0 and 1) of how often the command should actually request a list of
+  recommended tests. Even if it does not request a list of recommended tests, it will still produce an output file but
+  that file will not contain any tests. Optional. If undefined, the command will always run.
+
+### Example Integration of test_selection.get
+
+Just adding this command will not immediately change which tests run or what test results are produced in your task. All
+it does is produce a file containing the list of tests that the test selection service recommends running. Your
+project's testing infrastructure will need to be updated to read and use the file to decide which tests to run.
+
+A working simple example of the test selection command can be found [here](https://github.com/evergreen-ci/commit-queue-sandbox/blob/686ec45e27533294398ca0e83788f2b427cc6a2e/evergreen.yml#L337-L352).
+Note that your integration may look very different, this is just meant to be a starting point.
 
 ## timeout.update
 

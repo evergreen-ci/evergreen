@@ -34,7 +34,6 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.New("must specify a file to define downstream project config")
 	}
 
-	// create version
 	projectInfo.Ref = &args.DownstreamProject
 	v, err := repotracker.CreateVersionFromConfig(context.Background(), &projectInfo, metadata, false, nil)
 	if err != nil {

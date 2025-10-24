@@ -22,11 +22,14 @@ type VersionModification struct {
 func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modifications VersionModification) (int, error) {
 	switch modifications.Action {
 	case evergreen.RestartAction:
+		if version.Requester == evergreen.GithubMergeRequester {
+			return http.StatusBadRequest, errors.New("merge queue patches cannot be manually restarted")
+		}
 		if err := RestartVersions(ctx, modifications.VersionsToRestart, modifications.Abort, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 		}
 	case evergreen.SetActiveAction:
-		if version.Requester == evergreen.GithubMergeRequester && modifications.Active {
+		if version.Requester == evergreen.GithubMergeRequester {
 			return http.StatusBadRequest, errors.New("merge queue patches cannot be manually scheduled")
 		}
 		if err := SetVersionActivation(ctx, version.Id, modifications.Active, user.Id); err != nil {

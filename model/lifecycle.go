@@ -1573,6 +1573,14 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 	if !creationInfo.ProjectRef.IsTestSelectionAllowed() {
 		return false
 	}
+	if !evergreen.IsPatchRequester(creationInfo.Version.Requester) {
+		// Test selection is only available for patches for now. Will eventually
+		// be available for other requesters, but this acts as a temporary
+		// safety guard to prevent an experimental feature from affecting
+		// non-patch versions.
+		return false
+	}
+
 	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
 	isTestSelectionIncludeSet := len(creationInfo.TestSelectionParams.IncludeBuildVariants) > 0 || len(creationInfo.TestSelectionParams.IncludeTasks) > 0
 

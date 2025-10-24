@@ -9,12 +9,15 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	evergreenutil "github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	anserdb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -142,6 +145,108 @@ type taskExecutionPatchHandler struct {
 
 func makeModifyTaskRoute() gimlet.RouteHandler {
 	return &taskExecutionPatchHandler{}
+}
+
+// //////////////////////////////////////////////////////////////////////
+//
+// Handler for updating a single artifact file's URL for a specific task execution.
+//
+//	PATCH /tasks/{task_id}/artifacts/url
+type updateArtifactURLHandler struct {
+	taskID    string
+	execution *int // optional, defaults to latest task execution
+	body      updateArtifactURLRequest
+	task      *task.Task
+	user      gimlet.User
+}
+
+// updateArtifactURLRequest represents the request body for updating a single
+// artifact file's URL for a specific task execution.
+type updateArtifactURLRequest struct {
+	// ArtifactName is the name of the artifact file whose URL will be updated.
+	ArtifactName string `json:"artifact_name"`
+	// CurrentURL is the existing URL for the artifact file.
+	CurrentURL string `json:"current_url"`
+	// NewURL is the new URL that will replace the current URL.
+	NewURL string `json:"new_url"`
+}
+
+func makeUpdateArtifactURLRoute() gimlet.RouteHandler { return &updateArtifactURLHandler{} }
+
+// Factory creates an instance of the artifact URL update handler.
+//
+//	@Summary		Update an artifact file URL
+//	@Description	Update the URL of a single artifact file for a task execution. If the execution query parameter is omitted, the task's latest execution is used. The artifact file is matched by name and its current URL. Pre signed URLs are currently not supported.
+//	@Tags			tasks
+//	@Router			/tasks/{task_id}/artifacts/url [patch]
+//	@Security		Api-User || Api-Key
+//	@Param			task_id		path		string						true	"Task ID"
+//	@Param			execution	query		int							false	"0-based execution number; if omitted updates latest execution"
+//	@Param			{object}	body		updateArtifactURLRequest	true	"parameters"
+//	@Success		200			{object}	model.APITask				"Task including updated artifacts"
+//	@Failure		400			{object}	gimlet.ErrorResponse		"Invalid input"
+//	@Failure		404			{object}	gimlet.ErrorResponse		"Task or artifact not found"
+//	@Failure		500			{object}	gimlet.ErrorResponse		"Internal error"
+
+func (h *updateArtifactURLHandler) Factory() gimlet.RouteHandler { return &updateArtifactURLHandler{} }
+
+func (h *updateArtifactURLHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.body); err != nil {
+		return errors.Wrap(err, "reading artifact url update request body")
+	}
+	if h.body.ArtifactName == "" || h.body.CurrentURL == "" || h.body.NewURL == "" {
+		return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "artifact_name, current_url, and new_url are all required"}
+	}
+	if err := evergreenutil.CheckURL(h.body.NewURL); err != nil {
+		return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("new_url invalid: %s", err.Error())}
+	}
+	if execStr := r.URL.Query().Get("execution"); execStr != "" {
+		val, err := strconv.Atoi(execStr)
+		if err != nil || val < 0 {
+			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "execution must be a non-negative integer"}
+		}
+		h.execution = utility.ToIntPtr(val)
+	}
+	projCtx := MustHaveProjectContext(ctx)
+	if projCtx.Task == nil {
+		return gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: "task not found"}
+	}
+	h.task = projCtx.Task
+	h.user = MustHaveUser(ctx)
+	return nil
+}
+
+func (h *updateArtifactURLHandler) Run(ctx context.Context) gimlet.Responder {
+	// if a specific execution was not provided, use the task's latest execution
+	exec := h.task.Execution
+	if h.execution != nil {
+		exec = *h.execution
+	}
+
+	if err := artifact.UpdateFileLink(ctx, h.task.Id, exec, h.body.ArtifactName, h.body.CurrentURL, h.body.NewURL); err != nil {
+		if err == anserdb.ErrNotFound {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: "artifact file not found for task"})
+		}
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating artifact URL"))
+	}
+
+	// FindByIdExecution will find the latest execution if h.execution is nil
+	taskForResponse, err := task.FindByIdExecution(ctx, h.task.Id, h.execution)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s' execution after artifact update", h.task.Id))
+	}
+	if taskForResponse == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: "task not found after update"})
+	}
+
+	apiTask := &model.APITask{}
+	if err := apiTask.BuildFromService(ctx, taskForResponse, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true}); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "building API task model after artifact update"))
+	}
+	return gimlet.NewJSONResponse(apiTask)
 }
 
 // Factory creates an instance of the handler.

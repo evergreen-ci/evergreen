@@ -256,6 +256,11 @@
                 "issuer": "issuer",
                 "keysetURL": "keyset_url"
               },
+              "oauth": {
+                "issuer": "oauth_issuer",
+                "clientId": "oauth_client_id",
+                "connectorId": "oauth_connector_id"
+              },
               "multi": {
                 "readWrite": ["okta"],
                 "readOnly": ["github"]

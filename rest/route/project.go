@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strconv"
 	"time"
@@ -1376,4 +1377,157 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	return gimlet.NewJSONResponse(res)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/projects/{project_id}/backstage_variables
+
+type backstageVariablesPostHandler struct {
+	projectID string
+	userID    string
+	opts      backstageProjectVarsPostOptions
+}
+
+type backstageProjectVarsPostOptions struct {
+	// Names of Backstage project variables to add/modify.
+	Vars []backstageProjectVar `json:"vars"`
+	// Names of Backstage project variables to delete.
+	VarsToDelete []string `json:"vars_to_delete"`
+}
+
+type backstageProjectVar struct {
+	// The name of the Backstage project variable.
+	Name string `json:"name"`
+	// The value of the Backstage project variable.
+	Value string `json:"value"`
+}
+
+func makeBackstageVariablesPost() gimlet.RouteHandler {
+	return &backstageVariablesPostHandler{}
+}
+
+// This route is intentionally not documented because only Backstage has access
+// to it, not general users.
+func (p *backstageVariablesPostHandler) Factory() gimlet.RouteHandler {
+	return &backstageVariablesPostHandler{}
+}
+
+func (p *backstageVariablesPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.projectID = gimlet.GetVars(r)["project_id"]
+	u := MustHaveUser(ctx)
+	p.userID = u.Username()
+
+	if err := utility.ReadJSON(r.Body, &p.opts); err != nil {
+		return errors.Wrap(err, "reading request body")
+	}
+
+	// Only allow a few reserved variable names to be managed by Backstage so it
+	// can't modify any arbitrary variable.
+	allowedBackstageVariableNames := []string{
+		"__default_bucket",
+		"__default_bucket_role_arn",
+	}
+	for _, projVar := range p.opts.Vars {
+		name := projVar.Name
+		if !utility.StringSliceContains(allowedBackstageVariableNames, name) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("project variable '%s' cannot be modified by Backstage", name),
+			}
+		}
+		if projVar.Value == "" {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("project variable '%s' cannot have an empty value", name),
+			}
+		}
+	}
+	for _, name := range p.opts.VarsToDelete {
+		if !utility.StringSliceContains(allowedBackstageVariableNames, name) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("project variable '%s' cannot be deleted by Backstage", name),
+			}
+		}
+	}
+	if len(p.opts.Vars) == 0 && len(p.opts.VarsToDelete) == 0 {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "must specify at least one project variable to add or delete",
+		}
+	}
+
+	return nil
+}
+
+func (h *backstageVariablesPostHandler) Run(ctx context.Context) gimlet.Responder {
+	// This intentionally looks up the project ref without merging with its repo
+	// ref because the route is supposed to modify solely the branch project's
+	// own variables.
+	pRef, err := dbModel.FindBranchProjectRef(ctx, h.projectID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding branch project ref '%s'", h.projectID))
+	}
+	if pRef == nil {
+		// Fall back to checking if the project ref ID is actually a repo ref
+		// ID.
+		repoRef, err := dbModel.FindOneRepoRef(ctx, h.projectID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding repo ref '%s'", h.projectID))
+		}
+		if repoRef == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("project or repo ref '%s' not found", h.projectID),
+			})
+		}
+		pRef = &repoRef.ProjectRef
+	}
+	before, err := dbModel.GetProjectSettings(ctx, pRef)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings for project '%s'", h.projectID))
+	}
+	if before == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project settings for project '%s' not found", h.projectID),
+		})
+	}
+
+	updatedVars, err := dbModel.FindOneProjectVars(ctx, pRef.Id)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding variables for project '%s'", pRef.Id))
+	}
+	if updatedVars == nil {
+		updatedVars = &dbModel.ProjectVars{
+			Id:   pRef.Id,
+			Vars: map[string]string{},
+		}
+	}
+	for _, projVar := range h.opts.Vars {
+		updatedVars.Vars[projVar.Name] = projVar.Value
+	}
+	for _, name := range h.opts.VarsToDelete {
+		delete(updatedVars.Vars, name)
+	}
+	if maps.Equal(updatedVars.Vars, before.Vars.Vars) {
+		// No-op, no changes were made.
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	if _, err := updatedVars.Upsert(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "upserting new vars for project '%s'", pRef.Id))
+	}
+
+	after, err := dbModel.GetProjectSettings(ctx, pRef)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting updated project settings for project '%s'", pRef.Id))
+	}
+
+	if err := dbModel.LogProjectModified(ctx, pRef.Id, h.userID, before, after); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging project settings modification for project '%s'", pRef.Id))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
