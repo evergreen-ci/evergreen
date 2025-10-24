@@ -2097,7 +2097,7 @@ func GetProjectSettingsById(ctx context.Context, projectId string, isRepo bool) 
 func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasEvergreenAppInstalled, _ := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
+	hasEvergreenAppInstalled, _ := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(ctx, p.Id)
 	if err != nil {

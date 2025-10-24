@@ -871,7 +871,7 @@ Every task has some expansions available by default:
 - `${github_author}` is the GitHub username of the creator of a PR
   or PR triggered merge queue item
 - `${github_commit}` is the commit hash of the commit that triggered
-  the patch run. For non pull-request patches, it will be the same as ${revision}.
+  the patch run. For non pull-request patches, it will be the same as `${revision}`.
 - `${github_known_hosts}` is GitHub's SSH key fingerprint
 - `${github_org}` is the GitHub organization for the repo for the project
 - `${github_repo}` is the GitHub repo for the project
