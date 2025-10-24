@@ -210,6 +210,7 @@ var (
 			AbortedKey,
 			AbortInfoKey,
 			OverrideDependenciesKey,
+			HasAnnotationsKey,
 		}}
 
 	// This should reflect Task.GetDisplayStatus()
@@ -1660,6 +1661,34 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 	)
 }
 
+// UpdateOneOld updates one old task.
+func UpdateOneOld(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(
+		ctx,
+		OldCollection,
+		query,
+		update,
+	)
+}
+
+// UpdateOneByIdAndExecution attempts to update a task by ID and execution in both
+// current and archived collections.
+func UpdateOneByIdAndExecution(ctx context.Context, taskId string, execution int, update any) error {
+	// First, try to update in the current tasks collection
+	err := UpdateOne(ctx, ByIdAndExecution(taskId, execution), update)
+
+	// If the task was not found in the current collection, it might be archived
+	if adb.ResultsNotFound(err) {
+		oldTaskId := MakeOldID(taskId, execution)
+		err = UpdateOneOld(ctx, bson.M{IdKey: oldTaskId}, update)
+		if adb.ResultsNotFound(err) {
+			return errors.Errorf("task '%s' execution %d not found", taskId, execution)
+		}
+	}
+
+	return err
+}
+
 func UpdateAll(ctx context.Context, query any, update any) (*adb.ChangeInfo, error) {
 	return db.UpdateAllContext(
 		ctx,
@@ -2683,17 +2712,18 @@ func (t *Task) IncNumNextTaskDispatches(ctx context.Context) error {
 
 // UpdateHasAnnotations updates a task's HasAnnotations flag, indicating if there
 // are any annotations with populated IssuesKey for its id / execution pair.
+// This function handles both current tasks (in 'tasks' collection) and archived
+// tasks (in 'old_tasks' collection).
 func UpdateHasAnnotations(ctx context.Context, taskId string, execution int, hasAnnotations bool) error {
-	err := UpdateOne(
-		ctx,
-		ByIdAndExecution(taskId, execution),
-		[]bson.M{
-			{"$set": bson.M{
-				HasAnnotationsKey: hasAnnotations,
-			}},
-			addDisplayStatusCache,
-		})
-	return errors.Wrapf(err, "updating HasAnnotations field for task '%s'", taskId)
+	update := []bson.M{
+		{"$set": bson.M{
+			HasAnnotationsKey: hasAnnotations,
+		}},
+		addDisplayStatusCache,
+	}
+
+	err := UpdateOneByIdAndExecution(ctx, taskId, execution, update)
+	return errors.Wrapf(err, "updating HasAnnotations field for task '%s' execution %d", taskId, execution)
 }
 
 type NumExecutionsForIntervalInput struct {
