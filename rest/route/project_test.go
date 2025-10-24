@@ -1671,9 +1671,9 @@ func TestModifyProjectVersions(t *testing.T) {
 }
 
 func TestPostBackstageVariables(t *testing.T) {
-	defer func() {
+	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(serviceModel.RepoRefCollection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, event.EventCollection))
-	}()
+	})
 
 	for tName, tCase := range map[string]func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars){
 		"ParseSucceedsWithValidVariablesToAdd": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
