@@ -278,7 +278,7 @@ func TestUpdateHasAnnotationsWithArchivedTask(t *testing.T) {
 	assert.Equal(t, 1, currentTask.Execution)
 	assert.False(t, currentTask.HasAnnotations)
 
-	// Verify archived task exists
+	// Verify the archived task still it's annotations.
 	archivedTask, err := FindOneOldByIdAndExecution(t.Context(), task.Id, 0)
 	require.NoError(t, err)
 	require.NotNil(t, archivedTask)
