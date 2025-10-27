@@ -1137,8 +1137,7 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 			ConnectorID string `json:"connector_id" yaml:"connector_id"`
 		} `json:"oauth,omitempty" yaml:"oauth,omitempty"`
 	}{
-		User:   owner.Id,
-		APIKey: owner.APIKey,
+		User: owner.Id,
 	}
 	if settings != nil {
 		conf.APIServerHost = settings.Api.URL + "/api"
@@ -1148,6 +1147,13 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 			conf.OAuth.ClientID = settings.AuthConfig.OAuth.ClientID
 			conf.OAuth.ConnectorID = settings.AuthConfig.OAuth.ConnectorID
 		}
+	}
+
+	if h.ProvisionOptions != nil && !h.ProvisionOptions.UseOAuth {
+		// If the host is not using OAuth, set the API key for the owner.
+		// We always set the 'user' field since it helps scripts identify
+		// which user is associated with the host.
+		conf.APIKey = owner.APIKey
 	}
 
 	return yaml.Marshal(conf)
