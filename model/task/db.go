@@ -1661,8 +1661,8 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 	)
 }
 
-// UpdateOneOld updates one old task.
-func UpdateOneOld(ctx context.Context, query any, update any) error {
+// updateOneOld updates one old task.
+func updateOneOld(ctx context.Context, query any, update any) error {
 	return db.UpdateContext(
 		ctx,
 		OldCollection,
@@ -1671,16 +1671,16 @@ func UpdateOneOld(ctx context.Context, query any, update any) error {
 	)
 }
 
-// UpdateOneByIdAndExecution attempts to update a task by ID and execution in both
+// updateOneByIdAndExecution attempts to update a task by ID and execution in both
 // current and archived collections.
-func UpdateOneByIdAndExecution(ctx context.Context, taskId string, execution int, update any) error {
+func updateOneByIdAndExecution(ctx context.Context, taskId string, execution int, update any) error {
 	// First, try to update in the current tasks collection
 	err := UpdateOne(ctx, ByIdAndExecution(taskId, execution), update)
 
 	// If the task was not found in the current collection, it might be archived
 	if adb.ResultsNotFound(err) {
 		oldTaskId := MakeOldID(taskId, execution)
-		err = UpdateOneOld(ctx, bson.M{IdKey: oldTaskId}, update)
+		err = updateOneOld(ctx, bson.M{IdKey: oldTaskId}, update)
 		if adb.ResultsNotFound(err) {
 			return errors.Errorf("task '%s' execution %d not found", taskId, execution)
 		}
@@ -2722,7 +2722,7 @@ func UpdateHasAnnotations(ctx context.Context, taskId string, execution int, has
 		addDisplayStatusCache,
 	}
 
-	err := UpdateOneByIdAndExecution(ctx, taskId, execution, update)
+	err := updateOneByIdAndExecution(ctx, taskId, execution, update)
 	return errors.Wrapf(err, "updating HasAnnotations field for task '%s' execution %d", taskId, execution)
 }
 
