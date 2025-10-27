@@ -2,13 +2,13 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -58,15 +58,15 @@ func hostFetch() cli.Command {
 			cmd := jasper.NewCommand().Add(strings.Split(command, " ")).SetCombinedWriter(output)
 
 			input := fetchScript[inputStart+len(inputMarker):]
+			// The input ends with EOF on its own line; remove that.
+			input = strings.TrimSuffix(input, "\nEOF\n")
 			cmd.SetInputBytes([]byte(input))
 
 			if err = cmd.Run(ctx); err != nil {
 				return errors.Wrapf(err, "running command: %s", output.String())
 			}
 
-			fmt.Println("========== Output from fetch script ==========")
-			fmt.Println(output)
-			fmt.Println("=============================================")
+			grip.Info("Fetch script completed successfully")
 
 			return nil
 		},
