@@ -438,6 +438,9 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 				// static credentials.
 				postFetchClient += " && " + getTaskDataCmd
 			} else {
+				// Escape backslashes and single quotes in the command.
+				getTaskDataCmd := strings.ReplaceAll(getTaskDataCmd, `\`, `\\`)
+				getTaskDataCmd = strings.ReplaceAll(getTaskDataCmd, "'", "\\'")
 				// We write the command to a script because the user hasn't authenticated on this host yet.
 				// When the user SSH's in later, they have to run the script by running `evergreen host fetch`.
 				scriptPath := filepath.Join(h.Distro.HomeDir(), evergreen.SpawnhostFetchScriptName)
