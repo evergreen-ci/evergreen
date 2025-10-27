@@ -253,7 +253,7 @@ func TestUpdateHasAnnotationsWithArchivedTask(t *testing.T) {
 		Execution: 0,
 		Status:    evergreen.TaskFailed,
 	}
-	assert.NoError(t, task.Insert(t.Context()))
+	require.NoError(t, task.Insert(t.Context()))
 
 	// Verify the task does not have annotations.
 	dbTask, err := FindOneId(t.Context(), task.Id)
