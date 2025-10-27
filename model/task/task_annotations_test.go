@@ -271,7 +271,7 @@ func TestUpdateHasAnnotationsWithArchivedTask(t *testing.T) {
 	// Archive the task (simulating a restart) - use the updated task from the database.
 	assert.NoError(t, dbTask.Archive(t.Context()))
 
-	// Verify the task was archived and new execution was created
+	// Verify that the new latest task execution does not have annotations.
 	currentTask, err := FindOneId(t.Context(), task.Id)
 	require.NoError(t, err)
 	require.NotNil(t, currentTask)
