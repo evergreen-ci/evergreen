@@ -1881,7 +1881,7 @@ tasks:
 
 	err = processTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"})
 	s.Error(err, "should error when user doesn't have adequate permissions")
-	s.Contains(err.Error(), "user is not authorized to submit patches on child project")
+	s.Contains(err.Error(), "not authorized to submit patches on child project")
 
 	s.Empty(p.Triggers.ChildPatches)
 
