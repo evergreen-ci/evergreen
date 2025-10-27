@@ -306,7 +306,7 @@ func TestUpdateHasAnnotationsWithArchivedTask(t *testing.T) {
 
 	// Test updating the archived task back to having annotations.
 	err = UpdateHasAnnotations(t.Context(), task.Id, 0, true)
-	assert.NoError(t, err, "UpdateHasAnnotations should succeed when setting back to true")
+	require.NoError(t, err, "UpdateHasAnnotations should succeed when setting back to true")
 	archivedTask, err = FindOneOldByIdAndExecution(t.Context(), task.Id, 0)
 	require.NoError(t, err)
 	require.NotNil(t, archivedTask)
