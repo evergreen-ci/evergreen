@@ -1132,10 +1132,11 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		APIServerHost string `yaml:"api_server_host"`
 		UIServerHost  string `yaml:"ui_server_host"`
 		OAuth         struct {
-			Issuer      string `json:"issuer" yaml:"issuer"`
-			ClientID    string `json:"client_id" yaml:"client_id"`
-			ConnectorID string `json:"connector_id" yaml:"connector_id"`
-		} `json:"oauth,omitempty" yaml:"oauth,omitempty"`
+			Issuer          string `json:"issuer" yaml:"issuer"`
+			ClientID        string `json:"client_id" yaml:"client_id"`
+			ConnectorID     string `json:"connector_id" yaml:"connector_id"`
+			DoNotUseBrowser bool   `json:"do_not_use_browser" yaml:"do_not_use_browser"`
+		} `json:"oauth" yaml:"oauth"`
 	}{
 		User: owner.Id,
 	}
@@ -1146,6 +1147,7 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 			conf.OAuth.Issuer = settings.AuthConfig.OAuth.Issuer
 			conf.OAuth.ClientID = settings.AuthConfig.OAuth.ClientID
 			conf.OAuth.ConnectorID = settings.AuthConfig.OAuth.ConnectorID
+			conf.OAuth.DoNotUseBrowser = true
 		}
 	}
 
