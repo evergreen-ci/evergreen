@@ -594,6 +594,10 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 			continue
 		}
 
+		if modulePath == "" {
+			continue
+		}
+
 		for _, include := range includes {
 			filePath := fmt.Sprintf("%s/%s", modulePath, include.FileName)
 			fileContents, err := os.ReadFile(filePath)
