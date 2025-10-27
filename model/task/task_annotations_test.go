@@ -248,7 +248,6 @@ func TestPatchIssue(t *testing.T) {
 func TestUpdateHasAnnotationsWithArchivedTask(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection, OldCollection, annotations.Collection))
 
-	// Create a task
 	task := Task{
 		Id:        "test_task_archived",
 		Execution: 0,
