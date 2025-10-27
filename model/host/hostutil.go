@@ -433,7 +433,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if err != nil {
 				return "", errors.Wrap(err, "constructing Jasper command to fetch task data")
 			}
-			if h.ProvisionOptions.UseLegacy {
+			if h.ProvisionOptions.UseOAuth {
 				// The legacy approach is to run `evergreen fetch` directly here with
 				// static credentials.
 				postFetchClient += " && " + getTaskDataCmd
