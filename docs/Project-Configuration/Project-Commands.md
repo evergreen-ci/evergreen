@@ -71,11 +71,15 @@ Parameters:
   [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
   source directory.
 
-In addition to the
-[filepath.Match](https://golang.org/pkg/path/filepath/#Match) syntax,
-`archive.targz_pack` supports using `**` to indicate that
-it should recurse into subdirectories. With only `*`, it
-will not recurse.
+**Important note about directories**: When specifying directories in the
+`include` list, different patterns have different behaviors:
+
+- `path/to/dir` includes only the directory itself as an entry
+- `path/to/dir/` (with trailing slash) includes nothing
+- `path/to/dir/*` includes direct children
+- `path/to/dir/**` includes all files and directories recursively
+
+Use `*` for non-recursive matching and `**` for recursive descent. `archive.targz_pack` adds `**` support on top of standard [filepath.Match](https://golang.org/pkg/path/filepath/#Match). To include directory contents, choose `path/to/dir/*` (just direct children) or `path/to/dir/**` (everything recursively).
 
 ## archive.auto_extract
 
@@ -136,11 +140,15 @@ Parameters:
   [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
   source directory.
 
-In addition to the
-[filepath.Match](https://golang.org/pkg/path/filepath/#Match) syntax,
-`archive.auto_pack` supports using `**` to indicate that
-it should recurse into subdirectories. With only `*`, it
-will not recurse.
+**Important note about directories**: When specifying directories in the
+`include` list, different patterns have different behaviors:
+
+- `path/to/dir` includes only the directory itself as an entry
+- `path/to/dir/` (with trailing slash) includes nothing
+- `path/to/dir/*` includes direct children
+- `path/to/dir/**` includes all files and directories recursively
+
+Use `*` for non-recursive matching and `**` for recursive descent. `archive.auto_pack` adds `**` support on top of standard [filepath.Match](https://golang.org/pkg/path/filepath/#Match). To include directory contents, choose `path/to/dir/*` (just direct children) or `path/to/dir/**` (everything recursively).
 
 ## archive.zip_extract
 
@@ -182,11 +190,15 @@ Parameters:
   [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
   source directory.
 
-In addition to the
-[filepath.Match](https://golang.org/pkg/path/filepath/#Match) syntax,
-`archive.zip_pack` supports using `**` to indicate that
-it should recurse into subdirectories. With only `*`, it
-will not recurse.
+**Important note about directories**: When specifying directories in the
+`include` list, different patterns have different behaviors:
+
+- `path/to/dir` includes only the directory itself as an entry
+- `path/to/dir/` (with trailing slash) includes nothing
+- `path/to/dir/*` includes direct children
+- `path/to/dir/**` includes all files and directories recursively
+
+Use `*` for non-recursive matching and `**` for recursive descent. `archive.zip_pack` adds `**` support on top of standard [filepath.Match](https://golang.org/pkg/path/filepath/#Match). To include directory contents, choose `path/to/dir/*` (just direct children) or `path/to/dir/**` (everything recursively).
 
 ## attach.artifacts
 
