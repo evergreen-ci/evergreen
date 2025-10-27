@@ -439,8 +439,8 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 				postFetchClient += " && " + getTaskDataCmd
 			} else {
 				// We write the command to a script because the user hasn't authenticated on this host yet.
-				// When the user SSH's in later, they have to run the script by running `evergreen spawnhost-setup`.
-				scriptPath := filepath.Join(h.Distro.HomeDir(), ".evergreen-spawnhost-fetch.sh")
+				// When the user SSH's in later, they have to run the script by running `evergreen host fetch`.
+				scriptPath := filepath.Join(h.Distro.HomeDir(), evergreen.SpawnhostFetchScriptName)
 				postFetchClient += " && " + fmt.Sprintf("echo '%s' > %s && chmod +x %s", getTaskDataCmd, scriptPath, scriptPath)
 			}
 		}
