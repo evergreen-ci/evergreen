@@ -268,7 +268,7 @@ func TestUpdateHasAnnotationsWithArchivedTask(t *testing.T) {
 	require.NotNil(t, dbTask)
 	assert.True(t, dbTask.HasAnnotations)
 
-	// Archive the task (simulating a restart) - use the updated task from the database
+	// Archive the task (simulating a restart) - use the updated task from the database.
 	assert.NoError(t, dbTask.Archive(t.Context()))
 
 	// Verify the task was archived and new execution was created
