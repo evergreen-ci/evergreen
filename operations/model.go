@@ -86,7 +86,7 @@ type OAuth struct {
 	// These are helpers that users can set.
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
 	// This setting is the final authority on the flow.
-	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser,omitempty"`
+	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser"`
 }
 
 // Client represents the data stored in the user's config file, by default
