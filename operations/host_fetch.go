@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -43,14 +44,24 @@ func hostFetch() cli.Command {
 			}
 			spawnHostFetchScript := filepath.Join(userHome, evergreen.SpawnhostFetchScriptName)
 
-			fetchScript, err := os.ReadFile(spawnHostFetchScript)
+			fetchScriptBytes, err := os.ReadFile(spawnHostFetchScript)
 			if err != nil {
 				return errors.Wrap(err, "reading fetch script")
 			}
+			fetchScript := string(fetchScriptBytes)
 
-			output, err := runCmd(ctx, strings.Split(string(fetchScript), " "))
-			if err != nil {
-				return errors.Wrap(err, "running fetch script")
+			inputMarker := "<<EOF"
+			inputStart := strings.Index(fetchScript, inputMarker)
+
+			output := util.NewMBCappedWriter()
+			command := fetchScript[0:inputStart]
+			cmd := jasper.NewCommand().Add(strings.Split(command, " ")).SetCombinedWriter(output)
+
+			input := fetchScript[inputStart+len(inputMarker):]
+			cmd.SetInput(strings.NewReader(input))
+
+			if err = cmd.Run(ctx); err != nil {
+				return errors.Wrapf(err, "running command: %s", output.String())
 			}
 
 			fmt.Println("========== Output from fetch script ==========")
