@@ -58,7 +58,7 @@ func hostFetch() cli.Command {
 			cmd := jasper.NewCommand().Add(strings.Split(command, " ")).SetCombinedWriter(output)
 
 			input := fetchScript[inputStart+len(inputMarker):]
-			cmd.SetInput(strings.NewReader(input))
+			cmd.SetInputBytes([]byte(input))
 
 			if err = cmd.Run(ctx); err != nil {
 				return errors.Wrapf(err, "running command: %s", output.String())
