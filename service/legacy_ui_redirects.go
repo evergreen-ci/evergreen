@@ -76,3 +76,14 @@ func (uis *UIServer) legacyProjectsPage(w http.ResponseWriter, r *http.Request) 
 	newUIProjectsLink := fmt.Sprintf("%s/project/%s/settings", uis.Settings.Ui.UIv2Url, projectId)
 	http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacyHostsPage(w http.ResponseWriter, r *http.Request) {
+	spruceLink := fmt.Sprintf("%s/hosts", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyHostPage(w http.ResponseWriter, r *http.Request) {
+	hostId := gimlet.GetVars(r)["host_id"]
+	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, hostId)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
