@@ -924,9 +924,6 @@ func TestStopAgentMonitor(t *testing.T) {
 }
 
 func TestSpawnHostSetupCommands(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	require.NoError(t, db.ClearCollections(Collection, user.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
@@ -951,14 +948,14 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		},
 		User: user.Id,
 	}
-	require.NoError(t, h.Insert(ctx))
+	require.NoError(t, h.Insert(t.Context()))
 
 	getExpected := func(oauth bool) string {
 		expected := "mkdir -m 777 -p /home/user/cli_bin" +
 			" && (sudo chown -R user /home/user/.evergreen.yml || true)" +
 			" && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n"
 		if oauth {
-			expected += "oauth:\n    issuer: https://www.example.com\n    client_id: client_id\n    connector_id: connector_id\n"
+			expected += "oauth:\n    issuer: https://www.example.com\n    client_id: client_id\n    connector_id: connector_id\n    do_not_use_browser: true\n"
 		}
 		expected += "\" > /home/user/.evergreen.yml" +
 			" && chmod +x /home/user/evergreen" +

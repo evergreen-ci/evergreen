@@ -1139,7 +1139,7 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 			ClientID        string `json:"client_id" yaml:"client_id"`
 			ConnectorID     string `json:"connector_id" yaml:"connector_id"`
 			DoNotUseBrowser bool   `json:"do_not_use_browser" yaml:"do_not_use_browser"`
-		} `json:"oauth" yaml:"oauth"`
+		} `json:"oauth" yaml:"oauth,omitempty"`
 	}{
 		User: owner.Id,
 	}
