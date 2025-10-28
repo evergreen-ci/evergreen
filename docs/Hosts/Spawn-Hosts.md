@@ -50,13 +50,21 @@ Clicking it will pre-populate the spawn host page with a request to spawn a host
 
 ![spawn_host_modal.png](../images/spawn_host_modal.png)
 
-Fetching artifacts can also be performed manually; see [fetch](../CLI#fetch) in the Evergreen command line tool documentation.
+The spawn host will not fetch the artifacts completely automatically; you will need to run the following command (which will prompt you to authenticate):
+
+```sh
+evergreen host fetch
+```
+
+If you do not want the pre-made fetching options, you can use the Evergreen CLI command [fetch](../CLI#fetch).
 
 Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching.
 
 If your project has [a project setup script defined at the admin level](../Project-Configuration/Project-And-Distro-Settings.md#spawn-host-script-path), you can also check "Use project-specific setup script defined at ..." before creating the spawn host to run that script when the host starts up. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.mongodb.com/host/<host_id>`.
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
+
+### Authenticating
 
 ## Spawn Host Expiration
 
@@ -202,6 +210,7 @@ The Spruce hosts page offers three batch actions applicable to hosts:
 
 1. Update Status
    You can force a state change to these statuses:
+
    - Decommissioned: Terminate a host after it's done running its current task.
    - Quarantined: Stop a host from running tasks without terminating it or shutting it down. This is to do ops work on it like temporary maintenance, debugging, etc. Once the maintenance is done, it's usually set back to running to pick up tasks like normal. Quarantined is used almost exclusively for static hosts.
    - Terminate: Shut down the host.
