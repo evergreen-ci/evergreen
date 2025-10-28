@@ -11,12 +11,6 @@ ui:
     - "edd78"
     - "edd78"
     - "logkeeper"
-  "/hosts":
-    - "localhost"
-  "/host/localhost":
-    - "Host localhost"
-  "/host/localhost2":
-    - "not authorized for this action"
 api:
   "/":
     - "404"

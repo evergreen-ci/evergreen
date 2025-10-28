@@ -571,28 +571,46 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 		return nil, errors.Wrap(yamlErr, "unmarshalling parser project from local project config")
 	}
 
-	moduleIncludes := []patch.LocalModuleInclude{}
+	// Group includes by module name to ensure each module path is only asked for once.
+	type includeInfo struct {
+		FileName string
+		Module   string
+	}
+	includesByModule := make(map[string][]includeInfo)
 	for _, include := range p.Include {
-		if include.Module == "" {
-			continue
+		if include.Module != "" {
+			includesByModule[include.Module] = append(includesByModule[include.Module], includeInfo{
+				FileName: include.FileName,
+				Module:   include.Module,
+			})
 		}
-		modulePath, err := params.getModulePath(conf, include.Module, modulePathCache)
+	}
+
+	moduleIncludes := []patch.LocalModuleInclude{}
+	for moduleName, includes := range includesByModule {
+		modulePath, err := params.getModulePath(conf, moduleName, modulePathCache)
 		if err != nil {
-			grip.Error(errors.Wrapf(err, "getting module path for '%s'", include.Module))
+			grip.Error(errors.Wrapf(err, "getting module path for '%s'", moduleName))
 			continue
 		}
 
-		filePath := fmt.Sprintf("%s/%s", modulePath, include.FileName)
-		fileContents, err := os.ReadFile(filePath)
-		if err != nil {
-			return nil, errors.Wrapf(err, "reading local module include file '%s'", filePath)
+		if modulePath == "" {
+			continue
 		}
-		patchedInclude := patch.LocalModuleInclude{
-			Module:      include.Module,
-			FileName:    include.FileName,
-			FileContent: fileContents,
+
+		for _, include := range includes {
+			filePath := fmt.Sprintf("%s/%s", modulePath, include.FileName)
+			fileContents, err := os.ReadFile(filePath)
+			if err != nil {
+				return nil, errors.Wrapf(err, "reading included file '%s'", filePath)
+			}
+			patchedInclude := patch.LocalModuleInclude{
+				Module:      include.Module,
+				FileName:    include.FileName,
+				FileContent: fileContents,
+			}
+			moduleIncludes = append(moduleIncludes, patchedInclude)
 		}
-		moduleIncludes = append(moduleIncludes, patchedInclude)
 	}
 	return moduleIncludes, nil
 }
