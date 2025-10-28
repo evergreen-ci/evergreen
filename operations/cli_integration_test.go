@@ -113,11 +113,11 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 
 	// create a settings file for the command line client
 	settings := ClientSettings{
-		APIServerHost: testServer.URL + "/api",
-		UIServerHost:  "http://dev-evg.mongodb.com",
-		APIKey:        "testapikey",
-		User:          "testuser",
-		DoNotUseOAuth: true,
+		APIServerHost:      testServer.URL + "/api",
+		UIServerHost:       "http://dev-evg.mongodb.com",
+		APIKey:             "testapikey",
+		User:               "testuser",
+		DoNotRunKanopyOIDC: true,
 	}
 	settingsFile, err := os.CreateTemp("", "settings")
 	So(err, ShouldBeNil)

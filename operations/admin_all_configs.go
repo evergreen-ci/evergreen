@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"os"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -27,10 +28,19 @@ func fetchAllProjectConfigs() cli.Command {
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			includeDisabled := c.BoolT(includeDisabledFlagName)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			settings, err := NewClientSettings(c.GlobalString("config"))
 			if err != nil {
 				return err
 			}
+
+			client, err := settings.setupRestCommunicator(ctx, true)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
+			defer client.Close()
 
 			ac, rc, err := settings.getLegacyClients()
 			if err != nil {

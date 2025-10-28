@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"os"
 	"text/template"
 
@@ -27,10 +28,19 @@ func LastGreen() cli.Command {
 			variants := c.StringSlice(variantsFlagName)
 			project := c.String(projectFlagName)
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+
+			client, err := conf.setupRestCommunicator(ctx, true)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
+			defer client.Close()
 
 			_, rc, err := conf.getLegacyClients()
 			if err != nil {

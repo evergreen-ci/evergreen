@@ -402,6 +402,13 @@ func updateRoleCmd() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			client, err := conf.setupRestCommunicator(ctx, false)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
+			defer client.Close()
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -84,31 +83,10 @@ type OAuth struct {
 	ClientID    string `json:"client_id" yaml:"client_id,omitempty"`
 	ConnectorID string `json:"connector_id" yaml:"connector_id,omitempty"`
 
-	// These are dynamic fields that are populated when a user logs in.
-	// These are not written to the yaml but instead managed by the OAuth flow.
-	// AccessToken is the token used to authenticate with the Evergreen API.
-	AccessToken string `json:"-" yaml:"-"`
-	// RefreshToken is used to get a new access token when the current one expires.
-	RefreshToken string `json:"-" yaml:"-"`
-	// Expiry is the time when the access token expires.
-	Expiry time.Time `json:"-" yaml:"-"`
-
-	// TokenFilePath is the location that holds the OAuth token.
-	// This is set for user convenience, but is not used by the OAuth flow.
-	TokenFilePath string `json:"token_file_path" yaml:"token_file_path,omitempty"`
-
 	// These are helpers that users can set.
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
 	// This setting is the final authority on the flow.
 	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser,omitempty"`
-}
-
-// AccessTokenIfNotExpired returns the access token if it is not expired, otherwise it returns an empty string.
-func (oa *OAuth) AccessTokenIfNotExpired() string {
-	if oa == nil || oa.Expiry.Before(time.Now()) {
-		return ""
-	}
-	return oa.AccessToken
 }
 
 // Client represents the data stored in the user's config file, by default
@@ -119,9 +97,10 @@ type ClientSettings struct {
 	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
 	User                       string                      `json:"user" yaml:"user,omitempty"`
+	JWT                        string                      `json:"jwt" yaml:"jwt,omitempty"`
 	UncommittedChanges         bool                        `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI             bool                        `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
-	DoNotUseOAuth              bool                        `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
+	DoNotRunKanopyOIDC         bool                        `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
 	PreserveCommits            bool                        `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects                   []ClientProjectConf         `json:"projects" yaml:"projects,omitempty"`
 	LoadedFrom                 string                      `json:"-" yaml:"-"`
@@ -204,38 +183,45 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
 
-	useOAuth, reason := s.shouldUseOAuth(ctx, c)
-	if useOAuth {
-		// If it's expired, print the opt-out message as the
-		// OAuth flow will start.
-		if s.OAuth.Expiry.Before(time.Now()) && printMessages {
-			grip.Info(optOut)
+	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
+	if shouldGenerate {
+		if s.JWT, err = runKanopyOIDCLogin(reason); err != nil {
+			grip.Warningf("Failed to get JWT token: %s", err)
+			return c, err
 		}
-		if err := s.SetOAuthToken(ctx, c); err != nil {
-			return c, errors.Wrap(err, "setting OAuth token")
-		}
-		c.SetOAuth(s.OAuth.AccessToken)
-		c.SetAPIKey("")
-		// To use OAuth tokens, we need to use the corp URL.
+
+		c.SetJWT(s.JWT)
+		// in order to use the JWT token, we need to set the API server host to the corp api server host
 		c.SetAPIServerHost(s.getApiServerHost(true))
-	} else if reason != "" && printMessages {
-		grip.Info(reason)
+
+	} else {
+		if reason != "" {
+			grip.Info(reason)
+		}
 	}
 
 	return c, nil
 }
 
-func (s *ClientSettings) shouldUseOAuth(ctx context.Context, c client.Communicator) (should bool, reason string) {
-	if s.DoNotUseOAuth {
+func printKanopyAuthHeader(start bool) {
+	title := strings.Repeat("*", 23)
+	if start {
+		title = " Kanopy Authentication "
+	}
+	grip.Info("\n" + strings.Repeat("*", 40) + title + strings.Repeat("*", 40) + "\n")
+}
+
+func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) (bool, string) {
+	if s.DoNotRunKanopyOIDC {
 		return false, ""
 	}
 
 	if s.APIKey == "" {
-		return true, "No API key found in local Evergreen YAML, defaulting to an OAuth token."
+		return true, "No API key found in local Evergreen YAML, defaulting to a JWT token."
 	}
 
 	// always use the non-corp url for getting the service flags
-	// because the corp url needs an OAuth token which we haven't generated yet
+	// because the corp url needs a JWT token which we haven't generated yet
 	originalAPIServerHost := s.APIServerHost
 	c.SetAPIServerHost(s.getApiServerHost(false))
 
@@ -368,28 +354,19 @@ func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
 }
 
 func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {
-	// We set up the rest communicator to check the CLI version and set the OAuth token if needed.
-	// The logic/route for the OAuth token is imbedded in the rest communicator
-	// so it's simpler to just create a whole rest communicator here.
-	restComm, err := s.setupRestCommunicator(context.Background(), false)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "setting up REST communicator")
-	}
-	restComm.Close()
-
 	// create client for the REST APIs
-	root := s.getApiServerHost(s.OAuth.AccessTokenIfNotExpired() != "")
-	apiURL, err := url.Parse(root)
+	apiURL, err := url.Parse(s.APIServerHost)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "parsing API server URL from settings file")
 	}
 
+	root := s.getApiServerHost(s.JWT != "")
 	ac := &legacyClient{
 		APIRoot:            root,
 		APIRootV2:          root + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		OAuthAccessToken:   s.OAuth.AccessTokenIfNotExpired(),
+		JWT:                s.JWT,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
@@ -398,7 +375,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
-		OAuthAccessToken:   s.OAuth.AccessTokenIfNotExpired(),
+		JWT:                s.JWT,
 		stagingEnvironment: s.StagingEnvironment,
 	}
 
@@ -607,31 +584,4 @@ func (s *ClientSettings) SetDefaultProject(cwd, project string) {
 func (s *ClientSettings) SetAutoUpgradeCLI() {
 	s.AutoUpgradeCLI = true
 	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
-}
-
-// SetOAuthToken sets the OAuth token for authentication.
-func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
-	token, path, err := comm.GetOAuthToken(ctx,
-		s.OAuth.DoNotUseBrowser,
-		dex.WithIssuer(s.OAuth.Issuer),
-		dex.WithClientID(s.OAuth.ClientID),
-		dex.WithConnectorID(s.OAuth.ConnectorID),
-	)
-	if err != nil {
-		return errors.Wrap(err, "setting OAuth token")
-	}
-
-	s.OAuth.AccessToken = token.AccessToken
-	s.OAuth.RefreshToken = token.RefreshToken
-	s.OAuth.Expiry = token.Expiry
-	if path != "" && s.OAuth.TokenFilePath != path {
-		s.OAuth.TokenFilePath = path
-		if err := s.Write(""); err != nil {
-			// This shouldn't prevent the current operation from succeeding
-			// so just log a warning.
-			grip.Warning(errors.Wrap(err, "saving configuration file"))
-		}
-	}
-
-	return nil
 }

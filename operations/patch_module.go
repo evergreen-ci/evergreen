@@ -57,6 +57,7 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 

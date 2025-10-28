@@ -247,7 +247,7 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 	assert.False(conf.UncommittedChanges)
 }
 
-func TestShouldUseOAuth(t *testing.T) {
+func TestShouldGenerateJWT(t *testing.T) {
 	tests := []struct {
 		name           string
 		settings       *ClientSettings
@@ -256,8 +256,8 @@ func TestShouldUseOAuth(t *testing.T) {
 		expectedResult bool
 	}{
 		{
-			name:           "DoNotUseOAuth",
-			settings:       &ClientSettings{DoNotUseOAuth: true},
+			name:           "DoNotRunKanopyOIDC",
+			settings:       &ClientSettings{DoNotRunKanopyOIDC: true},
 			expectedResult: false,
 		},
 		{
@@ -283,7 +283,7 @@ func TestShouldUseOAuth(t *testing.T) {
 				},
 				MockServiceFlagErr: test.flagsErr,
 			}
-			result, _ := test.settings.shouldUseOAuth(t.Context(), mock)
+			result, _ := test.settings.shouldGenerateJWT(t.Context(), mock)
 			assert.Equal(t, test.expectedResult, result)
 		})
 	}

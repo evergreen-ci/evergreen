@@ -12,8 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
-	"golang.org/x/oauth2"
 )
 
 // Communicator is an interface for communicating with the API server.
@@ -29,7 +27,7 @@ type Communicator interface {
 	// Client authentication methods (for users)
 	SetAPIUser(string)
 	SetAPIKey(string)
-	SetOAuth(string)
+	SetJWT(string)
 	SetAPIServerHost(string)
 	// Client authentication methods (for hosts)
 	SetHostID(string)
@@ -145,9 +143,6 @@ type Communicator interface {
 
 	// Validate validates a project configuration file.
 	Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error)
-
-	// GetOAuthToken retrieves an OIDC token with the given options.
-	GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error)
 }
 
 // GetTaskLogsOptions are the options for fetching task logs for a given task.
