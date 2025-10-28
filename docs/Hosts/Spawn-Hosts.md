@@ -71,10 +71,11 @@ EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or
 When using the Evergreen CLI on a spawn host, you will be prompted to authenticate by going to a URL and entering a code. If the link does not appear in the terminal, you may have to set `oauth.do_not_use_browser` to true in your Evergreen CLI config file (usually located at `~/.evergreen.yml`). Example:
 
 ```yaml
-...
+# ~/.evergreen.yml
+# ...
 oauth:
-   do_not_use_browser: true
-   ...
+  do_not_use_browser: true
+  # ...
 ```
 
 ## Spawn Host Expiration
