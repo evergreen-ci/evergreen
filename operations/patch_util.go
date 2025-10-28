@@ -515,16 +515,20 @@ func (p *patchParams) getDescription() string {
 // getModulePath takes in a cache in addition to the conf, so that if we've disabled auto-defaulting, we can use the cache
 // without making any updates to conf, since this may be written to for future operations as well.
 func (p *patchParams) getModulePath(conf *ClientSettings, module string, modulePathCache map[string]string) (string, error) {
-	modulePath := modulePathCache[module]
-	if modulePath != "" || p.SkipConfirm {
+	modulePath, cached := modulePathCache[module]
+	if cached || p.SkipConfirm {
+		if modulePath == "" {
+			return "", errors.Errorf("no module path given")
+		}
 		return modulePath, nil
 	}
 
 	modulePath = prompt(fmt.Sprintf("Enter absolute path to module '%s' to include changes (optional):", module))
+	modulePathCache[module] = modulePath
+
 	if modulePath == "" {
 		return "", errors.Errorf("no module path given")
 	}
-	modulePathCache[module] = modulePath
 
 	if !conf.DisableAutoDefaulting {
 		// Verify that the path is correct before auto defaulting
