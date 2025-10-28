@@ -66,7 +66,16 @@ If your project has [a project setup script defined at the admin level](../Proje
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
 
-### Authenticating
+## Evergreen CLI
+
+When using the Evergreen CLI on a spawn host, you will be prompted to authenticate by going to a URL and entering a code. If the link does not appear in the terminal, you may have to set `oauth.do_not_use_browser` to true in your Evergreen CLI config file (usually located at `~/.evergreen.yml`). Example:
+
+```yaml
+...
+oauth:
+   do_not_use_browser: true
+   ...
+```
 
 ## Spawn Host Expiration
 
