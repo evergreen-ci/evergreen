@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
@@ -265,7 +264,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	submitPatches := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
 	viewProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
 	editProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
-	viewHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsView)
 	editHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	requireSage := route.NewSageMiddleware()
 
@@ -319,13 +317,13 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		Post().Get()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.waterfallPage).Get().Head()
-	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext).Handler(uis.waterfallPage).Get()
-	app.AddRoute("/waterfall/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get().Head()
+	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get()
+	app.AddRoute("/waterfall/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyWaterfallPage).Get()
 
 	// Task page (and related routes)
-	app.AddRoute("/task/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskPage).Get()
-	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskPage).Get()
+	app.AddRoute("/task/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskPage).Get()
+	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskPage).Get()
 	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.taskModify).Put()
 	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
@@ -352,9 +350,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionFind).Get()
 
 	// Hosts
-	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
+	app.AddRoute("/hosts").Handler(uis.legacyHostsPage).Get()
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
-	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
+	app.AddRoute("/host/{host_id}").Handler(uis.legacyHostPage).Get()
 	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, editHosts).Handler(uis.modifyHost).Put()
 	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
@@ -370,7 +368,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}).Get()
 
 	// Distros
-	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
+	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.legacyDistrosPage).Get()
 
 	// TODO (EVG-17986): route should require pod-specific permissions.
 	app.AddRoute("/pod/{pod_id}").Wrap(needsLogin).Handler(uis.podPage).Get()
@@ -379,8 +377,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
 
 	// Task History
-	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.taskHistoryPage).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryPage).Get()
+	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskHistoryPage).Get()
 
 	// History Drawer Endpoints
 	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
@@ -390,7 +388,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.variantHistory).Get()
 
 	// Task queues
-	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskQueue).Get()
+	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskQueue).Get()
 
 	// Patch pages
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.patchPage).Get()
@@ -430,7 +428,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/json/task_timing/{project_id}/{build_variant}/{request}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskTimingJSON).Get()
 
 	// Project routes
-	app.AddRoute("/projects/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.projectsPage).Get()
+	app.AddRoute("/projects/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyProjectsPage).Get()
 	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, viewProjectSettings).Handler(uis.projectEvents).Get()
 	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext, editProjectSettings).Handler(uis.setRevision).Put()
 
@@ -460,18 +458,4 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	return app
-}
-
-// waterfallPage implements a permanent redirect to the new UI waterfall page
-func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject(r.Context())
-
-	if err != nil || project == nil {
-		http.Redirect(w, r, uis.Settings.Ui.UIv2Url, http.StatusMovedPermanently)
-		return
-	}
-
-	newUIURL := fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
-	http.Redirect(w, r, newUIURL, http.StatusMovedPermanently)
 }

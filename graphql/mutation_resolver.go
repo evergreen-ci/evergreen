@@ -1242,6 +1242,19 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	return myPublicKeys, nil
 }
 
+// ResetAPIKey is the resolver for the resetAPIKey field.
+func (r *mutationResolver) ResetAPIKey(ctx context.Context) (*UserConfig, error) {
+	usr := mustHaveUser(ctx)
+	newKey := utility.RandomString()
+	if err := usr.UpdateAPIKey(ctx, newKey); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating user API key: %s", err.Error()))
+	}
+	return &UserConfig{
+		User:   usr.Username(),
+		APIKey: newKey,
+	}, nil
+}
+
 // SaveSubscription is the resolver for the saveSubscription field.
 func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription restModel.APISubscription) (bool, error) {
 	usr := mustHaveUser(ctx)

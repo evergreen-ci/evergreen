@@ -9,18 +9,12 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-type hostsData struct {
-	Hosts []uiHost
-}
 
 type pluginData struct {
 	Includes []template.HTML
@@ -60,12 +54,6 @@ type uiPatch struct {
 	BaseVersionId string
 	BaseBuildId   string
 	BaseTaskId    string
-}
-
-type uiHost struct {
-	Host        host.Host
-	RunningTask *task.Task
-	IdleTime    float64 // idle time in seconds
 }
 
 type uiBuild struct {
@@ -147,36 +135,6 @@ func getBuildVariantHistoryLastSuccess(ctx context.Context, buildId string) (*bu
 	}
 	b, err = b.PreviousSuccessful(ctx)
 	return b, errors.WithStack(err)
-}
-
-func getHostsData(ctx context.Context, includeSpawnedHosts bool) (*hostsData, error) {
-	dbHosts, err := host.FindRunningHosts(ctx, includeSpawnedHosts)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem finding hosts")
-	}
-
-	data := &hostsData{}
-
-	// convert the hosts to the ui models
-	uiHosts := make([]uiHost, len(dbHosts))
-
-	for idx, dbHost := range dbHosts {
-		// we only need the distro id for the hosts page
-		dbHost.Distro = distro.Distro{Id: dbHost.Distro.Id}
-		host := uiHost{
-			Host:        dbHost,
-			RunningTask: nil,
-		}
-
-		uiHosts[idx] = host
-		// get the task running on this host
-		if dbHost.RunningTaskFull != nil {
-			uiHosts[idx].RunningTask = dbHost.RunningTaskFull
-		}
-		uiHosts[idx].IdleTime = host.Host.IdleTime().Seconds()
-	}
-	data.Hosts = uiHosts
-	return data, nil
 }
 
 // getPluginDataAndHTML returns all data needed to properly render plugins

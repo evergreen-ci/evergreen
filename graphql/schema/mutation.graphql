@@ -106,6 +106,7 @@ type Mutation {
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
   removeFavoriteProject(opts: RemoveFavoriteProjectInput!): Project!
   removePublicKey(keyName: String!): [PublicKey!]!
+  resetAPIKey: UserConfig
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   updateBetaFeatures(opts: UpdateBetaFeaturesInput!): UpdateBetaFeaturesPayload
   updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -406,7 +407,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
+	if err = processTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
 		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
 			j.gitHubError = noChildPatchTasksOrVariants
 		}
@@ -764,7 +765,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 	return nil
 }
 
-func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
+func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {
 	if len(aliasNames) == 0 {
 		return nil
 	}
@@ -775,6 +776,16 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		parentAsModule     string
 		downstreamRevision string
 	}
+
+	var u *user.DBUser
+	var err error
+	if p.Author != "" {
+		u, err = user.FindOneByIdContext(ctx, p.Author)
+		if err != nil {
+			return errors.Wrap(err, "getting user")
+		}
+	}
+
 	aliasGroups := make(map[aliasGroup][]patch.PatchTriggerDefinition)
 	for _, aliasName := range aliasNames {
 		alias, found := projectRef.GetPatchTriggerAlias(aliasName)
@@ -782,6 +793,16 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
 		}
 		// group patches on project, status, parentAsModule, and revision
+		opts := gimlet.PermissionOpts{
+			Resource:      alias.ChildProject,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionPatches,
+			RequiredLevel: evergreen.PatchSubmit.Value,
+		}
+		if u != nil && !u.HasPermission(opts) {
+			return errors.Errorf("user '%s' is not authorized to submit patches on child project '%s'", u.Id, alias.ChildProject)
+		}
+
 		group := aliasGroup{
 			project:            alias.ChildProject,
 			status:             alias.Status,
@@ -989,8 +1010,12 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
-			return isMember, nil
+			// If the entire diff can't be retrieve, fall back to trying to get
+			// just the list of changed files. Having the names of changed files
+			// (even if not the entire diff) is important for path filtering.
+			return isMember, j.getChangedFilenamesForLargePRs(ctx, patchDoc)
 		}
+
 		return isMember, err
 	}
 
@@ -1009,6 +1034,52 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	}
 
 	return isMember, nil
+}
+
+// getChangedFilenamesForLargePRs attempts to populate the patch with the list
+// of changed filenames when the PR contains too many changes to get the full
+// diff. If it can successfully retrieve all changed files, it will populate the
+// names of changed files for the patch. The file diffs will not be available
+// for the patch, even if this succeeds.
+func (j *patchIntentProcessor) getChangedFilenamesForLargePRs(ctx context.Context, patchDoc *patch.Patch) error {
+	summaries, err := thirdparty.GetGitHubPullRequestFiles(ctx, patchDoc.GithubPatchData)
+	if err != nil {
+		return errors.Wrap(err, "getting files for large PR")
+	}
+	if len(summaries) >= thirdparty.MaxGitHubPRFilesListLength {
+		// If the PR is extremely large (>=3k files changed), Evergreen cannot
+		// retrieve all of the changed files from GitHub. Rather than partially
+		// populating the patch's file list (which can cause bugs), it's
+		// preferable to just not show any patch changes at all for such a large
+		// PR.
+		grip.Warning(message.Fields{
+			"message":     fmt.Sprintf("GitHub PR is very large (>=%d files) and Evergreen cannot retrieve all of its changed files, refusing to set partial list of changed files for the patch. Patch will not have changed files available.", thirdparty.MaxGitHubPRFilesListLength),
+			"owner":       patchDoc.GithubPatchData.BaseOwner,
+			"repo":        patchDoc.GithubPatchData.BaseRepo,
+			"pr_number":   patchDoc.GithubPatchData.PRNumber,
+			"num_files":   len(summaries),
+			"job":         j.ID(),
+			"base_repo":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"patch_id":    j.PatchID,
+			"intent_id":   j.IntentID,
+			"intent_type": j.IntentType,
+		})
+		return nil
+	}
+
+	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+		ModuleName: "",
+		Githash:    patchDoc.Githash,
+		PatchSet: patch.PatchSet{
+			// This is intentionally not setting the patch file ID because the
+			// GitHub API for listing PR files does not provide enough
+			// information to create a diff.
+			PatchFileId: "",
+			Summary:     summaries,
+		},
+	})
+
+	return nil
 }
 
 func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
@@ -1392,6 +1463,10 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 
 	changedFiles := patchDoc.FilesChanged()
 	if len(changedFiles) == 0 {
+		// The changed files might be missing if either the patch has no changes
+		// or the changes are too large to load from GitHub. If the changed
+		// files can't be retrieved, be on the conservative side and don't
+		// filter out any variants.
 		return ignoredVariants
 	}
 

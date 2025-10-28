@@ -155,7 +155,6 @@ func (p *APIParameter) BuildFromService(param *patch.Parameter) {
 type APIPatchArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeChildPatches      bool
-	IncludeBranch            bool // TODO DEVPROD-16824: remove since this will be cached with the patch document.
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -179,30 +178,7 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 	if args != nil && args.IncludeChildPatches {
 		return apiPatch.buildChildPatches(ctx, p)
 	}
-
-	if args != nil && args.IncludeBranch {
-		apiPatch.setBranch(ctx)
-	}
 	return nil
-}
-
-func (apiPatch *APIPatch) setBranch(ctx context.Context) {
-	projectId := utility.FromStringPtr(apiPatch.ProjectId)
-	// If the branch wasn't added in the base patch, add it now.
-	if utility.FromStringPtr(apiPatch.Branch) != "" || projectId == "" {
-		return
-	}
-	pRef, err := model.FindBranchProjectRef(ctx, projectId)
-
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "could not get branch project",
-			"project":  apiPatch.ProjectId,
-			"patch_id": utility.FromStringPtr(apiPatch.Id),
-		}))
-		return
-	}
-	apiPatch.Branch = utility.ToStringPtr(pRef.Branch)
 }
 
 func (apiPatch *APIPatch) GetIdentifier(ctx context.Context) {

@@ -38,8 +38,11 @@ const (
 	snsPayloadKey    requestContextKey = 5
 )
 
-const alertmanagerUser = "alertmanager"
-const sageUser = "sage"
+const (
+	alertmanagerUser = "alertmanager"
+	sageUser         = "sage"
+	backstageUser    = "backstage"
+)
 
 type projCtxMiddleware struct{}
 
@@ -326,33 +329,47 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	// Our Alertmanager webhook sends its credentials via basic auth, so we treat the username/password
 	// pair incoming from the request as we would Api-User / Api-Key header pairs to fetch a user document.
 	username, password, ok := r.BasicAuth()
-	if !ok || username != alertmanagerUser {
+	if !ok {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
 		}))
 		return
 	}
-	u, err := user.FindOneByIdContext(r.Context(), username)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username)))
-		return
-	}
-	if u == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("user '%s' not found", username),
-		}))
-		return
-	}
-	if u.APIKey != password {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "not authorized",
-		}))
+	if errResp := authenticateSpecialUser(r, alertmanagerUser, username, password); errResp != nil {
+		gimlet.WriteResponse(rw, errResp)
 		return
 	}
 	next(rw, r)
+}
+
+// authenticateSpecialUser checks if a specific user has provided the required
+// authentication. Typically for authenticating special-purpose service users.
+// Returns a non-nil response if authentication fails.
+func authenticateSpecialUser(r *http.Request, requiredUsername, username, apiKey string) gimlet.Responder {
+	if username != requiredUsername {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		})
+	}
+	u, err := user.FindOneByIdContext(r.Context(), username)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username))
+	}
+	if u == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("user '%s' not found", username),
+		})
+	}
+	if u.APIKey != apiKey {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		})
+	}
+	return nil
 }
 
 func NewTaskAuthMiddleware() gimlet.Middleware {
@@ -458,30 +475,26 @@ func NewSageMiddleware() gimlet.Middleware {
 func (m *sageMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	apiUser := r.Header.Get(evergreen.APIUserHeader)
 	apiKey := r.Header.Get(evergreen.APIKeyHeader)
-	if apiUser != sageUser {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "not authorized",
-		}))
+	if errResp := authenticateSpecialUser(r, sageUser, apiUser, apiKey); errResp != nil {
+		gimlet.WriteResponse(rw, errResp)
 		return
 	}
-	u, err := user.FindOneByIdContext(r.Context(), apiUser)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", apiUser)))
-		return
-	}
-	if u == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("user '%s' not found", apiUser),
-		}))
-		return
-	}
-	if u.APIKey != apiKey {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "not authorized",
-		}))
+	next(rw, r)
+}
+
+type backstageMiddleware struct{}
+
+// newBackstageMiddleware returns a middleware that verifies the request
+// is coming from Backstage.
+func newBackstageMiddleware() gimlet.Middleware {
+	return &backstageMiddleware{}
+}
+
+func (m *backstageMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	apiUser := r.Header.Get(evergreen.APIUserHeader)
+	apiKey := r.Header.Get(evergreen.APIKeyHeader)
+	if errResp := authenticateSpecialUser(r, backstageUser, apiUser, apiKey); errResp != nil {
+		gimlet.WriteResponse(rw, errResp)
 		return
 	}
 	next(rw, r)
