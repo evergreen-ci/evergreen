@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-oidc"
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -21,7 +22,14 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/oauth2"
+)
+
+const (
+	refreshTokenClaimed = "claimed by another client"
 )
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
@@ -1594,8 +1602,8 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 	header := make(http.Header)
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
-	if c.jwt != "" {
-		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+	if c.oauth != "" {
+		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.oauth)
 	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
@@ -1647,10 +1655,12 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	}
 
 	header := make(http.Header)
-	header.Add(evergreen.APIUserHeader, c.apiUser)
-	header.Add(evergreen.APIKeyHeader, c.apiKey)
-	if c.jwt != "" {
-		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+	// The API user and key are mutually exclusive with the OAuth token.
+	if c.oauth != "" {
+		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.oauth)
+	} else if c.apiUser != "" && c.apiKey != "" {
+		header.Add(evergreen.APIUserHeader, c.apiUser)
+		header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
@@ -1706,4 +1716,71 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	}
 
 	return nil, nil
+}
+
+func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
+	httpClient := utility.GetDefaultHTTPRetryableClient()
+	defer utility.PutHTTPClient(httpClient)
+	ctx = oidc.ClientContext(ctx, httpClient)
+
+	loader := &dex.FileTokenLoader{}
+
+	opts = append(opts,
+		dex.WithContext(ctx),
+		dex.WithRefresh(),
+	)
+
+	if doNotUseBrowser {
+		opts = append(opts,
+			dex.WithNoBrowser(true),
+			dex.WithFlow("device"),
+		)
+	}
+
+	// The Dex client logs using logrus. The client doesn't
+	// have any way to turn off debug logs within it's API.
+	// We set the output to io.Discard to suppress debug logs.
+	logrus.SetOutput(io.Discard)
+
+	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
+	if err != nil {
+		return nil, "", err
+	}
+	defer client.Close()
+
+	// This attempt tries to get a token or refresh using the refresh token.
+	token, err := client.Token()
+	if err == nil {
+		return token, client.TokenFilePath(), nil
+	}
+	// Sometimes, the refresh token is invalid or claimed by another client.
+	// In this case, we need to run through the auth flow again without using
+	// the refresh token.
+	if !strings.Contains(err.Error(), refreshTokenClaimed) {
+		return nil, "", err
+	}
+
+	// This client prevents the Dex client from using the refresh token.
+	client, err = dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderWithoutRefresh{loader}))...)
+	if err != nil {
+		return nil, "", err
+	}
+	defer client.Close()
+
+	token, err = client.Token()
+	return token, client.TokenFilePath(), err
+}
+
+type tokenLoaderWithoutRefresh struct {
+	dex.TokenLoader
+}
+
+func (t *tokenLoaderWithoutRefresh) LoadToken(_ string) (*oauth2.Token, error) {
+	token, err := t.TokenLoader.LoadToken("")
+	if err != nil {
+		return nil, err
+	}
+	// Clear the refresh token to prevent the Dex client from trying to use it.
+	token.RefreshToken = ""
+	return token, nil
 }
