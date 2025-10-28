@@ -1131,15 +1131,15 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 
 	conf := struct {
 		User          string `yaml:"user"`
-		APIKey        string `yaml:"api_key"`
+		APIKey        string `yaml:"api_key,omitempty"`
 		APIServerHost string `yaml:"api_server_host"`
 		UIServerHost  string `yaml:"ui_server_host"`
 		OAuth         struct {
-			Issuer          string `json:"issuer" yaml:"issuer"`
-			ClientID        string `json:"client_id" yaml:"client_id"`
-			ConnectorID     string `json:"connector_id" yaml:"connector_id"`
-			DoNotUseBrowser bool   `json:"do_not_use_browser" yaml:"do_not_use_browser"`
-		} `json:"oauth" yaml:"oauth,omitempty"`
+			Issuer          string `yaml:"issuer"`
+			ClientID        string `yaml:"client_id"`
+			ConnectorID     string `yaml:"connector_id"`
+			DoNotUseBrowser bool   `yaml:"do_not_use_browser"`
+		} `yaml:"oauth,omitempty"`
 	}{
 		User: owner.Id,
 	}
