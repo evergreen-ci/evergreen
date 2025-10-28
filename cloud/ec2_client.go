@@ -1130,8 +1130,6 @@ type awsClientMock struct { //nolint
 	*sts.AssumeRoleInput
 	*sts.GetCallerIdentityOutput
 
-	assumeRoleUseFallback bool
-
 	*types.Instance
 	*ec2.DescribeInstancesOutput
 	RequestGetInstanceInfoError error
@@ -1490,10 +1488,6 @@ func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *rou
 }
 
 func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
-	if c.assumeRoleUseFallback {
-		c.assumeRoleUseFallback = false
-		return nil, errors.New("simulated AssumeRole failure")
-	}
 	c.AssumeRoleInput = input
 	if input.DurationSeconds == nil {
 		input.DurationSeconds = aws.Int32(int32(time.Hour.Seconds() / 4))

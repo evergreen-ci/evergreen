@@ -391,16 +391,12 @@ Parameters:
 ### AssumeRole AWS Setup
 
 The call to AssumeRole includes an external ID formatted as
-`<project_id>-<requester>-<repo_project_id>`. This cannot be
-modified by the user and is set by Evergreen.
+`<project_id>-<requester>`. This cannot be modified by the user.
 This may be appended to in the future, it's highly recommended to
 include a wildcard at the end of your external ID condition.
 
 - An Evergreen project's ID can be found on its General Settings page.
 - The list of requesters can be found [here](../Reference/Glossary.md#requesters).
-- The repo project ID is the ID of the repo ref associated with the
-  project. If the project is not associated with a repo ref, this will be blank
-  (A `-` will still be included at the end of the ExternalId).
 
 The originating role is:
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
@@ -437,8 +433,6 @@ An example of a trust policy with an external ID is below:
 > external ID condition. This allows for future additions to the external ID
 > format without needing to update your trust policy.
 
-#### Allow any requester
-
 You can allow any requester by using the wildcard earlier in the condition:
 
 ```json
@@ -453,57 +447,7 @@ You can allow any requester by using the wildcard earlier in the condition:
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringLike": {
-          "sts:ExternalId": "<project_id>*"
-        }
-      }
-    }
-  ]
-}
-```
-
-Or just particular requesters
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringLike": {
-          "sts:ExternalId": [
-            "<project_id>-github_merge_request*",
-            "<project_id>-trigger_request*"
-          ]
-        }
-      }
-    }
-  ]
-}
-```
-
-#### Untracked Branches
-
-You can allow [untracked branches](Repo-Level-Settings.md#how-to-use-pr-testing-for-untracked-branches) by using a wildcard
-for the project_id and requester (this will also allow tracked branches under that repo project as well):
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringLike": {
-          "sts:ExternalId": "*-*-<repo_project_id>*"
+          "sts:ExternalId": "<project_id>-*"
         }
       }
     }

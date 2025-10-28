@@ -841,8 +841,6 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 func TestAWSAssumeRole(t *testing.T) {
 	route := "/task/%s/aws/assume_role"
 	taskID := "taskID"
-	projectID := "project_id"
-	repoRefID := "repo_ref_id"
 	roleARN := "unique_role_arn"
 	policy := "policy-num"
 	var duration int32 = 1600
@@ -892,10 +890,6 @@ func TestAWSAssumeRole(t *testing.T) {
 			t.Run("RunSucceeds", func(t *testing.T) {
 				task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
 				require.NoError(t, task.Insert(t.Context()))
-				project := model.ProjectRef{Id: projectID, RepoRefId: repoRefID}
-				require.NoError(t, project.Insert(t.Context()))
-				repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
-				require.NoError(t, repoRef.Replace(t.Context()))
 
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)
@@ -911,7 +905,7 @@ func TestAWSAssumeRole(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.RepoRefAdminsKey))
+			require.NoError(t, db.ClearCollections(task.Collection))
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(t.Context()))
