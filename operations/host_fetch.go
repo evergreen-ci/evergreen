@@ -53,6 +53,10 @@ func hostFetch() cli.Command {
 			inputMarker := "<<EOF"
 			inputStart := strings.Index(fetchScript, inputMarker)
 
+			if inputStart == -1 {
+				return errors.New("malformed fetch script: missing input marker. Please reach out to the Evergreen team for assistance")
+			}
+
 			output := util.NewMBCappedWriter()
 			command := fetchScript[0:inputStart]
 			cmd := jasper.NewCommand().Add(strings.Split(command, " ")).SetCombinedWriter(output)
