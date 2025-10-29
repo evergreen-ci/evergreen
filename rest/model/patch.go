@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -361,6 +362,62 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 	return nil
 }
 
+// splitPatchByFile parses a unified diff and splits it into individual file diffs.
+// Returns a map from file name to its diff content.
+func splitPatchByFile(fullPatch string) map[string]string {
+	if fullPatch == "" {
+		return map[string]string{}
+	}
+
+	fileDiffs := make(map[string]string)
+	lines := strings.Split(fullPatch, "\n")
+
+	var currentFile string
+	var currentDiff strings.Builder
+
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+
+		// Check if this is the start of a new file diff
+		// Unified diff format: "diff --git a/file b/file" marks the start of each file
+		if strings.HasPrefix(line, "diff --git ") {
+			// If we were building a diff for a previous file, save it
+			if currentFile != "" && currentDiff.Len() > 0 {
+				fileDiffs[currentFile] = strings.TrimSpace(currentDiff.String())
+			}
+
+			// Start a new diff
+			currentDiff.Reset()
+			currentDiff.WriteString(line)
+			currentDiff.WriteString("\n")
+
+			// Extract the file name from the diff line
+			// Format: "diff --git a/path/to/file b/path/to/file"
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				// Remove "a/" prefix from the source file path
+				filePath := parts[2]
+				if strings.HasPrefix(filePath, "a/") {
+					filePath = filePath[2:]
+				}
+				currentFile = filePath
+			}
+		} else if currentFile != "" {
+			// Continue building the current file's diff
+			// This includes all lines: index, ---, +++, @@, and actual diff content
+			currentDiff.WriteString(line)
+			currentDiff.WriteString("\n")
+		}
+	}
+
+	// Don't forget to save the last file's diff
+	if currentFile != "" && currentDiff.Len() > 0 {
+		fileDiffs[currentFile] = strings.TrimSpace(currentDiff.String())
+	}
+
+	return fileDiffs
+}
+
 func (apiPatch *APIPatch) buildModuleChanges(ctx context.Context, p patch.Patch, identifier string) {
 	env := evergreen.GetEnvironment()
 	if env == nil {
@@ -385,15 +442,27 @@ func (apiPatch *APIPatch) buildModuleChanges(ctx context.Context, p patch.Patch,
 		}
 		htmlLink := fmt.Sprintf("%s/filediff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
 		rawLink := fmt.Sprintf("%s/rawdiff/%s?patch_number=%d", apiURL, *apiPatch.Id, patchNumber)
+
+		// Split the full patch into individual file diffs
+		fileDiffMap := splitPatchByFile(modPatch.PatchSet.Patch)
+
 		fileDiffs := []FileDiff{}
 		for i, file := range modPatch.PatchSet.Summary {
 			diffLink := fmt.Sprintf("%s/filediff/%s?file_name=%s&patch_number=%d&commit_number=%d", apiURL, *apiPatch.Id, url.QueryEscape(file.Name), patchNumber, i)
 			fileName := file.Name
+
+			// Get the individual diff for this file, or fall back to the full patch if not found
+			individualDiff := fileDiffMap[file.Name]
+			if individualDiff == "" {
+				// If we couldn't parse individual diffs, use the full patch as fallback
+				individualDiff = modPatch.PatchSet.Patch
+			}
+
 			fileDiff := FileDiff{
 				FileName:    &fileName,
 				Additions:   file.Additions,
 				Deletions:   file.Deletions,
-				Diff:        modPatch.PatchSet.Patch,
+				Diff:        individualDiff,
 				DiffLink:    &diffLink,
 				Description: file.Description,
 			}

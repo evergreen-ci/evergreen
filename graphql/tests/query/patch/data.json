@@ -12,16 +12,16 @@
         {
           "name": "",
           "patch_set": {
-            "patch": "diff --git a/main.go b/main.go\nindex 1234..5678 100644\n--- a/main.go\n+++ b/main.go\n@@ -1,3 +1,3 @@\n package main\n \n-func main() {}\n+func main() { println(\"hello\") }",
+            "patch": "diff --git a/main.go b/main.go\nindex 1234..5678 100644\n--- a/main.go\n+++ b/main.go\n@@ -1,3 +1,3 @@\n package main\n \n-func main() {}\n+func main() { println(\"hello\") }\ndiff --git a/util.go b/util.go\nnew file mode 100644\nindex 0000000..abcd123\n--- /dev/null\n+++ b/util.go\n@@ -0,0 +1,5 @@\n+package main\n+\n+func helper() {\n+    // utility function\n+}",
             "summary": [
               {
-                "name": "main.go",
+                "filename": "main.go",
                 "description": "Modified main function",
                 "additions": 1,
                 "deletions": 1
               },
               {
-                "name": "util.go",
+                "filename": "util.go",
                 "description": "Added utility functions",
                 "additions": 25,
                 "deletions": 0
