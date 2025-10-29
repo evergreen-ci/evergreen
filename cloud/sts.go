@@ -70,21 +70,21 @@ type AssumeRoleCredentials struct {
 // the AWS API call and generating the ExternalID for the request.
 func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error) {
 	if err := s.setupClient(ctx); err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "creating AWS client")
+		return AssumeRoleCredentials{}, errors.Wrap(err, "creating AWS client")
 	}
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task")
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return AssumeRoleCredentials{}, errors.New("task not found")
+		return AssumeRoleCredentials{}, fmt.Errorf("task '%s' not found", taskID)
 	}
 	p, err := model.GetProjectRefForTask(ctx, taskID)
 	if err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "getting project ref for task")
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "getting project '%s' for task '%s'", t.Project, taskID)
 	}
 	if p == nil {
-		return AssumeRoleCredentials{}, errors.New("project ref not found")
+		return AssumeRoleCredentials{}, fmt.Errorf("project '%s' not found for task '%s'", t.Project, taskID)
 	}
 	externalID := createExternalID(t, p)
 	creds, err := s.assumeRole(ctx, externalID, opts)
