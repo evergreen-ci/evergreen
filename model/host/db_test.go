@@ -153,7 +153,7 @@ func TestFindStartingHostsByClient(t *testing.T) {
 				},
 				Status:      evergreen.HostStarting,
 				Provisioned: false,
-				StartedBy:   evergreen.User,
+				StartedBy:   "a_task_running_host_create",
 			}
 			require.NoError(t, h.Insert(ctx))
 
