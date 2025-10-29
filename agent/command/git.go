@@ -131,7 +131,7 @@ func parseToken(token string) (string, error) {
 	return splitToken[1], nil
 }
 
-func (opts cloneOpts) getCloneCommand() ([]string, error) {
+func (opts cloneOpts) getCloneCommand(isGitHubPR bool) ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
@@ -149,12 +149,14 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
-	if opts.branch != "" {
-		// kim: NOTE: experiment with testing if `--branch` is needed. Maybe we
-		// can still fetch the PR changes without a base branch.
-		if !strings.Contains(opts.branch, "graphite-base") {
-			clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
-		}
+	// Clone a specific branch.
+	// In the case of a Graphite-generated temporary branch, it's not necessary
+	// (and in fact, not possible) to clone that Graphite branch because
+	// Evergreen cannot access it. Evergreen can still retrieve the PR changes
+	// though.
+	isGraphiteBaseBranchForGitHubPR := isGitHubPR && isGraphiteBaseBranch(opts.branch)
+	if opts.branch != "" && !isGraphiteBaseBranchForGitHubPR {
+		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
 	return []string{
@@ -211,14 +213,15 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	isGitHubPR := isGitHub(conf)
+	cloneCmd, err := opts.getCloneCommand(isGitHubPR)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	// if there's a PR checkout the ref containing the changes
-	if isGitHub(conf) {
+	if isGitHubPR {
 		var suffix, localBranchName, remoteBranchName, commitToTest string
 		if conf.Task.Requester == evergreen.GithubPRRequester {
 			// Github creates a ref called refs/pull/[pr number]/head
@@ -235,14 +238,23 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 			remoteBranchName = conf.GithubMergeData.HeadBranch
 		}
 		if commitToTest != "" {
-			gitCommands = append(gitCommands,
-				fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
-				fmt.Sprintf(`git checkout "%s"`, localBranchName),
-			)
-			if strings.Contains(opts.branch, "graphite-base") {
-				gitCommands = append(gitCommands, fmt.Sprintf("git fetch origin %s", commitToTest))
+			if isGraphiteBaseBranch(opts.branch) {
+				// In the case of a Graphite-generated temporary branch,
+				// commitToTest has to fetched without checking out the PR
+				// itself. This is because the Graphite temporary branch can't
+				// be retrieved directly by Evergreen, nor is the commit
+				// available by checking out the PR.
+				gitCommands = append(gitCommands,
+					fmt.Sprintf("git fetch origin %s", commitToTest),
+					fmt.Sprintf("git reset --hard %s", commitToTest),
+				)
+			} else {
+				gitCommands = append(gitCommands,
+					fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
+					fmt.Sprintf(`git checkout "%s"`, localBranchName),
+					fmt.Sprintf("git reset --hard %s", commitToTest),
+				)
 			}
-			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", commitToTest))
 		}
 
 	} else {
@@ -273,13 +285,16 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := opts.getCloneCommand(isGitHub(conf))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	if isGitHubPRModulePatch(conf, modulePatch) {
+		// kim: TODO: figure out if Graphite workaround works with module patch.
+		// It should be fine because buildModuleCloneCommand is called with an
+		// empty branch.
 		branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		gitCommands = append(gitCommands,
 			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
@@ -836,6 +851,10 @@ func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModuleP
 
 func isGitHub(conf *internal.TaskConfig) bool {
 	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
+}
+
+func isGraphiteBaseBranch(branch string) bool {
+	return strings.Contains(branch, "graphite-base/")
 }
 
 type noopWriteCloser struct {

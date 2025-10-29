@@ -470,7 +470,7 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 		dir:    "dir",
 		token:  projectGitHubToken,
 	}
-	cmds, err := opts.getCloneCommand()
+	cmds, err := opts.getCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -482,7 +482,7 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	}), cmds)
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	opts.branch = ""
-	cmds, err = opts.getCloneCommand()
+	cmds, err = opts.getCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -498,7 +498,7 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	opts.owner = "evergreen-ci"
 	opts.repo = "sample"
 	opts.branch = projectRef.Branch
-	cmds, err = opts.getCloneCommand()
+	cmds, err = opts.getCloneCommand(false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
