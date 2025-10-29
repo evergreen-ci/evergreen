@@ -226,7 +226,7 @@ func TestJasperCommands(t *testing.T) {
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
 		},
-		"GenerateUserDataProvisioningScriptForSpawnHost": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"GenerateUserDataProvisioningScriptForSpawnHostUsingStaticCredentials": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			require.NoError(t, db.Clear(user.Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(user.Collection))
@@ -270,6 +270,61 @@ func TestJasperCommands(t *testing.T) {
 
 			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
+
+			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
+		},
+		"GenerateUserDataProvisioningScriptForSpawnHostUsingOAuth": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			require.NoError(t, db.Clear(user.Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(user.Collection))
+			}()
+			settings.AuthConfig.OAuth = &evergreen.OAuthConfig{
+				Issuer:      "issuer_url_with'_some'_quotes",
+				ClientID:    "client_id",
+				ConnectorID: "connector_id",
+			}
+			h.StartedBy = "started_by_user"
+			h.UserHost = true
+			userID := "user"
+			user := &user.DBUser{Id: userID}
+			require.NoError(t, user.Insert(t.Context()))
+
+			h.ProvisionOptions = &ProvisionOptions{
+				OwnerId:  userID,
+				TaskId:   "task_id",
+				UseOAuth: true,
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			checkRerun := h.CheckUserDataProvisioningStartedCommand()
+
+			setupScript, err := h.setupScriptCommands(settings)
+			require.NoError(t, err)
+
+			setupSpawnHost, err := h.SpawnHostSetupCommands(t.Context(), settings)
+			require.NoError(t, err)
+
+			markDone := h.MarkUserDataProvisioningDoneCommand()
+
+			expectedCmds := []string{
+				checkRerun,
+				setupScript,
+				h.MakeJasperDirsCommand(),
+				h.FetchJasperCommand(settings.HostJasper),
+
+				h.ForceReinstallJasperCommand(settings),
+				h.ChangeJasperDirsOwnerCommand(),
+				setupSpawnHost,
+				markDone,
+			}
+
+			creds, err := newMockCredentials()
+			require.NoError(t, err)
+
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
+			require.NoError(t, err)
+			assert.Contains(t, script, "issuer: issuer_url_with'_some'_quotes")
+			assert.Contains(t, script, "do_not_use_browser: true")
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
 		},
