@@ -742,6 +742,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		"owner":            pr.Base.User.GetLogin(),
 		"repo":             pr.Base.Repo.GetName(),
 		"pr_num":           pr.GetNumber(),
+		"head_sha":         pr.Head.GetSHA(),
 	})
 	if strings.HasPrefix(pr.Base.GetRef(), "graphite-base/") {
 		// Graphite recommends skipping CI on Graphite temporary branches
@@ -762,13 +763,21 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		// intentionally not running.
 		update := units.NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
-			owner,
-			pr.Base.Repo.GetName(),
+			baseRepo[0],
+			baseRepo[1],
 			pr.Head.GetSHA(),
-			"Skipping CI for graphite-base/* temporary branches because Graphite is rebasing the PR.",
+			"Graphite is rebasing this PR, skipping CI.",
 		)
 		update.Run(ctx)
 		if err := update.Error(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "kim: could not send GitHub status error for Graphite temporary branch",
+				"owner":    pr.Base.User.GetLogin(),
+				"repo":     pr.Base.Repo.GetName(),
+				"pr_num":   pr.GetNumber(),
+				"base_ref": pr.Base.GetRef(),
+				"head_ref": pr.Head.GetRef(),
+			}))
 			return errors.Wrap(err, "sending failed GitHub status for Graphite temporary PR")
 		}
 		return nil

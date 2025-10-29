@@ -26,3 +26,12 @@ For more on their differences and examples, see [controlling when tasks run](Pro
 ## Why am I seeing a 'fatal: ...no merge base' error?
 
 This is most likely because your repo was cloned with a specified depth and the merge base was outside the range of the depth. To fix this, rebase your HEAD to the latest master. If this happens often, we recommend increasing the clone depth in your project's [`git.get_project`](Project-Configuration/Project-Commands#gitget_project) to a more suitable depth.
+
+## Why is my Graphite stacked PR not running CI tests?
+
+Evergreen will not run CI tests while your PR is rebasing [per Graphite's
+recommendations](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci)
+because the PR is in an intermediate state. You can tell if Graphite is rebasing in GitHub because the base branch for
+the PR will look like `graphite-base/*`. Once the PR is done rebasing, the CI tests will run. If you find that the PR is
+stuck on a `graphite-base/*` branch, try running `gt sync` or `gt restack` to ensure that the stack is still in a good
+state.
