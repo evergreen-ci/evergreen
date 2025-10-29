@@ -220,13 +220,13 @@ why you'd like your host to be permanently exempt from the uptime schedule.
 
 The Spruce hosts page offers three batch actions applicable to hosts:
 
-1. Update Status
-   You can force a state change to these statuses:
-   - Decommissioned: Terminate a host after it's done running its current task.
-   - Quarantined: Stop a host from running tasks without terminating it or shutting it down. This is to do ops work on it like temporary maintenance, debugging, etc. Once the maintenance is done, it's usually set back to running to pick up tasks like normal. Quarantined is used almost exclusively for static hosts.
-   - Terminate: Shut down the host.
-   - Stopped: Stop the host.
-   - Running: Start the host.
+1.  Force a status change. Statuses you can set a host to are:
+
+- Decommissioned: Terminate a host after it's done running its current task.
+- Quarantined: Stop a host from running tasks without terminating it or shutting it down. This is to do ops work on it like temporary maintenance, debugging, etc. Once the maintenance is done, it's usually set back to running to pick up tasks like normal. Quarantined is used almost exclusively for static hosts.
+- Terminate: Shut down the host.
+- Stopped: Stop the host.
+- Running: Start the host.
 
 2. Restart Jasper
 
