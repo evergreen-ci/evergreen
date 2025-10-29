@@ -379,14 +379,14 @@ Parameters:
 ### AssumeRole AWS Setup
 
 The call to AssumeRole includes an external ID formatted as
-`<project_id>-<requester>` (except for [untracked branches](#untracked-branches)).
+`[project_id]-[requester]` (except for [untracked branches](#untracked-branches)).
 This cannot be modified by the user and is set by Evergreen.
 
 - An Evergreen project's ID can be found on its General Settings page.
 - The list of requesters can be found [here](../Reference/Glossary.md#requesters).
 
 The originating role is:
-`arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
+`arn:aws:iam::[evergreen_account_id]:role/evergreen.role.production`
 and your role should only trust that exact role. You should add an
 external ID to your role's trust policy to ensure only your project
 can assume the role. Evergreen's account ID can be found on the
@@ -402,12 +402,12 @@ An example of a trust policy with an external ID is below:
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+        "AWS": "arn:aws:iam::[evergreen_account_id]:role/evergreen.role.production"
       },
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringExact": {
-          "sts:ExternalId": "<project_id>-<requester>"
+          "sts:ExternalId": "[project_id]-[requester]"
         }
       }
     }
@@ -426,12 +426,12 @@ You can allow any requester by using the condition `StringLike` and a wildcard i
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+        "AWS": "arn:aws:iam::[evergreen_account_id]:role/evergreen.role.production"
       },
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringLike": {
-          "sts:ExternalId": "<project_id>-*"
+          "sts:ExternalId": "[project_id]-*"
         }
       }
     }
@@ -448,14 +448,14 @@ Or just particular requesters
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+        "AWS": "arn:aws:iam::[evergreen_account_id]:role/evergreen.role.production"
       },
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringExact": {
           "sts:ExternalId": [
-            "<project_id>-github_merge_request",
-            "<project_id>-trigger_request"
+            "[project_id]-github_merge_request",
+            "[project_id]-trigger_request"
           ]
         }
       }
@@ -466,7 +466,7 @@ Or just particular requesters
 
 #### Untracked Branches
 
-[Untracked branches](Repo-Level-Settings.md#how-to-use-pr-testing-for-untracked-branches) use a different ExternalId format: 'untracked-<repo_project_id>-<requester>'.
+[Untracked branches](Repo-Level-Settings.md#how-to-use-pr-testing-for-untracked-branches) use a different ExternalId format: 'untracked-[repo_project_id]-[requester]'.
 
 - The repo project ID is the ID of the repo ref associated with the
   project. If the project is not associated with a repo ref, this will be blank
@@ -479,12 +479,12 @@ Or just particular requesters
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+        "AWS": "arn:aws:iam::[evergreen_account_id]:role/evergreen.role.production"
       },
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringExact": {
-          "sts:ExternalId": "untracked-<repo_project_id>-<requester>"
+          "sts:ExternalId": "untracked-[repo_project_id]-[requester]"
         }
       }
     }
@@ -501,12 +501,12 @@ Or any requester:
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+        "AWS": "arn:aws:iam::[evergreen_account_id]:role/evergreen.role.production"
       },
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringLike": {
-          "sts:ExternalId": "untracked-<repo_project_id>-*"
+          "sts:ExternalId": "untracked-[repo_project_id]-*"
         }
       }
     }
