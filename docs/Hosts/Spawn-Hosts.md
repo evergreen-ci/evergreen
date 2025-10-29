@@ -58,7 +58,7 @@ evergreen host fetch
 
 Note: You will need to run this command for each spawn host you create that fetches the artifacts of a task.
 
-If you do not want the pre-made fetching options, you can use the Evergreen CLI command [fetch](../CLI#fetch).
+Alternatively, you can use the Evergreen CLI command [fetch](../CLI#fetch) to manually fetch task binaries and artifacts.
 
 Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching.
 
