@@ -195,6 +195,8 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
+	WhyIsMyDataMissingName = "whyIsTheDataMissing.txt"
+
 	// Env vars
 	EvergreenHome           = "EVGHOME"
 	MongodbURL              = "MONGO_URL"

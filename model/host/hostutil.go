@@ -32,7 +32,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const OutputBufferSize = 1000
+const (
+	OutputBufferSize       = 1000
+	whyIsMyDataMissingText = `The task data has not been fetched yet.
+To fetch the task data, run: "evergreen host fetch"`
+)
 
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
@@ -448,6 +452,12 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 				// When the user SSH's in later, they have to run the script by running `evergreen host fetch`.
 				scriptPath := filepath.Join(h.Distro.HomeDir(), evergreen.SpawnhostFetchScriptName)
 				postFetchClient += " && " + fmt.Sprintf("echo '%s' > %s && chmod +x %s", getTaskDataCmd, scriptPath, scriptPath)
+
+				// Users might forget to run `evergreen host fetch`, so we add a note to
+				// where it usually is to remind them.
+				dataMissingFile := filepath.Join(h.Distro.HomeDir(), evergreen.WhyIsMyDataMissingName)
+				postFetchClient += fmt.Sprintf(" && mkdir -p %s ", h.Distro.HomeDir())
+				postFetchClient += fmt.Sprintf(" && echo '%s' >> %s", whyIsMyDataMissingText, dataMissingFile)
 			}
 		}
 	}
