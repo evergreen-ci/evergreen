@@ -50,7 +50,7 @@ Clicking it will pre-populate the spawn host page with a request to spawn a host
 
 ![spawn_host_modal.png](../images/spawn_host_modal.png)
 
-The spawn host will not fetch the artifacts completely automatically; you will need to run the following command (which will prompt you to authenticate):
+The spawn host will not fetch the binaries and artifacts associated with the task on start-up because it lacks the necessary permissions. After you SSH into the host, you will need to run the following command to fetch them (which will prompt you to authenticate):
 
 ```sh
 evergreen host fetch
