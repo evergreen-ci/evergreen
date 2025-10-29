@@ -1049,6 +1049,7 @@ type ComplexityRoot struct {
 		RemovePublicKey               func(childComplexity int, keyName string) int
 		RemoveVolume                  func(childComplexity int, volumeID string) int
 		ReprovisionToNew              func(childComplexity int, hostIds []string) int
+		ResetAPIKey                   func(childComplexity int) int
 		RestartAdminTasks             func(childComplexity int, opts model1.RestartOptions) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
@@ -2476,6 +2477,7 @@ type MutationResolver interface {
 	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
 	RemoveFavoriteProject(ctx context.Context, opts RemoveFavoriteProjectInput) (*model.APIProjectRef, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
+	ResetAPIKey(ctx context.Context) (*UserConfig, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdateBetaFeatures(ctx context.Context, opts UpdateBetaFeaturesInput) (*UpdateBetaFeaturesPayload, error)
 	UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error)
@@ -6673,6 +6675,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ReprovisionToNew(childComplexity, args["hostIds"].([]string)), true
+	case "Mutation.resetAPIKey":
+		if e.complexity.Mutation.ResetAPIKey == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetAPIKey(childComplexity), true
 	case "Mutation.restartAdminTasks":
 		if e.complexity.Mutation.RestartAdminTasks == nil {
 			break
@@ -40433,6 +40441,51 @@ func (ec *executionContext) fieldContext_Mutation_removePublicKey(ctx context.Co
 	if fc.Args, err = ec.field_Mutation_removePublicKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_resetAPIKey,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().ResetAPIKey(ctx)
+		},
+		nil,
+		ec.marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "api_key":
+				return ec.fieldContext_UserConfig_api_key(ctx, field)
+			case "api_server_host":
+				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
+			case "ui_server_host":
+				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
+			case "user":
+				return ec.fieldContext_UserConfig_user(ctx, field)
+			case "oauth_issuer":
+				return ec.fieldContext_UserConfig_oauth_issuer(ctx, field)
+			case "oauth_client_id":
+				return ec.fieldContext_UserConfig_oauth_client_id(ctx, field)
+			case "oauth_connector_id":
+				return ec.fieldContext_UserConfig_oauth_connector_id(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserConfig", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -92904,6 +92957,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "resetAPIKey":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetAPIKey(ctx, field)
+			})
 		case "saveSubscription":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveSubscription(ctx, field)

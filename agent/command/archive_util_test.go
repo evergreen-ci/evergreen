@@ -251,6 +251,13 @@ func TestFindArchiveContentsSymLink(t *testing.T) {
 	testDir := getDirectoryOfFile()
 	root := filepath.Join(testDir, "testdata", "archive", "symlink")
 
+	// create a invalid.txt symlink that points outside of the root
+	invalidLinkPath := filepath.Join(root, "invalid.txt")
+	require.NoError(t, os.Symlink("/etc/passwd", invalidLinkPath))
+	t.Cleanup(func() {
+		require.NoError(t, os.Remove(invalidLinkPath))
+	})
+
 	t.Run("SymLinksStayUnresolved", func(t *testing.T) {
 		files, size, err := findArchiveContents(t.Context(), root, []string{"*.txt"}, []string{})
 		require.NoError(t, err)
@@ -259,4 +266,38 @@ func TestFindArchiveContentsSymLink(t *testing.T) {
 		assert.Equal(t, "valid.txt", filepath.Base(files[1].path))
 		assert.Equal(t, 5, size)
 	})
+}
+
+func TestGlobPatternBehavior(t *testing.T) {
+	testDir := getDirectoryOfFile()
+
+	// dir1/dir2/my_symlink.txt
+	// dir1/dir2/test.pdb
+	// dir1/dir2/testfile.txt
+
+	rootPath := filepath.Join(testDir, "testdata", "archive", "artifacts_in")
+
+	// Test directory glob patterns with different behaviors
+	testCases := map[string][]string{
+		"dir1":    {"dir1"},                                                                                          // directory itself
+		"dir1/":   {},                                                                                                // nothing (trailing slash)
+		"dir1/*":  {"dir1/dir2"},                                                                                     // direct children only
+		"dir1/**": {"dir1", "dir1/dir2", "dir1/dir2/my_symlink.txt", "dir1/dir2/test.pdb", "dir1/dir2/testfile.txt"}, // everything recursively
+	}
+
+	for pattern, expectedPaths := range testCases {
+		t.Run(pattern, func(t *testing.T) {
+			files, _, err := findContentsToArchive(t.Context(), rootPath, []string{pattern}, []string{})
+			require.NoError(t, err)
+			assert.Equal(t, len(expectedPaths), len(files), "pattern '%s' should find %d files", pattern, len(expectedPaths))
+
+			var actualPaths []string
+			for _, f := range files {
+				rel, err := filepath.Rel(rootPath, f.path)
+				require.NoError(t, err)
+				actualPaths = append(actualPaths, rel)
+			}
+			assert.ElementsMatch(t, expectedPaths, actualPaths, "pattern '%s' should find expected paths", pattern)
+		})
+	}
 }

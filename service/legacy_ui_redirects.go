@@ -39,6 +39,19 @@ func (uis *UIServer) legacyTaskQueue(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) legacyTaskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+
+	if err != nil || project == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
+	// it is the most relevant.
+	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyTaskPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
 	executionStr := gimlet.GetVars(r)["execution"]
 	var execution int
 	var err error
@@ -54,20 +67,8 @@ func (uis *UIServer) legacyTaskHistoryPage(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	http.Redirect(w, r, fmt.Sprintf("%s/task/%s/history?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution), http.StatusPermanentRedirect)
-}
-
-func (uis *UIServer) legacyTaskPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject(r.Context())
-
-	if err != nil || project == nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	// There's no longer an equivalent Task History page on Spruce, so we have to link to a different page. Waterfall is used since
-	// it is the most relevant.
-	http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusPermanentRedirect)
+	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
 
 func (uis *UIServer) legacyProjectsPage(w http.ResponseWriter, r *http.Request) {
@@ -84,4 +85,45 @@ func (uis *UIServer) legacyUserSettingsPage(w http.ResponseWriter, r *http.Reque
 func (uis *UIServer) legacyNotificationsPage(w http.ResponseWriter, r *http.Request) {
 	newUILink := fmt.Sprintf("%s/preferences/notifications", uis.Settings.Ui.UIv2Url)
 	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyHostsPage(w http.ResponseWriter, r *http.Request) {
+	spruceLink := fmt.Sprintf("%s/hosts", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyHostPage(w http.ResponseWriter, r *http.Request) {
+	hostId := gimlet.GetVars(r)["host_id"]
+	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, hostId)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyUserPatchesPage(w http.ResponseWriter, r *http.Request) {
+	userId := gimlet.GetVars(r)["user_id"]
+	spruceLink := fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, userId)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyMyPatchesPage(w http.ResponseWriter, r *http.Request) {
+	user := MustHaveUser(r)
+	spruceLink := fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, user.Username())
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyProjectPatchesPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+	if err != nil || project == nil {
+		http.Redirect(w, r, uis.Settings.Ui.UIv2Url, http.StatusPermanentRedirect)
+		return
+	}
+	spruceLink := fmt.Sprintf("%s/project/%s/patches", uis.Settings.Ui.UIv2Url, project.Identifier)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyPatchesPage(w http.ResponseWriter, r *http.Request) {
+	user := MustHaveUser(r)
+	// There's no equivalent /patches page on Spruce, so just redirect to user patches.
+	spruceLink := fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, user.Username())
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }

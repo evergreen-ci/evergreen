@@ -17,6 +17,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -1665,6 +1666,286 @@ func TestModifyProjectVersions(t *testing.T) {
 			}
 			rm := makeModifyProjectVersionsHandler("").(*modifyProjectVersionsHandler)
 			test(t, rm)
+		})
+	}
+}
+
+func TestPostBackstageVariables(t *testing.T) {
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(serviceModel.RepoRefCollection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, event.EventCollection))
+	})
+
+	for tName, tCase := range map[string]func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars){
+		"ParseSucceedsWithValidVariablesToAdd": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			body := []byte(`{
+                "vars": [
+                    {"name": "__default_bucket", "value": "updated_bucket"},
+                    {"name": "__default_bucket_role_arn", "value": "arn:aws:iam::123456789:role/test"}
+                ]
+            }`)
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/test_project/backstage_variables", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": pRef.Id})
+
+			ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: backstageUser})
+
+			require.NoError(t, h.Parse(ctx, req))
+
+			assert.Equal(t, pRef.Id, h.projectID)
+			assert.Equal(t, backstageUser, h.userID)
+			require.Len(t, h.opts.Vars, 2)
+			assert.Equal(t, "__default_bucket", h.opts.Vars[0].Name)
+			assert.Equal(t, "updated_bucket", h.opts.Vars[0].Value)
+			assert.Equal(t, "__default_bucket_role_arn", h.opts.Vars[1].Name)
+			assert.Equal(t, "arn:aws:iam::123456789:role/test", h.opts.Vars[1].Value)
+			assert.Empty(t, h.opts.VarsToDelete)
+		},
+		"ParseSucceedsWithValidVariablesToDelete": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			body := []byte(`{
+                "vars_to_delete": ["__default_bucket", "__default_bucket_role_arn"]
+            }`)
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/test_project/backstage_variables", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": pRef.Id})
+
+			ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: backstageUser})
+
+			require.NoError(t, h.Parse(ctx, req))
+
+			assert.Equal(t, pRef.Id, h.projectID)
+			assert.Empty(t, h.opts.Vars)
+			require.Len(t, h.opts.VarsToDelete, 2)
+			assert.Equal(t, "__default_bucket", h.opts.VarsToDelete[0])
+			assert.Equal(t, "__default_bucket_role_arn", h.opts.VarsToDelete[1])
+		},
+		"ParseFailsWithNoVarsToModify": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			body := []byte(`{
+                "vars": [],
+                "vars_to_delete": []
+            }`)
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/test_project/backstage_variables", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": pRef.Id})
+
+			ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: backstageUser})
+
+			assert.Error(t, h.Parse(ctx, req))
+		},
+		"ParseFailsWithInvalidJSON": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			body := []byte(`{invalid json`)
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/test_project/backstage_variables", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": pRef.Id})
+
+			ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: backstageUser})
+
+			assert.Error(t, h.Parse(ctx, req))
+		},
+		"ParseFailsWithUnauthorizedVariableNameToAdd": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			body := []byte(`{
+                "vars": [
+                    {"name": "unauthorized_var", "value": "some_value"}
+                ]
+            }`)
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/test_project/backstage_variables", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": pRef.Id})
+
+			ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: backstageUser})
+
+			assert.Error(t, h.Parse(ctx, req))
+		},
+		"ParseFailsWithUnauthorizedVariableNameToDelete": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			body := []byte(`{
+                "vars_to_delete": ["existing_var"]
+            }`)
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/test_project/backstage_variables", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": pRef.Id})
+
+			ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: backstageUser})
+
+			assert.Error(t, h.Parse(ctx, req))
+		},
+		"ParseFailsWithMixOfAuthorizedAndUnauthorizedVariables": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			body := []byte(`{
+                "vars": [
+                    {"name": "__default_bucket", "value": "updated_bucket"},
+                    {"name": "unauthorized_var", "value": "some_value"}
+                ]
+            }`)
+
+			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/test_project/backstage_variables", bytes.NewBuffer(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": pRef.Id})
+
+			ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: backstageUser})
+
+			assert.Error(t, h.Parse(ctx, req))
+		},
+		"RunSucceedsWithNewAndUpdatedVars": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			h.projectID = pRef.Id
+			h.userID = backstageUser
+			h.opts = backstageProjectVarsPostOptions{
+				Vars: []backstageProjectVar{
+					{Name: "__default_bucket", Value: "updated_bucket"},
+					{Name: "__default_bucket_role_arn", Value: "arn:aws:iam::123456789:role/new"},
+				},
+			}
+
+			resp := h.Run(t.Context())
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			updatedVars, err := serviceModel.FindOneProjectVars(t.Context(), pRef.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, updatedVars)
+			assert.Equal(t, "updated_bucket", updatedVars.Vars["__default_bucket"])
+			assert.Equal(t, "arn:aws:iam::123456789:role/new", updatedVars.Vars["__default_bucket_role_arn"])
+			assert.Equal(t, originalVars.Vars["existing_var"], updatedVars.Vars["existing_var"])
+
+			events, err := serviceModel.MostRecentProjectEvents(t.Context(), pRef.Id, 1)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+			assert.Equal(t, events[0].ResourceId, pRef.Id)
+			assert.Equal(t, events[0].ResourceType, event.EventResourceTypeProject)
+			assert.Equal(t, events[0].EventType, event.EventTypeProjectModified)
+		},
+		"RunSucceedsWithDeletes": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			h.projectID = pRef.Id
+			h.userID = backstageUser
+			h.opts = backstageProjectVarsPostOptions{
+				VarsToDelete: []string{"__default_bucket"},
+			}
+
+			resp := h.Run(t.Context())
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			updatedVars, err := serviceModel.FindOneProjectVars(t.Context(), h.projectID)
+			assert.NoError(t, err)
+			require.NotZero(t, updatedVars)
+			_, ok := updatedVars.Vars["__default_bucket"]
+			assert.False(t, ok)
+			assert.Equal(t, originalVars.Vars["existing_var"], updatedVars.Vars["existing_var"])
+
+			events, err := serviceModel.MostRecentProjectEvents(t.Context(), pRef.Id, 1)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+			assert.Equal(t, events[0].ResourceId, pRef.Id)
+			assert.Equal(t, events[0].ResourceType, event.EventResourceTypeProject)
+			assert.Equal(t, events[0].EventType, event.EventTypeProjectModified)
+		},
+		"RunCanModifyRepoVars": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			h.projectID = pRef.RepoRefId
+			h.opts = backstageProjectVarsPostOptions{
+				Vars: []backstageProjectVar{
+					{Name: "__default_bucket", Value: "repo_level_bucket"},
+				},
+			}
+
+			resp := h.Run(t.Context())
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			updatedVars, err := serviceModel.FindOneProjectVars(t.Context(), pRef.RepoRefId)
+			assert.NoError(t, err)
+			require.NotZero(t, updatedVars)
+			assert.Equal(t, "repo_level_bucket", updatedVars.Vars["__default_bucket"])
+
+			events, err := serviceModel.MostRecentProjectEvents(t.Context(), pRef.RepoRefId, 1)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+			assert.Equal(t, events[0].ResourceId, pRef.RepoRefId)
+			assert.Equal(t, events[0].ResourceType, event.EventResourceTypeProject)
+			assert.Equal(t, events[0].EventType, event.EventTypeProjectModified)
+		},
+		"RunDoesNotModifyRepoVarsWhenTargetingBranchProject": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			h.projectID = pRef.Id
+			h.opts = backstageProjectVarsPostOptions{
+				VarsToDelete: []string{"__default_bucket_role_arn"},
+			}
+
+			resp := h.Run(t.Context())
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			currentVars, err := serviceModel.FindOneProjectVars(t.Context(), pRef.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, currentVars)
+			assert.Equal(t, originalVars.Vars, currentVars.Vars)
+
+			events, err := serviceModel.MostRecentProjectEvents(t.Context(), pRef.Id, 1)
+			require.NoError(t, err)
+			assert.Len(t, events, 0, "should not log an event because branch project being modified does not have the variable to delete")
+		},
+		"RunNoopsWithNoChanges": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			h.projectID = pRef.Id
+			h.opts = backstageProjectVarsPostOptions{
+				VarsToDelete: []string{"__default_bucket_role_arn"},
+			}
+
+			resp := h.Run(t.Context())
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			currentVars, err := serviceModel.FindOneProjectVars(t.Context(), pRef.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, currentVars)
+			assert.Equal(t, originalVars.Vars, currentVars.Vars)
+
+			events, err := serviceModel.MostRecentProjectEvents(t.Context(), pRef.Id, 1)
+			require.NoError(t, err)
+			assert.Len(t, events, 0, "should not log an event when no project vars were modified")
+		},
+		"RunFailsWithNonexistentProject": func(t *testing.T, h *backstageVariablesPostHandler, pRef *serviceModel.ProjectRef, originalVars *serviceModel.ProjectVars) {
+			h.projectID = "nonexistent_project"
+			h.opts = backstageProjectVarsPostOptions{
+				Vars: []backstageProjectVar{
+					{Name: "__default_bucket", Value: "some_bucket"},
+				},
+			}
+
+			resp := h.Run(t.Context())
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(serviceModel.RepoRefCollection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, event.EventCollection))
+
+			repoRef := &serviceModel.RepoRef{
+				ProjectRef: serviceModel.ProjectRef{
+					Id: "test_repo",
+				},
+			}
+			require.NoError(t, repoRef.Replace(t.Context()))
+
+			pRef := &serviceModel.ProjectRef{
+				Id:        "test_project",
+				RepoRefId: repoRef.Id,
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+			vars := &serviceModel.ProjectVars{
+				Id: pRef.Id,
+				Vars: map[string]string{
+					"existing_var":     "existing_value",
+					"__default_bucket": "project_bucket",
+				},
+			}
+			_, err := vars.Upsert(t.Context())
+			require.NoError(t, err)
+
+			h, ok := makeBackstageVariablesPost().(*backstageVariablesPostHandler)
+			require.True(t, ok)
+
+			tCase(t, h, pRef, vars)
 		})
 	}
 }

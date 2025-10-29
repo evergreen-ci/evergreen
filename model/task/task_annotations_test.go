@@ -244,3 +244,71 @@ func TestPatchIssue(t *testing.T) {
 	require.NotNil(t, foundTask)
 	assert.False(t, foundTask.HasAnnotations)
 }
+
+func TestUpdateHasAnnotationsWithArchivedTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection, OldCollection, annotations.Collection))
+
+	task := Task{
+		Id:        "test_task_archived",
+		Execution: 0,
+		Status:    evergreen.TaskFailed,
+	}
+	require.NoError(t, task.Insert(t.Context()))
+
+	// Verify the task does not have annotations.
+	dbTask, err := FindOneId(t.Context(), task.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.False(t, dbTask.HasAnnotations)
+
+	// Add an annotation and verify the task does have annotations.
+	assert.NoError(t, UpdateHasAnnotations(t.Context(), task.Id, 0, true))
+	dbTask, err = FindOneId(t.Context(), task.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.True(t, dbTask.HasAnnotations)
+
+	// Archive the task (simulating a restart) - use the updated task from the database.
+	require.NoError(t, dbTask.Archive(t.Context()))
+
+	// Verify that the new latest task execution does not have annotations.
+	currentTask, err := FindOneId(t.Context(), task.Id)
+	require.NoError(t, err)
+	require.NotNil(t, currentTask)
+	assert.Equal(t, 1, currentTask.Execution)
+	assert.False(t, currentTask.HasAnnotations)
+
+	// Verify the archived task still it's annotations.
+	archivedTask, err := FindOneOldByIdAndExecution(t.Context(), task.Id, 0)
+	require.NoError(t, err)
+	require.NotNil(t, archivedTask)
+	assert.Equal(t, 0, archivedTask.Execution)
+	assert.True(t, archivedTask.Archived)
+	assert.True(t, archivedTask.HasAnnotations)
+
+	// Test that UpdateHasAnnotations works for the archived task.
+	// This should find the task in the old_tasks collection and update it.
+	err = UpdateHasAnnotations(t.Context(), task.Id, 0, false)
+	require.NoError(t, err, "UpdateHasAnnotations should succeed for archived task")
+
+	// Verify the archived task was updated
+	archivedTask, err = FindOneOldByIdAndExecution(t.Context(), task.Id, 0)
+	require.NoError(t, err)
+	require.NotNil(t, archivedTask)
+	assert.False(t, archivedTask.HasAnnotations)
+
+	// Test that UpdateHasAnnotations still works for current task.
+	require.NoError(t, UpdateHasAnnotations(t.Context(), task.Id, 1, true))
+	currentTask, err = FindOneId(t.Context(), task.Id)
+	require.NoError(t, err)
+	require.NotNil(t, currentTask)
+	assert.True(t, currentTask.HasAnnotations)
+
+	// Test updating the archived task back to having annotations.
+	err = UpdateHasAnnotations(t.Context(), task.Id, 0, true)
+	require.NoError(t, err, "UpdateHasAnnotations should succeed when setting back to true")
+	archivedTask, err = FindOneOldByIdAndExecution(t.Context(), task.Id, 0)
+	require.NoError(t, err)
+	require.NotNil(t, archivedTask)
+	assert.True(t, archivedTask.HasAnnotations)
+}
