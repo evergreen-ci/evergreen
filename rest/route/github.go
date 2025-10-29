@@ -748,6 +748,37 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return nil
 	}
 
+	if strings.HasPrefix(pr.Base.GetRef(), "graphite-base/") {
+		// Graphite recommends skipping CI on Graphite temporary branches
+		// because Graphite is still rebasing the PR. The temporary branch will
+		// disappear, which causes CI failures.
+		// Docs: https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci
+		grip.Info(message.Fields{
+			"message":  "skipping CI on PR because the base ref is a Graphite temporary branch",
+			"owner":    pr.Base.User.GetLogin(),
+			"repo":     pr.Base.Repo.GetName(),
+			"pr_num":   pr.GetNumber(),
+			"base_ref": pr.Base.GetRef(),
+			"head_ref": pr.Head.GetRef(),
+		})
+		// kim: TODO: consider sending failed status for evergreen check as a
+		// warning that this is expected behavior.
+		// Send a failure status back just to inform the user that CI is
+		// intentionally not running.
+		update := units.NewGithubStatusUpdateJobForProcessingError(
+			thirdparty.GithubStatusDefaultContext,
+			owner,
+			pr.Base.Repo.GetName(),
+			pr.Head.GetSHA(),
+			"Skipping CI for graphite-base/* temporary branches because Graphite is rebasing the PR.",
+		)
+		update.Run(ctx)
+		if err := update.Error(); err != nil {
+			return errors.Wrap(err, "sending failed GitHub status for graphite-base temporary PR")
+		}
+		return nil
+	}
+
 	baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
 	if len(baseOwnerAndRepo) != 2 {
 		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
