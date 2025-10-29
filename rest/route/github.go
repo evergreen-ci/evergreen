@@ -175,6 +175,13 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		action := utility.FromStringPtr(event.Action)
+		grip.Info(message.Fields{
+			"message": "kim: received pull request event",
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"action":  action,
+		})
 		if action == githubActionOpened || action == githubActionSynchronize ||
 			action == githubActionReopened || action == githubActionAutoBaseChange {
 			grip.Info(message.Fields{
@@ -204,10 +211,14 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 		} else if action == githubActionClosed {
 			grip.Info(message.Fields{
-				"source":  "GitHub hook",
-				"msg_id":  gh.msgID,
-				"event":   gh.eventType,
-				"message": "pull request closed; aborting patch",
+				"source":    "GitHub hook",
+				"msg_id":    gh.msgID,
+				"event":     gh.eventType,
+				"repo":      *event.PullRequest.Base.Repo.FullName,
+				"pr_number": *event.PullRequest.Number,
+				"user":      *event.Sender.Login,
+				"action":    action,
+				"message":   "pull request closed; aborting patch",
 			})
 
 			if err := data.AbortPatchesFromPullRequest(newCtx, event); err != nil {
@@ -275,6 +286,13 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if event.GetAction() == githubActionRerequested {
 			return gh.handleCheckSuiteRerequested(newCtx, event)
 		}
+	default:
+		grip.Info(message.Fields{
+			"message": "kim: got webhook event that is not handled",
+			"source":  "GitHub hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+		})
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

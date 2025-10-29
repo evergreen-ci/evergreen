@@ -150,7 +150,11 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
 	if opts.branch != "" {
-		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
+		// kim: NOTE: experiment with testing if `--branch` is needed. Maybe we
+		// can still fetch the PR changes without a base branch.
+		if !strings.Contains(opts.branch, "graphite-base") {
+			clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
+		}
 	}
 
 	return []string{
@@ -231,11 +235,14 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 			remoteBranchName = conf.GithubMergeData.HeadBranch
 		}
 		if commitToTest != "" {
-			gitCommands = append(gitCommands, []string{
+			gitCommands = append(gitCommands,
 				fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
 				fmt.Sprintf(`git checkout "%s"`, localBranchName),
-				fmt.Sprintf("git reset --hard %s", commitToTest),
-			}...)
+			)
+			if strings.Contains(opts.branch, "graphite-base") {
+				gitCommands = append(gitCommands, fmt.Sprintf("git fetch origin %s", commitToTest))
+			}
+			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", commitToTest))
 		}
 
 	} else {
