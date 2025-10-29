@@ -172,6 +172,12 @@ var noPermissionsGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
 	AllPermissions: false,
 }
 
+// IsUntracked returns true if the project is untracked.
+// This is determined by if the project is disabled, has a repo ref, and is hidden.
+func (p *ProjectRef) IsUntracked() bool {
+	return p != nil && !p.Enabled && p.RepoRefId != "" && utility.FromBoolPtr(p.Hidden)
+}
+
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
 // If the requester is not found, it returns the default permission group and a false boolean to
 // indicate not found.

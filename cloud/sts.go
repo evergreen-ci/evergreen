@@ -89,7 +89,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	externalID := createExternalID(t, p)
 	creds, err := s.assumeRole(ctx, externalID, opts)
 	if err != nil {
-		externalID = createExternalIDLegacy(t)
+		externalID = createExternalID(t, nil)
 		var fallbackErr error
 		creds, fallbackErr = s.assumeRole(ctx, externalID, opts)
 		if fallbackErr != nil {
@@ -97,8 +97,8 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 		}
 		// Only log if the fallback succeeded.
 		grip.Debug(message.Fields{
-			"message":      "falling back to legacy external ID",
-			"ticket":       "DEVPROD-22828",
+			"message":      "fell back to original external ID",
+			"ticket":       "DEVPROD-22828_v2",
 			"task_id":      t.Id,
 			"project":      t.Project,
 			"project_id":   p.Id,
@@ -157,14 +157,9 @@ func createExternalID(task *task.Task, projectRef *model.ProjectRef) string {
 	// It is an unconfigurable computed value from the task's properties
 	// to avoid the confused deputy problem since Evergreen
 	// assumes many roles on behalf of tasks.
-	return fmt.Sprintf("%s-%s-%s", task.Project, task.Requester, projectRef.RepoRefId)
-}
-
-func createExternalIDLegacy(task *task.Task) string {
-	// The external ID is used as a trust boundary for the AssumeRole call.
-	// It is an unconfigurable computed value from the task of its project and
-	// requester to avoid the confused deputy problem since Evergreen
-	// assumes many roles on behalf of tasks.
+	if projectRef.IsUntracked() {
+		return fmt.Sprintf("untracked-%s-%s", projectRef.RepoRefId, task.Requester)
+	}
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
 }
 
