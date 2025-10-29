@@ -366,10 +366,12 @@ func TestFindStartingHostsByClient(t *testing.T) {
 
 			hostsByClient, err := FindStartingHostsByClient(ctx, 2)
 			assert.NoError(t, err)
-			assert.Len(t, hostsByClient, 1)
+			assert.Len(t, hostsByClient, 2)
 			require.Equal(t, ClientOptions{Provider: evergreen.ProviderNameEc2Fleet}, hostsByClient[0].Options)
 			require.Len(t, hostsByClient[0].Hosts, 1)
 			compareHosts(t, hosts[1], hostsByClient[0].Hosts[0])
+			require.Len(t, hostsByClient[1].Hosts, 1)
+			compareHosts(t, hosts[0], hostsByClient[1].Hosts[0])
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

@@ -1140,9 +1140,19 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			instanceID := generateFakeEC2InstanceID()
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: host.CloudProviderData{PublicDNS: "hostname"},
-				HostID:            h.Id,
-				EC2InstanceID:     instanceID,
+				CloudProviderData: host.CloudProviderData{
+					PublicDNS:   "hostname",
+					Zone:        "zone",
+					PublicIPv4:  "ipv4",
+					PrivateIPv4: "private",
+					IPv6:        "ipv6",
+					StartedAt:   time.Now(),
+					Volumes: []host.VolumeAttachment{{
+						VolumeID: "vol1",
+					}},
+				},
+				HostID:        h.Id,
+				EC2InstanceID: instanceID,
 			}
 			resp := rh.Run(ctx)
 
@@ -1172,9 +1182,18 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			instanceID := generateFakeEC2InstanceID()
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: host.CloudProviderData{PublicDNS: "hostname"},
-				HostID:            h.Id,
-				EC2InstanceID:     instanceID,
+				CloudProviderData: host.CloudProviderData{
+					PublicDNS:   "hostname",
+					Zone:        "zone",
+					PublicIPv4:  "ipv4",
+					PrivateIPv4: "private",
+					IPv6:        "ipv6",
+					StartedAt:   time.Now(),
+					Volumes: []host.VolumeAttachment{{
+						VolumeID: "vol1",
+					}},
+				}, HostID: h.Id,
+				EC2InstanceID: instanceID,
 			}
 
 			resp := rh.Run(ctx)
@@ -1205,9 +1224,18 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 
 			rh.params = host.HostMetadataOptions{
-				CloudProviderData: host.CloudProviderData{PublicDNS: "hostname"},
-				HostID:            instanceID,
-				EC2InstanceID:     instanceID,
+				CloudProviderData: host.CloudProviderData{
+					PublicDNS:   "hostname",
+					Zone:        "zone",
+					PublicIPv4:  "ipv4",
+					PrivateIPv4: "private",
+					IPv6:        "ipv6",
+					StartedAt:   time.Now(),
+					Volumes: []host.VolumeAttachment{{
+						VolumeID: "vol1",
+					}},
+				}, HostID: instanceID,
+				EC2InstanceID: instanceID,
 			}
 
 			resp := rh.Run(ctx)
