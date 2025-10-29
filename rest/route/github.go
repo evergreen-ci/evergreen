@@ -175,13 +175,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		action := utility.FromStringPtr(event.Action)
-		grip.Info(message.Fields{
-			"message": "kim: received pull request event",
-			"source":  "GitHub hook",
-			"msg_id":  gh.msgID,
-			"event":   gh.eventType,
-			"action":  action,
-		})
 		if action == githubActionOpened || action == githubActionSynchronize ||
 			action == githubActionReopened || action == githubActionAutoBaseChange {
 			grip.Info(message.Fields{
@@ -286,13 +279,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if event.GetAction() == githubActionRerequested {
 			return gh.handleCheckSuiteRerequested(newCtx, event)
 		}
-	default:
-		grip.Info(message.Fields{
-			"message": "kim: got webhook event that is not handled",
-			"source":  "GitHub hook",
-			"msg_id":  gh.msgID,
-			"event":   gh.eventType,
-		})
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -748,13 +734,22 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return nil
 	}
 
+	grip.Info(message.Fields{
+		"message":          "kim: processing PR patch intent",
+		"base_ref":         pr.Base.GetRef(),
+		"is_graphite_base": strings.HasPrefix(pr.Base.GetRef(), "graphite-base/"),
+		"head_ref":         pr.Head.GetRef(),
+		"owner":            pr.Base.User.GetLogin(),
+		"repo":             pr.Base.Repo.GetName(),
+		"pr_num":           pr.GetNumber(),
+	})
 	if strings.HasPrefix(pr.Base.GetRef(), "graphite-base/") {
 		// Graphite recommends skipping CI on Graphite temporary branches
-		// because Graphite is still rebasing the PR. The temporary branch will
-		// disappear, which causes CI failures.
+		// because it's is still rebasing the PR. It will eventually delete the
+		// temporary branch, which causes CI failures.
 		// Docs: https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci
 		grip.Info(message.Fields{
-			"message":  "skipping CI on PR because the base ref is a Graphite temporary branch",
+			"message":  "kim: skipping CI on PR because the base ref is a Graphite temporary branch",
 			"owner":    pr.Base.User.GetLogin(),
 			"repo":     pr.Base.Repo.GetName(),
 			"pr_num":   pr.GetNumber(),
@@ -774,7 +769,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		)
 		update.Run(ctx)
 		if err := update.Error(); err != nil {
-			return errors.Wrap(err, "sending failed GitHub status for graphite-base temporary PR")
+			return errors.Wrap(err, "sending failed GitHub status for Graphite temporary PR")
 		}
 		return nil
 	}
