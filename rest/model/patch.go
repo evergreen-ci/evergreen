@@ -93,6 +93,7 @@ type FileDiff struct {
 	FileName    *string `json:"file_name"`
 	Additions   int     `json:"additions"`
 	Deletions   int     `json:"deletions"`
+	Diff        string  `json:"diff"`
 	DiffLink    *string `json:"diff_link"`
 	Description string  `json:"description"`
 }
@@ -173,7 +174,7 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 
 		}
 	}
-	apiPatch.buildModuleChanges(p, projectIdentifier)
+	apiPatch.buildModuleChanges(ctx, p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
 		return apiPatch.buildChildPatches(ctx, p)
@@ -360,13 +361,22 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 	return nil
 }
 
-func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
+func (apiPatch *APIPatch) buildModuleChanges(ctx context.Context, p patch.Patch, identifier string) {
 	env := evergreen.GetEnvironment()
 	if env == nil {
 		return
 	}
 	codeChanges := []APIModulePatch{}
 	apiURL := env.Settings().Api.URL
+
+	if err := p.FetchPatchFiles(ctx); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "couldn't fetch patch files to construct complete diff",
+			"patch_id": p.Id,
+		}))
+		// Explicitly don't this error; we still want to return the rest of the diff data if this fails.
+		// This particularly affects the local UI test environment, whose patches lack corresponding diff files.
+	}
 
 	for patchNumber, modPatch := range p.Patches {
 		branchName := modPatch.ModuleName
@@ -383,6 +393,7 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 				FileName:    &fileName,
 				Additions:   file.Additions,
 				Deletions:   file.Deletions,
+				Diff:        modPatch.PatchSet.Patch,
 				DiffLink:    &diffLink,
 				Description: file.Description,
 			}

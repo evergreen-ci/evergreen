@@ -42,6 +42,39 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "module_code_changes_with_diff.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5dd2e89cd1fe07048e43bc8f",
+            "moduleCodeChanges": [
+              {
+                "branchName": "spruce",
+                "fileDiffs": [
+                  {
+                    "fileName": "main.go",
+                    "additions": 1,
+                    "deletions": 1,
+                    "description": "Modified main function",
+                    "diff": "diff --git a/main.go b/main.go\nindex 1234..5678 100644\n--- a/main.go\n+++ b/main.go\n@@ -1,3 +1,3 @@\n package main\n \n-func main() {}\n+func main() { println(\"hello\") }",
+                    "diffLink": "http://localhost:9090/filediff/5dd2e89cd1fe07048e43bc8f?file_name=main.go&patch_number=0&commit_number=0"
+                  },
+                  {
+                    "fileName": "util.go",
+                    "additions": 25,
+                    "deletions": 0,
+                    "description": "Added utility functions",
+                    "diff": "diff --git a/main.go b/main.go\nindex 1234..5678 100644\n--- a/main.go\n+++ b/main.go\n@@ -1,3 +1,3 @@\n package main\n \n-func main() {}\n+func main() { println(\"hello\") }",
+                    "diffLink": "http://localhost:9090/filediff/5dd2e89cd1fe07048e43bc8f?file_name=util.go&patch_number=0&commit_number=1"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }
