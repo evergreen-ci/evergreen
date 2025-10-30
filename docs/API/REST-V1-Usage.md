@@ -14,11 +14,15 @@ _Note_: This is only available for human users, [service users](../Project-Confi
 
 To authenticate using OAuth, you must include a valid OAuth token as the `Authorization` header in your request. You can get one by running `evergreen client get-oauth-token`
 
+OAuth tokens can only be used when authenticating for evergreen.corp.mongodb.com, they cannot be used with evergreen.mongodb.com.
+
 #### Example
 
 ```bash
-    curl -H "Authorization: Bearer $(evergreen client get-oauth-token)" https://evergreen.mongodb.com/rest/v1/projects/my_private_project
+    curl -H "Authorization: Bearer $(evergreen client get-oauth-token)" https://evergreen.corp.mongodb.com/rest/v1/projects/my_private_project
 ```
+
+> Note: Please make sure to use `https://evergreen.corp.mongodb.com` when using OAuth to authenticate.
 
 ### Static API Keys
 
