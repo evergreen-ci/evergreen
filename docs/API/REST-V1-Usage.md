@@ -1,43 +1,10 @@
 # Legacy API
 
+To use Evergreen's REST v1 API, all URLs start with a path of `/rest/v1`. For more information on authentication, please see [our authentication documentation](./Authentication).
+
 ---
 
 _Note_: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage).
-
-## Authentication
-
-The V2 REST routes will return a 404 if no authentication headers are sent, or if the user is invalid.
-
-### OAuth
-
-_Note_: This is only available for human users, [service users](../Project-Configuration/Project-and-Distro-Settings#service-users), should use [Static API Keys](#static-api-keys).
-
-To authenticate using OAuth, you must include a valid OAuth token as the `Authorization` header in your request. You can get one by running `evergreen client get-oauth-token`
-
-OAuth tokens can only be used when authenticating for evergreen.corp.mongodb.com, they cannot be used with evergreen.mongodb.com.
-
-#### Example
-
-```bash
-    curl -H "Authorization: Bearer $(evergreen client get-oauth-token)" https://evergreen.corp.mongodb.com/rest/v1/projects/my_private_project
-```
-
-> Note: Please make sure to use `https://evergreen.corp.mongodb.com` when using OAuth to authenticate.
-
-### Static API Keys
-
-_Note_: This will soon be deprecated for human users (everyone except [service users](../Project-Configuration/Project-and-Distro-Settings#service-users)), who should use [OAuth](#oauth).
-
-Use the `user` and `api_key` fields from the Settings page.
-Authenticated REST access requires setting two headers, `Api-User` and `Api-Key`.
-
-Static api keys can only be used when authenticating for evergreen.mongodb.com, it cannot be used with evergreen.corp.mongodb.com.
-
-#### Example
-
-```bash
-    curl -H Api-User:my.name -H Api-Key:21312mykey12312 https://evergreen.mongodb.com/rest/v1/projects/my_private_project
-```
 
 ## Retrieve a list of active project IDs
 
