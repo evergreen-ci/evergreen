@@ -52,7 +52,7 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
 	if c.jwt != "" {
-		r.Header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+		r.Header.Add(evergreen.AuthorizationHeader, "Bearer "+c.jwt)
 	}
 
 	if c.hostID != "" && c.hostSecret != "" {
