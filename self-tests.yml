@@ -4,6 +4,7 @@ ignore:
   - "*.md" # don't schedule tests if a commit only changes markdown files
   - "*.mdx"
   - ".github/*" # github CODEOWNERS configuration
+  - "*.yml"
 
 pre_error_fails_task: true
 pre:
@@ -52,6 +53,8 @@ variables:
       - func: setup-credentials
       - func: run-make
         vars: { target: "${task_name}" }
+      - func: run-make
+        vars: { target: "js-test" }
   - &run-go-test-suite-with-docker
     name: test
     must_have_test_results: true
@@ -62,6 +65,8 @@ variables:
       - func: setup-docker-host
       - func: run-make
         vars: { target: "${task_name}" }
+      - func: run-make
+        vars: { target: "js-test" }
   - &run-go-test-suite-with-mongodb
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
@@ -73,6 +78,8 @@ variables:
       - func: setup-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
+      - func: run-make
+        vars: { target: "js-test" }
   - &run-go-test-suite-with-mongodb-useast
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
@@ -399,6 +406,12 @@ functions:
       params:
         files:
           - "evergreen/bin/output.*"
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          sleep 600
     - command: attach.xunit_results
       type: system
       params:
@@ -677,7 +690,6 @@ tasks:
       - func: get-project-and-modules
       - func: verify-gqlgen
   - name: lint-markdown
-    tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
@@ -889,6 +901,16 @@ buildvariants:
       decompress: tar zxvf
     tasks:
       - name: ".smoke"
+
+  - name: lint-markdown
+    display_name: Lint Markdown
+    paths:
+    - "*.md"
+    - "*.mdx"
+    run_on:
+      - ubuntu2204-small
+    tasks:
+      - name: lint-markdown
 
   - name: lint
     display_name: Lint
