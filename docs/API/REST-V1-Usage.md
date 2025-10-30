@@ -12,12 +12,12 @@ The V2 REST routes will return a 404 if no authentication headers are sent, or i
 
 _Note_: This is only available for human users, [service users](../Project-Configuration/Project-and-Distro-Settings#service-users), should use [Static API Keys](#static-api-keys).
 
-To authenticate using OAuth, you must include a valid OAuth token as the `X-Kanopy-Authorization` header in your request. You can get one by running `evergreen client get-oauth-token`
+To authenticate using OAuth, you must include a valid OAuth token as the `Authorization` header in your request. You can get one by running `evergreen client get-oauth-token`
 
 #### Example
 
 ```bash
-    curl -H X-Kanopy-Authorization:$(evergreen client get-oauth-token) https://evergreen.mongodb.com/rest/v1/projects/my_private_project
+    curl -H "Authorization: Bearer $(evergreen client get-oauth-token)" https://evergreen.mongodb.com/rest/v1/projects/my_private_project
 ```
 
 ### Static API Keys
