@@ -27,7 +27,7 @@ metadata:
   annotations:
     evergreen/project-id: evergreen
     cloud-query/aws_accounts: "557821124784,058264131563"
-    cloud-query/bucket_arns: "arn:aws:s3:::mciuploads,arn:aws:s3:::mci-uploads-storage-audit/mciuploads/mci-uploads-storage-audit/"
+    cloud-query/bucket_arns: "arn:aws:s3:::mciuploads,arn:aws:s3:::mci-uploads-storage-audit"
   tags:
     - golang
     - ci-cd
