@@ -848,6 +848,11 @@ tasks:
 buildvariants:
   - name: ubuntu2204
     display_name: Ubuntu 22.04
+    paths:
+      - "*.go"
+      - "*.json"
+      - "*.yml"
+      - "*.graphql"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
@@ -902,6 +907,13 @@ buildvariants:
 
   - name: lint-markdown
     display_name: Lint Markdown
+    expansions:
+      goos: linux
+      goarch: amd64
+      GOROOT: /opt/golang/go1.24
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
     paths:
       - "*.md"
       - "*.mdx"
@@ -912,6 +924,11 @@ buildvariants:
 
   - name: lint
     display_name: Lint
+    paths:
+      - "*.go"
+      - "*.json"
+      - "*.yml"
+      - "*.graphql"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
@@ -922,6 +939,11 @@ buildvariants:
 
   - name: windows
     display_name: Windows
+    paths:
+      - "*.go"
+      - "*.json"
+      - "*.yml"
+      - "*.graphql"
     run_on:
       - windows-vsCurrent-small
       - windows-vsCurrent-large
