@@ -1,8 +1,6 @@
 command_type: test
 stepback: true
 ignore:
-  - "*.md" # don't schedule tests if a commit only changes markdown files
-  - "*.mdx"
   - ".github/*" # github CODEOWNERS configuration
   - "*.yml"
 
