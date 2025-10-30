@@ -3,6 +3,7 @@ stepback: true
 ignore:
   - ".github/*" # github CODEOWNERS configuration
   - "*.yml"
+  - "*.md"
 
 pre_error_fails_task: true
 pre:
@@ -848,10 +849,6 @@ tasks:
 buildvariants:
   - name: ubuntu2204
     display_name: Ubuntu 22.04
-    paths:
-      - "*.go"
-      - "*.json"
-      - "*.graphql"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
@@ -923,11 +920,6 @@ buildvariants:
 
   - name: lint
     display_name: Lint
-    paths:
-      - "*.go"
-      - "*.json"
-      - "*.yml"
-      - "*.graphql"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
@@ -938,11 +930,6 @@ buildvariants:
 
   - name: windows
     display_name: Windows
-    paths:
-      - "*.go"
-      - "*.json"
-      - "*.yml"
-      - "*.graphql"
     run_on:
       - windows-vsCurrent-small
       - windows-vsCurrent-large
