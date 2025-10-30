@@ -127,3 +127,13 @@ func (uis *UIServer) legacyPatchesPage(w http.ResponseWriter, r *http.Request) {
 	spruceLink := fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, user.Username())
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacySpawnHostPage(w http.ResponseWriter, r *http.Request) {
+	spruceLink := fmt.Sprintf("%s/spawn/host", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacySpawnVolumePage(w http.ResponseWriter, r *http.Request) {
+	spruceLink := fmt.Sprintf("%s/spawn/volume", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}

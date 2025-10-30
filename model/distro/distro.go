@@ -438,8 +438,6 @@ func (d *Distro) IsPowerShellSetup() bool {
 
 // IsWindows returns whether or not the distro's hosts run on Windows.
 func (d *Distro) IsWindows() bool {
-	// XXX: if this is-windows check is updated, make sure to also update
-	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
 }
 

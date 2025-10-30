@@ -401,17 +401,10 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin).Handler(uis.legacyUserPatchesPage).Get()
 	app.AddRoute("/patches/mine").Wrap(needsLogin).Handler(uis.legacyMyPatchesPage).Get()
 
-	// Spawnhost routes
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.spawnPage).Get()
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.requestNewHost).Put()
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.modifySpawnHost).Post()
-	app.AddRoute("/spawn/hosts").Wrap(needsLogin, needsContext).Handler(uis.getSpawnedHosts).Get()
-	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
-	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
-	app.AddRoute("/spawn/types").Wrap(needsLogin, needsContext).Handler(uis.getAllowedInstanceTypes).Get()
-	app.AddRoute("/spawn/volumes").Wrap(needsLogin).Handler(uis.getVolumes).Get()
-	app.AddRoute("/spawn/volumes").Wrap(needsLogin, needsContext).Handler(uis.requestNewVolume).Put()
-	app.AddRoute("/spawn/volume/{volume_id}").Wrap(needsLogin).Handler(uis.modifyVolume).Post()
+	// Legacy Spawnhost routes - redirect to new UI
+	app.AddRoute("/spawn").Wrap(needsLogin).Handler(uis.legacySpawnHostPage).Get().Put().Post()
+	app.AddRoute("/spawn/hosts").Wrap(needsLogin).Handler(uis.legacySpawnHostPage).Get()
+	app.AddRoute("/spawn/volumes").Wrap(needsLogin).Handler(uis.legacySpawnVolumePage).Get().Put()
 
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.legacyUserSettingsPage).Get()
