@@ -9,8 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -68,16 +70,53 @@ type AssumeRoleCredentials struct {
 // the AWS API call and generating the ExternalID for the request.
 func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error) {
 	if err := s.setupClient(ctx); err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "creating AWS client")
+		return AssumeRoleCredentials{}, errors.Wrap(err, "creating AWS client")
 	}
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task")
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return AssumeRoleCredentials{}, errors.New("task not found")
+		return AssumeRoleCredentials{}, fmt.Errorf("task '%s' not found", taskID)
 	}
-	externalID := createExternalID(t)
+	p, err := model.GetProjectRefForTask(ctx, taskID)
+	if err != nil {
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "getting project '%s' for task '%s'", t.Project, taskID)
+	}
+	if p == nil {
+		return AssumeRoleCredentials{}, fmt.Errorf("project '%s' not found for task '%s'", t.Project, taskID)
+	}
+	externalID := createExternalID(t, p)
+	creds, err := s.assumeRole(ctx, externalID, opts)
+	if err != nil {
+		externalID = createExternalID(t, nil)
+		var fallbackErr error
+		creds, fallbackErr = s.assumeRole(ctx, externalID, opts)
+		if fallbackErr != nil {
+			return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role, fallback error: '%v'", fallbackErr)
+		}
+		// Only log if the fallback succeeded.
+		grip.Debug(message.Fields{
+			"message":      "fell back to original external ID",
+			"ticket":       "DEVPROD-22828_v2",
+			"task_id":      t.Id,
+			"project":      t.Project,
+			"project_id":   p.Id,
+			"repo_ref_id":  p.RepoRefId,
+			"role_arn":     opts.RoleARN,
+			"original_err": err.Error(),
+		})
+	}
+	return AssumeRoleCredentials{
+		AccessKeyID:     *creds.Credentials.AccessKeyId,
+		SecretAccessKey: *creds.Credentials.SecretAccessKey,
+		SessionToken:    *creds.Credentials.SessionToken,
+		Expiration:      *creds.Credentials.Expiration,
+		ExternalID:      externalID,
+	}, nil
+}
+
+func (s *stsManagerImpl) assumeRole(ctx context.Context, externalID string, opts AssumeRoleOptions) (*sts.AssumeRoleOutput, error) {
 	output, err := s.client.AssumeRole(ctx, &sts.AssumeRoleInput{
 		RoleArn:         &opts.RoleARN,
 		Policy:          opts.Policy,
@@ -86,19 +125,12 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 		RoleSessionName: aws.String(strconv.Itoa(int(time.Now().Unix()))),
 	})
 	if err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role")
+		return nil, errors.Wrapf(err, "assuming role")
 	}
 	if err := validateAssumeRoleOutput(output); err != nil {
-		return AssumeRoleCredentials{}, errors.Wrap(err, "validating assume role output")
+		return nil, errors.Wrap(err, "validating assume role output")
 	}
-	creds := AssumeRoleCredentials{
-		AccessKeyID:     *output.Credentials.AccessKeyId,
-		SecretAccessKey: *output.Credentials.SecretAccessKey,
-		SessionToken:    *output.Credentials.SessionToken,
-		Expiration:      *output.Credentials.Expiration,
-		ExternalID:      externalID,
-	}
-	return creds, nil
+	return output, nil
 }
 
 func (s *stsManagerImpl) setupClient(ctx context.Context) error {
@@ -120,11 +152,14 @@ func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, erro
 	return *output.Arn, nil
 }
 
-func createExternalID(task *task.Task) string {
+func createExternalID(task *task.Task, projectRef *model.ProjectRef) string {
 	// The external ID is used as a trust boundary for the AssumeRole call.
-	// It is an unconfigurable computed value from the task of its project and
-	// requester to avoid the confused deputy problem since Evergreen
+	// It is an unconfigurable computed value from the task's properties
+	// to avoid the confused deputy problem since Evergreen
 	// assumes many roles on behalf of tasks.
+	if projectRef.IsUntracked() {
+		return fmt.Sprintf("untracked-%s-%s", projectRef.RepoRefId, task.Requester)
+	}
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
 }
 
