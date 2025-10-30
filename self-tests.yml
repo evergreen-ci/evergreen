@@ -851,7 +851,6 @@ buildvariants:
     paths:
       - "*.go"
       - "*.json"
-      - "*.yml"
       - "*.graphql"
     run_on:
       - ubuntu2204-small
