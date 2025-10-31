@@ -455,8 +455,8 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 
 				// Users might forget to run `evergreen host fetch`, so we add a note to
 				// where it usually is to remind them.
-				dataMissingFile := filepath.Join(h.Distro.HomeDir(), evergreen.WhyIsMyDataMissingName)
-				postFetchClient += fmt.Sprintf(" && mkdir -p %s ", h.Distro.HomeDir())
+				dataMissingFile := filepath.Join(h.Distro.WorkDir, evergreen.WhyIsMyDataMissingName)
+				postFetchClient += fmt.Sprintf(" && mkdir -p %s ", h.Distro.WorkDir)
 				postFetchClient += fmt.Sprintf(" && echo '%s' >> %s", whyIsMyDataMissingText, dataMissingFile)
 			}
 		}
