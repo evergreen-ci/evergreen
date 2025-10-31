@@ -17,7 +17,7 @@ For updates on this migration, please see [DEVPROD-4160](https://jira.mongodb.or
 - **REST API**: Action Needed for Scripting with Human Users
   - **Using the REST API in the browser**: Not affected.
   - **Using the REST API with a service user**: Not affected (e.g., calling it with a service user in scripts that run in Evergreen tasks).
-  - **Using the REST API with a human user**: Affected. Please see [here](../API/REST-V1-Usage#authentication).
+  - **Using the REST API with a human user**: Affected. Please see [here](../API/Authentication.md).
 
 ## I use the Evergreen CLI, what should I do to prepare for the deprecation?
 
