@@ -830,6 +830,12 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		KeyName:              spawnHostInput.PublicKey.Key,
 		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
 		NoExpiration:         spawnHostInput.NoExpiration,
+		SetupScript:          utility.FromStringPtr(spawnHostInput.SetUpScript),
+		UserData:             utility.FromStringPtr(spawnHostInput.UserDataScript),
+		HomeVolumeSize:       utility.FromIntPtr(spawnHostInput.HomeVolumeSize),
+		HomeVolumeID:         utility.FromStringPtr(spawnHostInput.VolumeID),
+		Expiration:           spawnHostInput.Expiration,
+		UseOAuth:             utility.FromBoolPtr(spawnHostInput.UseOAuth),
 	}
 	if spawnHostInput.SleepSchedule != nil {
 		options.SleepScheduleOptions = host.SleepScheduleOptions{
@@ -838,21 +844,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			DailyStopTime:    spawnHostInput.SleepSchedule.DailyStopTime,
 			TimeZone:         spawnHostInput.SleepSchedule.TimeZone,
 		}
-	}
-	if spawnHostInput.SetUpScript != nil {
-		options.SetupScript = *spawnHostInput.SetUpScript
-	}
-	if spawnHostInput.UserDataScript != nil {
-		options.UserData = *spawnHostInput.UserDataScript
-	}
-	if spawnHostInput.HomeVolumeSize != nil {
-		options.HomeVolumeSize = *spawnHostInput.HomeVolumeSize
-	}
-	if spawnHostInput.VolumeID != nil {
-		options.HomeVolumeID = *spawnHostInput.VolumeID
-	}
-	if spawnHostInput.Expiration != nil {
-		options.Expiration = spawnHostInput.Expiration
 	}
 
 	// passing an empty string taskId is okay as long as a

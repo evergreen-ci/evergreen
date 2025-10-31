@@ -317,6 +317,10 @@ type ProvisionOptions struct {
 
 	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
 	SetupScript string `bson:"setup_script" json:"setup_script"`
+
+	// UseOAuth indicates whether to run `evergreen fetch` with static credentials (legacy)
+	// or whether to write the command to a file, and have the user run `evergreen host fetch` (OAuth).
+	UseOAuth bool `bson:"use_oauth" json:"use_oauth"`
 }
 
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.

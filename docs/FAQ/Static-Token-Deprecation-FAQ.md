@@ -27,7 +27,7 @@ For updates on this migration, please see [DEVPROD-4160](https://jira.mongodb.or
 
 - During the script, the Evergreen CLI will prompt the user to authenticate via a link that they will need to copy/paste into their browser. After authenticating, they will be able to return to the script and continue using it as normal.
 - If a human user can't authenticate via a browser (e.g., running in the background on a server), please reach out to the Evergreen team to have a service user created for you.
-- Make sure you use https://evergreen.corp.mongodb.com/ when using OAuth to authenticate (instead of https://evergreen.mongodb.com/).
+- Make sure you use [https://evergreen.corp.mongodb.com/](https://evergreen.corp.mongodb.com/) when using OAuth to authenticate (instead of [https://evergreen.mongodb.com/](https://evergreen.mongodb.com/)).
 
 ## I am using a static Evergreen API key in an Evergreen task, will this continue to work?
 
