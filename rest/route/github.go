@@ -662,6 +662,19 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
 	}
 
+	baseBranch := pr.Base.GetRef()
+	if isGraphiteBaseBranch(baseBranch) {
+		// Graphite recommends skipping CI on Graphite temporary branches
+		// because it's is still rebasing the PR. It will eventually delete the
+		// temporary branch, which causes CI failures.
+		// Docs: https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci
+		// Because of this, comment back to the user that they cannot manually
+		// trigger Evergreen with a PR comment until Graphite finishes rebasing
+		// the PR.
+		graphiteRebaseComment := fmt.Sprintf("Graphite is still rebasing this PR (current base branch: \"%s\"), so the PR is not in a stable state to run CI tests. CI tests will start after Graphite finishes rebasing.", baseBranch)
+		return gh.sc.AddCommentToPR(ctx, owner, repo, prNumber, graphiteRebaseComment)
+	}
+
 	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, alias, true)
 }
 
@@ -718,8 +731,9 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	// Verify that the owner/repo uses PR testing before inserting the intent.
 	baseRepoName := pr.Base.Repo.GetFullName()
 	baseRepo := strings.Split(baseRepoName, "/")
+	baseBranch := pr.Base.GetRef()
 	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseRepo[0],
-		baseRepo[1], pr.Base.GetRef(), calledBy)
+		baseRepo[1], baseBranch, calledBy)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref for patch")
 	}
@@ -736,15 +750,15 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 
 	grip.Info(message.Fields{
 		"message":          "kim: processing PR patch intent",
-		"base_ref":         pr.Base.GetRef(),
-		"is_graphite_base": strings.HasPrefix(pr.Base.GetRef(), "graphite-base/"),
+		"base_ref":         baseBranch,
+		"is_graphite_base": isGraphiteBaseBranch(baseBranch),
 		"head_ref":         pr.Head.GetRef(),
 		"owner":            pr.Base.User.GetLogin(),
 		"repo":             pr.Base.Repo.GetName(),
 		"pr_num":           pr.GetNumber(),
 		"head_sha":         pr.Head.GetSHA(),
 	})
-	if strings.HasPrefix(pr.Base.GetRef(), "graphite-base/") {
+	if isGraphiteBaseBranch(baseBranch) {
 		// Graphite recommends skipping CI on Graphite temporary branches
 		// because it's is still rebasing the PR. It will eventually delete the
 		// temporary branch, which causes CI failures.
@@ -754,19 +768,17 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			"owner":    pr.Base.User.GetLogin(),
 			"repo":     pr.Base.Repo.GetName(),
 			"pr_num":   pr.GetNumber(),
-			"base_ref": pr.Base.GetRef(),
+			"base_ref": baseBranch,
 			"head_ref": pr.Head.GetRef(),
 		})
-		// kim: TODO: consider sending failed status for evergreen check as a
-		// warning that this is expected behavior.
 		// Send a failure status back just to inform the user that CI is
-		// intentionally not running.
+		// intentionally being skipped.
 		update := units.NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
 			baseRepo[0],
 			baseRepo[1],
 			pr.Head.GetSHA(),
-			"Graphite is rebasing this PR, skipping CI.",
+			"Graphite is still rebasing this PR, skipping CI.",
 		)
 		update.Run(ctx)
 		if err := update.Error(); err != nil {
@@ -1276,4 +1288,8 @@ func triggersHelpText(comment string) bool {
 
 func isTag(ref string) bool {
 	return strings.Contains(ref, refTags)
+}
+
+func isGraphiteBaseBranch(branch string) bool {
+	return strings.HasPrefix(branch, "graphite-base/")
 }
