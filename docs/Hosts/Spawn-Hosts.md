@@ -46,21 +46,23 @@ Alternately, for a task that ran on a distro where spawning is enabled, you will
 
 ![task_page_spawn_host.png](../images/task_page_spawn_host.png)
 
-Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro, along with the option to fetch binaries and artifacts associated with the task and any tasks that it depended on.
+Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro.
 
 ![spawn_host_modal.png](../images/spawn_host_modal.png)
 
-The spawn host will not fetch the binaries and artifacts associated with the task on start-up because it lacks the necessary permissions. After you SSH into the host, you will need to run the following command to fetch them (which will prompt you to authenticate):
+Additionally, the page offers an option to load task-related data (such as binaries, artifacts, and the repository) which generates a pre-filled fetch command for you.
+
+Please note that the spawn host does not automatically download the task-related data during start-up because it does not have the required permissions. After establishing an SSH connection to the host, you’ll need to run the following command to fetch the files (this will prompt you to authenticate):
 
 ```sh
 evergreen host fetch
 ```
 
-Note: You will need to run this command for each spawn host you create that fetches the artifacts of a task.
+> Important: This command must be executed for each spawn host that needs to fetch task artifacts and binaries.
 
-Alternatively, you can use the Evergreen CLI command [fetch](../CLI#fetch) to manually fetch task binaries and artifacts.
+Alternatively, you can use the Evergreen CLI's [fetch command](../CLI#fetch) to manually retrieve task-related binaries and artifacts.
 
-Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching.
+Artifacts are placed in /data/mci.
 
 If your project has [a project setup script defined at the admin level](../Project-Configuration/Project-And-Distro-Settings.md#spawn-host-script-path), you can also check "Use project-specific setup script defined at ..." before creating the spawn host to run that script when the host starts up. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.mongodb.com/host/<host_id>`.
 
