@@ -70,7 +70,7 @@ func hostFetch() cli.Command {
 				return errors.Wrapf(err, "running command: %s", output.String())
 			}
 
-			grip.Info("Fetch script completed successfully")
+			grip.Info("Fetch script started successfully. This may take a couple minutes to complete.")
 
 			return nil
 		},
