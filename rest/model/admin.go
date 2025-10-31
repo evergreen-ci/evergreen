@@ -2,6 +2,7 @@ package model
 
 import (
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -2829,7 +2830,15 @@ func (j *APIJIRANotificationsConfig) ToService() (any, error) {
 		return service, nil
 	}
 
-	for projectName, fields := range j.CustomFields {
+	// Sort project names alphabetically
+	projectNames := make([]string, 0, len(j.CustomFields))
+	for projectName := range j.CustomFields {
+		projectNames = append(projectNames, projectName)
+	}
+	sort.Strings(projectNames)
+
+	for _, projectName := range projectNames {
+		fields := j.CustomFields[projectName]
 		projectIface, err := fields.ToService()
 		if err != nil {
 			return nil, errors.Errorf("converting project '%s' to service model", projectName)
@@ -2862,10 +2871,22 @@ func (j *APIJIRANotificationsProject) BuildFromService(h any) error {
 
 func (j *APIJIRANotificationsProject) ToService() (any, error) {
 	service := evergreen.JIRANotificationsProject{}
-	for field, template := range j.Fields {
-		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
+
+	fieldKeys := make([]string, 0, len(j.Fields))
+	for key := range j.Fields {
+		fieldKeys = append(fieldKeys, key)
 	}
+	sort.Strings(fieldKeys)
+
+	for _, fieldKey := range fieldKeys {
+		template := j.Fields[fieldKey]
+		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: fieldKey, Template: template})
+	}
+
+	sort.Strings(j.Components)
 	service.Components = j.Components
+
+	sort.Strings(j.Labels)
 	service.Labels = j.Labels
 
 	return service, nil
