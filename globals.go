@@ -574,7 +574,7 @@ const (
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
 	SageUserHeader      = "x-authenticated-sage-user"
-	KanopyTokenHeader   = "X-Kanopy-Authorization"
+	AuthorizationHeader = "Authorization"
 	EnvironmentHeader   = "X-Evergreen-Environment"
 )
 

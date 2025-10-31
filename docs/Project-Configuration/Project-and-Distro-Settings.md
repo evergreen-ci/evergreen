@@ -296,7 +296,7 @@ and individual users can be configured.
 Alternatively, you can use Mana to give users permission to trigger git
 tag versions for a project; however the user will need to add their
 GitHub username to their [settings
-page](https://evergreen.mongodb.com/settings) in order for us to connect
+page](https://evergreen.corp.mongodb.com/settings) in order for us to connect
 the GitHub user to an Evergreen user.
 
 **NOTE**: If the person who pushed the tag is not part of the authorized users or
@@ -606,6 +606,7 @@ that all execute independently:
    use the "tunable" implementation, which uses a point-based
    algorithm that makes it possible to tune the factors that impact
    the ordering of a task. The tunable factors are:
+
    - _Target Time_ is the ideal maximum number of minutes that a
      task should be in the queue.
    - _Patch Factor_ how much to weight patches over non-patch builds.

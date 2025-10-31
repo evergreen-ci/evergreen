@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -159,64 +158,4 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 
 	loginURL := fmt.Sprintf("%v/login", uis.RootURL)
 	http.Redirect(w, r, loginURL, http.StatusFound)
-}
-
-func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
-	currentUser := MustHaveUser(r)
-	newKey := utility.RandomString()
-	if err := currentUser.UpdateAPIKey(r.Context(), newKey); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed saving key"))
-		return
-	}
-	gimlet.WriteJSON(w, struct {
-		Key string `json:"key"`
-	}{newKey})
-}
-
-func (uis *UIServer) clearUserToken(w http.ResponseWriter, r *http.Request) {
-	u := MustHaveUser(r)
-	if err := uis.env.UserManager().ClearUser(u, false); err != nil {
-		gimlet.WriteJSONInternalError(w, struct {
-			Error string `json:"error"`
-		}{Error: err.Error()})
-	} else {
-		gimlet.WriteJSON(w, map[string]string{})
-	}
-}
-
-func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
-	currentUser := MustHaveUser(r)
-	settingsData := currentUser.Settings
-
-	type confFile struct {
-		User    string   `json:"user"`
-		APIKey  string   `json:"api_key"`
-		APIHost string   `json:"api_server_host"`
-		UIHost  string   `json:"ui_server_host"`
-		Regions []string `json:"regions"`
-	}
-	regions := uis.Settings.Providers.AWS.AllowedRegions
-	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.Api.URL + "/api", uis.Settings.Ui.Url, regions}
-	newUILink := ""
-	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = fmt.Sprintf("%s/preferences", uis.Settings.Ui.UIv2Url)
-	}
-
-	if _, ok := gimlet.GetUser(r.Context()).(*user.DBUser); !ok {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("User not found"))
-		return
-	}
-
-	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Data           user.UserSettings
-		Config         confFile
-		Binaries       []evergreen.ClientBinary
-		GithubUser     string
-		GithubUID      int
-		CanClearTokens bool
-		NewUILink      string
-		ViewData
-	}{settingsData, exampleConf, uis.env.ClientConfig().ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs,
-		currentUser.Settings.GithubUser.UID, uis.env.UserManagerInfo().CanClearTokens, newUILink, uis.GetCommonViewData(w, r, true, true)},
-		"base", "settings.html", "base_angular.html", "menu.html")
 }

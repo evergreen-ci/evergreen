@@ -70,26 +70,26 @@ type AssumeRoleCredentials struct {
 // the AWS API call and generating the ExternalID for the request.
 func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error) {
 	if err := s.setupClient(ctx); err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "creating AWS client")
+		return AssumeRoleCredentials{}, errors.Wrap(err, "creating AWS client")
 	}
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task")
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		return AssumeRoleCredentials{}, errors.New("task not found")
+		return AssumeRoleCredentials{}, fmt.Errorf("task '%s' not found", taskID)
 	}
 	p, err := model.GetProjectRefForTask(ctx, taskID)
 	if err != nil {
-		return AssumeRoleCredentials{}, errors.Wrapf(err, "getting project ref for task")
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "getting project '%s' for task '%s'", t.Project, taskID)
 	}
 	if p == nil {
-		return AssumeRoleCredentials{}, errors.New("project ref not found")
+		return AssumeRoleCredentials{}, fmt.Errorf("project '%s' not found for task '%s'", t.Project, taskID)
 	}
 	externalID := createExternalID(t, p)
 	creds, err := s.assumeRole(ctx, externalID, opts)
 	if err != nil {
-		externalID = createExternalIDLegacy(t)
+		externalID = createExternalID(t, nil)
 		var fallbackErr error
 		creds, fallbackErr = s.assumeRole(ctx, externalID, opts)
 		if fallbackErr != nil {
@@ -97,8 +97,8 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 		}
 		// Only log if the fallback succeeded.
 		grip.Debug(message.Fields{
-			"message":      "falling back to legacy external ID",
-			"ticket":       "DEVPROD-22828",
+			"message":      "fell back to original external ID",
+			"ticket":       "DEVPROD-22828_v2",
 			"task_id":      t.Id,
 			"project":      t.Project,
 			"project_id":   p.Id,
@@ -157,14 +157,9 @@ func createExternalID(task *task.Task, projectRef *model.ProjectRef) string {
 	// It is an unconfigurable computed value from the task's properties
 	// to avoid the confused deputy problem since Evergreen
 	// assumes many roles on behalf of tasks.
-	return fmt.Sprintf("%s-%s-%s", task.Project, task.Requester, projectRef.RepoRefId)
-}
-
-func createExternalIDLegacy(task *task.Task) string {
-	// The external ID is used as a trust boundary for the AssumeRole call.
-	// It is an unconfigurable computed value from the task of its project and
-	// requester to avoid the confused deputy problem since Evergreen
-	// assumes many roles on behalf of tasks.
+	if projectRef.IsUntracked() {
+		return fmt.Sprintf("untracked-%s-%s", projectRef.RepoRefId, task.Requester)
+	}
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
 }
 

@@ -81,7 +81,7 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 	}
 
 	if ac.JWT != "" {
-		req.Header.Add(evergreen.KanopyTokenHeader, "Bearer "+ac.JWT)
+		req.Header.Add(evergreen.AuthorizationHeader, "Bearer "+ac.JWT)
 	}
 
 	if ac.User != "" && ac.APIKey != "" {
