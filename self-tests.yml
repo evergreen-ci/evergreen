@@ -1,9 +1,9 @@
 command_type: test
 stepback: true
 ignore:
-  - "*.md" # don't schedule tests if a commit only changes markdown files
-  - "*.mdx"
   - ".github/*" # github CODEOWNERS configuration
+  - "*.yml"
+  - "*.md"
 
 pre_error_fails_task: true
 pre:
@@ -52,6 +52,8 @@ variables:
       - func: setup-credentials
       - func: run-make
         vars: { target: "${task_name}" }
+      - func: run-make
+        vars: { target: "js-test" }
   - &run-go-test-suite-with-docker
     name: test
     must_have_test_results: true
@@ -62,6 +64,8 @@ variables:
       - func: setup-docker-host
       - func: run-make
         vars: { target: "${task_name}" }
+      - func: run-make
+        vars: { target: "js-test" }
   - &run-go-test-suite-with-mongodb
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
@@ -73,6 +77,8 @@ variables:
       - func: setup-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
+      - func: run-make
+        vars: { target: "js-test" }
   - &run-go-test-suite-with-mongodb-useast
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
@@ -399,6 +405,12 @@ functions:
       params:
         files:
           - "evergreen/bin/output.*"
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          sleep 600
     - command: attach.xunit_results
       type: system
       params:
@@ -677,7 +689,6 @@ tasks:
       - func: get-project-and-modules
       - func: verify-gqlgen
   - name: lint-markdown
-    tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
@@ -889,6 +900,23 @@ buildvariants:
       decompress: tar zxvf
     tasks:
       - name: ".smoke"
+
+  - name: lint-markdown
+    display_name: Lint Markdown
+    expansions:
+      goos: linux
+      goarch: amd64
+      GOROOT: /opt/golang/go1.24
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
+      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+    paths:
+      - "*.md"
+      - "*.mdx"
+    run_on:
+      - ubuntu2204-small
+    tasks:
+      - name: lint-markdown
 
   - name: lint
     display_name: Lint
