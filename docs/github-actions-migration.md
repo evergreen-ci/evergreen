@@ -30,7 +30,7 @@ This document tracks the migration of Evergreen self-tests to GitHub Actions. Th
 
 ## Migration Status
 
-**Progress:** 0/52 test tasks migrated
+**Progress:** 2/52 test tasks migrated (Phase 1B POC)
 
 ### Status Legend
 - ✅ **Migrated** - Running in GitHub Actions
@@ -52,7 +52,7 @@ Uses pattern: `run-go-test-suite`
 | test-agent-util | ⬜ | `test-agent-util` | |
 | test-cloud-userdata | ⬜ | `test-cloud-userdata` | |
 | test-thirdparty-docker | ⬜ | `test-thirdparty-docker` | |
-| test-util | ⬜ | `test-util` | Simple test, good starting point |
+| test-util | 🚧 | `test-util` | Simple test, good starting point - POC test |
 
 ### DB Tests (43 tasks)
 Uses pattern: `run-go-test-suite-with-mongodb`
@@ -65,7 +65,7 @@ Uses pattern: `run-go-test-suite-with-mongodb`
 | test-auth | ⬜ | `test-auth` | |
 | test-cloud-parameterstore | ⬜ | `test-cloud-parameterstore` | |
 | test-cloud-parameterstore-fakeparameter | ⬜ | `test-cloud-parameterstore-fakeparameter` | |
-| test-db | ⬜ | `test-db` | Simple DB test, good for validating MongoDB setup |
+| test-db | 🚧 | `test-db` | Simple DB test, good for validating MongoDB setup - POC test |
 | test-evergreen | ⬜ | `test-evergreen` | |
 | test-model | ⬜ | `test-model` | |
 | test-model-alertrecord | ⬜ | `test-model-alertrecord` | |
@@ -254,15 +254,15 @@ If GitHub Actions migration causes issues:
 
 ## Implementation Timeline
 
-### Phase 1A: Infrastructure (Current)
+### Phase 1A: Infrastructure
 - [x] Create migration tracking document
-- [ ] Create 4 reusable composite actions
-- [ ] Create skeleton workflow file
+- [x] Create 4 reusable composite actions
+- [x] Create skeleton workflow file
 
-### Phase 1B: Proof of Concept
-- [ ] Migrate 1 no-db test (`test-util`)
+### Phase 1B: Proof of Concept (Current)
+- [x] Migrate 1 no-db test (`test-util`)
 - [ ] Validate test execution and results
-- [ ] Migrate 1 db test (`test-db`)
+- [x] Migrate 1 db test (`test-db`)
 - [ ] Validate MongoDB setup
 
 ### Phase 1C: Scale Up
@@ -311,6 +311,9 @@ If GitHub Actions migration causes issues:
 - Identified 52 test tasks in scope for Phase 1
 - Chose duplication approach over matrix for flexibility
 - Need to determine secrets/credentials access before implementation can proceed
+- Created 4 reusable composite actions (setup-go-project, setup-credentials, setup-mongodb, run-test)
+- Created skeleton GitHub Actions workflow with POC tests (test-util, test-db)
+- Phase 1A complete, Phase 1B in progress (validation pending)
 
 ---
 
