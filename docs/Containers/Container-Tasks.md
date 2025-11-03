@@ -1,4 +1,4 @@
-# Warning: Container tasks are experimental and should not be used for production.
+# Warning: Container tasks are not maintained and should not be used for production workloads.
 
 # Containerized Tasks Overview
 
