@@ -1338,8 +1338,6 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
 	var update amboy.Job
 	if j.IntentType == patch.GithubIntentType {
-		// kim: NOTE: I copied this for sending the failed status for
-		// graphite-base.
 		update = NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
 			patchDoc.GithubPatchData.BaseOwner,
