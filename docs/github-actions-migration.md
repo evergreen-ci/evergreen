@@ -321,5 +321,344 @@ If GitHub Actions migration causes issues:
 
 - **Evergreen Config:** `self-tests.yml`
 - **Makefile:** Test targets defined as `test-%` pattern
-- **GitHub Actions Workflow:** `.github/workflows/self-tests.yml` (to be created)
-- **Composite Actions:** `.github/actions/*/action.yml` (to be created)
+- **GitHub Actions Workflow:** `.github/workflows/self-tests.yml`
+- **Composite Actions:** `.github/actions/*/action.yml`
+
+---
+
+## Appendix: Architecture Walkthrough
+
+This section provides a detailed walkthrough of how all the GitHub Actions components work together.
+
+### Overview: Building Blocks Approach
+
+The design uses a **building blocks** approach to eliminate duplication:
+
+```
+Workflow File (.github/workflows/self-tests.yml)
+    ↓ calls
+Composite Actions (.github/actions/*/action.yml)
+    ↓ execute
+Makefile targets (existing build system)
+    ↓ run
+Go tests
+```
+
+---
+
+### The 4 Composite Actions
+
+#### 1. setup-go-project (.github/actions/setup-go-project/action.yml)
+
+**Purpose:** Initialize the repository and Go environment
+
+**What it does:**
+1. Checkout code using `actions/checkout@v4`
+2. Setup Go 1.24 using `actions/setup-go@v5`
+3. Enable automatic Go module caching based on `go.sum`
+
+**Inputs:**
+- `go-version` (optional, defaults to '1.24')
+
+**Key feature:** The `cache: true` setting means Go modules are automatically cached between runs, speeding up subsequent builds.
+
+---
+
+#### 2. setup-credentials (.github/actions/setup-credentials/action.yml)
+
+**Purpose:** Configure test credentials for services like GitHub, Jira, AWS, etc.
+
+**What it does:**
+1. Runs `scripts/setup-credentials.sh`
+2. Passes 13 different environment variables
+3. Creates `creds.yml` file (used by tests via `SETTINGS_OVERRIDE` env var)
+
+**The credential flow:**
+```
+GitHub Secrets
+    ↓
+Workflow passes to action via inputs
+    ↓
+Action passes to script via environment variables
+    ↓
+Script creates creds.yml
+    ↓
+Tests read creds.yml
+```
+
+**Inputs (all optional, defaults to empty string):**
+- `github_app_id`, `github_app_key`
+- `jira_server`, `jira_token`
+- `crowd_server`
+- `papertrail_key_id`, `papertrail_secret_key`
+- `runtime_env_base_url`, `runtime_env_api_key`
+- `aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`
+
+**Hard-coded values:**
+- `PARSER_PROJECT_S3_PREFIX: github-actions-testing/parser-projects`
+- `GENERATED_JSON_S3_PREFIX: github-actions-testing/generated-json`
+
+---
+
+#### 3. setup-mongodb (.github/actions/setup-mongodb/action.yml)
+
+**Purpose:** Download, install, and configure MongoDB 8.0 for database tests
+
+**What it does (4 steps):**
+1. Download MongoDB 8.0.0 tarball (`make get-mongodb`)
+2. Download mongosh 2.0.2 shell (`make get-mongosh`)
+3. Start mongod in background (`make start-mongod &`)
+4. Configure replica set (`make configure-mongod`)
+
+**Inputs (both optional with sensible defaults):**
+- `mongodb_url`: Default points to ubuntu2204 MongoDB 8.0.0
+- `mongosh_url`: Default points to mongosh 2.0.2
+
+**Why the background `&`:** The mongod server needs to stay running while tests execute, so it's started in the background.
+
+---
+
+#### 4. run-test (.github/actions/run-test/action.yml)
+
+**Purpose:** Execute a specific test target and upload results
+
+**What it does:**
+1. Run `make <test_name>` (e.g., `make test-util`)
+   - Sets 4 environment variables
+2. Upload test results as artifacts (always runs, even on failure)
+   - Uploads `bin/output.*.test` files
+   - Uploads `bin/jstests/*.xml` files
+
+**Inputs:**
+- `test_name` (required): e.g., "test-util", "test-db"
+
+**Environment variables set:**
+- `EVERGREEN_ALL: "true"` - Run all tests
+- `KARMA_REPORTER: junit` - Output format
+- `SETTINGS_OVERRIDE: creds.yml` - Point to credentials file
+- `RUN_EC2_SPECIFIC_TESTS: "true"` - Enable EC2 tests (ubuntu2204 variant)
+
+**The `if: always()`:** Ensures test results are uploaded even if tests fail, so you can debug failures.
+
+---
+
+### The Workflow File (.github/workflows/self-tests.yml)
+
+#### Triggers (when it runs):
+- **Push** to `main` or `migrate-to-github-actions` branches
+- **Pull requests** to `main`
+- **Manual trigger** via `workflow_dispatch` in GitHub UI
+
+#### Concurrency Control:
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+This means: "If I push again while tests are running, cancel the old run and start fresh."
+
+#### The Two POC Jobs:
+
+**Job 1: test-util (No-Database Test)**
+
+Execution flow:
+```
+1. setup-go-project
+   └─> Checkout code
+   └─> Setup Go 1.24
+   └─> Cache modules
+
+2. setup-credentials
+   └─> Run scripts/setup-credentials.sh
+   └─> Create creds.yml with secrets
+
+3. run-test (test_name: test-util)
+   └─> make test-util
+   └─> Upload test results
+```
+
+**Why no MongoDB?** The `util` package doesn't need a database, so we skip the setup-mongodb step.
+
+**Job 2: test-db (Database Test)**
+
+Execution flow:
+```
+1. setup-go-project
+   └─> Checkout code
+   └─> Setup Go 1.24
+   └─> Cache modules
+
+2. setup-credentials
+   └─> Run scripts/setup-credentials.sh
+   └─> Create creds.yml with secrets
+
+3. setup-mongodb
+   └─> Download MongoDB 8.0.0
+   └─> Download mongosh 2.0.2
+   └─> Start mongod in background
+   └─> Configure replica set
+
+4. run-test (test_name: test-db)
+   └─> make test-db
+   └─> Upload test results
+```
+
+**The key difference:** We insert the `setup-mongodb` step before running the test.
+
+---
+
+### How Tests Are Selected
+
+The workflow uses the **explicit job pattern** (not matrices):
+
+```yaml
+test-util:           # Job name
+  steps:
+    - uses: ./.github/actions/run-test
+      with:
+        test_name: test-util    # This determines which make target runs
+```
+
+When you want to add `test-auth`:
+```yaml
+test-auth:
+  steps:
+    - uses: ./.github/actions/setup-go-project
+    - uses: ./.github/actions/setup-credentials
+    - uses: ./.github/actions/setup-mongodb    # DB test needs this
+    - uses: ./.github/actions/run-test
+      with:
+        test_name: test-auth   # make test-auth
+```
+
+---
+
+### Secrets Flow
+
+Here's how secrets move through the system:
+
+```
+1. GitHub Repository Secrets (configured in repo settings)
+   └─> STAGING_GITHUB_APP_ID, JIRA_SERVER, etc.
+
+2. Workflow file references secrets
+   └─> secrets.STAGING_GITHUB_APP_ID
+
+3. Passed as inputs to composite action
+   └─> github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+
+4. Composite action passes to environment variable
+   └─> GITHUB_APP_ID: ${{ inputs.github_app_id }}
+
+5. Script reads environment variable
+   └─> bash scripts/setup-credentials.sh
+
+6. Script creates creds.yml file
+
+7. Tests read creds.yml
+   └─> via SETTINGS_OVERRIDE=creds.yml env var
+```
+
+---
+
+### The Three Test Patterns
+
+#### Pattern 1: No-Database Tests (7 tests total)
+```yaml
+- setup-go-project
+- setup-credentials
+- run-test
+```
+
+Examples: test-util, test-agent-internal-client, test-agent-util
+
+#### Pattern 2: Database Tests (43 tests total)
+```yaml
+- setup-go-project
+- setup-credentials
+- setup-mongodb        # ← The difference!
+- run-test
+```
+
+Examples: test-db, test-auth, test-model, test-service
+
+#### Pattern 3: Timezone Tests (2 tests total)
+```yaml
+env:
+  TZ: America/New_York    # ← Special timezone requirement
+
+- setup-go-project
+- setup-credentials
+- setup-mongodb
+- run-test
+```
+
+Examples: test-graphql, test-service-graphql
+
+---
+
+### Execution Example: test-db End-to-End
+
+Let's trace what happens when `test-db` runs:
+
+1. **GitHub Actions starts ubuntu-22.04 runner**
+
+2. **Step 1: setup-go-project**
+   - Clones repo
+   - Installs Go 1.24
+   - Downloads/caches Go modules
+
+3. **Step 2: setup-credentials**
+   - Reads secrets from GitHub
+   - Runs `bash scripts/setup-credentials.sh`
+   - Creates `creds.yml` file
+
+4. **Step 3: setup-mongodb**
+   - Downloads MongoDB: `make get-mongodb`
+   - Downloads mongosh: `make get-mongosh`
+   - Starts mongod: `make start-mongod &`
+   - Configures replica set: `make configure-mongod`
+
+5. **Step 4: run-test**
+   - Runs: `make test-db`
+   - Environment vars: `EVERGREEN_ALL=true`, `SETTINGS_OVERRIDE=creds.yml`
+   - Test runs and outputs to `bin/output.db.test`
+   - Uploads results to GitHub artifacts
+
+6. **Job completes** (success or failure shown in UI)
+
+---
+
+### Design Benefits
+
+#### 1. No Duplication
+Instead of repeating 20 lines for each test, each test only needs:
+```yaml
+test-foo:
+  runs-on: ubuntu-22.04
+  steps:
+    - uses: ./.github/actions/setup-go-project
+    - uses: ./.github/actions/setup-credentials
+    - uses: ./.github/actions/setup-mongodb
+    - uses: ./.github/actions/run-test
+      with:
+        test_name: test-foo
+```
+
+#### 2. Easy Updates
+Want to upgrade MongoDB to 8.0.1? Change one line in `setup-mongodb/action.yml`, and all 45 database tests get it.
+
+#### 3. Parallel Execution
+All test jobs run simultaneously (GitHub provides up to 20 concurrent runners on free tier).
+
+#### 4. One-to-One Mapping
+Each Evergreen task becomes exactly one GitHub Actions job, making comparison easy.
+
+---
+
+### Current Status
+
+- **Active:** 2 tests (test-util, test-db)
+- **Commented out:** 50 tests waiting for Phase 1B validation
+- **Ready to scale:** Just uncomment the sections in Phase 1C
