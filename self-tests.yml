@@ -849,7 +849,6 @@ buildvariants:
   - name: ubuntu2204
     display_name: Ubuntu 22.04
     paths:
-      - "*.yml"
       - "*.go"
       - "*.json"
       - "*.graphql"
@@ -924,7 +923,6 @@ buildvariants:
   - name: lint
     display_name: Lint
     paths:
-      - "*.yml"
       - "*.go"
       - "*.json"
       - "*.graphql"
