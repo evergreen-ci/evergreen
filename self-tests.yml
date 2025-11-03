@@ -911,8 +911,7 @@ buildvariants:
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
     paths:
-      - "*.md"
-      - "*.mdx"
+      - "docs/**"
     run_on:
       - ubuntu2204-small
     tasks:
