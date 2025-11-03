@@ -131,7 +131,7 @@ func parseToken(token string) (string, error) {
 	return splitToken[1], nil
 }
 
-func (opts cloneOpts) getCloneCommand(isGitHubPR bool) ([]string, error) {
+func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
@@ -149,13 +149,7 @@ func (opts cloneOpts) getCloneCommand(isGitHubPR bool) ([]string, error) {
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
-	// Clone a specific branch.
-	// In the case of a Graphite-generated temporary branch, it's not necessary
-	// (and in fact, not possible) to clone that Graphite branch because
-	// Evergreen cannot access it. Evergreen can still retrieve the PR changes
-	// though.
-	isGraphiteBaseBranchForGitHubPR := isGitHubPR && isGraphiteBaseBranch(opts.branch)
-	if opts.branch != "" && !isGraphiteBaseBranchForGitHubPR {
+	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
@@ -213,15 +207,14 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	isGitHubPR := isGitHub(conf)
-	cloneCmd, err := opts.getCloneCommand(isGitHubPR)
+	cloneCmd, err := opts.getCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	// if there's a PR checkout the ref containing the changes
-	if isGitHubPR {
+	if isGitHub(conf) {
 		var suffix, localBranchName, remoteBranchName, commitToTest string
 		if conf.Task.Requester == evergreen.GithubPRRequester {
 			// Github creates a ref called refs/pull/[pr number]/head
@@ -238,23 +231,11 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 			remoteBranchName = conf.GithubMergeData.HeadBranch
 		}
 		if commitToTest != "" {
-			if isGraphiteBaseBranch(opts.branch) {
-				// In the case of a Graphite-generated temporary branch,
-				// commitToTest has to fetched without checking out the PR
-				// itself. This is because the Graphite temporary branch can't
-				// be retrieved directly by Evergreen, nor is the commit
-				// available by checking out the PR.
-				gitCommands = append(gitCommands,
-					fmt.Sprintf("git fetch origin %s", commitToTest),
-					fmt.Sprintf("git reset --hard %s", commitToTest),
-				)
-			} else {
-				gitCommands = append(gitCommands,
-					fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
-					fmt.Sprintf(`git checkout "%s"`, localBranchName),
-					fmt.Sprintf("git reset --hard %s", commitToTest),
-				)
-			}
+			gitCommands = append(gitCommands, []string{
+				fmt.Sprintf(`git fetch origin "%s%s:%s"`, remoteBranchName, suffix, localBranchName),
+				fmt.Sprintf(`git checkout "%s"`, localBranchName),
+				fmt.Sprintf("git reset --hard %s", commitToTest),
+			}...)
 		}
 
 	} else {
@@ -285,16 +266,13 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand(isGitHub(conf))
+	cloneCmd, err := opts.getCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	if isGitHubPRModulePatch(conf, modulePatch) {
-		// kim: TODO: figure out if Graphite workaround works with module patch.
-		// It should be fine because buildModuleCloneCommand is called with an
-		// empty branch.
 		branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		gitCommands = append(gitCommands,
 			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
@@ -851,10 +829,6 @@ func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModuleP
 
 func isGitHub(conf *internal.TaskConfig) bool {
 	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
-}
-
-func isGraphiteBaseBranch(branch string) bool {
-	return strings.Contains(branch, "graphite-base/")
 }
 
 type noopWriteCloser struct {
