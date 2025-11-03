@@ -29,9 +29,12 @@ This is most likely because your repo was cloned with a specified depth and the 
 
 ## Why is my Graphite stacked PR not running CI tests?
 
-Evergreen will not run CI tests while your PR is rebasing [per Graphite's
-recommendations](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci)
-because the PR is in an intermediate state. You can tell if Graphite is rebasing in GitHub because the base branch for
-the PR will look like `graphite-base/*`. Once the PR is done rebasing, the CI tests will run. If you find that the PR is
-stuck on a `graphite-base/*` branch, try running `gt sync` or `gt restack` to ensure that the stack is still in a good
-state.
+You may notice that Evergreen doesn't run CI tests if your PR's base branch is currently named `graphite-base/*`.
+This is because the PR is in a temporary state where it's either 1. actively being rebased by Graphite (e.g. right after
+you merge a downstack PR) or 2. it has a merge conflict that prevents Graphite from completing the rebase. Evergreen
+will not run CI tests while your PR is in this temporary state [per Graphite's
+recommendations](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci).
+Once Graphite finishes rebasing or the merge conflicts are fixed, the CI test will run.
+
+If you're unsure about the state of your stacked PR and the CI tests are not running, please check the PR in the
+Graphite UI instead of GitHub. The Graphite UI will provide helpful warnings/errors and advice on how to fix them.

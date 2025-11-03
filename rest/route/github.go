@@ -664,14 +664,17 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 
 	baseBranch := pr.Base.GetRef()
 	if isGraphiteBaseBranch(baseBranch) {
-		// Graphite recommends skipping CI on Graphite temporary branches
-		// because it's is still rebasing the PR. It will eventually delete the
-		// temporary branch, which causes CI failures.
+		// Graphite recommends skipping CI when the PR has a graphite-base
+		// branch. This is because the branch is only temporary; Graphite is
+		// still rebasing the PR or there's a merge conflict that blocks it from
+		// completing the rebase. The graphite-base branch will also be deleted
+		// eventually, which can cause CI failures.
 		// Docs: https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci
-		// Because of this, comment back to the user that they cannot manually
-		// trigger Evergreen with a PR comment until Graphite finishes rebasing
-		// the PR.
-		graphiteRebaseComment := fmt.Sprintf("Graphite is still rebasing this PR (current base branch: \"%s\"), so the PR is not in a stable state to run CI tests. CI tests will start after Graphite finishes rebasing.", baseBranch)
+		//
+		// Because Evergreen is not going to run tests, comment back to the user
+		// that they cannot manually trigger Evergreen with a PR comment until
+		// Graphite finishes rebasing the PR.
+		graphiteRebaseComment := fmt.Sprintf("Graphite is still rebasing this PR (current base branch: \"%s\"), so the PR is not in a good state to run CI tests. CI tests will start after Graphite finishes rebasing. Please view this PR in the Graphite UI to see its status and diagnose any issues such as merge conflicts.", baseBranch)
 		return gh.sc.AddCommentToPR(ctx, owner, repo, prNumber, graphiteRebaseComment)
 	}
 
@@ -759,9 +762,11 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		"head_sha":         pr.Head.GetSHA(),
 	})
 	if isGraphiteBaseBranch(baseBranch) {
-		// Graphite recommends skipping CI on Graphite temporary branches
-		// because it's is still rebasing the PR. It will eventually delete the
-		// temporary branch, which causes CI failures.
+		// Graphite recommends skipping CI when the PR has a graphite-base
+		// branch. This is because the branch is only temporary; Graphite is
+		// still rebasing the PR or there's a merge conflict that blocks it from
+		// completing the rebase. The graphite-base branch will also be deleted
+		// eventually, which can cause CI failures.
 		// Docs: https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci
 		grip.Info(message.Fields{
 			"message":  "kim: skipping CI on PR because the base ref is a Graphite temporary branch",
@@ -778,7 +783,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			baseRepo[0],
 			baseRepo[1],
 			pr.Head.GetSHA(),
-			"Graphite is still rebasing this PR, skipping CI.",
+			"Graphite is still rebasing this PR, skipping CI. See Graphite UI for more info.",
 		)
 		update.Run(ctx)
 		if err := update.Error(); err != nil {
