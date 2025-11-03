@@ -3,7 +3,6 @@ stepback: true
 ignore:
   - ".github/*" # github CODEOWNERS configuration
   - "*.yml"
-  - "*.md"
 
 pre_error_fails_task: true
 pre:
