@@ -395,11 +395,7 @@ func splitPatchByFile(fullPatch string) map[string]string {
 			// Format: "diff --git a/path/to/file b/path/to/file"
 			parts := strings.Fields(line)
 			if len(parts) >= 3 {
-				// Remove "a/" prefix from the source file path
-				filePath := parts[2]
-				if strings.HasPrefix(filePath, "a/") {
-					filePath = filePath[2:]
-				}
+				filePath := strings.TrimPrefix(parts[2], "a/")
 				currentFile = filePath
 			}
 		} else if currentFile != "" {
@@ -431,7 +427,7 @@ func (apiPatch *APIPatch) buildModuleChanges(ctx context.Context, p patch.Patch,
 			"message":  "couldn't fetch patch files to construct complete diff",
 			"patch_id": p.Id,
 		}))
-		// Explicitly don't this error; we still want to return the rest of the diff data if this fails.
+		// Explicitly don't return this error; we still want to return the rest of the diff data if this fails.
 		// This particularly affects the local UI test environment, whose patches lack corresponding diff files.
 	}
 
