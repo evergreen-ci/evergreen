@@ -344,10 +344,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/json/build_history/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildHistory).Get()
 
 	// Version page
-	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionPage).Get()
-	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyVersion).Put()
-	app.AddRoute("/json/version_history/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistory).Get()
-	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionFind).Get()
+	app.AddRoute("/version/{version_id}").Wrap(needsLogin).Handler(uis.legacyVersionPage).Get()
 
 	// Hosts
 	app.AddRoute("/hosts").Handler(uis.legacyHostsPage).Get()
@@ -401,23 +398,14 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin).Handler(uis.legacyUserPatchesPage).Get()
 	app.AddRoute("/patches/mine").Wrap(needsLogin).Handler(uis.legacyMyPatchesPage).Get()
 
-	// Spawnhost routes
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.spawnPage).Get()
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.requestNewHost).Put()
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.modifySpawnHost).Post()
-	app.AddRoute("/spawn/hosts").Wrap(needsLogin, needsContext).Handler(uis.getSpawnedHosts).Get()
-	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
-	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
-	app.AddRoute("/spawn/types").Wrap(needsLogin, needsContext).Handler(uis.getAllowedInstanceTypes).Get()
-	app.AddRoute("/spawn/volumes").Wrap(needsLogin).Handler(uis.getVolumes).Get()
-	app.AddRoute("/spawn/volumes").Wrap(needsLogin, needsContext).Handler(uis.requestNewVolume).Put()
-	app.AddRoute("/spawn/volume/{volume_id}").Wrap(needsLogin).Handler(uis.modifyVolume).Post()
+	// Legacy Spawnhost routes - redirect to new UI
+	app.AddRoute("/spawn").Wrap(needsLogin).Handler(uis.legacySpawnHostPage).Get().Put().Post()
+	app.AddRoute("/spawn/hosts").Wrap(needsLogin).Handler(uis.legacySpawnHostPage).Get()
+	app.AddRoute("/spawn/volumes").Wrap(needsLogin).Handler(uis.legacySpawnVolumePage).Get().Put()
 
 	// User settings
-	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
-	app.AddRoute("/settings/newkey").Wrap(allowsCORS, needsLogin, needsContext).Handler(uis.newAPIKey).Post()
-	app.AddRoute("/settings/cleartoken").Wrap(needsLogin).Handler(uis.clearUserToken).Post()
-	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.notificationsPage).Get()
+	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.legacyUserSettingsPage).Get()
+	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.legacyNotificationsPage).Get()
 
 	// Task stats
 	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.taskTimingPage).Get()

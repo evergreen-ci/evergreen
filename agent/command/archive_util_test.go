@@ -295,7 +295,7 @@ func TestGlobPatternBehavior(t *testing.T) {
 			for _, f := range files {
 				rel, err := filepath.Rel(rootPath, f.path)
 				require.NoError(t, err)
-				actualPaths = append(actualPaths, rel)
+				actualPaths = append(actualPaths, filepath.ToSlash(rel))
 			}
 			assert.ElementsMatch(t, expectedPaths, actualPaths, "pattern '%s' should find expected paths", pattern)
 		})

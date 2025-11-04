@@ -1,8 +1,6 @@
 command_type: test
 stepback: true
 ignore:
-  - "*.md" # don't schedule tests if a commit only changes markdown files
-  - "*.mdx"
   - ".github/*" # github CODEOWNERS configuration
 
 pre_error_fails_task: true
@@ -677,7 +675,6 @@ tasks:
       - func: get-project-and-modules
       - func: verify-gqlgen
   - name: lint-markdown
-    tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
@@ -838,6 +835,16 @@ tasks:
 buildvariants:
   - name: ubuntu2204
     display_name: Ubuntu 22.04
+    paths:
+      - "*.go"
+      - "*.json"
+      - "*.yml"
+      - "*.yaml"
+      - "*.graphql"
+      - "*.txt"
+      - "*.sh"
+      - "*.diff"
+      - "*.patch"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
@@ -890,8 +897,29 @@ buildvariants:
     tasks:
       - name: ".smoke"
 
+  - name: lint-markdown
+    display_name: Lint Markdown
+    expansions:
+      GOROOT: /opt/golang/go1.24
+    paths:
+      - "docs/**"
+    run_on:
+      - ubuntu2204-small
+    tasks:
+      - name: lint-markdown
+
   - name: lint
     display_name: Lint
+    paths:
+      - "*.go"
+      - "*.json"
+      - "*.yml"
+      - "*.yaml"
+      - "*.graphql"
+      - "*.txt"
+      - "*.sh"
+      - "*.diff"
+      - "*.patch"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large

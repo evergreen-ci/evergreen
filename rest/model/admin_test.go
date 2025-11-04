@@ -429,14 +429,14 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 					"customfield_12345": "{{.Something}}",
 					"customfield_12346": "{{.SomethingElse}}",
 				},
-				Components: []string{"component0", "component1"},
+				Components: []string{"component1", "component0"},
 			},
 			"GVE": {
 				Fields: map[string]string{
 					"customfield_54321": "{{.SomethingElser}}",
 					"customfield_54322": "{{.SomethingEvenElser}}",
 				},
-				Labels: []string{"label0", "label1"},
+				Labels: []string{"label1", "label0"},
 			},
 		},
 	}

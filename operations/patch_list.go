@@ -47,12 +47,6 @@ func PatchList() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.setupRestCommunicator(ctx, !outputJSON)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
-
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")

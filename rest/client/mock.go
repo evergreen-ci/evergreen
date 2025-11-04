@@ -14,7 +14,9 @@ import (
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
+	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 )
 
 // Mock mocks EvergreenREST for testing.
@@ -310,7 +312,7 @@ func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
 	return []string{"https://example.com"}, nil
 }
 
-func (c *Mock) PostHostIsUp(ctx context.Context, ec2InstanceID, hostname string) (*restmodel.APIHost, error) {
+func (c *Mock) PostHostIsUp(ctx context.Context, options host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	return &restmodel.APIHost{
 		Id: utility.ToStringPtr("mock_host_id"),
 	}, nil
@@ -346,6 +348,10 @@ func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID 
 	return nil, nil
 }
 
+func (c *Mock) GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
+	return nil, "", nil
+}
+
 func (c *Mock) RevokeGitHubDynamicAccessTokens(ctx context.Context, taskId string, tokens []string) error {
 	return nil
 }
@@ -354,7 +360,7 @@ func (c *Mock) SetHostID(hostID string) {}
 
 func (c *Mock) SetHostSecret(hostSecret string) {}
 
-func (c *Mock) SetJWT(jwt string) {}
+func (c *Mock) SetOAuth(oauth string) {}
 
 func (c *Mock) SetAPIServerHost(serverURL string) {}
 

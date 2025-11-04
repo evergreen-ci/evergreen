@@ -86,5 +86,5 @@ func runCmd(ctx context.Context, args []string) (string, error) {
 	output := util.NewMBCappedWriter()
 	cmd := jasper.NewCommand().Add(args).SetCombinedWriter(output)
 	err := cmd.Run(ctx)
-	return output.String(), err
+	return output.String(), errors.Wrapf(err, "running command: %s", output.String())
 }

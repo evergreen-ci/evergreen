@@ -1,33 +1,10 @@
 # Legacy API
 
+To use Evergreen's REST v1 API, all URLs start with a path of `/rest/v1`. For more information on authentication, please see [our authentication documentation](./Authentication).
+
 ---
 
 _Note_: For the REST v2 API documentation, please see [REST V2 Usage](REST-V2-Usage).
-
-## Authentication
-
-The V2 REST routes will return a 404 if no authentication headers are sent, or if the user is invalid.
-
-### Personal Access Tokens
-
-_Note_: This is only available for human users, [service users](../Project-Configuration/Project-and-Distro-Settings#service-users), should use [Static API Keys](#static-api-keys).
-
-Fore instructions, please see [here](<https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/384992097/Kanopy+Auth+On+Evergreen#KanopyAuthOnEvergreen-RESTAPI(V1andV2)>).
-
-### Static API Keys
-
-_Note_: This will soon be deprecated for human users (everyone except [service users](../Project-Configuration/Project-and-Distro-Settings#service-users)), who should use [personal access tokens instead](#personal-access-tokens).
-
-Use the `user` and `api_key` fields from the Settings page.
-Authenticated REST access requires setting two headers, `Api-User` and `Api-Key`.
-
-Static api keys can only be used when authenticating for evergreen.mongodb.com, it cannot be used with evergreen.corp.mongodb.com.
-
-#### Example
-
-```bash
-    curl -H Api-User:my.name -H Api-Key:21312mykey12312 https://evergreen.mongodb.com/rest/v1/projects/my_private_project
-```
 
 ## Retrieve a list of active project IDs
 

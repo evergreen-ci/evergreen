@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"sort"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
@@ -13,10 +14,37 @@ func (r *jiraNotificationsConfigResolver) CustomFields(ctx context.Context, obj 
 	}
 
 	var entries []*JiraNotificationsProjectEntry
-	for projectName, project := range obj.CustomFields {
+
+	// Get project names and sort them alphabetically to guarantee consistent order.
+	projectNames := make([]string, 0, len(obj.CustomFields))
+	for projectName := range obj.CustomFields {
+		projectNames = append(projectNames, projectName)
+	}
+	sort.Strings(projectNames)
+
+	for _, projectName := range projectNames {
+		project := obj.CustomFields[projectName]
+
+		// Sort fields, components, and labels to guarantee consistent order.
+		var sortedFields map[string]string
+		if project.Fields != nil {
+			fieldKeys := make([]string, 0, len(project.Fields))
+			for key := range project.Fields {
+				fieldKeys = append(fieldKeys, key)
+			}
+			sort.Strings(fieldKeys)
+
+			sortedFields = make(map[string]string)
+			for _, key := range fieldKeys {
+				sortedFields[key] = project.Fields[key]
+			}
+		}
+		sort.Strings(project.Components)
+		sort.Strings(project.Labels)
+
 		entry := &JiraNotificationsProjectEntry{
 			Project:    projectName,
-			Fields:     project.Fields,
+			Fields:     sortedFields,
 			Components: project.Components,
 			Labels:     project.Labels,
 		}
