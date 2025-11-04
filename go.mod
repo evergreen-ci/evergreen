@@ -209,9 +209,6 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/coreos/go-oidc/v3 v3.16.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
-	github.com/k0kubun/pp v3.0.1+incompatible // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
