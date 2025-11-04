@@ -143,3 +143,10 @@ func (uis *UIServer) legacyVersionPage(w http.ResponseWriter, r *http.Request) {
 	spruceLink := fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, versionId)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacyPatchPage(w http.ResponseWriter, r *http.Request) {
+	patchId := gimlet.GetVars(r)["patch_id"]
+	// Spruce is able to determine if a /patch link should redirect to the configure or version page
+	spruceLink := fmt.Sprintf("%s/patch/%s", uis.Settings.Ui.UIv2Url, patchId)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
