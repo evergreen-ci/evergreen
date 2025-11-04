@@ -30,7 +30,7 @@ This document tracks the migration of Evergreen self-tests to GitHub Actions. Th
 
 ## Migration Status
 
-**Progress:** 49/52 test tasks migrated (Phase 1C - All standard tests complete)
+**Progress:** 51/52 test tasks migrated (Phase 1C - Complete, excluding 2 deferred tests)
 
 ### Status Legend
 - ✅ **Migrated** - Running in GitHub Actions
@@ -108,8 +108,8 @@ Uses pattern: `run-go-test-suite-with-mongodb-useast` (requires TZ=America/New_Y
 
 | Task Name | Status | GHA Job Name | Notes |
 |-----------|--------|--------------|-------|
-| test-graphql | ⬜ | `test-graphql` | Needs `TZ=America/New_York` |
-| test-service-graphql | ⬜ | `test-service-graphql` | Needs `TZ=America/New_York` |
+| test-graphql | ✅ | `test-graphql` | Needs `TZ=America/New_York` |
+| test-service-graphql | ✅ | `test-service-graphql` | Needs `TZ=America/New_York` |
 
 ### Deferred Tests (2 tasks)
 
@@ -268,7 +268,7 @@ If GitHub Actions migration causes issues:
 ### Phase 1C: Scale Up
 - [x] Migrate remaining 5 no-db tests
 - [x] Migrate remaining 42 db tests
-- [ ] Handle special cases (timezone tests)
+- [x] Handle special cases (timezone tests)
 
 ### Phase 1D: Validation & Documentation
 - [ ] Compare all test results with Evergreen

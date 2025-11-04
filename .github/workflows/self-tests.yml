@@ -1633,18 +1633,74 @@ jobs:
   # ============================================================================
   # PHASE 1C: SPECIAL TIMEZONE TESTS (2 more)
   # ============================================================================
-  # TODO: Uncomment after Phase 1B validation
   # These tests require TZ=America/New_York
-  #
-  # test-graphql:
-  #   name: test-graphql
-  #   runs-on: ubuntu-22.04
-  #   env:
-  #     TZ: America/New_York
-  #   steps:
-  #     - uses: ./.github/actions/setup-go-project
-  #     - uses: ./.github/actions/setup-credentials
-  #     - uses: ./.github/actions/setup-mongodb
-  #     - uses: ./.github/actions/run-test
-  #       with:
-  #         test_name: test-graphql
+
+  test-graphql:
+    name: test-graphql
+    runs-on: ubuntu-22.04
+    env:
+      TZ: America/New_York
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-graphql
+
+  test-service-graphql:
+    name: test-service-graphql
+    runs-on: ubuntu-22.04
+    env:
+      TZ: America/New_York
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-service-graphql
