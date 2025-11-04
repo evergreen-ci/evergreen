@@ -1,6 +1,6 @@
-# Warning: Container tasks are not maintained and should not be used for production workloads.
+# Warning: Container tasks are not maintained and should not be used for production workloads
 
-# Containerized Tasks Overview
+## Containerized Tasks Overview
 
 We're excited to introduce the ability to run Evergreen tasks in
 containers!
