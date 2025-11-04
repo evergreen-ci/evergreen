@@ -22,18 +22,6 @@ type pluginData struct {
 	Data     map[string]any
 }
 
-type uiVersion struct {
-	Version      model.Version
-	Builds       []uiBuild
-	PatchInfo    *uiPatch `json:",omitempty"`
-	ActiveTasks  int
-	RepoOwner    string          `json:"repo_owner"`
-	Repo         string          `json:"repo_name"`
-	UpstreamData *uiUpstreamData `json:"upstream,omitempty"`
-	TimeTaken    time.Duration   `json:"time_taken"`
-	Makespan     time.Duration   `json:"makespan"`
-}
-
 type uiUpstreamData struct {
 	Owner       string `json:"owner"`
 	Repo        string `json:"repo"`
