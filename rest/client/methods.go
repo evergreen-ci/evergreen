@@ -1403,16 +1403,12 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
-func (c *communicatorImpl) PostHostIsUp(ctx context.Context, ec2InstanceID, hostname string) (*restmodel.APIHost, error) {
+func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   fmt.Sprintf("/hosts/%s/is_up", c.hostID),
 	}
-	opts := restmodel.APIHostIsUpOptions{
-		HostID:        c.hostID,
-		Hostname:      hostname,
-		EC2InstanceID: ec2InstanceID,
-	}
+	opts.HostID = c.hostID
 	r, err := c.createRequest(info, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")

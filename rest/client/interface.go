@@ -125,7 +125,7 @@ type Communicator interface {
 
 	// PostHostIsUp indicates to the app server that the task host is up and
 	// running.
-	PostHostIsUp(ctx context.Context, instanceID, hostname string) (*restmodel.APIHost, error)
+	PostHostIsUp(ctx context.Context, opts host.HostMetadataOptions) (*restmodel.APIHost, error)
 	// GetHostProvisioningOptions gets the options to provision a host.
 	GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHostProvisioningOptions, error)
 

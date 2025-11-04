@@ -312,7 +312,7 @@ func (c *Mock) GetClientURLs(context.Context, string) ([]string, error) {
 	return []string{"https://example.com"}, nil
 }
 
-func (c *Mock) PostHostIsUp(ctx context.Context, ec2InstanceID, hostname string) (*restmodel.APIHost, error) {
+func (c *Mock) PostHostIsUp(ctx context.Context, options host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	return &restmodel.APIHost{
 		Id: utility.ToStringPtr("mock_host_id"),
 	}, nil

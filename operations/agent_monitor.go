@@ -15,6 +15,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -531,7 +532,7 @@ type hostHealthCheck struct {
 }
 
 func (m *monitor) getHostHealth(ctx context.Context) (hostHealthCheck, error) {
-	apiHost, err := m.comm.PostHostIsUp(ctx, "", "")
+	apiHost, err := m.comm.PostHostIsUp(ctx, host.HostMetadataOptions{})
 	if err != nil {
 		return hostHealthCheck{
 			shouldExit: false,

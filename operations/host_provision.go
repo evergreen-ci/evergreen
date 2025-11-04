@@ -7,9 +7,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -119,30 +117,19 @@ func hostProvision() cli.Command {
 }
 
 func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudProvider string) (*restmodel.APIHost, error) {
-	var ec2InstanceID string
-	var hostname string
-	if cloud.IsEC2InstanceID(hostID) {
-		ec2InstanceID = hostID
-	} else if evergreen.IsEc2Provider(cloudProvider) {
-		fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-		var err error
+	fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
-		ec2InstanceID, err = agentutil.GetEC2InstanceID(fetchEC2InfoCtx)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "could not fetch EC2 instance ID dynamically",
-			"host_id":        hostID,
-			"cloud_provider": cloudProvider,
-		}))
-		hostname, err = agentutil.GetEC2Hostname(fetchEC2InfoCtx)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "could not fetch EC2 hostname dynamically",
-			"host_id":        hostID,
-			"cloud_provider": cloudProvider,
-		}))
-	}
-
-	h, err := comm.PostHostIsUp(ctx, ec2InstanceID, hostname)
+	// Fetching EC2 metadata is not required for correctness, but merely an optimization
+	// that allows the host to skip the cloud host ready job if successful here. Otherwise,
+	// we fall back to polling the instance data from EC2 in the cloud host ready job.
+	ec2Metadata, err := agentutil.GetEC2Metadata(fetchEC2InfoCtx)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":        "could not fetch EC2 metadata dynamically",
+		"host_id":        hostID,
+		"cloud_provider": cloudProvider,
+	}))
+	h, err := comm.PostHostIsUp(ctx, ec2Metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "posting that the host is up")
 	}
