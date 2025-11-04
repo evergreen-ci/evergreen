@@ -5,12 +5,6 @@ ui:
     - "edd78"
     - "logkeeper"
     - "Tasks"
-  "/version/logkeeper_edd78c1d581bf757a880777b00685321685a8e67":
-    - "Added .docker-test.yaml for docker testing"
-    - "By Variant"
-    - "edd78"
-    - "edd78"
-    - "logkeeper"
 api:
   "/":
     - "404"

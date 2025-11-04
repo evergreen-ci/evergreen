@@ -137,3 +137,9 @@ func (uis *UIServer) legacySpawnVolumePage(w http.ResponseWriter, r *http.Reques
 	spruceLink := fmt.Sprintf("%s/spawn/volume", uis.Settings.Ui.UIv2Url)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacyVersionPage(w http.ResponseWriter, r *http.Request) {
+	versionId := gimlet.GetVars(r)["version_id"]
+	spruceLink := fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, versionId)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}

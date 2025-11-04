@@ -344,10 +344,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/json/build_history/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildHistory).Get()
 
 	// Version page
-	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionPage).Get()
-	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyVersion).Put()
-	app.AddRoute("/json/version_history/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistory).Get()
-	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionFind).Get()
+	app.AddRoute("/version/{version_id}").Wrap(needsLogin).Handler(uis.legacyVersionPage).Get()
 
 	// Hosts
 	app.AddRoute("/hosts").Handler(uis.legacyHostsPage).Get()
