@@ -176,6 +176,10 @@ func RequestNewVolume(ctx context.Context, volume host.Volume) (*host.Volume, in
 // CheckVolumeLimitExceeded checks if a user would exceed their volume size limit by adding newSize GB.
 // If the limit would be exceeded, return an error.
 func CheckVolumeLimitExceeded(ctx context.Context, user string, newSize int, maxSize int) error {
+	if maxSize == 0 {
+		return nil
+	}
+
 	totalSize, err := host.FindTotalVolumeSizeByUser(ctx, user)
 	if err != nil {
 		return errors.Wrapf(err, "counting total volume size for user '%s'", user)
