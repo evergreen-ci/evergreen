@@ -1576,8 +1576,10 @@ Parameters:
   Defaults to 30 minutes. Hitting this timeout will stop the `teardown_task`
   commands but will not cause the task to fail unless
   `teardown_task_can_fail_task` is true.
-- `max_hosts`: number of hosts across which to distribute the tasks in
-  this group. This defaults to 1. If set to -1, it will be updated to the
+- `max_hosts`: the maximum number of hosts across which to distribute the tasks in
+  this group. This sets an upper bound on the number of hosts that can run tasks
+  from this task group simultaneously. It does not guarantee that exactly this
+  many hosts will be used. Defaults to 1. If set to -1, it will be updated to the
   number of tasks in this task group. There will be a validation warning
   if max hosts is less than 1 (apart from -1) or greater than the number of
   tasks in task group. When max hosts is 1, this is a special case where the
