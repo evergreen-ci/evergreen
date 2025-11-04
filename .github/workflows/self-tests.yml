@@ -243,18 +243,1392 @@ jobs:
   # ============================================================================
   # PHASE 1C: REMAINING DB TESTS (42 more)
   # ============================================================================
-  # TODO: Uncomment after Phase 1B validation
-  #
-  # test-agent:
-  #   name: test-agent
-  #   runs-on: ubuntu-22.04
-  #   steps:
-  #     - uses: ./.github/actions/setup-go-project
-  #     - uses: ./.github/actions/setup-credentials
-  #     - uses: ./.github/actions/setup-mongodb
-  #     - uses: ./.github/actions/run-test
-  #       with:
-  #         test_name: test-agent
+
+  test-agent:
+    name: test-agent
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-agent
+
+  test-agent-command:
+    name: test-agent-command
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-agent-command
+
+  test-agent-internal:
+    name: test-agent-internal
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-agent-internal
+
+  test-auth:
+    name: test-auth
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-auth
+
+  test-cloud-parameterstore:
+    name: test-cloud-parameterstore
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-cloud-parameterstore
+
+  test-cloud-parameterstore-fakeparameter:
+    name: test-cloud-parameterstore-fakeparameter
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-cloud-parameterstore-fakeparameter
+
+  test-evergreen:
+    name: test-evergreen
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-evergreen
+
+  test-model:
+    name: test-model
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model
+
+  test-model-alertrecord:
+    name: test-model-alertrecord
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-alertrecord
+
+  test-model-annotations:
+    name: test-model-annotations
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-annotations
+
+  test-model-artifact:
+    name: test-model-artifact
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-artifact
+
+  test-model-build:
+    name: test-model-build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-build
+
+  test-model-cache:
+    name: test-model-cache
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-cache
+
+  test-model-distro:
+    name: test-model-distro
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-distro
+
+  test-model-event:
+    name: test-model-event
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-event
+
+  test-model-githubapp:
+    name: test-model-githubapp
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-githubapp
+
+  test-model-host:
+    name: test-model-host
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-host
+
+  test-model-manifest:
+    name: test-model-manifest
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-manifest
+
+  test-model-notification:
+    name: test-model-notification
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-notification
+
+  test-model-parsley:
+    name: test-model-parsley
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-parsley
+
+  test-model-patch:
+    name: test-model-patch
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-patch
+
+  test-model-pod:
+    name: test-model-pod
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-pod
+
+  test-model-pod-definition:
+    name: test-model-pod-definition
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-pod-definition
+
+  test-model-pod-dispatcher:
+    name: test-model-pod-dispatcher
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-pod-dispatcher
+
+  test-model-task:
+    name: test-model-task
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-task
+
+  test-model-taskstats:
+    name: test-model-taskstats
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-taskstats
+
+  test-model-testlog:
+    name: test-model-testlog
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-testlog
+
+  test-model-testresult:
+    name: test-model-testresult
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-testresult
+
+  test-model-user:
+    name: test-model-user
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-model-user
+
+  test-operations:
+    name: test-operations
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-operations
+
+  test-plugin:
+    name: test-plugin
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-plugin
+
+  test-repotracker:
+    name: test-repotracker
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-repotracker
+
+  test-rest-client:
+    name: test-rest-client
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-rest-client
+
+  test-rest-data:
+    name: test-rest-data
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-rest-data
+
+  test-rest-model:
+    name: test-rest-model
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-rest-model
+
+  test-rest-route:
+    name: test-rest-route
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-rest-route
+
+  test-scheduler:
+    name: test-scheduler
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-scheduler
+
+  test-service:
+    name: test-service
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-service
+
+  test-thirdparty:
+    name: test-thirdparty
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-thirdparty
+
+  test-trigger:
+    name: test-trigger
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-trigger
+
+  test-units:
+    name: test-units
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-units
+
+  test-validator:
+    name: test-validator
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Setup Credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
+          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
+          jira_server: ${{ secrets.JIRA_SERVER }}
+          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ secrets.CROWD_SERVER }}
+          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+
+      - name: Setup MongoDB
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run Test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: test-validator
 
   # ============================================================================
   # PHASE 1C: SPECIAL TIMEZONE TESTS (2 more)

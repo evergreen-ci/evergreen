@@ -30,7 +30,7 @@ This document tracks the migration of Evergreen self-tests to GitHub Actions. Th
 
 ## Migration Status
 
-**Progress:** 7/52 test tasks migrated (Phase 1C - No-DB tests complete)
+**Progress:** 49/52 test tasks migrated (Phase 1C - All standard tests complete)
 
 ### Status Legend
 - ✅ **Migrated** - Running in GitHub Actions
@@ -59,49 +59,49 @@ Uses pattern: `run-go-test-suite-with-mongodb`
 
 | Task Name | Status | GHA Job Name | Notes |
 |-----------|--------|--------------|-------|
-| test-agent | ⬜ | `test-agent` | |
-| test-agent-command | ⬜ | `test-agent-command` | Requires CLI binary built first |
-| test-agent-internal | ⬜ | `test-agent-internal` | |
-| test-auth | ⬜ | `test-auth` | |
-| test-cloud-parameterstore | ⬜ | `test-cloud-parameterstore` | |
-| test-cloud-parameterstore-fakeparameter | ⬜ | `test-cloud-parameterstore-fakeparameter` | |
+| test-agent | ✅ | `test-agent` | |
+| test-agent-command | ✅ | `test-agent-command` | Requires CLI binary built first |
+| test-agent-internal | ✅ | `test-agent-internal` | |
+| test-auth | ✅ | `test-auth` | |
+| test-cloud-parameterstore | ✅ | `test-cloud-parameterstore` | |
+| test-cloud-parameterstore-fakeparameter | ✅ | `test-cloud-parameterstore-fakeparameter` | |
 | test-db | ✅ | `test-db` | Simple DB test, good for validating MongoDB setup - POC test |
-| test-evergreen | ⬜ | `test-evergreen` | |
-| test-model | ⬜ | `test-model` | |
-| test-model-alertrecord | ⬜ | `test-model-alertrecord` | |
-| test-model-annotations | ⬜ | `test-model-annotations` | |
-| test-model-artifact | ⬜ | `test-model-artifact` | |
-| test-model-build | ⬜ | `test-model-build` | |
-| test-model-cache | ⬜ | `test-model-cache` | |
-| test-model-distro | ⬜ | `test-model-distro` | |
-| test-model-event | ⬜ | `test-model-event` | |
-| test-model-githubapp | ⬜ | `test-model-githubapp` | |
-| test-model-host | ⬜ | `test-model-host` | |
-| test-model-manifest | ⬜ | `test-model-manifest` | |
-| test-model-notification | ⬜ | `test-model-notification` | |
-| test-model-parsley | ⬜ | `test-model-parsley` | |
-| test-model-patch | ⬜ | `test-model-patch` | |
-| test-model-pod | ⬜ | `test-model-pod` | |
-| test-model-pod-definition | ⬜ | `test-model-pod-definition` | |
-| test-model-pod-dispatcher | ⬜ | `test-model-pod-dispatcher` | |
-| test-model-task | ⬜ | `test-model-task` | |
-| test-model-taskstats | ⬜ | `test-model-taskstats` | |
-| test-model-testlog | ⬜ | `test-model-testlog` | |
-| test-model-testresult | ⬜ | `test-model-testresult` | |
-| test-model-user | ⬜ | `test-model-user` | |
-| test-operations | ⬜ | `test-operations` | |
-| test-plugin | ⬜ | `test-plugin` | |
-| test-repotracker | ⬜ | `test-repotracker` | |
-| test-rest-client | ⬜ | `test-rest-client` | |
-| test-rest-data | ⬜ | `test-rest-data` | |
-| test-rest-model | ⬜ | `test-rest-model` | |
-| test-rest-route | ⬜ | `test-rest-route` | |
-| test-scheduler | ⬜ | `test-scheduler` | |
-| test-service | ⬜ | `test-service` | |
-| test-thirdparty | ⬜ | `test-thirdparty` | |
-| test-trigger | ⬜ | `test-trigger` | |
-| test-units | ⬜ | `test-units` | |
-| test-validator | ⬜ | `test-validator` | |
+| test-evergreen | ✅ | `test-evergreen` | |
+| test-model | ✅ | `test-model` | |
+| test-model-alertrecord | ✅ | `test-model-alertrecord` | |
+| test-model-annotations | ✅ | `test-model-annotations` | |
+| test-model-artifact | ✅ | `test-model-artifact` | |
+| test-model-build | ✅ | `test-model-build` | |
+| test-model-cache | ✅ | `test-model-cache` | |
+| test-model-distro | ✅ | `test-model-distro` | |
+| test-model-event | ✅ | `test-model-event` | |
+| test-model-githubapp | ✅ | `test-model-githubapp` | |
+| test-model-host | ✅ | `test-model-host` | |
+| test-model-manifest | ✅ | `test-model-manifest` | |
+| test-model-notification | ✅ | `test-model-notification` | |
+| test-model-parsley | ✅ | `test-model-parsley` | |
+| test-model-patch | ✅ | `test-model-patch` | |
+| test-model-pod | ✅ | `test-model-pod` | |
+| test-model-pod-definition | ✅ | `test-model-pod-definition` | |
+| test-model-pod-dispatcher | ✅ | `test-model-pod-dispatcher` | |
+| test-model-task | ✅ | `test-model-task` | |
+| test-model-taskstats | ✅ | `test-model-taskstats` | |
+| test-model-testlog | ✅ | `test-model-testlog` | |
+| test-model-testresult | ✅ | `test-model-testresult` | |
+| test-model-user | ✅ | `test-model-user` | |
+| test-operations | ✅ | `test-operations` | |
+| test-plugin | ✅ | `test-plugin` | |
+| test-repotracker | ✅ | `test-repotracker` | |
+| test-rest-client | ✅ | `test-rest-client` | |
+| test-rest-data | ✅ | `test-rest-data` | |
+| test-rest-model | ✅ | `test-rest-model` | |
+| test-rest-route | ✅ | `test-rest-route` | |
+| test-scheduler | ✅ | `test-scheduler` | |
+| test-service | ✅ | `test-service` | |
+| test-thirdparty | ✅ | `test-thirdparty` | |
+| test-trigger | ✅ | `test-trigger` | |
+| test-units | ✅ | `test-units` | |
+| test-validator | ✅ | `test-validator` | |
 
 ### Special Case Tests (2 tasks)
 Uses pattern: `run-go-test-suite-with-mongodb-useast` (requires TZ=America/New_York)
@@ -265,9 +265,9 @@ If GitHub Actions migration causes issues:
 - [x] Migrate 1 db test (`test-db`)
 - [x] Validate MongoDB setup
 
-### Phase 1C: Scale Up (Current)
+### Phase 1C: Scale Up
 - [x] Migrate remaining 5 no-db tests
-- [ ] Migrate remaining 42 db tests
+- [x] Migrate remaining 42 db tests
 - [ ] Handle special cases (timezone tests)
 
 ### Phase 1D: Validation & Documentation
