@@ -1,5 +1,5 @@
 name: 'Setup Go Project'
-description: 'Checkout code and setup Go environment'
+description: 'Setup Go environment (requires checkout to be done first)'
 
 inputs:
   go-version:
@@ -10,9 +10,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
     - name: Setup Go
       uses: actions/setup-go@v5
       with:

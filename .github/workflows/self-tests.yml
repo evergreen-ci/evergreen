@@ -25,6 +25,9 @@ jobs:
     name: test-util
     runs-on: ubuntu-22.04
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Go Project
         uses: ./.github/actions/setup-go-project
         with:
@@ -53,6 +56,9 @@ jobs:
     name: test-db
     runs-on: ubuntu-22.04
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Go Project
         uses: ./.github/actions/setup-go-project
         with:
