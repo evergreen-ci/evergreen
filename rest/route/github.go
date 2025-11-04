@@ -733,10 +733,13 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy, alias string, overrideExisting bool) error {
 	// Verify that the owner/repo uses PR testing before inserting the intent.
 	baseRepoName := pr.Base.Repo.GetFullName()
-	baseRepo := strings.Split(baseRepoName, "/")
+	baseOwnerRepo := strings.Split(baseRepoName, "/")
+	if len(baseOwnerRepo) != 2 {
+		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
+	}
 	baseBranch := pr.Base.GetRef()
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseRepo[0],
-		baseRepo[1], baseBranch, calledBy)
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseOwnerRepo[0],
+		baseOwnerRepo[1], pr.Base.GetRef(), calledBy)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref for patch")
 	}
@@ -772,8 +775,8 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		// intentionally being skipped.
 		update := units.NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
-			baseRepo[0],
-			baseRepo[1],
+			baseOwnerRepo[0],
+			baseOwnerRepo[1],
 			pr.Head.GetSHA(),
 			"Graphite is still rebasing this PR, skipping CI. See Graphite UI for more info.",
 		)
@@ -792,11 +795,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return nil
 	}
 
-	baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
-	if len(baseOwnerAndRepo) != 2 {
-		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
-	}
-	mergeBase, err := thirdparty.GetPullRequestMergeBase(ctx, baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetLabel(), pr.Head.GetLabel(), pr.GetNumber())
+	mergeBase, err := thirdparty.GetPullRequestMergeBase(ctx, baseOwnerRepo[0], baseOwnerRepo[1], pr.Base.GetLabel(), pr.Head.GetLabel(), pr.GetNumber())
 	if err != nil {
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
