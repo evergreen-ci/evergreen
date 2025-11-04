@@ -52,6 +52,7 @@ input SpawnHostInput {
   userDataScript: String
   useTaskConfig: Boolean
   volumeId: String
+  useOAuth: Boolean
 }
 
 """

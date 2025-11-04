@@ -296,7 +296,7 @@ and individual users can be configured.
 Alternatively, you can use Mana to give users permission to trigger git
 tag versions for a project; however the user will need to add their
 GitHub username to their [settings
-page](https://evergreen.mongodb.com/settings) in order for us to connect
+page](https://evergreen.corp.mongodb.com/settings) in order for us to connect
 the GitHub user to an Evergreen user.
 
 **NOTE**: If the person who pushed the tag is not part of the authorized users or

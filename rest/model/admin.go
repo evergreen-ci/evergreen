@@ -2,6 +2,7 @@ package model
 
 import (
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -2224,30 +2225,31 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled            bool `json:"task_dispatch_disabled"`
-	HostInitDisabled                bool `json:"host_init_disabled"`
-	PodInitDisabled                 bool `json:"pod_init_disabled"`
-	LargeParserProjectsDisabled     bool `json:"large_parser_projects_disabled"`
-	MonitorDisabled                 bool `json:"monitor_disabled"`
-	AlertsDisabled                  bool `json:"alerts_disabled"`
-	AgentStartDisabled              bool `json:"agent_start_disabled"`
-	RepotrackerDisabled             bool `json:"repotracker_disabled"`
-	SchedulerDisabled               bool `json:"scheduler_disabled"`
-	CheckBlockedTasksDisabled       bool `json:"check_blocked_tasks_disabled"`
-	GithubPRTestingDisabled         bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled              bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled         bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled             bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
-	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
-	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
-	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
-	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
-	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
-	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
-	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
-	StaticAPIKeysDisabled           bool `json:"static_api_keys_disabled"`
+	TaskDispatchDisabled           bool `json:"task_dispatch_disabled"`
+	HostInitDisabled               bool `json:"host_init_disabled"`
+	PodInitDisabled                bool `json:"pod_init_disabled"`
+	LargeParserProjectsDisabled    bool `json:"large_parser_projects_disabled"`
+	MonitorDisabled                bool `json:"monitor_disabled"`
+	AlertsDisabled                 bool `json:"alerts_disabled"`
+	AgentStartDisabled             bool `json:"agent_start_disabled"`
+	RepotrackerDisabled            bool `json:"repotracker_disabled"`
+	SchedulerDisabled              bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled      bool `json:"check_blocked_tasks_disabled"`
+	GithubPRTestingDisabled        bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled             bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled        bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled            bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled          bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled     bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled        bool `json:"task_reliability_disabled"`
+	HostAllocatorDisabled          bool `json:"host_allocator_disabled"`
+	PodAllocatorDisabled           bool `json:"pod_allocator_disabled"`
+	UnrecognizedPodCleanupDisabled bool `json:"unrecognized_pod_cleanup_disabled"`
+	BackgroundReauthDisabled       bool `json:"background_reauth_disabled"`
+	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
+	SleepScheduleDisabled          bool `json:"sleep_schedule_disabled"`
+	StaticAPIKeysDisabled          bool `json:"static_api_keys_disabled"`
+	// JWTTokenForCLIDisabled disables the use of OAuth tokens for the CLI.
 	JWTTokenForCLIDisabled          bool `json:"jwt_token_for_cli_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
@@ -2829,7 +2831,15 @@ func (j *APIJIRANotificationsConfig) ToService() (any, error) {
 		return service, nil
 	}
 
-	for projectName, fields := range j.CustomFields {
+	// Sort project names alphabetically
+	projectNames := make([]string, 0, len(j.CustomFields))
+	for projectName := range j.CustomFields {
+		projectNames = append(projectNames, projectName)
+	}
+	sort.Strings(projectNames)
+
+	for _, projectName := range projectNames {
+		fields := j.CustomFields[projectName]
 		projectIface, err := fields.ToService()
 		if err != nil {
 			return nil, errors.Errorf("converting project '%s' to service model", projectName)
@@ -2862,10 +2872,22 @@ func (j *APIJIRANotificationsProject) BuildFromService(h any) error {
 
 func (j *APIJIRANotificationsProject) ToService() (any, error) {
 	service := evergreen.JIRANotificationsProject{}
-	for field, template := range j.Fields {
-		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
+
+	fieldKeys := make([]string, 0, len(j.Fields))
+	for key := range j.Fields {
+		fieldKeys = append(fieldKeys, key)
 	}
+	sort.Strings(fieldKeys)
+
+	for _, fieldKey := range fieldKeys {
+		template := j.Fields[fieldKey]
+		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: fieldKey, Template: template})
+	}
+
+	sort.Strings(j.Components)
 	service.Components = j.Components
+
+	sort.Strings(j.Labels)
 	service.Labels = j.Labels
 
 	return service, nil

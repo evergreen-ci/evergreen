@@ -386,7 +386,7 @@ download-fws-config:
 	@echo "Authenticating to Kanopy..." && \
 	KANOPY_KEY=$$(kanopy-oidc login) && \
 	echo "Downloading OpenAPI config..." && \
-	curl -H "X-Kanopy-Authorization: Bearer $$KANOPY_KEY" -L -o $(OPENAPI_FWS_SCHEMA) $(OPENAPI_FWS_CONFIG_URL) && \
+	curl -H "Authorization: Bearer $$KANOPY_KEY" -L -o $(OPENAPI_FWS_SCHEMA) $(OPENAPI_FWS_CONFIG_URL) && \
 	echo "Downloaded OpenAPI config"
 
 generate-fws-client:

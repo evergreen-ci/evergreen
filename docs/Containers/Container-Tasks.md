@@ -1,3 +1,5 @@
+# Warning: Container tasks are not maintained and should not be used for production workloads.
+
 # Containerized Tasks Overview
 
 We're excited to introduce the ability to run Evergreen tasks in
@@ -8,8 +10,6 @@ by software dependency requirements. Greater flexibility and control
 over task environments is achievable with containers, ensuring that each
 task runs in an isolated, dedicated space with its own specific set of
 software dependencies.
-
-## Warning: Container tasks are new and subject to ongoing changes
 
 Container tasks at this time are subject to (potentially substantial) change as we iterate further on our
 container roadmap. The feature may have bugs as it is not currently as battle-tested as our host-based infrastructure,

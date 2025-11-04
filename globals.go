@@ -195,6 +195,8 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
+	WhyIsMyDataMissingName = "whyIsTheDataMissing.txt"
+
 	// Env vars
 	EvergreenHome           = "EVGHOME"
 	MongodbURL              = "MONGO_URL"
@@ -266,6 +268,7 @@ const (
 	TempSetupScriptName           = "setup-temp.sh"
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
+	SpawnhostFetchScriptName      = ".evergreen-spawnhost-fetch.sh"
 
 	PlannerVersionTunable = "tunable"
 
@@ -571,7 +574,7 @@ const (
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
 	SageUserHeader      = "x-authenticated-sage-user"
-	KanopyTokenHeader   = "X-Kanopy-Authorization"
+	AuthorizationHeader = "Authorization"
 	EnvironmentHeader   = "X-Evergreen-Environment"
 )
 

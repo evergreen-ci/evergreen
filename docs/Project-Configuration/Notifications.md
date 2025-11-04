@@ -6,7 +6,7 @@ Evergreen has the ability to issue notifications based on events that happen in 
 
 ## Notifications Setup
 
-Evergreen can notify you based on the outcome of your patches. To enable these, go to your [user profile](https://evergreen.mongodb.com/settings) and:
+Evergreen can notify you based on the outcome of your patches. To enable these, go to your [user profile](https://evergreen.corp.mongodb.com/settings) and:
 
 1. Enter your GitHub Username (so we can identify which commits you make)
 2. Optionally, enter your Slack username (if you want to be notified on Slack). Your Slack username is available from <https://YOUR_ORGANIZATION.slack.com/account/settings#username> (This is NOT your slack display name.)

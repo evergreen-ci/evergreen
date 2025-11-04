@@ -77,6 +77,16 @@ func (uis *UIServer) legacyProjectsPage(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, newUIProjectsLink, http.StatusPermanentRedirect)
 }
 
+func (uis *UIServer) legacyUserSettingsPage(w http.ResponseWriter, r *http.Request) {
+	newUILink := fmt.Sprintf("%s/preferences/profile", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyNotificationsPage(w http.ResponseWriter, r *http.Request) {
+	newUILink := fmt.Sprintf("%s/preferences/notifications", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
+}
+
 func (uis *UIServer) legacyHostsPage(w http.ResponseWriter, r *http.Request) {
 	spruceLink := fmt.Sprintf("%s/hosts", uis.Settings.Ui.UIv2Url)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
@@ -85,5 +95,45 @@ func (uis *UIServer) legacyHostsPage(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) legacyHostPage(w http.ResponseWriter, r *http.Request) {
 	hostId := gimlet.GetVars(r)["host_id"]
 	spruceLink := fmt.Sprintf("%s/host/%s", uis.Settings.Ui.UIv2Url, hostId)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyUserPatchesPage(w http.ResponseWriter, r *http.Request) {
+	userId := gimlet.GetVars(r)["user_id"]
+	spruceLink := fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, userId)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyMyPatchesPage(w http.ResponseWriter, r *http.Request) {
+	user := MustHaveUser(r)
+	spruceLink := fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, user.Username())
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyProjectPatchesPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+	if err != nil || project == nil {
+		http.Redirect(w, r, uis.Settings.Ui.UIv2Url, http.StatusPermanentRedirect)
+		return
+	}
+	spruceLink := fmt.Sprintf("%s/project/%s/patches", uis.Settings.Ui.UIv2Url, project.Identifier)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyPatchesPage(w http.ResponseWriter, r *http.Request) {
+	user := MustHaveUser(r)
+	// There's no equivalent /patches page on Spruce, so just redirect to user patches.
+	spruceLink := fmt.Sprintf("%s/user/%s/patches", uis.Settings.Ui.UIv2Url, user.Username())
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacySpawnHostPage(w http.ResponseWriter, r *http.Request) {
+	spruceLink := fmt.Sprintf("%s/spawn/host", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacySpawnVolumePage(w http.ResponseWriter, r *http.Request) {
+	spruceLink := fmt.Sprintf("%s/spawn/volume", uis.Settings.Ui.UIv2Url)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
