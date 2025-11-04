@@ -1339,7 +1339,7 @@ func (c *communicatorImpl) GetTasksForBuild(ctx context.Context, buildID string,
 		info.path = info.path + "?" + strings.Join(queryParams, "&")
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get tasks for build '%s'", buildID)
 	}

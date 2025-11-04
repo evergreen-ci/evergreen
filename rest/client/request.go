@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 )
 
@@ -98,6 +99,10 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 	response, err := c.httpClient.Do(r)
 
 	if err != nil {
+		deadline, ok := ctx.Deadline()
+		if ok || c.httpClient.Timeout != 0 {
+			pp.Println("HTTP client timeout:", c.httpClient.Timeout, "Request deadline:", deadline)
+		}
 		c.resetClient()
 		return nil, errors.WithStack(err)
 	}
