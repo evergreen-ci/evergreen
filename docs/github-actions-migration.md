@@ -30,7 +30,7 @@ This document tracks the migration of Evergreen self-tests to GitHub Actions. Th
 
 ## Migration Status
 
-**Progress:** 2/52 test tasks migrated (Phase 1B POC)
+**Progress:** 7/52 test tasks migrated (Phase 1C - No-DB tests complete)
 
 ### Status Legend
 - ✅ **Migrated** - Running in GitHub Actions
@@ -47,12 +47,12 @@ Uses pattern: `run-go-test-suite`
 
 | Task Name | Status | GHA Job Name | Notes |
 |-----------|--------|--------------|-------|
-| test-agent-internal-client | ⬜ | `test-agent-internal-client` | |
-| test-agent-internal-taskoutput | ⬜ | `test-agent-internal-taskoutput` | |
-| test-agent-util | ⬜ | `test-agent-util` | |
-| test-cloud-userdata | ⬜ | `test-cloud-userdata` | |
-| test-thirdparty-docker | ⬜ | `test-thirdparty-docker` | |
-| test-util | 🚧 | `test-util` | Simple test, good starting point - POC test |
+| test-agent-internal-client | ✅ | `test-agent-internal-client` | |
+| test-agent-internal-taskoutput | ✅ | `test-agent-internal-taskoutput` | |
+| test-agent-util | ✅ | `test-agent-util` | |
+| test-cloud-userdata | ✅ | `test-cloud-userdata` | |
+| test-thirdparty-docker | ✅ | `test-thirdparty-docker` | |
+| test-util | ✅ | `test-util` | Simple test, good starting point - POC test |
 
 ### DB Tests (43 tasks)
 Uses pattern: `run-go-test-suite-with-mongodb`
@@ -65,7 +65,7 @@ Uses pattern: `run-go-test-suite-with-mongodb`
 | test-auth | ⬜ | `test-auth` | |
 | test-cloud-parameterstore | ⬜ | `test-cloud-parameterstore` | |
 | test-cloud-parameterstore-fakeparameter | ⬜ | `test-cloud-parameterstore-fakeparameter` | |
-| test-db | 🚧 | `test-db` | Simple DB test, good for validating MongoDB setup - POC test |
+| test-db | ✅ | `test-db` | Simple DB test, good for validating MongoDB setup - POC test |
 | test-evergreen | ⬜ | `test-evergreen` | |
 | test-model | ⬜ | `test-model` | |
 | test-model-alertrecord | ⬜ | `test-model-alertrecord` | |
@@ -259,14 +259,14 @@ If GitHub Actions migration causes issues:
 - [x] Create 4 reusable composite actions
 - [x] Create skeleton workflow file
 
-### Phase 1B: Proof of Concept (Current)
+### Phase 1B: Proof of Concept
 - [x] Migrate 1 no-db test (`test-util`)
-- [ ] Validate test execution and results
+- [x] Validate test execution and results
 - [x] Migrate 1 db test (`test-db`)
-- [ ] Validate MongoDB setup
+- [x] Validate MongoDB setup
 
-### Phase 1C: Scale Up
-- [ ] Migrate remaining 5 no-db tests
+### Phase 1C: Scale Up (Current)
+- [x] Migrate remaining 5 no-db tests
 - [ ] Migrate remaining 42 db tests
 - [ ] Handle special cases (timezone tests)
 
