@@ -94,7 +94,7 @@ type Settings struct {
 	LogPath          string       `yaml:"log_path" bson:"log_path" json:"log_path"`
 	Notify           NotifyConfig `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	// OldestAllowedCLIVersion represents the oldest CLI version that a user can have installed locally. If this field is non-empty, and a user's
-	// binary is older than this version, their CLI will prompt them to update before they can continue.
+	// binary is older than this version, their CLI will prompt them to update before they can continue
 	OldestAllowedCLIVersion string                    `yaml:"oldest_allowed_cli_version" bson:"oldest_allowed_cli_version" json:"oldest_allowed_cli_version"`
 	Overrides               OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
 	ParameterStore          ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
