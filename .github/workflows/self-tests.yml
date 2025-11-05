@@ -35,17 +35,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
-          # AWS credentials would go here - using secrets or OIDC
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -66,17 +56,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
-          # AWS credentials would go here - using secrets or OIDC
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -104,16 +84,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -134,16 +105,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -164,16 +126,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -194,16 +147,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -224,16 +168,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -258,16 +193,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -291,16 +217,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -324,16 +241,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -357,16 +265,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -390,16 +289,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -423,16 +313,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -456,16 +337,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -489,16 +361,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -522,16 +385,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -555,16 +409,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -588,16 +433,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -621,16 +457,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -654,16 +481,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -687,16 +505,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -720,16 +529,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -753,16 +553,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -786,16 +577,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -819,16 +601,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -852,16 +625,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -885,16 +649,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -918,16 +673,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -951,16 +697,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -984,16 +721,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1017,16 +745,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1050,16 +769,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1083,16 +793,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1116,16 +817,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1149,16 +841,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1182,16 +865,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1215,16 +889,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1248,16 +913,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1281,16 +937,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1314,16 +961,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1347,16 +985,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1380,16 +1009,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1413,16 +1033,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1446,16 +1057,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1479,16 +1081,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1512,16 +1105,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1545,16 +1129,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1578,16 +1153,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1611,16 +1177,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1651,16 +1208,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1686,16 +1234,7 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        with:
-          github_app_id: ${{ secrets.STAGING_GITHUB_APP_ID }}
-          github_app_key: ${{ secrets.STAGING_GITHUB_APP_KEY }}
-          jira_server: ${{ secrets.JIRA_SERVER }}
-          jira_token: ${{ secrets.JIRA_PERSONAL_ACCESS_TOKEN }}
-          crowd_server: ${{ secrets.CROWD_SERVER }}
-          papertrail_key_id: ${{ secrets.PAPERTRAIL_KEY_ID }}
-          papertrail_secret_key: ${{ secrets.PAPERTRAIL_SECRET_KEY }}
-          runtime_env_base_url: ${{ secrets.RUNTIME_ENVIRONMENTS_BASE_URL }}
-          runtime_env_api_key: ${{ secrets.RUNTIME_ENVIRONMENTS_API_KEY }}
+        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
