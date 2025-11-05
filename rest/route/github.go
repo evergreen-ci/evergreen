@@ -739,7 +739,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	}
 	baseBranch := pr.Base.GetRef()
 	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseOwnerRepo[0],
-		baseOwnerRepo[1], pr.Base.GetRef(), calledBy)
+		baseOwnerRepo[1], baseBranch, calledBy)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref for patch")
 	}
