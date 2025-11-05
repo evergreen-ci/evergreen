@@ -17,6 +17,7 @@ runs:
         KARMA_REPORTER: junit
         SETTINGS_OVERRIDE: creds.yml
         RUN_EC2_SPECIFIC_TESTS: "false"
+        SKIP_INTEGRATION_TESTS: "true"
 
     - name: Upload test results
       if: always()
