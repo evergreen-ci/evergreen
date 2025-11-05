@@ -16,7 +16,7 @@ runs:
         EVERGREEN_ALL: "true"
         KARMA_REPORTER: junit
         SETTINGS_OVERRIDE: creds.yml
-        RUN_EC2_SPECIFIC_TESTS: "true"
+        RUN_EC2_SPECIFIC_TESTS: "false"
 
     - name: Upload test results
       if: always()

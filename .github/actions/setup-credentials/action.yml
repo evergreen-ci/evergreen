@@ -5,51 +5,56 @@ inputs:
   github_app_id:
     description: 'GitHub App ID'
     required: false
-    default: ''
+    default: '12345'
   github_app_key:
     description: 'GitHub App Private Key'
     required: false
-    default: ''
+    default: |
+      -----BEGIN RSA PRIVATE KEY-----
+      MIIEowIBAAKCAQEA0Z6C3J8K3aFxV6v9xQJZKxFQ5jlPm6PK3xWaL8cYgT7OOeRG
+      dummykeyfordevelopmenttestingonlydummykeyfordevelopmenttestingonly
+      dummykeyfordevelopmenttestingonlydummykeyfordevelopmenttestingonly
+      -----END RSA PRIVATE KEY-----
   jira_server:
     description: 'Jira server URL'
     required: false
-    default: ''
+    default: 'https://jira.example.com'
   jira_token:
     description: 'Jira personal access token'
     required: false
-    default: ''
+    default: 'dummy-jira-token-12345'
   crowd_server:
     description: 'Crowd server URL'
     required: false
-    default: ''
+    default: 'https://crowd.example.com'
   papertrail_key_id:
     description: 'Papertrail key ID'
     required: false
-    default: ''
+    default: 'dummy-papertrail-key-id'
   papertrail_secret_key:
     description: 'Papertrail secret key'
     required: false
-    default: ''
+    default: 'dummy-papertrail-secret-key'
   runtime_env_base_url:
     description: 'Runtime environments base URL'
     required: false
-    default: ''
+    default: 'https://runtime-env.example.com'
   runtime_env_api_key:
     description: 'Runtime environments API key'
     required: false
-    default: ''
+    default: 'dummy-runtime-env-api-key'
   aws_access_key_id:
     description: 'AWS access key ID'
     required: false
-    default: ''
+    default: 'AKIADUMMYAWSACCESSKEY'
   aws_secret_access_key:
     description: 'AWS secret access key'
     required: false
-    default: ''
+    default: 'dummyAwsSecretAccessKey1234567890abcdef'
   aws_session_token:
     description: 'AWS session token'
     required: false
-    default: ''
+    default: 'dummyAwsSessionToken'
 
 runs:
   using: 'composite'
