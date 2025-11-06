@@ -1,25 +1,18 @@
 name: Self-Tests (GitHub Actions Migration)
 
-# This is a PARALLEL migration - does NOT replace Evergreen self-tests.yml
-# Both systems will run simultaneously during the migration period.
-# See docs/github-actions-migration.md for full migration plan.
 
 on:
   push:
     branches: [ main, migrate-to-github-actions ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
 
-# Cancel in-progress runs for the same PR/branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ============================================================================
-  # PHASE 1B: PROOF OF CONCEPT (2 tests)
-  # ============================================================================
 
   test-util:
     name: test-util
@@ -35,7 +28,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -56,7 +48,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -66,9 +57,6 @@ jobs:
         with:
           test_name: test-db
 
-  # ============================================================================
-  # PHASE 1C: REMAINING NO-DB TESTS (5 more)
-  # ============================================================================
 
   test-agent-internal-client:
     name: test-agent-internal-client
@@ -84,7 +72,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -105,7 +92,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -126,7 +112,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -147,7 +132,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
@@ -168,16 +152,12 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Run Test
         uses: ./.github/actions/run-test
         with:
           test_name: test-thirdparty-docker
 
-  # ============================================================================
-  # PHASE 1C: REMAINING DB TESTS (42 more)
-  # ============================================================================
 
   test-agent:
     name: test-agent
@@ -193,7 +173,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -217,7 +196,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -241,7 +219,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -265,7 +242,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -289,7 +265,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -313,7 +288,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -337,7 +311,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -361,7 +334,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -385,7 +357,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -409,7 +380,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -433,7 +403,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -457,7 +426,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -481,7 +449,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -505,7 +472,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -529,7 +495,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -553,7 +518,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -577,7 +541,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -601,7 +564,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -625,7 +587,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -649,7 +610,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -673,7 +633,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -697,7 +656,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -721,7 +679,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -745,7 +702,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -769,7 +725,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -793,7 +748,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -817,7 +771,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -841,7 +794,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -865,7 +817,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -889,7 +840,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -913,7 +863,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -937,7 +886,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -961,7 +909,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -985,7 +932,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1009,7 +955,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1033,7 +978,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1057,7 +1001,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1081,7 +1024,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1105,7 +1047,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1129,7 +1070,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1153,7 +1093,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1177,7 +1116,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1187,10 +1125,6 @@ jobs:
         with:
           test_name: test-validator
 
-  # ============================================================================
-  # PHASE 1C: SPECIAL TIMEZONE TESTS (2 more)
-  # ============================================================================
-  # These tests require TZ=America/New_York
 
   test-graphql:
     name: test-graphql
@@ -1208,7 +1142,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
@@ -1234,7 +1167,6 @@ jobs:
 
       - name: Setup Credentials
         uses: ./.github/actions/setup-credentials
-        # Using dummy default values from action (no secrets needed for now)
 
       - name: Setup MongoDB
         uses: ./.github/actions/setup-mongodb
