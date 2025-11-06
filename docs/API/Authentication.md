@@ -20,13 +20,15 @@ OAuth tokens can only be used when authenticating for evergreen.corp.mongodb.com
 curl -H "Authorization: Bearer $(evergreen client get-oauth-token)" https://evergreen.corp.mongodb.com/rest/v1/projects/my_private_project
 ```
 
+> Note, your session may be expired. You should run `evergreen login` to refresh your session before running the above command.
+
 #### Rest API v2
 
 ```bash
 curl -H "Authorization: Bearer $(evergreen client get-oauth-token)" https://evergreen.corp.mongodb.com/rest/v2/projects/my_private_project
 ```
 
-> Note, your session may be expired. You should run `evergreen auth` to refresh your session before running the above commands.
+> Note, your session may be expired. You should run `evergreen login` to refresh your session before running the above command.
 
 ## Static API Keys
 
