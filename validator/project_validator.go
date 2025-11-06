@@ -1539,7 +1539,7 @@ func validateCommands(section, taskName, tgName string, project *model.Project, 
 			})
 		}
 		if cmd.Function != "" && cmd.RetryOnFailure {
-			// kim: TODO: add unit test
+			// kim: TODO: test in staging
 			errs = append(errs, ValidationError{
 				Level:   Error,
 				Message: fmt.Sprintf("cannot specify retry_on_failure with function '%s'%s", cmd.Function, formattedTaskMsg),

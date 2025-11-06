@@ -3700,6 +3700,30 @@ tasks:
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldResemble, ValidationErrors{})
 		})
+		Convey("no error should be thrown if a command within a function specifies retry_on_failure", func() {
+			exampleYml := `
+tasks:
+- name: example_task
+  commands:
+  - func: my-func
+functions:
+  my-func:
+    - command: shell.exec
+      params:
+        script: echo test
+      retry_on_failure: true
+    - command: shell.exec
+      params:
+        script: echo test again
+`
+			proj := model.Project{}
+			pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
+			So(err, ShouldBeNil)
+			So(pp, ShouldNotBeNil)
+			So(proj, ShouldNotBeNil)
+			validationErrs := validatePluginCommands(&proj)
+			So(validationErrs, ShouldResemble, ValidationErrors{})
+		})
 		Convey("an error should be thrown if a function call specifies retry_on_failure", func() {
 			exampleYml := `
 tasks:
@@ -3720,8 +3744,9 @@ functions:
 			So(proj, ShouldNotBeNil)
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
-			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
-			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "cannot specify retry_on_failure with function 'my-func' for task 'example_task'")
+			errs := validationErrs.AtLevel(Error)
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "cannot specify retry_on_failure with function 'my-func' for task 'example_task'")
 		})
 		Convey("an error should return if a shell.exec command is missing a script", func() {
 			project := &model.Project{
