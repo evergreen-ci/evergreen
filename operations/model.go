@@ -611,6 +611,9 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 }
 
 func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communicator) (*oauth2.Token, string, error) {
+	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
+		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce in to your configuration file at '%s'", s.LoadedFrom)
+	}
 	return comm.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
 		dex.WithIssuer(s.OAuth.Issuer),
