@@ -611,13 +611,12 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 }
 
 func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communicator) (*oauth2.Token, string, error) {
-	token, path, err := comm.GetOAuthToken(ctx,
+	return comm.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),
 	)
-	return token, path, errors.Wrap(err, "getting OAuth token")
 }
 
 // SetOAuthToken sets the OAuth token for authentication.
