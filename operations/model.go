@@ -626,7 +626,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 		// The kanopy library caches tokens in a file. Sometimes, the tokens are expired and
 		// we need to remove the file to get a new token.
 		if path != "" {
-			if delErr := os.Remove(path); delErr != nil && os.IsNotExist(delErr) {
+			if delErr := os.Remove(path); delErr != nil && !os.IsNotExist(delErr) {
 				grip.Warning(errors.Wrap(delErr, "removing OAuth token file"))
 			}
 			token, path, err = s.getOAuthToken(ctx, comm)
