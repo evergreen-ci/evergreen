@@ -58,6 +58,7 @@ func buildApp() *cli.App {
 		operations.LastRevision(),
 		operations.Subscriptions(),
 		operations.Client(),
+		operations.PromptAuthentication(),
 
 		// Patch creation and management commands (top-level)
 		operations.Patch(),

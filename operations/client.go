@@ -105,9 +105,6 @@ func getOAuthToken() cli.Command {
 	return cli.Command{
 		Name:  "get-oauth-token",
 		Usage: "gets a valid OAuth token to authenticate with Evergreen's REST API",
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "silent", Usage: "suppress token output messages"},
-		},
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -127,9 +124,7 @@ func getOAuthToken() cli.Command {
 				return errors.Wrap(err, "setting OAuth token")
 			}
 
-			if !c.Bool("silent") {
-				fmt.Println(conf.OAuth.AccessToken)
-			}
+			fmt.Println(conf.OAuth.AccessToken)
 
 			return nil
 		},
