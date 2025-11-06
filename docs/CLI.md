@@ -622,7 +622,7 @@ evergreen last-green -p mci -v ubuntu
 
    Revision : 97ac269b1e5cf0961fce5bcf985f01c263911efb
     Message : EVG-795 no longer treat conflicting targets as system failures
-       Link : https://evergreen.mongodb.com/version/mci_97ac269b1e5cf0961fce5bcf985f01c263911efb
+       Link : https://evergreen.corp.mongodb.com/version/mci_97ac269b1e5cf0961fce5bcf985f01c263911efb
 
 ```
 
