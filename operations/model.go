@@ -19,6 +19,7 @@ import (
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -212,7 +213,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 			grip.Info(optOut)
 		}
 		if err := s.SetOAuthToken(ctx, c); err != nil {
-			return c, errors.Wrap(err, "setting OAuth token")
+			return c, errors.Wrap(err, "setting config OAuth token")
 		}
 		c.SetOAuth(s.OAuth.AccessToken)
 		c.SetAPIKey("")
@@ -609,16 +610,33 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }
 
-// SetOAuthToken sets the OAuth token for authentication.
-func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
+func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communicator) (*oauth2.Token, string, error) {
 	token, path, err := comm.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
 		dex.WithConnectorID(s.OAuth.ConnectorID),
 	)
+	return token, path, errors.Wrap(err, "getting OAuth token")
+}
+
+// SetOAuthToken sets the OAuth token for authentication.
+func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
+	token, path, err := s.getOAuthToken(ctx, comm)
 	if err != nil {
-		return errors.Wrap(err, "setting OAuth token")
+		// The kanopy library caches tokens in a file. Sometimes, the tokens are expired and
+		// we need to remove the file to get a new token.
+		if path != "" {
+			if delErr := os.Remove(path); delErr != nil && os.IsNotExist(delErr) {
+				grip.Warning(errors.Wrap(delErr, "removing OAuth token file"))
+			}
+			token, path, err = s.getOAuthToken(ctx, comm)
+			if err != nil {
+				return errors.Wrap(err, "getting OAuth token after removing token file")
+			}
+		} else {
+			return errors.Wrap(err, "getting OAuth token")
+		}
 	}
 
 	s.OAuth.AccessToken = token.AccessToken
