@@ -7,10 +7,10 @@ import (
 	"github.com/urfave/cli"
 )
 
-func PromptAuthentication() cli.Command {
+func Login() cli.Command {
 	return cli.Command{
-		Name:  "auth",
-		Usage: "forces the authentication flow to obtain a new OAuth token",
+		Name:  "login",
+		Usage: "authenticate the CLI with evergreen",
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
