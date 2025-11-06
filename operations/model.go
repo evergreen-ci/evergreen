@@ -623,7 +623,7 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communic
 func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
 	token, path, err := s.getOAuthToken(ctx, comm)
 	if err != nil {
-		// The kanopy library caches tokens in a file. Sometimes, the tokens are expired and
+		// The auth library caches tokens in a file. Sometimes, the tokens are expired and
 		// we need to remove the file to get a new token.
 		if path != "" {
 			if delErr := os.Remove(path); delErr != nil && !os.IsNotExist(delErr) {
