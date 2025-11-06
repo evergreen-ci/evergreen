@@ -116,9 +116,9 @@ between these blocks:
 - Process cleanup
 
 For a task that _is_ part of a task group, whether or not it cleans up between
-command blocks is determined by its `share_procs` configuration. If
-`share_procs` is false (or unset), the task will clean up processes in between
-these command blocks:
+command blocks is determined by its `share_processes` configuration. If
+`share_processes` is false (or unset), the task will clean up processes and
+Docker resources in between these command blocks:
 
 - `setup_group`
 - `setup_task`
@@ -130,9 +130,9 @@ these command blocks:
 - `teardown_group`
 - Process cleanup
 
-If `share_procs` is true, the task group will not clean up processes for the
-entire duration of the task. It will only clean up those processes once the
-entire task group is finished.
+If `share_processes` is true, the task group will not clean up processes or
+Docker resources during a task or in between tasks in that task group. It will
+only clean up those processes once the entire task group is finished.
 
 Check the Agent Logs on a task to see logs about the process cleanup.
 
