@@ -350,6 +350,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if err = j.buildTasksAndVariants(ctx, patchDoc, patchedProject); err != nil {
+		if strings.Contains(err.Error(), "compiling") && strings.Contains(err.Error(), "regex") {
+			j.gitHubError = invalidRegexPattern
+		}
 		return errors.Wrap(err, BuildTasksAndVariantsError)
 	}
 
@@ -410,6 +413,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if err = processTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {
 		if strings.Contains(err.Error(), noChildPatchTasksOrVariants) {
 			j.gitHubError = noChildPatchTasksOrVariants
+		} else if strings.Contains(err.Error(), "not authorized to submit patches on child project") {
+			j.gitHubError = insufficientChildPatchPermissions
 		}
 		return errors.Wrap(err, "processing trigger aliases")
 	}
@@ -418,6 +423,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		numCheckRuns := patchedProject.GetNumCheckRunsFromVariantTasks(patchDoc.VariantsTasks)
 		checkRunLimit := j.env.Settings().GitHubCheckRun.CheckRunLimit
 		if numCheckRuns > checkRunLimit {
+			j.gitHubError = checkRunLimitExceeded
 			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
 		}
 		catcher.Wrap(j.createGitHubSubscriptions(ctx, patchDoc), "creating GitHub PR patch subscriptions")
@@ -984,6 +990,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			"intent_type": j.IntentType,
 			"intent_id":   j.IntentID,
 		}))
+		j.gitHubError = gitHubPermissionDenied
 		return false, err
 	} else if !isMember {
 		grip.Debug(message.Fields{
