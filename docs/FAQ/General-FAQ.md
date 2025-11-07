@@ -38,4 +38,9 @@ Once Graphite finishes rebasing (which may happen automatically or may require t
 resolved), the CI test will run.
 
 If you're unsure about the state of your stacked PR, please check the PR in the Graphite UI instead of GitHub. The
-Graphite UI will provide helpful warnings/errors and advice on how to fix them.
+Graphite UI will provide helpful warnings/errors and advice on how to fix them. If you find that the PR is still not in
+a testable state, please make sure to also review [the Graphite docs](https://graphite.com/docs/merge-pull-requests) to
+understand how merging works with Graphite and make sure that you're following the intended workflows as described in
+the docs. Specifically if you merge through the GitHub UI, [automatic
+rebasing](https://graphite.com/docs/merge-pull-requests#automatic-rebasing) for your upstack PRs may not work properly,
+so it's highly recommended that you merge PRs through the Graphite UI rather than GitHub to avoid issues.
