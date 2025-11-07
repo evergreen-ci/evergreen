@@ -1742,7 +1742,7 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 
 	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
 	if err != nil {
-		return nil, client.TokenFilePath(), err
+		return nil, "", err
 	}
 	defer client.Close()
 
