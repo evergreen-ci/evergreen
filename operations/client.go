@@ -121,7 +121,7 @@ func getOAuthToken() cli.Command {
 			defer comm.Close()
 
 			if err = conf.SetOAuthToken(ctx, comm); err != nil {
-				return errors.Wrap(err, "setting OAuth token")
+				return errors.Wrap(err, "setting config OAuth token")
 			}
 
 			fmt.Println(conf.OAuth.AccessToken)

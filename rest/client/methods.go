@@ -1742,7 +1742,7 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 
 	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
 	if err != nil {
-		return nil, "", err
+		return nil, client.TokenFilePath(), err
 	}
 	defer client.Close()
 
@@ -1755,13 +1755,13 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 	// In this case, we need to run through the auth flow again without using
 	// the refresh token.
 	if !strings.Contains(err.Error(), refreshTokenClaimed) {
-		return nil, "", err
+		return nil, client.TokenFilePath(), err
 	}
 
 	// This client prevents the Dex client from using the refresh token.
 	client, err = dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderWithoutRefresh{loader}))...)
 	if err != nil {
-		return nil, "", err
+		return nil, client.TokenFilePath(), err
 	}
 	defer client.Close()
 
