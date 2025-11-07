@@ -134,22 +134,22 @@ jobs:
       TZ: ${{ matrix.timezone || '' }}
     
     steps:
-      - name: Checkout code
+      - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Setup Go Project
+      - name: Set up Go project
         uses: ./.github/actions/setup-go-project
         with:
           go-version: '1.24'
 
-      - name: Setup Credentials
+      - name: Set up credentials
         uses: ./.github/actions/setup-credentials
 
-      - name: Setup MongoDB
+      - name: Set up MongoDB
         if: matrix.needs_mongodb
         uses: ./.github/actions/setup-mongodb
 
-      - name: Run Test
+      - name: Run test
         uses: ./.github/actions/run-test
         with:
           test_name: ${{ matrix.test_name }}
