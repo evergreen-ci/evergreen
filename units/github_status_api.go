@@ -32,20 +32,24 @@ const (
 
 const (
 	// GitHub intent processing errors
-	ProjectDisabled             = "project was disabled"
-	PatchingDisabled            = "patching was disabled"
-	mergeQueueDisabled          = "merge queue disabled for project"
-	ignoredFiles                = "all patched files are ignored"
-	ignoredFilesForVariant      = "variant ignored due to path filtering"
-	invalidAlias                = "alias not found"
-	NoTasksOrVariants           = "no tasks/variants were configured"
-	noChildPatchTasksOrVariants = "no tasks/variants were configured for child patch"
-	GitHubInternalError         = "GitHub returned an error"
-	InvalidConfig               = "config file was invalid: sync with base branch & run `evergreen validate -p <project>`"
-	EmptyConfig                 = "config file was empty"
-	ProjectFailsValidation      = "project fails validation: sync with base branch & run `evergreen validate -p <project>`"
-	OtherErrors                 = "Evergreen error"
-	MergeBaseTooOld             = "merge base is too old"
+	ProjectDisabled                   = "project was disabled"
+	PatchingDisabled                  = "patching was disabled"
+	mergeQueueDisabled                = "merge queue disabled for project"
+	ignoredFiles                      = "all patched files are ignored"
+	ignoredFilesForVariant            = "variant ignored due to path filtering"
+	insufficientChildPatchPermissions = "insufficient permissions to submit patches on child project"
+	checkRunLimitExceeded             = "patch exceeds check run limit"
+	invalidRegexPattern               = "invalid regex in variant or task selector"
+	gitHubPermissionDenied            = "insufficient GitHub permissions"
+	invalidAlias                      = "alias not found"
+	NoTasksOrVariants                 = "no tasks/variants were configured"
+	noChildPatchTasksOrVariants       = "no tasks/variants were configured for child patch"
+	GitHubInternalError               = "GitHub returned an error"
+	InvalidConfig                     = "config file was invalid: sync with base branch & run `evergreen validate -p <project>`"
+	EmptyConfig                       = "config file was empty"
+	ProjectFailsValidation            = "project fails validation: sync with base branch & run `evergreen validate -p <project>`"
+	OtherErrors                       = "Evergreen error"
+	MergeBaseTooOld                   = "merge base is too old"
 )
 
 func init() {
