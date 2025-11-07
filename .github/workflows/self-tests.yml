@@ -13,1124 +13,126 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
-  test-util:
-    name: test-util
+  tests:
+    name: ${{ matrix.test_name }}
     runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-util
-
-  test-db:
-    name: test-db
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-db
-
-
-  test-agent-internal-client:
-    name: test-agent-internal-client
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-agent-internal-client
-
-  test-agent-internal-taskoutput:
-    name: test-agent-internal-taskoutput
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-agent-internal-taskoutput
-
-  test-agent-util:
-    name: test-agent-util
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-agent-util
-
-  test-cloud-userdata:
-    name: test-cloud-userdata
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-cloud-userdata
-
-  test-thirdparty-docker:
-    name: test-thirdparty-docker
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-thirdparty-docker
-
-
-  test-agent:
-    name: test-agent
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-agent
-
-  test-agent-command:
-    name: test-agent-command
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-agent-command
-
-  test-agent-internal:
-    name: test-agent-internal
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-agent-internal
-
-  test-auth:
-    name: test-auth
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-auth
-
-  test-cloud-parameterstore:
-    name: test-cloud-parameterstore
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-cloud-parameterstore
-
-  test-cloud-parameterstore-fakeparameter:
-    name: test-cloud-parameterstore-fakeparameter
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-cloud-parameterstore-fakeparameter
-
-  test-evergreen:
-    name: test-evergreen
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-evergreen
-
-  test-model:
-    name: test-model
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model
-
-  test-model-alertrecord:
-    name: test-model-alertrecord
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-alertrecord
-
-  test-model-annotations:
-    name: test-model-annotations
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-annotations
-
-  test-model-artifact:
-    name: test-model-artifact
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-artifact
-
-  test-model-build:
-    name: test-model-build
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-build
-
-  test-model-cache:
-    name: test-model-cache
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-cache
-
-  test-model-distro:
-    name: test-model-distro
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-distro
-
-  test-model-event:
-    name: test-model-event
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-event
-
-  test-model-githubapp:
-    name: test-model-githubapp
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-githubapp
-
-  test-model-host:
-    name: test-model-host
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-host
-
-  test-model-manifest:
-    name: test-model-manifest
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-manifest
-
-  test-model-notification:
-    name: test-model-notification
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-notification
-
-  test-model-parsley:
-    name: test-model-parsley
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-parsley
-
-  test-model-patch:
-    name: test-model-patch
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-patch
-
-  test-model-pod:
-    name: test-model-pod
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-pod
-
-  test-model-pod-definition:
-    name: test-model-pod-definition
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-pod-definition
-
-  test-model-pod-dispatcher:
-    name: test-model-pod-dispatcher
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-pod-dispatcher
-
-  test-model-task:
-    name: test-model-task
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-task
-
-  test-model-taskstats:
-    name: test-model-taskstats
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-taskstats
-
-  test-model-testlog:
-    name: test-model-testlog
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-testlog
-
-  test-model-testresult:
-    name: test-model-testresult
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-testresult
-
-  test-model-user:
-    name: test-model-user
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-model-user
-
-  test-operations:
-    name: test-operations
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-operations
-
-  test-plugin:
-    name: test-plugin
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-plugin
-
-  test-repotracker:
-    name: test-repotracker
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-repotracker
-
-  test-rest-client:
-    name: test-rest-client
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-rest-client
-
-  test-rest-data:
-    name: test-rest-data
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-rest-data
-
-  test-rest-model:
-    name: test-rest-model
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-rest-model
-
-  test-rest-route:
-    name: test-rest-route
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-rest-route
-
-  test-scheduler:
-    name: test-scheduler
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-scheduler
-
-  test-service:
-    name: test-service
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-service
-
-  test-thirdparty:
-    name: test-thirdparty
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-thirdparty
-
-  test-trigger:
-    name: test-trigger
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-trigger
-
-  test-units:
-    name: test-units
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-units
-
-  test-validator:
-    name: test-validator
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-validator
-
-
-  test-graphql:
-    name: test-graphql
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Tests without MongoDB
+          - test_name: test-util
+            needs_mongodb: false
+          - test_name: test-agent-internal-client
+            needs_mongodb: false
+          - test_name: test-agent-internal-taskoutput
+            needs_mongodb: false
+          - test_name: test-agent-util
+            needs_mongodb: false
+          - test_name: test-cloud-userdata
+            needs_mongodb: false
+          - test_name: test-thirdparty-docker
+            needs_mongodb: false
+          
+          # Tests with MongoDB
+          - test_name: test-db
+            needs_mongodb: true
+          - test_name: test-agent
+            needs_mongodb: true
+          - test_name: test-agent-command
+            needs_mongodb: true
+          - test_name: test-agent-internal
+            needs_mongodb: true
+          - test_name: test-auth
+            needs_mongodb: true
+          - test_name: test-cloud-parameterstore
+            needs_mongodb: true
+          - test_name: test-cloud-parameterstore-fakeparameter
+            needs_mongodb: true
+          - test_name: test-evergreen
+            needs_mongodb: true
+          - test_name: test-model
+            needs_mongodb: true
+          - test_name: test-model-alertrecord
+            needs_mongodb: true
+          - test_name: test-model-annotations
+            needs_mongodb: true
+          - test_name: test-model-artifact
+            needs_mongodb: true
+          - test_name: test-model-build
+            needs_mongodb: true
+          - test_name: test-model-cache
+            needs_mongodb: true
+          - test_name: test-model-distro
+            needs_mongodb: true
+          - test_name: test-model-event
+            needs_mongodb: true
+          - test_name: test-model-githubapp
+            needs_mongodb: true
+          - test_name: test-model-host
+            needs_mongodb: true
+          - test_name: test-model-manifest
+            needs_mongodb: true
+          - test_name: test-model-notification
+            needs_mongodb: true
+          - test_name: test-model-parsley
+            needs_mongodb: true
+          - test_name: test-model-patch
+            needs_mongodb: true
+          - test_name: test-model-pod
+            needs_mongodb: true
+          - test_name: test-model-pod-definition
+            needs_mongodb: true
+          - test_name: test-model-pod-dispatcher
+            needs_mongodb: true
+          - test_name: test-model-task
+            needs_mongodb: true
+          - test_name: test-model-taskstats
+            needs_mongodb: true
+          - test_name: test-model-testlog
+            needs_mongodb: true
+          - test_name: test-model-testresult
+            needs_mongodb: true
+          - test_name: test-model-user
+            needs_mongodb: true
+          - test_name: test-operations
+            needs_mongodb: true
+          - test_name: test-plugin
+            needs_mongodb: true
+          - test_name: test-repotracker
+            needs_mongodb: true
+          - test_name: test-rest-client
+            needs_mongodb: true
+          - test_name: test-rest-data
+            needs_mongodb: true
+          - test_name: test-rest-model
+            needs_mongodb: true
+          - test_name: test-rest-route
+            needs_mongodb: true
+          - test_name: test-scheduler
+            needs_mongodb: true
+          - test_name: test-service
+            needs_mongodb: true
+          - test_name: test-thirdparty
+            needs_mongodb: true
+          - test_name: test-trigger
+            needs_mongodb: true
+          - test_name: test-units
+            needs_mongodb: true
+          - test_name: test-validator
+            needs_mongodb: true
+          
+          # Tests with MongoDB and special timezone
+          - test_name: test-graphql
+            needs_mongodb: true
+            timezone: America/New_York
+          - test_name: test-service-graphql
+            needs_mongodb: true
+            timezone: America/New_York
+    
     env:
-      TZ: America/New_York
+      TZ: ${{ matrix.timezone || '' }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1144,34 +146,10 @@ jobs:
         uses: ./.github/actions/setup-credentials
 
       - name: Setup MongoDB
+        if: matrix.needs_mongodb
         uses: ./.github/actions/setup-mongodb
 
       - name: Run Test
         uses: ./.github/actions/run-test
         with:
-          test_name: test-graphql
-
-  test-service-graphql:
-    name: test-service-graphql
-    runs-on: ubuntu-22.04
-    env:
-      TZ: America/New_York
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go Project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Setup Credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Setup MongoDB
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run Test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: test-service-graphql
+          test_name: ${{ matrix.test_name }}
