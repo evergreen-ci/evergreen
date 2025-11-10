@@ -66,7 +66,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.8.0
 	golang.org/x/crypto v0.42.0
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/text v0.29.0
+	golang.org/x/text v0.30.0
 	golang.org/x/tools v0.37.0 // indirect
 	gonum.org/v1/gonum v0.16.0
 	google.golang.org/grpc v1.75.1
