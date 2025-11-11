@@ -365,7 +365,7 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 // splitPatchByFile parses a unified diff and splits it into individual file diffs.
 // Returns a map from file name to its diff content.
 func splitPatchByFile(fullPatch string) map[string]string {
-	if fullPatch == "" {
+	if fullPatch == "" || len(fullPatch) > patch.SizeLimit {
 		return map[string]string{}
 	}
 
