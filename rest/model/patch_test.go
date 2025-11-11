@@ -136,7 +136,7 @@ func TestAPIPatchBuildModuleChanges(t *testing.T) {
 		},
 	}
 	a := APIPatch{Id: utility.ToStringPtr("patch_id")}
-	a.buildModuleChanges(p, "")
+	a.buildModuleChanges(ctx, p, "")
 	require.Len(t, a.ModuleCodeChanges, 1)
 	assert.Len(t, a.ModuleCodeChanges[0].FileDiffs, 4)
 	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[0].DiffLink), "commit_number=0"), -1)
@@ -144,6 +144,324 @@ func TestAPIPatchBuildModuleChanges(t *testing.T) {
 	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[2].DiffLink), "commit_number=2"), -1)
 	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[3].DiffLink), "commit_number=3"), -1)
 
+}
+
+func TestAPIPatchBuildModuleChangesWithDiff(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	originalEnv := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	defer func() {
+		evergreen.SetEnvironment(originalEnv)
+	}()
+
+	// Create a multi-file unified diff
+	multiFileDiff := `diff --git a/file1.txt b/file1.txt
+index 1234..5678 100644
+--- a/file1.txt
++++ b/file1.txt
+@@ -1,3 +1,3 @@
+ line 1
+-old line in file1
++new line in file1
+ line 3
+diff --git a/file2.go b/file2.go
+index abcd..efgh 100644
+--- a/file2.go
++++ b/file2.go
+@@ -1,3 +1,3 @@
+ package main
+ 
+-func old() {}
++func new() {}
+`
+
+	p := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "test-module",
+				PatchSet: patch.PatchSet{
+					Patch: multiFileDiff,
+					Summary: []thirdparty.Summary{
+						{
+							Name:        "file1.txt",
+							Description: "Modified file1",
+							Additions:   1,
+							Deletions:   1,
+						},
+						{
+							Name:        "file2.go",
+							Description: "Modified file2",
+							Additions:   1,
+							Deletions:   1,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	a := APIPatch{Id: utility.ToStringPtr(p.Id.Hex())}
+	a.buildModuleChanges(ctx, p, "test-project")
+
+	require.Len(t, a.ModuleCodeChanges, 1)
+	assert.Equal(t, "test-module", utility.FromStringPtr(a.ModuleCodeChanges[0].BranchName))
+
+	require.Len(t, a.ModuleCodeChanges[0].FileDiffs, 2)
+
+	// Verify first file diff contains only file1.txt diff
+	fileDiff1 := a.ModuleCodeChanges[0].FileDiffs[0]
+	assert.Equal(t, "file1.txt", utility.FromStringPtr(fileDiff1.FileName))
+	assert.Equal(t, "Modified file1", fileDiff1.Description)
+	assert.Equal(t, 1, fileDiff1.Additions)
+	assert.Equal(t, 1, fileDiff1.Deletions)
+	assert.Contains(t, fileDiff1.Diff, "file1.txt")
+	assert.Contains(t, fileDiff1.Diff, "old line in file1")
+	assert.Contains(t, fileDiff1.Diff, "new line in file1")
+	assert.NotContains(t, fileDiff1.Diff, "file2.go", "file1's diff should not contain file2 content")
+	assert.NotNil(t, fileDiff1.DiffLink)
+
+	// Verify second file diff contains only file2.go diff
+	fileDiff2 := a.ModuleCodeChanges[0].FileDiffs[1]
+	assert.Equal(t, "file2.go", utility.FromStringPtr(fileDiff2.FileName))
+	assert.Equal(t, "Modified file2", fileDiff2.Description)
+	assert.Equal(t, 1, fileDiff2.Additions)
+	assert.Equal(t, 1, fileDiff2.Deletions)
+	assert.Contains(t, fileDiff2.Diff, "file2.go")
+	assert.Contains(t, fileDiff2.Diff, "func old()")
+	assert.Contains(t, fileDiff2.Diff, "func new()")
+	assert.NotContains(t, fileDiff2.Diff, "file1.txt", "file2's diff should not contain file1 content")
+	assert.NotNil(t, fileDiff2.DiffLink)
+}
+
+func TestAPIPatchBuildModuleChangesWithEmptyDiff(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	originalEnv := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	defer func() {
+		evergreen.SetEnvironment(originalEnv)
+	}()
+
+	p := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		Patches: []patch.ModulePatch{
+			{
+				PatchSet: patch.PatchSet{
+					Patch: "", // Empty diff
+					Summary: []thirdparty.Summary{
+						{
+							Name:        "file.txt",
+							Description: "Test file",
+							Additions:   1,
+							Deletions:   0,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	a := APIPatch{Id: utility.ToStringPtr(p.Id.Hex())}
+	a.buildModuleChanges(ctx, p, "test-project")
+
+	require.Len(t, a.ModuleCodeChanges, 1)
+	require.Len(t, a.ModuleCodeChanges[0].FileDiffs, 1)
+
+	// Verify that Diff field is populated even when empty
+	fileDiff := a.ModuleCodeChanges[0].FileDiffs[0]
+	assert.Equal(t, "", fileDiff.Diff)
+}
+
+func TestAPIPatchBuildModuleChangesMultipleModules(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	originalEnv := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	defer func() {
+		evergreen.SetEnvironment(originalEnv)
+	}()
+
+	// Create proper unified diffs for each module with multiple files
+	diff1 := `diff --git a/module1_file1.txt b/module1_file1.txt
+index 111..222 100644
+--- a/module1_file1.txt
++++ b/module1_file1.txt
+@@ -1,1 +1,1 @@
+-old content module 1 file 1
++new content module 1 file 1
+diff --git a/module1_file2.txt b/module1_file2.txt
+index 333..444 100644
+--- a/module1_file2.txt
++++ b/module1_file2.txt
+@@ -1,1 +1,1 @@
+-old content module 1 file 2
++new content module 1 file 2`
+
+	diff2 := `diff --git a/module2_file.go b/module2_file.go
+index aaa..bbb 100644
+--- a/module2_file.go
++++ b/module2_file.go
+@@ -1,3 +1,3 @@
+ package module2
+-func oldFunc() {}
++func newFunc() {}`
+
+	p := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "module1",
+				PatchSet: patch.PatchSet{
+					Patch: diff1,
+					Summary: []thirdparty.Summary{
+						{
+							Name:        "module1_file1.txt",
+							Description: "Module 1 file 1",
+							Additions:   1,
+							Deletions:   1,
+						},
+						{
+							Name:        "module1_file2.txt",
+							Description: "Module 1 file 2",
+							Additions:   1,
+							Deletions:   1,
+						},
+					},
+				},
+			},
+			{
+				ModuleName: "module2",
+				PatchSet: patch.PatchSet{
+					Patch: diff2,
+					Summary: []thirdparty.Summary{
+						{
+							Name:        "module2_file.go",
+							Description: "Module 2 file",
+							Additions:   1,
+							Deletions:   1,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	a := APIPatch{Id: utility.ToStringPtr(p.Id.Hex())}
+	a.buildModuleChanges(ctx, p, "test-project")
+
+	require.Len(t, a.ModuleCodeChanges, 2)
+
+	// Verify first module has 2 files with properly split diffs
+	assert.Equal(t, "module1", utility.FromStringPtr(a.ModuleCodeChanges[0].BranchName))
+	require.Len(t, a.ModuleCodeChanges[0].FileDiffs, 2)
+
+	file1Diff := a.ModuleCodeChanges[0].FileDiffs[0]
+	assert.Contains(t, file1Diff.Diff, "module1_file1.txt")
+	assert.Contains(t, file1Diff.Diff, "old content module 1 file 1")
+	assert.NotContains(t, file1Diff.Diff, "module1_file2.txt", "file1's diff should not contain file2")
+
+	file2Diff := a.ModuleCodeChanges[0].FileDiffs[1]
+	assert.Contains(t, file2Diff.Diff, "module1_file2.txt")
+	assert.Contains(t, file2Diff.Diff, "old content module 1 file 2")
+	assert.NotContains(t, file2Diff.Diff, "module1_file1.txt", "file2's diff should not contain file1")
+
+	// Verify second module has properly split diff
+	assert.Equal(t, "module2", utility.FromStringPtr(a.ModuleCodeChanges[1].BranchName))
+	require.Len(t, a.ModuleCodeChanges[1].FileDiffs, 1)
+
+	module2Diff := a.ModuleCodeChanges[1].FileDiffs[0]
+	assert.Contains(t, module2Diff.Diff, "module2_file.go")
+	assert.Contains(t, module2Diff.Diff, "func oldFunc()")
+	assert.NotContains(t, module2Diff.Diff, "module1", "module2's diff should not contain module1 content")
+}
+
+func TestAPIPatchBuildModuleChangesWithRenamedFiles(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	originalEnv := evergreen.GetEnvironment()
+	env := testutil.NewEnvironment(ctx, t)
+	evergreen.SetEnvironment(env)
+	defer func() {
+		evergreen.SetEnvironment(originalEnv)
+	}()
+
+	diffWithRename := `diff --git a/config.yml b/config.yml
+index 1234..5678 100644
+--- a/config.yml
++++ b/config.yml
+@@ -1,2 +1,2 @@
+ name: myproject
+-version: 1.0
++version: 2.0
+diff --git a/old_handler.go b/new_handler.go
+similarity index 85%
+rename from old_handler.go
+rename to new_handler.go
+index abcd..efgh 100644
+--- a/old_handler.go
++++ b/new_handler.go
+@@ -1,5 +1,5 @@
+ package main
+ 
+-func HandleOld() {
++func HandleNew() {
+     // handler code
+ }`
+
+	p := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "main-module",
+				PatchSet: patch.PatchSet{
+					Patch: diffWithRename,
+					Summary: []thirdparty.Summary{
+						{
+							Name:        "config.yml",
+							Description: "Updated version",
+							Additions:   1,
+							Deletions:   1,
+						},
+						{
+							Name:        "old_handler.go",
+							Description: "Renamed and modified handler",
+							Additions:   1,
+							Deletions:   1,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	a := APIPatch{Id: utility.ToStringPtr(p.Id.Hex())}
+	a.buildModuleChanges(ctx, p, "test-project")
+
+	require.Len(t, a.ModuleCodeChanges, 1)
+	require.Len(t, a.ModuleCodeChanges[0].FileDiffs, 2)
+
+	configDiff := a.ModuleCodeChanges[0].FileDiffs[0]
+	assert.Equal(t, "config.yml", utility.FromStringPtr(configDiff.FileName))
+	assert.Contains(t, configDiff.Diff, "config.yml")
+	assert.Contains(t, configDiff.Diff, "version: 1.0")
+	assert.Contains(t, configDiff.Diff, "version: 2.0")
+	assert.NotContains(t, configDiff.Diff, "rename", "config.yml diff should not contain rename info")
+	assert.NotContains(t, configDiff.Diff, "old_handler.go", "config.yml diff should not contain handler file")
+
+	handlerDiff := a.ModuleCodeChanges[0].FileDiffs[1]
+	assert.Equal(t, "old_handler.go", utility.FromStringPtr(handlerDiff.FileName))
+	assert.Contains(t, handlerDiff.Diff, "old_handler.go")
+	assert.Contains(t, handlerDiff.Diff, "new_handler.go")
+	assert.Contains(t, handlerDiff.Diff, "rename from old_handler.go")
+	assert.Contains(t, handlerDiff.Diff, "rename to new_handler.go")
+	assert.Contains(t, handlerDiff.Diff, "HandleOld")
+	assert.Contains(t, handlerDiff.Diff, "HandleNew")
+	assert.NotContains(t, handlerDiff.Diff, "config.yml", "handler diff should not contain config file")
 }
 
 func TestGithubPatch(t *testing.T) {
@@ -215,6 +533,146 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
 	assert.Len(a.DownstreamTasks[0].Tasks, 2)
 	assert.Len(a.DownstreamTasks[0].VariantTasks, 1)
+}
+
+func TestSplitPatchByFile(t *testing.T) {
+	t.Run("MultipleFiles", func(t *testing.T) {
+		multiFileDiff := `diff --git a/file1.go b/file1.go
+index 1234..5678 100644
+--- a/file1.go
++++ b/file1.go
+@@ -1,3 +1,3 @@
+ package main
+-func old1() {}
++func new1() {}
+diff --git a/file2.go b/file2.go
+index abcd..efgh 100644
+--- a/file2.go
++++ b/file2.go
+@@ -1,3 +1,3 @@
+ package test
+-func old2() {}
++func new2() {}`
+
+		result := splitPatchByFile(multiFileDiff)
+
+		require.Len(t, result, 2)
+
+		// Check file1.go diff
+		assert.Contains(t, result, "file1.go")
+		file1Diff := result["file1.go"]
+		assert.Contains(t, file1Diff, "file1.go")
+		assert.Contains(t, file1Diff, "func old1()")
+		assert.Contains(t, file1Diff, "func new1()")
+		assert.NotContains(t, file1Diff, "file2.go")
+
+		// Check file2.go diff
+		assert.Contains(t, result, "file2.go")
+		file2Diff := result["file2.go"]
+		assert.Contains(t, file2Diff, "file2.go")
+		assert.Contains(t, file2Diff, "func old2()")
+		assert.Contains(t, file2Diff, "func new2()")
+		assert.NotContains(t, file2Diff, "file1.go")
+	})
+
+	t.Run("EmptyPatch", func(t *testing.T) {
+		result := splitPatchByFile("")
+		assert.Empty(t, result)
+	})
+
+	t.Run("NewFile", func(t *testing.T) {
+		newFileDiff := `diff --git a/newfile.go b/newfile.go
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/newfile.go
+@@ -0,0 +1,3 @@
++package main
++
++func newFunc() {}`
+
+		result := splitPatchByFile(newFileDiff)
+
+		require.Len(t, result, 1)
+		assert.Contains(t, result, "newfile.go")
+		assert.Contains(t, result["newfile.go"], "newfile.go")
+		assert.Contains(t, result["newfile.go"], "func newFunc()")
+	})
+
+	t.Run("PathWithDirectories", func(t *testing.T) {
+		diffWithPath := `diff --git a/path/to/file.go b/path/to/file.go
+index 1234..5678 100644
+--- a/path/to/file.go
++++ b/path/to/file.go
+@@ -1,1 +1,1 @@
+-old
++new`
+
+		result := splitPatchByFile(diffWithPath)
+
+		require.Len(t, result, 1)
+		assert.Contains(t, result, "path/to/file.go")
+		assert.Contains(t, result["path/to/file.go"], "path/to/file.go")
+	})
+
+	t.Run("RenamedFile", func(t *testing.T) {
+		// Git shows renames with "rename from/to" in the diff
+		renamedFileDiff := `diff --git a/old_name.go b/new_name.go
+similarity index 95%
+rename from old_name.go
+rename to new_name.go
+index 1234567..abcdefg 100644
+--- a/old_name.go
++++ b/new_name.go
+@@ -1,3 +1,3 @@
+ package main
+-func oldFunc() {}
++func newFunc() {}`
+
+		result := splitPatchByFile(renamedFileDiff)
+
+		require.Len(t, result, 1)
+		assert.Contains(t, result, "old_name.go")
+		assert.Contains(t, result["old_name.go"], "rename from old_name.go")
+		assert.Contains(t, result["old_name.go"], "rename to new_name.go")
+	})
+
+	t.Run("MultipleFilesWithRename", func(t *testing.T) {
+		multipleWithRename := `diff --git a/file1.go b/file1.go
+index 1111..2222 100644
+--- a/file1.go
++++ b/file1.go
+@@ -1,1 +1,1 @@
+-old content 1
++new content 1
+diff --git a/old_file.txt b/new_file.txt
+similarity index 100%
+rename from old_file.txt
+rename to new_file.txt
+diff --git a/file3.go b/file3.go
+index 3333..4444 100644
+--- a/file3.go
++++ b/file3.go
+@@ -1,1 +1,1 @@
+-old content 3
++new content 3`
+
+		result := splitPatchByFile(multipleWithRename)
+
+		require.Len(t, result, 3)
+
+		assert.Contains(t, result, "file1.go")
+		assert.Contains(t, result["file1.go"], "old content 1")
+		assert.NotContains(t, result["file1.go"], "rename")
+
+		assert.Contains(t, result, "old_file.txt")
+		assert.Contains(t, result["old_file.txt"], "rename from old_file.txt")
+		assert.Contains(t, result["old_file.txt"], "rename to new_file.txt")
+
+		assert.Contains(t, result, "file3.go")
+		assert.Contains(t, result["file3.go"], "old content 3")
+		assert.NotContains(t, result["file3.go"], "rename")
+	})
 }
 
 func TestPreselectedDisplayTasks(t *testing.T) {

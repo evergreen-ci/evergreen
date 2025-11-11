@@ -163,6 +163,7 @@ type FileDiff {
   additions: Int!
   deletions: Int!
   description: String!
+  diff: String!
   diffLink: String!
   fileName: String!
 }
