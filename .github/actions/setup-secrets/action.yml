@@ -1,0 +1,48 @@
+name: 'Setup Secrets'
+description: 'Configure AWS credentials via OIDC and retrieve repository secrets from AWS Secrets Manager.'
+
+outputs:
+  secrets-configured:
+    description: 'Whether secrets were successfully configured.'
+    value: ${{ steps.mark-configured.outputs.secrets-configured }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: AWS OIDC – scoped to the calling repo
+      uses: aws-actions/configure-aws-credentials@v5
+      with:
+        aws-region: us-east-1
+        role-to-assume: arn:aws:iam::538830382384:role/evergreen-self-tests
+        inline-session-policy: >-
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "secretsmanager:GetSecretValue",
+                  "secretsmanager:DescribeSecret"
+                ],
+                "Resource": "arn:aws:secretsmanager:*:538830382384:secret:${{ github.repository }}/*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "secretsmanager:ListSecrets",
+                "Resource": "*"
+              }
+            ]
+          }
+
+    - name: Read secret(s)
+      id: fetch-secrets
+      uses: aws-actions/aws-secretsmanager-get-secrets@v2
+      with:
+        secret-ids: |
+          ${{ github.repository }}/*
+
+    - name: Mark secrets as configured
+      id: mark-configured
+      shell: bash
+      run: echo "secrets-configured=true" >> "$GITHUB_OUTPUT"
+
