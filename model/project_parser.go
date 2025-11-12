@@ -790,17 +790,18 @@ const (
 )
 
 type GetProjectOpts struct {
-	Ref                 *ProjectRef
-	PatchOpts           *PatchOpts
-	LocalModules        map[string]string
-	RemotePath          string
-	Revision            string
-	ReadFileFrom        string
-	Identifier          string
-	UnmarshalStrict     bool
-	LocalModuleIncludes []patch.LocalModuleInclude
-	ReferencePatchID    string
-	ReferenceManifestID string
+	Ref                       *ProjectRef
+	PatchOpts                 *PatchOpts
+	LocalModules              map[string]string
+	RemotePath                string
+	Revision                  string
+	ReadFileFrom              string
+	Identifier                string
+	UnmarshalStrict           bool
+	LocalModuleIncludes       []patch.LocalModuleInclude
+	ReferencePatchID          string
+	ReferenceManifestID       string
+	AutoUpdateModuleRevisions map[string]string
 }
 
 type PatchOpts struct {
@@ -907,6 +908,13 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Revision:     module.Branch,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
+	}
+
+	if opts.AutoUpdateModuleRevisions != nil {
+		if revision, ok := opts.AutoUpdateModuleRevisions[include.Module]; ok {
+			moduleOpts.Revision = revision
+			return retrieveFile(ctx, moduleOpts)
+		}
 	}
 
 	// If a reference manifest is provided, use the module revision from the manifest.
