@@ -516,6 +516,19 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		return errors.Wrap(err, "making block device mappings")
 	}
 
+	// Ensure root volume encryption if enabled
+	// Defaults to true for spawn hosts (workstations), false for task hosts
+	if ec2Settings.shouldEncryptRootVolume(h.UserHost) {
+		blockDevices = ensureRootVolumeEncryptionTemplate(blockDevices, true)
+		grip.Info(message.Fields{
+			"message":         "creating launch template with encrypted root volume",
+			"host_id":         h.Id,
+			"distro":          h.Distro.Id,
+			"user_host":       h.UserHost,
+			"root_encryption": true,
+		})
+	}
+
 	launchTemplate := &types.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),

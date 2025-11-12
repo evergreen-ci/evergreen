@@ -83,6 +83,21 @@ type EC2ProviderSettings struct {
 	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
 	// IP addresses.
 	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled,omitempty" bson:"elastic_ips_enabled,omitempty"`
+
+	// HibernationEnabled enables hibernation for the instance.
+	// When enabled, the instance can be stopped and will preserve RAM state to the root EBS volume.
+	// Requirements:
+	// - Root volume must be encrypted
+	// - Instance RAM must fit in root volume space
+	// - Only supported on certain instance types
+	// See: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernation-prerequisites.html
+	HibernationEnabled bool `mapstructure:"hibernation_enabled" json:"hibernation_enabled,omitempty" bson:"hibernation_enabled,omitempty"`
+
+	// EncryptRootVolume enables encryption for the root EBS volume.
+	// If nil, defaults to true for spawn hosts (workstations) and false for task hosts.
+	// Encryption is required for hibernation and is free with no performance impact.
+	// Explicitly set to true to encrypt task hosts, or false to disable encryption for spawn hosts.
+	EncryptRootVolume *bool `mapstructure:"encrypt_root_volume" json:"encrypt_root_volume,omitempty" bson:"encrypt_root_volume,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -115,6 +130,13 @@ func (s *EC2ProviderSettings) Validate() error {
 	if s.UserData != "" {
 		_, err = parseUserData(s.UserData)
 		catcher.Wrap(err, "user data is malformed")
+	}
+
+	if s.HibernationEnabled {
+		// Hibernation requires an encrypted root volume
+		if s.EncryptRootVolume != nil && !*s.EncryptRootVolume {
+			catcher.New("hibernation requires an encrypted root volume, but encrypt_root_volume is set to false")
+		}
 	}
 
 	return catcher.Resolve()
@@ -161,6 +183,18 @@ func (s *EC2ProviderSettings) getRegion() string {
 		return s.Region
 	}
 	return evergreen.DefaultEC2Region
+}
+
+// shouldEncryptRootVolume returns true if root volume encryption should be enabled.
+// For spawn hosts (workstations), defaults to true for security.
+// For task hosts, defaults to false to maintain backwards compatibility.
+func (s *EC2ProviderSettings) shouldEncryptRootVolume(isUserHost bool) bool {
+	if s.EncryptRootVolume != nil {
+		// Explicit setting takes precedence
+		return *s.EncryptRootVolume
+	}
+	// Default behavior: encrypt spawn hosts, don't encrypt task hosts
+	return isUserHost
 }
 
 const (
@@ -247,9 +281,109 @@ func (m *ec2Manager) setupClient(ctx context.Context) error {
 	return m.client.Create(ctx, m.role, m.region)
 }
 
+// ensureRootVolumeEncryption ensures the root volume is encrypted in block device mappings.
+// The root device is typically at index 0, but we use a heuristic to find it.
+// If encryption is enabled and no root device mapping exists, we create one.
+func ensureRootVolumeEncryption(blockDevices []types.BlockDeviceMapping, encrypt bool) []types.BlockDeviceMapping {
+	if !encrypt {
+		return blockDevices
+	}
+
+	// Common root device names
+	rootDeviceNames := []string{"/dev/xvda", "/dev/sda1", "/dev/sda"}
+
+	// Check if any existing block device is likely the root device
+	foundRoot := false
+	for i := range blockDevices {
+		if blockDevices[i].DeviceName != nil {
+			deviceName := *blockDevices[i].DeviceName
+			for _, rootName := range rootDeviceNames {
+				if deviceName == rootName {
+					foundRoot = true
+					// Ensure encryption is set on the root device
+					if blockDevices[i].Ebs != nil {
+						blockDevices[i].Ebs.Encrypted = aws.Bool(true)
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// If no root device found in explicit mappings, add one for the most common root device
+	// AWS will use this to override the AMI's root volume settings
+	if !foundRoot && len(blockDevices) >= 0 {
+		rootMapping := types.BlockDeviceMapping{
+			DeviceName: aws.String("/dev/xvda"), // Most common root device name
+			Ebs: &types.EbsBlockDevice{
+				Encrypted: aws.Bool(true),
+				// Don't set VolumeSize or VolumeType - let it inherit from AMI
+				// Only override encryption setting
+			},
+		}
+		blockDevices = append([]types.BlockDeviceMapping{rootMapping}, blockDevices...)
+	}
+
+	return blockDevices
+}
+
+// ensureRootVolumeEncryptionTemplate is the launch template equivalent of ensureRootVolumeEncryption.
+func ensureRootVolumeEncryptionTemplate(blockDevices []types.LaunchTemplateBlockDeviceMappingRequest, encrypt bool) []types.LaunchTemplateBlockDeviceMappingRequest {
+	if !encrypt {
+		return blockDevices
+	}
+
+	// Common root device names
+	rootDeviceNames := []string{"/dev/xvda", "/dev/sda1", "/dev/sda"}
+
+	// Check if any existing block device is likely the root device
+	foundRoot := false
+	for i := range blockDevices {
+		if blockDevices[i].DeviceName != nil {
+			deviceName := *blockDevices[i].DeviceName
+			for _, rootName := range rootDeviceNames {
+				if deviceName == rootName {
+					foundRoot = true
+					// Ensure encryption is set on the root device
+					if blockDevices[i].Ebs != nil {
+						blockDevices[i].Ebs.Encrypted = aws.Bool(true)
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// If no root device found in explicit mappings, add one for the most common root device
+	if !foundRoot && len(blockDevices) >= 0 {
+		rootMapping := types.LaunchTemplateBlockDeviceMappingRequest{
+			DeviceName: aws.String("/dev/xvda"),
+			Ebs: &types.LaunchTemplateEbsBlockDeviceRequest{
+				Encrypted: aws.Bool(true),
+			},
+		}
+		blockDevices = append([]types.LaunchTemplateBlockDeviceMappingRequest{rootMapping}, blockDevices...)
+	}
+
+	return blockDevices
+}
+
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
 	ctx, span := tracer.Start(ctx, "spawnOnDemandHost")
 	defer span.End()
+
+	// Ensure root volume encryption if enabled
+	// Defaults to true for spawn hosts (workstations), false for task hosts
+	if ec2Settings.shouldEncryptRootVolume(h.UserHost) {
+		blockDevices = ensureRootVolumeEncryption(blockDevices, true)
+		grip.Info(message.Fields{
+			"message":             "spawning instance with encrypted root volume",
+			"host_id":             h.Id,
+			"distro":              h.Distro.Id,
+			"user_host":           h.UserHost,
+			"root_encryption":     true,
+		})
+	}
 
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int32(1),
@@ -308,6 +442,19 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 	if ec2Settings.Tenancy != "" {
 		input.Placement = &types.Placement{Tenancy: types.Tenancy(ec2Settings.Tenancy)}
+	}
+
+	if ec2Settings.HibernationEnabled {
+		input.HibernationOptions = &types.HibernationOptionsRequest{
+			Configured: aws.Bool(true),
+		}
+		grip.Info(message.Fields{
+			"message":           "spawning instance with hibernation enabled",
+			"host_id":           h.Id,
+			"distro":            h.Distro.Id,
+			"instance_type":     ec2Settings.InstanceType,
+			"hibernation":       true,
+		})
 	}
 
 	if ec2Settings.UserData != "" {
@@ -947,6 +1094,8 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 }
 
 // StopInstance stops a running EC2 instance.
+// If the instance was launched with hibernation enabled, it will hibernate
+// (preserving RAM state to EBS) instead of performing a normal stop.
 func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepOff bool, user string) error {
 	if !utility.StringSliceContains(evergreen.StoppableHostStatuses, h.Status) {
 		return errors.Errorf("host cannot be stopped because its status ('%s') is not a stoppable state", h.Status)
@@ -956,9 +1105,28 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		return errors.Wrap(err, "creating client")
 	}
 
-	out, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
+	// Check if hibernation is configured
+	ec2Settings := &EC2ProviderSettings{}
+	hibernationEnabled := false
+	if err := ec2Settings.FromDistroSettings(h.Distro, m.region); err == nil && ec2Settings.HibernationEnabled {
+		hibernationEnabled = true
+		grip.Info(message.Fields{
+			"message":     "stopping instance with hibernation",
+			"host_id":     h.Id,
+			"distro":      h.Distro.Id,
+			"user":        user,
+			"hibernation": true,
+		})
+	}
+
+	stopInput := &ec2.StopInstancesInput{
 		InstanceIds: []string{h.Id},
-	})
+	}
+	if hibernationEnabled {
+		stopInput.Hibernate = aws.Bool(true)
+	}
+
+	out, err := m.client.StopInstances(ctx, stopInput)
 	if err != nil {
 		return errors.Wrapf(err, "stopping EC2 instance '%s'", h.Id)
 	}
