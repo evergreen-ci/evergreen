@@ -908,7 +908,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 			patch: p,
 		},
 	}
-	
+
 	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
