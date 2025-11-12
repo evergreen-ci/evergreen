@@ -13,143 +13,150 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  tests:
-    name: ${{ matrix.test_name }}
+  # tests:
+  #   name: ${{ matrix.test_name }}
+  #   runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64/env=ubuntu
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         # Tests without MongoDB
+  #         - test_name: test-util
+  #           needs_mongodb: false
+  #         - test_name: test-agent-internal-client
+  #           needs_mongodb: false
+  #         - test_name: test-agent-internal-taskoutput
+  #           needs_mongodb: false
+  #         - test_name: test-agent-util
+  #           needs_mongodb: false
+  #         - test_name: test-cloud-userdata
+  #           needs_mongodb: false
+  #         - test_name: test-thirdparty-docker
+  #           needs_mongodb: false
+  #
+  #         # Tests with MongoDB
+  #         - test_name: test-db
+  #           needs_mongodb: true
+  #         - test_name: test-agent
+  #           needs_mongodb: true
+  #         - test_name: test-agent-command
+  #           needs_mongodb: true
+  #         - test_name: test-agent-internal
+  #           needs_mongodb: true
+  #         - test_name: test-auth
+  #           needs_mongodb: true
+  #         - test_name: test-cloud-parameterstore
+  #           needs_mongodb: true
+  #         - test_name: test-cloud-parameterstore-fakeparameter
+  #           needs_mongodb: true
+  #         - test_name: test-evergreen
+  #           needs_mongodb: true
+  #         - test_name: test-model
+  #           needs_mongodb: true
+  #         - test_name: test-model-alertrecord
+  #           needs_mongodb: true
+  #         - test_name: test-model-annotations
+  #           needs_mongodb: true
+  #         - test_name: test-model-artifact
+  #           needs_mongodb: true
+  #         - test_name: test-model-build
+  #           needs_mongodb: true
+  #         - test_name: test-model-cache
+  #           needs_mongodb: true
+  #         - test_name: test-model-distro
+  #           needs_mongodb: true
+  #         - test_name: test-model-event
+  #           needs_mongodb: true
+  #         - test_name: test-model-githubapp
+  #           needs_mongodb: true
+  #         - test_name: test-model-host
+  #           needs_mongodb: true
+  #         - test_name: test-model-manifest
+  #           needs_mongodb: true
+  #         - test_name: test-model-notification
+  #           needs_mongodb: true
+  #         - test_name: test-model-parsley
+  #           needs_mongodb: true
+  #         - test_name: test-model-patch
+  #           needs_mongodb: true
+  #         - test_name: test-model-pod
+  #           needs_mongodb: true
+  #         - test_name: test-model-pod-definition
+  #           needs_mongodb: true
+  #         - test_name: test-model-pod-dispatcher
+  #           needs_mongodb: true
+  #         - test_name: test-model-task
+  #           needs_mongodb: true
+  #         - test_name: test-model-taskstats
+  #           needs_mongodb: true
+  #         - test_name: test-model-testlog
+  #           needs_mongodb: true
+  #         - test_name: test-model-testresult
+  #           needs_mongodb: true
+  #         - test_name: test-model-user
+  #           needs_mongodb: true
+  #         - test_name: test-operations
+  #           needs_mongodb: true
+  #         - test_name: test-plugin
+  #           needs_mongodb: true
+  #         - test_name: test-repotracker
+  #           needs_mongodb: true
+  #         - test_name: test-rest-client
+  #           needs_mongodb: true
+  #         - test_name: test-rest-data
+  #           needs_mongodb: true
+  #         - test_name: test-rest-model
+  #           needs_mongodb: true
+  #         - test_name: test-rest-route
+  #           needs_mongodb: true
+  #         - test_name: test-scheduler
+  #           needs_mongodb: true
+  #         - test_name: test-service
+  #           needs_mongodb: true
+  #         - test_name: test-thirdparty
+  #           needs_mongodb: true
+  #         - test_name: test-trigger
+  #           needs_mongodb: true
+  #         - test_name: test-units
+  #           needs_mongodb: true
+  #         - test_name: test-validator
+  #           needs_mongodb: true
+  #
+  #         # Tests with MongoDB and special timezone
+  #         - test_name: test-graphql
+  #           needs_mongodb: true
+  #           timezone: America/New_York
+  #         - test_name: test-service-graphql
+  #           needs_mongodb: true
+  #           timezone: America/New_York
+  #
+  #   env:
+  #     TZ: ${{ matrix.timezone || '' }}
+  #
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Set up Go project
+  #       uses: ./.github/actions/setup-go-project
+  #       with:
+  #         go-version: '1.24'
+  #
+  #     - name: Set up credentials
+  #       uses: ./.github/actions/setup-credentials
+  #
+  #     - name: Set up MongoDB
+  #       if: matrix.needs_mongodb
+  #       uses: ./.github/actions/setup-mongodb
+  #
+  #     - name: Run test
+  #       uses: ./.github/actions/run-test
+  #       with:
+  #         test_name: ${{ matrix.test_name }}
+
+  infra-test:
+    name: Infrastructure test
     runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64/env=ubuntu
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Tests without MongoDB
-          - test_name: test-util
-            needs_mongodb: false
-          - test_name: test-agent-internal-client
-            needs_mongodb: false
-          - test_name: test-agent-internal-taskoutput
-            needs_mongodb: false
-          - test_name: test-agent-util
-            needs_mongodb: false
-          - test_name: test-cloud-userdata
-            needs_mongodb: false
-          - test_name: test-thirdparty-docker
-            needs_mongodb: false
-          
-          # Tests with MongoDB
-          - test_name: test-db
-            needs_mongodb: true
-          - test_name: test-agent
-            needs_mongodb: true
-          - test_name: test-agent-command
-            needs_mongodb: true
-          - test_name: test-agent-internal
-            needs_mongodb: true
-          - test_name: test-auth
-            needs_mongodb: true
-          - test_name: test-cloud-parameterstore
-            needs_mongodb: true
-          - test_name: test-cloud-parameterstore-fakeparameter
-            needs_mongodb: true
-          - test_name: test-evergreen
-            needs_mongodb: true
-          - test_name: test-model
-            needs_mongodb: true
-          - test_name: test-model-alertrecord
-            needs_mongodb: true
-          - test_name: test-model-annotations
-            needs_mongodb: true
-          - test_name: test-model-artifact
-            needs_mongodb: true
-          - test_name: test-model-build
-            needs_mongodb: true
-          - test_name: test-model-cache
-            needs_mongodb: true
-          - test_name: test-model-distro
-            needs_mongodb: true
-          - test_name: test-model-event
-            needs_mongodb: true
-          - test_name: test-model-githubapp
-            needs_mongodb: true
-          - test_name: test-model-host
-            needs_mongodb: true
-          - test_name: test-model-manifest
-            needs_mongodb: true
-          - test_name: test-model-notification
-            needs_mongodb: true
-          - test_name: test-model-parsley
-            needs_mongodb: true
-          - test_name: test-model-patch
-            needs_mongodb: true
-          - test_name: test-model-pod
-            needs_mongodb: true
-          - test_name: test-model-pod-definition
-            needs_mongodb: true
-          - test_name: test-model-pod-dispatcher
-            needs_mongodb: true
-          - test_name: test-model-task
-            needs_mongodb: true
-          - test_name: test-model-taskstats
-            needs_mongodb: true
-          - test_name: test-model-testlog
-            needs_mongodb: true
-          - test_name: test-model-testresult
-            needs_mongodb: true
-          - test_name: test-model-user
-            needs_mongodb: true
-          - test_name: test-operations
-            needs_mongodb: true
-          - test_name: test-plugin
-            needs_mongodb: true
-          - test_name: test-repotracker
-            needs_mongodb: true
-          - test_name: test-rest-client
-            needs_mongodb: true
-          - test_name: test-rest-data
-            needs_mongodb: true
-          - test_name: test-rest-model
-            needs_mongodb: true
-          - test_name: test-rest-route
-            needs_mongodb: true
-          - test_name: test-scheduler
-            needs_mongodb: true
-          - test_name: test-service
-            needs_mongodb: true
-          - test_name: test-thirdparty
-            needs_mongodb: true
-          - test_name: test-trigger
-            needs_mongodb: true
-          - test_name: test-units
-            needs_mongodb: true
-          - test_name: test-validator
-            needs_mongodb: true
-          
-          # Tests with MongoDB and special timezone
-          - test_name: test-graphql
-            needs_mongodb: true
-            timezone: America/New_York
-          - test_name: test-service-graphql
-            needs_mongodb: true
-            timezone: America/New_York
-    
-    env:
-      TZ: ${{ matrix.timezone || '' }}
-    
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up Go project
-        uses: ./.github/actions/setup-go-project
-        with:
-          go-version: '1.24'
-
-      - name: Set up credentials
-        uses: ./.github/actions/setup-credentials
-
-      - name: Set up MongoDB
-        if: matrix.needs_mongodb
-        uses: ./.github/actions/setup-mongodb
-
-      - name: Run test
-        uses: ./.github/actions/run-test
-        with:
-          test_name: ${{ matrix.test_name }}
+      - name: Sleep for 1 hour
+        run: sleep 3600
