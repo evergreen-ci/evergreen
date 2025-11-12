@@ -15,7 +15,7 @@ concurrency:
 jobs:
   tests:
     name: ${{ matrix.test_name }}
-    runs-on: ubuntu-22.04
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64/env=ubuntu
     strategy:
       fail-fast: false
       matrix:
