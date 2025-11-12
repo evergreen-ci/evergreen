@@ -13,7 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  secrets:
+    uses: ./.github/workflows/secrets.yml
+    permissions:
+      id-token: write
+      contents: read
+
   tests:
+    needs: secrets
     name: ${{ matrix.test_name }}
     runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64/env=ubuntu
     strategy:
