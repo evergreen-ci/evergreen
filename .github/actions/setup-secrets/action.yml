@@ -41,6 +41,20 @@ runs:
         secret-ids: |
           ${{ github.repository }}/*
 
+    - name: Strip repository prefix from secret names
+      shell: bash
+      run: |
+        # Calculate the repository prefix that AWS Secrets Manager action adds
+        REPO_PREFIX=$(echo "${{ github.repository }}" | tr '[:lower:]' '[:upper:]' | tr '/' '_' | tr '-' '_')_
+
+        # Export all secrets without the prefix
+        # IMPORTANT: Never echo secret values to avoid leaking them to logs
+        for var in $(compgen -v | grep "^${REPO_PREFIX}"); do
+          new_name="${var#$REPO_PREFIX}"
+          # Use indirect expansion to get value without echoing it
+          echo "${new_name}=${!var}" >> $GITHUB_ENV
+        done
+
     - name: Mark secrets as configured
       id: mark-configured
       shell: bash
