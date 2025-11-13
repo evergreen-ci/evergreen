@@ -149,24 +149,22 @@ jobs:
           echo "========== TEST FOO SECRET =========="
           echo "Testing secret 'foo' availability and value"
 
-          # Find variable ending in _FOO (case insensitive)
-          FOO_VAR=$(compgen -v | grep -i '_FOO$' | head -1)
-
-          if [ -z "$FOO_VAR" ]; then
-            echo "ERROR: No variable ending in '_FOO' found"
+          # Check for FOO variable directly (prefix should be stripped by setup-secrets action)
+          if [ -z "$FOO" ]; then
+            echo "ERROR: FOO variable not found"
             exit 1
           fi
 
-          echo "Found variable: $FOO_VAR"
+          echo "Found variable: FOO"
 
-          # Get the value using indirect expansion
-          FOO_VALUE="${!FOO_VAR}"
-
-          echo "Length of $FOO_VAR: ${#FOO_VALUE}"
-          if [ "$FOO_VALUE" = "bar" ]; then
-            echo "$FOO_VAR equals 'bar': true"
+          # Validate value without echoing the secret
+          # IMPORTANT: Never echo secret values to avoid leaking them to logs
+          if [ "$FOO" = "bar" ]; then
+            echo "FOO equals expected value: true"
           else
-            echo "$FOO_VAR equals 'bar': false"
+            echo "FOO equals expected value: false"
+            echo "ERROR: FOO does not equal expected value"
+            exit 1
           fi
           echo "====================================="
 
