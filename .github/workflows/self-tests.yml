@@ -148,11 +148,25 @@ jobs:
         run: |
           echo "========== TEST FOO SECRET =========="
           echo "Testing secret 'foo' availability and value"
-          echo "Length of foo secret: ${#foo}"
-          if [ "$foo" = "bar" ]; then
-            echo "foo equals 'bar': true"
+
+          # Find variable ending in _FOO (case insensitive)
+          FOO_VAR=$(compgen -v | grep -i '_FOO$' | head -1)
+
+          if [ -z "$FOO_VAR" ]; then
+            echo "ERROR: No variable ending in '_FOO' found"
+            exit 1
+          fi
+
+          echo "Found variable: $FOO_VAR"
+
+          # Get the value using indirect expansion
+          FOO_VALUE="${!FOO_VAR}"
+
+          echo "Length of $FOO_VAR: ${#FOO_VALUE}"
+          if [ "$FOO_VALUE" = "bar" ]; then
+            echo "$FOO_VAR equals 'bar': true"
           else
-            echo "foo equals 'bar': false"
+            echo "$FOO_VAR equals 'bar': false"
           fi
           echo "====================================="
 
