@@ -143,6 +143,19 @@ jobs:
       - name: Configure secrets
         uses: ./.github/actions/setup-secrets
 
+      - name: Test foo secret
+        shell: bash
+        run: |
+          echo "========== TEST FOO SECRET =========="
+          echo "Testing secret 'foo' availability and value"
+          echo "Length of foo secret: ${#foo}"
+          if [ "$foo" = "bar" ]; then
+            echo "foo equals 'bar': true"
+          else
+            echo "foo equals 'bar': false"
+          fi
+          echo "====================================="
+
       - name: Set up Go project
         uses: ./.github/actions/setup-go-project
         with:
