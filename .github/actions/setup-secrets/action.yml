@@ -51,8 +51,12 @@ runs:
         # IMPORTANT: Never echo secret values to avoid leaking them to logs
         for var in $(compgen -v | grep "^${REPO_PREFIX}"); do
           new_name="${var#$REPO_PREFIX}"
-          # Use indirect expansion to get value without echoing it
-          echo "${new_name}=${!var}" >> $GITHUB_ENV
+          # Use heredoc format to properly handle multi-line values (like SSH keys)
+          {
+            echo "${new_name}<<EOF"
+            echo "${!var}"
+            echo "EOF"
+          } >> $GITHUB_ENV
         done
 
     - name: Mark secrets as configured
