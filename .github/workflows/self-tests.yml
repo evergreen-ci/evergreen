@@ -168,6 +168,30 @@ jobs:
           fi
           echo "====================================="
 
+      - name: Test papertrail secret lengths
+        shell: bash
+        run: |
+          echo "========== TEST PAPERTRAIL SECRETS =========="
+          echo "Testing Papertrail secret availability"
+
+          # Check PAPERTRAIL_KEY_ID
+          if [ -z "$PAPERTRAIL_KEY_ID" ]; then
+            echo "ERROR: PAPERTRAIL_KEY_ID not found"
+            exit 1
+          else
+            echo "✓ PAPERTRAIL_KEY_ID found, length: ${#PAPERTRAIL_KEY_ID}"
+          fi
+
+          # Check PAPERTRAIL_SECRET_KEY
+          if [ -z "$PAPERTRAIL_SECRET_KEY" ]; then
+            echo "ERROR: PAPERTRAIL_SECRET_KEY not found"
+            exit 1
+          else
+            echo "✓ PAPERTRAIL_SECRET_KEY found, length: ${#PAPERTRAIL_SECRET_KEY}"
+          fi
+
+          echo "============================================="
+
       - name: Set up Go project
         uses: ./.github/actions/setup-go-project
         with:
