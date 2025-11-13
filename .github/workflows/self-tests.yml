@@ -199,6 +199,19 @@ jobs:
 
       - name: Set up credentials
         uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ env.GITHUB_APP_ID }}
+          github_app_key: ${{ env.GITHUB_APP_KEY }}
+          jira_server: ${{ env.JIRA_SERVER }}
+          jira_token: ${{ env.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ env.CROWD_SERVER }}
+          papertrail_key_id: ${{ env.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ env.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ env.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ env.RUNTIME_ENVIRONMENTS_API_KEY }}
+          aws_access_key_id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws_session_token: ${{ env.AWS_SESSION_TOKEN }}
 
       - name: Set up MongoDB
         if: matrix.needs_mongodb
