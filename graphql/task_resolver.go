@@ -582,6 +582,17 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	return &TaskLogs{TaskID: utility.FromStringPtr(obj.Id), Execution: obj.Execution}, nil
 }
 
+// TaskCost is the resolver for the taskCost field.
+func (r *taskResolver) TaskCost(ctx context.Context, obj *restModel.APITask) (*TaskCost, error) {
+	if obj.TaskCost == nil {
+		return nil, nil
+	}
+	return &TaskCost{
+		OnDemandCost: obj.TaskCost.OnDemandCost,
+		AdjustedCost: obj.TaskCost.AdjustedCost,
+	}, nil
+}
+
 // TaskOwnerTeam is the resolver for the taskOwnerTeam field.
 func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
 	fwsBaseURL := evergreen.GetEnvironment().Settings().FWS.URL
