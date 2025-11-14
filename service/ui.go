@@ -376,12 +376,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskHistoryPage).Get()
 	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskHistoryPage).Get()
 
-	// History Drawer Endpoints
-	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
-	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistoryDrawer).Get()
-
 	// Variant History
-	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.variantHistory).Get()
+	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyVariantHistory).Get()
 
 	// Task queues
 	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskQueue).Get()
