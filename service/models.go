@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"html/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,16 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-type pluginData struct {
-	Includes []template.HTML
-	Panels   plugin.PanelLayout
-	Data     map[string]any
-}
 
 type uiUpstreamData struct {
 	Owner       string `json:"owner"`
@@ -123,28 +114,4 @@ func getBuildVariantHistoryLastSuccess(ctx context.Context, buildId string) (*bu
 	}
 	b, err = b.PreviousSuccessful(ctx)
 	return b, errors.WithStack(err)
-}
-
-// getPluginDataAndHTML returns all data needed to properly render plugins
-// for a page. It logs errors but does not return them, as plugin errors
-// cannot stop the rendering of the rest of the page
-func getPluginDataAndHTML(pluginManager plugin.PanelManager, page plugin.PageScope, ctx plugin.UIContext) pluginData {
-	includes, err := pluginManager.Includes(page)
-	if err != nil {
-		grip.Errorf("error getting include html from plugin manager on %v page: %v",
-			page, err)
-	}
-
-	panels, err := pluginManager.Panels(page)
-	if err != nil {
-		grip.Errorf("error getting panel html from plugin manager on %v page: %v",
-			page, err)
-	}
-
-	data, err := pluginManager.UIData(ctx, page)
-	if err != nil {
-		grip.Errorf("error getting plugin data on %v page: %+v", page, err)
-	}
-
-	return pluginData{includes, panels, data}
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
@@ -97,28 +96,6 @@ func RedirectIfSpruceSet(w http.ResponseWriter, r *http.Request, u *user.DBUser,
 		return true
 	}
 	return false
-}
-
-// ToPluginContext creates a UIContext from the projectContext data.
-func (pc projectContext) ToPluginContext(settings evergreen.Settings, usr gimlet.User) plugin.UIContext {
-	dbUser, ok := usr.(*user.DBUser)
-	grip.CriticalWhen(!ok && usr != nil, message.Fields{
-		"message":  "problem converting user interface to db record",
-		"location": "service/middleware.ToPluginContext",
-		"cause":    "programmer error",
-		"type":     fmt.Sprintf("%T", usr),
-	})
-
-	return plugin.UIContext{
-		Settings:   settings,
-		User:       dbUser,
-		Task:       pc.Task,
-		Build:      pc.Build,
-		Version:    pc.Version,
-		Patch:      pc.Patch,
-		ProjectRef: pc.ProjectRef,
-	}
-
 }
 
 // GetSettings returns the global evergreen settings.

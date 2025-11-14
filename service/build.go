@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -119,20 +118,11 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
 	}
 
-	ctx := r.Context()
-	user := gimlet.GetUser(ctx)
-
-	// set data for plugin data function injection
-	pluginContext := projCtx.ToPluginContext(uis.Settings, user)
-	pluginContext.Request = r
-	pluginContent := getPluginDataAndHTML(uis, plugin.BuildPage, pluginContext)
-
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Build         *uiBuild
-		PluginContent pluginData
-		JiraHost      string
+		Build    *uiBuild
+		JiraHost string
 		ViewData
-	}{buildAsUI, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "build.html", "base_angular.html", "menu.html")
+	}{buildAsUI, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "build.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
