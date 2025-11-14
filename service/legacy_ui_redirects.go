@@ -155,7 +155,7 @@ func (uis *UIServer) legacyBuildBaronPage(w http.ResponseWriter, r *http.Request
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
 	executionStr := vars["execution"]
-	
+
 	// Default to execution 0 if not specified
 	execution := 0
 	if executionStr != "" {
@@ -165,8 +165,7 @@ func (uis *UIServer) legacyBuildBaronPage(w http.ResponseWriter, r *http.Request
 			execution = 0
 		}
 	}
-	
-	// Build Baron functionality is now in the Spruce task page annotations tab
+
 	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, taskId, execution)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
