@@ -89,7 +89,7 @@ runs:
         if [ -z "${{ inputs.github_app_key }}" ]; then
           echo "ℹ️  Using default dummy GitHub App key (real secret not found in AWS Secrets Manager)"
           echo 'GITHUB_APP_KEY<<EOF' >> $GITHUB_ENV
-          cat <<'KEYEOF'
+          cat <<'KEYEOF' >> $GITHUB_ENV
         -----BEGIN PRIVATE KEY-----
         MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCf7OTIUdyYLArm
         VRabXA/AKr/mjTdVl/m7v+70nFB5n5S+suPLfBhAJFXhzwGe069q8KEGMVjogPu0
@@ -123,7 +123,7 @@ runs:
         else
           echo "✓ Using provided GitHub App key from AWS Secrets Manager"
           echo 'GITHUB_APP_KEY<<EOF' >> $GITHUB_ENV
-          echo "${{ inputs.github_app_key }}"  >> $GITHUB_ENV
+          echo "${{ inputs.github_app_key }}" >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
         fi
 
