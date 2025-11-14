@@ -2,6 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: System
 metadata:
   name: evergreen
+  title: Evergreen
   description: Internal CI System
   tags:
     - ci
@@ -15,14 +16,14 @@ metadata:
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
-  owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
+  owner: group:10gen-evergreen-team
   domain: internal-tools
-
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: evergreen-backend
+  title: Evergreen Backend
   description: Evergreen backend service
   annotations:
     evergreen/project-id: evergreen
@@ -40,10 +41,9 @@ metadata:
       icon: dashboard
 spec:
   type: service
-  owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
+  owner: group:10gen-evergreen-team
   lifecycle: production
   system: evergreen
-  domain: internal-tools
   providesApis:
     - evergreen-api-rest
     - evergreen-api-graphql
@@ -52,26 +52,26 @@ spec:
     - component:default/Honeycomb
     - component:default/kanopy
     - component:default/sentry
-
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: evergreen-api-rest
+  name: evergreen-rest-api
+  title: Evergreen Rest API
   description: Retrieve Evergreen Data
 spec:
   type: openapi
   lifecycle: production
-  owner: group:default/oktagroup_61a3e0b2f29b988eeef4f7b1  # 10gen-evergreen-team okta group
+  owner: group:10gen-evergreen-team
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
-
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: evergreen-api-graphql
+  name: evergreen-graphql-api
+  title: Evergreen GraphQL API
   description: Internal API for the Evergreen UI to fetch data from the backend
   links:
     - url: https://evergreen.mongodb.com/graphql
@@ -83,8 +83,7 @@ metadata:
 spec:
   type: graphql
   lifecycle: experimental
-  owner: group:default/oktagroup_63a4baf4355dd783744f0b8d  # 10gen-evergreen-ui okta group
+  owner: group:10gen-evergreen-ui
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graphql
-
