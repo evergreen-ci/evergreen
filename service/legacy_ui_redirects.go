@@ -150,3 +150,23 @@ func (uis *UIServer) legacyPatchPage(w http.ResponseWriter, r *http.Request) {
 	spruceLink := fmt.Sprintf("%s/patch/%s", uis.Settings.Ui.UIv2Url, patchId)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacyBuildBaronPage(w http.ResponseWriter, r *http.Request) {
+	vars := gimlet.GetVars(r)
+	taskId := vars["task_id"]
+	executionStr := vars["execution"]
+	
+	// Default to execution 0 if not specified
+	execution := 0
+	if executionStr != "" {
+		var err error
+		execution, err = strconv.Atoi(executionStr)
+		if err != nil {
+			execution = 0
+		}
+	}
+	
+	// Build Baron functionality is now in the Spruce task page annotations tab
+	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, taskId, execution)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
