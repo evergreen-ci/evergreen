@@ -2,42 +2,10 @@ name: 'Setup Credentials'
 description: 'Setup test credentials by creating creds.yml file'
 
 inputs:
-  github_app_id:
-    description: 'GitHub App ID'
+  github_token:
+    description: 'GitHub token for authentication'
     required: false
-    default: '12345'
-  github_app_key:
-    description: 'GitHub App Private Key'
-    required: false
-    default: |
-      -----BEGIN PRIVATE KEY-----
-      MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCf7OTIUdyYLArm
-      VRabXA/AKr/mjTdVl/m7v+70nFB5n5S+suPLfBhAJFXhzwGe069q8KEGMVjogPu0
-      rbzYvh0PSy3L/fi9NsLPWIvYE3CMLwtF4Vppnj6AHrRjEbM8AoFgufc5GlQ6TLHa
-      ODYWy1wOWpwW4G9Tu7xt6G5zWyS20c+WEet2Cm0Kj+eWHCSmGdwmjS+gMmw4cuU2
-      jIeSkIuELP9jk2AhUPTvAMuh2Sf6Ctq2aCWsQSFa/Vqs5NGSsFk6knTSEPCewPeL
-      S+/InlqsA6hWzPoYWdl+IiD2XS6Un180LXV531xhnxQ52IdyF2yvKUIkLFDPi86g
-      9hveVXv/AgMBAAECggEAHWW/fG9H3JUj/8keWbqnjoyNMAU/abWBC5kxhLeDN4g1
-      IITjyNDr6EaFnveddaO1+DN5dhj2He8v1bumHjV8RAZuybPK2IVLdC/zrOmN48b2
-      DIdrRkT3ejeqsxda2iofvDcTEeUcHIdinhl9H92L83uGe9IPxNWawp1aSEw1yIEo
-      d87OtscACfPY/zh3DvomA2HRSiQitPEfkxDuwj+csIYYR5+tTPxjjagEMm+NbHzP
-      jw3iquMPL0jaqv6+y+vqSA6Y7F0qbQqxmk/L4HT8N285PvlBQxYQi9BbK8AsFVGN
-      2wf2K0OVAGCNzdieYLjNv7/BgrKcDCW+GMdYQT24GQKBgQDRZve+KyZiSy3YTwTs
-      rIFnsdqyePfAXr3eSftJX1on5ZC2iNyOY/vAI/LZxbpBQvep3Z7+00YHJih2zdtl
-      TUi+dkAu8Rc4+rRkGmWhjzpaHxWD+HElNYPFJ5z66S4Ln2CCkdTI4DmEtRoSvCpP
-      K+SKk6FMDT/QEzpFuDSp4R9SowKBgQDDg1/S3GV1glV7DojLZhgav3VsTYNJP4//
-      lro3hg8JBwm/f+nSNtj3duRXFfKTlXk7mixquan9PDReKzWrii0ZRPNptRIjX9rh
-      JwwKr5ue4Ej4x8qEs8KktriuMtpv6loZzP/NUg+/UniXh4gXpefGfe36PrOUSncD
-      yZf23/Ni9QKBgGRz/97zdjtrEzgUWClta7qh4GcDjt5y1KShWvHM00QWZYCbUSrh
-      nfCDjkmYCAysooCTd2WJVquxS3IKuPf0xjPQKGQcdeZ4pjbrTtvdCMIY7Upc0XJn
-      JKpcoXrgh509vJ+Gc8xVfGJEOpjIOYe3Z7But87zACzCPI8bme/wtgT/AoGBAMKC
-      xGWzEVmsNkD8P8okI10RF9CM+U15aFi+6zrsK68uilsz9jtGh+sDJL8jPbfooLlU
-      dFYlquIe8HazhGzKRn36ZDTJiWcaKVeREmDbPvb8anzfwDLv6HkYtHnSbBGl1MgQ
-      dHof5zzP3tvaYeItE38dsBIkKWMiBnAFMyPQwIK1AoGBAIwD7Rb2u1ekYu7ECcUJ
-      dUIMgidSg6RUeUU4jU1joppXXyxLcLfM5+FHreXOI58Ol0lZmvU8Jm3p9icjM0Ys
-      2bjbSka+M+S73V1GTJ+t0LiQU/OSuA0RZNpjvDbayPZKuYhJKi/PApfK0RAEKyP0
-      WYa6Qz5yZRyTDAGzNC6fE96K
-      -----END PRIVATE KEY-----
+    default: ''
   jira_server:
     description: 'Jira server URL'
     required: false
@@ -82,64 +50,11 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Set GitHub App credentials with fallback
-      shell: bash
-      run: |
-        # If github_app_key input is empty, use the default value
-        if [ -z "${{ inputs.github_app_key }}" ]; then
-          echo "ℹ️  Using default dummy GitHub App key (real secret not found in AWS Secrets Manager)"
-          echo 'GITHUB_APP_KEY<<EOF' >> $GITHUB_ENV
-          cat <<'KEYEOF' >> $GITHUB_ENV
-        -----BEGIN PRIVATE KEY-----
-        MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCf7OTIUdyYLArm
-        VRabXA/AKr/mjTdVl/m7v+70nFB5n5S+suPLfBhAJFXhzwGe069q8KEGMVjogPu0
-        rbzYvh0PSy3L/fi9NsLPWIvYE3CMLwtF4Vppnj6AHrRjEbM8AoFgufc5GlQ6TLHa
-        ODYWy1wOWpwW4G9Tu7xt6G5zWyS20c+WEet2Cm0Kj+eWHCSmGdwmjS+gMmw4cuU2
-        jIeSkIuELP9jk2AhUPTvAMuh2Sf6Ctq2aCWsQSFa/Vqs5NGSsFk6knTSEPCewPeL
-        S+/InlqsA6hWzPoYWdl+IiD2XS6Un180LXV531xhnxQ52IdyF2yvKUIkLFDPi86g
-        9hveVXv/AgMBAAECggEAHWW/fG9H3JUj/8keWbqnjoyNMAU/abWBC5kxhLeDN4g1
-        IITjyNDr6EaFnveddaO1+DN5dhj2He8v1bumHjV8RAZuybPK2IVLdC/zrOmN48b2
-        DIdrRkT3ejeqsxda2iofvDcTEeUcHIdinhl9H92L83uGe9IPxNWawp1aSEw1yIEo
-        d87OtscACfPY/zh3DvomA2HRSiQitPEfkxDuwj+csIYYR5+tTPxjjagEMm+NbHzP
-        jw3iquMPL0jaqv6+y+vqSA6Y7F0qbQqxmk/L4HT8N285PvlBQxYQi9BbK8AsFVGN
-        2wf2K0OVAGCNzdieYLjNv7/BgrKcDCW+GMdYQT24GQKBgQDRZve+KyZiSy3YTwTs
-        rIFnsdqyePfAXr3eSftJX1on5ZC2iNyOY/vAI/LZxbpBQvep3Z7+00YHJih2zdtl
-        TUi+dkAu8Rc4+rRkGmWhjzpaHxWD+HElNYPFJ5z66S4Ln2CCkdTI4DmEtRoSvCpP
-        K+SKk6FMDT/QEzpFuDSp4R9SowKBgQDDg1/S3GV1glV7DojLZhgav3VsTYNJP4//
-        lro3hg8JBwm/f+nSNtj3duRXFfKTlXk7mixquan9PDReKzWrii0ZRPNptRIjX9rh
-        JwwKr5ue4Ej4x8qEs8KktriuMtpv6loZzP/NUg+/UniXh4gXpefGfe36PrOUSncD
-        yZf23/Ni9QKBgGRz/97zdjtrEzgUWClta7qh4GcDjt5y1KShWvHM00QWZYCbUSrh
-        nfCDjkmYCAysooCTd2WJVquxS3IKuPf0xjPQKGQcdeZ4pjbrTtvdCMIY7Upc0XJn
-        JKpcoXrgh509vJ+Gc8xVfGJEOpjIOYe3Z7But87zACzCPI8bme/wtgT/AoGBAMKC
-        xGWzEVmsNkD8P8okI10RF9CM+U15aFi+6zrsK68uilsz9jtGh+sDJL8jPbfooLlU
-        dFYlquIe8HazhGzKRn36ZDTJiWcaKVeREmDbPvb8anzfwDLv6HkYtHnSbBGl1MgQ
-        dHof5zzP3tvaYeItE38dsBIkKWMiBnAFMyPQwIK1AoGBAIwD7Rb2u1ekYu7ECcUJ
-        dUIMgidSg6RUeUU4jU1joppXXyxLcLfM5+FHreXOI58Ol0lZmvU8Jm3p9icjM0Ys
-        2bjbSka+M+S73V1GTJ+t0LiQU/OSuA0RZNpjvDbayPZKuYhJKi/PApfK0RAEKyP0
-        WYa6Qz5yZRyTDAGzNC6fE96K
-        -----END PRIVATE KEY-----
-        KEYEOF
-          echo 'EOF' >> $GITHUB_ENV
-        else
-          echo "✓ Using provided GitHub App key from AWS Secrets Manager"
-          echo 'GITHUB_APP_KEY<<EOF' >> $GITHUB_ENV
-          echo "${{ inputs.github_app_key }}" >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
-        fi
-
-        # Set GitHub App ID
-        if [ -z "${{ inputs.github_app_id }}" ]; then
-          echo "GITHUB_APP_ID=12345" >> $GITHUB_ENV
-        else
-          echo "GITHUB_APP_ID=${{ inputs.github_app_id }}" >> $GITHUB_ENV
-        fi
-
     - name: Run setup-credentials script
       shell: bash
       run: bash scripts/setup-credentials.sh
       env:
-        GITHUB_APP_ID: ${{ env.GITHUB_APP_ID }}
-        GITHUB_APP_KEY: ${{ env.GITHUB_APP_KEY }}
+        GITHUB_APP_KEY: ${{ inputs.github_token }}
         JIRA_SERVER: ${{ inputs.jira_server }}
         JIRA_PERSONAL_ACCESS_TOKEN: ${{ inputs.jira_token }}
         CROWD_SERVER: ${{ inputs.crowd_server }}
