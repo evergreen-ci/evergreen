@@ -2,10 +2,12 @@ name: 'Setup Credentials'
 description: 'Setup test credentials by creating creds.yml file'
 
 inputs:
-  github_token:
-    description: 'GitHub token for authentication'
-    required: false
-    default: ''
+  github_app_id:
+    description: 'GitHub App ID'
+    required: true
+  github_app_key:
+    description: 'GitHub App private key (PEM format)'
+    required: true
   jira_server:
     description: 'Jira server URL'
     required: false
@@ -54,7 +56,8 @@ runs:
       shell: bash
       run: bash scripts/setup-credentials.sh
       env:
-        GITHUB_APP_KEY: ${{ inputs.github_token }}
+        GITHUB_APP_ID: ${{ inputs.github_app_id }}
+        GITHUB_APP_KEY: ${{ inputs.github_app_key }}
         JIRA_SERVER: ${{ inputs.jira_server }}
         JIRA_PERSONAL_ACCESS_TOKEN: ${{ inputs.jira_token }}
         CROWD_SERVER: ${{ inputs.crowd_server }}

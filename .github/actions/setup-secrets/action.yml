@@ -59,6 +59,31 @@ runs:
           } >> $GITHUB_ENV
         done
 
+    - name: Map secret names to Evergreen env vars
+      shell: bash
+      run: |
+        declare -A SECRET_NAME_MAP=(
+          [STAGING_GITHUB_APP_ID]=GITHUB_APP_ID
+          [STAGING_GITHUB_APP_KEY]=GITHUB_APP_KEY
+          [STAGING_RUNTIME_ENVIRONMENTS_BASE_URL]=RUNTIME_ENVIRONMENTS_BASE_URL
+          [STAGING_RUNTIME_ENVIRONMENTS_API_KEY]=RUNTIME_ENVIRONMENTS_API_KEY
+          [JIRASERVER]=JIRA_SERVER
+          [CROWDSERVER]=CROWD_SERVER
+        )
+
+        for source in "${!SECRET_NAME_MAP[@]}"; do
+          dest="${SECRET_NAME_MAP[$source]}"
+          value="${!source}"
+
+          if [[ -n "$value" ]]; then
+            {
+              echo "${dest}<<EOF"
+              echo "${value}"
+              echo "EOF"
+            } >> $GITHUB_ENV
+          fi
+        done
+
     - name: Mark secrets as configured
       id: mark-configured
       shell: bash
