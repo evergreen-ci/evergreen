@@ -270,9 +270,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.NoVersions = true
 
 	// User login and logout
-	app.AddRoute("/login").Handler(uis.loginPage).Get()
 	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.login).Post()
-	app.AddRoute("/login/key").Handler(uis.userGetKey).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
 
 	app.AddRoute("/robots.txt").Get().Wrap(needsLogin).Handler(func(rw http.ResponseWriter, r *http.Request) {

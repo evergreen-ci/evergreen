@@ -3,11 +3,9 @@ package service
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -17,14 +15,6 @@ import (
 const (
 	stagingEnvironmentCookieName = "evg-staging-environment"
 )
-
-func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
-	if uis.env.UserManager().IsRedirect() {
-		http.Redirect(w, r, "/login/redirect", http.StatusFound)
-		return
-	}
-	uis.render.WriteResponse(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
-}
 
 func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 	creds := struct {
@@ -55,96 +45,6 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, map[string]string{})
 }
 
-func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
-	creds := struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}{}
-
-	if err := utility.ReadJSON(utility.NewRequestReader(r), &creds); err != nil {
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "malformed request",
-			StatusCode: http.StatusBadRequest,
-		}))
-		return
-	}
-
-	if creds.Username == "" || creds.Password == "" {
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "user not specified",
-			StatusCode: http.StatusBadRequest,
-		}))
-		return
-	}
-
-	token, err := uis.env.UserManager().CreateUserToken(creds.Username, creds.Password)
-	if err != nil {
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "could not find user",
-			StatusCode: http.StatusUnauthorized,
-		}))
-		return
-	}
-	uis.umconf.AttachCookie(token, w)
-
-	u, err := uis.env.UserManager().GetUserByToken(r.Context(), token)
-	if err != nil {
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "could not find user",
-			StatusCode: http.StatusUnauthorized,
-		}))
-		return
-	}
-	dbUser, ok := u.(*user.DBUser)
-	if !ok {
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "found user but not from the DB",
-			StatusCode: http.StatusInternalServerError,
-		}))
-		return
-	}
-
-	key := u.GetAPIKey()
-	if key == "" {
-		key = utility.RandomString()
-		if err := dbUser.UpdateAPIKey(r.Context(), key); err != nil {
-			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				Message:    "could not generate key",
-				StatusCode: http.StatusInternalServerError,
-			}))
-			return
-		}
-	}
-
-	out := struct {
-		User  string `json:"user" yaml:"user" `
-		Key   string `json:"api_key" yaml:"api_key"`
-		UI    string `json:"ui_server_host" yaml:"ui_server_host"`
-		API   string `json:"api_server_host" yaml:"api_server_host"`
-		OAuth struct {
-			Issuer      string `json:"issuer" yaml:"issuer"`
-			ClientID    string `json:"client_id" yaml:"client_id"`
-			ConnectorID string `json:"connector_id" yaml:"connector_id"`
-		} `json:"oauth" yaml:"oauth"`
-	}{
-		User: creds.Username,
-		Key:  key,
-		UI:   uis.RootURL,
-		API:  uis.RootURL + "/api",
-	}
-	if uis.Settings.AuthConfig.OAuth != nil {
-		out.OAuth.Issuer = uis.Settings.AuthConfig.OAuth.Issuer
-		out.OAuth.ClientID = uis.Settings.AuthConfig.OAuth.ClientID
-		out.OAuth.ConnectorID = uis.Settings.AuthConfig.OAuth.ConnectorID
-	}
-
-	if ct := r.Header.Get("content-type"); strings.Contains(ct, "yaml") {
-		gimlet.WriteYAML(w, out)
-	} else {
-		gimlet.WriteJSON(w, out)
-	}
-}
-
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 	uis.umconf.ClearCookie(w)
 	if uis.Settings.Ui.StagingEnvironment != "" {
@@ -156,6 +56,6 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	loginURL := fmt.Sprintf("%v/login", uis.RootURL)
-	http.Redirect(w, r, loginURL, http.StatusFound)
+	// Redirecting a user back to Spruce would just create a Corp login loop
+	gimlet.WriteJSON(w, map[string]string{"message": "logged out successfully"})
 }
