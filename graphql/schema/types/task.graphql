@@ -264,6 +264,7 @@ type TestLog {
   urlParsley: String
   urlRaw: String
   renderingType: String
+  testName: String
   version: Int
 }
 
