@@ -6,5 +6,9 @@
     requester
     revision
     testSelectionEnabled
+    taskCost {
+      onDemandCost
+      adjustedCost
+    }
   }
 }
