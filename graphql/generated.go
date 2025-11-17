@@ -2079,6 +2079,7 @@ type ComplexityRoot struct {
 	TestLog struct {
 		LineNum       func(childComplexity int) int
 		RenderingType func(childComplexity int) int
+		TestName      func(childComplexity int) int
 		URL           func(childComplexity int) int
 		URLParsley    func(childComplexity int) int
 		URLRaw        func(childComplexity int) int
@@ -11393,6 +11394,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TestLog.RenderingType(childComplexity), true
+	case "TestLog.testName":
+		if e.complexity.TestLog.TestName == nil {
+			break
+		}
+
+		return e.complexity.TestLog.TestName(childComplexity), true
 	case "TestLog.url":
 		if e.complexity.TestLog.URL == nil {
 			break
@@ -66176,6 +66183,35 @@ func (ec *executionContext) fieldContext_TestLog_renderingType(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _TestLog_testName(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestLog_testName,
+		func(ctx context.Context) (any, error) {
+			return obj.TestName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestLog_testName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TestLog_version(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -66442,6 +66478,8 @@ func (ec *executionContext) fieldContext_TestResult_logs(_ context.Context, fiel
 				return ec.fieldContext_TestLog_urlRaw(ctx, field)
 			case "renderingType":
 				return ec.fieldContext_TestLog_renderingType(ctx, field)
+			case "testName":
+				return ec.fieldContext_TestLog_testName(ctx, field)
 			case "version":
 				return ec.fieldContext_TestLog_version(ctx, field)
 			}
@@ -102564,6 +102602,8 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._TestLog_urlRaw(ctx, field, obj)
 		case "renderingType":
 			out.Values[i] = ec._TestLog_renderingType(ctx, field, obj)
+		case "testName":
+			out.Values[i] = ec._TestLog_testName(ctx, field, obj)
 		case "version":
 			out.Values[i] = ec._TestLog_version(ctx, field, obj)
 		default:
