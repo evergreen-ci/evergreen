@@ -11,7 +11,7 @@
       "r": "github_pull_request",
       "branch": "spruce",
       "test_selection_enabled": true,
-      "cost": {
+      "task_cost": {
         "on_demand_cost": 1.25,
         "adjusted_cost": 0.89
       }
