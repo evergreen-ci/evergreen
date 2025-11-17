@@ -1541,7 +1541,7 @@ func validateCommands(section, taskName, tgName string, project *model.Project, 
 		if cmd.Function != "" && cmd.RetryOnFailure {
 			errs = append(errs, ValidationError{
 				Level:   Error,
-				Message: fmt.Sprintf("cannot specify retry_on_failure with function '%s'%s", cmd.Function, formattedTaskMsg),
+				Message: fmt.Sprintf("cannot specify retry_on_failure with function '%s'%s, can only specify retry_on_failure on individual commands", cmd.Function, formattedTaskMsg),
 			})
 		}
 		if hasFuncOrCommand {
