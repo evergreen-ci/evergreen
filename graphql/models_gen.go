@@ -528,9 +528,7 @@ type Subscriber struct {
 
 // TaskCost represents the cost breakdown for a task.
 type TaskCost struct {
-	// OnDemandCost is the cost calculated using only on-demand rates.
 	OnDemandCost *float64 `json:"onDemandCost,omitempty"`
-	// AdjustedCost is the cost calculated using the finance formula with savings plan and on-demand components.
 	AdjustedCost *float64 `json:"adjustedCost,omitempty"`
 }
 

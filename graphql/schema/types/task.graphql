@@ -294,13 +294,7 @@ type TaskOwnerTeam {
 TaskCost represents the cost breakdown for a task.
 """
 type TaskCost {
-  """
-  OnDemandCost is the cost calculated using only on-demand rates.
-  """
   onDemandCost: Float
-  """
-  AdjustedCost is the cost calculated using the finance formula with savings plan and on-demand components.
-  """
   adjustedCost: Float
 }
 
