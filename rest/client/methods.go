@@ -1302,7 +1302,7 @@ func (c *communicatorImpl) GetBuildsForVersion(ctx context.Context, versionID st
 		path:   fmt.Sprintf("versions/%s/builds", versionID),
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get builds for version '%s'", versionID)
 	}
@@ -1339,7 +1339,7 @@ func (c *communicatorImpl) GetTasksForBuild(ctx context.Context, buildID string,
 		info.path = info.path + "?" + strings.Join(queryParams, "&")
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get tasks for build '%s'", buildID)
 	}
@@ -1522,7 +1522,7 @@ func (c *communicatorImpl) GetManifestForVersion(ctx context.Context, versionID 
 		method: http.MethodGet,
 		path:   fmt.Sprintf("versions/%s/manifest", versionID),
 	}
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get version manifest")
 	}
@@ -1742,7 +1742,7 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 
 	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
 	if err != nil {
-		return nil, "", err
+		return nil, client.TokenFilePath(), err
 	}
 	defer client.Close()
 
@@ -1755,13 +1755,13 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 	// In this case, we need to run through the auth flow again without using
 	// the refresh token.
 	if !strings.Contains(err.Error(), refreshTokenClaimed) {
-		return nil, "", err
+		return nil, client.TokenFilePath(), err
 	}
 
 	// This client prevents the Dex client from using the refresh token.
 	client, err = dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderWithoutRefresh{loader}))...)
 	if err != nil {
-		return nil, "", err
+		return nil, client.TokenFilePath(), err
 	}
 	defer client.Close()
 
