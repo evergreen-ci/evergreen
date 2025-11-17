@@ -656,7 +656,7 @@ const (
 	// duration does not elapse. Otherwise, the agent monitor is considered dead
 	// (because it has failed to keep an agent alive that can contact the
 	// server).
-	MaxAgentMonitorUnresponsiveInterval = 15 * time.Minute
+	MaxAgentMonitorUnresponsiveInterval = 5 * time.Minute
 	// MaxStaticHostUnresponsiveInterval is the maximum amount of time that can
 	// elapse before a static host is considered unresponsive and unfixable. If
 	// the host is running and healthy, the agent must regularly contact the app
