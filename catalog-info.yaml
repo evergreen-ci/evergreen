@@ -45,8 +45,8 @@ spec:
   lifecycle: production
   system: evergreen
   providesApis:
-    - evergreen-api-rest
-    - evergreen-api-graphql
+    - evergreen-rest-api
+    - evergreen-graphql-api
   dependsOn:
     - component:default/Splunk
     - component:default/Honeycomb
