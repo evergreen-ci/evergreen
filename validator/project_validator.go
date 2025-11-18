@@ -169,7 +169,7 @@ var projectWarningValidators = []projectValidator{
 // is useful for validation that could return a mix of errors and warnings and
 // can be an optimization to avoid processing the same project configuration
 // multiple times to perform validation checks at different levels.
-var mixedProjectValidators = []projectValidator{
+var projectMixedValidators = []projectValidator{
 	validatePluginCommands,
 }
 
@@ -313,7 +313,7 @@ func CheckProjectWarnings(project *model.Project) ValidationErrors {
 // configuration that can be at any validation level.
 func CheckProjectMixedValidations(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
-	for _, mixedValidator := range mixedProjectValidators {
+	for _, mixedValidator := range projectMixedValidators {
 		validationErrs = append(validationErrs,
 			mixedValidator(project)...)
 	}
