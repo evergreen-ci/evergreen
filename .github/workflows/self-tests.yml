@@ -139,6 +139,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
 
       - name: Configure secrets
         uses: ./.github/actions/setup-secrets
