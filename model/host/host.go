@@ -670,14 +670,14 @@ const (
 	// linuxProvisioningCutoff is the threshold before a Linux host is considered
 	// stuck in provisioning and should be terminated. This is based on
 	// empirical data of how long Linux hosts typically take to provision.
-	linuxProvisioningCutoff = 4 * time.Minute
+	linuxProvisioningCutoff = 5 * time.Minute
 
 	// windowsProvisioningCutoff is the threshold before a Windows host is
 	// considered stuck in provisioning and should be terminated. This is based
 	// on empirical data of how long Linux hosts typically take to provision.
 	// The Windows timeout is higher than the linuxProvisioningCutoff because
 	// Windows hosts take longer to provision.
-	windowsProvisioningCutoff = 6 * time.Minute
+	windowsProvisioningCutoff = 8 * time.Minute
 
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
