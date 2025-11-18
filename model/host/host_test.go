@@ -5638,7 +5638,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			h := &Host{
 				Id:           "linux-host-old",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-5 * time.Minute),
+				CreationTime: time.Now().Add(-linuxProvisioningCutoff - time.Minute),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
@@ -5661,7 +5661,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			h := &Host{
 				Id:           "linux-host-recent",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Minute),
+				CreationTime: time.Now().Add(-linuxProvisioningCutoff + time.Minute),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
@@ -5683,7 +5683,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			h := &Host{
 				Id:           "windows-host-old",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-7 * time.Minute),
+				CreationTime: time.Now().Add(-windowsProvisioningCutoff - time.Minute),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
@@ -5706,7 +5706,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			h := &Host{
 				Id:           "windows-host-recent",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Minute),
+				CreationTime: time.Now().Add(-windowsProvisioningCutoff + time.Minute),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
