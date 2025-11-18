@@ -2401,6 +2401,12 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 				},
 			},
 			// Linux hosts taking too long to provision.
+			// kim: TODO: test timeouts with:
+			// * Hosts that never contact Evergreen (should get 4 minutes).
+			// * Hosts that get the provisioning script but never finish it
+			// (should get bonus 5 minutes).
+			// * Hosts that start the agent normally (should not be terminated
+			// for provisioning failure).
 			buildProvisioningTimeoutCondition(
 				now,
 				bson.M{archKey: bson.M{"$not": bson.M{"$regex": "windows"}}},
