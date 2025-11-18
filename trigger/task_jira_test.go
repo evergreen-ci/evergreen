@@ -343,7 +343,7 @@ func TestJiraDescription(t *testing.T) {
 			So(tests, ShouldContain, "FunUnitTest")
 
 			So(len(logfiles), ShouldEqual, 2)
-			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley))
 			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML))
 
 			So(len(taskURLs), ShouldEqual, 1)
