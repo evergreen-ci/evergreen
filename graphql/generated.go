@@ -584,6 +584,7 @@ type ComplexityRoot struct {
 		Additions   func(childComplexity int) int
 		Deletions   func(childComplexity int) int
 		Description func(childComplexity int) int
+		Diff        func(childComplexity int) int
 		DiffLink    func(childComplexity int) int
 		FileName    func(childComplexity int) int
 	}
@@ -4694,6 +4695,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.FileDiff.Description(childComplexity), true
+	case "FileDiff.diff":
+		if e.complexity.FileDiff.Diff == nil {
+			break
+		}
+
+		return e.complexity.FileDiff.Diff(childComplexity), true
 	case "FileDiff.diffLink":
 		if e.complexity.FileDiff.DiffLink == nil {
 			break
@@ -26994,6 +27001,35 @@ func (ec *executionContext) fieldContext_FileDiff_description(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _FileDiff_diff(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FileDiff_diff,
+		func(ctx context.Context) (any, error) {
+			return obj.Diff, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FileDiff_diff(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FileDiff",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FileDiff_diffLink(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -35773,6 +35809,8 @@ func (ec *executionContext) fieldContext_ModuleCodeChange_fileDiffs(_ context.Co
 				return ec.fieldContext_FileDiff_deletions(ctx, field)
 			case "description":
 				return ec.fieldContext_FileDiff_description(ctx, field)
+			case "diff":
+				return ec.fieldContext_FileDiff_diff(ctx, field)
 			case "diffLink":
 				return ec.fieldContext_FileDiff_diffLink(ctx, field)
 			case "fileName":
@@ -89030,6 +89068,11 @@ func (ec *executionContext) _FileDiff(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "description":
 			out.Values[i] = ec._FileDiff_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "diff":
+			out.Values[i] = ec._FileDiff_diff(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
