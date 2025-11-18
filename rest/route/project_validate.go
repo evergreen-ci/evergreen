@@ -81,6 +81,7 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	projectRef, err := model.FindMergedProjectRef(ctx, v.input.ProjectID, "", false)
+	// kim: NOTE: this is used by evergreen validate.
 	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, v.input.ProjectID, err)
 
 	if v.input.Quiet {
