@@ -30,6 +30,19 @@ runs:
                 "Effect": "Allow",
                 "Action": "secretsmanager:ListSecrets",
                 "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "s3:ListBucket",
+                "Resource": "arn:aws:s3:::evergreen-projects-testing"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject",
+                  "s3:PutObject"
+                ],
+                "Resource": "arn:aws:s3:::evergreen-projects-testing/*"
               }
             ]
           }
