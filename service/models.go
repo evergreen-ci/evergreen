@@ -1,11 +1,9 @@
 package service
 
 import (
-	"context"
 	"html/template"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -13,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 type pluginData struct {
@@ -75,55 +72,6 @@ type uiTask struct {
 ///////////////////////////////////////////////////////////////////////////
 //// Functions to create and populate the models
 ///////////////////////////////////////////////////////////////////////////
-
-// getBuildVariantHistory returns a slice of builds that surround a given build.
-// As many as 'before' builds (less recent builds) plus as many as 'after' builds
-// (more recent builds) are returned.
-func getBuildVariantHistory(ctx context.Context, buildId string, before int, after int) ([]build.Build, error) {
-	b, err := build.FindOne(ctx, build.ById(buildId))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if b == nil {
-		return nil, errors.Errorf("no build with id %v", buildId)
-	}
-
-	lessRecentBuilds, err := build.Find(ctx,
-		build.ByBeforeRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
-			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
-			Limit(before))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	moreRecentBuilds, err := build.Find(ctx,
-		build.ByAfterRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
-			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
-			Limit(after))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	builds := make([]build.Build, 0, len(lessRecentBuilds)+len(moreRecentBuilds))
-	for i := len(moreRecentBuilds); i > 0; i-- {
-		builds = append(builds, moreRecentBuilds[i-1])
-	}
-	builds = append(builds, lessRecentBuilds...)
-	return builds, nil
-}
-
-// Given build id, get last successful build before this one
-func getBuildVariantHistoryLastSuccess(ctx context.Context, buildId string) (*build.Build, error) {
-	b, err := build.FindOne(ctx, build.ById(buildId))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if b.Status == evergreen.BuildSucceeded {
-		return b, nil
-	}
-	b, err = b.PreviousSuccessful(ctx)
-	return b, errors.WithStack(err)
-}
 
 // getPluginDataAndHTML returns all data needed to properly render plugins
 // for a page. It logs errors but does not return them, as plugin errors
