@@ -526,12 +526,6 @@ type Subscriber struct {
 	WebhookSubscriber     *model.APIWebhookSubscriber     `json:"webhookSubscriber,omitempty"`
 }
 
-// TaskCost represents the cost breakdown for a task.
-type TaskCost struct {
-	OnDemandCost *float64 `json:"onDemandCost,omitempty"`
-	AdjustedCost *float64 `json:"adjustedCost,omitempty"`
-}
-
 // TaskCountOptions defines the parameters that are used when counting tasks from a Version.
 type TaskCountOptions struct {
 	IncludeNeverActivatedTasks *bool `json:"includeNeverActivatedTasks,omitempty"`
