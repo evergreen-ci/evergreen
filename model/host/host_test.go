@@ -5593,35 +5593,6 @@ func TestFindHostsToTerminate(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, toTerminate)
 		},
-		"IgnoresHostsThatHaveNotExceededProvisioningDeadline": func(t *testing.T) {
-			h := &Host{
-				Id:           "id",
-				StartedBy:    evergreen.User,
-				Provider:     evergreen.ProviderNameMock,
-				CreationTime: time.Now().Add(-3 * time.Minute), // Within both Linux (4 min) and Windows (7 min) timeouts
-			}
-			require.NoError(t, h.Insert(t.Context()))
-
-			toTerminate, err := FindHostsToTerminate(t.Context())
-			assert.NoError(t, err)
-			assert.Empty(t, toTerminate)
-		},
-		"IncludesHostsThatExceedProvisioningDeadline": func(t *testing.T) {
-			h := &Host{
-				Id:           "id",
-				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Hour),
-				Provisioned:  false,
-				Status:       evergreen.HostStarting,
-				Provider:     evergreen.ProviderNameMock,
-			}
-			require.NoError(t, h.Insert(t.Context()))
-
-			toTerminate, err := FindHostsToTerminate(t.Context())
-			require.NoError(t, err)
-			require.Len(t, toTerminate, 1)
-			assert.Equal(t, h.Id, toTerminate[0].Id)
-		},
 		"IgnoresUserDataHostsThatAreNotInRunningStateButAreRunningTasks": func(t *testing.T) {
 			h := &Host{
 				Id:          "id",
@@ -5690,7 +5661,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			h := &Host{
 				Id:           "linux-host-recent",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-3 * time.Minute),
+				CreationTime: time.Now().Add(-time.Minute),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
@@ -5712,7 +5683,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			h := &Host{
 				Id:           "windows-host-old",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-8 * time.Minute),
+				CreationTime: time.Now().Add(-7 * time.Minute),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
@@ -5735,7 +5706,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			h := &Host{
 				Id:           "windows-host-recent",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-6 * time.Minute),
+				CreationTime: time.Now().Add(-time.Minute),
 				Provisioned:  false,
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,

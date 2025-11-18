@@ -677,7 +677,7 @@ const (
 	// on empirical data of how long Linux hosts typically take to provision.
 	// The Windows timeout is higher than the linuxProvisioningCutoff because
 	// Windows hosts take longer to provision.
-	windowsProvisioningCutoff = 7 * time.Minute
+	windowsProvisioningCutoff = 6 * time.Minute
 
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
