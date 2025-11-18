@@ -34,7 +34,10 @@ runs:
               {
                 "Effect": "Allow",
                 "Action": "s3:ListBucket",
-                "Resource": "arn:aws:s3:::evergreen-projects-testing"
+                "Resource": [
+                  "arn:aws:s3:::evergreen-projects-testing",
+                  "arn:aws:s3:::evergreen-integration-testing"
+                ]
               },
               {
                 "Effect": "Allow",
@@ -42,7 +45,10 @@ runs:
                   "s3:GetObject",
                   "s3:PutObject"
                 ],
-                "Resource": "arn:aws:s3:::evergreen-projects-testing/*"
+                "Resource": [
+                  "arn:aws:s3:::evergreen-projects-testing/*",
+                  "arn:aws:s3:::evergreen-integration-testing/*"
+                ]
               }
             ]
           }
