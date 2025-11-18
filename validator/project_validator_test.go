@@ -3682,7 +3682,7 @@ tasks:
 			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
 			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "must specify either command or function for task 'example_task'")
 		})
-		Convey("no warning should be thrown if a command specifies retry_on_failure", func() {
+		Convey("no validation issue should be thrown if a command specifies retry_on_failure", func() {
 			exampleYml := `
 tasks:
 - name: example_task
@@ -3700,7 +3700,7 @@ tasks:
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldResemble, ValidationErrors{})
 		})
-		Convey("no warning should be thrown if a command within a function specifies retry_on_failure", func() {
+		Convey("no validation issue should be thrown if a command within a function specifies retry_on_failure", func() {
 			exampleYml := `
 tasks:
 - name: example_task
@@ -3724,7 +3724,7 @@ functions:
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldResemble, ValidationErrors{})
 		})
-		Convey("a warning should be thrown if a function call specifies retry_on_failure", func() {
+		Convey("a notice should be thrown if a function call specifies retry_on_failure", func() {
 			exampleYml := `
 tasks:
 - name: example_task
@@ -3744,7 +3744,7 @@ functions:
 			So(proj, ShouldNotBeNil)
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
-			errs := validationErrs.AtLevel(Warning)
+			errs := validationErrs.AtLevel(Notice)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "cannot specify retry_on_failure with function 'my-func' for task 'example_task'")
 		})
