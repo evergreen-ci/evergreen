@@ -1538,12 +1538,6 @@ func validateCommands(section, taskName, tgName string, project *model.Project, 
 				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'%s", cmd.Command, cmd.Function, formattedTaskMsg),
 			})
 		}
-		if cmd.Function != "" && cmd.RetryOnFailure {
-			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("cannot specify retry_on_failure with function '%s'%s, can only specify retry_on_failure on individual commands", cmd.Function, formattedTaskMsg),
-			})
-		}
 		if hasFuncOrCommand {
 			commandName := fmt.Sprintf("'%s' command", cmd.Command)
 			if cmd.Function != "" {
