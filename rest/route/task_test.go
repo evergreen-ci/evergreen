@@ -492,3 +492,75 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 		t.Run(name, test)
 	}
 }
+
+func TestParseS3URL(t *testing.T) {
+	testCases := []struct {
+		name           string
+		url            string
+		expectedBucket string
+		expectedKey    string
+	}{
+		{
+			name:           "VirtualHostedStyleNoRegion",
+			url:            "https://mybucket.s3.amazonaws.com/path/to/file.log",
+			expectedBucket: "mybucket",
+			expectedKey:    "path/to/file.log",
+		},
+		{
+			name:           "VirtualHostedStyleWithRegion",
+			url:            "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/path/file.log",
+			expectedBucket: "mciuploads",
+			expectedKey:    "evergreen/path/file.log",
+		},
+		{
+			name:           "VirtualHostedStyleWithPresignedURL",
+			url:            "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/path/file.log?X-Amz-Algorithm=fake&X-Amz-Date=20251118T224351Z",
+			expectedBucket: "mciuploads",
+			expectedKey:    "evergreen/path/file.log",
+		},
+		{
+			name:           "PathStyleNoRegion",
+			url:            "https://s3.amazonaws.com/mybucket/path/to/file.log",
+			expectedBucket: "mybucket",
+			expectedKey:    "path/to/file.log",
+		},
+		{
+			name:           "PathStyleWithRegion",
+			url:            "https://s3.us-west-2.amazonaws.com/mybucket/path/to/file.log",
+			expectedBucket: "mybucket",
+			expectedKey:    "path/to/file.log",
+		},
+		{
+			name:           "NonS3URL",
+			url:            "https://example.com/path/to/file.log",
+			expectedBucket: "",
+			expectedKey:    "",
+		},
+		{
+			name:           "InvalidURL",
+			url:            "not a url",
+			expectedBucket: "",
+			expectedKey:    "",
+		},
+		{
+			name:           "PathStyleBucketOnly",
+			url:            "https://s3.amazonaws.com/mybucket",
+			expectedBucket: "mybucket",
+			expectedKey:    "",
+		},
+		{
+			name:           "VirtualHostedStyleEmptyPath",
+			url:            "https://mybucket.s3.amazonaws.com",
+			expectedBucket: "mybucket",
+			expectedKey:    "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bucket, key := parseS3URL(tc.url)
+			assert.Equal(t, tc.expectedBucket, bucket)
+			assert.Equal(t, tc.expectedKey, key)
+		})
+	}
+}
