@@ -309,7 +309,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	// kim: TODO: manually test that this works
 	vErrs := validator.CheckProjectErrors(ctx, patchedProject)
 	vErrs = append(vErrs, validator.CheckProjectMixedValidations(patchedProject).AtLevel(validator.Error)...)
 	if len(vErrs) != 0 {

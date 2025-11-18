@@ -262,8 +262,6 @@ func addDistroWarning(distroWarnings map[string]string, distroName, warningNote 
 func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, projectRefId string, projectRefErr error) ValidationErrors {
 	isConfigDefined := config != nil
 	verrs := CheckProjectErrors(ctx, project)
-	// kim: TODO: check that this works as intended. Should return errors and
-	// warnings to evergreen validate.
 	verrs = append(verrs, CheckProjectMixedValidations(project)...)
 	verrs = append(verrs, CheckProjectWarnings(project)...)
 	if config != nil {
@@ -395,8 +393,6 @@ func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.S
 	defer span.End()
 	catcher := grip.NewBasicCatcher()
 	projectErrors := CheckProjectErrors(ctx, project)
-	// kim: TODO: verify that this works as intended. Should only return errors,
-	// not warnings.
 	projectErrors = append(projectErrors, CheckProjectMixedValidations(project).AtLevel(Error)...)
 	if len(projectErrors) != 0 {
 		if errs := projectErrors.AtLevel(Error); len(errs) != 0 {
