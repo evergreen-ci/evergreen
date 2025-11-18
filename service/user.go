@@ -16,6 +16,13 @@ const (
 	stagingEnvironmentCookieName = "evg-staging-environment"
 )
 
+func (uis *UIServer) loginRedirect(w http.ResponseWriter, r *http.Request) {
+	if uis.env.UserManager().IsRedirect() {
+		http.Redirect(w, r, "/login/redirect", http.StatusFound)
+		return
+	}
+}
+
 func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 	creds := struct {
 		Username string `json:"username"`
