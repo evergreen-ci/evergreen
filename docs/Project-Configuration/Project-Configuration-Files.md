@@ -1741,10 +1741,10 @@ can also be used to define dependencies.
 
 ### Auto restarting tasks upon failure
 
-A given command can be configured to automatically restart the task upon failure by setting the `retry_on_failure` field
-on the command to true. The automatic restart will process after the command has failed and the task has completed its
-subsequent post task commands. `retry_on_failure` can only be set on standalone commands or individual commands within
-functions; it cannot be set on an entire function.
+A given command can be configured to automatically restart the task upon failure
+by setting the `retry_on_failure` field on the command to true. The automatic
+restart will process after the command has failed and the task has completed its
+subsequent post task commands.
 
 The retry will only occur if the task has _not_ been aborted, and if the failing command would have caused the overall task
 to fail. This means the retry will _not_ occur if:
