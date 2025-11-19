@@ -1443,11 +1443,18 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
+	// Intentionally retry many times and often because this must succeed for a
+	// host to be able to provision itself and should be as fast as possible to
+	// avoid excessive idle time.
+	const (
+		maxProvisioningRequestAttempts = 50
+		maxProvisioningRequestDelay    = 10 * time.Second
+	)
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
 		RetryOptions: utility.RetryOptions{
-			MaxAttempts: c.maxAttempts,
-			MinDelay:    c.timeoutStart,
-			MaxDelay:    c.timeoutMax,
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    time.Second,
+			MaxDelay:    maxProvisioningRequestDelay,
 		},
 	})
 	if err != nil {
