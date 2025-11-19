@@ -594,9 +594,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-testlog
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-plugin
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
