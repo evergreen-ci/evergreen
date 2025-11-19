@@ -559,7 +559,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Provider:              evergreen.ProviderNameMock,
 			Status:                evergreen.HostRunning,
 			CreationTime:          time.Now().Add(-24 * time.Hour),
-			LastCommunicationTime: time.Now().Add(-5 * time.Minute),
+			LastCommunicationTime: time.Now().Add(-time.Minute),
 			StartedBy:             evergreen.User,
 			NeedsNewAgent:         true,
 		}
