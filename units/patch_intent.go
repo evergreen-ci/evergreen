@@ -309,8 +309,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	if errs := validator.CheckProjectErrors(ctx, patchedProject).AtLevel(validator.Error); len(errs) != 0 {
-		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
+	vErrs := validator.CheckProjectErrors(ctx, patchedProject)
+	vErrs = append(vErrs, validator.CheckProjectMixedValidations(patchedProject).AtLevel(validator.Error)...)
+	if len(vErrs) != 0 {
+		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(vErrs))
 	}
 	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))

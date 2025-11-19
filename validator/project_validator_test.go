@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"context"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -111,9 +110,6 @@ func variablesInFunction(funcBodies map[string]*ast.BlockStmt, funcName string, 
 }
 
 func TestValidateStatusesForTaskDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	t.Run("SucceedsWithTaskDependingOnTaskInSpecificBuildVariant", func(t *testing.T) {
 		projYAML := `
 tasks:
@@ -132,7 +128,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -156,7 +152,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -180,7 +176,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -209,7 +205,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -230,7 +226,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -256,7 +252,7 @@ buildvariants:
   - name: tg1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -282,7 +278,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -303,7 +299,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -327,7 +323,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -351,7 +347,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -371,7 +367,7 @@ buildvariants:
   - name: t1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -395,7 +391,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -419,7 +415,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := validateStatusesForTaskDependencies(&p)
 
@@ -428,9 +424,6 @@ buildvariants:
 }
 
 func TestCheckReferencesForTaskDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	t.Run("WarnsWithTaskDependingOnNonexistentTaskInSpecificBuildVariant", func(t *testing.T) {
 		projYAML := `
 tasks:
@@ -448,7 +441,7 @@ buildvariants:
 - name: bv2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -474,7 +467,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -501,7 +494,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -522,7 +515,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -542,7 +535,7 @@ buildvariants:
   - name: t1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
@@ -571,7 +564,7 @@ buildvariants:
   - name: tg1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -596,7 +589,7 @@ buildvariants:
   - name: t1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -624,7 +617,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -649,7 +642,7 @@ buildvariants:
   - name: tg1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -672,7 +665,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -692,7 +685,7 @@ buildvariants:
     - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
@@ -719,7 +712,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -743,7 +736,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
@@ -770,7 +763,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -792,7 +785,7 @@ buildvariants:
 - name: bv2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -814,7 +807,7 @@ buildvariants:
   - name: t1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -838,7 +831,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -900,7 +893,7 @@ buildvariants:
   - name: t2
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -921,7 +914,7 @@ buildvariants:
   - name: t1
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkReferencesForTaskDependencies(&p)
 
@@ -1005,9 +998,6 @@ buildvariants:
 }
 
 func TestCheckRequestersForTaskDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	t.Run("SucceedsWithNilDependencySetting", func(t *testing.T) {
 		projYAML := `
 tasks:
@@ -1039,7 +1029,7 @@ buildvariants:
       - name: "dep"
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkRequestersForTaskDependencies(&p)
 
@@ -1077,7 +1067,7 @@ buildvariants:
       - name: "dep"
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkRequestersForTaskDependencies(&p)
 
@@ -1115,7 +1105,7 @@ buildvariants:
       - name: "dep"
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkRequestersForTaskDependencies(&p)
 
@@ -1153,7 +1143,7 @@ buildvariants:
         patch_only: true
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkRequestersForTaskDependencies(&p)
 
@@ -1191,7 +1181,7 @@ buildvariants:
       - name: "dep"
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkRequestersForTaskDependencies(&p)
 
@@ -1232,7 +1222,7 @@ buildvariants:
       - name: "dep"
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkRequestersForTaskDependencies(&p)
 
@@ -1273,7 +1263,7 @@ buildvariants:
         patch_only: true
 `
 		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		_, err := model.LoadProjectInto(t.Context(), []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		errs := checkRequestersForTaskDependencies(&p)
 
@@ -1730,9 +1720,6 @@ func TestCheckTaskRuns(t *testing.T) {
 }
 
 func TestValidateTimeoutLimits(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	project := &model.Project{
 		Tasks: []model.ProjectTask{
 			{
@@ -1748,7 +1735,7 @@ func TestValidateTimeoutLimits(t *testing.T) {
 				MaxExecTimeoutSecs: 100,
 			},
 		}
-		assert.Empty(t, validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false))
+		assert.Empty(t, validateTimeoutLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
 	})
 	t.Run("FailsWithTimeoutExceedingLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{
@@ -1756,21 +1743,18 @@ func TestValidateTimeoutLimits(t *testing.T) {
 				MaxExecTimeoutSecs: 1,
 			},
 		}
-		errs := validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		errs := validateTimeoutLimits(t.Context(), settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
 		assert.Contains(t, "task 'task' exec timeout (10) is too high and will be set to maximum limit (1)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTimeoutLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
-		assert.Empty(t, validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false))
+		assert.Empty(t, validateTimeoutLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
 	})
 }
 
 func TestValidateIncludeLimits(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	project := &model.Project{
 		NumIncludes: 10,
 	}
@@ -1781,7 +1765,7 @@ func TestValidateIncludeLimits(t *testing.T) {
 				MaxIncludesPerVersion: 100,
 			},
 		}
-		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+		assert.Empty(t, validateIncludeLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
 	})
 	t.Run("FailsWithIncludesExceedingLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{
@@ -1789,21 +1773,18 @@ func TestValidateIncludeLimits(t *testing.T) {
 				MaxIncludesPerVersion: 1,
 			},
 		}
-		errs := validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		errs := validateIncludeLimits(t.Context(), settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
 		assert.Contains(t, "project's total number of includes (10) exceeds maximum limit (1)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxIncludesLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
-		assert.Empty(t, validateIncludeLimits(ctx, settings, project, &model.ProjectRef{}, false))
+		assert.Empty(t, validateIncludeLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
 	})
 }
 
 func TestValidateProjectLimits(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	makeProjectWithDoubleNumTasks := func(numTasks int) *model.Project {
 		var project model.Project
 		project.BuildVariants = []model.BuildVariant{
@@ -1839,7 +1820,7 @@ func TestValidateProjectLimits(t *testing.T) {
 			},
 		}
 		project := makeProjectWithDoubleNumTasks(3)
-		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
+		assert.Empty(t, validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
 	})
 	t.Run("FailsWithTasksExceedingLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{
@@ -1848,7 +1829,7 @@ func TestValidateProjectLimits(t *testing.T) {
 			},
 		}
 		project := makeProjectWithDoubleNumTasks(50)
-		errs := validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		errs := validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
 		assert.Contains(t, "project's total number of tasks (100) exceeds maximum limit (10)", errs[0].Message)
@@ -1856,7 +1837,7 @@ func TestValidateProjectLimits(t *testing.T) {
 	t.Run("SucceedsWithNoMaxTaskLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
 		project := makeProjectWithDoubleNumTasks(50)
-		assert.Empty(t, validateProjectLimits(ctx, settings, project, &model.ProjectRef{}, false))
+		assert.Empty(t, validateProjectLimits(t.Context(), settings, project, &model.ProjectRef{}, false))
 	})
 }
 
@@ -3674,8 +3655,7 @@ tasks:
       script: echo test
 `
 			proj := model.Project{}
-			ctx := context.Background()
-			pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+			pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
 			So(pp, ShouldNotBeNil)
 			So(proj, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -3693,8 +3673,7 @@ tasks:
       script: echo test
 `
 			proj := model.Project{}
-			ctx := context.Background()
-			pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+			pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
 			So(pp, ShouldNotBeNil)
 			So(proj, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -3702,6 +3681,72 @@ tasks:
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
 			So(len(validationErrs.AtLevel(Error)), ShouldEqual, 1)
 			So(validationErrs.AtLevel(Error)[0].Message, ShouldContainSubstring, "must specify either command or function for task 'example_task'")
+		})
+		Convey("no validation issue should be thrown if a command specifies retry_on_failure", func() {
+			exampleYml := `
+tasks:
+- name: example_task
+  commands:
+  - command: shell.exec
+    params:
+      script: echo test
+    retry_on_failure: true
+`
+			proj := model.Project{}
+			pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
+			So(err, ShouldBeNil)
+			So(pp, ShouldNotBeNil)
+			So(proj, ShouldNotBeNil)
+			validationErrs := validatePluginCommands(&proj)
+			So(validationErrs, ShouldResemble, ValidationErrors{})
+		})
+		Convey("no validation issue should be thrown if a command within a function specifies retry_on_failure", func() {
+			exampleYml := `
+tasks:
+- name: example_task
+  commands:
+  - func: my-func
+functions:
+  my-func:
+    - command: shell.exec
+      params:
+        script: echo test
+      retry_on_failure: true
+    - command: shell.exec
+      params:
+        script: echo test again
+`
+			proj := model.Project{}
+			pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
+			So(err, ShouldBeNil)
+			So(pp, ShouldNotBeNil)
+			So(proj, ShouldNotBeNil)
+			validationErrs := validatePluginCommands(&proj)
+			So(validationErrs, ShouldResemble, ValidationErrors{})
+		})
+		Convey("a notice should be thrown if a function call specifies retry_on_failure", func() {
+			exampleYml := `
+tasks:
+- name: example_task
+  commands:
+  - func: my-func
+    retry_on_failure: true
+functions:
+  my-func:
+    command: shell.exec
+    params:
+      script: echo test
+`
+			proj := model.Project{}
+			pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
+			So(err, ShouldBeNil)
+			So(pp, ShouldNotBeNil)
+			So(proj, ShouldNotBeNil)
+			validationErrs := validatePluginCommands(&proj)
+			So(validationErrs, ShouldNotResemble, ValidationErrors{})
+			errs := validationErrs.AtLevel(Notice)
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "cannot specify retry_on_failure with function 'my-func' for task 'example_task'")
 		})
 		Convey("an error should return if a shell.exec command is missing a script", func() {
 			project := &model.Project{
@@ -4315,9 +4360,6 @@ tasks:
 }
 
 func TestCheckProjectWarnings(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	Convey("When validating a project's semantics", t, func() {
 		Convey("if the project passes all of the validation funcs, no errors"+
 			" should be returned", func() {
@@ -4327,7 +4369,7 @@ func TestCheckProjectWarnings(t *testing.T) {
 			}
 
 			for _, d := range distros {
-				So(d.Insert(ctx), ShouldBeNil)
+				So(d.Insert(t.Context()), ShouldBeNil)
 			}
 
 			projectRef := &model.ProjectRef{
@@ -4641,8 +4683,7 @@ func TestTaskValidation(t *testing.T) {
     - name: "this task is too long"
 `
 	var proj model.Project
-	ctx := context.Background()
-	_, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "", &proj)
+	_, err := model.LoadProjectInto(t.Context(), []byte(simpleYml), nil, "", &proj)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "spaces are not allowed")
 }
@@ -4668,8 +4709,7 @@ func TestTaskGroupValidation(t *testing.T) {
     - name: example_task_group
   `
 	var proj model.Project
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(duplicateYml), nil, "", &proj)
+	pp, err := model.LoadProjectInto(t.Context(), []byte(duplicateYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -4711,7 +4751,7 @@ func TestTaskGroupValidation(t *testing.T) {
     tasks:
     - name: foo
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "", &proj)
+	pp, err = model.LoadProjectInto(t.Context(), []byte(duplicateTaskYml), nil, "", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -4739,7 +4779,7 @@ buildvariants:
   tasks:
     - name: example_task_group
 `
-	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
+	pp, err = model.LoadProjectInto(t.Context(), []byte(largeMaxHostYml), nil, "", &proj)
 	require.NotNil(t, proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -4766,7 +4806,7 @@ buildvariants:
   tasks:
     - name: example_task_group
 `
-	pp, err = model.LoadProjectInto(ctx, []byte(overMaxTimeoutYml), nil, "", &proj)
+	pp, err = model.LoadProjectInto(t.Context(), []byte(overMaxTimeoutYml), nil, "", &proj)
 	require.NotNil(t, proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -4800,7 +4840,6 @@ task_groups:
 `
 
 	var proj model.Project
-	ctx := context.Background()
 	// verify that attach commands can't be used in teardown group
 	for _, commandName := range evergreen.AttachCommands {
 		attachCommand := fmt.Sprintf(`
@@ -4808,7 +4847,7 @@ task_groups:
   - command: %s
 `, commandName)
 		attachTeardownYml := fmt.Sprintf("%s\n%s", baseYml, attachCommand)
-		pp, err := model.LoadProjectInto(ctx, []byte(attachTeardownYml), nil, "", &proj)
+		pp, err := model.LoadProjectInto(t.Context(), []byte(attachTeardownYml), nil, "", &proj)
 		assert.NotNil(t, proj)
 		assert.NotNil(t, pp)
 		assert.NoError(t, err)
@@ -4820,14 +4859,11 @@ task_groups:
 }
 
 func TestTaskNotInTaskGroupDependsOnTaskInTaskGroup(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert(ctx))
+	require.NoError(d.Insert(t.Context()))
 	exampleYml := `
 exec_timeout_secs: 100
 tasks:
@@ -4866,7 +4902,7 @@ buildvariants:
   - name: example_task_group
 `
 	proj := model.Project{}
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -4876,21 +4912,18 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	errors := CheckProjectErrors(ctx, &proj)
+	errors := CheckProjectErrors(t.Context(), &proj)
 	assert.Empty(errors)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Empty(warnings)
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert(ctx))
+	require.NoError(d.Insert(t.Context()))
 	exampleYml := `
 tasks:
 - name: one
@@ -4926,7 +4959,7 @@ buildvariants:
     - two
 `
 	proj := model.Project{}
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
 	assert.NoError(err)
@@ -4935,7 +4968,7 @@ buildvariants:
 		"display_three")
 	proj.BuildVariants[0].Tasks = append(proj.BuildVariants[0].Tasks, model.BuildVariantTaskUnit{Name: "display_three"})
 
-	errors := CheckProjectErrors(ctx, &proj)
+	errors := CheckProjectErrors(t.Context(), &proj)
 	require.Len(errors, 1)
 	assert.Equal(Error, errors[0].Level)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
@@ -4961,8 +4994,7 @@ func TestValidateCreateHosts(t *testing.T) {
     - name: t_1
   `
 	var p model.Project
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
+	pp, err := model.LoadProjectInto(t.Context(), []byte(yml), nil, "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
 	errs := validateHostCreates(&p)
@@ -4983,7 +5015,7 @@ func TestValidateCreateHosts(t *testing.T) {
     tasks:
     - name: t_1
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "id", &p)
+	pp, err = model.LoadProjectInto(t.Context(), []byte(yml), nil, "id", &p)
 	require.NoError(err)
 	require.NotNil(pp)
 	errs = validateHostCreates(&p)
@@ -5031,8 +5063,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
   `
 	var p model.Project
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, err := model.LoadProjectInto(t.Context(), []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs := validateDuplicateBVTasks(&p)
@@ -5054,7 +5085,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
     - tg1
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, err = model.LoadProjectInto(t.Context(), []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = validateDuplicateBVTasks(&p)
@@ -5079,7 +5110,7 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - tg1
     - tg2
   `
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", &p)
+	pp, err = model.LoadProjectInto(t.Context(), []byte(yml), nil, "", &p)
 	assert.NoError(err)
 	assert.NotNil(pp)
 	errs = validateDuplicateBVTasks(&p)
@@ -5088,14 +5119,11 @@ func TestDuplicateTaskInBV(t *testing.T) {
 }
 
 func TestCheckProjectConfigurationIsValid(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
 	d := distro.Distro{Id: "example_distro"}
-	require.NoError(d.Insert(ctx))
+	require.NoError(d.Insert(t.Context()))
 	exampleYml := `
 tasks:
 - name: one
@@ -5125,21 +5153,18 @@ buildvariants:
   - name: two
 `
 	proj := model.Project{}
-	pp, err := model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
+	pp, err := model.LoadProjectInto(t.Context(), []byte(exampleYml), nil, "example_project", &proj)
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
-	errs := CheckProjectErrors(ctx, &proj)
+	errs := CheckProjectErrors(t.Context(), &proj)
 	assert.Empty(errs, "no errors were found")
 	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")
-	assert.NoError(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
+	assert.NoError(CheckProjectConfigurationIsValid(t.Context(), &evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
 }
 
 func TestGetDistrosForProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
@@ -5149,21 +5174,21 @@ func TestGetDistrosForProject(t *testing.T) {
 		ValidProjects: []string{"project1", "project2"},
 		WarningNote:   "this is a warning for the first distro",
 	}
-	require.NoError(d1.Insert(ctx))
+	require.NoError(d1.Insert(t.Context()))
 	d2 := distro.Distro{
 		Id:               "distro2",
 		Aliases:          []string{"distro2-alias", "distro1and2-alias"},
 		WarningNote:      "this is the warning for another distro",
 		SingleTaskDistro: true,
 	}
-	require.NoError(d2.Insert(ctx))
+	require.NoError(d2.Insert(t.Context()))
 	d3 := distro.Distro{
 		Id:            "distro3",
 		ValidProjects: []string{"project5"},
 	}
-	require.NoError(d3.Insert(ctx))
+	require.NoError(d3.Insert(t.Context()))
 
-	ids, aliases, warnings, err := getDistros(ctx)
+	ids, aliases, warnings, err := getDistros(t.Context())
 	require.NoError(err)
 	require.Len(ids, 3)
 	require.Len(aliases, 3)
@@ -5178,7 +5203,7 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Contains(warnings["distro1and2-alias"], d1.WarningNote)
 	assert.Contains(warnings["distro1and2-alias"], d2.WarningNote)
 
-	ids, aliases, singleTaskDistroIDs, warnings, err := getDistrosForProject(ctx, "project1")
+	ids, aliases, singleTaskDistroIDs, warnings, err := getDistrosForProject(t.Context(), "project1")
 	require.NoError(err)
 	require.Len(ids, 2)
 	require.Len(warnings, 5) // Both d1 and d2 are going to match here
@@ -5189,7 +5214,7 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Equal("distro2", singleTaskDistroIDs[0])
 
 	// Only d2 is going to match here
-	ids, aliases, singleTaskDistroIDs, warnings, err = getDistrosForProject(ctx, "project3")
+	ids, aliases, singleTaskDistroIDs, warnings, err = getDistrosForProject(t.Context(), "project3")
 	require.NoError(err)
 	require.Len(ids, 1)
 	require.Len(warnings, 3)
@@ -5204,9 +5229,6 @@ func TestGetDistrosForProject(t *testing.T) {
 }
 
 func TestValidateVersionControl(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	ref := &model.ProjectRef{
 		Identifier:            "proj",
 		VersionControlEnabled: utility.FalsePtr(),
@@ -5221,19 +5243,16 @@ func TestValidateVersionControl(t *testing.T) {
 		},
 	}
 	isConfigDefined := &projectConfig != nil
-	verrs := validateVersionControl(ctx, &evergreen.Settings{}, &model.Project{}, ref, isConfigDefined)
+	verrs := validateVersionControl(t.Context(), &evergreen.Settings{}, &model.Project{}, ref, isConfigDefined)
 	assert.Equal(t, "version control is disabled for project 'proj'; the currently defined project config fields will not be picked up", verrs[0].Message)
 
 	ref.VersionControlEnabled = utility.TruePtr()
-	verrs = validateVersionControl(ctx, &evergreen.Settings{}, &model.Project{}, ref, false)
+	verrs = validateVersionControl(t.Context(), &evergreen.Settings{}, &model.Project{}, ref, false)
 	assert.Equal(t, "version control is enabled for project 'proj' but no project config fields have been set.", verrs[0].Message)
 
 }
 
 func TestValidateContainers(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	s := &evergreen.Settings{
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
@@ -5247,43 +5266,43 @@ func TestValidateContainers(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
+	assert.NoError(t, evergreen.UpdateConfig(t.Context(), testutil.TestConfig()))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
 		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			assert.Empty(t, verrs)
 		},
 		"FailsWithoutContainerName": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Name = ""
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "name must be defined")
 		},
 		"FailsWithoutContainerImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Image = ""
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "image must be defined")
 		},
 		"FailsWithoutContainerWorkingDirectory": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].WorkingDir = ""
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "working directory must be defined")
 		},
 		"FailsWithNotAllowedImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Image = "not_allowed"
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "image 'not_allowed' not allowed")
 		},
 		"MustSpecifyEitherContainerSizeOrResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Size = ""
 			p.Containers[0].Resources = nil
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
 		},
@@ -5292,19 +5311,19 @@ func TestValidateContainers(t *testing.T) {
 				MemoryMB: 100,
 				CPU:      1,
 			}
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
 		},
 		"FailsWithNonexistentContainerSize": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Size = "s2"
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
 		},
 		"FailsWithNonexistentRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Credential = "nonexistent"
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "credential 'nonexistent' is not defined in project settings")
 		},
@@ -5313,7 +5332,7 @@ func TestValidateContainers(t *testing.T) {
 				OperatingSystem: "oops",
 				CPUArchitecture: "oops",
 			}
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
 			assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
@@ -5323,14 +5342,14 @@ func TestValidateContainers(t *testing.T) {
 				MemoryMB: 0,
 				CPU:      -1,
 			}
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
 			assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
 		},
 		"FailsWithPodSecretAsReferencedRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			ref.ContainerSecrets[0].Type = model.ContainerSecretPodSecret
-			verrs := validateContainers(ctx, s, p, ref, false)
+			verrs := validateContainers(t.Context(), s, p, ref, false)
 			require.Len(t, verrs, 1)
 			assert.Contains(t, verrs[0].Message, "container credential named 'c1' exists but is not valid for use as a repository credential")
 		},
