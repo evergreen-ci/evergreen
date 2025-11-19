@@ -667,16 +667,15 @@ const (
 	// positives when automatically detecting unhealthy static hosts.
 	MaxStaticHostUnresponsiveInterval = 120 * time.Minute
 
-	// linuxProvisioningCutoff is the threshold before a Linux host is considered
-	// stuck in provisioning and should be terminated. This is based on
-	// empirical data of how long Linux hosts typically take to provision.
+	// linuxProvisioningCutoff is the threshold before a Linux host is
+	// considered stuck in provisioning. This is based on empirical data of how
+	// long Linux hosts typically take to provision.
 	linuxProvisioningCutoff = 5 * time.Minute
 
 	// windowsProvisioningCutoff is the threshold before a Windows host is
-	// considered stuck in provisioning and should be terminated. This is based
-	// on empirical data of how long Linux hosts typically take to provision.
-	// The Windows timeout is higher than the linuxProvisioningCutoff because
-	// Windows hosts take longer to provision.
+	// considered stuck in provisioning. This is based on empirical data of how
+	// long Windows hosts typically take to provision. The Windows timeout is
+	// higher the one for Linux because Windows hosts take longer to provision.
 	windowsProvisioningCutoff = 8 * time.Minute
 
 	MaxTagKeyLength   = 128
@@ -2332,10 +2331,9 @@ func (h *Host) AddSSHKeyName(ctx context.Context, name string) error {
 	return nil
 }
 
-// buildProvisioningTimeoutCondition creates a MongoDB query condition for hosts
-// of a particular OS/arch that have exceeded their OS/arch-specific
-// provisioning timeout.
-func buildProvisioningTimeoutCondition(now time.Time, archMatches bson.M, timeout time.Duration) bson.M {
+// buildConditionalProvisioningTimeoutQuery creates a MongoDB query for hosts
+// that have exceeded a conditional provisioning timeout.
+func buildConditionalProvisioningTimeoutQuery(now time.Time, timeoutCondition bson.M, timeout time.Duration) bson.M {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 
 	return bson.M{
@@ -2365,7 +2363,7 @@ func buildProvisioningTimeoutCondition(now time.Time, archMatches bson.M, timeou
 					bootstrapKey: bson.M{"$ne": distro.BootstrapMethodUserData},
 				},
 			}},
-			archMatches,
+			timeoutCondition,
 		},
 		CreateTimeKey: bson.M{"$lte": now.Add(-timeout)},
 		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
@@ -2407,15 +2405,15 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 			// (should get bonus 5 minutes).
 			// * Hosts that start the agent normally (should not be terminated
 			// for provisioning failure).
-			buildProvisioningTimeoutCondition(
+			buildConditionalProvisioningTimeoutQuery(
 				now,
-				bson.M{archKey: bson.M{"$not": bson.M{"$regex": "windows"}}},
+				bson.M{archKey: bson.M{"$ne": evergreen.ArchWindowsAmd64}},
 				linuxProvisioningCutoff,
 			),
 			// Windows hosts taking too long to provision.
-			buildProvisioningTimeoutCondition(
+			buildConditionalProvisioningTimeoutQuery(
 				now,
-				bson.M{archKey: bson.M{"$regex": "windows"}},
+				bson.M{archKey: evergreen.ArchWindowsAmd64},
 				windowsProvisioningCutoff,
 			),
 			{ // decommissioned hosts not running tasks
