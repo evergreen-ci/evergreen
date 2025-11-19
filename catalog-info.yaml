@@ -82,7 +82,7 @@ metadata:
       icon: dashboard
 spec:
   type: graphql
-  lifecycle: experimental
+  lifecycle: production
   owner: group:10gen-evergreen-ui
   system: evergreen
   definition:
