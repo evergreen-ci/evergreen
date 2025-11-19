@@ -68,13 +68,24 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 	}
 
 	accountRoles := j.env.Settings().Providers.AWS.AccountRoles
-	//Adding the empty value account as internally empty string is mapped to Kernel-Build AWS account
+	/*
+		Apart from the AWS Account roles that are defined in the admin page, we have a default AWS Account - Kernel-Build
+		This AWS Account is not listed on the admin page. It is set up in evergreen-deploy and is internally injected during startup runtime
+		Anytime when the account value is an empty string, the default Kernel-Build account is used.
+	*/
 	accountRoles = append(accountRoles, evergreen.AWSAccountRoleMapping{
-		Account: "",
+		Account: "", // Setting empty string value for account. Want to also add the Kernel-Build account to the list of accounts for clean up.
 	})
 
 	for _, accountRole := range accountRoles {
-		grip.Info(fmt.Sprintf("starting clean up for provider with account '%s'", accountRole.Account))
+
+		grip.Info(message.Fields{
+			"message":  "starting clean up for left over cloud resources",
+			"account":  accountRole.Account,
+			"provider": j.Provider,
+			"region":   j.Region,
+			"job_id":   j.ID(),
+		})
 
 		cloudManager, err := cloud.GetManager(ctx, j.env, cloud.ManagerOpts{
 			Provider: j.Provider,
@@ -84,7 +95,7 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "getting cloud manager for provider '%s' in region '%s'", j.Provider, j.Region))
-			return
+			continue
 		}
 
 		err = cloudManager.Cleanup(ctx)
