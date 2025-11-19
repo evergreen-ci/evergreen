@@ -74,7 +74,7 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 		Anytime when the account value is an empty string, the default Kernel-Build account is used.
 	*/
 	accountRoles = append(accountRoles, evergreen.AWSAccountRoleMapping{
-		Account: "", // Setting empty string value for account. Want to also add the Kernel-Build account to the list of accounts for clean up.
+		Account: "", // Setting empty string value for account. Empty string maps to the Kernel-Build account.
 	})
 
 	for _, accountRole := range accountRoles {
