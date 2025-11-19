@@ -15,11 +15,7 @@
 {{end}}
 <script type="text/javascript">
   var userTz = {{GetTimezone $.User}}
-  var plugins = {{.PluginContent.Data}}
 </script>
-  {{range .PluginContent.Includes}}
-    {{.}}
-  {{end}}
 {{end}}
 
 {{define "title"}}
@@ -183,13 +179,6 @@ Evergreen - Build {{Trunc .Build.Build.Revision 10}} on {{.Build.Build.DisplayNa
         </div>
       </div>
 
-      <div class="row">
-        <div class="col-lg-12">
-          {{range .PluginContent.Panels.Left}}
-            {{.}}
-          {{end}}
-        </div>
-      </div>
     </div>
 
     <div id="tasks-info" class="col-lg-5">
@@ -214,16 +203,6 @@ Evergreen - Build {{Trunc .Build.Build.Revision 10}} on {{.Build.Build.DisplayNa
           </tbody>
         </table>
       </div>
-        {{range .PluginContent.Panels.Right}}
-            {{.}}
-        {{end}}
-    </div>
-  </div>
-  <div class="row">
-    <div class="col-lg-12">
-      {{range .PluginContent.Panels.Center}}
-        {{.}}
-      {{end}}
     </div>
   </div>
 </div>

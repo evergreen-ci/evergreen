@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
@@ -49,8 +48,6 @@ type UIServer struct {
 
 	queue amboy.Queue
 	env   evergreen.Environment
-
-	plugin.PanelManager
 }
 
 // ViewData contains common data that is provided to all Evergreen pages
@@ -124,23 +121,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 
 	if err := uis.umconf.Validate(); err != nil {
 		return nil, errors.Wrap(err, "programmer error; invalid user middleware configuration")
-	}
-
-	plugins := plugin.GetPublished()
-	uis.PanelManager = &plugin.SimplePanelManager{}
-
-	if err := uis.PanelManager.RegisterPlugins(plugins); err != nil {
-		return nil, errors.Wrap(err, "problem initializing plugins")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, pl := range plugins {
-		// get the settings
-		catcher.Add(pl.Configure(uis.Settings.Plugins[pl.Name()]))
-	}
-
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
 	}
 
 	return uis, nil
@@ -415,16 +395,13 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/admin/cleartokens").Wrap(needsLogin, adminSettings).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
 
-	// Plugin routes
-	app.PrefixRoute("/plugin").Route("/manifest/get/{project_id}/{revision}").Wrap(needsLogin, viewTasks).Handler(uis.GetManifest).Get()
-
-	//build baron
-	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbJiraSearch).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbGetCreatedTickets).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/custom_created_tickets/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbGetCustomCreatedTickets).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(bbGetNote).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(bbSaveNote).Put()
-	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.bbFileTicket).Post()
+	// Deprecated Build Baron routes - redirect to new Spruce UI
+	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/custom_created_tickets/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Put()
+	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Post()
 
 	// Add an OPTIONS method to every POST and GET request to handle preflight OPTIONS requests.
 	// These requests must not check for credentials. They exist to validate whether a route exists, and to
