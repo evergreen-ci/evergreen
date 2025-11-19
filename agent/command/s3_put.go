@@ -484,6 +484,17 @@ retryLoop:
 
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
+					// Log detailed error information for debugging
+					logger.Task().Errorf("S3 Upload failed for file '%s' to bucket '%s' with key '%s': %+v", fpath, s3pc.Bucket, remoteName, err)
+					logger.Task().Debugf("Error type: %T", err)
+
+					// Check for AWS SDK specific errors
+					var awsErr smithy.APIError
+					if errors.As(err, &awsErr) {
+						logger.Task().Errorf("AWS API Error - Code: %s, Message: %s, Fault: %s",
+							awsErr.ErrorCode(), awsErr.ErrorMessage(), awsErr.ErrorFault())
+					}
+
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
 					if os.IsNotExist(errors.Cause(err)) {
@@ -520,6 +531,7 @@ retryLoop:
 
 					// in all other cases, log an error and retry after an interval.
 					logger.Task().Error(errors.WithMessage(err, "putting S3 file"))
+					logger.Task().Infof("Retrying S3 upload after backoff (attempt %d of %d)", i, maxS3OpAttempts)
 					timer.Reset(backoffCounter.Duration())
 					continue retryLoop
 				}

@@ -442,7 +442,45 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+
+		// Log rate limit information for debugging
+		if resp.Rate.Limit > 0 {
+			grip.Info(message.Fields{
+				"message":       "GitHub API rate limit status",
+				"ticket":        "Github API Limit Investigation",
+				"owner":         owner,
+				"repo":          repo,
+				"page":          commitPage,
+				"next_page":     resp.NextPage,
+				"rate_limit":    resp.Rate.Limit,
+				"rate_remaining": resp.Rate.Remaining,
+				"rate_reset":    resp.Rate.Reset.Time,
+				"commits_returned": len(commits),
+			})
+		}
+
+		// Log pagination progress
+		if commitPage > 1 || resp.NextPage > 0 {
+			grip.Info(message.Fields{
+				"message":   "GitHub API pagination progress",
+				"ticket":    "Github API Limit Investigation",
+				"owner":     owner,
+				"repo":      repo,
+				"current_page": commitPage,
+				"next_page": resp.NextPage,
+				"commits_in_page": len(commits),
+			})
+		}
+
 		if err != nil {
+			grip.Error(message.Fields{
+				"message": "GitHub API error during commit fetch",
+				"ticket":  "Github API Limit Investigation",
+				"owner":   owner,
+				"repo":    repo,
+				"page":    commitPage,
+				"error":   err.Error(),
+			})
 			return nil, 0, parseGithubErrorResponse(resp)
 		}
 	} else {
