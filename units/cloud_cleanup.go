@@ -94,15 +94,13 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 		}
 
 		err = cloudManager.Cleanup(ctx)
-		if err != nil {
-			j.AddError(errors.Wrap(err, "cleaning up for provider"))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "cleaning up cloud resources",
-				"account":  accountRole.Account,
-				"provider": j.Provider,
-				"region":   j.Region,
-				"job_id":   j.ID(),
-			}))
-		}
+		j.AddError(errors.Wrap(err, "cleaning up for provider"))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "cleaning up cloud resources",
+			"account":  accountRole.Account,
+			"provider": j.Provider,
+			"region":   j.Region,
+			"job_id":   j.ID(),
+		}))
 	}
 }
