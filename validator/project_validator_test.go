@@ -5023,9 +5023,18 @@ func TestDuplicateTaskInBV(t *testing.T) {
 }
 
 func TestCheckProjectConfigurationIsValid(t *testing.T) {
+	testutil.Setup()
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(distro.Collection))
+	require.NoError(db.Clear(model.ProjectRefCollection))
+
+	projectRef := &model.ProjectRef{
+		Enabled: true,
+		Id:      "p1",
+	}
+	assert.NoError(projectRef.Insert(t.Context()))
+
 	d := distro.Distro{Id: "example_distro"}
 	require.NoError(d.Insert(t.Context()))
 	exampleYml := `
