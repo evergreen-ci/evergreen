@@ -151,6 +151,18 @@ func (uis *UIServer) legacyPatchPage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
 
+func (uis *UIServer) legacyVariantHistory(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+	variant := gimlet.GetVars(r)["variant"]
+
+	if err != nil || project == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("%s/variant-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, variant), http.StatusPermanentRedirect)
+}
+
 func (uis *UIServer) legacyBuildBaronPage(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]

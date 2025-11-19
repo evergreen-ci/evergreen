@@ -356,12 +356,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskHistoryPage).Get()
 	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskHistoryPage).Get()
 
-	// History Drawer Endpoints
-	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
-	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistoryDrawer).Get()
-
 	// Variant History
-	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.variantHistory).Get()
+	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyVariantHistory).Get()
 
 	// Task queues
 	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskQueue).Get()
@@ -386,10 +382,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.legacyNotificationsPage).Get()
 
 	// Task stats
-	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.taskTimingPage).Get()
-	app.AddRoute("/task_timing/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskTimingPage).Get()
-	app.AddRoute("/json/task_timing/{project_id}/{build_variant}/{request}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskTimingJSON).Get()
-	app.AddRoute("/json/task_timing/{project_id}/{build_variant}/{request}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskTimingJSON).Get()
+	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get()
+	app.AddRoute("/task_timing/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyWaterfallPage).Get()
 
 	// Project routes
 	app.AddRoute("/projects/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyProjectsPage).Get()

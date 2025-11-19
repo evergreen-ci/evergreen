@@ -42,7 +42,9 @@ type TestLogs struct {
 	URLRaw     *string `json:"url_raw"`
 	URLParsley *string `json:"url_parsley,omitempty"`
 	// Line number in the log file corresponding to information about this test
-	LineNum       int     `json:"line_num"`
+	LineNum int `json:"line_num"`
+	// Test name as represented in the logging backend
+	TestName      *string `json:"log_test_name"`
 	RenderingType *string `json:"rendering_type"`
 	Version       int32   `json:"version"`
 }
@@ -67,9 +69,10 @@ func (at *APITest) BuildFromService(st any) error {
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
-			URL:     utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
-			URLRaw:  utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
-			LineNum: v.LineNum,
+			URL:      utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
+			URLRaw:   utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
+			LineNum:  v.LineNum,
+			TestName: utility.ToStringPtr(v.GetLogTestName()),
 		}
 		if parsleyURL := v.GetLogURL(env, evergreen.LogViewerParsley); parsleyURL != "" {
 			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
