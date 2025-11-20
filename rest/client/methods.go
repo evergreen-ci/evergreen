@@ -29,9 +29,10 @@ import (
 )
 
 var (
+	// These should be lowercase.
 	oauthRetryErrors = []string{
 		"claimed by another client",
-		"Refresh token expired",
+		"refresh token expired",
 	}
 )
 
@@ -1757,7 +1758,7 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 	// Sometimes, the refresh token is invalid or claimed by another client.
 	// In this case, we need to run through the auth flow again without using
 	// the refresh token.
-	clientErrString := err.Error()
+	clientErrString := strings.ToLower(err.Error())
 	shouldRetry := false
 	for _, retryIfFound := range oauthRetryErrors {
 		if strings.Contains(clientErrString, retryIfFound) {
