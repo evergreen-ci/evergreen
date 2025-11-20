@@ -361,7 +361,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyPatchPage).Get()
 	app.AddRoute("/diff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.diffPage).Get()
 	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fileDiffPage).Get()
-	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.rawDiffPage).Get()
+	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, allowsCORS, viewTasks).Handler(uis.rawDiffPage).Get()
 	app.AddRoute("/patches").Wrap(needsLogin).Handler(uis.legacyPatchesPage).Get()
 	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyProjectPatchesPage).Get()
 	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin).Handler(uis.legacyUserPatchesPage).Get()
