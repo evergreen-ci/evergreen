@@ -137,7 +137,6 @@ mciModule
 
   // Multi Page App User Interface routes
   .constant('MPA_UI', {
-    BUILD_BY_ID: _.template('/build/{build_id}'),
     TASK_BY_ID: _.template('/task/{task_id}'),
   })
   .constant('CANARY_EXCLUSION_REGEX', /^((?!canary_|fio_|iperf|NetworkBandwidth).*)$/)

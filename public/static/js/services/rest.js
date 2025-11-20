@@ -108,22 +108,6 @@ mciServices.rest.factory('mciTasksRestService', ['mciBaseRestService', function 
     return service;
 }]);
 
-mciServices.rest.factory('mciBuildsRestService', ['mciBaseRestService', function (baseSvc) {
-    var resource = 'builds';
-
-    var service = {};
-
-    service.takeActionOnBuild = function (buildId, action, data, callbacks) {
-        var config = {
-            data: data
-        };
-        config.data['action'] = action;
-        baseSvc.putResource(resource, [buildId], config, callbacks);
-    };
-
-    return service;
-}]);
-
 mciServices.rest.factory('mciHostRestService', ['mciBaseRestService', function (baseSvc) {
     var resource = 'host';
 

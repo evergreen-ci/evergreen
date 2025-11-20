@@ -317,11 +317,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// `/test_log/{task_id}/{task_execution}?test_name={test_name}`.
 	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
-	// Build page
-	app.AddRoute("/build/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildPage).Get()
-	app.AddRoute("/builds/{build_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyBuild).Put()
-	app.AddRoute("/json/build_history/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildHistory).Get()
-
 	// Version page
 	app.AddRoute("/version/{version_id}").Wrap(needsLogin).Handler(uis.legacyVersionPage).Get()
 
