@@ -67,21 +67,40 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	cloudManager, err := cloud.GetManager(ctx, j.env, cloud.ManagerOpts{
-		Provider: j.Provider,
-		Region:   j.Region,
+	accountRoles := j.env.Settings().Providers.AWS.AccountRoles
+	accountRoles = append(accountRoles, evergreen.AWSAccountRoleMapping{
+		Account: "", // Setting empty string value for account. Empty string maps to the Kernel-Build account.
 	})
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "getting cloud manager for provider '%s' in region '%s'", j.Provider, j.Region))
-		return
-	}
 
-	err = cloudManager.Cleanup(ctx)
-	j.AddError(errors.Wrap(err, "cleaning up for provider"))
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":  "cleaning up cloud resources",
-		"provider": j.Provider,
-		"region":   j.Region,
-		"job_id":   j.ID(),
-	}))
+	for _, accountRole := range accountRoles {
+
+		grip.Info(message.Fields{
+			"message":  "starting clean up for left over cloud resources",
+			"account":  accountRole.Account,
+			"provider": j.Provider,
+			"region":   j.Region,
+			"job_id":   j.ID(),
+		})
+
+		cloudManager, err := cloud.GetManager(ctx, j.env, cloud.ManagerOpts{
+			Provider: j.Provider,
+			Region:   j.Region,
+			Account:  accountRole.Account,
+		})
+
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "getting cloud manager for provider '%s' in region '%s'", j.Provider, j.Region))
+			continue
+		}
+
+		err = cloudManager.Cleanup(ctx)
+		j.AddError(errors.Wrap(err, "cleaning up for provider"))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "cleaning up cloud resources",
+			"account":  accountRole.Account,
+			"provider": j.Provider,
+			"region":   j.Region,
+			"job_id":   j.ID(),
+		}))
+	}
 }
