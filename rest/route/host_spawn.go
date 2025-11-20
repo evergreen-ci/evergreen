@@ -306,23 +306,6 @@ func CheckUnexpirableHostLimitExceeded(ctx context.Context, userId string, maxHo
 	return nil
 }
 
-func checkVolumeLimitExceeded(ctx context.Context, user string, newSize int, maxSize int) error {
-	totalSize, err := host.FindTotalVolumeSizeByUser(ctx, user)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "counting total volume size for user '%s'", user).Error(),
-		}
-	}
-	if totalSize+newSize > maxSize {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot exceed user total volume size limit %d", maxSize),
-		}
-	}
-	return nil
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
 // POST /rest/v2/hosts/{host_id}/stop
@@ -740,7 +723,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-	if err := checkVolumeLimitExceeded(ctx, u.Username(), int(h.volume.Size), maxVolumeFromSettings); err != nil {
+	if err := cloud.CheckVolumeLimitExceeded(ctx, u.Username(), int(h.volume.Size), maxVolumeFromSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 	}
 
@@ -905,7 +888,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("volumes can only be sized up (current size is %d GiB)", volume.Size))
 		}
 		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-		if err = checkVolumeLimitExceeded(ctx, u.Username(), int(sizeIncrease), maxVolumeFromSettings); err != nil {
+		if err = cloud.CheckVolumeLimitExceeded(ctx, u.Username(), int(sizeIncrease), maxVolumeFromSettings); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 		}
 	}
