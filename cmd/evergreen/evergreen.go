@@ -4,9 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	// this *must* be included in the binary so that the legacy
-	// plugins are built into the binary.
-	_ "github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen"

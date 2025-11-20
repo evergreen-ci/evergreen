@@ -10,7 +10,11 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "github_pull_request",
       "branch": "spruce",
-      "test_selection_enabled": true
+      "test_selection_enabled": true,
+      "task_cost": {
+        "on_demand_cost": 1.25,
+        "adjusted_cost": 0.89
+      }
     }
   ],
   "project_ref": [

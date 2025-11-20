@@ -1913,6 +1913,7 @@ type ComplexityRoot struct {
 		Status                  func(childComplexity int) int
 		StepbackInfo            func(childComplexity int) int
 		Tags                    func(childComplexity int) int
+		TaskCost                func(childComplexity int) int
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
 		TaskLogs                func(childComplexity int) int
@@ -1935,6 +1936,11 @@ type ComplexityRoot struct {
 		MemoryMB   func(childComplexity int) int
 		Os         func(childComplexity int) int
 		WorkingDir func(childComplexity int) int
+	}
+
+	TaskCost struct {
+		AdjustedCost func(childComplexity int) int
+		OnDemandCost func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -2666,6 +2672,7 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
+
 	TaskOwnerTeam(ctx context.Context, obj *model.APITask) (*TaskOwnerTeam, error)
 	Tests(ctx context.Context, obj *model.APITask, opts *TestFilterOptions) (*TaskTestResult, error)
 
@@ -10734,6 +10741,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.Tags(childComplexity), true
+	case "Task.taskCost":
+		if e.complexity.Task.TaskCost == nil {
+			break
+		}
+
+		return e.complexity.Task.TaskCost(childComplexity), true
 	case "Task.taskGroup":
 		if e.complexity.Task.TaskGroup == nil {
 			break
@@ -10837,6 +10850,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskContainerCreationOpts.WorkingDir(childComplexity), true
+
+	case "TaskCost.adjustedCost":
+		if e.complexity.TaskCost.AdjustedCost == nil {
+			break
+		}
+
+		return e.complexity.TaskCost.AdjustedCost(childComplexity), true
+	case "TaskCost.onDemandCost":
+		if e.complexity.TaskCost.OnDemandCost == nil {
+			break
+		}
+
+		return e.complexity.TaskCost.OnDemandCost(childComplexity), true
 
 	case "TaskEndDetail.description":
 		if e.complexity.TaskEndDetail.Description == nil {
@@ -20066,6 +20092,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -28742,6 +28770,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -32209,6 +32239,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -34915,6 +34947,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -38775,6 +38809,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -38972,6 +39008,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39169,6 +39207,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39366,6 +39406,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39563,6 +39605,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39760,6 +39804,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39957,6 +40003,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -41044,6 +41092,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -45700,6 +45750,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -46131,6 +46183,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -52191,6 +52245,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -52388,6 +52444,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -60332,6 +60390,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -61133,6 +61193,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -61434,6 +61496,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -62700,6 +62764,41 @@ func (ec *executionContext) fieldContext_Task_taskLogs(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_taskCost(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_taskCost,
+		func(ctx context.Context) (any, error) {
+			return obj.TaskCost, nil
+		},
+		nil,
+		ec.marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "onDemandCost":
+				return ec.fieldContext_TaskCost_onDemandCost(ctx, field)
+			case "adjustedCost":
+				return ec.fieldContext_TaskCost_adjustedCost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskCost", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_taskOwnerTeam(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -63190,6 +63289,64 @@ func (ec *executionContext) fieldContext_TaskContainerCreationOpts_workingDir(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskCost_onDemandCost(ctx context.Context, field graphql.CollectedField, obj *model.APITaskCost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskCost_onDemandCost,
+		func(ctx context.Context) (any, error) {
+			return obj.OnDemandCost, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskCost_onDemandCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskCost_adjustedCost(ctx context.Context, field graphql.CollectedField, obj *model.APITaskCost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskCost_adjustedCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedCost, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskCost_adjustedCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -64244,6 +64401,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -68293,6 +68452,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -71395,6 +71556,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -101196,6 +101359,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "taskCost":
+			out.Values[i] = ec._Task_taskCost(ctx, field, obj)
 		case "taskOwnerTeam":
 			field := field
 
@@ -101509,6 +101674,44 @@ func (ec *executionContext) _TaskContainerCreationOpts(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var taskCostImplementors = []string{"TaskCost"}
+
+func (ec *executionContext) _TaskCost(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskCost) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskCostImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskCost")
+		case "onDemandCost":
+			out.Values[i] = ec._TaskCost_onDemandCost(ctx, field, obj)
+		case "adjustedCost":
+			out.Values[i] = ec._TaskCost_adjustedCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -115516,6 +115719,13 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 func (ec *executionContext) unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, v any) (model.APITaskAnnotationSettings, error) {
 	res, err := ec.unmarshalInputTaskAnnotationSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost(ctx context.Context, sel ast.SelectionSet, v *model.APITaskCost) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TaskCost(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskCountOptions(ctx context.Context, v any) (*TaskCountOptions, error) {

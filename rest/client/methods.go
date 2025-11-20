@@ -28,8 +28,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const (
-	refreshTokenClaimed = "claimed by another client"
+var (
+	// These should be lowercase.
+	oauthRetryErrors = []string{
+		"claimed by another client",
+		"refresh token expired",
+	}
 )
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
@@ -1754,7 +1758,16 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 	// Sometimes, the refresh token is invalid or claimed by another client.
 	// In this case, we need to run through the auth flow again without using
 	// the refresh token.
-	if !strings.Contains(err.Error(), refreshTokenClaimed) {
+	clientErrString := strings.ToLower(err.Error())
+	shouldRetry := false
+	for _, retryIfFound := range oauthRetryErrors {
+		if strings.Contains(clientErrString, retryIfFound) {
+			shouldRetry = true
+			break
+		}
+	}
+
+	if !shouldRetry {
 		return nil, client.TokenFilePath(), err
 	}
 
