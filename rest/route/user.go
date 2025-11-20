@@ -303,10 +303,10 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	}
 	rolesToCheck := []gimlet.Role{}
 	for _, r := range roles {
-		if serviceModel.IsAdminRepoRole(r.ID) {
-			// Do not delete admin repo roles. Repo admin permissions are
-			// maintained solely by the repo ref's admin list, so this route
-			// cannot modify the repo admins.
+		if serviceModel.IsAdminRepoOrProjectRole(r.ID) {
+			// Do not delete admin repo or project roles. These admin permissions are
+			// maintained solely by the repo/project ref's admin list, so this route
+			// cannot modify them.
 			continue
 		}
 		if utility.StringSliceContains(evergreen.GeneralAccessRoles, r.ID) {
