@@ -120,7 +120,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(cmd.ExcludeFiles, ShouldResemble, []string{"*.pdb"})
 				numFound, err := cmd.makeArchive(t.Context(), logger.Task())
 				So(err, ShouldBeNil)
-				So(numFound, ShouldEqual, 1)
+				So(numFound, ShouldEqual, 3)
 
 				exists := utility.FileExists(target.Name())
 				So(exists, ShouldBeTrue)
@@ -151,6 +151,44 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 				exists = utility.FileExists(filepath.Join(outputDir, "targz_me/dir1/dir2/test.pdb"))
 				So(exists, ShouldBeFalse)
+			})
+
+			Convey("empty directories should be included", func() {
+				sourceDir := t.TempDir()
+				nestedDir := filepath.Join(sourceDir, "dir1", "dir2")
+				require.NoError(t, os.MkdirAll(nestedDir, 0755))
+
+				target, err := os.CreateTemp("", "empty-dirs-*.tgz")
+				require.NoError(t, err)
+				defer func() {
+					assert.NoError(t, os.RemoveAll(target.Name()))
+				}()
+				require.NoError(t, target.Close())
+
+				params := map[string]any{
+					"target":     target.Name(),
+					"source_dir": sourceDir,
+					"include":    []string{"**"},
+				}
+
+				So(cmd.ParseParams(params), ShouldBeNil)
+				numFound, err := cmd.makeArchive(t.Context(), logger.Task())
+				So(err, ShouldBeNil)
+				So(numFound, ShouldEqual, 2)
+
+				info, err := os.Stat(target.Name())
+				So(err, ShouldBeNil)
+				So(info.Size(), ShouldBeGreaterThan, int64(0))
+
+				outputDir := t.TempDir()
+				f, gz, tarReader, err := tarGzReader(target.Name())
+				require.NoError(t, err)
+				defer f.Close()
+				defer gz.Close()
+
+				So(extractTarballArchive(t.Context(), tarReader, outputDir, []string{}), ShouldBeNil)
+				assert.DirExists(t, filepath.Join(outputDir, "dir1"))
+				assert.DirExists(t, filepath.Join(outputDir, "dir1", "dir2"))
 			})
 		})
 	})
