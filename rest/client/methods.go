@@ -1407,6 +1407,16 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
+// Constants for retrying operations to initially provision a host. This
+// intentionally will retry many times and often because provisioning the host
+// must succeed for a host to be usable and should be as fast as possible to
+// avoid excessive idle time.
+const (
+	maxProvisioningRequestAttempts = 50
+	minProvisioningRequestDelay    = time.Second
+	maxProvisioningRequestDelay    = 10 * time.Second
+)
+
 func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodPost,
@@ -1419,9 +1429,9 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetad
 	}
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
 		RetryOptions: utility.RetryOptions{
-			MaxAttempts: c.maxAttempts,
-			MinDelay:    c.timeoutStart,
-			MaxDelay:    c.timeoutMax,
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    minProvisioningRequestDelay,
+			MaxDelay:    maxProvisioningRequestDelay,
 		},
 	})
 	if err != nil {
@@ -1449,9 +1459,9 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 	}
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
 		RetryOptions: utility.RetryOptions{
-			MaxAttempts: c.maxAttempts,
-			MinDelay:    c.timeoutStart,
-			MaxDelay:    c.timeoutMax,
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    minProvisioningRequestDelay,
+			MaxDelay:    maxProvisioningRequestDelay,
 		},
 	})
 	if err != nil {
