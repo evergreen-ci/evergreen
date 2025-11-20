@@ -28,7 +28,6 @@ window.NewUILink = {{.NewUILink}};
         <ul class="nav navbar-nav">
           <li><a ng-href="[[newUILink ? newUILink : '']]/project/[[project]]/waterfall">Waterfall</a></li>
           <li><a ng-href="/patches/project/[[project]]">Patches</a></li>
-          <li><a ng-href="/task_timing/[[project]]">Stats</a></li>
           {{if .User}}
           <li><a ng-href="/hosts">Hosts</a></li>
           {{end}}

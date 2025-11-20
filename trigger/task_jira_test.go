@@ -280,7 +280,77 @@ func TestJiraDescription(t *testing.T) {
 				},
 			},
 		}
-		Convey("the description should be successfully generated", func() {
+		Convey("the description should be successfully generated - Parsley Links for logs", func() {
+			d, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(d, ShouldNotEqual, "")
+
+			Convey("the task, host, project, and build names should be present", func() {
+				So(d, ShouldContainSubstring, taskName)
+				So(d, ShouldContainSubstring, hostDNS)
+				So(d, ShouldContainSubstring, projectName)
+				So(d, ShouldContainSubstring, buildName)
+				So(d, ShouldContainSubstring, projectOwner)
+				So(d, ShouldContainSubstring, versionRevision)
+				So(d, ShouldContainSubstring, versionMessage)
+				So(d, ShouldContainSubstring, "diff|https://github.com/")
+				So(d, ShouldContainSubstring, "08 Jan 19 11:56 UTC")
+				So(d, ShouldNotContainSubstring, "Pod")
+			})
+			Convey("with links to the task, host, project, logs", func() {
+				So(d, ShouldContainSubstring, url.PathEscape(taskId))
+				So(d, ShouldContainSubstring, hostId)
+				So(d, ShouldContainSubstring, projectId)
+				So(d, ShouldContainSubstring, "http://evergreen.ui/task_log_raw/t1%21/0?type=T")
+			})
+			Convey("and the failed tasks should be listed with links", func() {
+				So(d, ShouldContainSubstring, cleanTestName(testName1))
+				So(d, ShouldContainSubstring, cleanTestName(testName2))
+				So(d, ShouldContainSubstring, "/test/")
+				Convey("but passing tasks should not be present", func() {
+					So(d, ShouldNotContainSubstring, cleanTestName(testName3))
+				})
+			})
+		})
+		Convey("the description should match the URL and logline regexes - Parsley Links for logs", func() {
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+
+			split := strings.Split(desc, "\n")
+
+			tests := []string{}
+			logfiles := []string{}
+			taskURLs := []string{}
+			for _, line := range split {
+				if strings.Contains(line, "[Logs|") {
+					matches := loglineRegex.FindAllStringSubmatch(line, -1)
+					So(len(matches), ShouldEqual, 1)
+					So(len(matches[0]), ShouldEqual, 3)
+					tests = append(tests, matches[0][1])
+					logfiles = append(logfiles, matches[0][2])
+				} else if strings.HasPrefix(line, "h2. [") {
+					matches := urlRegex.FindAllStringSubmatch(line, -1)
+					So(len(matches), ShouldEqual, 1)
+					So(len(matches[0]), ShouldEqual, 2)
+					taskURLs = append(taskURLs, matches[0][1])
+
+				}
+			}
+
+			So(len(tests), ShouldEqual, 2)
+			So(tests, ShouldContain, "big_test.js")
+			So(tests, ShouldContain, "FunUnitTest")
+
+			So(len(logfiles), ShouldEqual, 2)
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley))
+
+			So(len(taskURLs), ShouldEqual, 1)
+			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0?redirect_spruce_users=true")
+		})
+
+		Convey("the description should be successfully generated - HTML Links for logs", func() {
+			evergreen.GetEnvironment().Settings().Ui.ParsleyUrl = ""
 			d, err := j.getDescription()
 			So(err, ShouldBeNil)
 			So(d, ShouldNotEqual, "")
@@ -313,7 +383,8 @@ func TestJiraDescription(t *testing.T) {
 				})
 			})
 		})
-		Convey("the description should match the URL and logline regexes", func() {
+		Convey("the description should match the URL and logline regexes - HTML Links for logs", func() {
+			evergreen.GetEnvironment().Settings().Ui.ParsleyUrl = ""
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
 
