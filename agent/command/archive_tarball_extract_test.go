@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -71,6 +72,28 @@ func TestArchiveTarballExtractExecute(t *testing.T) {
 			// Extracting the same archive contents multiple times to the same directory
 			// results results in no error. The command simply ignores duplicate files.
 			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
+		},
+		"ExtractsEmptyDirectories": func(ctx context.Context, t *testing.T, cmd *tarballExtract, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			sourceDir := t.TempDir()
+			rootToArchive := filepath.Join(sourceDir, "empty")
+			require.NoError(t, os.MkdirAll(filepath.Join(rootToArchive, "logs", "nested"), 0755))
+
+			targetArchive := filepath.Join(sourceDir, "empty_dirs.tgz")
+			createCmd := &tarballCreate{
+				Target:    targetArchive,
+				SourceDir: rootToArchive,
+				Include:   []string{"**"},
+			}
+			numFound, err := createCmd.makeArchive(ctx, logger.Task())
+			require.NoError(t, err)
+			require.Equal(t, 2, numFound)
+
+			cmd.ArchivePath = targetArchive
+			cmd.TargetDirectory = t.TempDir()
+
+			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
+			assert.DirExists(t, filepath.Join(cmd.TargetDirectory, "logs"))
+			assert.DirExists(t, filepath.Join(cmd.TargetDirectory, "logs", "nested"))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

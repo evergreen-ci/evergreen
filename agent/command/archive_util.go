@@ -87,14 +87,15 @@ FileLoop:
 		//strip any leading slash from the tarball header path
 		intarball = strings.TrimLeft(intarball, "/")
 
+		if intarball == "" || intarball == "." {
+			continue
+		}
+
 		logger.Infof("Adding file to tarball: '%s'.", intarball)
 		if _, hasKey := processed[intarball]; hasKey {
 			continue
 		} else {
 			processed[intarball] = true
-		}
-		if file.info.IsDir() {
-			continue
 		}
 
 		_, fileName := filepath.Split(file.path)
@@ -107,8 +108,22 @@ FileLoop:
 		hdr := new(tar.Header)
 		hdr.Name = strings.TrimPrefix(intarball, rootPathPrefix)
 		hdr.Mode = int64(file.info.Mode())
-		hdr.Size = file.info.Size()
 		hdr.ModTime = file.info.ModTime()
+
+		if file.info.IsDir() {
+			if hdr.Name != "" && !strings.HasSuffix(hdr.Name, "/") {
+				hdr.Name += "/"
+			}
+			hdr.Typeflag = tar.TypeDir
+			numFilesArchived++
+			if err := tarWriter.WriteHeader(hdr); err != nil {
+				return numFilesArchived, errors.Wrapf(err, "writing tarball header for directory '%s'", intarball)
+			}
+			logger.Warning(errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
+			continue
+		}
+
+		hdr.Size = file.info.Size()
 
 		numFilesArchived++
 		err := tarWriter.WriteHeader(hdr)

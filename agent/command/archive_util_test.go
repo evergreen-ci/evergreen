@@ -219,7 +219,7 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 				require.NoError(t, err)
 				found, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger)
 				So(err, ShouldBeNil)
-				So(found, ShouldEqual, 2)
+				So(found, ShouldEqual, 4)
 				So(tarWriter.Close(), ShouldBeNil)
 				So(gz.Close(), ShouldBeNil)
 				So(f.Close(), ShouldBeNil)
