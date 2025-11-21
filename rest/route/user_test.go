@@ -326,18 +326,20 @@ func TestDeleteUserPermissions(t *testing.T) {
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role1", "role2", "role3", "admin_repo_role4", evergreen.BasicProjectAccessRole},
+		SystemRoles: []string{"role1", "role2", "role3", "admin_repo_role4", "admin_project_role5", evergreen.BasicProjectAccessRole},
 	}
 	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "distro"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope4", Resources: []string{"resource1", "admin_repo_resource4"}, Type: "distro"}))
+	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope5", Resources: []string{"resource1", "admin_project_resource5"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: evergreen.AllProjectsScope, Resources: []string{"resource1", "resource2"}, Type: "project"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role2", Scope: "scope2"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role3", Scope: "scope3"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "admin_repo_role4", Scope: "scope4"}))
+	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "admin_project_role5", Scope: "scope5"}))
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: evergreen.BasicProjectAccessRole, Scope: evergreen.AllProjectsScope}))
 	handler := userPermissionsDeleteHandler{rm: rm, userID: u.Id}
 
@@ -350,9 +352,10 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	require.NoError(t, err)
-	assert.Len(t, dbUser.SystemRoles, 4)
+	assert.Len(t, dbUser.SystemRoles, 5)
 	assert.NotContains(t, dbUser.SystemRoles, "role1")
 	assert.Contains(t, dbUser.SystemRoles, "admin_repo_role4", "should not delete the admin repo role even if it gives permissions to the resource because repo admins are maintained in the repo ref admin list")
+	assert.Contains(t, dbUser.SystemRoles, "admin_project_role5", "should not delete the admin project role even if it gives permissions to the resource because project admins are maintained in the project ref admin list")
 	assert.Contains(t, dbUser.SystemRoles, evergreen.BasicProjectAccessRole)
 
 	body = `{ "resource_type": "all" }`
