@@ -181,7 +181,7 @@ func (j *githubStatusUpdateJob) fetch(ctx context.Context) (*message.GithubStatu
 		status.Description = j.Description
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
-		status.URL = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", j.urlBase, j.FetchID)
+		status.URL = fmt.Sprintf("%s/version/%s", j.urlBase, j.FetchID)
 		status.Context = thirdparty.GithubStatusDefaultContext
 		status.State = message.GithubStatePending
 		status.Description = "preparing to run tasks"
