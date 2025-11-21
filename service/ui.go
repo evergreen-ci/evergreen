@@ -239,11 +239,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
 	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
-	editTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)
-	viewProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
-	editProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
-	editHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	requireSage := route.NewSageMiddleware()
 
 	app := gimlet.NewApp()
@@ -303,7 +299,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Task page (and related routes)
 	app.AddRoute("/task/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskPage).Get()
 	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskPage).Get()
-	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.taskModify).Put()
 	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
@@ -322,9 +317,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Hosts
 	app.AddRoute("/hosts").Handler(uis.legacyHostsPage).Get()
-	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
 	app.AddRoute("/host/{host_id}").Handler(uis.legacyHostPage).Get()
-	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, editHosts).Handler(uis.modifyHost).Put()
 	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
@@ -340,9 +333,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.legacyDistrosPage).Get()
-
-	// TODO (EVG-17986): route should require pod-specific permissions.
-	app.AddRoute("/pod/{pod_id}").Wrap(needsLogin).Handler(uis.podPage).Get()
 
 	// Event Logs
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
@@ -382,8 +372,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Project routes
 	app.AddRoute("/projects/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyProjectsPage).Get()
-	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, viewProjectSettings).Handler(uis.projectEvents).Get()
-	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext, editProjectSettings).Handler(uis.setRevision).Put()
 
 	// Admin routes
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminSettings).Get()
