@@ -173,17 +173,6 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// isAdmin returns true if the user id is located in ProjectRef's Admins field
-// or if the the permission level is sufficient.
-func isAdmin(u gimlet.User, projectId string) bool {
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-}
-
 func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := gimlet.GetUser(r.Context())
