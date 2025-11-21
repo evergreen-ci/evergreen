@@ -124,19 +124,11 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
-			PrintTime:     true,
-			TimeZone:      getUserTimeZone(MustHaveUser(r)),
-			PrintPriority: r.FormValue("priority") == "true",
-		}))
-	} else {
-		data := logData{
-			Data: apimodels.StreamFromLogIterator(it),
-			User: gimlet.GetUser(r.Context()),
-		}
-		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
-	}
+	gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+		PrintTime:     true,
+		TimeZone:      getUserTimeZone(MustHaveUser(r)),
+		PrintPriority: r.FormValue("priority") == "true",
+	}))
 }
 
 // getUserTimeZone returns the time zone specified by the user settings.
@@ -416,17 +408,9 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vals.Get("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
-			PrintTime:     true,
-			PrintPriority: r.FormValue("priority") == "true",
-			TimeZone:      getUserTimeZone(MustHaveUser(r)),
-		}))
-	} else {
-		data := logData{
-			Data: apimodels.StreamFromLogIterator(it),
-			User: gimlet.GetUser(r.Context()),
-		}
-		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
-	}
+	gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+		PrintTime:     true,
+		PrintPriority: r.FormValue("priority") == "true",
+		TimeZone:      getUserTimeZone(MustHaveUser(r)),
+	}))
 }
