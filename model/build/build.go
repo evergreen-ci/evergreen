@@ -302,7 +302,7 @@ func (b *Build) GetTimeSpent(ctx context.Context) (time.Duration, time.Duration,
 
 // GetURL returns a url to the build page.
 func (b *Build) GetURL(uiBase string) string {
-	return fmt.Sprintf("%s/build/%s?redirect_spruce_users=true", uiBase, url.PathEscape(b.Id))
+	return fmt.Sprintf("%s/build/%s", uiBase, url.PathEscape(b.Id))
 }
 
 // Insert writes the b to the db.

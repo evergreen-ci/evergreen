@@ -462,7 +462,7 @@ func getFailedTestsFromTemplate(t task.Task) ([]testresult.TestResult, error) {
 }
 
 func taskLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task/%s/%d?redirect_spruce_users=true", uiBase, url.PathEscape(taskID), execution)
+	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
 }
 
 func taskLogLink(uiBase string, taskID string, execution int) string {
@@ -481,14 +481,13 @@ func versionLink(i versionLinkInput) string {
 	if i.isChild {
 		url += "/downstream-projects"
 	}
-	url += "?redirect_spruce_users=true"
 	return url
 }
 
 func hostLink(uiBase, hostID string) string {
-	return fmt.Sprintf("%s/host/%s?redirect_spruce_users=true", uiBase, hostID)
+	return fmt.Sprintf("%s/host/%s", uiBase, hostID)
 }
 
 func podLink(uiBase, podID string) string {
-	return fmt.Sprintf("%s/pod/%s?redirect_spruce_users=true", uiBase, podID)
+	return fmt.Sprintf("%s/pod/%s", uiBase, podID)
 }

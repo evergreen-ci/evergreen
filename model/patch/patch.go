@@ -265,10 +265,6 @@ func (p *Patch) GetURL(uiHost string) string {
 		url = uiHost + "/patch/" + p.Id.Hex()
 	}
 
-	if p.DisplayNewUI {
-		url = url + "?redirect_spruce_users=true"
-	}
-
 	return url
 }
 

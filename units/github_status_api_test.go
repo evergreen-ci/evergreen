@@ -118,7 +118,7 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.Equal("evergreen", status.Repo)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("preparing to run tasks", status.Description)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
