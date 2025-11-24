@@ -532,7 +532,7 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			resp := h.Run(ctxWithProj)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			// Verify the artifact was updated in the database
+			// Verify the artifact was updated in the database.
 			updatedEntry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution(tsk.Id, 0))
 			require.NoError(t, err)
 			require.NotNil(t, updatedEntry)
@@ -553,7 +553,7 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			ctxWithUser := gimlet.AttachUser(ctx, u)
 			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
 
-			// Test invalid current URL
+			// Test invalid current URL.
 			body1 := map[string]string{
 				"artifact_name": "signed_file",
 				"current_url":   "https://example.com/notans3url?Token=abc",
@@ -567,7 +567,7 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			require.Error(t, err1)
 			assert.Contains(t, err1.Error(), "current_url must be a valid S3 URL")
 
-			// Test invalid new URL
+			// Test invalid new URL.
 			body2 := map[string]string{
 				"artifact_name": "signed_file",
 				"current_url":   "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
@@ -579,9 +579,9 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			req2 = gimlet.SetURLVars(req2, map[string]string{"task_id": "s2"})
 			err2 := h2.Parse(ctxWithProj, req2)
 			require.Error(t, err2)
-			assert.Contains(t, err2.Error(), "new_url must be a valid S3 URL")
+			require.ErrorContains(t, err2, "new_url must be a valid S3 URL")
 
-			// Test different buckets
+			// Test different buckets.
 			body3 := map[string]string{
 				"artifact_name": "signed_file",
 				"current_url":   "https://bucket1.s3.us-east-1.amazonaws.com/path/old.log?Token=abc&Expires=123",
