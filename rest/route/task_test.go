@@ -564,8 +564,7 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			req1, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data1))
 			req1 = gimlet.SetURLVars(req1, map[string]string{"task_id": "s2"})
 			err1 := h1.Parse(ctxWithProj, req1)
-			require.Error(t, err1)
-			assert.Contains(t, err1.Error(), "current_url must be a valid S3 URL")
+			require.ErrorContains(t, err1, "current_url must be a valid S3 URL")
 
 			// Test invalid new URL.
 			body2 := map[string]string{
@@ -578,7 +577,6 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			req2, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data2))
 			req2 = gimlet.SetURLVars(req2, map[string]string{"task_id": "s2"})
 			err2 := h2.Parse(ctxWithProj, req2)
-			require.Error(t, err2)
 			require.ErrorContains(t, err2, "new_url must be a valid S3 URL")
 
 			// Test different buckets.
@@ -592,8 +590,7 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			req3, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data3))
 			req3 = gimlet.SetURLVars(req3, map[string]string{"task_id": "s2"})
 			err3 := h3.Parse(ctxWithProj, req3)
-			require.Error(t, err3)
-			assert.Contains(t, err3.Error(), "current_url and new_url must be in the same S3 bucket")
+			require.ErrorContains(t, err3, "current_url and new_url must be in the same S3 bucket")
 		},
 	} {
 		t.Run(name, test)
