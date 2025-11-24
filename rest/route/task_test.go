@@ -488,6 +488,113 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 			}
 			assert.True(t, found)
 		},
+		"SignedURLSuccess": func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
+
+			tsk := task.Task{Id: "s1", BuildId: "b1", DisplayName: "disp", Execution: 0}
+			require.NoError(t, tsk.Insert(t.Context()))
+			entry := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name: "signed_file",
+						Link: "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+					},
+				},
+			}
+			require.NoError(t, entry.Upsert(t.Context()))
+
+			projCtx := serviceModel.Context{Task: &tsk}
+			u := &user.DBUser{Id: "userSigned"}
+			require.NoError(t, u.Insert(t.Context()))
+			ctxWithUser := gimlet.AttachUser(ctx, u)
+			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			body := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+				"new_url":       "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/new.log?Token=xyz&Expires=456",
+			}
+			data, _ := json.Marshal(body)
+			h := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req, _ := http.NewRequest(http.MethodPatch, "/tasks/s1/artifacts/url", bytes.NewReader(data))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "s1"})
+			require.NoError(t, h.Parse(ctxWithProj, req))
+			assert.True(t, h.isSignedURL)
+			assert.Equal(t, "evergreen/task_id/old.log", h.currentFileKey)
+			assert.Equal(t, "evergreen/task_id/new.log", h.newFileKey)
+
+			resp := h.Run(ctxWithProj)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			apiTask, ok := resp.Data().(*model.APITask)
+			require.True(t, ok)
+			found := false
+			for _, f := range apiTask.Artifacts {
+				if utility.FromStringPtr(f.Name) == "signed_file" && utility.FromStringPtr(f.Link) == "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/new.log?Token=xyz&Expires=456" {
+					found = true
+				}
+			}
+			assert.True(t, found)
+		},
+		"SignedURLValidationErrors": func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
+
+			tsk := task.Task{Id: "s2", BuildId: "b1", DisplayName: "disp", Execution: 0}
+			require.NoError(t, tsk.Insert(t.Context()))
+
+			projCtx := serviceModel.Context{Task: &tsk}
+			u := &user.DBUser{Id: "userSigned2"}
+			require.NoError(t, u.Insert(t.Context()))
+			ctxWithUser := gimlet.AttachUser(ctx, u)
+			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			// Test invalid current URL
+			body1 := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://example.com/notans3url?Token=abc",
+				"new_url":       "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/new.log?Token=xyz&Expires=456",
+			}
+			data1, _ := json.Marshal(body1)
+			h1 := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req1, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data1))
+			req1 = gimlet.SetURLVars(req1, map[string]string{"task_id": "s2"})
+			err1 := h1.Parse(ctxWithProj, req1)
+			require.Error(t, err1)
+			assert.Contains(t, err1.Error(), "current_url must be a valid S3 URL")
+
+			// Test invalid new URL
+			body2 := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+				"new_url":       "https://example.com/notans3url?Token=xyz",
+			}
+			data2, _ := json.Marshal(body2)
+			h2 := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req2, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data2))
+			req2 = gimlet.SetURLVars(req2, map[string]string{"task_id": "s2"})
+			err2 := h2.Parse(ctxWithProj, req2)
+			require.Error(t, err2)
+			assert.Contains(t, err2.Error(), "new_url must be a valid S3 URL")
+
+			// Test different buckets
+			body3 := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://bucket1.s3.us-east-1.amazonaws.com/path/old.log?Token=abc&Expires=123",
+				"new_url":       "https://bucket2.s3.us-east-1.amazonaws.com/path/new.log?Token=xyz&Expires=456",
+			}
+			data3, _ := json.Marshal(body3)
+			h3 := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req3, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data3))
+			req3 = gimlet.SetURLVars(req3, map[string]string{"task_id": "s2"})
+			err3 := h3.Parse(ctxWithProj, req3)
+			require.Error(t, err3)
+			assert.Contains(t, err3.Error(), "current_url and new_url must be in the same S3 bucket")
+		},
 	} {
 		t.Run(name, test)
 	}

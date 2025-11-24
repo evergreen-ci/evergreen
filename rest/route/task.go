@@ -162,11 +162,13 @@ func makeModifyTaskRoute() gimlet.RouteHandler {
 //
 //	PATCH /tasks/{task_id}/artifacts/url
 type updateArtifactURLHandler struct {
-	taskID         string
-	execution      *int
-	body           updateArtifactURLRequest
-	task           *task.Task
-	user           gimlet.User
+	taskID    string
+	execution *int
+	body      updateArtifactURLRequest
+	task      *task.Task
+	user      gimlet.User
+
+	// fields for signed URL handling
 	isSignedURL    bool
 	currentFileKey string
 	newFileKey     string
@@ -221,8 +223,14 @@ func (h *updateArtifactURLHandler) Parse(ctx context.Context, r *http.Request) e
 		currentBucket, currentFileKey := parseS3URL(h.body.CurrentURL)
 		newBucket, newFileKey := parseS3URL(h.body.NewURL)
 
-		if currentBucket == "" || newBucket == "" || currentBucket != newBucket {
-			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "for signed S3 URLs, both current_url and new_url must be valid S3 URLs"}
+		if currentBucket == "" {
+			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "current_url must be a valid S3 URL"}
+		}
+		if newBucket == "" {
+			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "new_url must be a valid S3 URL"}
+		}
+		if currentBucket != newBucket {
+			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "current_url and new_url must be in the same S3 bucket"}
 		}
 
 		h.currentFileKey = currentFileKey
