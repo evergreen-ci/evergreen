@@ -501,8 +501,9 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 				Execution:       0,
 				Files: []artifact.File{
 					{
-						Name: "signed_file",
-						Link: "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+						Name:    "signed_file",
+						Link:    "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+						FileKey: "evergreen/task_id/old.log",
 					},
 				},
 			}
@@ -530,15 +531,14 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 
 			resp := h.Run(ctxWithProj)
 			assert.Equal(t, http.StatusOK, resp.Status())
-			apiTask, ok := resp.Data().(*model.APITask)
-			require.True(t, ok)
-			found := false
-			for _, f := range apiTask.Artifacts {
-				if utility.FromStringPtr(f.Name) == "signed_file" && utility.FromStringPtr(f.Link) == "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/new.log?Token=xyz&Expires=456" {
-					found = true
-				}
-			}
-			assert.True(t, found)
+
+			// Verify the artifact was updated in the database
+			updatedEntry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution(tsk.Id, 0))
+			require.NoError(t, err)
+			require.NotNil(t, updatedEntry)
+			require.Len(t, updatedEntry.Files, 1)
+			assert.Equal(t, "signed_file", updatedEntry.Files[0].Name)
+			assert.Equal(t, "evergreen/task_id/new.log", updatedEntry.Files[0].FileKey)
 		},
 		"SignedURLValidationErrors": func(t *testing.T) {
 			ctx := t.Context()
