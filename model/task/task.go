@@ -269,6 +269,7 @@ type Task struct {
 	// TimeTaken is how long the task took to execute (if it has finished) or how long the task has been running (if it has started)
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 	// ExpectedTaskCost is the expected cost of running the task based on its predicted duration and distro cost rates
+	// DEPRECATED: No longer populated. Use PredictedTaskCost instead. Will be removed in future version.
 	ExpectedTaskCost TaskCost `bson:"expected_task_cost,omitempty" json:"expected_task_cost,omitempty"`
 	// TaskCost is the cost of the task based on runtime and distro cost rates
 	TaskCost TaskCost `bson:"task_cost,omitempty" json:"task_cost,omitempty"`
@@ -2730,27 +2731,19 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	t.Status = evergreen.TaskStarted
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
-	estimatedCost, err := t.GetEstimatedCost(ctx)
-	if err == nil && !estimatedCost.IsZero() {
-		t.ExpectedTaskCost = estimatedCost
-	}
-
-	setCommand := bson.M{
-		StatusKey:             evergreen.TaskStarted,
-		LastHeartbeatKey:      startTime,
-		StartTimeKey:          startTime,
-		DisplayStatusCacheKey: t.DisplayStatusCache,
-	}
-
-	if !t.ExpectedTaskCost.IsZero() {
-		setCommand[ExpectedTaskCostKey] = t.ExpectedTaskCost
-	}
 	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
-		bson.M{"$set": setCommand},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:             evergreen.TaskStarted,
+				LastHeartbeatKey:      startTime,
+				StartTimeKey:          startTime,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
+			},
+		},
 	)
 }
 
@@ -4280,32 +4273,6 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 			"task_cost": t.TaskCost,
 		},
 	})
-}
-
-// GetEstimatedCost calculates the estimated cost for a task based on its DurationPrediction.
-// This is useful for in-progress tasks to show estimated costs without modifying the database.
-// Returns zero cost if no duration prediction is available or if cost configuration is not set up.
-func (t *Task) GetEstimatedCost(ctx context.Context) (TaskCost, error) {
-	var estimatedDuration time.Duration
-	if t.Status == evergreen.TaskStarted || t.Status == evergreen.TaskDispatched {
-		if t.DurationPrediction.Value > 0 {
-			estimatedDuration = t.DurationPrediction.Value
-		} else {
-			return TaskCost{}, nil
-		}
-	} else if t.TimeTaken > 0 {
-		estimatedDuration = t.TimeTaken
-	} else {
-		return TaskCost{}, nil
-	}
-
-	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
-		return TaskCost{}, nil
-	}
-
-	runtimeSeconds := estimatedDuration.Seconds()
-	return CalculateTaskCost(runtimeSeconds, costData, financeConfig), nil
 }
 
 // CostPredictionResult contains the result of computing a predicted cost
