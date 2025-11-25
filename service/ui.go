@@ -316,6 +316,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// `/test_log/{task_id}/{task_execution}?test_name={test_name}`.
 	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
+	// Build page
+	app.AddRoute("/build/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyBuildPage).Get()
+
 	// Version page
 	app.AddRoute("/version/{version_id}").Wrap(needsLogin).Handler(uis.legacyVersionPage).Get()
 
@@ -360,7 +363,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyPatchPage).Get()
 	app.AddRoute("/diff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.diffPage).Get()
 	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fileDiffPage).Get()
-	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.rawDiffPage).Get()
+	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, allowsCORS, viewTasks).Handler(uis.rawDiffPage).Get()
 	app.AddRoute("/patches").Wrap(needsLogin).Handler(uis.legacyPatchesPage).Get()
 	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyProjectPatchesPage).Get()
 	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin).Handler(uis.legacyUserPatchesPage).Get()
