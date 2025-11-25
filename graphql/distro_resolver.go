@@ -13,10 +13,7 @@ import (
 
 // AvailableRegions is the resolver for the availableRegions field.
 func (r *distroResolver) AvailableRegions(ctx context.Context, obj *model.APIDistro) ([]string, error) {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
-	}
+	settings := evergreen.GetEnvironment().Settings()
 	d := obj.ToService()
 	availableRegions := d.GetRegionsList(settings.Providers.AWS.AllowedRegions)
 	return availableRegions, nil
