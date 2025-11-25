@@ -113,17 +113,22 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
+	logType := getTaskLogTypeMapping(r.FormValue("type"))
+	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: logType})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
-		PrintTime:     true,
-		TimeZone:      getUserTimeZone(MustHaveUser(r)),
-		PrintPriority: r.FormValue("priority") == "true",
-	}))
+	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
+		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+			PrintTime:     true,
+			TimeZone:      getUserTimeZone(MustHaveUser(r)),
+			PrintPriority: r.FormValue("priority") == "true",
+		}))
+	} else {
+		http.Redirect(w, r, fmt.Sprintf("%s/task/%s/html-log?execution=%d&origin=%s", uis.Settings.Ui.UIv2Url, tsk.Id, tsk.Execution, logType), http.StatusPermanentRedirect)
+	}
 }
 
 // getUserTimeZone returns the time zone specified by the user settings.
@@ -403,9 +408,13 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
-		PrintTime:     true,
-		PrintPriority: r.FormValue("priority") == "true",
-		TimeZone:      getUserTimeZone(MustHaveUser(r)),
-	}))
+	if vals.Get("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
+		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+			PrintTime:     true,
+			PrintPriority: r.FormValue("priority") == "true",
+			TimeZone:      getUserTimeZone(MustHaveUser(r)),
+		}))
+	} else {
+		http.Redirect(w, r, fmt.Sprintf("%s/task/%s/test-html-log?execution=%d&testName=%s", uis.Settings.Ui.UIv2Url, tsk.Id, tsk.Execution, testName), http.StatusPermanentRedirect)
+	}
 }
