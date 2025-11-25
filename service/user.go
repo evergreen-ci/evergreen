@@ -63,6 +63,6 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Redirecting a user back to Spruce would just create a Corp login loop
-	gimlet.WriteJSON(w, map[string]string{"message": "logged out successfully"})
+	loginURL := fmt.Sprintf("%v/login", uis.RootURL)
+	http.Redirect(w, r, loginURL, http.StatusFound)
 }
