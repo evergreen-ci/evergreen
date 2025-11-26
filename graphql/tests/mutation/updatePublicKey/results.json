@@ -68,7 +68,7 @@
       "result": {
         "errors": [
           {
-            "message": "provided public key is invalid: ssh: no key found",
+            "message": "provided public key is invalid: ssh: no key found; last parsing error for ignored line: illegal base64 data at input byte 7",
             "path": ["updatePublicKey"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

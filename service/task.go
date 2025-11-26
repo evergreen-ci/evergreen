@@ -22,11 +22,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type logData struct {
-	Data chan apimodels.LogMessage
-	User gimlet.User
-}
-
 // the task's most recent log messages
 const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
 
@@ -118,7 +113,8 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
+	logType := getTaskLogTypeMapping(r.FormValue("type"))
+	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: logType})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -131,11 +127,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 			PrintPriority: r.FormValue("priority") == "true",
 		}))
 	} else {
-		data := logData{
-			Data: apimodels.StreamFromLogIterator(it),
-			User: gimlet.GetUser(r.Context()),
-		}
-		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+		http.Redirect(w, r, fmt.Sprintf("%s/task/%s/html-log?execution=%d&origin=%s", uis.Settings.Ui.UIv2Url, tsk.Id, tsk.Execution, logType), http.StatusPermanentRedirect)
 	}
 }
 
@@ -423,10 +415,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			TimeZone:      getUserTimeZone(MustHaveUser(r)),
 		}))
 	} else {
-		data := logData{
-			Data: apimodels.StreamFromLogIterator(it),
-			User: gimlet.GetUser(r.Context()),
-		}
-		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+		http.Redirect(w, r, fmt.Sprintf("%s/task/%s/test-html-log?execution=%d&testName=%s", uis.Settings.Ui.UIv2Url, tsk.Id, tsk.Execution, testName), http.StatusPermanentRedirect)
 	}
 }

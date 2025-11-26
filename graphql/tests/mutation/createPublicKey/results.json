@@ -18,7 +18,7 @@
       "result": {
         "errors": [
           {
-            "message": "provided public key is invalid: ssh: no key found",
+            "message": "provided public key is invalid: ssh: no key found; last parsing error for ignored line: ssh: short read",
             "path": ["createPublicKey"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

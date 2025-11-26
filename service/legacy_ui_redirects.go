@@ -181,3 +181,15 @@ func (uis *UIServer) legacyBuildBaronPage(w http.ResponseWriter, r *http.Request
 	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, taskId, execution)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacyBuildPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+
+	if projCtx.Build == nil || projCtx.Version == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	spruceLink := fmt.Sprintf("%s/version/%s/tasks?variant=^%s$", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.BuildVariant)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
