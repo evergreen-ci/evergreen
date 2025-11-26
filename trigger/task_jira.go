@@ -61,7 +61,7 @@ func getHostMetadata(data *jiraTemplateData) string {
 		return "N/A"
 	}
 
-	return fmt.Sprintf("[%s|%s/host/%s?redirect_spruce_users=true]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
+	return fmt.Sprintf("[%s|%s/host/%s]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
 }
 
 func getPodMetadata(data *jiraTemplateData) string {
@@ -69,7 +69,7 @@ func getPodMetadata(data *jiraTemplateData) string {
 		return "N/A"
 	}
 
-	return fmt.Sprintf("[%s|%s/pod/%s?redirect_spruce_users=true]", data.Pod.ID, data.UIRoot, url.PathEscape(data.Pod.ID))
+	return fmt.Sprintf("[%s|%s/pod/%s]", data.Pod.ID, data.UIRoot, url.PathEscape(data.Pod.ID))
 }
 
 // getIsContainerTask returns a non-empty string if it is a container task and
@@ -380,7 +380,7 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 
 // historyURL provides a full URL to the test's task history page.
 func historyURL(t *task.Task, testName, uiRoot string) string {
-	return fmt.Sprintf("%s/task_history/%s/%s?revision=%s&redirect_spruce_users=true#/%s=fail",
+	return fmt.Sprintf("%s/task_history/%s/%s?revision=%s#/%s=fail",
 		uiRoot, url.PathEscape(t.Project), url.PathEscape(t.DisplayName), t.Revision, url.QueryEscape(testName))
 }
 

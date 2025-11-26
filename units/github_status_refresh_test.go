@@ -168,21 +168,21 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 
 	status := s.getAndValidateStatus(s.env.InternalSender)
 	// Patch status
-	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
@@ -218,14 +218,14 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToEssentialTaskThatWillRu
 
 	status := s.getAndValidateStatus(s.env.InternalSender)
 	// Patch status
-	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
@@ -261,14 +261,14 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToAllUnscheduledEssential
 
 	// Patch status
 	status := s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("1 essential task(s) not scheduled", status.Description)
@@ -317,14 +317,14 @@ func (s *githubStatusRefreshSuite) TestStatusFailedDueToMixOfFailedAndUnschedule
 
 	// Patch status
 	status := s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStatePending, status.State)
 	s.Equal("tasks are running", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
 	s.Equal("none succeeded, 1 failed, 1 essential task(s) not scheduled in 1m0s", status.Description)
@@ -376,21 +376,21 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 
 	// Patch status
 	status := s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStateSuccess, status.State)
 	s.Equal("version finished in 10m0s", status.Description)
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStateSuccess, status.State)
 	s.Equal("child patch finished in 12m0s", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal("1 succeeded, none failed in 1m0s", status.Description)
 	s.Equal(message.GithubStateSuccess, status.State)
@@ -444,21 +444,21 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 
 	// Patch status
 	status := s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s?redirect_spruce_users=true", s.patchDoc.Version), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("evergreen", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
 	s.Equal("version finished in 10m0s", status.Description)
 
 	// Child patch status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects?redirect_spruce_users=true", childPatch.Id.Hex()), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s/downstream-projects", childPatch.Id.Hex()), status.URL)
 	s.Equal("evergreen/myChildProjectIdentifier", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
 	s.Equal("child patch finished in 12m0s", status.Description)
 
 	// Build status
 	status = s.getAndValidateStatus(s.env.InternalSender)
-	s.Equal(fmt.Sprintf("https://example.com/build/%s?redirect_spruce_users=true", b.Id), status.URL)
+	s.Equal(fmt.Sprintf("https://example.com/build/%s", b.Id), status.URL)
 	s.Equal("evergreen/myBuild", status.Context)
 	s.Equal("none succeeded, 1 failed in 1m0s", status.Description)
 	s.Equal(message.GithubStateFailure, status.State)

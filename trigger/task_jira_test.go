@@ -346,7 +346,7 @@ func TestJiraDescription(t *testing.T) {
 			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley))
 
 			So(len(taskURLs), ShouldEqual, 1)
-			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0?redirect_spruce_users=true")
+			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0")
 		})
 
 		Convey("the description should be successfully generated - HTML Links for logs", func() {
@@ -418,7 +418,7 @@ func TestJiraDescription(t *testing.T) {
 			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML))
 
 			So(len(taskURLs), ShouldEqual, 1)
-			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0?redirect_spruce_users=true")
+			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0")
 		})
 
 		Convey("can generate a description for a task with no host", func() {
@@ -446,11 +446,11 @@ func TestJiraDescription(t *testing.T) {
 			j.data.Task.Id = "new_task#!"
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(strings.Contains(desc, "http://evergreen.ui/task/new_task%23%21/0?redirect_spruce_users=true"), ShouldBeTrue)
+			So(strings.Contains(desc, "http://evergreen.ui/task/new_task%23%21/0"), ShouldBeTrue)
 			j.data.Task.OldTaskId = "old_task_id"
 			desc, err = j.getDescription()
 			So(err, ShouldBeNil)
-			So(strings.Contains(desc, "http://evergreen.ui/task/old_task_id/0?redirect_spruce_users=true"), ShouldBeTrue)
+			So(strings.Contains(desc, "http://evergreen.ui/task/old_task_id/0"), ShouldBeTrue)
 		})
 		Convey("execution tasks use display task's metadata", func() {
 			j.data.Task.DisplayTask = &task.Task{
@@ -471,7 +471,7 @@ func TestJiraDescription(t *testing.T) {
 
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(strings.Contains(desc, "http://evergreen.ui/task/t1%21/0?redirect_spruce_users=true"), ShouldBeTrue)
+			So(strings.Contains(desc, "http://evergreen.ui/task/t1%21/0"), ShouldBeTrue)
 			So(strings.Contains(desc, "shouldn't be here"), ShouldBeFalse)
 		})
 		Convey("display tasks have links to execution task logs", func() {

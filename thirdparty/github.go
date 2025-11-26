@@ -552,7 +552,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		Owner:       input.Owner,
 		Repo:        input.Repo,
 		Ref:         input.Ref,
-		URL:         fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", urlBase, input.VersionId),
+		URL:         fmt.Sprintf("%s/version/%s", urlBase, input.VersionId),
 		Context:     input.Context,
 		State:       message.GithubStatePending,
 		Description: input.Desc,
@@ -1776,7 +1776,7 @@ func getCheckRunConclusion(status string) string {
 }
 
 func makeTaskLink(uiBase string, taskID string, execution int) string {
-	return fmt.Sprintf("%s/task/%s/%d?redirect_spruce_users=true", uiBase, url.PathEscape(taskID), execution)
+	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
 }
 
 func makeCheckRunName(task *task.Task) string {
