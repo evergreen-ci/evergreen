@@ -162,7 +162,6 @@ func TestGetDisplayCost(t *testing.T) {
 			task: Task{
 				TaskCost:          TaskCost{OnDemandCost: 5.0, AdjustedCost: 4.0},
 				PredictedTaskCost: TaskCost{OnDemandCost: 3.0, AdjustedCost: 2.4},
-				ExpectedTaskCost:  TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8},
 			},
 			wantCost: TaskCost{OnDemandCost: 5.0, AdjustedCost: 4.0},
 		},
@@ -170,14 +169,8 @@ func TestGetDisplayCost(t *testing.T) {
 			name: "FallsBackToPredicted",
 			task: Task{
 				PredictedTaskCost: TaskCost{OnDemandCost: 3.0, AdjustedCost: 2.4},
-				ExpectedTaskCost:  TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8},
 			},
 			wantCost: TaskCost{OnDemandCost: 3.0, AdjustedCost: 2.4},
-		},
-		{
-			name:     "FallsBackToExpected",
-			task:     Task{ExpectedTaskCost: TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8}},
-			wantCost: TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8},
 		},
 		{
 			name:     "ReturnsZeroIfNoCosts",
