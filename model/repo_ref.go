@@ -247,7 +247,7 @@ func GetRepoAdminRole(repoId string) string {
 	return fmt.Sprintf("admin_repo_%s", repoId)
 }
 
-// IsAdminRepoRole returns whether or not the role ID is for an admin repo role.
-func IsAdminRepoRole(roleID string) bool {
-	return strings.HasPrefix(roleID, "admin_repo_")
+// IsAdminRepoOrProjectRole returns whether or not the role ID is for an admin repo or project role.
+func IsAdminRepoOrProjectRole(roleID string) bool {
+	return strings.HasPrefix(roleID, "admin_repo_") || strings.HasPrefix(roleID, "admin_project_")
 }
