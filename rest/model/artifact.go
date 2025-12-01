@@ -34,6 +34,8 @@ type APIEntry struct {
 func (f *APIFile) BuildFromService(file artifact.File) {
 	f.ContentType = utility.ToStringPtr(file.ContentType)
 	f.Name = utility.ToStringPtr(file.Name)
+	// kim: NOTE: this is the `url` artifact field in the task REST API, meaning
+	// the file link was already path-escaped at some point.
 	f.Link = utility.ToStringPtr(file.Link)
 	f.Visibility = utility.ToStringPtr(file.Visibility)
 	f.IgnoreForFetch = file.IgnoreForFetch
@@ -59,6 +61,8 @@ func (f *APIFile) GetLogURL(env evergreen.Environment, taskID string, execution 
 		if fileName == "" {
 			return
 		}
+		// kim: NOTE: this is not set in the problematic task, so it probably
+		// doesn't matter.
 		f.URLParsley = utility.ToStringPtr(fmt.Sprintf("%s/taskFile/%s/%d/%s", settings.Ui.ParsleyUrl, taskID, execution, url.PathEscape(fileName)))
 	}
 }

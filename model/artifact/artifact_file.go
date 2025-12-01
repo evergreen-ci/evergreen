@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -156,11 +157,17 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 }
 
 // EscapeFiles escapes the base of the file link to avoid issues opening links
-// with special characters in the UI.
-// For example, "url.com/something/file#1.tar.gz" will be escaped to "url.com/something/file%231.tar.gz".
+// with special characters in the UI. Note that it will not escape path segments
+// other than the base (i.e. the last one).
+// For example, "url.com/something+another/file#1.tar.gz" will be escaped to "url.com/something+another/file%231.tar.gz".
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File
 	for _, file := range files {
+		// kim: NOTE: this logic escapes the file link but is incomplete because
+		// it only deals with the last basename in the URL.
+		// kim: NOTE: we can't safely change this to url.QueryEscape because we
+		// aren't certain if the rest of the URL is already escaped or not.
+		// Escaping/unescaping incorrectly could lead to broken links.
 		file.Link = escapeFile(file.Link)
 		escapedFiles = append(escapedFiles, file)
 	}
@@ -173,5 +180,44 @@ func escapeFile(path string) string {
 	if i < 0 {
 		return path
 	}
-	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
+
+	// TODO (DEVPROD-23916): the user may pass a URL that's already
+	// percent-encoded, which would lead to double-encoding here.
+	escapedPath := path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
+
+	// TODO (DEVPROD-23916): remove this warning after investigating whether
+	// Evergreen ever percent-encodes a base for a URL that is already
+	// percent-encoded.
+	grip.WarningWhen(looksPercentEncoded(path), message.Fields{
+		"message":     "percent-encoding an artifact file link that may already be percent-encoded",
+		"ticket":      "DEVPROD-23916",
+		"url":         path,
+		"escaped_url": escapedPath,
+	})
+
+	return escapedPath
+}
+
+// looksPercentEncoded checks whether a given URL path segment appears to be
+// already percent-encoded.
+func looksPercentEncoded(pathSegment string) bool {
+	if !strings.Contains(pathSegment, "%") {
+		return false
+	}
+
+	unescaped, err := url.PathUnescape(pathSegment)
+	if err != nil {
+		// Attempting to unescape didn't work, which means the URL is not a
+		// valid percent-encoded string (e.g. it contains a % symbol but it's
+		// not percent-encoded).
+		return true
+	}
+
+	if unescaped != pathSegment && url.PathEscape(unescaped) == pathSegment {
+		// Unescaping and then re-escaping it gives the original string, meaning
+		// that it's been percent-encoded.
+		return true
+	}
+
+	return false
 }
