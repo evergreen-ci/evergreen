@@ -197,11 +197,7 @@ func makeUpdateArtifactURLRoute() gimlet.RouteHandler { return &updateArtifactUR
 //	@Param			task_id		path		string						true	"Task ID"
 //	@Param			execution	query		int							false	"0-based execution number; if omitted updates latest execution"
 //	@Param			{object}	body		updateArtifactURLRequest	true	"parameters"
-//	@Success		200			{object}	model.APITask				"Task including updated artifacts"
-//	@Failure		400			{object}	gimlet.ErrorResponse		"Invalid input"
-//	@Failure		404			{object}	gimlet.ErrorResponse		"Task or artifact not found"
-//	@Failure		500			{object}	gimlet.ErrorResponse		"Internal error"
-
+//	@Success		200			{object}	model.APITask
 func (h *updateArtifactURLHandler) Factory() gimlet.RouteHandler { return &updateArtifactURLHandler{} }
 
 func (h *updateArtifactURLHandler) Parse(ctx context.Context, r *http.Request) error {
