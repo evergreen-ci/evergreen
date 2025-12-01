@@ -186,10 +186,10 @@ func escapeFile(path string) string {
 	escapedPath := path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 
 	// TODO (DEVPROD-23916): remove this warning after investigating whether
-	// Evergreen ever percent-encodes a base for a URL that is already
+	// Evergreen ever percent-encodes a base for a URL that has already been
 	// percent-encoded.
-	grip.WarningWhen(looksPercentEncoded(path), message.Fields{
-		"message":     "percent-encoding an artifact file link that may already be percent-encoded",
+	grip.WarningWhen(looksPercentEncoded(base), message.Fields{
+		"message":     "percent-encoding an artifact file link basename that may already be percent-encoded",
 		"ticket":      "DEVPROD-23916",
 		"url":         path,
 		"escaped_url": escapedPath,
@@ -208,16 +208,14 @@ func looksPercentEncoded(pathSegment string) bool {
 	unescaped, err := url.PathUnescape(pathSegment)
 	if err != nil {
 		// Attempting to unescape didn't work, which means the URL is not a
-		// valid percent-encoded string (e.g. it contains a % symbol but it's
-		// not percent-encoded).
+		// valid percent-encoded string. It's not clear if unescaping failed
+		// because 1. the string is unescaped and happens to have a % in it
+		// (which has to be escaped) or 2. the string is escaped but
+		// incorrectly. Return true just in case of case 2 as an edge case.
 		return true
 	}
 
-	if unescaped != pathSegment && url.PathEscape(unescaped) == pathSegment {
-		// Unescaping and then re-escaping it gives the original string, meaning
-		// that it's been percent-encoded.
-		return true
-	}
-
-	return false
+	// If unescaping and re-escaping gives the original pathSegment, then the
+	// pathSegment has already been properly percent-encoded once.
+	return unescaped != pathSegment && url.PathEscape(unescaped) == pathSegment
 }

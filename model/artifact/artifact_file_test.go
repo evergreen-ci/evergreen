@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -221,4 +222,13 @@ func (s *TestArtifactFileSuite) TestEscapeFiles() {
 	s.Equal("https://bucket.s3.amazonaws.com/something/file%231.tar.gz", escapedFiles[0].Link)
 	s.Equal("https://notacat%230.png", escapedFiles[1].Link)
 
+}
+
+func TestLooksPercentEncoded(t *testing.T) {
+	assert.True(t, looksPercentEncoded("file%231.tar.gz"))
+	assert.True(t, looksPercentEncoded("file%25231.tar.gz"))
+	assert.True(t, looksPercentEncoded("file%hello.tar.gz"))
+	assert.True(t, looksPercentEncoded("file%1zhello.tar.gz"))
+	assert.False(t, looksPercentEncoded("file.tar.gz"))
+	assert.False(t, looksPercentEncoded("file+hello.tar.gz"))
 }
