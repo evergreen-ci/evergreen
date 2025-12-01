@@ -163,11 +163,6 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File
 	for _, file := range files {
-		// kim: NOTE: this logic escapes the file link but is incomplete because
-		// it only deals with the last basename in the URL.
-		// kim: NOTE: we can't safely change this to url.QueryEscape because we
-		// aren't certain if the rest of the URL is already escaped or not.
-		// Escaping/unescaping incorrectly could lead to broken links.
 		file.Link = escapeFile(file.Link)
 		escapedFiles = append(escapedFiles, file)
 	}
@@ -181,16 +176,17 @@ func escapeFile(path string) string {
 		return path
 	}
 
-	// TODO (DEVPROD-23916): the user may pass a URL that's already
-	// percent-encoded, which would lead to double-encoding here.
+	// TODO (DEVPROD-23916): the user may pass a URL that already has a
+	// percent-encoded base, which could lead to double-encoding here.
 	escapedPath := path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 
 	// TODO (DEVPROD-23916): remove this warning after investigating whether
-	// Evergreen ever percent-encodes a base for a URL that has already been
+	// Evergreen already percent-encodes a base for a URL that has already been
 	// percent-encoded.
 	grip.WarningWhen(looksPercentEncoded(base), message.Fields{
 		"message":     "percent-encoding an artifact file link basename that may already be percent-encoded",
 		"ticket":      "DEVPROD-23916",
+		"basename":    base,
 		"url":         path,
 		"escaped_url": escapedPath,
 	})
@@ -211,7 +207,8 @@ func looksPercentEncoded(pathSegment string) bool {
 		// valid percent-encoded string. It's not clear if unescaping failed
 		// because 1. the string is unescaped and happens to have a % in it
 		// (which has to be escaped) or 2. the string is escaped but
-		// incorrectly. Return true just in case of case 2 as an edge case.
+		// incorrectly. While case 1 means it's not percent-encoded, return true
+		// just in case for case 2.
 		return true
 	}
 
