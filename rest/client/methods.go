@@ -28,8 +28,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const (
-	refreshTokenClaimed = "claimed by another client"
+var (
+	// These should be lowercase.
+	oauthRetryErrors = []string{
+		"claimed by another client",
+		"refresh token expired",
+	}
 )
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
@@ -1403,6 +1407,16 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
+// Constants for retrying operations to initially provision a host. This
+// intentionally will retry many times and often because provisioning the host
+// must succeed for a host to be usable and should be as fast as possible to
+// avoid excessive idle time.
+const (
+	maxProvisioningRequestAttempts = 50
+	minProvisioningRequestDelay    = time.Second
+	maxProvisioningRequestDelay    = 10 * time.Second
+)
+
 func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodPost,
@@ -1415,9 +1429,9 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetad
 	}
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
 		RetryOptions: utility.RetryOptions{
-			MaxAttempts: c.maxAttempts,
-			MinDelay:    c.timeoutStart,
-			MaxDelay:    c.timeoutMax,
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    minProvisioningRequestDelay,
+			MaxDelay:    maxProvisioningRequestDelay,
 		},
 	})
 	if err != nil {
@@ -1445,9 +1459,9 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 	}
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
 		RetryOptions: utility.RetryOptions{
-			MaxAttempts: c.maxAttempts,
-			MinDelay:    c.timeoutStart,
-			MaxDelay:    c.timeoutMax,
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    minProvisioningRequestDelay,
+			MaxDelay:    maxProvisioningRequestDelay,
 		},
 	})
 	if err != nil {
@@ -1754,7 +1768,16 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 	// Sometimes, the refresh token is invalid or claimed by another client.
 	// In this case, we need to run through the auth flow again without using
 	// the refresh token.
-	if !strings.Contains(err.Error(), refreshTokenClaimed) {
+	clientErrString := strings.ToLower(err.Error())
+	shouldRetry := false
+	for _, retryIfFound := range oauthRetryErrors {
+		if strings.Contains(clientErrString, retryIfFound) {
+			shouldRetry = true
+			break
+		}
+	}
+
+	if !shouldRetry {
 		return nil, client.TokenFilePath(), err
 	}
 

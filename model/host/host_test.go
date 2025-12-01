@@ -5475,9 +5475,6 @@ func setupHostTerminationQueryIndex(t *testing.T) {
 }
 
 func TestFindHostsToTerminate(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	defer func() {
 		assert.NoError(t, db.DropCollections(Collection))
 	}()
@@ -5492,9 +5489,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(-10 * time.Minute),
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			require.NoError(t, err)
 			require.Len(t, toTerminate, 1)
 			assert.Equal(t, h.Id, toTerminate[0].Id)
@@ -5507,9 +5504,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(time.Hour),
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, toTerminate)
 		},
@@ -5519,9 +5516,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Id:       "h3",
 				Status:   evergreen.HostDecommissioned,
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			require.NoError(t, err)
 			require.Len(t, toTerminate, 1)
 			assert.Equal(t, h.Id, toTerminate[0].Id)
@@ -5532,9 +5529,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provider: evergreen.ProviderNameMock,
 				Status:   evergreen.HostQuarantined,
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, toTerminate)
 		},
@@ -5546,9 +5543,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Status:       evergreen.HostBuildingFailed,
 				Provider:     evergreen.ProviderNameMock,
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			require.NoError(t, err)
 			require.Len(t, toTerminate, 1)
 			assert.Equal(t, h.Id, toTerminate[0].Id)
@@ -5561,9 +5558,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Status:       evergreen.HostProvisionFailed,
 				Provider:     evergreen.ProviderNameMock,
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			require.NoError(t, err)
 			require.Len(t, toTerminate, 1)
 			assert.Equal(t, h.Id, toTerminate[0].Id)
@@ -5575,9 +5572,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Status:       evergreen.HostTerminated,
 				CreationTime: time.Now().Add(-time.Minute * 60),
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, toTerminate)
 		},
@@ -5590,40 +5587,11 @@ func TestFindHostsToTerminate(t *testing.T) {
 				Provisioned:  true,
 				Status:       evergreen.HostRunning,
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, toTerminate)
-		},
-		"IgnoresHostsThatHaveNotExceededProvisioningDeadline": func(t *testing.T) {
-			h := &Host{
-				Id:           "id",
-				StartedBy:    evergreen.User,
-				Provider:     evergreen.ProviderNameMock,
-				CreationTime: time.Now().Add(-time.Minute * 10),
-			}
-			require.NoError(t, h.Insert(ctx))
-
-			toTerminate, err := FindHostsToTerminate(ctx)
-			assert.NoError(t, err)
-			assert.Empty(t, toTerminate)
-		},
-		"IncludesHostsThatExceedProvisioningDeadline": func(t *testing.T) {
-			h := &Host{
-				Id:           "id",
-				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Hour),
-				Provisioned:  false,
-				Status:       evergreen.HostStarting,
-				Provider:     evergreen.ProviderNameMock,
-			}
-			require.NoError(t, h.Insert(ctx))
-
-			toTerminate, err := FindHostsToTerminate(ctx)
-			require.NoError(t, err)
-			require.Len(t, toTerminate, 1)
-			assert.Equal(t, h.Id, toTerminate[0].Id)
 		},
 		"IgnoresUserDataHostsThatAreNotInRunningStateButAreRunningTasks": func(t *testing.T) {
 			h := &Host{
@@ -5639,9 +5607,9 @@ func TestFindHostsToTerminate(t *testing.T) {
 				RunningTask:           "running_task",
 				StartedBy:             evergreen.User,
 			}
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			toTerminate, err := FindHostsToTerminate(ctx)
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			require.NoError(t, err)
 			assert.Empty(t, toTerminate)
 		},
@@ -5660,11 +5628,101 @@ func TestFindHostsToTerminate(t *testing.T) {
 				CreationTime: time.Now().Add(-time.Hour),
 				Provider:     evergreen.ProviderNameEc2Fleet,
 			}
-			require.NoError(t, h.Insert(ctx))
-			toTerminate, err := FindHostsToTerminate(ctx)
+			require.NoError(t, h.Insert(t.Context()))
+			toTerminate, err := FindHostsToTerminate(t.Context())
 			require.NoError(t, err)
 			require.Len(t, toTerminate, 1)
 			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IncludesLinuxHostsThatExceedProvisioningTimeout": func(t *testing.T) {
+			h := &Host{
+				Id:           "linux-host-old",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-linuxProvisioningCutoff - time.Minute),
+				Provisioned:  false,
+				Status:       evergreen.HostStarting,
+				Provider:     evergreen.ProviderNameMock,
+				Distro: distro.Distro{
+					Id:   "linux-distro",
+					Arch: evergreen.ArchLinuxAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+			}
+			require.NoError(t, h.Insert(t.Context()))
+
+			toTerminate, err := FindHostsToTerminate(t.Context())
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IgnoresLinuxHostsWithinProvisioningTimeout": func(t *testing.T) {
+			h := &Host{
+				Id:           "linux-host-recent",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-linuxProvisioningCutoff + time.Minute),
+				Provisioned:  false,
+				Status:       evergreen.HostStarting,
+				Provider:     evergreen.ProviderNameMock,
+				Distro: distro.Distro{
+					Id:   "linux-distro",
+					Arch: evergreen.ArchLinuxAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+			}
+			require.NoError(t, h.Insert(t.Context()))
+
+			toTerminate, err := FindHostsToTerminate(t.Context())
+			assert.NoError(t, err)
+			assert.Empty(t, toTerminate)
+		},
+		"IncludesWindowsHostsThatExceedProvisioningTimeout": func(t *testing.T) {
+			h := &Host{
+				Id:           "windows-host-old",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-windowsProvisioningCutoff - time.Minute),
+				Provisioned:  false,
+				Status:       evergreen.HostStarting,
+				Provider:     evergreen.ProviderNameMock,
+				Distro: distro.Distro{
+					Id:   "windows-distro",
+					Arch: evergreen.ArchWindowsAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+			}
+			require.NoError(t, h.Insert(t.Context()))
+
+			toTerminate, err := FindHostsToTerminate(t.Context())
+			require.NoError(t, err)
+			require.Len(t, toTerminate, 1)
+			assert.Equal(t, h.Id, toTerminate[0].Id)
+		},
+		"IgnoresWindowsHostsWithinProvisioningTimeout": func(t *testing.T) {
+			h := &Host{
+				Id:           "windows-host-recent",
+				StartedBy:    evergreen.User,
+				CreationTime: time.Now().Add(-windowsProvisioningCutoff + time.Minute),
+				Provisioned:  false,
+				Status:       evergreen.HostStarting,
+				Provider:     evergreen.ProviderNameMock,
+				Distro: distro.Distro{
+					Id:   "windows-distro",
+					Arch: evergreen.ArchWindowsAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method: distro.BootstrapMethodUserData,
+					},
+				},
+			}
+			require.NoError(t, h.Insert(t.Context()))
+
+			toTerminate, err := FindHostsToTerminate(t.Context())
+			assert.NoError(t, err)
+			assert.Empty(t, toTerminate)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

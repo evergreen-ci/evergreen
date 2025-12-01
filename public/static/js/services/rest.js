@@ -108,22 +108,6 @@ mciServices.rest.factory('mciTasksRestService', ['mciBaseRestService', function 
     return service;
 }]);
 
-mciServices.rest.factory('mciBuildsRestService', ['mciBaseRestService', function (baseSvc) {
-    var resource = 'builds';
-
-    var service = {};
-
-    service.takeActionOnBuild = function (buildId, action, data, callbacks) {
-        var config = {
-            data: data
-        };
-        config.data['action'] = action;
-        baseSvc.putResource(resource, [buildId], config, callbacks);
-    };
-
-    return service;
-}]);
-
 mciServices.rest.factory('mciHostRestService', ['mciBaseRestService', function (baseSvc) {
     var resource = 'host';
 
@@ -266,61 +250,6 @@ mciServices.rest.factory('mciTaskStatisticsRestService', ['mciBaseRestService', 
     service.getTimeStatistics = function getTimeStatistics(field1, field2, groupByField, days, callbacks) {
         baseSvc.getResource(resource, [field1, field2, groupByField, days], {}, callbacks);
     };
-
-    return service;
-}]);
-
-mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function (baseSvc) {
-    var resource = mciServices.rest.RestV2Resource("admin");
-
-    var service = {};
-
-    service.getSettings = function (callbacks) {
-        baseSvc.getResource(resource + "/settings", [], {}, callbacks);
-    }
-
-    service.saveSettings = function (settings, callbacks) {
-        var config = {
-            data: settings
-        };
-        baseSvc.postResource(resource + "/settings", [], config, callbacks);
-    }
-
-    service.restartItems = function (from, to, isDryRun, restartRed, restartPurple, restartLavender, callbacks) {
-        var config = {}
-        config.data = {
-            start_time: from,
-            end_time: to,
-            dry_run: isDryRun,
-            include_test_failed: restartRed,
-            include_sys_failed: restartPurple,
-            include_setup_failed: restartLavender,
-        };
-        baseSvc.postResource(resource + "/restart/tasks", [], config, callbacks);
-    }
-
-    service.getEvents = function (timestamp, limit, callbacks) {
-        if (!limit || limit === 0) {
-            limit = 15;
-        }
-        var url = resource + "/events" + "?limit=" + limit;
-        if (timestamp && timestamp !== "") {
-            url += "&ts=" + timestamp;
-        }
-        baseSvc.getResource(url, [], {}, callbacks);
-    }
-
-    service.revertEvent = function (guid, callbacks) {
-        var config = {};
-        config.data = {
-            guid: guid,
-        };
-        baseSvc.postResource(resource + "/revert", [], config, callbacks);
-    }
-
-    service.clearCommitQueues = function (callbacks) {
-        baseSvc.deleteResource(resource + "/commit_queues", [], {}, callbacks);
-    }
 
     return service;
 }]);

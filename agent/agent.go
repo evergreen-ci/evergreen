@@ -784,6 +784,15 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	if runtime.GOOS == "linux" {
 		statsCollector.Cmds = append(statsCollector.Cmds, "df -h -i")
 	}
+	// On Linux and macOS, use lsof to display network connections with process information.
+	// +c 0: display full command name without truncation
+	// -i: show all internet connections (TCP, UDP, etc.)
+	// -n: numeric addresses (no DNS resolution)
+	// -P: numeric ports (no service name resolution)
+	// If lsof is not available, the command will fail gracefully due to ContinueOnError.
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		statsCollector.Cmds = append(statsCollector.Cmds, "lsof +c 0 -i -n -P")
+	}
 
 	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 
