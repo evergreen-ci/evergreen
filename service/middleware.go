@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -68,34 +67,6 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 	}
 
 	return usr
-}
-
-func RedirectSpruceUsers(w http.ResponseWriter, r *http.Request, redirect string) bool {
-	if r.FormValue("redirect_spruce_users") != "true" {
-		return false
-	}
-
-	u := gimlet.GetUser(r.Context())
-	if u == nil {
-		return false
-	}
-
-	usr, ok := u.(*user.DBUser)
-	if !ok || usr == nil || !usr.Settings.UseSpruceOptions.SpruceV1 {
-		return false
-	}
-
-	http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
-	return true
-}
-
-// RedirectIfSpruceSet redirects the user to spruce only if they aren't visiting this page from spruce already and have spruce enabled
-func RedirectIfSpruceSet(w http.ResponseWriter, r *http.Request, u *user.DBUser, redirect, UIv2Url string) bool {
-	if u.Settings.UseSpruceOptions.SpruceV1 && !strings.Contains(r.Referer(), UIv2Url) {
-		http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
-		return true
-	}
-	return false
 }
 
 // GetSettings returns the global evergreen settings.
@@ -171,17 +142,6 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 		r = r.WithContext(ctx)
 		next(w, r)
 	}
-}
-
-// isAdmin returns true if the user id is located in ProjectRef's Admins field
-// or if the the permission level is sufficient.
-func isAdmin(u gimlet.User, projectId string) bool {
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      projectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
 }
 
 func (uis *UIServer) ownsHost(next http.HandlerFunc) http.HandlerFunc {
