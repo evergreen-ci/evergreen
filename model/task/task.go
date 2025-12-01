@@ -76,6 +76,20 @@ func (tc TaskCost) IsZero() bool {
 	return tc.OnDemandCost == 0 && tc.AdjustedCost == 0
 }
 
+// TaskCostStdDev represents the standard deviation of task costs
+type TaskCostStdDev struct {
+	// OnDemandCost is the standard deviation of the on-demand cost
+	OnDemandCost float64 `bson:"on_demand_cost,omitempty" json:"on_demand_cost,omitempty"`
+	// AdjustedCost is the standard deviation of the adjusted cost
+	AdjustedCost float64 `bson:"adjusted_cost,omitempty" json:"adjusted_cost,omitempty"`
+}
+
+// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
+// zero value for BSON marshalling.
+func (tcs TaskCostStdDev) IsZero() bool {
+	return tcs.OnDemandCost == 0 && tcs.AdjustedCost == 0
+}
+
 type Task struct {
 	Id     string `bson:"_id" json:"id"`
 	Secret string `bson:"secret" json:"secret"`
@@ -258,6 +272,10 @@ type Task struct {
 	ExpectedTaskCost TaskCost `bson:"expected_task_cost,omitempty" json:"expected_task_cost,omitempty"`
 	// TaskCost is the cost of the task based on runtime and distro cost rates
 	TaskCost TaskCost `bson:"task_cost,omitempty" json:"task_cost,omitempty"`
+	// PredictedTaskCost is the predicted cost based on historical data for this task
+	PredictedTaskCost TaskCost `bson:"predicted_task_cost,omitempty" json:"predicted_task_cost,omitempty"`
+	// PredictedTaskCostStdDev is the standard deviation of the predicted cost
+	PredictedTaskCostStdDev TaskCostStdDev `bson:"predicted_task_cost_std_dev,omitempty" json:"predicted_task_cost_std_dev,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -4288,6 +4306,34 @@ func (t *Task) GetEstimatedCost(ctx context.Context) (TaskCost, error) {
 
 	runtimeSeconds := estimatedDuration.Seconds()
 	return CalculateTaskCost(runtimeSeconds, costData, financeConfig), nil
+}
+
+// CostPredictionResult contains the result of computing a predicted cost
+type CostPredictionResult struct {
+	PredictedCost       TaskCost
+	PredictedCostStdDev TaskCostStdDev
+}
+
+func (t *Task) ComputePredictedCost(ctx context.Context) (CostPredictionResult, error) {
+	// todo: implement in DEVPROD-23644
+	return CostPredictionResult{}, nil
+}
+
+func (t *Task) HasCostPrediction() bool {
+	return !t.PredictedTaskCost.IsZero()
+}
+
+func (t *Task) GetDisplayCost() TaskCost {
+	if !t.TaskCost.IsZero() {
+		return t.TaskCost
+	}
+	if !t.PredictedTaskCost.IsZero() {
+		return t.PredictedTaskCost
+	}
+	if !t.ExpectedTaskCost.IsZero() {
+		return t.ExpectedTaskCost
+	}
+	return TaskCost{}
 }
 
 // MoveLogsByNamesToBucket moves task + test logs to the specified bucket

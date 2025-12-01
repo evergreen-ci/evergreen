@@ -84,6 +84,8 @@ var (
 	TimeTakenKey                   = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	TaskCostKey                    = bsonutil.MustHaveTag(Task{}, "TaskCost")
 	ExpectedTaskCostKey            = bsonutil.MustHaveTag(Task{}, "ExpectedTaskCost")
+	PredictedTaskCostKey           = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
+	PredictedTaskCostStdDevKey     = bsonutil.MustHaveTag(Task{}, "PredictedTaskCostStdDev")
 	ExpectedDurationKey            = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
 	ExpectedDurationStddevKey      = bsonutil.MustHaveTag(Task{}, "ExpectedDurationStdDev")
 	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
@@ -3051,4 +3053,82 @@ func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) 
 		return &task, nil
 	}
 	return nil, nil
+}
+
+type expectedCostResults struct {
+	DisplayName        string  `bson:"_id"`
+	AvgOnDemandCost    float64 `bson:"avg_on_demand_cost"`
+	AvgAdjustedCost    float64 `bson:"avg_adjusted_cost"`
+	StdDevOnDemandCost float64 `bson:"std_dev_on_demand_cost"`
+	StdDevAdjustedCost float64 `bson:"std_dev_adjusted_cost"`
+}
+
+func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant string, start, end time.Time) ([]expectedCostResults, error) {
+	match := bson.M{
+		BuildVariantKey: buildVariant,
+		ProjectKey:      project,
+		StatusKey: bson.M{
+			"$in": evergreen.TaskCompletedStatuses,
+		},
+		bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut): bson.M{
+			"$ne": true,
+		},
+		FinishTimeKey: bson.M{
+			"$gte": start,
+			"$lte": end,
+		},
+		bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_cost"): bson.M{
+			"$gt": 0,
+		},
+	}
+
+	if name != "" {
+		match[DisplayNameKey] = name
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": match,
+		},
+		{
+			"$project": bson.M{
+				DisplayNameKey: 1,
+				bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_cost"): 1,
+				bsonutil.GetDottedKeyName(TaskCostKey, "adjusted_cost"):  1,
+				IdKey: 0,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": fmt.Sprintf("$%s", DisplayNameKey),
+				"avg_on_demand_cost": bson.M{
+					"$avg": fmt.Sprintf("$%s.on_demand_cost", TaskCostKey),
+				},
+				"avg_adjusted_cost": bson.M{
+					"$avg": fmt.Sprintf("$%s.adjusted_cost", TaskCostKey),
+				},
+				"std_dev_on_demand_cost": bson.M{
+					"$stdDevPop": fmt.Sprintf("$%s.on_demand_cost", TaskCostKey),
+				},
+				"std_dev_adjusted_cost": bson.M{
+					"$stdDevPop": fmt.Sprintf("$%s.adjusted_cost", TaskCostKey),
+				},
+			},
+		},
+	}
+
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	dbCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(DurationIndex))
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating task average cost")
+	}
+
+	var results []expectedCostResults
+	if err := cursor.All(dbCtx, &results); err != nil {
+		return nil, errors.Wrap(err, "iterating and decoding task average cost")
+	}
+
+	return results, nil
 }
