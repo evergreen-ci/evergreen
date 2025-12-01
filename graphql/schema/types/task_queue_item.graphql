@@ -12,7 +12,7 @@ type TaskQueueItem {
   project: String!
   # projectIdentifier can be null if the task is running on an untracked branch.
   projectIdentifier: String
-  requester: TaskQueueItemType!
+  requester: String!
   activatedBy: String!
   revision: String!
   version: String!
