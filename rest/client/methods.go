@@ -1762,18 +1762,22 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 
 	// This attempt tries to get a token or refresh using the refresh token.
 	token, err := client.Token()
-	if err == nil {
+	if err == nil && token.Expiry.After(time.Now()) {
 		return token, client.TokenFilePath(), nil
 	}
-	// Sometimes, the refresh token is invalid or claimed by another client.
-	// In this case, we need to run through the auth flow again without using
-	// the refresh token.
-	clientErrString := strings.ToLower(err.Error())
+
 	shouldRetry := false
-	for _, retryIfFound := range oauthRetryErrors {
-		if strings.Contains(clientErrString, retryIfFound) {
-			shouldRetry = true
-			break
+	if token.Expiry.Before(time.Now()) {
+		// Dex doesn't count zero time as expired, so we double check if it's expired.
+		shouldRetry = true
+	} else {
+		// Otherwise, check the error to see if we should retry.
+		clientErrString := strings.ToLower(err.Error())
+		for _, retryIfFound := range oauthRetryErrors {
+			if strings.Contains(clientErrString, retryIfFound) {
+				shouldRetry = true
+				break
+			}
 		}
 	}
 
