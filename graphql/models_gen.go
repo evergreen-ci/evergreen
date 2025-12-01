@@ -1489,61 +1489,6 @@ func (e TaskHistoryDirection) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-type TaskQueueItemType string
-
-const (
-	TaskQueueItemTypeCommit TaskQueueItemType = "COMMIT"
-	TaskQueueItemTypePatch  TaskQueueItemType = "PATCH"
-)
-
-var AllTaskQueueItemType = []TaskQueueItemType{
-	TaskQueueItemTypeCommit,
-	TaskQueueItemTypePatch,
-}
-
-func (e TaskQueueItemType) IsValid() bool {
-	switch e {
-	case TaskQueueItemTypeCommit, TaskQueueItemTypePatch:
-		return true
-	}
-	return false
-}
-
-func (e TaskQueueItemType) String() string {
-	return string(e)
-}
-
-func (e *TaskQueueItemType) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = TaskQueueItemType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid TaskQueueItemType", str)
-	}
-	return nil
-}
-
-func (e TaskQueueItemType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *TaskQueueItemType) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e TaskQueueItemType) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
 type TaskSortCategory string
 
 const (
