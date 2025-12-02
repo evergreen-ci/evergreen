@@ -17,7 +17,7 @@ func TestGetExpectedCostsForWindow(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, db.ClearCollections(Collection))
 
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: DurationIndex})
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: TaskHistoricalDataIndex})
 	require.NoError(t, err)
 
 	const (

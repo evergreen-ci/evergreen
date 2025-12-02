@@ -2940,7 +2940,7 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	dbCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(DurationIndex))
+	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(TaskHistoricalDataIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating generate tasks estimations")
 	}
@@ -3064,6 +3064,9 @@ type expectedCostResults struct {
 }
 
 func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant string, start, end time.Time) ([]expectedCostResults, error) {
+	if end.Before(start) {
+		return nil, errors.New("end time must be after start time")
+	}
 	match := bson.M{
 		BuildVariantKey: buildVariant,
 		ProjectKey:      project,
@@ -3120,7 +3123,7 @@ func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant 
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	dbCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(DurationIndex))
+	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(TaskHistoricalDataIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task average cost")
 	}

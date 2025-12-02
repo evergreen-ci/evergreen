@@ -19,7 +19,7 @@ func TestPlanner(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: task.DurationIndex})
+	_, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex})
 	assert.NoError(t, err)
 
 	t.Run("Caches", func(t *testing.T) {
