@@ -217,14 +217,14 @@ func (s *TestArtifactFileSuite) TestEscapeFiles() {
 		},
 	}
 
-	escapedFiles := EscapeFiles(files)
+	escapedFiles := EscapeFiles("", files)
 
 	s.Equal("https://bucket.s3.amazonaws.com/something/file%231.tar.gz", escapedFiles[0].Link)
 	s.Equal("https://notacat%230.png", escapedFiles[1].Link)
 
 }
 
-func TestLooksPercentEncoded(t *testing.T) {
+func TestLooksAlreadyEscaped(t *testing.T) {
 	assert.True(t, looksAlreadyEscaped("file%231.tar.gz"))
 	assert.True(t, looksAlreadyEscaped("file%25231.tar.gz"))
 	assert.True(t, looksAlreadyEscaped("file%hello.tar.gz"))
