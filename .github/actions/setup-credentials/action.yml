@@ -1,0 +1,72 @@
+name: 'Setup Credentials'
+description: 'Setup test credentials by creating creds.yml file'
+
+inputs:
+  github_app_id:
+    description: 'GitHub App ID'
+    required: true
+  github_app_key:
+    description: 'GitHub App private key (PEM format)'
+    required: true
+  jira_server:
+    description: 'Jira server URL'
+    required: false
+    default: 'https://jira.example.com'
+  jira_token:
+    description: 'Jira personal access token'
+    required: false
+    default: 'dummy-jira-token-12345'
+  crowd_server:
+    description: 'Crowd server URL'
+    required: false
+    default: 'https://crowd.example.com'
+  papertrail_key_id:
+    description: 'Papertrail key ID'
+    required: false
+    default: 'dummy-papertrail-key-id'
+  papertrail_secret_key:
+    description: 'Papertrail secret key'
+    required: false
+    default: 'dummy-papertrail-secret-key'
+  runtime_env_base_url:
+    description: 'Runtime environments base URL'
+    required: false
+    default: 'https://runtime-env.example.com'
+  runtime_env_api_key:
+    description: 'Runtime environments API key'
+    required: false
+    default: 'dummy-runtime-env-api-key'
+  aws_access_key_id:
+    description: 'AWS access key ID'
+    required: false
+    default: 'AKIADUMMYAWSACCESSKEY'
+  aws_secret_access_key:
+    description: 'AWS secret access key'
+    required: false
+    default: 'dummyAwsSecretAccessKey1234567890abcdef'
+  aws_session_token:
+    description: 'AWS session token'
+    required: false
+    default: 'dummyAwsSessionToken'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run setup-credentials script
+      shell: bash
+      run: bash scripts/setup-credentials.sh
+      env:
+        GITHUB_APP_ID: ${{ inputs.github_app_id }}
+        GITHUB_APP_KEY: ${{ inputs.github_app_key }}
+        JIRA_SERVER: ${{ inputs.jira_server }}
+        JIRA_PERSONAL_ACCESS_TOKEN: ${{ inputs.jira_token }}
+        CROWD_SERVER: ${{ inputs.crowd_server }}
+        PAPERTRAIL_KEY_ID: ${{ inputs.papertrail_key_id }}
+        PAPERTRAIL_SECRET_KEY: ${{ inputs.papertrail_secret_key }}
+        RUNTIME_ENVIRONMENTS_BASE_URL: ${{ inputs.runtime_env_base_url }}
+        RUNTIME_ENVIRONMENTS_API_KEY: ${{ inputs.runtime_env_api_key }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        AWS_SESSION_TOKEN: ${{ inputs.aws_session_token }}
+        PARSER_PROJECT_S3_PREFIX: github-actions-testing/parser-projects
+        GENERATED_JSON_S3_PREFIX: github-actions-testing/generated-json

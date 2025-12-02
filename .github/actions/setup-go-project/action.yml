@@ -1,0 +1,25 @@
+name: 'Setup Go Project'
+description: 'Setup Go environment (requires checkout to be done first)'
+
+inputs:
+  go-version:
+    description: 'Go version to use'
+    required: false
+    default: '1.24'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: true  # Cache Go modules based on go.sum
+
+    # Disable the Go problem matcher to prevent false error annotations.
+    # The matcher pattern-matches on ".go: message" in logs, which creates
+    # false annotations when tests intentionally generate errors like
+    # "mkdir /path/file.go: not a directory" as part of error handling tests.
+    - name: Disable Go problem matcher
+      shell: bash
+      run: echo "::remove-matcher owner=go::"

@@ -1,0 +1,225 @@
+name: Self-Tests (GitHub Actions Migration)
+
+
+on:
+  push:
+    branches: [ main, migrate-to-github-actions ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: ${{ matrix.test_name }}
+    runs-on: ubuntu-22.04
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Tests without MongoDB
+          - test_name: test-util
+            needs_mongodb: false
+          - test_name: test-agent-internal-client
+            needs_mongodb: false
+          - test_name: test-agent-internal-taskoutput
+            needs_mongodb: false
+          - test_name: test-agent-util
+            needs_mongodb: false
+          - test_name: test-cloud-userdata
+            needs_mongodb: false
+          - test_name: test-thirdparty-docker
+            needs_mongodb: false
+          
+          # Tests with MongoDB
+          - test_name: test-db
+            needs_mongodb: true
+          - test_name: test-agent
+            needs_mongodb: true
+          - test_name: test-agent-command
+            needs_mongodb: true
+          - test_name: test-agent-internal
+            needs_mongodb: true
+          - test_name: test-auth
+            needs_mongodb: true
+          - test_name: test-cloud-parameterstore
+            needs_mongodb: true
+          - test_name: test-cloud-parameterstore-fakeparameter
+            needs_mongodb: true
+          - test_name: test-evergreen
+            needs_mongodb: true
+          - test_name: test-model
+            needs_mongodb: true
+          - test_name: test-model-alertrecord
+            needs_mongodb: true
+          - test_name: test-model-annotations
+            needs_mongodb: true
+          - test_name: test-model-artifact
+            needs_mongodb: true
+          - test_name: test-model-build
+            needs_mongodb: true
+          - test_name: test-model-cache
+            needs_mongodb: true
+          - test_name: test-model-distro
+            needs_mongodb: true
+          - test_name: test-model-event
+            needs_mongodb: true
+          - test_name: test-model-githubapp
+            needs_mongodb: true
+          - test_name: test-model-host
+            needs_mongodb: true
+          - test_name: test-model-manifest
+            needs_mongodb: true
+          - test_name: test-model-notification
+            needs_mongodb: true
+          - test_name: test-model-parsley
+            needs_mongodb: true
+          - test_name: test-model-patch
+            needs_mongodb: true
+          - test_name: test-model-pod
+            needs_mongodb: true
+          - test_name: test-model-pod-definition
+            needs_mongodb: true
+          - test_name: test-model-pod-dispatcher
+            needs_mongodb: true
+          - test_name: test-model-task
+            needs_mongodb: true
+          - test_name: test-model-taskstats
+            needs_mongodb: true
+          - test_name: test-model-testlog
+            needs_mongodb: true
+          - test_name: test-model-testresult
+            needs_mongodb: true
+          - test_name: test-model-user
+            needs_mongodb: true
+          - test_name: test-operations
+            needs_mongodb: true
+          - test_name: test-plugin
+            needs_mongodb: true
+          - test_name: test-repotracker
+            needs_mongodb: true
+          - test_name: test-rest-client
+            needs_mongodb: true
+          - test_name: test-rest-data
+            needs_mongodb: true
+          - test_name: test-rest-model
+            needs_mongodb: true
+          - test_name: test-rest-route
+            needs_mongodb: true
+          - test_name: test-scheduler
+            needs_mongodb: true
+          - test_name: test-service
+            needs_mongodb: true
+          - test_name: test-thirdparty
+            needs_mongodb: true
+          - test_name: test-trigger
+            needs_mongodb: true
+          - test_name: test-units
+            needs_mongodb: true
+          - test_name: test-validator
+            needs_mongodb: true
+          
+          # Tests with MongoDB and special timezone
+          - test_name: test-graphql
+            needs_mongodb: true
+            timezone: America/New_York
+          - test_name: test-service-graphql
+            needs_mongodb: true
+            timezone: America/New_York
+    
+    env:
+      TZ: ${{ matrix.timezone || '' }}
+    
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+
+      - name: Configure secrets
+        uses: ./.github/actions/setup-secrets
+
+      - name: Test foo secret
+        shell: bash
+        run: |
+          echo "========== TEST FOO SECRET =========="
+          echo "Testing secret 'foo' availability and value"
+
+          # Check for FOO variable directly (prefix should be stripped by setup-secrets action)
+          if [ -z "$FOO" ]; then
+            echo "ERROR: FOO variable not found"
+            exit 1
+          fi
+
+          echo "Found variable: FOO"
+
+          # Validate value without echoing the secret
+          # IMPORTANT: Never echo secret values to avoid leaking them to logs
+          if [ "$FOO" = "bar" ]; then
+            echo "FOO equals expected value: true"
+          else
+            echo "FOO equals expected value: false"
+            echo "ERROR: FOO does not equal expected value"
+            exit 1
+          fi
+          echo "====================================="
+
+      - name: Test papertrail secret lengths
+        shell: bash
+        run: |
+          echo "========== TEST PAPERTRAIL SECRETS =========="
+          echo "Testing Papertrail secret availability"
+
+          # Check PAPERTRAIL_KEY_ID
+          if [ -z "$PAPERTRAIL_KEY_ID" ]; then
+            echo "ERROR: PAPERTRAIL_KEY_ID not found"
+            exit 1
+          else
+            echo "✓ PAPERTRAIL_KEY_ID found, length: ${#PAPERTRAIL_KEY_ID}"
+          fi
+
+          # Check PAPERTRAIL_SECRET_KEY
+          if [ -z "$PAPERTRAIL_SECRET_KEY" ]; then
+            echo "ERROR: PAPERTRAIL_SECRET_KEY not found"
+            exit 1
+          else
+            echo "✓ PAPERTRAIL_SECRET_KEY found, length: ${#PAPERTRAIL_SECRET_KEY}"
+          fi
+
+          echo "============================================="
+
+      - name: Set up Go project
+        uses: ./.github/actions/setup-go-project
+        with:
+          go-version: '1.24'
+
+      - name: Set up credentials
+        uses: ./.github/actions/setup-credentials
+        with:
+          github_app_id: ${{ env.GITHUB_APP_ID }}
+          github_app_key: ${{ env.GITHUB_APP_KEY }}
+          jira_server: ${{ env.JIRA_SERVER }}
+          jira_token: ${{ env.JIRA_PERSONAL_ACCESS_TOKEN }}
+          crowd_server: ${{ env.CROWD_SERVER }}
+          papertrail_key_id: ${{ env.PAPERTRAIL_KEY_ID }}
+          papertrail_secret_key: ${{ env.PAPERTRAIL_SECRET_KEY }}
+          runtime_env_base_url: ${{ env.RUNTIME_ENVIRONMENTS_BASE_URL }}
+          runtime_env_api_key: ${{ env.RUNTIME_ENVIRONMENTS_API_KEY }}
+          aws_access_key_id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws_session_token: ${{ env.AWS_SESSION_TOKEN }}
+
+      - name: Set up MongoDB
+        if: matrix.needs_mongodb
+        uses: ./.github/actions/setup-mongodb
+
+      - name: Run test
+        uses: ./.github/actions/run-test
+        with:
+          test_name: ${{ matrix.test_name }}

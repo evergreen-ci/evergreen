@@ -1,0 +1,39 @@
+name: 'Setup MongoDB'
+description: 'Download, start, and configure MongoDB for testing'
+
+inputs:
+  mongodb_url:
+    description: 'MongoDB download URL'
+    required: false
+    default: 'https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz'
+  mongosh_url:
+    description: 'mongosh download URL'
+    required: false
+    default: 'https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download MongoDB
+      shell: bash
+      run: make get-mongodb
+      env:
+        MONGODB_URL: ${{ inputs.mongodb_url }}
+        MONGODB_DECOMPRESS: 'tar zxvf'
+
+    - name: Download mongosh
+      shell: bash
+      run: make get-mongosh
+      env:
+        MONGOSH_URL: ${{ inputs.mongosh_url }}
+        MONGOSH_DECOMPRESS: 'tar zxvf'
+
+    - name: Start mongod
+      shell: bash
+      run: |
+        make start-mongod &
+        echo "Started mongod in background"
+
+    - name: Configure mongod
+      shell: bash
+      run: make configure-mongod

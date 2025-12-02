@@ -1,0 +1,30 @@
+name: 'Run Test'
+description: 'Run a test target and upload results'
+
+inputs:
+  test_name:
+    description: 'Name of the test to run (e.g., test-util, test-auth)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run test
+      shell: bash
+      run: make ${{ inputs.test_name }}
+      env:
+        EVERGREEN_ALL: "true"
+        KARMA_REPORTER: junit
+        SETTINGS_OVERRIDE: creds.yml
+        RUN_EC2_SPECIFIC_TESTS: "false"
+        SKIP_INTEGRATION_TESTS: "false"
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ inputs.test_name }}
+        path: |
+          bin/output.*.test
+          bin/jstests/*.xml
+        if-no-files-found: warn

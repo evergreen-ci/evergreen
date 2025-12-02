@@ -1,0 +1,111 @@
+name: 'Setup Secrets'
+description: 'Configure AWS credentials via OIDC and retrieve repository secrets from AWS Secrets Manager.'
+
+outputs:
+  secrets-configured:
+    description: 'Whether secrets were successfully configured.'
+    value: ${{ steps.mark-configured.outputs.secrets-configured }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: AWS OIDC – scoped to the calling repo
+      uses: aws-actions/configure-aws-credentials@v5
+      with:
+        aws-region: us-east-1
+        role-to-assume: arn:aws:iam::538830382384:role/evergreen-self-tests
+        inline-session-policy: >-
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "secretsmanager:GetSecretValue",
+                  "secretsmanager:DescribeSecret"
+                ],
+                "Resource": "arn:aws:secretsmanager:*:538830382384:secret:${{ github.repository }}/*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "secretsmanager:ListSecrets",
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "s3:ListBucket",
+                "Resource": [
+                  "arn:aws:s3:::evergreen-projects-testing",
+                  "arn:aws:s3:::evergreen-integration-testing"
+                ]
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject",
+                  "s3:PutObject",
+                  "s3:PutObjectAcl"
+                ],
+                "Resource": [
+                  "arn:aws:s3:::evergreen-projects-testing/*",
+                  "arn:aws:s3:::evergreen-integration-testing/*"
+                ]
+              }
+            ]
+          }
+
+    - name: Read secret(s)
+      id: fetch-secrets
+      uses: aws-actions/aws-secretsmanager-get-secrets@v2
+      with:
+        secret-ids: |
+          ${{ github.repository }}/*
+
+    - name: Strip repository prefix from secret names
+      shell: bash
+      run: |
+        # Calculate the repository prefix that AWS Secrets Manager action adds
+        REPO_PREFIX=$(echo "${{ github.repository }}" | tr '[:lower:]' '[:upper:]' | tr '/' '_' | tr '-' '_')_
+
+        # Export all secrets without the prefix
+        # IMPORTANT: Never echo secret values to avoid leaking them to logs
+        for var in $(compgen -v | grep "^${REPO_PREFIX}"); do
+          new_name="${var#$REPO_PREFIX}"
+          # Use heredoc format to properly handle multi-line values (like SSH keys)
+          {
+            echo "${new_name}<<EOF"
+            echo "${!var}"
+            echo "EOF"
+          } >> $GITHUB_ENV
+        done
+
+    - name: Map secret names to Evergreen env vars
+      shell: bash
+      run: |
+        declare -A SECRET_NAME_MAP=(
+          [STAGING_GITHUB_APP_ID]=GITHUB_APP_ID
+          [STAGING_GITHUB_APP_KEY]=GITHUB_APP_KEY
+          [STAGING_RUNTIME_ENVIRONMENTS_BASE_URL]=RUNTIME_ENVIRONMENTS_BASE_URL
+          [STAGING_RUNTIME_ENVIRONMENTS_API_KEY]=RUNTIME_ENVIRONMENTS_API_KEY
+          [JIRASERVER]=JIRA_SERVER
+          [CROWDSERVER]=CROWD_SERVER
+        )
+
+        for source in "${!SECRET_NAME_MAP[@]}"; do
+          dest="${SECRET_NAME_MAP[$source]}"
+          value="${!source}"
+
+          if [[ -n "$value" ]]; then
+            {
+              echo "${dest}<<EOF"
+              echo "${value}"
+              echo "EOF"
+            } >> $GITHUB_ENV
+          fi
+        done
+
+    - name: Mark secrets as configured
+      id: mark-configured
+      shell: bash
+      run: echo "secrets-configured=true" >> "$GITHUB_OUTPUT"
+
