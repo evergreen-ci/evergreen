@@ -225,10 +225,11 @@ func (s *TestArtifactFileSuite) TestEscapeFiles() {
 }
 
 func TestLooksPercentEncoded(t *testing.T) {
-	assert.True(t, looksPercentEncoded("file%231.tar.gz"))
-	assert.True(t, looksPercentEncoded("file%25231.tar.gz"))
-	assert.True(t, looksPercentEncoded("file%hello.tar.gz"))
-	assert.True(t, looksPercentEncoded("file%1zhello.tar.gz"))
-	assert.False(t, looksPercentEncoded("file.tar.gz"))
-	assert.False(t, looksPercentEncoded("file+hello.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("file%231.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("file%25231.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("file%hello.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("file%1zhello.tar.gz"))
+	assert.False(t, looksAlreadyEscaped("file.tar.gz"))
+	assert.False(t, looksAlreadyEscaped("file+hello.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("baz%2Bqux.txt"))
 }

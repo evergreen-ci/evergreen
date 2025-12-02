@@ -9,6 +9,10 @@ pre:
   - func: assume-role
 
 post:
+  - command: attach.artifacts
+    params:
+      files:
+        - evergreen/artifacts.json
   - func: attach-test-results
   - command: s3.put
     display_name: Upload smoke test's app server logs to S3

@@ -1,0 +1,33 @@
+[
+  {
+    "name": "basename-plus-sign",
+    "link": "https://example.com/foo+bar.txt",
+    "visibility": "public"
+  },
+  {
+    "name": "multiple-segments-plus-sign",
+    "link": "https://example.com/foo+bar/baz+qux.txt",
+    "visibility": "public"
+  },
+  {
+    "name": "no-special-chars",
+    "link": "https://example.com/foobar.txt",
+    "visibility": "public"
+  },
+  {
+    "name": "already-escaped-basename",
+    "link": "https://example.com/foo+bar/baz%2Bqux.txt",
+    "visibility": "public"
+  },
+  {
+    "name": "already-escaped-multiple-segments",
+    "link": "https://example.com/foo%2Bbar/baz%2Bqux.txt",
+    "visibility": "public"
+  },
+  {
+    "name": "plain-percent-symbol-not-escaped",
+    "link": "https://example.com/baz%qux.txt",
+    "visibility": "public"
+  }
+]
+
