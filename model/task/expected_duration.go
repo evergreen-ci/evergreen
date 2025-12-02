@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DurationIndex = bson.D{
+var TaskHistoricalDataIndex = bson.D{
 	{Key: ProjectKey, Value: 1},
 	{Key: BuildVariantKey, Value: 1},
 	{Key: DisplayNameKey, Value: 1},
@@ -78,7 +78,7 @@ func getExpectedDurationsForWindow(name, project, buildVariant string, start, en
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
-	cursor, err := coll.Aggregate(ctx, pipeline, options.Aggregate().SetHint(DurationIndex))
+	cursor, err := coll.Aggregate(ctx, pipeline, options.Aggregate().SetHint(TaskHistoricalDataIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task average duration")
 	}

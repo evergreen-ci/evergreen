@@ -1374,7 +1374,7 @@ tasks:
 	require.NoError(t, db.ClearCollections(serviceModel.ParserProjectCollection, serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
 	require.NoError(t, db.CreateCollections(serviceModel.ParserProjectCollection, build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
 	require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{
-		Keys: task.DurationIndex,
+		Keys: task.TaskHistoricalDataIndex,
 	}))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
