@@ -178,7 +178,6 @@ func escapeFile(taskID, path string) string {
 
 	// TODO (DEVPROD-23916): the user may pass a URL that already has a
 	// percent-encoded base, which could lead to double-encoding here.
-	// kim: TODO: test in staging with an already-escaped artifact URL.
 	escapedPath := path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 
 	// TODO (DEVPROD-23916): remove this warning after investigating whether
