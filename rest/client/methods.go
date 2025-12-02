@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -1760,6 +1762,14 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 	}
 	defer client.Close()
 
+	// We delete the lock file to ensure that if the previous
+	// token acquisition attempt was interrupted, we can still
+	// acquire a new token.
+	tokenLockFilePath := client.TokenFilePath() + ".lock"
+	if delErr := os.RemoveAll(tokenLockFilePath); delErr != nil {
+		grip.Warning(errors.Wrapf(delErr, "removing OAuth token lock file at '%s'", tokenLockFilePath))
+	}
+
 	// This attempt tries to get a token or refreshes using the refresh token.
 	token, err := client.Token()
 	// We have to explicitly check the expiry is valid because the OAuth
@@ -1769,10 +1779,10 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 	}
 
 	shouldRetry := false
-	if token.Expiry.Before(time.Now()) {
+	if token != nil && token.Expiry.Before(time.Now()) {
 		// Retry if the token is expired.
 		shouldRetry = true
-	} else {
+	} else if err != nil {
 		// Otherwise, check the error to see if we should retry.
 		clientErrString := strings.ToLower(err.Error())
 		for _, retryIfFound := range oauthRetryErrors {
