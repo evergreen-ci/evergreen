@@ -903,13 +903,6 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		// Another job has already modified the host. Skip this update silently since our
 		// cached state is stale and attempting this status change is no longer valid.
 		if adb.ResultsNotFound(err) {
-			grip.Info(message.Fields{
-				"message":          "host status update skipped due to concurrent modification",
-				"host_id":          h.Id,
-				"cached_status":    h.Status,
-				"attempted_status": newStatus,
-				"user":             user,
-			})
 			return nil
 		}
 		return err

@@ -96,12 +96,6 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	// Skip monitoring if host is already in a down state. Another job has already handled
 	// termination, so checking the cloud provider would be redundant and waste API calls.
 	if utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
-		grip.Debug(message.Fields{
-			"message": "host already in down status, skipping monitoring check",
-			"host_id": j.host.Id,
-			"status":  j.host.Status,
-			"job":     j.ID(),
-		})
 		return
 	}
 
