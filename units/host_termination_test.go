@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -594,5 +595,71 @@ func TestHostTerminationJob(t *testing.T) {
 
 			tCase(tctx, t, env, provider, h)
 		})
+	}
+}
+
+func TestConcurrentTerminationJobsDoNotRollbackStatus(t *testing.T) {
+	env := testutil.NewEnvironment(t.Context(), t)
+	require.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, event.EventCollection))
+	}()
+
+	now := time.Now()
+	h := &host.Host{
+		Id:            "host1",
+		Status:        evergreen.HostStarting,
+		Distro:        distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock},
+		Provider:      evergreen.ProviderNameMock,
+		Provisioned:   true,
+		CreationTime:  now.Add(-10 * time.Minute),
+		StartTime:     now.Add(-5 * time.Minute),
+		TotalIdleTime: 0,
+	}
+	require.NoError(t, h.Insert(t.Context()))
+
+	mockCloud := cloud.GetMockProvider()
+	mockCloud.Reset()
+	mockCloud.Set(h.Id, cloud.MockInstance{Status: cloud.StatusTerminated})
+
+	job1 := NewHostTerminationJob(env, h, HostTerminationOptions{
+		TerminateIfBusy:          true,
+		TerminationReason:        "first termination",
+		SkipCloudHostTermination: true,
+	})
+	job1.Run(t.Context())
+	require.NoError(t, job1.Error())
+
+	dbHost, err := host.FindOneId(t.Context(), h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+
+	// Simulate race condition: second job has stale cached host status
+	staleHost := &host.Host{
+		Id:       h.Id,
+		Status:   evergreen.HostStarting,
+		Distro:   h.Distro,
+		Provider: evergreen.ProviderNameMock,
+	}
+	job2 := NewHostTerminationJob(env, staleHost, HostTerminationOptions{
+		TerminateIfBusy:          true,
+		TerminationReason:        "second termination with stale cache",
+		SkipCloudHostTermination: true,
+	})
+	job2.Run(t.Context())
+	require.NoError(t, job2.Error())
+
+	dbHost, err = host.FindOneId(t.Context(), h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.HostTerminated, dbHost.Status, "status should not roll back to decommissioned")
+
+	events, err := event.Find(t.Context(), event.HostEvents(event.HostEventsOpts{ID: h.Id, Limit: 50}))
+	require.NoError(t, err)
+	for _, e := range events {
+		if e.EventType == event.EventHostStatusChanged {
+			data := e.Data.(*event.HostEventData)
+			assert.NotEqual(t, "terminated->decommissioned", data.OldStatus+"->"+data.NewStatus,
+				"should not log rollback from terminated to decommissioned")
+		}
 	}
 }
