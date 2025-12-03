@@ -1487,9 +1487,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
 	}
-	if res.Priority > MaxConfigSetPriority {
-		res.Priority = MaxConfigSetPriority
-	}
 	if res.Patchable == nil {
 		res.Patchable = pt.Patchable
 	}
