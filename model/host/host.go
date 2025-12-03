@@ -876,6 +876,11 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		query = bson.M{}
 	}
 	query[IdKey] = h.Id
+	// Only update if the database status matches our in-memory status.
+	// This prevents concurrent jobs with stale cached host objects from overwriting each
+	// other's status changes. Without this, jobs can apply updates in arbitrary order,
+	// causing status to regress (e.g., terminated->decommissioned) and duplicate events.
+	query[StatusKey] = h.Status
 
 	if setFields == nil {
 		setFields = bson.M{}
@@ -894,6 +899,19 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		query,
 		update,
 	); err != nil {
+		// No documents matched: the database status has diverged from our cached status.
+		// Another job has already modified the host. Skip this update silently since our
+		// cached state is stale and attempting this status change is no longer valid.
+		if adb.ResultsNotFound(err) {
+			grip.Info(message.Fields{
+				"message":          "host status update skipped due to concurrent modification",
+				"host_id":          h.Id,
+				"cached_status":    h.Status,
+				"attempted_status": newStatus,
+				"user":             user,
+			})
+			return nil
+		}
 		return err
 	}
 

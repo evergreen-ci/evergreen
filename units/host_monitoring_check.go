@@ -75,19 +75,34 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		return
 	}
 
+	// Always reload host from database to get current status. Jobs may be queued with
+	// a cached host object that becomes stale by the time the job runs. Without reloading,
+	// we could check the cloud provider for hosts that are already terminated/decommissioned,
+	// wasting cloud API calls and potentially logging misleading events.
+	j.host, err = host.FindOneId(ctx, j.HostID)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
+		return
+	}
 	if j.host == nil {
-		j.host, err = host.FindOneId(ctx, j.HostID)
-		if err != nil {
-			j.AddError(errors.Wrapf(err, "finding host '%s'", j.HostID))
-			return
-		} else if j.host == nil {
-			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
-			return
-		}
+		j.AddError(errors.Errorf("host '%s' not found", j.HostID))
+		return
 	}
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
+	}
+
+	// Skip monitoring if host is already in a down state. Another job has already handled
+	// termination, so checking the cloud provider would be redundant and waste API calls.
+	if utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
+		grip.Debug(message.Fields{
+			"message": "host already in down status, skipping monitoring check",
+			"host_id": j.host.Id,
+			"status":  j.host.Status,
+			"job":     j.ID(),
+		})
+		return
 	}
 
 	if j.host.Provider == evergreen.ProviderNameStatic {
