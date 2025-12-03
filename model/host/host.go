@@ -899,11 +899,23 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		query,
 		update,
 	); err != nil {
-		// No documents matched: the database status has diverged from our cached status.
-		// Another job has already modified the host. Skip this update silently since our
-		// cached state is stale and attempting this status change is no longer valid.
 		if adb.ResultsNotFound(err) {
-			return nil
+			// If it errored because the host doesn't exist, return an error.
+			dbHost, findErr := FindOneId(ctx, h.Id)
+			if findErr != nil {
+				return errors.Wrapf(findErr, "checking if host '%s' exists after update failure", h.Id)
+			}
+			if dbHost == nil {
+				return errors.Errorf("host '%s' not found in database", h.Id)
+			}
+
+			// Host exists. Check if the failure was due to status mismatch (concurrent modification).
+			if dbHost.Status != h.Status {
+				// The database status has diverged from our cached status.
+				// Another job has already modified the host. Skip this update silently since our
+				// cached state is stale and attempting this status change is no longer valid.
+				return nil
+			}
 		}
 		return err
 	}
