@@ -1019,6 +1019,26 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
+
+	// Special case: skip priority capping for the mongo-release project.
+	if utility.FromStringPtr(p.Identifier) == "mongo-release" {
+		return &p, nil
+	}
+
+	// Cap priority values at MaxConfigSetPriority
+	for i := range p.Tasks {
+		if p.Tasks[i].Priority > MaxConfigSetPriority {
+			p.Tasks[i].Priority = MaxConfigSetPriority
+		}
+	}
+	for i := range p.BuildVariants {
+		for j := range p.BuildVariants[i].Tasks {
+			if p.BuildVariants[i].Tasks[j].Priority > MaxConfigSetPriority {
+				p.BuildVariants[i].Tasks[j].Priority = MaxConfigSetPriority
+			}
+		}
+	}
+
 	return &p, nil
 }
 
@@ -1473,9 +1493,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
-	}
-	if res.Priority > MaxConfigSetPriority {
-		res.Priority = MaxConfigSetPriority
 	}
 	if res.Patchable == nil {
 		res.Patchable = pt.Patchable
