@@ -335,9 +335,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Distros
 	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.legacyDistrosPage).Get()
 
-	// Event Logs
-	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
-
 	// Task History
 	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskHistoryPage).Get()
 	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskHistoryPage).Get()

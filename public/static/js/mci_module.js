@@ -31,7 +31,6 @@ var mciModule = angular.module('MCI', [
   'directives.badges',
   'directives.confirm',
   'directives.drawer',
-  'directives.eventLogs',
   'directives.events',
   'directives.github',
   'directives.patch',

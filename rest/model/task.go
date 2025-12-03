@@ -19,7 +19,6 @@ import (
 const (
 	TaskLogLinkFormat        = "%s/task_log_raw/%s/%d?type=%s"
 	ParsleyTaskLogLinkFormat = "%s/evergreen/%s/%d/%s"
-	EventLogLinkFormat       = "%s/event_log/task/%s"
 )
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
@@ -169,7 +168,6 @@ type LogLinks struct {
 	AgentLogLink *string `json:"agent_log"`
 	// Link to logs created by the machine running the task
 	SystemLogLink *string `json:"system_log"`
-	EventLogLink  *string `json:"event_log,omitempty"`
 }
 
 type ApiTaskEndDetail struct {
@@ -473,7 +471,6 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "T")),
 			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "E")),
 			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "S")),
-			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, baseTaskID)),
 		}
 		at.Logs = ll
 	}
