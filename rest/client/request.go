@@ -110,6 +110,14 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 	if response == nil {
 		return nil, errors.New("received nil response")
 	}
+	switch response.StatusCode {
+	case http.StatusUnauthorized:
+		response.Body.Close()
+		return nil, util.RespError(response, AuthError)
+	case http.StatusForbidden:
+		response.Body.Close()
+		return nil, util.RespError(response, VPNError)
+	}
 
 	return response, nil
 }
@@ -141,11 +149,13 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		},
 	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, util.RespError(resp, AuthError)
+		resp.Body.Close()
+		return nil, util.RespError(resp, AuthError)
 	} else if resp != nil && resp.StatusCode == http.StatusForbidden {
-		return resp, util.RespError(resp, VPNError)
+		resp.Body.Close()
+		return nil, util.RespError(resp, VPNError)
 	} else if err != nil {
-		return resp, err
+		return nil, err
 	}
 	return resp, nil
 }
