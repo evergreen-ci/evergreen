@@ -614,17 +614,19 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communic
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
 		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce in to your configuration file at '%s'", s.LoadedFrom)
 	}
-	return comm.GetOAuthToken(ctx,
-		s.OAuth.DoNotUseBrowser,
-		dex.WithIssuer(s.OAuth.Issuer),
-		dex.WithClientID(s.OAuth.ClientID),
-		dex.WithConnectorID(s.OAuth.ConnectorID),
-	)
-}
-
-// SetOAuthToken sets the OAuth token for authentication.
-func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
-	token, path, err := s.getOAuthToken(ctx, comm)
+	get := func() (*oauth2.Token, string, error) {
+		token, path, err := comm.GetOAuthToken(ctx,
+			s.OAuth.DoNotUseBrowser,
+			dex.WithIssuer(s.OAuth.Issuer),
+			dex.WithClientID(s.OAuth.ClientID),
+			dex.WithConnectorID(s.OAuth.ConnectorID),
+		)
+		if err != nil && strings.Contains(err.Error(), "403") {
+			return nil, "", fmt.Errorf("OAuth authentication failed: please make sure you're on the VPN and have access to Evergreen. Original error: %w", err)
+		}
+		return token, path, err
+	}
+	token, path, err := get()
 	if err != nil {
 		// The auth library caches tokens in a file. Sometimes, the tokens are expired and
 		// we need to remove the file to get a new token.
@@ -632,13 +634,22 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 			if delErr := os.RemoveAll(path); delErr != nil {
 				grip.Warning(errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
 			}
-			token, path, err = s.getOAuthToken(ctx, comm)
+			token, path, err = get()
 			if err != nil {
-				return errors.Wrap(err, "getting OAuth token after removing token file")
+				return token, path, errors.Wrap(err, "getting OAuth token after removing token file")
 			}
 		} else {
-			return errors.Wrap(err, "getting OAuth token")
+			return token, path, errors.Wrap(err, "getting OAuth token")
 		}
+	}
+	return token, path, nil
+}
+
+// SetOAuthToken sets the OAuth token for authentication.
+func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
+	token, path, err := s.getOAuthToken(ctx, comm)
+	if err != nil {
+		return err
 	}
 
 	s.OAuth.AccessToken = token.AccessToken
