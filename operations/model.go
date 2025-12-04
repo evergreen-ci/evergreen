@@ -622,7 +622,7 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communic
 			dex.WithConnectorID(s.OAuth.ConnectorID),
 		)
 		if err != nil && strings.Contains(err.Error(), "403") {
-			return nil, "", fmt.Errorf("OAuth authentication failed: please make sure you're on the VPN and have access to Evergreen. Original error: %w", err)
+			return nil, "", fmt.Errorf("%s Original error: %w", client.VPNError, err)
 		}
 		return token, path, err
 	}
