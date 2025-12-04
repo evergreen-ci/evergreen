@@ -23,9 +23,14 @@ type requestInfo struct {
 	retryOn413 bool
 }
 
-// AuthError is a special error when the CLI receives 401 Unauthorized to
-// suggest logging in again as a possible solution to the error.
-var AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
+var (
+	// AuthError is a special error when the CLI receives 401 Unauthorized to
+	// suggest logging in again as a possible solution to the error.
+	AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
+	// VPNError is a special error when the CLI receives 403 Forbidden to
+	// suggest checking VPN connection as a possible solution to the error.
+	VPNError = "VPN connection required: please make sure you're on the VPN and have access to Evergreen."
+)
 
 func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Request, error) {
 	url := c.getPath(path)
@@ -105,6 +110,14 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 	if response == nil {
 		return nil, errors.New("received nil response")
 	}
+	switch response.StatusCode {
+	case http.StatusUnauthorized:
+		response.Body.Close()
+		return nil, util.RespError(response, AuthError)
+	case http.StatusForbidden:
+		response.Body.Close()
+		return nil, util.RespError(response, VPNError)
+	}
 
 	return response, nil
 }
@@ -136,9 +149,13 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		},
 	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, util.RespError(resp, AuthError)
+		resp.Body.Close()
+		return nil, util.RespError(resp, AuthError)
+	} else if resp != nil && resp.StatusCode == http.StatusForbidden {
+		resp.Body.Close()
+		return nil, util.RespError(resp, VPNError)
 	} else if err != nil {
-		return resp, err
+		return nil, err
 	}
 	return resp, nil
 }
