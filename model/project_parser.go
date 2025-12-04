@@ -1019,6 +1019,21 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
+
+	// Cap priority values at MaxConfigSetPriority
+	for i := range p.Tasks {
+		if p.Tasks[i].Priority > MaxConfigSetPriority {
+			p.Tasks[i].Priority = MaxConfigSetPriority
+		}
+	}
+	for i := range p.BuildVariants {
+		for j := range p.BuildVariants[i].Tasks {
+			if p.BuildVariants[i].Tasks[j].Priority > MaxConfigSetPriority {
+				p.BuildVariants[i].Tasks[j].Priority = MaxConfigSetPriority
+			}
+		}
+	}
+
 	return &p, nil
 }
 
