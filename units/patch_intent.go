@@ -32,6 +32,7 @@ import (
 const (
 	patchIntentJobName         = "patch-intent-processor"
 	githubDependabotUser       = "dependabot[bot]"
+	githubActionsUser          = "github-actions[bot]"
 	BuildTasksAndVariantsError = "building tasks and variants"
 	maxPatchIntentJobTime      = 10 * time.Minute
 )
@@ -1300,7 +1301,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	defer cancel()
 
 	// GitHub Dependabot patches should be automatically authorized.
-	if githubUser == githubDependabotUser {
+	if githubUser == githubDependabotUser || githubUser == githubActionsUser {
 		grip.Info(message.Fields{
 			"job":       j.ID(),
 			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),

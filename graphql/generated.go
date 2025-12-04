@@ -2015,7 +2015,6 @@ type ComplexityRoot struct {
 	TaskLogLinks struct {
 		AgentLogLink  func(childComplexity int) int
 		AllLogLink    func(childComplexity int) int
-		EventLogLink  func(childComplexity int) int
 		SystemLogLink func(childComplexity int) int
 		TaskLogLink   func(childComplexity int) int
 	}
@@ -11155,12 +11154,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskLogLinks.AllLogLink(childComplexity), true
-	case "TaskLogLinks.eventLogLink":
-		if e.complexity.TaskLogLinks.EventLogLink == nil {
-			break
-		}
-
-		return e.complexity.TaskLogLinks.EventLogLink(childComplexity), true
 	case "TaskLogLinks.systemLogLink":
 		if e.complexity.TaskLogLinks.SystemLogLink == nil {
 			break
@@ -61886,8 +61879,6 @@ func (ec *executionContext) fieldContext_Task_logs(_ context.Context, field grap
 				return ec.fieldContext_TaskLogLinks_agentLogLink(ctx, field)
 			case "allLogLink":
 				return ec.fieldContext_TaskLogLinks_allLogLink(ctx, field)
-			case "eventLogLink":
-				return ec.fieldContext_TaskLogLinks_eventLogLink(ctx, field)
 			case "systemLogLink":
 				return ec.fieldContext_TaskLogLinks_systemLogLink(ctx, field)
 			case "taskLogLink":
@@ -64925,35 +64916,6 @@ func (ec *executionContext) _TaskLogLinks_allLogLink(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_TaskLogLinks_allLogLink(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskLogLinks",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskLogLinks_eventLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TaskLogLinks_eventLogLink,
-		func(ctx context.Context) (any, error) {
-			return obj.EventLogLink, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TaskLogLinks_eventLogLink(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskLogLinks",
 		Field:      field,
@@ -102117,8 +102079,6 @@ func (ec *executionContext) _TaskLogLinks(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._TaskLogLinks_agentLogLink(ctx, field, obj)
 		case "allLogLink":
 			out.Values[i] = ec._TaskLogLinks_allLogLink(ctx, field, obj)
-		case "eventLogLink":
-			out.Values[i] = ec._TaskLogLinks_eventLogLink(ctx, field, obj)
 		case "systemLogLink":
 			out.Values[i] = ec._TaskLogLinks_systemLogLink(ctx, field, obj)
 		case "taskLogLink":

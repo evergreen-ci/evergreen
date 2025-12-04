@@ -198,7 +198,6 @@ type OomTrackerInfo {
 type TaskLogLinks {
   agentLogLink: String
   allLogLink: String
-  eventLogLink: String
   systemLogLink: String
   taskLogLink: String
 }
