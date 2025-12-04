@@ -67,6 +67,7 @@ func (j *decoHostNotifyJob) Run(ctx context.Context) {
 		}
 		if h == nil {
 			j.AddError(errors.Errorf("host '%s' not found", j.HostID))
+			return
 		}
 		j.host = h
 	}
