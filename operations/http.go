@@ -45,22 +45,22 @@ func (ae APIError) Error() string {
 	return fmt.Sprintf("Unexpected reply from server (%s): %s", ae.status, ae.body)
 }
 
-// NewAPIError creates an APIError by reading the body of the response and its status code.
-func NewAPIError(resp *http.Response) APIError {
+// newAPIError creates an APIError by reading the body of the response and its status code.
+func newAPIError(resp *http.Response) APIError {
 	defer resp.Body.Close()
 	bodyBytes, _ := io.ReadAll(resp.Body) // ignore error, request has already failed anyway
 	bodyStr := string(bodyBytes)
 	return APIError{bodyStr, resp.Status, resp.StatusCode}
 }
 
-func NewAuthError(resp *http.Response) APIError {
-	apiError := NewAPIError(resp)
+func newAuthError(resp *http.Response) APIError {
+	apiError := newAPIError(resp)
 	apiError.body = fmt.Sprintf("%s (%s)", apiError.body, client.AuthError)
 	return apiError
 }
 
-func NewVPNError(resp *http.Response) APIError {
-	apiError := NewAPIError(resp)
+func newVPNError(resp *http.Response) APIError {
+	apiError := newAPIError(resp)
 	apiError.body = fmt.Sprintf("%s (%s)", apiError.body, client.VPNError)
 	return apiError
 }
@@ -106,10 +106,10 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
 		resp.Body.Close()
-		return nil, NewAuthError(resp)
+		return nil, newAuthError(resp)
 	case http.StatusForbidden:
 		resp.Body.Close()
-		return nil, NewVPNError(resp)
+		return nil, newVPNError(resp)
 	}
 
 	return resp, nil
@@ -160,7 +160,7 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return NewAPIError(resp)
+		return newAPIError(resp)
 	}
 	return nil
 }
@@ -188,12 +188,12 @@ func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID s
 		errors := validator.ValidationErrors{}
 		err = utility.ReadJSON(resp.Body, &errors)
 		if err != nil {
-			return nil, NewAPIError(resp)
+			return nil, newAPIError(resp)
 		}
 		return errors, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	return nil, nil
 }
@@ -215,7 +215,7 @@ func (ac *legacyClient) GetPatches(n int) ([]patch.Patch, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	patches := []patch.Patch{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
@@ -233,7 +233,7 @@ func (ac *legacyClient) GetRestPatch(patchId string) (*service.RestPatch, error)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	result := &service.RestPatch{}
 	if err := utility.ReadJSON(resp.Body, result); err != nil {
@@ -251,7 +251,7 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	apiModel := &restModel.APIPatch{}
 	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
@@ -273,7 +273,7 @@ func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	ref := &model.ProjectRef{}
 	if err := utility.ReadJSON(resp.Body, ref); err != nil {
@@ -291,7 +291,7 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	ref := &model.Project{}
 	yamlBytes, err := io.ReadAll(resp.Body)
@@ -314,7 +314,7 @@ func (ac *legacyClient) GetConfig(versionId string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -333,7 +333,7 @@ func (ac *legacyClient) GetProject(versionId string) (*model.Project, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -357,7 +357,7 @@ func (ac *legacyClient) GetLastGreen(project string, variants []string) (*model.
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	v := &model.Version{}
 	if err := utility.ReadJSON(resp.Body, v); err != nil {
@@ -375,7 +375,7 @@ func (ac *legacyClient) DeletePatchModule(patchId, module string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return NewAPIError(resp)
+		return newAPIError(resp)
 	}
 	return nil
 }
@@ -416,7 +416,7 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return NewAPIError(resp)
+		return newAPIError(resp)
 	}
 	return nil
 }
@@ -429,7 +429,7 @@ func (ac *legacyClient) ListProjects() ([]model.ProjectRef, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	projs := []model.ProjectRef{}
 	if err := utility.ReadJSON(resp.Body, &projs); err != nil {
@@ -446,7 +446,7 @@ func (ac *legacyClient) ListTasks(project string) ([]model.ProjectTask, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	tasks := []model.ProjectTask{}
 	if err := utility.ReadJSON(resp.Body, &tasks); err != nil {
@@ -463,7 +463,7 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 	variants := []model.BuildVariant{}
 	if err := utility.ReadJSON(resp.Body, &variants); err != nil {
@@ -545,7 +545,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 
 	reply := struct {
@@ -570,7 +570,7 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 		return nil, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 
 	reply := service.RestTask{}
@@ -590,7 +590,7 @@ func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
+		return nil, newAPIError(resp)
 	}
 
 	v := struct {
@@ -627,7 +627,7 @@ func (ac *legacyClient) UpdateRole(role *gimlet.Role) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return NewAPIError(resp)
+		return newAPIError(resp)
 	}
 	return nil
 }
