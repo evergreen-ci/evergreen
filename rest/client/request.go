@@ -21,6 +21,9 @@ type requestInfo struct {
 	method     string
 	path       string
 	retryOn413 bool
+	// leaveBodyOnError indicates that the response and it's body should be returned if possible
+	// instead of closing the body and returning an error.
+	leaveBodyOnError bool
 }
 
 var (
