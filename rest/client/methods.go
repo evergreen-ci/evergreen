@@ -1559,9 +1559,10 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	// 413 errors are transient when validating large project configurations
 	// so we want to retry on them.
 	info := requestInfo{
-		method:     http.MethodPost,
-		path:       "validate",
-		retryOn413: true,
+		method:           http.MethodPost,
+		path:             "validate",
+		retryOn413:       true,
+		leaveBodyOnError: true,
 	}
 
 	body := validator.ValidationInput{
@@ -1570,36 +1571,38 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 		ProjectID:   projectID,
 	}
 	resp, err := c.retryRequest(ctx, info, body)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-
+	defer func() {
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}()
 	// we want to ignore the error if it's a 400, since that is expected when validation fails
 	if err != nil && err.Error() != server400 {
 		return nil, util.RespError(resp, "validating project")
 	}
 
-	if resp.StatusCode == http.StatusBadRequest {
-		rawData, _ := io.ReadAll(resp.Body)
+	if resp == nil {
+		return nil, errors.New("no response received from server")
+	} else if resp.StatusCode == http.StatusBadRequest {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, util.RespError(resp, "reading validation error response")
+		}
 
-		var errorResponse gimlet.ErrorResponse
-		err := json.Unmarshal(rawData, &errorResponse)
-		if err == nil {
+		var gimletError gimlet.ErrorResponse
+		if err := json.Unmarshal(body, &gimletError); err == nil {
 			// if it successfully unmarshaled to a gimlet error response,
 			// that means it's an error message rather than project errors and
 			// we should return the error.
-			return nil, errors.New(errorResponse.Message)
+			return nil, errors.New(gimletError.Message)
 		}
 
-		errors := validator.ValidationErrors{}
-		err = json.Unmarshal(rawData, &errors)
-		if err != nil {
+		var validationErrors validator.ValidationErrors
+		if err := json.Unmarshal(body, &validationErrors); err != nil {
 			return nil, util.RespError(resp, "reading validation errors")
 		}
-		return errors, nil
-	}
-
-	if resp.StatusCode != http.StatusOK {
+		return validationErrors, nil
+	} else if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "validating project")
 	}
 
