@@ -1898,6 +1898,7 @@ type ComplexityRoot struct {
 		Patch                   func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
 		Pod                     func(childComplexity int) int
+		PredictedTaskCost       func(childComplexity int) int
 		Priority                func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
@@ -10651,6 +10652,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.Pod(childComplexity), true
+	case "Task.predictedTaskCost":
+		if e.complexity.Task.PredictedTaskCost == nil {
+			break
+		}
+
+		return e.complexity.Task.PredictedTaskCost(childComplexity), true
 	case "Task.priority":
 		if e.complexity.Task.Priority == nil {
 			break
@@ -20076,6 +20083,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -28725,6 +28734,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -32194,6 +32205,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -34902,6 +34915,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -38762,6 +38777,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -38961,6 +38978,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39160,6 +39179,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39359,6 +39380,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39558,6 +39581,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39757,6 +39782,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39956,6 +39983,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -41045,6 +41074,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -45703,6 +45734,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -46136,6 +46169,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -52198,6 +52233,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -52397,6 +52434,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -60343,6 +60382,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -61146,6 +61187,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -61449,6 +61492,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -62730,6 +62775,41 @@ func (ec *executionContext) _Task_taskCost(ctx context.Context, field graphql.Co
 }
 
 func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "onDemandCost":
+				return ec.fieldContext_TaskCost_onDemandCost(ctx, field)
+			case "adjustedCost":
+				return ec.fieldContext_TaskCost_adjustedCost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskCost", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_predictedTaskCost(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_predictedTaskCost,
+		func(ctx context.Context) (any, error) {
+			return obj.PredictedTaskCost, nil
+		},
+		nil,
+		ec.marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
@@ -64352,6 +64432,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -68374,6 +68456,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -71478,6 +71562,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskCost":
 				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -101276,6 +101362,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "taskCost":
 			out.Values[i] = ec._Task_taskCost(ctx, field, obj)
+		case "predictedTaskCost":
+			out.Values[i] = ec._Task_predictedTaskCost(ctx, field, obj)
 		case "taskOwnerTeam":
 			field := field
 

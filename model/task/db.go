@@ -13,8 +13,11 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -83,7 +86,6 @@ var (
 	AbortInfoKey                   = bsonutil.MustHaveTag(Task{}, "AbortInfo")
 	TimeTakenKey                   = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	TaskCostKey                    = bsonutil.MustHaveTag(Task{}, "TaskCost")
-	ExpectedTaskCostKey            = bsonutil.MustHaveTag(Task{}, "ExpectedTaskCost")
 	PredictedTaskCostKey           = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
 	PredictedTaskCostStdDevKey     = bsonutil.MustHaveTag(Task{}, "PredictedTaskCostStdDev")
 	ExpectedDurationKey            = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
@@ -2657,25 +2659,91 @@ func FindAllDependencyTasksToModify(ctx context.Context, tasks []Task, isBlockin
 }
 
 func activateTasks(ctx context.Context, taskIDs []string, caller string, activationTime time.Time) error {
-	_, err := UpdateAll(
-		ctx,
-		bson.M{
-			IdKey:        bson.M{"$in": taskIDs},
-			ActivatedKey: false,
-		},
-		[]bson.M{
-			{
-				"$set": bson.M{
-					ActivatedKey:     true,
-					ActivatedByKey:   caller,
-					ActivatedTimeKey: activationTime,
-				},
-			},
-			addDisplayStatusCache,
-		})
+	tasks, err := FindAll(ctx, db.Query(bson.M{
+		IdKey:        bson.M{"$in": taskIDs},
+		ActivatedKey: false,
+	}))
 	if err != nil {
-		return errors.Wrap(err, "setting tasks to active")
+		return errors.Wrap(err, "fetching tasks for activation")
 	}
+
+	// Separate tasks that need predictions from those that already have them
+	var tasksNeedingPredictions []Task
+	var taskIDsWithPredictions []string
+	for _, t := range tasks {
+		if t.PredictedTaskCost.IsZero() {
+			tasksNeedingPredictions = append(tasksNeedingPredictions, t)
+		} else {
+			taskIDsWithPredictions = append(taskIDsWithPredictions, t.Id)
+		}
+	}
+
+	// Activate tasks that already have predictions (no need to compute or set predictions)
+	if len(taskIDsWithPredictions) > 0 {
+		_, err := UpdateAll(
+			ctx,
+			bson.M{
+				IdKey:        bson.M{"$in": taskIDsWithPredictions},
+				ActivatedKey: false,
+			},
+			[]bson.M{
+				{
+					"$set": bson.M{
+						ActivatedKey:     true,
+						ActivatedByKey:   caller,
+						ActivatedTimeKey: activationTime,
+					},
+				},
+				addDisplayStatusCache,
+			})
+		if err != nil {
+			return errors.Wrap(err, "activating tasks with existing predictions")
+		}
+	}
+
+	// Compute and update predictions for tasks that need them
+	if len(tasksNeedingPredictions) > 0 {
+		predictions, err := computeCostPredictionsInParallel(ctx, tasksNeedingPredictions)
+		if err != nil {
+			return errors.Wrap(err, "computing cost predictions")
+		}
+
+		env := evergreen.GetEnvironment()
+		coll := env.DB().Collection(Collection)
+		var writes []mongo.WriteModel
+
+		for _, t := range tasksNeedingPredictions {
+			prediction := predictions[t.Id]
+			setFields := bson.M{
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: activationTime,
+			}
+
+			// Only set predicted cost fields if they have values (no historical data = zero values)
+			if !prediction.PredictedCost.IsZero() {
+				setFields[PredictedTaskCostKey] = prediction.PredictedCost
+			}
+			if !prediction.PredictedCostStdDev.IsZero() {
+				setFields[PredictedTaskCostStdDevKey] = prediction.PredictedCostStdDev
+			}
+
+			writes = append(writes, mongo.NewUpdateOneModel().
+				SetFilter(bson.M{IdKey: t.Id, ActivatedKey: false}).
+				SetUpdate([]bson.M{
+					{"$set": setFields},
+					addDisplayStatusCache,
+				}))
+		}
+
+		if len(writes) > 0 {
+			_, err := coll.BulkWrite(ctx, writes)
+			if err != nil {
+				return errors.Wrap(err, "bulk updating tasks with new predictions")
+			}
+		}
+	}
+
 	if err = enableDisabledTasks(ctx, taskIDs); err != nil {
 		return errors.Wrap(err, "enabling disabled tasks")
 	}
@@ -2695,6 +2763,113 @@ func enableDisabledTasks(ctx context.Context, taskIDs []string) error {
 			},
 		})
 	return err
+}
+
+// SetPredictedCostsForTasks sets predicted costs on task objects in memory.
+func SetPredictedCostsForTasks(ctx context.Context, tasks Tasks) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	activatedTasks := make([]Task, 0, len(tasks))
+	taskPtrMap := make(map[string]*Task) // Map task ID to original pointer for updates
+	for _, t := range tasks {
+		if t.Activated {
+			activatedTasks = append(activatedTasks, *t)
+			taskPtrMap[t.Id] = t
+		}
+	}
+
+	if len(activatedTasks) == 0 {
+		return nil
+	}
+
+	predictions, err := computeCostPredictionsInParallel(ctx, activatedTasks)
+	if err != nil {
+		return errors.Wrap(err, "computing cost predictions")
+	}
+
+	for _, t := range activatedTasks {
+		prediction := predictions[t.Id]
+		taskPtr := taskPtrMap[t.Id]
+		taskPtr.PredictedTaskCost = prediction.PredictedCost
+		taskPtr.PredictedTaskCostStdDev = prediction.PredictedCostStdDev
+	}
+
+	return nil
+}
+
+// taskVariantKey represents a unique combination of project, variant, and task name for batching cost predictions
+type taskVariantKey struct {
+	project      string
+	buildVariant string
+	displayName  string
+}
+
+// computeCostPredictionsInParallel computes cost predictions for multiple tasks in parallel.
+// It groups tasks by (project, variant, name) to batch queries and runs them concurrently.
+// Returns a map from task ID to cost prediction result.
+func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[string]CostPredictionResult, error) {
+	if len(tasks) == 0 {
+		return map[string]CostPredictionResult{}, nil
+	}
+
+	// Group tasks by (project, variant, name) for batching
+	tasksByVariant := make(map[taskVariantKey][]Task)
+	for _, t := range tasks {
+		key := taskVariantKey{
+			project:      t.Project,
+			buildVariant: t.BuildVariant,
+			displayName:  t.DisplayName,
+		}
+		tasksByVariant[key] = append(tasksByVariant[key], t)
+	}
+
+	type predictionResult struct {
+		taskID     string
+		prediction CostPredictionResult
+		err        error
+	}
+	resultChan := make(chan predictionResult, len(tasks))
+
+	// Process each variant group in parallel
+	for _, variantTasks := range tasksByVariant {
+		variantTasks := variantTasks // capture loop variable
+		go func() {
+			// Compute prediction once for this variant group (use first task as representative)
+			prediction, err := variantTasks[0].ComputePredictedCost(ctx)
+
+			// Send result for each task in group
+			for _, t := range variantTasks {
+				resultChan <- predictionResult{
+					taskID:     t.Id,
+					prediction: prediction,
+					err:        err,
+				}
+			}
+		}()
+	}
+
+	predictions := make(map[string]CostPredictionResult)
+	for i := 0; i < len(tasks); i++ {
+		select {
+		case result := <-resultChan:
+			if result.err != nil {
+				// Log error but don't fail - use zero prediction
+				grip.Warning(message.WrapError(result.err, message.Fields{
+					"message": "error computing cost prediction for task, using zero prediction",
+					"task_id": result.taskID,
+				}))
+				predictions[result.taskID] = CostPredictionResult{}
+			} else {
+				predictions[result.taskID] = result.prediction
+			}
+		case <-ctx.Done():
+			return nil, errors.Wrap(ctx.Err(), "context cancelled while computing cost predictions")
+		}
+	}
+
+	return predictions, nil
 }
 
 // IncNumNextTaskDispatches sets the number of times a host has requested this
