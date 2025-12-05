@@ -1571,11 +1571,9 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 		ProjectID:   projectID,
 	}
 	resp, err := c.retryRequest(ctx, info, body)
-	defer func() {
-		if resp != nil {
-			resp.Body.Close()
-		}
-	}()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	// we want to ignore the error if it's a 400, since that is expected when validation fails
 	if err != nil && err.Error() != server400 {
 		return nil, util.RespError(resp, "validating project")
