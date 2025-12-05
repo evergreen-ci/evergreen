@@ -568,6 +568,59 @@ func TestHostSetDNSName(t *testing.T) {
 	assert.Equal(t, newHostname, dbHost.Host, "existing hostname should be retained even if an empty string is passed")
 }
 
+func TestMarkReachable(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, h *Host){
+		"MarksHostAsRunning": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostStarting
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.MarkReachable(ctx))
+			assert.Equal(t, evergreen.HostRunning, h.Status)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+		"NoOpWhenAlreadyRunning": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostRunning
+			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.MarkReachable(ctx))
+			assert.Equal(t, evergreen.HostRunning, h.Status)
+		},
+		"NoConcurrentModification": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostProvisioning
+			require.NoError(t, h.Insert(ctx))
+
+			// Another process changes status
+			require.NoError(t, UpdateOne(ctx, bson.M{IdKey: h.Id}, bson.M{"$set": bson.M{StatusKey: evergreen.HostQuarantined}}))
+
+			// MarkReachable silently fails due to concurrent modification
+			require.NoError(t, h.MarkReachable(ctx))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status, "should not overwrite concurrent modification")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+			h := &Host{
+				Id:     "test-host",
+				Status: evergreen.HostStarting,
+				Distro: distro.Distro{Id: "test-distro"},
+			}
+			tCase(t, h)
+		})
+	}
+}
+
 func TestMarkAsProvisioned(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

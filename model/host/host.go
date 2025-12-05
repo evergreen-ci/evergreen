@@ -2123,23 +2123,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return nil
 	}
 
-	if err := UpdateOne(
-		ctx,
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
-		return errors.WithStack(err)
-	}
-
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
-	grip.Info(message.Fields{
-		"message":    "host marked reachable",
-		"host_id":    h.Id,
-		"host_tag":   h.Tag,
-		"distro":     h.Distro.Id,
-		"old_status": h.Status,
-	})
-	h.Status = evergreen.HostRunning
-
+	h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, "host marked reachable")
 	return nil
 }
 
