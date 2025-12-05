@@ -152,14 +152,19 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		},
 	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		resp.Body.Close()
-		return nil, util.RespError(resp, AuthError)
+		err = util.RespError(resp, AuthError)
 	} else if resp != nil && resp.StatusCode == http.StatusForbidden {
+		err = util.RespError(resp, VPNError)
+	}
+
+	if err != nil {
+		if info.leaveBodyOnError {
+			return resp, err
+		}
 		resp.Body.Close()
-		return nil, util.RespError(resp, VPNError)
-	} else if err != nil {
 		return nil, err
 	}
+
 	return resp, nil
 }
 
