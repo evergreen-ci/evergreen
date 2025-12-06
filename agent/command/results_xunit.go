@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -123,88 +126,140 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 	return out, nil
 }
 
+// parseXMLFileResult holds the result of parsing a single XML file.
+type parseXMLFileResult struct {
+	filePath string
+	suites   []testSuite
+	invalid  bool
+	err      error
+}
+
+// parseXMLFile parses a single xunit XML file and returns the test suites.
+func parseXMLFile(filePath string) parseXMLFileResult {
+	stat, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return parseXMLFileResult{filePath: filePath, invalid: true}
+	}
+	if stat.IsDir() {
+		return parseXMLFileResult{filePath: filePath, invalid: true}
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return parseXMLFileResult{filePath: filePath, err: errors.Wrapf(err, "opening xunit file '%s'", filePath)}
+	}
+
+	suites, err := parseXMLResults(file)
+	if err != nil {
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrapf(err, "parsing xunit file '%s'", filePath)
+		catcher.Wrapf(file.Close(), "closing xunit file '%s'", filePath)
+		return parseXMLFileResult{filePath: filePath, err: catcher.Resolve()}
+	}
+
+	if err = file.Close(); err != nil {
+		return parseXMLFileResult{filePath: filePath, err: errors.Wrapf(err, "closing xunit file '%s'", filePath)}
+	}
+
+	return parseXMLFileResult{filePath: filePath, suites: suites}
+}
+
 func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator) error {
-
-	cumulative := testcaseAccumulator{
-		tests:           []testresult.TestResult{},
-		logs:            []*testlog.TestLog{},
-		logIdxToTestIdx: []int{},
-	}
 
 	reportFilePaths, err := getFilePaths(conf.WorkDir, c.Files)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	var (
-		file       *os.File
-		testSuites []testSuite
-	)
-	numInvalid := 0
-	for _, reportFileLoc := range reportFilePaths {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrapf(err, "canceled while parsing xunit file '%s'", reportFileLoc)
-		}
+	// Parse XML files in parallel using a worker pool.
+	jobs := make(chan string, len(reportFilePaths))
+	results := make(chan parseXMLFileResult, len(reportFilePaths))
 
-		stat, err := os.Stat(reportFileLoc)
-		if os.IsNotExist(err) {
-			numInvalid += 1
-			logger.Task().Infof("Result file '%s' does not exist.", reportFileLoc)
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+		go func() {
+			for filePath := range jobs {
+				results <- parseXMLFile(filePath)
+			}
+		}()
+	}
+
+	for _, path := range reportFilePaths {
+		jobs <- path
+	}
+	close(jobs)
+
+	// Collect parse results and build cumulative test cases.
+	cumulative := testcaseAccumulator{
+		tests:           []testresult.TestResult{},
+		logs:            []*testlog.TestLog{},
+		logIdxToTestIdx: []int{},
+	}
+	var numInvalid int
+	catcher := grip.NewBasicCatcher()
+	for i := 0; i < len(reportFilePaths); i++ {
+		result := <-results
+		if result.err != nil {
+			catcher.Add(result.err)
 			continue
 		}
-
-		if stat.IsDir() {
-			numInvalid += 1
-			logger.Task().Infof("Result file '%s' is a directory, not a file.", reportFileLoc)
+		if result.invalid {
+			numInvalid++
+			logger.Task().Infof("Result file '%s' does not exist or is a directory.", result.filePath)
 			continue
 		}
-
-		file, err = os.Open(reportFileLoc)
-		if err != nil {
-			return errors.Wrapf(err, "opening xunit file '%s'", reportFileLoc)
-		}
-
-		testSuites, err = parseXMLResults(file)
-		if err != nil {
-			catcher := grip.NewBasicCatcher()
-			catcher.Wrapf(err, "parsing xunit file '%s'", reportFileLoc)
-			catcher.Wrapf(file.Close(), "closing xunit file '%s'", reportFileLoc)
-			return catcher.Resolve()
-		}
-
-		if err = file.Close(); err != nil {
-			return errors.Wrapf(err, "closing xunit file '%s'", reportFileLoc)
-		}
-
-		// go through all the tests
-		for idx, suite := range testSuites {
+		for idx, suite := range result.suites {
 			cumulative = addTestCasesForSuite(suite, idx, conf, cumulative, logger)
 		}
+	}
+
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 	if len(reportFilePaths) == numInvalid {
 		return errors.New("all given file paths do not exist or are directories")
 	}
 
-	succeeded := 0
-	for i, log := range cumulative.logs {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, "canceled while sending test logs")
-		}
-
-		opts := redactor.RedactionOptions{
-			Expansions:         conf.NewExpansions,
-			Redacted:           conf.Redacted,
-			InternalRedactions: conf.InternalRedactions,
-		}
-		if err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, log); err != nil {
-			logger.Task().Error(errors.Wrap(err, "sending test log"))
-			continue
-		} else {
-			succeeded++
-		}
-		cumulative.tests[cumulative.logIdxToTestIdx[i]].LineNum = 1
+	// Upload test logs in parallel using a worker pool.
+	type logWork struct {
+		idx int
+		log *testlog.TestLog
 	}
+	work := make(chan logWork, len(cumulative.logs))
+	for i, log := range cumulative.logs {
+		work <- logWork{idx: i, log: log}
+	}
+	close(work)
+
+	var succeeded int64
+	var wg sync.WaitGroup
+	opts := redactor.RedactionOptions{
+		Expansions:         conf.NewExpansions,
+		Redacted:           conf.Redacted,
+		InternalRedactions: conf.InternalRedactions,
+	}
+
+	numWorkers := runtime.GOMAXPROCS(0)
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for item := range work {
+				if err := ctx.Err(); err != nil {
+					logger.Task().Warning(errors.Wrap(err, "context canceled while sending test logs"))
+					return
+				}
+				if err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log); err != nil {
+					logger.Task().Error(errors.Wrap(err, "sending test log"))
+					continue
+				}
+				atomic.AddInt64(&succeeded, 1)
+				cumulative.tests[cumulative.logIdxToTestIdx[item.idx]].LineNum = 1
+			}
+		}()
+	}
+	wg.Wait()
+
 	logger.Task().Infof("Posting test logs succeeded for %d of %d logs.", succeeded, len(cumulative.logs))
 	if len(cumulative.tests) > 0 {
 		return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
