@@ -114,7 +114,7 @@ func TestGetExpectedCostsForWindow(t *testing.T) {
 	})
 }
 
-func TestComputePredictedCost(t *testing.T) {
+func TestComputePredictedCostForWeek(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("ReturnsZero", func(t *testing.T) {
@@ -125,7 +125,7 @@ func TestComputePredictedCost(t *testing.T) {
 			Project:      "proj",
 		}
 
-		result, err := task.ComputePredictedCost(ctx)
+		result, err := task.ComputePredictedCostForWeek(ctx)
 		require.NoError(t, err)
 		assert.True(t, result.PredictedCost.IsZero())
 		assert.True(t, result.PredictedCostStdDev.IsZero())

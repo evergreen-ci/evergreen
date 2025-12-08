@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -2807,7 +2809,8 @@ type taskVariantKey struct {
 }
 
 // computeCostPredictionsInParallel computes cost predictions for multiple tasks in parallel.
-// It groups tasks by (project, variant, name) to batch queries and runs them concurrently.
+// It groups tasks by (project, variant, name) to batch queries and runs them concurrently
+// using a worker pool to limit database load.
 // Returns a map from task ID to cost prediction result.
 func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[string]CostPredictionResult, error) {
 	if len(tasks) == 0 {
@@ -2825,48 +2828,76 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 		tasksByVariant[key] = append(tasksByVariant[key], t)
 	}
 
+	type workItem struct {
+		key   taskVariantKey
+		tasks []Task
+	}
+
 	type predictionResult struct {
 		taskID     string
 		prediction CostPredictionResult
 		err        error
 	}
+
+	// Create work queue
+	workQueue := make(chan workItem, len(tasksByVariant))
+	for key, variantTasks := range tasksByVariant {
+		workQueue <- workItem{key: key, tasks: variantTasks}
+	}
+	close(workQueue)
+
+	// Limit concurrent database queries to avoid overwhelming the connection pool.
+	// Each query runs an aggregation pipeline with grouping/statistics which is resource-intensive.
+	const maxWorkers = 10
+	numWorkers := util.Min(maxWorkers, len(tasksByVariant))
 	resultChan := make(chan predictionResult, len(tasks))
 
-	// Process each variant group in parallel
-	for _, variantTasks := range tasksByVariant {
-		variantTasks := variantTasks // capture loop variable
+	// Spawn worker pool
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+	for i := 0; i < numWorkers; i++ {
 		go func() {
-			// Compute prediction once for this variant group (use first task as representative)
-			prediction, err := variantTasks[0].ComputePredictedCost(ctx)
+			defer wg.Done()
+			for work := range workQueue {
+				// Compute prediction once for this variant group (use first task as representative)
+				prediction, err := work.tasks[0].ComputePredictedCostForWeek(ctx)
 
-			// Send result for each task in group
-			for _, t := range variantTasks {
-				resultChan <- predictionResult{
-					taskID:     t.Id,
-					prediction: prediction,
-					err:        err,
+				// Send result for each task in group
+				for _, t := range work.tasks {
+					resultChan <- predictionResult{
+						taskID:     t.Id,
+						prediction: prediction,
+						err:        err,
+					}
 				}
 			}
 		}()
 	}
 
+	// Close result channel when all workers are done
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Collect results
 	predictions := make(map[string]CostPredictionResult)
-	for i := 0; i < len(tasks); i++ {
-		select {
-		case result := <-resultChan:
-			if result.err != nil {
-				// Log error but don't fail - use zero prediction
-				grip.Warning(message.WrapError(result.err, message.Fields{
-					"message": "error computing cost prediction for task, using zero prediction",
-					"task_id": result.taskID,
-				}))
-				predictions[result.taskID] = CostPredictionResult{}
-			} else {
-				predictions[result.taskID] = result.prediction
-			}
-		case <-ctx.Done():
-			return nil, errors.Wrap(ctx.Err(), "context cancelled while computing cost predictions")
+	for result := range resultChan {
+		if result.err != nil {
+			// Log error but don't fail - use zero prediction
+			grip.Warning(message.WrapError(result.err, message.Fields{
+				"message": "error computing cost prediction for task, using zero prediction",
+				"task_id": result.taskID,
+			}))
+			predictions[result.taskID] = CostPredictionResult{}
+		} else {
+			predictions[result.taskID] = result.prediction
 		}
+	}
+
+	// Check if context was cancelled
+	if ctx.Err() != nil {
+		return nil, errors.Wrap(ctx.Err(), "context cancelled while computing cost predictions")
 	}
 
 	return predictions, nil

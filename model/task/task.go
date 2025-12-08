@@ -39,14 +39,16 @@ import (
 const (
 	dependencyKey = "dependencies"
 
+	oneWeek = 7 * 24 * time.Hour
+
 	// UnschedulableThreshold is the threshold after which a task waiting to
 	// dispatch should be unscheduled due to staleness.
-	UnschedulableThreshold = 7 * 24 * time.Hour
+	UnschedulableThreshold = oneWeek
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
 	// completed within the last 7 days
-	taskCompletionEstimateWindow = 24 * 7 * time.Hour
+	taskCompletionEstimateWindow = oneWeek
 
 	// if we have no data on a given task, default to 10 minutes so we
 	// have some new hosts spawned
@@ -4392,9 +4394,11 @@ type CostPredictionResult struct {
 	PredictedCostStdDev TaskCostStdDev
 }
 
-func (t *Task) ComputePredictedCost(ctx context.Context) (CostPredictionResult, error) {
+// ComputePredictedCostForWeek computes the predicted cost for a task based on historical data
+// from the past week (7 days).
+func (t *Task) ComputePredictedCostForWeek(ctx context.Context) (CostPredictionResult, error) {
 	end := time.Now()
-	start := end.Add(-7 * 24 * time.Hour)
+	start := end.Add(-taskCompletionEstimateWindow)
 
 	results, err := getExpectedCostsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant, start, end)
 	if err != nil {
