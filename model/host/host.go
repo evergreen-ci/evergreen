@@ -2123,8 +2123,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return nil
 	}
 
-	h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, "host marked reachable")
-	return nil
+	return h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, "host marked reachable")
 }
 
 func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
