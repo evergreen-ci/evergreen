@@ -1,9 +1,7 @@
 package service
 
 import (
-	htmlTemplate "html/template"
 	"net/http"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -12,8 +10,6 @@ import (
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
@@ -30,8 +26,6 @@ import (
 
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
-	render     gimlet.Renderer
-	renderText gimlet.Renderer
 	// Home is the root path on disk from which relative urls are constructed for loading
 	// plugins or other assets.
 	Home string
@@ -50,20 +44,6 @@ type UIServer struct {
 	env   evergreen.Environment
 }
 
-// ViewData contains common data that is provided to all Evergreen pages
-type ViewData struct {
-	User        *user.DBUser
-	ProjectData projectContext
-	Project     model.Project
-	Flashes     []any
-	Banner      string
-	BannerTheme string
-	Csrf        htmlTemplate.HTML
-	JiraHost    string
-	IsAdmin     bool
-	NewUILink   string
-}
-
 const hostCacheTTL = 30 * time.Second
 
 type hostCacheItem struct {
@@ -75,14 +55,8 @@ type hostCacheItem struct {
 	isRunning            bool
 }
 
-func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
+func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UIServer, error) {
 	settings := env.Settings()
-
-	ropts := gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: !settings.Ui.CacheTemplates,
-		Functions:    MakeTemplateFuncs(fo),
-	}
 
 	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
 	cookieStore.Options.HttpOnly = true
@@ -94,8 +68,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		queue:       queue,
 		Home:        home,
 		CookieStore: cookieStore,
-		render:      gimlet.NewHTMLRenderer(ropts),
-		renderText:  gimlet.NewTextRenderer(ropts),
 		jiraHandler: thirdparty.NewJiraHandler(*settings.Jira.Export()),
 		umconf: gimlet.UserMiddlewareConfiguration{
 			HeaderKeyName:  evergreen.APIKeyHeader,
@@ -150,81 +122,6 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		// Not a JSON request, so write plaintext.
 		http.Error(w, err.Error(), code)
 	}
-}
-
-// GetCommonViewData returns a struct that can supplement the struct used to provide data to
-// views. It contains data that is used for most/all Evergreen pages.
-// The needsUser and needsProject params will cause an error to be logged if there is no
-// user/project. Data will not be returned if the project cannot be found.
-func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
-	viewData := ViewData{}
-	ctx := r.Context()
-	userCtx := gimlet.GetUser(ctx)
-	if needsUser && userCtx == nil {
-		grip.Error(message.WrapError(errors.New("no user attached to request"), message.Fields{
-			"url":     r.URL,
-			"request": gimlet.GetRequestID(r.Context()),
-		}))
-	}
-	projectCtx, err := GetProjectContext(r)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get project context from request",
-			"url":     r.URL,
-			"request": gimlet.GetRequestID(r.Context()),
-		}))
-		return ViewData{}
-	}
-	if needsProject {
-		var project *model.Project
-		project, err = projectCtx.GetProject(r.Context())
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not find project from project context",
-				"url":     r.URL,
-				"request": gimlet.GetRequestID(r.Context()),
-			}))
-			return ViewData{}
-		}
-		if project == nil {
-			grip.Error(message.WrapError(errors.New("no project found"), message.Fields{
-				"url":     r.URL,
-				"request": gimlet.GetRequestID(r.Context()),
-			}))
-			return ViewData{}
-		}
-		viewData.Project = *project
-	}
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to retrieve admin settings",
-			"url":     r.URL,
-			"request": gimlet.GetRequestID(r.Context()),
-		}))
-		return ViewData{}
-	}
-
-	if u, ok := userCtx.(*user.DBUser); ok {
-		viewData.User = u
-		opts := gimlet.PermissionOpts{
-			Resource:      evergreen.SuperUserPermissionsID,
-			ResourceType:  evergreen.SuperUserResourceType,
-			Permission:    evergreen.PermissionAdminSettings,
-			RequiredLevel: evergreen.AdminSettingsEdit.Value,
-		}
-		viewData.IsAdmin = u.HasPermission(opts)
-	} else if userCtx != nil {
-		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
-	}
-
-	viewData.Banner = settings.Banner
-	viewData.BannerTheme = string(settings.BannerTheme)
-	viewData.ProjectData = projectCtx
-	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
-	viewData.Csrf = csrf.TemplateField(r)
-	viewData.JiraHost = uis.Settings.Jira.Host
-	return viewData
 }
 
 // NewRouter sets up a request router for the UI, installing

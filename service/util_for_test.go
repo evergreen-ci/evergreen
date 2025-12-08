@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"net/http"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -44,10 +43,6 @@ func makeAuthTestUIRouter(ctx context.Context, env evergreen.Environment, umconf
 		Settings: *settings,
 		env:      env,
 	}
-	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(evergreen.FindEvergreenHome(), WebRootPath, Templates),
-		DisableCache: true,
-	})
 	app := GetRESTv1App(uis)
 	app.AddMiddleware(gimlet.UserMiddleware(ctx, env.UserManager(), umconf))
 	return app.Handler()
