@@ -2839,7 +2839,6 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 		err        error
 	}
 
-	// Create work queue
 	workQueue := make(chan workItem, len(tasksByVariant))
 	for key, variantTasks := range tasksByVariant {
 		workQueue <- workItem{key: key, tasks: variantTasks}
@@ -2848,7 +2847,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 
 	// Limit concurrent database queries to avoid overwhelming the connection pool.
 	// Each query runs an aggregation pipeline with grouping/statistics which is resource-intensive.
-	const maxWorkers = 10
+	const maxWorkers = 20
 	numWorkers := util.Min(maxWorkers, len(tasksByVariant))
 	resultChan := make(chan predictionResult, len(tasks))
 
@@ -2878,7 +2877,6 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 		close(resultChan)
 	}()
 
-	// Collect results
 	predictions := make(map[string]CostPredictionResult)
 	for result := range resultChan {
 		if result.err != nil {
