@@ -151,6 +151,26 @@ func (uis *UIServer) legacyPatchPage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
 
+func (uis *UIServer) legacyDiffPage(w http.ResponseWriter, r *http.Request) {
+	versionId := gimlet.GetVars(r)["patch_id"]
+	spruceLink := fmt.Sprintf("%s/version/%s/diff", uis.Settings.Ui.UIv2Url, versionId)
+	// Spruce uses the same query params as legacy, so append them
+	if query := r.URL.Query().Encode(); query != "" {
+		spruceLink = fmt.Sprintf("%s?%s", spruceLink, query)
+	}
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyFileDiffPage(w http.ResponseWriter, r *http.Request) {
+	versionId := gimlet.GetVars(r)["patch_id"]
+	spruceLink := fmt.Sprintf("%s/version/%s/file-diff", uis.Settings.Ui.UIv2Url, versionId)
+	// Spruce uses the same query params as legacy, so append them
+	if query := r.URL.Query().Encode(); query != "" {
+		spruceLink = fmt.Sprintf("%s?%s", spruceLink, query)
+	}
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
 func (uis *UIServer) legacyVariantHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject(r.Context())
