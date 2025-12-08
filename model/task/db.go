@@ -2852,7 +2852,6 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	numWorkers := util.Min(maxWorkers, len(tasksByVariant))
 	resultChan := make(chan predictionResult, len(tasks))
 
-	// Spawn worker pool
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
 	for i := 0; i < numWorkers; i++ {
@@ -2874,7 +2873,6 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 		}()
 	}
 
-	// Close result channel when all workers are done
 	go func() {
 		wg.Wait()
 		close(resultChan)
@@ -2884,7 +2882,6 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	predictions := make(map[string]CostPredictionResult)
 	for result := range resultChan {
 		if result.err != nil {
-			// Log error but don't fail - use zero prediction
 			grip.Warning(message.WrapError(result.err, message.Fields{
 				"message": "error computing cost prediction for task, using zero prediction",
 				"task_id": result.taskID,
@@ -2895,7 +2892,6 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 		}
 	}
 
-	// Check if context was cancelled
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context cancelled while computing cost predictions")
 	}
