@@ -32,7 +32,7 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-12-05"
+	ClientVersion = "2025-12-08"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
