@@ -107,7 +107,7 @@ FileLoop:
 
 		hdr := new(tar.Header)
 		hdr.Name = strings.TrimPrefix(intarball, rootPathPrefix)
-		hdr.Mode = int64(file.info.Mode())
+		hdr.Mode = int64(file.info.Mode() & os.ModePerm)
 		hdr.ModTime = file.info.ModTime()
 
 		if file.info.IsDir() {
