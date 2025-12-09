@@ -266,6 +266,8 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
 // It performantly applies build variant and requester filters; for task-related filters, see GetActiveVersionsByTaskFilters.
 func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveWaterfallVersions")})
+
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
 		return nil, errors.Errorf("invalid requester(s) '%s'; only commit-level requesters can be applied to the waterfall query", invalidRequesters)
@@ -402,11 +404,14 @@ func GetVersionBuilds(ctx context.Context, versionId string) ([]WaterfallBuild, 
 		return []WaterfallBuild{}, nil
 	}
 
-	// This approach groups tasks by build_id, avoiding the expensive nested $lookup
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
 				task.BuildIdKey: bson.M{"$in": version.BuildIds},
+				"$or": []bson.M{
+					{task.DisplayTaskIdKey: bson.M{"$exists": false}},
+					{task.DisplayTaskIdKey: ""},
+				},
 			},
 		},
 		{
