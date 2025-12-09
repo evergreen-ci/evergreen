@@ -150,6 +150,7 @@ func initializeTransportCache() {
 		cacheTransportMutex.RUnlock()
 		return
 	}
+	cacheTransportMutex.RUnlock()
 
 	cacheTransportMutex.Lock()
 	defer cacheTransportMutex.Unlock()
