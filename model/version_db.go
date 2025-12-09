@@ -263,7 +263,7 @@ func VersionBySystemRequesterOrdered(projectId string, startOrder int) db.Q {
 // VersionsUnactivatedSinceLastActivated finds all unactivated, non-ignored versions
 // that are newer than the most recently activated version for a project.
 // This ensures that all commits since the last activation get activated together.
-func VersionsUnactivatedSinceLastActivated(projectId string, ts time.Time, lastActivatedOrderNum int) db.Q {
+func VersionsUnactivatedSinceLastActivated(projectId string, ts time.Time, lastActivatedOrderNum, limit int) db.Q {
 	return db.Query(
 		bson.M{
 			VersionRequesterKey:           evergreen.RepotrackerVersionRequester,
@@ -273,7 +273,7 @@ func VersionsUnactivatedSinceLastActivated(projectId string, ts time.Time, lastA
 			VersionActivatedKey:           bson.M{"$ne": true},                  // Only unactivated versions
 			VersionRevisionOrderNumberKey: bson.M{"$gt": lastActivatedOrderNum}, // Newer than last activated
 		},
-	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
+	).Sort([]string{"-" + VersionRevisionOrderNumberKey}).Limit(limit)
 }
 
 // VersionByMostRecentActivated finds the most recently activated non-ignored mainline commit version
@@ -293,7 +293,7 @@ func VersionByMostRecentActivated(projectId string, ts time.Time) db.Q {
 // VersionsAllUnactivatedNonIgnored finds all unactivated, non-ignored mainline commit versions
 // within a project, ordered by most recently created to oldest. This is used when no previously
 // activated versions exist (e.g., new projects) to ensure all commits get activated.
-func VersionsAllUnactivatedNonIgnored(projectId string, ts time.Time) db.Q {
+func VersionsAllUnactivatedNonIgnored(projectId string, ts time.Time, limit int) db.Q {
 	return db.Query(
 		bson.M{
 			VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
@@ -302,7 +302,7 @@ func VersionsAllUnactivatedNonIgnored(projectId string, ts time.Time) db.Q {
 			VersionCreateTimeKey: bson.M{"$lte": ts},
 			VersionActivatedKey:  bson.M{"$ne": true}, // Only unactivated versions
 		},
-	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
+	).Sort([]string{"-" + VersionRevisionOrderNumberKey}).Limit(limit)
 }
 
 // VersionByMostRecentNonActivated finds all non-activated mainline commit versions

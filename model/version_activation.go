@@ -13,7 +13,7 @@ import (
 )
 
 func DoProjectActivation(ctx context.Context, projectRef *ProjectRef, ts time.Time) (bool, error) {
-	if /* projectRef.RunEveryMainlineCommit */ true {
+	if /* ZACKARY projectRef.RunEveryMainlineCommit */ true {
 		return activateEveryRecentMainlineCommitForProject(ctx, projectRef, ts)
 	}
 	return activateMostRecentNonIgnoredCommitForProject(ctx, projectRef, ts)
@@ -51,13 +51,13 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 	if lastActivatedVersion == nil {
 		// No previously activated versions - this might be a new project or first activation
 		// Activate ALL unactivated non-ignored versions to ensure complete coverage
-		activateVersions, err = VersionFind(ctx, VersionsAllUnactivatedNonIgnored(projectRef.Id, ts))
+		activateVersions, err = VersionFind(ctx, VersionsAllUnactivatedNonIgnored(projectRef.Id, ts /* ZACKARY projectRef.Limit */, 1000))
 		if err != nil {
 			return false, errors.WithStack(err)
 		}
 	} else {
 		// Find all unactivated versions since the last activated one
-		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber))
+		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber /* ZACKARY projectRef.Limit */, 1000))
 		if err != nil {
 			return false, errors.WithStack(err)
 		}

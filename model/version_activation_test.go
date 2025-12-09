@@ -223,7 +223,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 
 	projectRef := &ProjectRef{
 		Id: projectID,
-		// RunEveryMainlineCommit: true,
+		// ZACKARY RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -353,7 +353,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 
 	projectRef := &ProjectRef{
 		Id: projectID,
-		// RunEveryMainlineCommit: true,
+		// ZACKARY RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -452,7 +452,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationSingleCommitBehaviorPres
 
 	projectRef := &ProjectRef{
 		Id: projectID,
-		// RunEveryMainlineCommit: true,
+		// ZACKARY RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -536,7 +536,7 @@ func (s *VersionActivationSuite) TestVersionsUnactivatedSinceLastActivated() {
 	}
 
 	// Test the query to find unactivated versions since last activated
-	unactivatedVersions, err := VersionFind(s.ctx, VersionsUnactivatedSinceLastActivated(projectID, now, 1))
+	unactivatedVersions, err := VersionFind(s.ctx, VersionsUnactivatedSinceLastActivated(projectID, now, 1, 1000))
 	require.NoError(err)
 	require.Len(unactivatedVersions, 2, "Should find 2 unactivated versions after the activated one")
 
@@ -559,7 +559,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
 
 	projectRef := &ProjectRef{
 		Id: projectID,
-		// RunEveryMainlineCommit: true,
+		// ZACKARY RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
