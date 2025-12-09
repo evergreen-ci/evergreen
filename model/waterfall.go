@@ -141,8 +141,7 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, caseS
 		"$match": bson.M{
 			VersionBuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
-					VersionBuildStatusActivatedKey: true,
-					"$or":                          buildVariantMatch,
+					"$or": buildVariantMatch,
 				},
 			},
 		},
