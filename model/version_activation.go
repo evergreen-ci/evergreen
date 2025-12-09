@@ -12,16 +12,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, error) {
+func DoProjectActivation(ctx context.Context, projectRef *ProjectRef, ts time.Time) (bool, error) {
 	// fetch the most recent, non-ignored version (before the given time) to activate
-	activateVersion, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(id, ts))
+	activateVersion, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(projectRef.Id, ts))
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
 	if activateVersion == nil {
 		grip.Info(message.Fields{
 			"message":   "no version to activate for repository",
-			"project":   id,
+			"project":   projectRef.Id,
 			"operation": "project-activation",
 		})
 		return false, nil
