@@ -152,10 +152,13 @@ func statsPipeline(projectId string, requester string, start time.Time, end time
 			task.RequesterKey:   requester,
 			task.CreateTimeKey:  bson.M{"$gte": start, "$lt": end},
 			task.DisplayNameKey: bson.M{"$in": tasks},
+			"$or": []bson.M{
+				{task.DisplayTaskIdKey: bson.M{"$exists": false}},
+				{task.DisplayTaskIdKey: ""},
+			},
 		}},
 		{"$project": bson.M{
 			task.IdKey:                   0,
-			"task_id":                    taskIdKeyRef,
 			"execution":                  taskExecutionKeyRef,
 			DBTaskStatsIDProjectKey:      taskProjectKeyRef,
 			DBTaskStatsIDTaskNameKey:     taskDisplayNameKeyRef,
@@ -166,13 +169,6 @@ func statsPipeline(projectId string, requester string, start time.Time, end time
 			task.DetailsKey:              1,
 			"time_taken":                 bson.M{"$divide": Array{taskTimeTakenKeyRef, nsInASecond}},
 		}},
-		{"$lookup": bson.M{
-			"from":         task.Collection,
-			"localField":   "task_id",
-			"foreignField": task.ExecutionTasksKey,
-			"as":           "display_task",
-		}},
-		{"$match": bson.M{"display_task": Array{}}},
 		{"$group": bson.M{
 			"_id": bson.D{
 				{Key: DBTaskStatsIDTaskNameKey, Value: "$" + DBTaskStatsIDTaskNameKey},
