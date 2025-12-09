@@ -120,14 +120,15 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			assert.EqualValues(t, "v_1", versions[0].Id)
 			assert.EqualValues(t, "v_4", versions[1].Id)
 		},
-		"Returns no versions if there is no matching active build variant": func(t *testing.T, ctx context.Context) {
+		"Returns version even if matching build variant is inactive": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
 				Limit:      4,
 				Requesters: evergreen.SystemVersionRequesterTypes,
 				Variants:   []string{"Build Variant 2"},
 			})
 			assert.NoError(t, err)
-			require.Len(t, versions, 0)
+			require.Len(t, versions, 1)
+			assert.EqualValues(t, "v_3", versions[0].Id)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
