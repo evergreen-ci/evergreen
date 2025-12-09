@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -89,23 +88,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	externalID := createExternalID(t, p)
 	creds, err := s.assumeRole(ctx, externalID, opts)
 	if err != nil {
-		externalID = createExternalID(t, nil)
-		var fallbackErr error
-		creds, fallbackErr = s.assumeRole(ctx, externalID, opts)
-		if fallbackErr != nil {
-			return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role, fallback error: '%v'", fallbackErr)
-		}
-		// Only log if the fallback succeeded.
-		grip.Debug(message.Fields{
-			"message":      "fell back to original external ID",
-			"ticket":       "DEVPROD-22828_v2",
-			"task_id":      t.Id,
-			"project":      t.Project,
-			"project_id":   p.Id,
-			"repo_ref_id":  p.RepoRefId,
-			"role_arn":     opts.RoleARN,
-			"original_err": err.Error(),
-		})
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role: '%v'", err)
 	}
 	return AssumeRoleCredentials{
 		AccessKeyID:     *creds.Credentials.AccessKeyId,
