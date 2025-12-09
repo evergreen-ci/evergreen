@@ -56,6 +56,7 @@ var (
 	VersionAuthorIDKey                          = bsonutil.MustHaveTag(Version{}, "AuthorID")
 	VersionProjectStorageMethodKey              = bsonutil.MustHaveTag(Version{}, "ProjectStorageMethod")
 	VersionPreGenerationProjectStorageMethodKey = bsonutil.MustHaveTag(Version{}, "PreGenerationProjectStorageMethod")
+	VersionGitTagsTagKey                        = bsonutil.MustHaveTag(GitTag{}, "Tag")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -382,6 +383,27 @@ func AddGitTag(ctx context.Context, versionId string, tag GitTag) error {
 			},
 		},
 	)
+}
+
+// RemoveGitTagFromVersions removes the git tag from all versions that have the tag.
+// It filters by owner and repo to limit the scope of the operation so we don't accidentlly
+// remove same-named tags from other repositories.
+func RemoveGitTagFromVersions(ctx context.Context, owner, repo string, tag GitTag) error {
+	_, err := db.UpdateAllContext(
+		ctx,
+		VersionCollection,
+		bson.M{
+			VersionOwnerNameKey: owner,
+			VersionRepoKey:      repo,
+			VersionGitTagsKey:   bson.M{"$elemMatch": bson.M{VersionGitTagsTagKey: tag.Tag}},
+		},
+		bson.M{
+			"$pull": bson.M{
+				VersionGitTagsKey: bson.M{VersionGitTagsTagKey: tag.Tag},
+			},
+		},
+	)
+	return err
 }
 
 func AddSatisfiedTrigger(ctx context.Context, versionID, definitionID string) error {
