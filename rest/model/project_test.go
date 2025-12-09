@@ -25,7 +25,8 @@ func TestRepoBuildFromService(t *testing.T) {
 			Allowed:        utility.FalsePtr(),
 			DefaultEnabled: utility.TruePtr(),
 		},
-		RunEveryMainlineCommit: utility.TruePtr(),
+		RunEveryMainlineCommit:      utility.TruePtr(),
+		RunEveryMainlineCommitLimit: utility.ToIntPtr(20),
 	}}
 	apiRef := &APIProjectRef{}
 	assert.NoError(t, apiRef.BuildFromService(t.Context(), repoRef.ProjectRef))
@@ -48,6 +49,8 @@ func TestRepoBuildFromService(t *testing.T) {
 
 	require.NotNil(t, apiRef.RunEveryMainlineCommit)
 	assert.True(t, *apiRef.RunEveryMainlineCommit)
+	require.NotNil(t, apiRef.RunEveryMainlineCommitLimit)
+	assert.Equal(t, 20, *apiRef.RunEveryMainlineCommitLimit)
 }
 
 func TestRecursivelyDefaultBooleans(t *testing.T) {
