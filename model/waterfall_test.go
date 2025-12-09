@@ -352,19 +352,19 @@ func TestGetVersionBuilds(t *testing.T) {
 	}
 	assert.NoError(t, b.Insert(t.Context()))
 
-	tsk := task.Task{Id: "t_80", DisplayName: "Task 80", Status: evergreen.TaskSucceeded}
+	tsk := task.Task{Id: "t_80", DisplayName: "Task 80", Status: evergreen.TaskSucceeded, BuildId: "b"}
 	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_79", DisplayName: "Task 79", Status: evergreen.TaskFailed}
+	tsk = task.Task{Id: "t_79", DisplayName: "Task 79", Status: evergreen.TaskFailed, BuildId: "b"}
 	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_86", DisplayName: "Task 86", Status: evergreen.TaskSucceeded}
+	tsk = task.Task{Id: "t_86", DisplayName: "Task 86", Status: evergreen.TaskSucceeded, BuildId: "b"}
 	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_200", DisplayName: "Task 200", Status: evergreen.TaskSucceeded}
+	tsk = task.Task{Id: "t_200", DisplayName: "Task 200", Status: evergreen.TaskSucceeded, BuildId: "b"}
 	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_45", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_45", DisplayName: "Task 12", Status: evergreen.TaskWillRun, BuildId: "a"}
 	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun, BuildId: "a"}
 	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
+	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, BuildId: "a"}
 	assert.NoError(t, tsk.Insert(t.Context()))
 
 	builds, err := GetVersionBuilds(t.Context(), v.Id)
