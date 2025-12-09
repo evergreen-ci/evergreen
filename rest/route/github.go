@@ -913,7 +913,6 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 
 	cancelCatcher.Add(errors.Wrap(commentsCatcher.Resolve(), "commenting on patches with same hash to cancel"))
 	return errors.Wrap(cancelCatcher.Resolve(), "aborting overridden patches")
-
 }
 
 // handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
@@ -936,31 +935,54 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		Pusher: pusher,
 	}
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
-	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, ownerAndRepo[0], ownerAndRepo[1], event.GetRef())
+	owner, repo := ownerAndRepo[0], ownerAndRepo[1]
+
+	if utility.FromBoolPtr(event.Created) {
+		return gh.handleCreatedGitTag(ctx, event, tag, owner, repo)
+	} else if utility.FromBoolPtr(event.Deleted) {
+		return gh.handleDeletedGitTag(ctx, event, tag, owner, repo)
+	}
+
+	grip.Debug(message.Fields{
+		"source":  "GitHub hook",
+		"msg_id":  gh.msgID,
+		"event":   gh.eventType,
+		"ref":     event.GetRef(),
+		"owner":   owner,
+		"repo":    repo,
+		"tag":     tag,
+		"message": "received unsupported git tag event",
+	})
+
+	return nil
+}
+
+func (gh *githubHookApi) handleCreatedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
+	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, owner, repo, event.GetRef())
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "getting tagged commit from GitHub",
 			"ref":     event.GetRef(),
 			"event":   gh.eventType,
-			"owner":   ownerAndRepo[0],
-			"repo":    ownerAndRepo[1],
+			"owner":   owner,
+			"repo":    repo,
 			"tag":     tag,
 		}))
 		return errors.Wrapf(err, "getting commit for tag '%s'", tag.Tag)
 	}
-	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, ownerAndRepo[0], ownerAndRepo[1])
+	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, owner, repo)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "error finding projects",
 			"ref":     event.GetRef(),
 			"event":   gh.eventType,
-			"owner":   ownerAndRepo[0],
-			"repo":    ownerAndRepo[1],
+			"owner":   owner,
+			"repo":    repo,
 			"tag":     tag,
 		}))
-		return errors.Wrapf(err, "finding projects for repo '%s'", ownerAndRepo)
+		return errors.Wrapf(err, "finding projects for repo '%s/%s'", owner, repo)
 	}
 	if len(projectRefs) == 0 {
 		grip.Debug(message.Fields{
@@ -968,11 +990,11 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 			"message": "no projects found",
 			"ref":     event.GetRef(),
 			"event":   gh.eventType,
-			"owner":   ownerAndRepo[0],
-			"repo":    ownerAndRepo[1],
+			"owner":   owner,
+			"repo":    repo,
 			"tag":     tag,
 		})
-		return errors.Wrapf(err, "no projects found for repo '%s'", ownerAndRepo)
+		return errors.Wrapf(err, "no projects found for repo '%s/%s'", owner, repo)
 	}
 
 	foundVersion := map[string]bool{}
@@ -1044,8 +1066,8 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 						"msg_id":  gh.msgID,
 						"event":   gh.eventType,
 						"ref":     event.GetRef(),
-						"owner":   ownerAndRepo[0],
-						"repo":    ownerAndRepo[1],
+						"owner":   owner,
+						"repo":    repo,
 						"tag":     tag,
 						"version": v.Id,
 						"message": "triggered version from git tag",
@@ -1065,12 +1087,39 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		"msg_id":  gh.msgID,
 		"event":   gh.eventType,
 		"ref":     event.GetRef(),
-		"owner":   ownerAndRepo[0],
-		"repo":    ownerAndRepo[1],
+		"owner":   owner,
+		"repo":    repo,
 		"tag":     tag,
 		"message": "errors updating/creating versions for git tag",
 	}))
 	return errors.Wrap(resolvedError, "updating/creating versions for git tag")
+}
+
+func (gh *githubHookApi) handleDeletedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
+	err := model.RemoveGitTagFromVersions(ctx, owner, repo, tag)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "GitHub hook",
+			"message": "removing tag from versions",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"tag":     tag,
+		}))
+		return errors.Wrapf(err, "removing tag '%s' from versions", tag.Tag)
+	}
+	grip.Info(message.Fields{
+		"source":  "GitHub hook",
+		"msg_id":  gh.msgID,
+		"event":   gh.eventType,
+		"ref":     event.GetRef(),
+		"owner":   owner,
+		"repo":    repo,
+		"tag":     tag,
+		"message": "removed tag from versions",
+	})
+	return nil
 }
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
