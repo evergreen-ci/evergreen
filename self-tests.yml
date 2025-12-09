@@ -98,6 +98,8 @@ variables:
       - command: github.generate_token
         params:
           expansion_name: github_token
+          permissions:
+            contents: read
       - command: subprocess.exec
         params:
           silent: true
