@@ -623,7 +623,7 @@
         "data": {
           "waterfall": {
             "pagination": {
-              "activeVersionIds": ["evergreen_version2"]
+              "activeVersionIds": ["evergreen_version3"]
             },
             "flattenedVersions": [
               {
@@ -636,15 +636,16 @@
               },
               {
                 "id": "evergreen_version3",
-                "waterfallBuilds": null
-              },
-              {
-                "id": "evergreen_version2",
                 "waterfallBuilds": [
                   {
-                    "id": "evergreen_version2_build",
+                    "id": "evergreen_version1_build_b",
+                    "activated": false,
+                    "displayName": "01 Ubuntu 16.04"
+                  },
+                  {
+                    "id": "evergreen_version3_build",
                     "activated": true,
-                    "displayName": "02 Ubuntu 16.04"
+                    "displayName": "03 Linter"
                   }
                 ]
               }
