@@ -59,7 +59,6 @@ const (
 
 var (
 	// '$' references to the BSON fields of tasks.
-	taskIdKeyRef           = "$" + task.IdKey
 	taskExecutionKeyRef    = "$" + task.ExecutionKey
 	taskProjectKeyRef      = "$" + task.ProjectKey
 	taskDisplayNameKeyRef  = "$" + task.DisplayNameKey
