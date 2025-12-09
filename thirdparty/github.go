@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -107,7 +108,9 @@ const (
 
 var (
 	githubTransport http.RoundTripper
-	cacheTransport  *httpcache.Transport
+
+	cacheTransportMutex sync.RWMutex
+	cacheTransport      *httpcache.Transport
 )
 
 type cacheControlTransport struct {
@@ -139,6 +142,31 @@ func init() {
 	// Wrap in a transport that overrides the cache-control header so we don't use Github's
 	// max-age, which would have prevented us from asking if there's been a change if we requested recently.
 	githubTransport = &cacheControlTransport{base: cacheTransport}
+}
+
+func initializeTransportCache() {
+	cacheTransportMutex.RLock()
+	if cacheTransport.ContextCache != nil || cacheTransport.Cache != nil {
+		cacheTransportMutex.RUnlock()
+		return
+	}
+
+	cacheTransportMutex.Lock()
+	defer cacheTransportMutex.Unlock()
+
+	// Make sure the cache wasn't initialized while we were waiting for the lock.
+	if cacheTransport.ContextCache != nil || cacheTransport.Cache != nil {
+		return
+	}
+
+	// If the Environment is not nil that means we're running in the application and we have a connection
+	// to the database. Otherwise we're running in the agent and we should use an in-memory cache.
+	// We could stop casing on this if we were to stop calling out to GitHub from the agent.
+	if evergreen.GetEnvironment() != nil {
+		cacheTransport.ContextCache = &cache.DBCache{}
+	} else {
+		cacheTransport.Cache = httpcache.NewMemoryCache()
+	}
 }
 
 func respFromCache(resp *http.Response) bool {
@@ -327,14 +355,7 @@ func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHub
 		"caller":  caller,
 	})
 
-	// If the Environment is not nil that means we're running in the application and we have a connection
-	// to the database. Otherwise we're running in the agent and we should use an in-memory cache.
-	// We could stop casing on this if we were to stop calling out to GitHub from the agent.
-	if evergreen.GetEnvironment() != nil {
-		cacheTransport.ContextCache = &cache.DBCache{}
-	} else {
-		cacheTransport.Cache = httpcache.NewMemoryCache()
-	}
+	initializeTransportCache()
 
 	httpClient := utility.GetHTTPClient()
 	httpClient.Transport = githubTransport
