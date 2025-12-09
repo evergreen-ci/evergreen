@@ -32,6 +32,11 @@ func (s *VersionActivationSuite) TestDoProjectActivationWithBuffer() {
 	projectID := "test-project"
 	now := time.Now()
 
+	projectRef := &ProjectRef{
+		Id: projectID,
+	}
+	require.NoError(projectRef.Insert(s.ctx))
+
 	// Create versions at different times
 	versions := []Version{
 		{
@@ -83,7 +88,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationWithBuffer() {
 	}
 
 	// Test activation
-	activated, err := DoProjectActivation(s.ctx, projectID, now.Add(-CronActiveRange))
+	activated, err := DoProjectActivation(s.ctx, projectRef, now.Add(-CronActiveRange))
 	require.NoError(err)
 	require.True(activated)
 
@@ -101,6 +106,11 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 
 	projectID := "test-project"
 	now := time.Now()
+
+	projectRef := &ProjectRef{
+		Id: projectID,
+	}
+	require.NoError(projectRef.Insert(s.ctx))
 
 	// Create a version with both ignored and non-ignored build variants
 	// This simulates build variants that were ignored due to path filtering
@@ -166,7 +176,7 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 	require.NoError(version.Insert(s.ctx))
 
 	// Test activation
-	activated, err := DoProjectActivation(s.ctx, projectID, now.Add(-CronActiveRange))
+	activated, err := DoProjectActivation(s.ctx, projectRef, now.Add(-CronActiveRange))
 	require.NoError(err)
 	require.True(activated)
 
