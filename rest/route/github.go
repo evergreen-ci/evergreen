@@ -937,9 +937,9 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
 	owner, repo := ownerAndRepo[0], ownerAndRepo[1]
 
-	if utility.FromBoolPtr(event.Created) {
+	if event.GetCreated() {
 		return gh.handleCreatedGitTag(ctx, event, tag, owner, repo)
-	} else if utility.FromBoolPtr(event.Deleted) {
+	} else if event.GetDeleted() {
 		return gh.handleDeletedGitTag(ctx, event, tag, owner, repo)
 	}
 
@@ -1269,9 +1269,6 @@ func validatePushTagEvent(event *github.PushEvent) error {
 
 	if event.GetPusher().GetName() == "" {
 		return errors.New("GitHub pusher missing login name")
-	}
-	if !event.GetCreated() {
-		return errors.New("not a tag creation event")
 	}
 	return nil
 }
