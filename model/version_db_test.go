@@ -482,3 +482,198 @@ func TestRemoveGitTagFromVersions(t *testing.T) {
 		})
 	}
 }
+
+func TestVersionsUnactivatedSinceLastActivated(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection))
+	ts := time.Now()
+
+	// Create versions with different activation states
+	v1 := Version{
+		Id:                  "activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-10 * time.Minute),
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(true), // Activated
+	}
+	v2 := Version{
+		Id:                  "unactivated-1",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-5 * time.Minute),
+		RevisionOrderNumber: 2,                        // After activated version
+		Activated:           utility.ToBoolPtr(false), // Not activated
+	}
+	v3 := Version{
+		Id:                  "unactivated-2",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-2 * time.Minute),
+		RevisionOrderNumber: 3,                        // After activated version
+		Activated:           utility.ToBoolPtr(false), // Not activated
+	}
+	v4 := Version{
+		Id:                  "wrong-requester",
+		Identifier:          "proj",
+		Requester:           evergreen.AdHocRequester, // Wrong requester
+		CreateTime:          ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 4,
+		Activated:           utility.ToBoolPtr(false),
+	}
+	v5 := Version{
+		Id:                  "wrong-project",
+		Identifier:          "other_proj", // Wrong project
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 5,
+		Activated:           utility.ToBoolPtr(false),
+	}
+	v6 := Version{
+		Id:                  "future-version",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(3 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber: 6,                       // Higher order than activated version
+		Activated:           utility.ToBoolPtr(false),
+	}
+
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
+
+	// Test finding unactivated versions since last activated (order number 1)
+	versions, err := VersionFind(t.Context(), VersionsUnactivatedSinceLastActivated("proj", ts, 1))
+	require.NoError(t, err)
+	require.Len(t, versions, 2, "Should find 2 unactivated versions after the activated one (excluding future version)")
+
+	// Should be ordered by most recent first (highest order number first)
+	assert.Equal(t, "unactivated-2", versions[0].Id)
+	assert.Equal(t, "unactivated-1", versions[1].Id)
+
+	// Verify that future version (created after ts) is NOT included
+	foundIds := make(map[string]bool)
+	for _, v := range versions {
+		foundIds[v.Id] = true
+	}
+	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
+}
+
+func TestVersionByMostRecentActivated(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection))
+	ts := time.Now()
+
+	// Create versions with different activation states
+	v1 := Version{
+		Id:                  "old-activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-10 * time.Minute),
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(true), // Activated
+	}
+	v2 := Version{
+		Id:                  "recent-activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-5 * time.Minute),
+		RevisionOrderNumber: 2,
+		Activated:           utility.ToBoolPtr(true), // Activated (most recent)
+	}
+	v3 := Version{
+		Id:                  "unactivated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-2 * time.Minute),
+		RevisionOrderNumber: 3,
+		Activated:           utility.ToBoolPtr(false), // Not activated
+	}
+	v4 := Version{
+		Id:                  "future-activated",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber: 4,
+		Activated:           utility.ToBoolPtr(true), // Activated but in the future
+	}
+
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4))
+
+	// Test finding most recently activated version
+	version, err := VersionFindOne(t.Context(), VersionByMostRecentActivated("proj", ts))
+	require.NoError(t, err)
+	require.NotNil(t, version)
+	assert.Equal(t, "recent-activated", version.Id, "Should find the most recently activated version before ts (not future version)")
+}
+
+func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
+	require.NoError(t, db.ClearCollections(VersionCollection))
+	ts := time.Now()
+
+	// Create versions with different activation states (simulating a new project)
+	v1 := Version{
+		Id:                  "unactivated-1",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-10 * time.Minute),
+		RevisionOrderNumber: 1,
+		Activated:           utility.ToBoolPtr(false), // Not activated
+	}
+	v2 := Version{
+		Id:                  "unactivated-2",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-5 * time.Minute),
+		RevisionOrderNumber: 2,
+		Activated:           utility.ToBoolPtr(false), // Not activated
+	}
+	v3 := Version{
+		Id:                  "unactivated-3",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-2 * time.Minute),
+		RevisionOrderNumber: 3,
+		Activated:           utility.ToBoolPtr(false), // Not activated
+	}
+	v4 := Version{
+		Id:                  "wrong-requester",
+		Identifier:          "new-proj",
+		Requester:           evergreen.AdHocRequester, // Wrong requester
+		CreateTime:          ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 4,
+		Activated:           utility.ToBoolPtr(false),
+	}
+	v5 := Version{
+		Id:                  "ignored-version",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-1 * time.Minute),
+		RevisionOrderNumber: 5,
+		Activated:           utility.ToBoolPtr(false),
+		Ignored:             true, // Ignored version
+	}
+	v6 := Version{
+		Id:                  "future-version",
+		Identifier:          "new-proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(2 * time.Minute), // Created AFTER ts (race condition test)
+		RevisionOrderNumber: 6,
+		Activated:           utility.ToBoolPtr(false),
+	}
+
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
+
+	// Test finding all unactivated versions for new project
+	versions, err := VersionFind(t.Context(), VersionsAllUnactivatedNonIgnored("new-proj", ts))
+	require.NoError(t, err)
+	require.Len(t, versions, 3, "Should find 3 unactivated, non-ignored versions (excluding future version)")
+
+	// Should be ordered by most recent first (highest order number first)
+	assert.Equal(t, "unactivated-3", versions[0].Id)
+	assert.Equal(t, "unactivated-2", versions[1].Id)
+	assert.Equal(t, "unactivated-1", versions[2].Id)
+
+	// Verify that future version (created after ts) is NOT included
+	foundIds := make(map[string]bool)
+	for _, v := range versions {
+		foundIds[v.Id] = true
+	}
+	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
+}
