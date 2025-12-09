@@ -206,3 +206,75 @@ func TestTaskCostStdDevIsZero(t *testing.T) {
 		assert.False(t, stdDev.IsZero())
 	})
 }
+
+func TestComputeCostPredictionsInParallel(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("EmptyTasks", func(t *testing.T) {
+		predictions, err := computeCostPredictionsInParallel(ctx, []Task{})
+		require.NoError(t, err)
+		assert.Empty(t, predictions)
+	})
+
+	t.Run("SingleTask", func(t *testing.T) {
+		task := Task{
+			Id:           "task1",
+			DisplayName:  "test",
+			BuildVariant: "bv",
+			Project:      "proj",
+		}
+
+		predictions, err := computeCostPredictionsInParallel(ctx, []Task{task})
+		require.NoError(t, err)
+		assert.Len(t, predictions, 1)
+		assert.Contains(t, predictions, "task1")
+	})
+
+	t.Run("MultipleTasks", func(t *testing.T) {
+		tasks := []Task{
+			{Id: "task1", DisplayName: "test", BuildVariant: "bv", Project: "proj"},
+			{Id: "task2", DisplayName: "test2", BuildVariant: "bv", Project: "proj"},
+		}
+
+		predictions, err := computeCostPredictionsInParallel(ctx, tasks)
+		require.NoError(t, err)
+		assert.Len(t, predictions, 2)
+		assert.Contains(t, predictions, "task1")
+		assert.Contains(t, predictions, "task2")
+	})
+}
+
+func TestSetPredictedCostsForTasks(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("EmptyTasks", func(t *testing.T) {
+		err := SetPredictedCostsForTasks(ctx, Tasks{})
+		require.NoError(t, err)
+	})
+
+	t.Run("InactiveTasks", func(t *testing.T) {
+		task := &Task{
+			Id:        "task1",
+			Activated: false,
+		}
+
+		err := SetPredictedCostsForTasks(ctx, Tasks{task})
+		require.NoError(t, err)
+		assert.True(t, task.PredictedTaskCost.IsZero())
+	})
+
+	t.Run("ActivatedTasks", func(t *testing.T) {
+		task := &Task{
+			Id:           "task1",
+			DisplayName:  "test",
+			BuildVariant: "bv",
+			Project:      "proj",
+			Activated:    true,
+		}
+
+		err := SetPredictedCostsForTasks(ctx, Tasks{task})
+		require.NoError(t, err)
+		// Cost prediction should be zero since there's no historical data
+		assert.True(t, task.PredictedTaskCost.IsZero())
+	})
+}
