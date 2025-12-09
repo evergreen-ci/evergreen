@@ -540,7 +540,7 @@ func TestVersionsUnactivatedSinceLastActivated(t *testing.T) {
 	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
 
 	// Test finding unactivated versions since last activated (order number 1)
-	versions, err := VersionFind(t.Context(), VersionsUnactivatedSinceLastActivated("proj", ts, 1))
+	versions, err := VersionFind(t.Context(), VersionsUnactivatedSinceLastActivated("proj", ts, 1, 5000))
 	require.NoError(t, err)
 	require.Len(t, versions, 2, "Should find 2 unactivated versions after the activated one (excluding future version)")
 
@@ -661,7 +661,7 @@ func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
 	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5, v6))
 
 	// Test finding all unactivated versions for new project
-	versions, err := VersionFind(t.Context(), VersionsAllUnactivatedNonIgnored("new-proj", ts))
+	versions, err := VersionFind(t.Context(), VersionsAllUnactivatedNonIgnored("new-proj", ts, 5))
 	require.NoError(t, err)
 	require.Len(t, versions, 3, "Should find 3 unactivated, non-ignored versions (excluding future version)")
 
