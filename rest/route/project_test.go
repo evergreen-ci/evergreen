@@ -557,6 +557,27 @@ func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
 	s.False(*pRef.TestSelection.DefaultEnabled)
 }
 
+func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {
+	ctx := s.T().Context()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	jsonBody := []byte(`{"enabled": true, "run_every_mainline_commit": true}`)
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(http.StatusOK, resp.Status())
+
+	pRef, err := data.FindProjectById(s.T().Context(), "dimoxinil", false, false)
+	s.NoError(err)
+	s.Require().NotNil(pRef.RunEveryMainlineCommit)
+	s.True(*pRef.RunEveryMainlineCommit)
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for PUT /rest/v2/projects/{project_id}

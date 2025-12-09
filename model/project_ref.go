@@ -146,6 +146,11 @@ type ProjectRef struct {
 
 	// Test selection settings
 	TestSelection TestSelectionSettings `bson:"test_selection,omitempty" json:"test_selection,omitzero" yaml:"test_selection,omitempty"`
+
+	// RunEveryMainlineCommit indicates that the project should activate the versions for all mainline commits.
+	// This goes against Evergreen's optimization of only activating the latest commit in a series of mainline commits.
+	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
+	RunEveryMainlineCommit *bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
