@@ -560,7 +560,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
 func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {
 	ctx := s.T().Context()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	jsonBody := []byte(`{"enabled": true, "run_every_mainline_commit": true}`)
+	jsonBody := []byte(`{"enabled": true, "run_every_mainline_commit": true, "run_every_mainline_commit_limit": 5}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
 	err := s.rm.Parse(ctx, req)
@@ -576,6 +576,8 @@ func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {
 	s.NoError(err)
 	s.Require().NotNil(pRef.RunEveryMainlineCommit)
 	s.True(*pRef.RunEveryMainlineCommit)
+	s.Require().NotNil(pRef.RunEveryMainlineCommitLimit)
+	s.Equal(5, *pRef.RunEveryMainlineCommitLimit)
 }
 
 ////////////////////////////////////////////////////////////////////////
