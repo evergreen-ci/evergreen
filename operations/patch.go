@@ -126,7 +126,7 @@ func Patch() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			outputJSON := c.Bool(jsonFlagName)
 			if outputJSON {
 				// If outputting the patch data as JSON, suppress any non-error
@@ -422,7 +422,7 @@ func PatchFile() cli.Command {
 					return errors.Errorf("file '%s' does not exist", diffFilePath)
 				}
 			}
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			outputJSON := c.Bool(jsonFlagName)
 			if outputJSON {
 				// If outputting the patch data as JSON, suppress any non-error

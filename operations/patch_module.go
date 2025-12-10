@@ -44,7 +44,7 @@ func PatchSetModule() cli.Command {
 				Uncommitted:     c.Bool(uncommittedChangesFlag),
 				PreserveCommits: c.Bool(preserveCommitsFlag),
 			}
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			moduleName := c.String(moduleFlagName)
 			patchID := c.String(patchIDFlagName)
 			args := c.Args()
@@ -178,7 +178,7 @@ func PatchRemoveModule() cli.Command {
 		Flags:   mergeFlagSlices(addPatchIDFlag(), addModuleFlag()),
 		Before:  mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			patchID := c.String(patchIDFlagName)
 			module := c.String(moduleFlagName)
 
