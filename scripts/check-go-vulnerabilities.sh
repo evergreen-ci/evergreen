@@ -54,8 +54,6 @@ else
     else
         echo "  None"
     fi
-    echo ""
-    echo '{"fixable":'"$fixable"',"na_fixes":'"$na_fixes"'}'
 
     # Exit with error only if there are fixable vulnerabilities
     if [ "$(echo "$fixable" | jq 'length')" -gt 0 ]; then
