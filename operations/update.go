@@ -54,9 +54,6 @@ func Update() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			// Since this is the update command, we want to disable checking the CLI verison.
-			ctx = wrapContextToDisableCLIVersionCheck(ctx)
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -85,7 +82,7 @@ func Update() cli.Command {
 // Otherwise, it will simply be downloaded and a suggested 'mv' command will be printed so the user can replace the binary at their discretion.
 // Toggling forceUpdate will download a new CLI even if the current CLI does not have an out-of-date CLI version string.
 func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall bool, forceUpdate bool, silent bool) error {
-	client, err := conf.setupRestCommunicator(ctx, false)
+	client, err := conf.setupRestCommunicator(ctx, false, SkipCheckingMinimumCLIVersion())
 	if err != nil {
 		return errors.Wrap(err, "getting REST communicator")
 	}
