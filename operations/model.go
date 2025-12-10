@@ -635,7 +635,7 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communic
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
 		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce in to your configuration file at '%s'", s.LoadedFrom)
 	}
-	return comm.GetOAuthToken(ctx,
+	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
