@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
 
@@ -14,6 +17,12 @@ import (
 	"github.com/urfave/cli"
 )
 
+type ProgramDetails struct {
+	Version string
+}
+
+var programDetails ProgramDetails
+
 func main() {
 	// this is where the main action of the program starts. The
 	// command line interface is managed by the cli package and
@@ -21,6 +30,24 @@ func main() {
 	// in buildApp(), is all that's necessary for bootstrapping the
 	// environment.
 	app := buildApp()
+
+	defer func() {
+		if r := recover(); r != nil {
+			_, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			// sendPanicTelemetry(ctx, PanicReport{
+			// 	Message: fmt.Sprintf("%v", r),
+			// 	Stack:   string(debug.Stack()),
+			// 	// add fields like version, command, args, GOOS/GOARCH, git SHA, etc.
+			// })
+
+			// print a friendly message or log if you want
+			fmt.Fprintln(os.Stderr, "unexpected error occurred; details have been reported")
+			os.Exit(1)
+		}
+	}()
+
 	grip.EmergencyFatal(app.Run(os.Args))
 }
 
@@ -86,6 +113,9 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
+
+		programDetails := ProgramDetails{}
+
 		return loggingSetup(app.Name, c.String("level"))
 	}
 
