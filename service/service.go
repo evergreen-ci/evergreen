@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -46,7 +45,6 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(ctx, uis.env.UserManager(), uis.umconf))
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.env.UserManager()))
-	app.AddMiddleware(gimlet.NewStaticAuth("", http.Dir(filepath.Join(uis.Home, "public"))))
 
 	clients := gimlet.NewApp()
 	if uis.env.ClientConfig().S3URLPrefix != "" {
