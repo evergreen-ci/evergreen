@@ -911,10 +911,8 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 
 			// Host exists. Check if the failure was due to status mismatch (concurrent modification).
 			if dbHost.Status != h.Status {
-				// The database status has diverged from our cached status.
-				// Another job has already modified the host. Skip this update silently since our
-				// cached state is stale and attempting this status change is no longer valid.
-				return nil
+				// The cached state is stale and attempting this status change is no longer valid.
+				return errors.Errorf("cached host status '%s' does not match database status '%s' (attempted to set to '%s')", h.Status, dbHost.Status, newStatus)
 			}
 		}
 		return err

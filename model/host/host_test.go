@@ -594,15 +594,17 @@ func TestMarkReachable(t *testing.T) {
 			require.NoError(t, h.MarkReachable(ctx))
 			assert.Equal(t, evergreen.HostRunning, h.Status)
 		},
-		"NoConcurrentModification": func(t *testing.T, h *Host) {
+		"ErrorOnConcurrentModification": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostProvisioning
 			require.NoError(t, h.Insert(ctx))
 
 			// Another process changes status
 			require.NoError(t, UpdateOne(ctx, bson.M{IdKey: h.Id}, bson.M{"$set": bson.M{StatusKey: evergreen.HostQuarantined}}))
 
-			// MarkReachable silently fails due to concurrent modification
-			require.NoError(t, h.MarkReachable(ctx))
+			// MarkReachable returns an error due to concurrent modification
+			err := h.MarkReachable(ctx)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "status conflict")
 
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
