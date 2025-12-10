@@ -10,7 +10,7 @@ import (
 
 const (
 	clientS3BucketFlagName  = "client_s3_bucket"
-	ConfFlagName            = "conf"
+	confFlagName            = "conf"
 	dirFlagName             = "dir"
 	displayNameFlagName     = "name"
 	errorOnWarningsFlagName = "error-on-warnings"
@@ -68,7 +68,7 @@ func addPathFlag(flags ...cli.Flag) []cli.Flag {
 func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags,
 		cli.StringFlag{
-			Name:  joinFlagNames(ConfFlagName, "config", "c"),
+			Name:  joinFlagNames(confFlagName, "config", "c"),
 			Usage: "path to the service configuration file",
 		},
 		cli.StringFlag{
@@ -266,4 +266,8 @@ func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {
 	}
 
 	return out
+}
+
+func ConfigFileFlagName() string {
+	return confFlagName
 }

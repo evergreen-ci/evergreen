@@ -103,7 +103,7 @@ func Fetch() cli.Command {
 				return errors.New("must specify at least one of either --artifacts or --source")
 			}),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			wd := c.String(dirFlagName)
 			doFetchSource := c.Bool(sourceFlagName)
 			doFetchArtifacts := c.Bool(artifactsFlagName)

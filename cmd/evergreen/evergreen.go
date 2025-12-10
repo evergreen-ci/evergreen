@@ -144,7 +144,7 @@ func setupProgramDetails(c *cli.Context) {
 		StartTime:               time.Now(),
 		OperatingSystem:         runtime.GOOS,
 		Architecture:            runtime.GOARCH,
-		ConfigFilePath:          c.String(operations.ConfFlagName),
+		ConfigFilePath:          c.String(operations.ConfigFileFlagName()),
 	}
 }
 

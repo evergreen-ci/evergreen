@@ -23,7 +23,7 @@ func hostFetch() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {

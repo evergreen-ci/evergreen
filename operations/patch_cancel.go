@@ -14,7 +14,7 @@ func PatchCancel() cli.Command {
 		Flags:  addPatchIDFlag(),
 		Before: requirePatchIDFlag,
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			patchID := c.String(patchIDFlagName)
 
 			conf, err := NewClientSettings(confPath)
