@@ -569,9 +569,6 @@ func TestHostSetDNSName(t *testing.T) {
 }
 
 func TestMarkReachable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 	}()
@@ -579,34 +576,34 @@ func TestMarkReachable(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, h *Host){
 		"MarksHostAsRunning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostStarting
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
-			require.NoError(t, h.MarkReachable(ctx))
+			require.NoError(t, h.MarkReachable(t.Context()))
 			assert.Equal(t, evergreen.HostRunning, h.Status)
 
-			dbHost, err := FindOneId(ctx, h.Id)
+			dbHost, err := FindOneId(t.Context(), h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"NoOpWhenAlreadyRunning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostRunning
-			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, h.MarkReachable(ctx))
+			require.NoError(t, h.Insert(t.Context()))
+			require.NoError(t, h.MarkReachable(t.Context()))
 			assert.Equal(t, evergreen.HostRunning, h.Status)
 		},
 		"ErrorOnConcurrentModification": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostProvisioning
-			require.NoError(t, h.Insert(ctx))
+			require.NoError(t, h.Insert(t.Context()))
 
 			// Another process changes status
-			require.NoError(t, UpdateOne(ctx, bson.M{IdKey: h.Id}, bson.M{"$set": bson.M{StatusKey: evergreen.HostQuarantined}}))
+			require.NoError(t, UpdateOne(t.Context(), bson.M{IdKey: h.Id}, bson.M{"$set": bson.M{StatusKey: evergreen.HostQuarantined}}))
 
 			// MarkReachable returns an error due to concurrent modification
-			err := h.MarkReachable(ctx)
+			err := h.MarkReachable(t.Context())
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "does not match database status")
 
-			dbHost, err := FindOneId(ctx, h.Id)
+			dbHost, err := FindOneId(t.Context(), h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status, "should not overwrite concurrent modification")
 		},
