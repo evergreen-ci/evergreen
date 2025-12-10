@@ -1859,6 +1859,26 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 }
 
 func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *PanicReport) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "/panic",
+	}
+	resp, err := c.request(ctx, info, details)
+	if err != nil {
+		return errors.Wrap(err, "sending panic report to Evergreen")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return util.RespErrorf(resp, "sending panic report to Evergreen")
+	}
+
 	return nil
 }
 
