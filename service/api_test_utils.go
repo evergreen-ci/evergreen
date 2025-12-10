@@ -64,7 +64,7 @@ func CreateTestServer(ctx context.Context, settings *evergreen.Settings, tlsConf
 		return nil, err
 	}
 
-	uis, err := NewUIServer(env, as.queue, home, TemplateFunctionOptions{})
+	uis, err := NewUIServer(env, as.queue, home)
 	if err != nil {
 		return nil, err
 	}

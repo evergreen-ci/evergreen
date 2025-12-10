@@ -75,13 +75,12 @@ type hostCacheItem struct {
 	isRunning            bool
 }
 
-func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
+func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UIServer, error) {
 	settings := env.Settings()
 
 	ropts := gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: !settings.Ui.CacheTemplates,
-		Functions:    MakeTemplateFuncs(fo),
 	}
 
 	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
@@ -245,6 +244,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.NoVersions = true
 
 	// User login and logout
+	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.loginRedirect).Get()
 	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.login).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
 

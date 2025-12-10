@@ -18,7 +18,11 @@ const (
 
 func (uis *UIServer) loginRedirect(w http.ResponseWriter, r *http.Request) {
 	if uis.env.UserManager().IsRedirect() {
-		http.Redirect(w, r, "/login/redirect", http.StatusFound)
+		redirectURL := "/login/redirect"
+		if query := r.URL.Query().Encode(); query != "" {
+			redirectURL = fmt.Sprintf("%s?%s", redirectURL, query)
+		}
+		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
 }
