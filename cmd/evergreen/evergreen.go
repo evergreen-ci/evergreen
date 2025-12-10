@@ -18,10 +18,17 @@ import (
 )
 
 type ProgramDetails struct {
-	Version string
+	Version                 string
+	CurrentWorkingDirectory string
+	ExecutablePath          string
+	Arguments               []string
 }
 
-var programDetails ProgramDetails
+var (
+	programDetails ProgramDetails
+
+	args = os.Args
+)
 
 func main() {
 	// this is where the main action of the program starts. The
@@ -48,7 +55,7 @@ func main() {
 		}
 	}()
 
-	grip.EmergencyFatal(app.Run(os.Args))
+	grip.EmergencyFatal(app.Run(args))
 }
 
 func buildApp() *cli.App {
@@ -113,13 +120,30 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
-
-		programDetails := ProgramDetails{}
-
+		setupProgramDetails()
 		return loggingSetup(app.Name, c.String("level"))
 	}
 
 	return app
+}
+
+// setupProgramDetails populates the global programDetails variable
+// used for telemetry.
+func setupProgramDetails() {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "Not found"
+	}
+	execPath, err := os.Executable()
+	if err != nil {
+		execPath = "Not found"
+	}
+	programDetails = ProgramDetails{
+		Version:                 evergreen.ClientVersion,
+		CurrentWorkingDirectory: cwd,
+		ExecutablePath:          execPath,
+		Arguments:               args,
+	}
 }
 
 func loggingSetup(name, l string) error {
