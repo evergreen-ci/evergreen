@@ -233,7 +233,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		if s.OAuth.Expiry.Before(time.Now()) && printMessages {
 			grip.Info(optOut)
 		}
-		if err := s.SetOAuthToken(ctx, c); err != nil {
+		if err := s.SetOAuthToken(ctx); err != nil {
 			return c, errors.Wrap(err, "setting config OAuth token")
 		}
 		c.SetOAuth(s.OAuth.AccessToken)
@@ -631,7 +631,7 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }
 
-func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communicator) (*oauth2.Token, string, error) {
+func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
 		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce in to your configuration file at '%s'", s.LoadedFrom)
 	}
@@ -644,8 +644,8 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communic
 }
 
 // SetOAuthToken sets the OAuth token for authentication.
-func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
-	token, path, err := s.getOAuthToken(ctx, comm)
+func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
+	token, path, err := s.getOAuthToken(ctx)
 	if err != nil {
 		// The auth library caches tokens in a file. Sometimes, the tokens are expired and
 		// we need to remove the file to get a new token.
@@ -653,7 +653,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 			if delErr := os.RemoveAll(path); delErr != nil {
 				grip.Warning(errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
 			}
-			token, path, err = s.getOAuthToken(ctx, comm)
+			token, path, err = s.getOAuthToken(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting OAuth token after removing token file")
 			}
