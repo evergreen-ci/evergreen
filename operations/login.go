@@ -31,13 +31,8 @@ func login(c *cli.Context) (*ClientSettings, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "loading configuration")
 	}
-	comm, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return nil, errors.Wrap(err, "setting up REST communicator")
-	}
-	defer comm.Close()
 
-	if err = conf.SetOAuthToken(ctx, comm); err != nil {
+	if err = conf.SetOAuthToken(ctx); err != nil {
 		return nil, errors.Wrap(err, "setting OAuth token")
 	}
 
