@@ -244,7 +244,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.NoVersions = true
 
 	// User login and logout
-	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.loginRedirect).Get()
+	app.AddRoute("/login").Handler(uis.loginRedirect).Get()
 	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.login).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
 
