@@ -43,14 +43,16 @@ if [ "$total_vulns" -eq 0 ]; then
 else
     echo "Vulnerabilities with available fixes:"
     if [ "$fixable_count" -gt 0 ]; then
-        echo "$fixable" | jq -r '.[] | "  - \(.osv) in \(.module) -> Fixed in: \(.fixed_version)"'
+        # Group by module and fixed_version, then list OSV IDs
+        echo "$fixable" | jq -r 'group_by(.module, .fixed_version) | .[] | "\n  Package: \(.[0].module)\n  Fixed in: \(.[0].fixed_version)\n  Vulnerabilities: \([.[].osv] | join(", "))"'
     else
         echo "  None"
     fi
     echo ""
     echo "Vulnerabilities with N/A fixes:"
     if [ "$na_count" -gt 0 ]; then
-        echo "$na_fixes" | jq -r '.[] | "  - \(.osv) in \(.module)"'
+        # Group by module, then list OSV IDs
+        echo "$na_fixes" | jq -r 'group_by(.module) | .[] | "\n  Package: \(.[0].module)\n  Vulnerabilities: \([.[].osv] | join(", "))"'
     else
         echo "  None"
     fi
