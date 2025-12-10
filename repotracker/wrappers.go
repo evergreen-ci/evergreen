@@ -65,7 +65,7 @@ func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts 
 	if !project.Enabled {
 		return false, errors.Errorf("project disabled: %s", project.Id)
 	}
-	ok, err := model.DoProjectActivation(ctx, project.Id, ts)
+	ok, err := model.DoProjectActivation(ctx, &project, ts)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
