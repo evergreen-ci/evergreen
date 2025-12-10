@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -18,16 +17,14 @@ import (
 // This route is used to report a panic to the Evergreen service.
 type panicReport struct {
 	report *restModel.PanicReport
-
-	env evergreen.Environment
 }
 
-func makePanicReport(env evergreen.Environment) gimlet.RouteHandler {
-	return &panicReport{env: env}
+func makePanicReport() gimlet.RouteHandler {
+	return &panicReport{}
 }
 
 func (h *panicReport) Factory() gimlet.RouteHandler {
-	return &panicReport{env: h.env}
+	return &panicReport{}
 }
 
 func (h *panicReport) Parse(ctx context.Context, r *http.Request) error {
