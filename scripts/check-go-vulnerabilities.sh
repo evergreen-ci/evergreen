@@ -27,6 +27,9 @@ export PATH="$GOROOT/bin:$PATH"
 result=$($govul -json -C $(pwd) ./... 2>&1)
 exit_code=$?
 
+# Extract current versions from go.mod
+current_versions=$(grep -E '^\s*github\.com|^\s*go\.|^\s*golang\.org|^\s*gopkg\.in|^\s*stdlib' go.mod | grep -v '//' | awk '{print $1 "|||" $2}' | tr '\n' '|')
+
 # Split vulnerabilities into fixable and N/A lists
 fixable=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version != null and .finding.fixed_version != "" and .finding.fixed_version != "N/A") | {osv: .finding.osv, fixed_version: .finding.fixed_version, module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
 na_fixes=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version == null or .finding.fixed_version == "" or .finding.fixed_version == "N/A") | {osv: .finding.osv, fixed_version: "N/A", module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
@@ -43,8 +46,19 @@ if [ "$total_vulns" -eq 0 ]; then
 else
     echo "Vulnerabilities with available fixes:"
     if [ "$fixable_count" -gt 0 ]; then
-        # Group by module and fixed_version, then list OSV IDs
-        echo "$fixable" | jq -r 'group_by(.module, .fixed_version) | .[] | "---\n  Package: \(.[0].module)\n  Fixed in: \(.[0].fixed_version)\n  Vulnerabilities: \([.[].osv] | join(", "))"'
+        # Group by module, find min/max versions, and collect all OSV IDs
+        echo "$fixable" | jq -r --arg cv "$current_versions" '
+        group_by(.module) | .[] |
+        {
+            module: .[0].module,
+            min_version: ([.[].fixed_version] | min),
+            max_version: ([.[].fixed_version] | max),
+            vulnerabilities: [.[].osv]
+        } |
+        . as $item |
+        ($cv | split("|") | map(select(startswith($item.module + "|||"))) | .[0] // "" | split("|||")[1] // "unknown") as $current |
+        "---\n  Package: \($item.module)\n  Current: \($current)\n  Minimum fix: \($item.min_version)\n  Latest fix: \($item.max_version)\n  Vulnerabilities: \($item.vulnerabilities | join(", "))"
+        '
     else
         echo "  None"
     fi
