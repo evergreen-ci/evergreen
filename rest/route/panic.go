@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -38,5 +40,9 @@ func (h *panicReport) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *panicReport) Run(ctx context.Context) gimlet.Responder {
+	grip.Error(message.Fields{
+		"message": "CLI panic report",
+		"report":  h.report,
+	})
 	return gimlet.NewTextResponse(nil)
 }
