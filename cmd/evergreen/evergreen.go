@@ -22,6 +22,7 @@ type ProgramDetails struct {
 	CurrentWorkingDirectory string
 	ExecutablePath          string
 	Arguments               []string
+	StartTime               time.Time
 }
 
 var (
@@ -143,6 +144,7 @@ func setupProgramDetails() {
 		CurrentWorkingDirectory: cwd,
 		ExecutablePath:          execPath,
 		Arguments:               args,
+		StartTime:               time.Now(),
 	}
 }
 
