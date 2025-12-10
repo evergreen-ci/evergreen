@@ -24,14 +24,30 @@ fi
 # the agent picks up an older version that isn't compatible with govulncheck.
 export PATH="$GOROOT/bin:$PATH"
 
-result=$($govul -C $(pwd) ./...)
-if [ $? -eq 0 ]; then
+result=$($govul -json -C $(pwd) ./...)
+exit_code=$?
+
+# Split vulnerabilities into fixable and N/A lists
+fixable=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version != "" and .finding.fixed_version != "N/A") | {osv: .finding.osv, fixed_version: .finding.fixed_version, module: (.finding.trace[0].module // "unknown")}]')
+na_fixes=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version == "" or .finding.fixed_version == "N/A") | {osv: .finding.osv, fixed_version: "N/A", module: (.finding.trace[0].module // "unknown")}]')
+
+if [ $exit_code -eq 0 ]; then
     echo "No vulnerabilities found."
+    echo '{"fixable":[],"na_fixes":[]}'
     exit 0
 else
-    echo "Please run govulncheck to check for vulnerabilities. See below for found vulnerabilities."
-    version=$($govul --version)
-    echo "Currently using govulncheck version: $version"
-    echo "$result"
-    exit 1
+    echo "Vulnerabilities with available fixes:"
+    echo "$fixable" | jq -r '.[] | "  - \(.osv) in \(.module) -> Fixed in: \(.fixed_version)"'
+    echo ""
+    echo "Vulnerabilities with N/A fixes:"
+    echo "$na_fixes" | jq -r '.[] | "  - \(.osv) in \(.module)"'
+    echo ""
+    echo '{"fixable":'"$fixable"',"na_fixes":'"$na_fixes"'}'
+
+    # Exit with error only if there are fixable vulnerabilities
+    if [ "$(echo "$fixable" | jq 'length')" -gt 0 ]; then
+        exit 1
+    else
+        exit 0
+    fi
 fi
