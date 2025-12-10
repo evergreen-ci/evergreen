@@ -1858,6 +1858,10 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
+func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *PanicReport) error {
+	return nil
+}
+
 func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)

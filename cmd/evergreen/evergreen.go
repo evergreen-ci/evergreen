@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen"
@@ -18,21 +19,8 @@ import (
 	"github.com/urfave/cli"
 )
 
-type ProgramDetails struct {
-	Version                 string
-	CurrentWorkingDirectory string
-	ExecutablePath          string
-	Arguments               []string
-	StartTime               time.Time
-	OperatingSystem         string
-	Architecture            string
-	ConfigFilePath          string
-
-	Panic any
-}
-
 var (
-	programDetails *ProgramDetails
+	panicReport *client.PanicReport
 
 	args = os.Args
 )
@@ -121,20 +109,18 @@ func buildApp() *cli.App {
 
 func recoverFromPanic() {
 	if r := recover(); r != nil {
-		programDetails.Panic = r
+		panicReport.Panic = r
+		panicReport.EndTime = time.Now()
 
-		// Use a context with timeout to avoid hanging forever.
-		_, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if programDetails == nil || programDetails.ConfigFilePath == "" {
-			fmt.Fprintln(os.Stderr, "unexpected error occured, could not reach out to Evergreen service:", programDetails.Panic)
+		if err := operations.SendPanicReport(ctx, panicReport); err != nil {
+			fmt.Fprintf(os.Stderr, "error: could not send panic report to Evergreen service, please reach out to the Evergreen team: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("Details", programDetails)
-
-		fmt.Fprintln(os.Stderr, "unexpected error occured, the Evergreen team has been sent a report:", programDetails.Panic)
+		fmt.Fprintln(os.Stderr, "unexpected error occured, the Evergreen team has been sent a report:", panicReport.Panic)
 		os.Exit(1)
 	}
 }
@@ -150,7 +136,7 @@ func setupProgramDetails(c *cli.Context) {
 	if err != nil {
 		execPath = "Not found"
 	}
-	programDetails = &ProgramDetails{
+	panicReport = &client.PanicReport{
 		Version:                 evergreen.ClientVersion,
 		CurrentWorkingDirectory: cwd,
 		ExecutablePath:          execPath,
