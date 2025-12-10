@@ -54,6 +54,9 @@ func Update() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			// Since this is the update command, we want to disable checking the CLI verison.
+			ctx = wrapContextToDisableCLIVersionCheck(ctx)
+
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")

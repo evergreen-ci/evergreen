@@ -29,6 +29,19 @@ const stagingNonCorpHost = "https://evergreen-staging.corp.mongodb.com/api"
 const prodCorpHost = "https://evergreen.corp.mongodb.com/api"
 const prodNonCorpHost = "https://evergreen.mongodb.com/api"
 
+// Context key for not checking the CLI version.
+type noCLIVersionCheckKey struct{}
+
+func isCLIVersionCheckDisabled(ctx context.Context) bool {
+	val := ctx.Value(noCLIVersionCheckKey{})
+	disabled, ok := val.(bool)
+	return ok && disabled
+}
+
+func wrapContextToDisableCLIVersionCheck(ctx context.Context) context.Context {
+	return context.WithValue(ctx, noCLIVersionCheckKey{}, true)
+}
+
 type ClientProjectConf struct {
 	Name           string               `json:"name" yaml:"name,omitempty"`
 	Default        bool                 `json:"default" yaml:"default,omitempty"`
@@ -198,8 +211,10 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if err = s.checkCLIVersion(ctx, c); err != nil {
-		return nil, err
+	if !isCLIVersionCheckDisabled(ctx) {
+		if err = s.checkCLIVersion(ctx, c); err != nil {
+			return nil, err
+		}
 	}
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
