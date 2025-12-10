@@ -33,7 +33,7 @@ func PatchList() cli.Command {
 				Usage: "show a summary of the diff for each patch",
 			})),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			number := c.Int(numberFlagName)
 			showSummary := c.Bool(showSummaryFlagName)
 			outputJSON := c.Bool(jsonFlagName)

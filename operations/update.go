@@ -46,7 +46,7 @@ func Update() cli.Command {
 		},
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			install := c.Bool(installFlagName)
 			forceUpdate := c.Bool(forceFlagName)
 			autoUpgrade := c.Bool(autoUpgradeFlagName)

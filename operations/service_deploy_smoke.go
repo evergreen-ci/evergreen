@@ -77,7 +77,7 @@ func smokeStartEvergreen() cli.Command {
 		Usage:   "run Evergreen binary for smoke tests",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  ConfFlagName,
+				Name:  confFlagName,
 				Usage: "path to the (test) service configuration file",
 				Value: confPath,
 			},
@@ -119,9 +119,9 @@ func smokeStartEvergreen() cli.Command {
 				Usage: "the secret of the host or pod running the agent",
 			},
 		},
-		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(ConfFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
+		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
 		Action: func(c *cli.Context) error {
-			confPath := c.String(ConfFlagName)
+			confPath := c.String(confFlagName)
 			binary := c.String(binaryFlagName)
 			startWeb := c.Bool(webFlagName)
 			startAgent := c.Bool(agentFlagName)

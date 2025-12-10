@@ -146,7 +146,7 @@ func LastRevision() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
 			bvRegexps := c.StringSlice(regexpVariantsFlagName)
 			bvDisplayNameRegexps := c.StringSlice(regexpVariantsDisplayNameFlagName)

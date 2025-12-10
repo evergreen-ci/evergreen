@@ -12,7 +12,7 @@ func Login() cli.Command {
 		Name:  "login",
 		Usage: "authenticate the CLI with evergreen",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			if _, err := login(confPath); err != nil {
 				return errors.Wrap(err, "logging in")
 			}

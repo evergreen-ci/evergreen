@@ -72,7 +72,7 @@ func List() cli.Command {
 			})...),
 		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, patchAliasesFlagName, triggerAliasesFlagName, distrosFlagName, spawnableFlagName, parametersFlagName),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			project := c.String(projectFlagName)
 			filename := c.String(pathFlagName)
 			onlyUserSpawnable := c.Bool(spawnableFlagName)

@@ -36,7 +36,7 @@ func Validate() cli.Command {
 		}),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(ConfFlagName)
+			confPath := c.Parent().String(confFlagName)
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			errorOnWarnings := c.Bool(errorOnWarningsFlagName)
