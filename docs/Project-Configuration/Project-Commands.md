@@ -1319,7 +1319,7 @@ Parameters:
   to configure your role.
   This does not have to be a secret but managing it with expansions is recommended.
   This is the recommended way to authenticate with AWS.
-- `local_file`: the local file to posts. This is relative to [task's working directory](./Best-Practices.md#task-directory).
+- `local_file`: the local file to post. This is relative to [task's working directory](./Best-Practices.md#task-directory).
 - `remote_file`: the S3 path to post the file to
 - `bucket`: the S3 bucket to use. Note: buckets created after Sept.
   30, 2020 containing dots (".") are not supported.
@@ -1328,7 +1328,7 @@ Parameters:
 - `content_type`: the MIME type of the file. Note it is important that this value accurately reflects the mime type of the file or else the behavior will be unpredictable.
 - `optional`: boolean to indicate if failure to find or upload this
   file will result in a task failure. This is intended to be used
-  with `local_file`. `local_files_include_filter` be default is
+  with `local_file`. `local_files_include_filter` by default is
   optional and will not work with this parameter.
 - `skip_existing`: boolean to indicate that files that already exist
   in s3 should be skipped.
