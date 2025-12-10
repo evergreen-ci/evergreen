@@ -81,7 +81,7 @@ func adminSetBanner() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			themeName := strings.ToUpper(c.String(themeFlagName))
 			msgContent := c.String(messageFlagName)
 
@@ -123,7 +123,7 @@ func viewSettings() cli.Command {
 
 func doViewSettings() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		confPath := c.Parent().Parent().String(confFlagName)
+		confPath := c.Parent().Parent().String(ConfFlagName)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -168,7 +168,7 @@ func updateSettings() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			updateString := c.String(updateFlagName)
 
 			updateSettings := &model.APIAdminSettings{}
@@ -214,7 +214,7 @@ func listEvents() cli.Command {
 		Usage:  "print the admin event log",
 		Flags:  mergeFlagSlices(addStartTimeFlag(), addLimitFlag()),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			timeString := c.String(startTimeFlagName)
 			var ts time.Time
 			var err error
@@ -262,7 +262,7 @@ func revert() cli.Command {
 		Before: mergeBeforeFuncs(setPlainLogger),
 		Usage:  "revert a specific change to the admin settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			guid := c.Args().Get(0)
 			if guid == "" {
 				return errors.New("must specify a GUID to revert")
@@ -397,7 +397,7 @@ func updateRoleCmd() cli.Command {
 				Permissions: permissions,
 			}
 
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -420,7 +420,7 @@ func getServiceUsers() cli.Command {
 
 		Action: func(c *cli.Context) error {
 
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -474,7 +474,7 @@ func updateServiceUser() cli.Command {
 			displayName := c.String(displayNameFlag)
 			roles := c.StringSlice(rolesFlag)
 
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -509,7 +509,7 @@ func deleteServiceUser() cli.Command {
 		Action: func(c *cli.Context) error {
 			id := c.String(idFlag)
 
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")

@@ -26,7 +26,7 @@ func login(c *cli.Context) (*ClientSettings, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	confPath := c.Parent().String(confFlagName)
+	confPath := c.Parent().String(ConfFlagName)
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading configuration")

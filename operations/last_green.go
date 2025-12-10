@@ -23,7 +23,7 @@ func LastGreen() cli.Command {
 		Flags:  addProjectFlag(addVariantsFlag()...),
 		Before: mergeBeforeFuncs(autoUpdateCLI, requireVariantsFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			variants := c.StringSlice(variantsFlagName)
 			project := c.String(projectFlagName)
 
