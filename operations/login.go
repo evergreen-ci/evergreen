@@ -12,8 +12,7 @@ func Login() cli.Command {
 		Name:  "login",
 		Usage: "authenticate the CLI with evergreen",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
-			if _, err := login(confPath); err != nil {
+			if _, err := login(c); err != nil {
 				return errors.Wrap(err, "logging in")
 			}
 
@@ -23,16 +22,22 @@ func Login() cli.Command {
 }
 
 // login has a user to authenticate using oauth and saves the token.
-func login(confPath string) (*ClientSettings, error) {
+func login(c *cli.Context) (*ClientSettings, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	confPath := c.Parent().String(confFlagName)
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading configuration")
 	}
+	comm, err := conf.setupRestCommunicator(ctx, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "setting up REST communicator")
+	}
+	defer comm.Close()
 
-	if err = conf.SetOAuthToken(ctx); err != nil {
+	if err = conf.SetOAuthToken(ctx, comm); err != nil {
 		return nil, errors.Wrap(err, "setting OAuth token")
 	}
 

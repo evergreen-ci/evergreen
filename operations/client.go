@@ -105,7 +105,7 @@ func getOAuthToken() cli.Command {
 		Name:  "get-oauth-token",
 		Usage: "gets a valid OAuth token to authenticate with Evergreen's REST API",
 		Action: func(c *cli.Context) error {
-			conf, err := login(c.Parent().String(confFlagName))
+			conf, err := login(c)
 			if err != nil {
 				return errors.Wrap(err, "logging in")
 			}
