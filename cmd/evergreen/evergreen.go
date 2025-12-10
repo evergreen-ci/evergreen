@@ -112,7 +112,6 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
-		fmt.Println("Before setting details?")
 		setupProgramDetails(c)
 		return loggingSetup(app.Name, c.String("level"))
 	}
