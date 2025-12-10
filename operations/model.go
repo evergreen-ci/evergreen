@@ -29,6 +29,20 @@ const stagingNonCorpHost = "https://evergreen-staging.corp.mongodb.com/api"
 const prodCorpHost = "https://evergreen.corp.mongodb.com/api"
 const prodNonCorpHost = "https://evergreen.mongodb.com/api"
 
+// restCommunicatorOption is a functional option for configuring the REST communicator setup.
+type restCommunicatorOption func(*restCommunicatorOptions)
+
+type restCommunicatorOptions struct {
+	skipCheckingMinimumCLIVersion bool
+}
+
+// skipCheckingMinimumCLIVersion makes the communicator skip checking the minimum CLI version.
+func skipCheckingMinimumCLIVersion() restCommunicatorOption {
+	return func(opts *restCommunicatorOptions) {
+		opts.skipCheckingMinimumCLIVersion = true
+	}
+}
+
 type ClientProjectConf struct {
 	Name           string               `json:"name" yaml:"name,omitempty"`
 	Default        bool                 `json:"default" yaml:"default,omitempty"`
@@ -190,7 +204,12 @@ func (s *ClientSettings) Write(fn string) error {
 // setupRestCommunicator returns the rest communicator and prints any available info messages if set.
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 // We want to avoid printing messages if output is requested in a specific format or silenced.
-func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool) (client.Communicator, error) {
+func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
+	options := restCommunicatorOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	c, err := client.NewCommunicator(s.APIServerHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting REST communicator")
@@ -198,8 +217,10 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if err = s.checkCLIVersion(ctx, c); err != nil {
-		return nil, err
+	if !options.skipCheckingMinimumCLIVersion {
+		if err = s.checkCLIVersion(ctx, c); err != nil {
+			return nil, err
+		}
 	}
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
