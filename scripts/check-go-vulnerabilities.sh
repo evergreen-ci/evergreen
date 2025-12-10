@@ -28,8 +28,8 @@ result=$($govul -json -C $(pwd) ./... 2>&1)
 exit_code=$?
 
 # Split vulnerabilities into fixable and N/A lists
-fixable=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version != "" and .finding.fixed_version != "N/A") | {osv: .finding.osv, fixed_version: .finding.fixed_version, module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
-na_fixes=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version == "" or .finding.fixed_version == "N/A") | {osv: .finding.osv, fixed_version: "N/A", module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
+fixable=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version != null and .finding.fixed_version != "" and .finding.fixed_version != "N/A") | {osv: .finding.osv, fixed_version: .finding.fixed_version, module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
+na_fixes=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version == null or .finding.fixed_version == "" or .finding.fixed_version == "N/A") | {osv: .finding.osv, fixed_version: "N/A", module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
 
 # Count findings to determine if we actually have vulnerabilities
 fixable_count=$(echo "$fixable" | jq 'length' 2>/dev/null || echo "0")
