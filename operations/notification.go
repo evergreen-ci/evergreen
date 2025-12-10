@@ -40,7 +40,7 @@ func notificationSlack() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			target := c.String(targetFlagName)
 			msg := c.String(msgFlagName)
 
@@ -102,7 +102,7 @@ func notificationEmail() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			recipients := c.StringSlice(recipientsFlagName)
 			body := c.String(bodyFlagName)
 			subject := c.String(subjectFlagName)

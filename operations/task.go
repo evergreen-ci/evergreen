@@ -80,7 +80,7 @@ func taskLogs(flags []cli.Flag) cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			conf, err := NewClientSettings(c.Parent().String(ConfFlagName))
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
@@ -158,7 +158,7 @@ func testLogs(flags []cli.Flag) cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			conf, err := NewClientSettings(c.Parent().String(ConfFlagName))
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}

@@ -54,7 +54,7 @@ func keysAdd() cli.Command {
 				return nil
 			}),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			keyName := c.String(keyNameFlagName)
 			keyFile := c.String(keyFileFlagName)
 
@@ -98,7 +98,7 @@ func keysList() cli.Command {
 		Usage:  "list all public keys for the current user",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -149,7 +149,7 @@ func keysDelete() cli.Command {
 				return nil
 			}),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
