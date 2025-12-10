@@ -57,13 +57,16 @@ else
         } |
         . as $item |
         ($cv | split("|") | map(select(startswith($item.module + "|||"))) | .[0] // "" | split("|||")[1] // "unknown") as $current |
-        "---\n  Package: \($item.module)\n  Current: \($current)\n  Minimum fix: \($item.min_version)\n  Latest fix: \($item.max_version)\n  Vulnerabilities: \($item.vulnerabilities | join(", "))"
+        if $item.min_version == $item.max_version then
+            "---\n  Package: \($item.module)\n  Current: \($current)\n  Fixed in: \($item.min_version)\n  Vulnerabilities: \($item.vulnerabilities | join(", "))"
+        else
+            "---\n  Package: \($item.module)\n  Current: \($current)\n  Minimum fix: \($item.min_version)\n  Latest fix: \($item.max_version)\n  Vulnerabilities: \($item.vulnerabilities | join(", "))"
+        end
         '
     else
         echo "  None"
     fi
-    echo ""
-    echo "Vulnerabilities with N/A fixes:"
+    echo -e "\n\nVulnerabilities with N/A fixes:"
     if [ "$na_count" -gt 0 ]; then
         # Group by module, then list OSV IDs
         echo "$na_fixes" | jq -r 'group_by(.module) | .[] | "---\n  Package: \(.[0].module)\n  Vulnerabilities: \([.[].osv] | join(", "))"'
