@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
 // SendPanicReport sends a panic report to the Evergreen service.
-func SendPanicReport(ctx context.Context, report *client.PanicReport) error {
+func SendPanicReport(ctx context.Context, report *model.PanicReport) error {
 	if report == nil || report.ConfigFilePath == "" {
 		fmt.Fprintln(os.Stderr, "unexpected error occured, could not reach out to Evergreen service:", report.Panic)
 		os.Exit(1)

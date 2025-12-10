@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen"
@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	panicReport *client.PanicReport
+	panicReport *model.PanicReport
 
 	args = os.Args
 )
@@ -136,7 +136,7 @@ func setupProgramDetails(c *cli.Context) {
 	if err != nil {
 		execPath = "Not found"
 	}
-	panicReport = &client.PanicReport{
+	panicReport = &model.PanicReport{
 		Version:                 evergreen.ClientVersion,
 		CurrentWorkingDirectory: cwd,
 		ExecutablePath:          execPath,

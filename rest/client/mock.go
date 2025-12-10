@@ -346,7 +346,7 @@ func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID 
 	return nil, nil
 }
 
-func (c *Mock) SendPanicReport(ctx context.Context, details *PanicReport) error {
+func (c *Mock) SendPanicReport(ctx context.Context, details *model.PanicReport) error {
 	return nil
 }
 

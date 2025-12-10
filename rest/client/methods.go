@@ -1858,7 +1858,7 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
-func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *PanicReport) error {
+func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *model.PanicReport) error {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   "/panic",
