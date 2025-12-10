@@ -103,7 +103,7 @@ func hostCreate() cli.Command {
 		},
 		Before: requireStringFlag(keyFlagName),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			distro := c.String(distroFlagName)
 			key := c.String(keyFlagName)
 			userdataFile := c.String(scriptFlagName)
@@ -311,7 +311,7 @@ func hostModify() cli.Command {
 			mutuallyExclusiveArgs(false, addSSHKeyFlag, addSSHKeyNameFlag),
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			addTagSlice := c.StringSlice(addTagFlagName)
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
@@ -469,7 +469,7 @@ func hostConfigure() cli.Command {
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireProjectFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			project := c.String(projectFlagName)
 			directory := c.String(dirFlagName)
 			distroName := c.String(distroNameFlagName)
@@ -589,7 +589,7 @@ func hostStop() cli.Command {
 		)),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
 			shouldKeepOff := c.Bool(shouldKeepOffFlagName)
@@ -639,7 +639,7 @@ func hostStart() cli.Command {
 			})),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
 			wait := c.Bool(waitFlagName)
@@ -712,7 +712,7 @@ Examples:
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			grip.Info("Note: User must be on the VPN to gain access to the host.")
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)
 			dryRun := c.Bool(dryRunFlagName)
@@ -784,7 +784,7 @@ func hostAttach() cli.Command {
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(volumeFlagName)),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			volumeID := c.String(volumeFlagName)
 			deviceName := c.String(deviceFlagName)
@@ -835,7 +835,7 @@ func hostDetach() cli.Command {
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(volumeFlagName)),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			volumeID := c.String(volumeFlagName)
 
@@ -909,7 +909,7 @@ func hostModifyVolume() cli.Command {
 			mutuallyExclusiveArgs(false, noExpireFlagName, expireFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			volumeID := c.String(idFlagName)
 			name := c.String(displayNameFlagName)
 			size := c.Int(sizeFlag)
@@ -950,7 +950,7 @@ func hostListVolume() cli.Command {
 		Usage:  "list volumes for user",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -1034,7 +1034,7 @@ func hostCreateVolume() cli.Command {
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(sizeFlag)),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			volumeType := c.String(typeFlag)
 			volumeZone := c.String(zoneFlag)
 			volumeName := c.String(displayNameFlagName)
@@ -1089,7 +1089,7 @@ func hostDeleteVolume() cli.Command {
 		},
 		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(idFlagName)),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			volumeID := c.String(idFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1149,7 +1149,7 @@ func hostList() cli.Command {
 		},
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			showMine := c.Bool(mineFlagName)
 			region := c.String(regionFlagName)
 			showJSON := c.Bool(jsonFlagName)
@@ -1242,7 +1242,7 @@ func hostTerminate() cli.Command {
 		Flags:  addHostFlag(),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1332,7 +1332,7 @@ func hostRunCommand() cli.Command {
 		)),
 		Before: mergeBeforeFuncs(setPlainLogger, mutuallyExclusiveArgs(true, scriptFlagName, pathFlagName)),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			createdBefore := c.String(createdBeforeFlagName)
 			createdAfter := c.String(createdAfterFlagName)
@@ -1609,7 +1609,7 @@ Examples:
 			var user, host string
 			if !remoteIsLocal {
 				hostID := c.String(hostFlagName)
-				user, host, err = getUserAndHostname(ctx, c.String(hostFlagName), c.Parent().Parent().String(confFlagName))
+				user, host, err = getUserAndHostname(ctx, c.String(hostFlagName), c.Parent().Parent().String(ConfFlagName))
 				if err != nil {
 					return errors.Wrapf(err, "could not get username and host for host ID '%s'", hostID)
 				}
@@ -1671,7 +1671,7 @@ func hostFindBy() cli.Command {
 		),
 		Before: requireAtLeastOneFlag(ipAddressFlagName),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(ConfFlagName)
 			ipAddress := c.String(ipAddressFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -23,10 +24,15 @@ type ProgramDetails struct {
 	ExecutablePath          string
 	Arguments               []string
 	StartTime               time.Time
+	OperatingSystem         string
+	Architecture            string
+	ConfigFilePath          string
+
+	Panic any
 }
 
 var (
-	programDetails ProgramDetails
+	programDetails *ProgramDetails
 
 	args = os.Args
 )
@@ -39,22 +45,7 @@ func main() {
 	// environment.
 	app := buildApp()
 
-	defer func() {
-		if r := recover(); r != nil {
-			_, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-
-			// sendPanicTelemetry(ctx, PanicReport{
-			// 	Message: fmt.Sprintf("%v", r),
-			// 	Stack:   string(debug.Stack()),
-			// 	// add fields like version, command, args, GOOS/GOARCH, git SHA, etc.
-			// })
-
-			// print a friendly message or log if you want
-			fmt.Fprintln(os.Stderr, "unexpected error occurred; details have been reported")
-			os.Exit(1)
-		}
-	}()
+	defer recoverFromPanic()
 
 	grip.EmergencyFatal(app.Run(args))
 }
@@ -121,16 +112,37 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
-		setupProgramDetails()
+		fmt.Println("Before setting details?")
+		setupProgramDetails(c)
 		return loggingSetup(app.Name, c.String("level"))
 	}
 
 	return app
 }
 
+func recoverFromPanic() {
+	if r := recover(); r != nil {
+		programDetails.Panic = r
+
+		// Use a context with timeout to avoid hanging forever.
+		_, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		if programDetails == nil || programDetails.ConfigFilePath == "" {
+			fmt.Fprintln(os.Stderr, "unexpected error occured, could not reach out to Evergreen service:", programDetails.Panic)
+			os.Exit(1)
+		}
+
+		fmt.Println("Details", programDetails)
+
+		fmt.Fprintln(os.Stderr, "unexpected error occured, the Evergreen team has been sent a report:", programDetails.Panic)
+		os.Exit(1)
+	}
+}
+
 // setupProgramDetails populates the global programDetails variable
 // used for telemetry.
-func setupProgramDetails() {
+func setupProgramDetails(c *cli.Context) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "Not found"
@@ -139,12 +151,15 @@ func setupProgramDetails() {
 	if err != nil {
 		execPath = "Not found"
 	}
-	programDetails = ProgramDetails{
+	programDetails = &ProgramDetails{
 		Version:                 evergreen.ClientVersion,
 		CurrentWorkingDirectory: cwd,
 		ExecutablePath:          execPath,
 		Arguments:               args,
 		StartTime:               time.Now(),
+		OperatingSystem:         runtime.GOOS,
+		Architecture:            runtime.GOARCH,
+		ConfigFilePath:          c.String(operations.ConfFlagName),
 	}
 }
 
