@@ -604,7 +604,7 @@ func TestMarkReachable(t *testing.T) {
 			// MarkReachable returns an error due to concurrent modification
 			err := h.MarkReachable(ctx)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "status conflict")
+			assert.Contains(t, err.Error(), "does not match database status")
 
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
