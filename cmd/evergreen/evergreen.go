@@ -120,7 +120,7 @@ func recoverFromPanic() {
 			os.Exit(1)
 		}
 
-		fmt.Fprintln(os.Stderr, "unexpected error occured, the Evergreen team has been sent a report:", panicReport.Panic)
+		fmt.Fprintln(os.Stderr, "unexpected error: the Evergreen team has been sent a report:", panicReport.Panic)
 		os.Exit(1)
 	}
 }
