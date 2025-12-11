@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -288,12 +287,7 @@ func getServiceRouter(ctx context.Context, env evergreen.Environment, queue ambo
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
 	}
 
-	functionOptions := service.TemplateFunctionOptions{
-		WebHome:  filepath.Join(home, "public"),
-		HelpHome: env.Settings().Ui.HelpUrl,
-	}
-
-	uis, err := service.NewUIServer(env, queue, home, functionOptions)
+	uis, err := service.NewUIServer(env, queue, home)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating UI server")
 	}

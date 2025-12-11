@@ -29,6 +29,20 @@ const stagingNonCorpHost = "https://evergreen-staging.corp.mongodb.com/api"
 const prodCorpHost = "https://evergreen.corp.mongodb.com/api"
 const prodNonCorpHost = "https://evergreen.mongodb.com/api"
 
+// restCommunicatorOption is a functional option for configuring the REST communicator setup.
+type restCommunicatorOption func(*restCommunicatorOptions)
+
+type restCommunicatorOptions struct {
+	skipCheckingMinimumCLIVersion bool
+}
+
+// skipCheckingMinimumCLIVersion makes the communicator skip checking the minimum CLI version.
+func skipCheckingMinimumCLIVersion() restCommunicatorOption {
+	return func(opts *restCommunicatorOptions) {
+		opts.skipCheckingMinimumCLIVersion = true
+	}
+}
+
 type ClientProjectConf struct {
 	Name           string               `json:"name" yaml:"name,omitempty"`
 	Default        bool                 `json:"default" yaml:"default,omitempty"`
@@ -190,7 +204,12 @@ func (s *ClientSettings) Write(fn string) error {
 // setupRestCommunicator returns the rest communicator and prints any available info messages if set.
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 // We want to avoid printing messages if output is requested in a specific format or silenced.
-func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool) (client.Communicator, error) {
+func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
+	options := restCommunicatorOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	c, err := client.NewCommunicator(s.APIServerHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting REST communicator")
@@ -198,8 +217,10 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if err = s.checkCLIVersion(ctx, c); err != nil {
-		return nil, err
+	if !options.skipCheckingMinimumCLIVersion {
+		if err = s.checkCLIVersion(ctx, c); err != nil {
+			return nil, err
+		}
 	}
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
@@ -212,7 +233,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		if s.OAuth.Expiry.Before(time.Now()) && printMessages {
 			grip.Info(optOut)
 		}
-		if err := s.SetOAuthToken(ctx, c); err != nil {
+		if err := s.SetOAuthToken(ctx); err != nil {
 			return c, errors.Wrap(err, "setting config OAuth token")
 		}
 		c.SetOAuth(s.OAuth.AccessToken)
@@ -610,11 +631,11 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }
 
-func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communicator) (*oauth2.Token, string, error) {
+func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
 		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce in to your configuration file at '%s'", s.LoadedFrom)
 	}
-	return comm.GetOAuthToken(ctx,
+	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
 		dex.WithIssuer(s.OAuth.Issuer),
 		dex.WithClientID(s.OAuth.ClientID),
@@ -623,8 +644,8 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context, comm client.Communic
 }
 
 // SetOAuthToken sets the OAuth token for authentication.
-func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communicator) error {
-	token, path, err := s.getOAuthToken(ctx, comm)
+func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
+	token, path, err := s.getOAuthToken(ctx)
 	if err != nil {
 		// The auth library caches tokens in a file. Sometimes, the tokens are expired and
 		// we need to remove the file to get a new token.
@@ -632,7 +653,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context, comm client.Communic
 			if delErr := os.RemoveAll(path); delErr != nil {
 				grip.Warning(errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
 			}
-			token, path, err = s.getOAuthToken(ctx, comm)
+			token, path, err = s.getOAuthToken(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting OAuth token after removing token file")
 			}
