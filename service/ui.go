@@ -146,6 +146,13 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.login).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
 
+	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
+		app.AddRoute("/login/redirect").Handler(h).Get()
+	}
+	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
+		app.AddRoute("/login/redirect/callback").Handler(h).Get()
+	}
+
 	app.AddRoute("/robots.txt").Get().Wrap(needsLogin).Handler(func(rw http.ResponseWriter, r *http.Request) {
 		_, err := rw.Write([]byte(strings.Join([]string{
 			"User-agent: *",
@@ -155,13 +162,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
 		}
 	})
-
-	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
-		app.AddRoute("/login/redirect").Handler(h).Get()
-	}
-	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
-		app.AddRoute("/login/redirect/callback").Handler(h).Get()
-	}
 
 	if uis.Settings.Ui.CsrfKey != "" {
 		app.AddMiddleware(gimlet.WrapperHandlerMiddleware(

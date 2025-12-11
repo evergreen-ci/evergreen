@@ -1,7 +1,9 @@
 package command
 
 import (
+	"archive/tar"
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -189,6 +191,57 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(extractTarballArchive(t.Context(), tarReader, outputDir, []string{}), ShouldBeNil)
 				assert.DirExists(t, filepath.Join(outputDir, "dir1"))
 				assert.DirExists(t, filepath.Join(outputDir, "dir1", "dir2"))
+			})
+
+			Convey("directory mode values should be valid (not include type bits)", func() {
+				sourceDir := t.TempDir()
+				nestedDir := filepath.Join(sourceDir, "lib")
+				require.NoError(t, os.MkdirAll(nestedDir, 0755))
+
+				target, err := os.CreateTemp("", "mode-test-*.tgz")
+				require.NoError(t, err)
+				defer func() {
+					assert.NoError(t, os.RemoveAll(target.Name()))
+				}()
+				require.NoError(t, target.Close())
+
+				params := map[string]any{
+					"target":     target.Name(),
+					"source_dir": sourceDir,
+					"include":    []string{"**"},
+				}
+
+				So(cmd.ParseParams(params), ShouldBeNil)
+				numFound, err := cmd.makeArchive(t.Context(), logger.Task())
+				So(err, ShouldBeNil)
+				So(numFound, ShouldEqual, 1)
+
+				// Read the tarball and verify mode values are reasonable
+				f, gz, tarReader, err := tarGzReader(target.Name())
+				require.NoError(t, err)
+				defer f.Close()
+				defer gz.Close()
+
+				for {
+					hdr, err := tarReader.Next()
+					if err == io.EOF {
+						break
+					}
+					require.NoError(t, err)
+
+					// Mode should only contain permission bits (max 0777), not type bits
+					// Type bits like os.ModeDir (1 << 31) would make the value much larger
+					// Python's tarfile module fails with OverflowError if mode > C int max
+					mode := hdr.Mode
+					So(mode, ShouldBeLessThanOrEqualTo, int64(07777)) // Max valid mode is 07777
+					So(mode, ShouldBeGreaterThanOrEqualTo, int64(0))
+
+					if hdr.Typeflag == tar.TypeDir {
+						// Directory modes should be reasonable (typically 0755 or similar)
+						// Verify it doesn't have high bits set that would cause Python overflow
+						So(mode, ShouldBeLessThan, int64(010000)) // Should be < 010000 (no high bits)
+					}
+				}
 			})
 		})
 	})

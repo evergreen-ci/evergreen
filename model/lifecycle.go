@@ -137,6 +137,11 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 		}
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
+			// Keep non-display tasks OR display tasks with at least one exec task not ignored.
+			q["$or"] = []bson.M{
+				{task.DisplayOnlyKey: bson.M{"$ne": true}},
+				{task.ExecutionTasksKey: bson.M{"$elemMatch": bson.M{"$nin": ignoreTasks}}},
+			}
 		}
 		tasksToActivate, err := task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey))
 		if err != nil {

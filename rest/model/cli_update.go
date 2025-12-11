@@ -15,10 +15,12 @@ func (a *APICLIUpdate) BuildFromService(c evergreen.ClientConfig) {
 }
 
 type APIClientConfig struct {
-	ClientBinaries          []APIClientBinary `json:"client_binaries,omitempty"`
-	S3ClientBinaries        []APIClientBinary `json:"s3_client_binaries,omitempty"`
-	LatestRevision          *string           `json:"latest_revision"`
-	OldestAllowedCLIVersion *string           `json:"oldest_allowed_cli_version"`
+	ClientBinaries   []APIClientBinary `json:"client_binaries,omitempty"`
+	S3ClientBinaries []APIClientBinary `json:"s3_client_binaries,omitempty"`
+	LatestRevision   *string           `json:"latest_revision"`
+	// This field's struct tag is different from the service layer to maintain
+	// backward compatibility with existing clients. See DEVPROD-25015.
+	OldestAllowedCLIVersion *string `json:"minimum_supported_cli_version"`
 
 	OAuthIssuer      *string `json:"oauth_issuer,omitempty"`
 	OAuthClientID    *string `json:"oauth_client_id,omitempty"`
