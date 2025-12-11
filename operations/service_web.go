@@ -69,7 +69,7 @@ func startWebService() cli.Command {
 			// This is only in case of an error.
 			defer startServiceSpan.End()
 
-			confPath := c.String(confFlagName)
+			confPath := c.String(ConfFlagName)
 			versionID := c.String(versionIDFlagName)
 			clientS3Bucket := c.String(clientS3BucketFlagName)
 			db := parseDB(c)
