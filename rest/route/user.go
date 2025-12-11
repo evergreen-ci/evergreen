@@ -242,7 +242,7 @@ func makeDeleteUserPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Delete user permissions
-//	@Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.
+//	@Description	Deletes all permissions of a given type for a user by deleting their roles of that type for that resource ID. This ignores the Basic Project/Distro Access that is given to all MongoDB employees.	<br> __Note__: A user's admin repository permissions and user's admin project/branch permissions are _NOT_ deleted using this route. If you want to delete these permissions, remove the user from the list of admins in the project/repository settings page.
 //	@Tags			users
 //	@Router			/users/{user_id}/permissions [delete]
 //	@Security		Api-User || Api-Key
@@ -303,10 +303,10 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	}
 	rolesToCheck := []gimlet.Role{}
 	for _, r := range roles {
-		if serviceModel.IsAdminRepoRole(r.ID) {
-			// Do not delete admin repo roles. Repo admin permissions are
-			// maintained solely by the repo ref's admin list, so this route
-			// cannot modify the repo admins.
+		if serviceModel.IsAdminRepoOrProjectRole(r.ID) {
+			// Do not delete admin repo or project roles. These admin permissions are
+			// maintained solely by the repo/project ref's admin list, so this route
+			// cannot modify them.
 			continue
 		}
 		if utility.StringSliceContains(evergreen.GeneralAccessRoles, r.ID) {
