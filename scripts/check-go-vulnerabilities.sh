@@ -66,7 +66,8 @@ else
     else
         echo "  None"
     fi
-    echo -e "\n\nVulnerabilities with N/A fixes:"
+    echo "----------"
+    echo "Vulnerabilities with N/A fixes:"
     if [ "$na_count" -gt 0 ]; then
         # Group by module, then list OSV IDs
         echo "$na_fixes" | jq -r 'group_by(.module) | .[] | "---\n  Package: \(.[0].module)\n  Vulnerabilities: \([.[].osv] | join(", "))"'
