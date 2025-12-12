@@ -80,6 +80,7 @@ type Patch {
   githash: String!
   githubPatchData: GithubPatch
   hidden: Boolean!
+  includedLocalModules: [IncludedLocalModule!]!
   moduleCodeChanges: [ModuleCodeChange!]!
   parameters: [Parameter!]!
   patchNumber: Int!
@@ -93,10 +94,10 @@ type Patch {
   tasks: [String!]!
   taskStatuses: [String!]!
   time: PatchTime
+  user: User!
   variants: [String!]!
   variantsTasks: [VariantTask!]!
   versionFull: Version
-  includedLocalModules: [IncludedLocalModule!]!
 }
 
 type ChildPatchAlias {
