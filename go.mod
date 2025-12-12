@@ -193,16 +193,12 @@ require (
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.3
-	github.com/swaggo/swag v1.16.6
 	go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.1.0
 	go.uber.org/automaxprocs v1.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/PuerkitoBio/purell v1.1.1 // indirect
-	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/apache/thrift v0.16.0 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.3 // indirect
@@ -211,14 +207,8 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.16.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.6 // indirect
-	github.com/go-openapi/spec v0.20.4 // indirect
-	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/go-github/v75 v75.0.0 // indirect
-	github.com/josharian/intern v1.0.0 // indirect
-	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/urfave/cli/v3 v3.6.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.1.0 // indirect
