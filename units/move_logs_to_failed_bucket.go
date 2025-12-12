@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -16,8 +17,9 @@ import (
 )
 
 const (
-	moveLogsToFailedBucketJobName = "move-logs-to-failed-bucket"
-	fetchTimeout                  = 3 * time.Minute
+	moveLogsToFailedBucketJobName     = "move-logs-to-failed-bucket"
+	fetchTimeout                      = 3 * time.Minute
+	moveLogsToFailedBucketMaxAttempts = 3
 )
 
 func init() {
@@ -48,12 +50,16 @@ func makeMoveLogsToFailedBucketJob() *moveLogsToFailedBucketJob {
 // NewMoveLogsToFailedBucketJob creates a job that moves a task's logs to the failed bucket.
 func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string) amboy.Job {
 	j := makeMoveLogsToFailedBucketJob()
+	j.env = env
+	j.TaskID = taskID
 	jobID := fmt.Sprintf("%s.%s.%s", moveLogsToFailedBucketJobName, taskID, ts)
 	j.SetID(jobID)
 	j.SetScopes([]string{jobID})
 	j.SetEnqueueAllScopes(true)
-	j.env = env
-	j.TaskID = taskID
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(moveLogsToFailedBucketMaxAttempts),
+	})
 	return j
 }
 
@@ -81,10 +87,12 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 			"task_id":   t.Id,
 			"execution": t.Execution,
 		}))
+		j.AddRetryableError(errors.Wrap(err, "moving logs to failed bucket"))
+		return
 	}
 
 	grip.Info(message.Fields{
-		"message":   "moved logs to failed bucket",
+		"message":   "successfully moved logs to failed bucket",
 		"task_id":   t.Id,
 		"execution": t.Execution,
 		"job":       j.ID(),
