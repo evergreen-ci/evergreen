@@ -4436,8 +4436,8 @@ func (t *Task) GetDisplayCost() TaskCost {
 	return TaskCost{}
 }
 
-// MoveLogsByNamesToBucket moves task + test logs to the specified bucket
-func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput) error {
+// moveLogsByNamesToBucket moves task + test logs to the specified bucket
+func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput) error {
 	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
 		// test logs and task logs will always be in the same bucket
 		return errors.New("test log and task log buckets do not match")
@@ -4456,10 +4456,10 @@ func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergre
 	logNames := make([]string, 0, 4)
 	// add task logs
 	for _, logType := range []TaskLogType{TaskLogTypeAgent, TaskLogTypeSystem, TaskLogTypeTask} {
-		logNames = append(logNames, getLogName(*task, logType, output.TaskLogs.ID()))
+		logNames = append(logNames, getLogName(*t, logType, output.TaskLogs.ID()))
 	}
 	// add test logs
-	logNames = append(logNames, fmt.Sprintf("%s/%s/%d/%s", task.Project, task.Id, task.Execution, output.TestLogs.ID()))
+	logNames = append(logNames, fmt.Sprintf("%s/%s/%d/%s", t.Project, t.Id, t.Execution, output.TestLogs.ID()))
 
 	keys, err := logService.GetChunkKeys(ctx, logNames)
 	if err != nil {
@@ -4475,13 +4475,20 @@ func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "moving logs to failed bucket")
 	}
 
-	// Update the task output info with the new bucket config. This will be persisted in
-	// markEnd and the agent will rotate the logger to the new config so the rest of
-	// the agent logs go directly to the failed bucket.
-	task.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
-	task.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
-	return nil
-
+	// Update the task output info with the new bucket config.
+	t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
+	t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
+	err = UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				TaskOutputInfoKey: t.TaskOutputInfo,
+			},
+		})
+	return errors.Wrapf(err, "updating task output for task %s", t.Id)
 }
 
 // MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
@@ -4494,7 +4501,7 @@ func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *
 		return nil
 	}
 
-	return t.MoveLogsByNamesToBucket(ctx, settings, output)
+	return t.moveLogsByNamesToBucket(ctx, settings, output)
 
 }
 
