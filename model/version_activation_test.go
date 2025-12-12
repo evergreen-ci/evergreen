@@ -22,7 +22,7 @@ func TestVersionActivationSuite(t *testing.T) {
 
 func (s *VersionActivationSuite) SetupTest() {
 	s.ctx = context.Background()
-	require.NoError(s.T(), db.ClearCollections(VersionCollection))
+	require.NoError(s.T(), db.ClearCollections(VersionCollection, ProjectRefCollection))
 }
 
 func (s *VersionActivationSuite) TestDoProjectActivationWithBuffer() {
