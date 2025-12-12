@@ -46,7 +46,6 @@ type Version {
   activated: Boolean
   author: String!
   authorEmail: String!
-  user: User
   baseTaskStatuses: [String!]!
   baseVersion: Version
   branch: String!
@@ -80,6 +79,7 @@ type Version {
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
+  user: User!
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]

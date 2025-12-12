@@ -22,37 +22,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// User is the resolver for the user field.
-func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDBUser, error) {
-	versionId := utility.FromStringPtr(obj.Id)
-	authorId, err := model.GetVersionAuthorID(ctx, versionId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting author ID for version '%s': %s", versionId, err.Error()))
-	}
-	if authorId == "" {
-		return nil, nil
-	}
-
-	currentUser := mustHaveUser(ctx)
-	if currentUser.Id == authorId {
-		apiUser := &restModel.APIDBUser{}
-		apiUser.BuildFromService(*currentUser)
-		return apiUser, nil
-	}
-
-	author, err := user.FindOneByIdContext(ctx, authorId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
-	}
-	if author == nil {
-		return nil, nil
-	}
-
-	apiUser := &restModel.APIDBUser{}
-	apiUser.BuildFromService(*author)
-	return apiUser, nil
-}
-
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	versionID := utility.FromStringPtr(obj.Id)
@@ -531,6 +500,37 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	upstreamProject.TriggerID = v.TriggerID
 	upstreamProject.TriggerType = v.TriggerType
 	return upstreamProject, nil
+}
+
+// User is the resolver for the user field.
+func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDBUser, error) {
+	versionId := utility.FromStringPtr(obj.Id)
+	authorId, err := model.GetVersionAuthorID(ctx, versionId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting author ID for version '%s': %s", versionId, err.Error()))
+	}
+	if authorId == "" {
+		return nil, nil
+	}
+
+	currentUser := mustHaveUser(ctx)
+	if currentUser.Id == authorId {
+		apiUser := &restModel.APIDBUser{}
+		apiUser.BuildFromService(*currentUser)
+		return apiUser, nil
+	}
+
+	author, err := user.FindOneByIdContext(ctx, authorId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
+	}
+	if author == nil {
+		return nil, nil
+	}
+
+	apiUser := &restModel.APIDBUser{}
+	apiUser.BuildFromService(*author)
+	return apiUser, nil
 }
 
 // VersionTiming is the resolver for the versionTiming field.
