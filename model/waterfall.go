@@ -407,11 +407,8 @@ func GetVersionBuilds(ctx context.Context, versionId string) ([]WaterfallBuild, 
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				task.BuildIdKey: bson.M{"$in": version.BuildIds},
-				"$or": []bson.M{
-					{task.DisplayTaskIdKey: bson.M{"$exists": false}},
-					{task.DisplayTaskIdKey: ""},
-				},
+				task.BuildIdKey:     bson.M{"$in": version.BuildIds},
+				task.DisplayOnlyKey: bson.M{"$ne": true},
 			},
 		},
 		{

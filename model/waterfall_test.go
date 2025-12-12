@@ -377,7 +377,7 @@ func TestGetVersionBuilds(t *testing.T) {
 		assert.Equal(t, "Ubuntu 2204", builds[1].DisplayName)
 	})
 
-	t.Run("ExcludesExecutionTasks", func(t *testing.T) {
+	t.Run("ExcludesDisplayTasksIncludesExecutionTasks", func(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 		start := time.Now()
 		p := ProjectRef{
@@ -411,7 +411,7 @@ func TestGetVersionBuilds(t *testing.T) {
 		}
 		assert.NoError(t, b.Insert(t.Context()))
 
-		// Display task (should be included)
+		// Display task (should be excluded)
 		displayTask := task.Task{
 			Id:             "display_task",
 			DisplayName:    "Display Task",
@@ -422,7 +422,7 @@ func TestGetVersionBuilds(t *testing.T) {
 		}
 		assert.NoError(t, displayTask.Insert(t.Context()))
 
-		// Execution tasks (should be excluded - they have DisplayTaskId set)
+		// Execution tasks (should be included)
 		execTask1 := task.Task{
 			Id:            "exec_task_1",
 			DisplayName:   "Execution Task 1",
@@ -455,18 +455,18 @@ func TestGetVersionBuilds(t *testing.T) {
 		require.Len(t, builds, 1)
 		assert.Equal(t, "Ubuntu", builds[0].DisplayName)
 
-		// Should only have 2 tasks: display_task and regular_task
-		// Execution tasks should be excluded
-		require.Len(t, builds[0].Tasks, 2)
+		// Should have 3 tasks: exec_task_1, exec_task_2, and regular_task
+		// Display task should be excluded
+		require.Len(t, builds[0].Tasks, 3)
 
 		taskNames := []string{}
 		for _, tsk := range builds[0].Tasks {
 			taskNames = append(taskNames, tsk.DisplayName)
 		}
-		assert.Contains(t, taskNames, "Display Task")
+		assert.Contains(t, taskNames, "Execution Task 1")
+		assert.Contains(t, taskNames, "Execution Task 2")
 		assert.Contains(t, taskNames, "Regular Task")
-		assert.NotContains(t, taskNames, "Execution Task 1")
-		assert.NotContains(t, taskNames, "Execution Task 2")
+		assert.NotContains(t, taskNames, "Display Task")
 	})
 }
 
