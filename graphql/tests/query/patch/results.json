@@ -6,8 +6,12 @@
         "data": {
           "patch": {
             "id": "5dd2e89cd1fe07048e43bc8f",
-            "author": "bob.smith",
-            "githash": "123"
+            "author": "admin_user",
+            "githash": "123",
+            "user": {
+              "userId": "admin_user",
+              "displayName": "Admin User"
+            }
           }
         }
       }

@@ -14,5 +14,10 @@
     requester
     revision
     startTime
+    user {
+      userId
+      displayName
+      emailAddress
+    }
   }
 }

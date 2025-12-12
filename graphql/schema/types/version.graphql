@@ -79,6 +79,7 @@ type Version {
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
+  user: User!
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]
