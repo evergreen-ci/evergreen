@@ -911,10 +911,8 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 
 			// Host exists. Check if the failure was due to status mismatch (concurrent modification).
 			if dbHost.Status != h.Status {
-				// The database status has diverged from our cached status.
-				// Another job has already modified the host. Skip this update silently since our
-				// cached state is stale and attempting this status change is no longer valid.
-				return nil
+				// The cached state is stale and attempting this status change is no longer valid.
+				return errors.Errorf("cached host status '%s' does not match database status '%s' (attempted to set to '%s')", h.Status, dbHost.Status, newStatus)
 			}
 		}
 		return err
@@ -2123,24 +2121,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return nil
 	}
 
-	if err := UpdateOne(
-		ctx,
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
-		return errors.WithStack(err)
-	}
-
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
-	grip.Info(message.Fields{
-		"message":    "host marked reachable",
-		"host_id":    h.Id,
-		"host_tag":   h.Tag,
-		"distro":     h.Distro.Id,
-		"old_status": h.Status,
-	})
-	h.Status = evergreen.HostRunning
-
-	return nil
+	return h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, "host marked reachable")
 }
 
 func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
