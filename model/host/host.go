@@ -505,7 +505,7 @@ type HostModifyOptions struct {
 // sleep schedule.
 type SleepScheduleOptions struct {
 	// WholeWeekdaysOff are when the host is off for its sleep schedule.
-	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty" swaggertype:"array,integer"`
 	// DailyStartTime is the daily time to start the host for each day the host is on
 	// during its sleep schedule. The format is "HH:MM".
 	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
