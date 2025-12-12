@@ -30,8 +30,7 @@ type moveLogsToFailedBucketJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 	TaskID   string `bson:"task_id"`
 
-	task *task.Task
-	env  evergreen.Environment
+	env evergreen.Environment
 }
 
 func makeMoveLogsToFailedBucketJob() *moveLogsToFailedBucketJob {
