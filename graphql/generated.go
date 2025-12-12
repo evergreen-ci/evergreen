@@ -2274,6 +2274,7 @@ type ComplexityRoot struct {
 		TaskStatuses             func(childComplexity int) int
 		Tasks                    func(childComplexity int, options TaskFilterOptions) int
 		UpstreamProject          func(childComplexity int) int
+		User                     func(childComplexity int) int
 		VersionTiming            func(childComplexity int) int
 		Warnings                 func(childComplexity int) int
 		WaterfallBuilds          func(childComplexity int) int
@@ -2705,6 +2706,7 @@ type UserResolver interface {
 	Subscriptions(ctx context.Context, obj *model.APIDBUser) ([]*model.APISubscription, error)
 }
 type VersionResolver interface {
+	User(ctx context.Context, obj *model.APIVersion) (*model.APIDBUser, error)
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	BaseVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
 
@@ -12282,6 +12284,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.UpstreamProject(childComplexity), true
+	case "Version.user":
+		if e.complexity.Version.User == nil {
+			break
+		}
+
+		return e.complexity.Version.User(childComplexity), true
 	case "Version.versionTiming":
 		if e.complexity.Version.VersionTiming == nil {
 			break
@@ -35165,6 +35173,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -35276,6 +35286,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -40799,6 +40811,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -44016,6 +44030,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -52996,6 +53012,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -63027,6 +63045,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -68555,6 +68575,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -69717,6 +69739,57 @@ func (ec *executionContext) fieldContext_Version_authorEmail(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Version_user(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_user,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Version().User(ctx, obj)
+		},
+		nil,
+		ec.marshalOUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "betaFeatures":
+				return ec.fieldContext_User_betaFeatures(ctx, field)
+			case "displayName":
+				return ec.fieldContext_User_displayName(ctx, field)
+			case "emailAddress":
+				return ec.fieldContext_User_emailAddress(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_User_parsleyFilters(ctx, field)
+			case "parsleySettings":
+				return ec.fieldContext_User_parsleySettings(ctx, field)
+			case "patches":
+				return ec.fieldContext_User_patches(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
+			case "settings":
+				return ec.fieldContext_User_settings(ctx, field)
+			case "subscriptions":
+				return ec.fieldContext_User_subscriptions(ctx, field)
+			case "userId":
+				return ec.fieldContext_User_userId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Version_baseTaskStatuses(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -69778,6 +69851,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -70016,6 +70091,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -70618,6 +70695,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -72125,6 +72204,8 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -72914,6 +72995,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_inactiveVersions(_ con
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -73025,6 +73108,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_version(_ context.Cont
 				return ec.fieldContext_Version_author(ctx, field)
 			case "authorEmail":
 				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "baseTaskStatuses":
 				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
 			case "baseVersion":
@@ -103994,6 +104079,39 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "user":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_user(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "baseTaskStatuses":
 			field := field
 
@@ -116073,6 +116191,13 @@ func (ec *executionContext) unmarshalOUseSpruceOptionsInput2ᚖgithubᚗcomᚋev
 	}
 	res, err := ec.unmarshalInputUseSpruceOptionsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser(ctx context.Context, sel ast.SelectionSet, v *model.APIDBUser) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._User(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig(ctx context.Context, sel ast.SelectionSet, v *UserConfig) graphql.Marshaler {

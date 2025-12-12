@@ -46,6 +46,7 @@ type Version {
   activated: Boolean
   author: String!
   authorEmail: String!
+  user: User
   baseTaskStatuses: [String!]!
   baseVersion: Version
   branch: String!
