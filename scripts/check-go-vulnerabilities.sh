@@ -31,8 +31,8 @@ exit_code=$?
 current_versions=$(grep -E '^\s*github\.com|^\s*go\.|^\s*golang\.org|^\s*gopkg\.in|^\s*stdlib' go.mod | grep -v '//' | awk '{print $1 "|||" $2}' | tr '\n' '|')
 
 # Split vulnerabilities into fixable and N/A lists, and separate stdlib vulnerabilities
-fixable=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version != null and .finding.fixed_version != "" and .finding.fixed_version != "N/A") | {osv: .finding.osv, fixed_version: .finding.fixed_version, module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
-na_fixes=$(echo "$result" | jq -s '[.[] | select(.finding) | select(.finding.fixed_version == null or .finding.fixed_version == "" or .finding.fixed_version == "N/A") | {osv: .finding.osv, fixed_version: "N/A", module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
+fixable=$(echo "$result" | jq -s '[.[] | select(.finding) | select(has("finding") and (.finding | has("fixed_version")) and .finding.fixed_version != null and .finding.fixed_version != "" and .finding.fixed_version != "N/A") | {osv: .finding.osv, fixed_version: .finding.fixed_version, module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
+na_fixes=$(echo "$result" | jq -s '[.[] | select(.finding) | select(has("finding") and ((.finding | has("fixed_version") | not) or .finding.fixed_version == null or .finding.fixed_version == "" or .finding.fixed_version == "N/A")) | {osv: .finding.osv, fixed_version: "N/A", module: (.finding.trace[0].module // "unknown")}]' 2>/dev/null)
 
 # Separate stdlib vulnerabilities from fixable and N/A lists
 fixable_stdlib=$(echo "$fixable" | jq '[.[] | select(.module == "stdlib")]' 2>/dev/null)
