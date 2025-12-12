@@ -94,7 +94,6 @@ clientBinaries := $(macOSBinaries) $(linuxBinaries) $(windowsBinaries)
 
 clientSource := cmd/evergreen/evergreen.go
 
-staticArtifacts := ./public ./service/templates
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
@@ -222,17 +221,8 @@ $(buildDir)/parse-host-file:cmd/parse-host-file/parse-host-file.go
 $(buildDir)/expansions.yml:$(buildDir)/parse-host-file
 # end host.create file parsing
 
-# npm setup
-$(buildDir)/.npmSetup:
-	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)npm install
-	touch $@
-# end npm setup
-
-
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
-	GOOS="" GOARCH="" $(gobin) build -o $@ $<
-$(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	GOOS="" GOARCH="" $(gobin) build -o $@ $<
 
 $(buildDir)/sign-executable:cmd/sign-executable/sign-executable.go
@@ -242,17 +232,12 @@ $(buildDir)/macnotary:$(buildDir)/sign-executable
 $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(unixBinaryBasename) $(buildDir)/macnotary
 	./$< sign --client $(buildDir)/macnotary --executable $(@D)/$(unixBinaryBasename) --server-url $(NOTARY_SERVER_URL) --bundle-id $(EVERGREEN_BUNDLE_ID)
 	touch $@
-$(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(staticArtifacts)
-	./$< --name $@ --prefix static_assets $(foreach item,$(staticArtifacts),--item $(item)) --exclude "public/node_modules"
-local: $(buildDir)/static_assets.tgz $(clientBinaries)
 # end main build
 
 # userfacing targets for basic build and development operations
 build:cli
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages) $(testOnlyPackages),test-$(target))
-js-test:$(buildDir)/.npmSetup
-	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:

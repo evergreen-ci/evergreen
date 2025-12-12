@@ -154,20 +154,6 @@ variables:
           permissions: public-read
           preserve_path: true
 
-  - &tar-and-push-static-assets
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "bin/static_assets.tgz" }
-      - command: s3.put
-        params:
-          role_arn: ${client_assume_role_arn}
-          local_file: evergreen/bin/static_assets.tgz
-          remote_file: evergreen/clients/${version_id}/static_assets.tgz
-          content_type: application/gzip
-          bucket: evg-bucket-evergreen
-          permissions: public-read
-
 #######################################
 #              Functions              #
 #######################################
@@ -238,7 +224,6 @@ functions:
         GOARCH: ${goarch}
         GOOS: ${goos}
         KARMA_REPORTER: junit
-        NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
@@ -807,18 +792,12 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin_arm64
     tags: ["build-macos"]
-  - <<: *tar-and-push-static-assets
-    name: tar-and-push-static-assets
-    tags: ["build"]
 
   - <<: *build-and-push-client
     name: build-linux-staging_amd64
     tags: ["build-staging"]
   - <<: *build-and-push-client
     name: build-windows-staging_amd64
-    tags: ["build-staging"]
-  - <<: *tar-and-push-static-assets
-    name: tar-and-push-static-assets-staging
     tags: ["build-staging"]
 
   - <<: *build-and-push-client
