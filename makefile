@@ -221,17 +221,8 @@ $(buildDir)/parse-host-file:cmd/parse-host-file/parse-host-file.go
 $(buildDir)/expansions.yml:$(buildDir)/parse-host-file
 # end host.create file parsing
 
-# npm setup
-$(buildDir)/.npmSetup:
-	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)npm install
-	touch $@
-# end npm setup
-
-
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
-	GOOS="" GOARCH="" $(gobin) build -o $@ $<
-$(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	GOOS="" GOARCH="" $(gobin) build -o $@ $<
 
 $(buildDir)/sign-executable:cmd/sign-executable/sign-executable.go
