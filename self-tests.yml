@@ -224,7 +224,6 @@ functions:
         GOARCH: ${goarch}
         GOOS: ${goos}
         KARMA_REPORTER: junit
-        NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
