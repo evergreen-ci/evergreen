@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	imagetypes "github.com/docker/docker/api/types/image"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -65,7 +65,7 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	})
 	s.NoError(err)
 
-	images, err := s.client.client.ImageList(ctx, types.ImageListOptions{All: true})
+	images, err := s.client.client.ImageList(ctx, imagetypes.ListOptions{All: true})
 	s.NoError(err)
 	s.Require().Len(images, 1)
 	grip.Info(images)
