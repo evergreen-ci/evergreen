@@ -76,6 +76,7 @@ else
     fi
     echo "----------"
     echo "Stdlib vulnerabilities:"
+    echo "On hold - need to update Go Version for this"
     if [ "$fixable_stdlib_count" -gt 0 ] || [ "$na_stdlib_count" -gt 0 ]; then
         if [ "$fixable_stdlib_count" -gt 0 ]; then
             echo "  With available fixes:"
@@ -105,6 +106,7 @@ else
     fi
     echo "----------"
     echo "Vulnerabilities with N/A fixes:"
+    echo "On hold - create necessary tickets to address"
     if [ "$na_non_stdlib_count" -gt 0 ]; then
         # Group by module, then list unique OSV IDs
         echo "$na_non_stdlib" | jq -r 'group_by(.module) | .[] | "---\n  Package: \(.[0].module)\n  Vulnerabilities: \([.[].osv] | unique | join(", "))"'
