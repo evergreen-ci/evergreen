@@ -53,6 +53,7 @@ if [ "$total_vulns" -eq 0 ]; then
     exit 0
 else
     echo "Vulnerabilities with available fixes:"
+    echo "Need to fix!"
     if [ "$fixable_non_stdlib_count" -gt 0 ]; then
         # Group by module, find min/max versions, and collect all OSV IDs
         echo "$fixable_non_stdlib" | jq -r --arg cv "$current_versions" '
