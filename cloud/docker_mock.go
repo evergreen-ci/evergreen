@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	imagetypes "github.com/docker/docker/api/types/image"
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
@@ -121,22 +122,22 @@ func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) 
 	return nil
 }
 
-func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]types.ImageSummary, error) {
+func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]imagetypes.Summary, error) {
 	if c.failList {
 		return nil, errors.New("failed to list images")
 	}
 	now := time.Now()
-	image1 := types.ImageSummary{
+	image1 := imagetypes.Summary{
 		ID:         "image-1",
 		Containers: 2,
 		Created:    now.Unix(),
 	}
-	image2 := types.ImageSummary{
+	image2 := imagetypes.Summary{
 		ID:         "image-2",
 		Containers: 2,
 		Created:    now.Add(-10 * time.Minute).Unix(),
 	}
-	return []types.ImageSummary{image1, image2}, nil
+	return []imagetypes.Summary{image1, image2}, nil
 }
 
 func (c *dockerClientMock) RemoveImage(context.Context, *host.Host, string) error {
