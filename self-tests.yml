@@ -601,7 +601,6 @@ tasks:
           include_expansions_in_env: ["GOROOT"]
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
-    disable: true # TODO: re-enable in DEVPROD-5453
     tags: ["linter"]
     commands:
       - func: get-project-and-modules
