@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -227,12 +227,12 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 }
 
 func (s *DockerSuite) TestUtilToEvgStatus() {
-	s.Equal(StatusRunning, toEvgStatus(&types.ContainerState{Running: true}))
-	s.Equal(StatusStopped, toEvgStatus(&types.ContainerState{Paused: true}))
-	s.Equal(StatusInitializing, toEvgStatus(&types.ContainerState{Restarting: true}))
-	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{OOMKilled: true}))
-	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{Dead: true}))
-	s.Equal(StatusUnknown, toEvgStatus(&types.ContainerState{}))
+	s.Equal(StatusRunning, toEvgStatus(&container.State{Running: true}))
+	s.Equal(StatusStopped, toEvgStatus(&container.State{Paused: true}))
+	s.Equal(StatusInitializing, toEvgStatus(&container.State{Restarting: true}))
+	s.Equal(StatusTerminated, toEvgStatus(&container.State{OOMKilled: true}))
+	s.Equal(StatusTerminated, toEvgStatus(&container.State{Dead: true}))
+	s.Equal(StatusUnknown, toEvgStatus(&container.State{}))
 }
 
 func (s *DockerSuite) TestSpawnDoesNotPanic() {
