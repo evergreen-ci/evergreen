@@ -94,8 +94,6 @@ clientBinaries := $(macOSBinaries) $(linuxBinaries) $(windowsBinaries)
 
 clientSource := cmd/evergreen/evergreen.go
 
-srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
-testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
 agentVersion := $(shell grep "AgentVersion" config.go | tr -d '\tAgentVersion = ' | tr -d '"')
 ldFlags := $(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
@@ -121,7 +119,7 @@ localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/$(unixBinaryBasename)
 endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
-$(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile $(srcFiles) go.mod go.sum
+$(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBasename):$(buildDir)/build-cross-compile .FORCE
 	./$(buildDir)/build-cross-compile -buildName=$* -ldflags="$(ldFlags)" -gcflags="$(gcFlags)" -goBinary="$(nativeGobin)" -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 
 build-linux_%: $(clientBuildDir)/linux_%/$(unixBinaryBasename);
@@ -207,7 +205,7 @@ $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 
 # generate lint JSON document for evergreen
 generate-lint:$(buildDir)/generate-lint.json
-$(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
+$(buildDir)/generate-lint.json:$(buildDir)/generate-lint .FORCE
 	./$(buildDir)/generate-lint
 $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
 	$(gobin) build -ldflags "-w" -o  $@ $<
