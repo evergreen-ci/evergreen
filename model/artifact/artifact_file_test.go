@@ -215,20 +215,29 @@ func (s *TestArtifactFileSuite) TestEscapeFiles() {
 			Name: "not_a_cat_picture",
 			Link: "https://notacat#0.png",
 		},
+		{
+			Name: "a_cat_picture_with_an_escaped_url",
+			Link: "https://bucket.s3.amazonaws.com/something/file%21.tar.gz",
+		},
+		{
+			Name: "a_cat_picture_with_percent_symbol",
+			Link: "https://bucket.s3.amazonaws.com/something/file%.tar.gz",
+		},
 	}
 
-	escapedFiles := EscapeFiles("", files)
+	escapedFiles := EscapeFiles(files)
 
 	s.Equal("https://bucket.s3.amazonaws.com/something/file%231.tar.gz", escapedFiles[0].Link)
 	s.Equal("https://notacat%230.png", escapedFiles[1].Link)
-
+	s.Equal("https://bucket.s3.amazonaws.com/something/file%21.tar.gz", escapedFiles[2].Link, "should not escape a URL whose file name has already been escaped")
+	s.Equal("https://bucket.s3.amazonaws.com/something/file%25.tar.gz", escapedFiles[3].Link, "should escape a URL whose file name happens to contain a percent symbol but is not properly escaped yet")
 }
 
 func TestLooksAlreadyEscaped(t *testing.T) {
 	assert.True(t, looksAlreadyEscaped("file%231.tar.gz"))
 	assert.True(t, looksAlreadyEscaped("file%25231.tar.gz"))
-	assert.True(t, looksAlreadyEscaped("file%hello.tar.gz"))
-	assert.True(t, looksAlreadyEscaped("file%1zhello.tar.gz"))
+	assert.False(t, looksAlreadyEscaped("file%hello.tar.gz"))
+	assert.False(t, looksAlreadyEscaped("file%1zhello.tar.gz"))
 	assert.False(t, looksAlreadyEscaped("file.tar.gz"))
 	assert.False(t, looksAlreadyEscaped("file+hello.tar.gz"))
 	assert.True(t, looksAlreadyEscaped("baz%2Bqux.txt"))
