@@ -197,7 +197,7 @@ functions:
     params:
       working_dir: evergreen
       binary: make
-      args: ["${make_args|}", "${target}"]
+      args: ["${target}", "${make_args|}"]
       include_expansions_in_env:
         - GOROOT
         - AWS_ACCESS_KEY_ID
