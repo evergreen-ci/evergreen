@@ -414,7 +414,7 @@ Options:
 Once the Patch alias is created, you can use it when creating a patch
 build, either by appending `--trigger-alias my_alias` to the evergreen
 patch command when creating a patch via the CLI, or by selecting that
-alias on the patch configure page on the new UI. The alias can also be
+alias on the patch configure page on the UI. The alias can also be
 added as a GitHub Trigger Alias in the GitHub Pull Request Testing
 section to kick off a child patch for each pull request opened in the
 repository as well as each subsequent push to each pull request. If the
