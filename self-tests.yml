@@ -665,7 +665,7 @@ tasks:
         params:
           working_dir: evergreen
           binary: npm
-          args: ["install", "--save-dev", "markdownlint-cli", "prettier"]
+          args: ["install", "--save-dev", "markdownlint-cli@0.45.0", "prettier"]
       - command: subprocess.exec
         params:
           working_dir: evergreen
