@@ -732,7 +732,15 @@ tasks, since only some of the commit's changed files are ignored.
 
 ##### Build Variant Path Filtering
 
-Build variants can specify `paths` patterns to define which files should trigger the variant when changed. This is the opposite of ignoring - it defines what files the variant cares about.
+Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
+changed. This is the opposite of ignoring - it defines what files the variant cares about.
+
+Note: specifying paths could cause crons to not activate the build variants if the path filter does not match.
+
+Full gitignore syntax is explained
+[here](https://git-scm.com/docs/gitignore). Ignored variants may still
+be scheduled manually, and their tasks will still be scheduled on
+failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
 ```yaml
 buildvariants:
@@ -755,10 +763,9 @@ When a build variant has `paths` defined:
 
 **This is not respected for variants that are generated.** We expect the generated tasks logic itself to handle this.
 
-Full gitignore syntax is explained
-[here](https://git-scm.com/docs/gitignore). Ignored variants may still
-be scheduled manually, and their tasks will still be scheduled on
-failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
+**Note: build variant path filtering is ignored on extremely large GitHub PRs with 3000+ files changed.** If a PR
+contains 3000+ changed files, `paths` will have no effect on the GitHub PR patch. The build variant will run its tasks
+even if `paths` doesn't match any of the changed files.
 
 ### Expansions
 
@@ -866,7 +873,7 @@ Every task has some expansions available by default:
 - `${github_author}` is the GitHub username of the creator of a PR
   or PR triggered merge queue item
 - `${github_commit}` is the commit hash of the commit that triggered
-  the patch run. For non pull-request patches, it will be the same as ${revision}.
+  the patch run. For non pull-request patches, it will be the same as `${revision}`.
 - `${github_known_hosts}` is GitHub's SSH key fingerprint
 - `${github_org}` is the GitHub organization for the repo for the project
 - `${github_repo}` is the GitHub repo for the project
@@ -1569,8 +1576,10 @@ Parameters:
   Defaults to 30 minutes. Hitting this timeout will stop the `teardown_task`
   commands but will not cause the task to fail unless
   `teardown_task_can_fail_task` is true.
-- `max_hosts`: number of hosts across which to distribute the tasks in
-  this group. This defaults to 1. If set to -1, it will be updated to the
+- `max_hosts`: the maximum number of hosts across which to distribute the tasks in
+  this group. This sets an upper bound on the number of hosts that can run tasks
+  from this task group simultaneously. It does not guarantee that exactly this
+  many hosts will be used. Defaults to 1. If set to -1, it will be updated to the
   number of tasks in this task group. There will be a validation warning
   if max hosts is less than 1 (apart from -1) or greater than the number of
   tasks in task group. When max hosts is 1, this is a special case where the
@@ -1583,7 +1592,7 @@ Parameters:
 - `callback_timeout_secs`: set a timeout for the `timeout` block. Defaults to
   15 minutes.
 - `share_processes`: by default, processes and Docker state changes
-  (e.g. containers, images, volumes) are cleaned up between each
+  (e.g. containers, images, volumes, networks) are cleaned up between each
   task's execution. If this is set to true, cleanup will be deferred
   until the task group is finished. Defaults to false.
 
@@ -1732,10 +1741,10 @@ can also be used to define dependencies.
 
 ### Auto restarting tasks upon failure
 
-A given command can be configured to automatically restart the task upon failure
-by setting the `retry_on_failure` field on the command to true. The automatic
-restart will process after the command has failed and the task has completed its
-subsequent post task commands.
+A given command can be configured to automatically restart the task upon failure by setting the `retry_on_failure` field
+on the command to true. The automatic restart will process after the command has failed and the task has completed its
+subsequent post task commands. `retry_on_failure` can only be set on standalone commands or individual commands within
+functions; it cannot be set on an entire function.
 
 The retry will only occur if the task has _not_ been aborted, and if the failing command would have caused the overall task
 to fail. This means the retry will _not_ occur if:

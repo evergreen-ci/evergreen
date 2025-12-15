@@ -307,13 +307,14 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 			TaskId:      options.TaskID,
 			SetupScript: options.SetupScript,
 			OwnerId:     user.Id,
+			UseOAuth:    options.UseOAuth,
 		},
 	}
 	return &spawnOptions, nil
 }
 
 // PostHostIsUp indicates to the app server that a host is up.
-func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmodel.APIHostIsUpOptions) (*restmodel.APIHost, error) {
+func PostHostIsUp(ctx context.Context, env evergreen.Environment, params host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(ctx, params.HostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -335,10 +336,10 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmod
 		}
 	}
 
-	if err := h.SetDNSName(ctx, params.Hostname); err != nil {
+	if err := h.SetEC2Metadata(ctx, params); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "setting hostname").Error(),
+			Message:    errors.Wrap(err, "setting host metadata").Error(),
 		}
 	}
 

@@ -502,6 +502,7 @@ type SpawnHostInput struct {
 	UserDataScript          *string                 `json:"userDataScript,omitempty"`
 	UseTaskConfig           *bool                   `json:"useTaskConfig,omitempty"`
 	VolumeID                *string                 `json:"volumeId,omitempty"`
+	UseOAuth                *bool                   `json:"useOAuth,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.
@@ -694,10 +695,13 @@ type UpstreamProject struct {
 // It contains configuration information such as the user's api key for the Evergreen CLI and a user's
 // preferred UI (legacy vs Spruce).
 type UserConfig struct {
-	APIKey        string `json:"api_key"`
-	APIServerHost string `json:"api_server_host"`
-	UIServerHost  string `json:"ui_server_host"`
-	User          string `json:"user"`
+	APIKey           string `json:"api_key"`
+	APIServerHost    string `json:"api_server_host"`
+	UIServerHost     string `json:"ui_server_host"`
+	User             string `json:"user"`
+	OauthIssuer      string `json:"oauth_issuer"`
+	OauthClientID    string `json:"oauth_client_id"`
+	OauthConnectorID string `json:"oauth_connector_id"`
 }
 
 type VariantTasks struct {
@@ -1480,61 +1484,6 @@ func (e *TaskHistoryDirection) UnmarshalJSON(b []byte) error {
 }
 
 func (e TaskHistoryDirection) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-type TaskQueueItemType string
-
-const (
-	TaskQueueItemTypeCommit TaskQueueItemType = "COMMIT"
-	TaskQueueItemTypePatch  TaskQueueItemType = "PATCH"
-)
-
-var AllTaskQueueItemType = []TaskQueueItemType{
-	TaskQueueItemTypeCommit,
-	TaskQueueItemTypePatch,
-}
-
-func (e TaskQueueItemType) IsValid() bool {
-	switch e {
-	case TaskQueueItemTypeCommit, TaskQueueItemTypePatch:
-		return true
-	}
-	return false
-}
-
-func (e TaskQueueItemType) String() string {
-	return string(e)
-}
-
-func (e *TaskQueueItemType) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = TaskQueueItemType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid TaskQueueItemType", str)
-	}
-	return nil
-}
-
-func (e TaskQueueItemType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *TaskQueueItemType) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e TaskQueueItemType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

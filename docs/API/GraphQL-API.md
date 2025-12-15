@@ -2,7 +2,7 @@
 
 Welcome to the beta version of the Evergreen GraphQL API! This API provides read
 and write access to various pieces of data found in Evergreen. You can use the
-GraphQL Playground, which can be found at <https://evergreen.mongodb.com/graphql>,
+GraphQL Playground, which can be found at <https://evergreen.corp.mongodb.com/graphql>,
 to experiment with and explore the available data.
 
 ⚠️ Please note that the Evergreen GraphQL API is currently in beta and is not

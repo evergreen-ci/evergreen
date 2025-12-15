@@ -104,6 +104,9 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, utility.FromStringPtr(apiSettings.AuthConfig.Github.ClientId))
 	assert.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], apiSettings.AuthConfig.Multi.ReadWrite[0])
 	assert.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, utility.FromStringPtr(apiSettings.AuthConfig.Kanopy.Issuer))
+	assert.EqualValues(testSettings.AuthConfig.OAuth.Issuer, utility.FromStringPtr(apiSettings.AuthConfig.OAuth.Issuer))
+	assert.EqualValues(testSettings.AuthConfig.OAuth.ClientID, utility.FromStringPtr(apiSettings.AuthConfig.OAuth.ClientID))
+	assert.EqualValues(testSettings.AuthConfig.OAuth.ConnectorID, utility.FromStringPtr(apiSettings.AuthConfig.OAuth.ConnectorID))
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
@@ -426,14 +429,14 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 					"customfield_12345": "{{.Something}}",
 					"customfield_12346": "{{.SomethingElse}}",
 				},
-				Components: []string{"component0", "component1"},
+				Components: []string{"component1", "component0"},
 			},
 			"GVE": {
 				Fields: map[string]string{
 					"customfield_54321": "{{.SomethingElser}}",
 					"customfield_54322": "{{.SomethingEvenElser}}",
 				},
-				Labels: []string{"label0", "label1"},
+				Labels: []string{"label1", "label0"},
 			},
 		},
 	}

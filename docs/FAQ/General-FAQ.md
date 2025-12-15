@@ -26,3 +26,24 @@ For more on their differences and examples, see [controlling when tasks run](Pro
 ## Why am I seeing a 'fatal: ...no merge base' error?
 
 This is most likely because your repo was cloned with a specified depth and the merge base was outside the range of the depth. To fix this, rebase your HEAD to the latest master. If this happens often, we recommend increasing the clone depth in your project's [`git.get_project`](Project-Configuration/Project-Commands#gitget_project) to a more suitable depth.
+
+## Why is Evergreen not running CI tests on my Graphite PR?
+
+You may notice that Evergreen doesn't run CI tests on your Graphite PR immediately if that PR is being automatically
+rebased by Graphite. You can tell if Graphite is automatically rebasing your PR if the PR base branch is currently named
+`graphite-base/*` or the latest head commit to the PR was on the `graphite-base/*` branch (instead of the downstack
+PR/trunk). Graphite may either be actively rebasing your PR right now (e.g. right after you merge a downstack PR) or it
+may have failed to complete the rebase (e.g. due to a merge conflict).
+Evergreen will not run CI tests while your PR is in this temporary state because [Graphite recommends not running CI
+tests while it's
+rebasing](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci).
+Once Graphite finishes rebasing (which may happen automatically or may require manual intervention), the CI tests will
+run.
+
+If you're unsure about the state of your stacked PR, please check the PR in the Graphite UI instead of GitHub. The
+Graphite UI can provide helpful warnings/errors and advice on how to fix them. If you find that your PR is still having
+issues with Graphite's automatic rebasing, please make sure to review [the Graphite
+docs](https://graphite.com/docs/merge-pull-requests) to understand how merging works with Graphite and make sure that
+you're following the intended workflows. Specifically if you merge through the GitHub UI, [automatic
+rebasing](https://graphite.com/docs/merge-pull-requests#automatic-rebasing) for your upstack PRs may not work properly,
+so it's highly recommended that you merge PRs through the Graphite UI rather than GitHub to avoid issues.

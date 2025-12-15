@@ -13,7 +13,7 @@ import (
 func TestGetEC2InstanceID(t *testing.T) {
 	skipEC2TestOnNonEC2Instance(t)
 
-	instanceID, err := GetEC2InstanceID(t.Context())
+	instanceID, err := getEC2InstanceID(t.Context())
 	require.NoError(t, err)
 	assert.NotZero(t, instanceID)
 	assert.True(t, cloud.IsEC2InstanceID(instanceID))
@@ -22,7 +22,7 @@ func TestGetEC2InstanceID(t *testing.T) {
 func TestGetEC2Hostname(t *testing.T) {
 	skipEC2TestOnNonEC2Instance(t)
 
-	hostname, err := GetEC2Hostname(t.Context())
+	hostname, err := getEC2Hostname(t.Context())
 	require.NoError(t, err)
 	assert.NotZero(t, hostname)
 	assert.Contains(t, hostname, "amazonaws.com")

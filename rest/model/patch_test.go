@@ -104,33 +104,6 @@ func TestAPIPatch(t *testing.T) {
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
 }
 
-func TestAPIPatchIncludeBranch(t *testing.T) {
-	// TODO DEVPROD-16824: remove, since this tests backwards compatibility behavior.
-	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
-	pRef := model.ProjectRef{
-		Id:         "mci",
-		Identifier: "evergreen",
-		Branch:     "main",
-	}
-	assert.NoError(t, pRef.Insert(context.Background()))
-	p := patch.Patch{
-		Id:          mgobson.NewObjectId(),
-		Description: "test",
-		Project:     pRef.Id,
-	}
-
-	a := APIPatch{}
-	err := a.BuildFromService(t.Context(), p, &APIPatchArgs{
-		IncludeBranch: true,
-	})
-	assert.NoError(t, err)
-
-	assert.Equal(t, p.Id.Hex(), utility.FromStringPtr(a.Id))
-	assert.Equal(t, p.Project, utility.FromStringPtr(a.ProjectId))
-	assert.Equal(t, p.Project, utility.FromStringPtr(a.LegacyProjectId))
-	assert.Equal(t, pRef.Branch, utility.FromStringPtr(a.Branch))
-
-}
 func TestAPIPatchBuildModuleChanges(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

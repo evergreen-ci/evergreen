@@ -39,9 +39,10 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		user := user.DBUser{Id: "user"}
 		h := host.Host{Id: "h1", Status: evergreen.HostRunning}
 		require.NoError(h.Insert(ctx))
-		opts := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
+		status := evergreen.HostQuarantined
+		notes := "because I can"
 
-		result, httpStatus, err := api.ModifyHostStatus(ctx, env, &h, opts.Status, opts.Notes, &user)
+		result, httpStatus, err := api.ModifyHostStatus(ctx, env, &h, status, notes, &user)
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
@@ -57,7 +58,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		assert.Len(events, 1)
 		hostevent, ok := events[0].Data.(*event.HostEventData)
 		require.True(ok, "%T", events[0].Data)
-		assert.Equal("because I can", hostevent.Logs)
+		assert.Equal(notes, hostevent.Logs)
 	})
 	t.Run("SuccessfullyUnquarantinesHostAndMarksAsReprovisioning", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
@@ -96,18 +97,18 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	t.Run("FailsToDecommissionStaticHosts", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
 		h := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
-		opts := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
+		status := evergreen.HostDecommissioned
 
-		_, _, err := api.ModifyHostStatus(ctx, env, &h, opts.Status, opts.Notes, &user)
+		_, _, err := api.ModifyHostStatus(ctx, env, &h, status, "", &user)
 		assert.Error(err)
 		assert.Contains(err.Error(), api.DecommissionStaticHostError)
 	})
 	t.Run("FailsWithInvalidHostStatus", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
 		h := host.Host{Id: "h4", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
-		opts := uiParams{Action: "updateStatus", Status: "undefined"}
+		status := "undefined"
 
-		_, _, err := api.ModifyHostStatus(ctx, env, &h, opts.Status, opts.Notes, &user)
+		_, _, err := api.ModifyHostStatus(ctx, env, &h, status, "", &user)
 		assert.Error(err)
 		assert.Contains(err.Error(), fmt.Sprintf(api.InvalidStatusError, "undefined"))
 	})

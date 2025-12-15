@@ -2,6 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: System
 metadata:
   name: evergreen
+  title: Evergreen
   description: Internal CI System
   tags:
     - ci
@@ -9,67 +10,80 @@ metadata:
     - url: https://spruce.mongodb.com
       title: Evergreen UI
       icon: dashboard
+    - url: https://docs.devprod.prod.corp.mongodb.com/evergreen
+      title: Docs on Pine
+      icon: dashboard
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
-  owner: evergreen-app
+  owner: group:10gen-evergreen-team
   domain: internal-tools
-
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: evergreen-backend
+  title: Evergreen Backend
   description: Evergreen backend service
   annotations:
     evergreen/project-id: evergreen
+    cloud-query/aws_accounts: "557821124784,058264131563"
+    cloud-query/bucket_arns: "arn:aws:s3:::mciuploads,arn:aws:s3:::mci-uploads-storage-audit"
   tags:
     - golang
+    - ci-cd
   links:
     - url: http://github.com/evergreen-ci/evergreen
       title: evergreen-ci/evergreen
       icon: github
+    - url: https://docs.devprod.prod.corp.mongodb.com/evergreen
+      title: Docs on Pine
+      icon: dashboard
 spec:
   type: service
-  owner: evergreen-app
+  owner: group:10gen-evergreen-team
   lifecycle: production
   system: evergreen
-  domain: internal-tools
   providesApis:
-    - evergreen-api-rest
-    - evergreen-api-graphql
+    - evergreen-rest-api
+    - evergreen-graphql-api
   dependsOn:
     - component:default/Splunk
     - component:default/Honeycomb
-
+    - component:default/kanopy
+    - component:default/sentry
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: evergreen-api-rest
+  name: evergreen-rest-api
+  title: Evergreen Rest API
   description: Retrieve Evergreen Data
 spec:
   type: openapi
   lifecycle: production
-  owner: evergreen-app
+  owner: group:10gen-evergreen-team
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
-
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: evergreen-api-graphql
+  name: evergreen-graphql-api
+  title: Evergreen GraphQL API
   description: Internal API for the Evergreen UI to fetch data from the backend
   links:
     - url: https://evergreen.mongodb.com/graphql
       title: GraphQL Playground
       icon: externalLink
+    - url: https://docs.devprod.prod.corp.mongodb.com/evergreen
+      title: Docs on Pine
+      icon: dashboard
 spec:
   type: graphql
-  lifecycle: experimental
-  owner: evergreen-ui
+  lifecycle: production
+  owner: group:10gen-evergreen-ui
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graphql

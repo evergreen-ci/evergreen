@@ -506,6 +506,9 @@ func setupDBIndexes() error {
 	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: model.TaskHistoryIndex}); err != nil {
 		return errors.Wrap(err, "setting up task collection indexes")
 	}
+	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex}); err != nil {
+		return errors.Wrap(err, "setting up task historical data index")
+	}
 	return nil
 }
 
@@ -591,6 +594,7 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
 		"mutation/updateVolume":         {spawnTestHostAndVolume},
 		"mutation/schedulePatch":        {persistTestSettings},
+		"distro/availableRegions":       {setupEnvironmentSettings},
 	}
 	if m[state.Directory] != nil {
 		for _, exec := range m[state.Directory] {
@@ -686,4 +690,13 @@ func addSubnets(t *testing.T) {
 
 func clearSubnets(t *testing.T) {
 	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{}
+}
+
+func setupEnvironmentSettings(t *testing.T) {
+	evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions = []string{
+		"us-east-1",
+		"us-west-1",
+		"eu-west-1",
+		"ap-southeast-2",
+	}
 }

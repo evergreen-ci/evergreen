@@ -40,7 +40,7 @@ for entire guilds. The project admins (or Evergreen admins, if no
 project admins exist) are then able to approve/reject requested access
 for their project.
 
-In order to access this functionality, you must look up the the MANA resource
+In order to access this functionality, you must look up the MANA resource
 with the type `Evergreen Project` with the name of the project that
 permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/).
 Using the filter icon to only view resources of type `Evergreen Project` makes this easier.
@@ -296,7 +296,7 @@ and individual users can be configured.
 Alternatively, you can use Mana to give users permission to trigger git
 tag versions for a project; however the user will need to add their
 GitHub username to their [settings
-page](https://evergreen.mongodb.com/settings) in order for us to connect
+page](https://evergreen.corp.mongodb.com/settings) in order for us to connect
 the GitHub user to an Evergreen user.
 
 **NOTE**: If the person who pushed the tag is not part of the authorized users or
@@ -776,3 +776,21 @@ task_annotation_settings:
     endpoint: "/api/route"
     secret: ""
 ```
+
+## Test Selection Settings
+
+Test selection is an experimental feature to help projects reduce testing that provides low signal. For example, if you
+submit a patch for your change but one of the tests fails due to a known issue that's not related to your change, then
+the test did not need to run because it's giving a false negative signal about your patch's mergeability. This can
+improve the signal of a project's tests, reduce time for versions to finish, and save on the cost of running low-signal
+tasks.
+
+To allow any test selection features to be used in your project, first go to "Test Selection" -> "Project-Level Test
+Selection" and enable it. Doing this will allow any test selection features to be used. Patches in the project may use
+the [test selection command](Project-Commands#test_selectionget) (note: only supported in patches currently, non-patch
+versions will not have test selection features enabled).
+
+To enable test selection by default for all patch tasks, go to "Test Selection" -> "Task-Level Test Selection" and
+enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
+patch tasks by default. This default can still be overridden by choosing specific variants/tasks in which to enable test
+selection from [the CLI](../CLI.md#test-selection).

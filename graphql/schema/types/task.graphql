@@ -132,6 +132,8 @@ type Task {
   """
   stepbackInfo: StepbackInfo
   taskLogs: TaskLogs!
+  taskCost: TaskCost
+  predictedTaskCost: TaskCost
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   testSelectionEnabled: Boolean!
@@ -197,7 +199,6 @@ type OomTrackerInfo {
 type TaskLogLinks {
   agentLogLink: String
   allLogLink: String
-  eventLogLink: String
   systemLogLink: String
   taskLogLink: String
 }
@@ -264,6 +265,7 @@ type TestLog {
   urlParsley: String
   urlRaw: String
   renderingType: String
+  testName: String
   version: Int
 }
 
@@ -287,6 +289,14 @@ type TaskOwnerTeam {
   messages: String!
   teamName: String!
   jiraProject: String!
+}
+
+"""
+TaskCost represents the cost breakdown for a task.
+"""
+type TaskCost {
+  onDemandCost: Float
+  adjustedCost: Float
 }
 
 input QuarantineTestInput {

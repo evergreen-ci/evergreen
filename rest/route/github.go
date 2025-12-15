@@ -204,10 +204,14 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 		} else if action == githubActionClosed {
 			grip.Info(message.Fields{
-				"source":  "GitHub hook",
-				"msg_id":  gh.msgID,
-				"event":   gh.eventType,
-				"message": "pull request closed; aborting patch",
+				"source":    "GitHub hook",
+				"msg_id":    gh.msgID,
+				"event":     gh.eventType,
+				"repo":      *event.PullRequest.Base.Repo.FullName,
+				"pr_number": *event.PullRequest.Number,
+				"user":      *event.Sender.Login,
+				"action":    action,
+				"message":   "pull request closed; aborting patch",
 			})
 
 			if err := data.AbortPatchesFromPullRequest(newCtx, event); err != nil {
@@ -658,6 +662,22 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
 	}
 
+	baseBranch := pr.Base.GetRef()
+	if isGraphiteBaseBranch(baseBranch) {
+		// Graphite recommends skipping CI when the PR has a graphite-base
+		// branch. This is because the branch is only temporary; Graphite is
+		// still rebasing the PR or there's a merge conflict that blocks it from
+		// completing the rebase. The graphite-base branch will also be deleted
+		// eventually, which can cause CI failures.
+		// Docs: https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci
+
+		// Because Evergreen is not going to run tests, comment back to the user
+		// that they cannot manually trigger Evergreen with a PR comment until
+		// Graphite finishes rebasing the PR.
+		graphiteRebaseComment := fmt.Sprintf("Graphite is still rebasing this PR (current base branch: \"%s\"), so the PR is not in a good state to run CI tests. CI tests will start after Graphite finishes rebasing. Please view this PR in the Graphite UI to see its current status and diagnose any issues that would block rebases such as merge conflicts.", baseBranch)
+		return gh.sc.AddCommentToPR(ctx, owner, repo, prNumber, graphiteRebaseComment)
+	}
+
 	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, alias, true)
 }
 
@@ -713,9 +733,13 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy, alias string, overrideExisting bool) error {
 	// Verify that the owner/repo uses PR testing before inserting the intent.
 	baseRepoName := pr.Base.Repo.GetFullName()
-	baseRepo := strings.Split(baseRepoName, "/")
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseRepo[0],
-		baseRepo[1], pr.Base.GetRef(), calledBy)
+	baseOwnerRepo := strings.Split(baseRepoName, "/")
+	if len(baseOwnerRepo) != 2 {
+		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
+	}
+	baseBranch := pr.Base.GetRef()
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseOwnerRepo[0],
+		baseOwnerRepo[1], baseBranch, calledBy)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref for patch")
 	}
@@ -730,11 +754,48 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return nil
 	}
 
-	baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
-	if len(baseOwnerAndRepo) != 2 {
-		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
+	if isGraphiteBaseBranch(baseBranch) {
+		// Graphite recommends skipping CI when the PR has a base branch of
+		// graphite-base/* This is because the branch is only temporarily used
+		// for rebasing; Graphite is still rebasing the PR or there's a merge
+		// conflict that blocks it from completing the rebase. The
+		// graphite-base/* branch wil be deleted eventually, which can cause CI
+		// failures, so the recommendation is not to run tests on it at all.
+		// Docs: https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci
+		grip.Info(message.Fields{
+			"message":     "skipping CI on PR because the base branch is a Graphite temporary branch, so Graphite is still rebasing the PR or encountered a merge conflict",
+			"owner":       pr.Base.User.GetLogin(),
+			"repo":        pr.Base.Repo.GetName(),
+			"pr_num":      pr.GetNumber(),
+			"base_branch": baseBranch,
+			"head_ref":    pr.Head.GetRef(),
+		})
+
+		// Send a failure status back just to inform the user that CI is
+		// intentionally being skipped.
+		update := units.NewGithubStatusUpdateJobForProcessingError(
+			thirdparty.GithubStatusDefaultContext,
+			baseOwnerRepo[0],
+			baseOwnerRepo[1],
+			pr.Head.GetSHA(),
+			"Graphite is still rebasing this PR, skipping CI. See Graphite UI for more info.",
+		)
+		update.Run(ctx)
+		if err := update.Error(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":     "could not send back error for GitHub PR status due to Graphite temporary branch",
+				"owner":       pr.Base.User.GetLogin(),
+				"repo":        pr.Base.Repo.GetName(),
+				"pr_num":      pr.GetNumber(),
+				"base_branch": pr.Base.GetRef(),
+				"head_ref":    pr.Head.GetRef(),
+			}))
+			return errors.Wrap(err, "sending failed GitHub status for Graphite temporary PR")
+		}
+		return nil
 	}
-	mergeBase, err := thirdparty.GetPullRequestMergeBase(ctx, baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetLabel(), pr.Head.GetLabel(), pr.GetNumber())
+
+	mergeBase, err := thirdparty.GetPullRequestMergeBase(ctx, baseOwnerRepo[0], baseOwnerRepo[1], pr.Base.GetLabel(), pr.Head.GetLabel(), pr.GetNumber())
 	if err != nil {
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
@@ -852,7 +913,6 @@ func (gh *githubHookApi) overrideOtherPRs(ctx context.Context, pr *github.PullRe
 
 	cancelCatcher.Add(errors.Wrap(commentsCatcher.Resolve(), "commenting on patches with same hash to cancel"))
 	return errors.Wrap(cancelCatcher.Resolve(), "aborting overridden patches")
-
 }
 
 // handleGitTag adds the tag to the version it was pushed to, and triggers a new version if applicable
@@ -875,31 +935,54 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		Pusher: pusher,
 	}
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
-	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, ownerAndRepo[0], ownerAndRepo[1], event.GetRef())
+	owner, repo := ownerAndRepo[0], ownerAndRepo[1]
+
+	if event.GetCreated() {
+		return gh.handleCreatedGitTag(ctx, event, tag, owner, repo)
+	} else if event.GetDeleted() {
+		return gh.handleDeletedGitTag(ctx, event, tag, owner, repo)
+	}
+
+	grip.Debug(message.Fields{
+		"source":  "GitHub hook",
+		"msg_id":  gh.msgID,
+		"event":   gh.eventType,
+		"ref":     event.GetRef(),
+		"owner":   owner,
+		"repo":    repo,
+		"tag":     tag,
+		"message": "received unsupported git tag event",
+	})
+
+	return nil
+}
+
+func (gh *githubHookApi) handleCreatedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
+	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, owner, repo, event.GetRef())
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "getting tagged commit from GitHub",
 			"ref":     event.GetRef(),
 			"event":   gh.eventType,
-			"owner":   ownerAndRepo[0],
-			"repo":    ownerAndRepo[1],
+			"owner":   owner,
+			"repo":    repo,
 			"tag":     tag,
 		}))
 		return errors.Wrapf(err, "getting commit for tag '%s'", tag.Tag)
 	}
-	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, ownerAndRepo[0], ownerAndRepo[1])
+	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, owner, repo)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "error finding projects",
 			"ref":     event.GetRef(),
 			"event":   gh.eventType,
-			"owner":   ownerAndRepo[0],
-			"repo":    ownerAndRepo[1],
+			"owner":   owner,
+			"repo":    repo,
 			"tag":     tag,
 		}))
-		return errors.Wrapf(err, "finding projects for repo '%s'", ownerAndRepo)
+		return errors.Wrapf(err, "finding projects for repo '%s/%s'", owner, repo)
 	}
 	if len(projectRefs) == 0 {
 		grip.Debug(message.Fields{
@@ -907,11 +990,11 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 			"message": "no projects found",
 			"ref":     event.GetRef(),
 			"event":   gh.eventType,
-			"owner":   ownerAndRepo[0],
-			"repo":    ownerAndRepo[1],
+			"owner":   owner,
+			"repo":    repo,
 			"tag":     tag,
 		})
-		return errors.Wrapf(err, "no projects found for repo '%s'", ownerAndRepo)
+		return errors.Wrapf(err, "no projects found for repo '%s/%s'", owner, repo)
 	}
 
 	foundVersion := map[string]bool{}
@@ -983,8 +1066,8 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 						"msg_id":  gh.msgID,
 						"event":   gh.eventType,
 						"ref":     event.GetRef(),
-						"owner":   ownerAndRepo[0],
-						"repo":    ownerAndRepo[1],
+						"owner":   owner,
+						"repo":    repo,
 						"tag":     tag,
 						"version": v.Id,
 						"message": "triggered version from git tag",
@@ -1004,12 +1087,39 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		"msg_id":  gh.msgID,
 		"event":   gh.eventType,
 		"ref":     event.GetRef(),
-		"owner":   ownerAndRepo[0],
-		"repo":    ownerAndRepo[1],
+		"owner":   owner,
+		"repo":    repo,
 		"tag":     tag,
 		"message": "errors updating/creating versions for git tag",
 	}))
 	return errors.Wrap(resolvedError, "updating/creating versions for git tag")
+}
+
+func (gh *githubHookApi) handleDeletedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
+	err := model.RemoveGitTagFromVersions(ctx, owner, repo, tag)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "GitHub hook",
+			"message": "removing tag from versions",
+			"ref":     event.GetRef(),
+			"event":   gh.eventType,
+			"owner":   owner,
+			"repo":    repo,
+			"tag":     tag,
+		}))
+		return errors.Wrapf(err, "removing tag '%s' from versions", tag.Tag)
+	}
+	grip.Info(message.Fields{
+		"source":  "GitHub hook",
+		"msg_id":  gh.msgID,
+		"event":   gh.eventType,
+		"ref":     event.GetRef(),
+		"owner":   owner,
+		"repo":    repo,
+		"tag":     tag,
+		"message": "removed tag from versions",
+	})
+	return nil
 }
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
@@ -1160,9 +1270,6 @@ func validatePushTagEvent(event *github.PushEvent) error {
 	if event.GetPusher().GetName() == "" {
 		return errors.New("GitHub pusher missing login name")
 	}
-	if !event.GetCreated() {
-		return errors.New("not a tag creation event")
-	}
 	return nil
 }
 
@@ -1223,4 +1330,10 @@ func triggersHelpText(comment string) bool {
 
 func isTag(ref string) bool {
 	return strings.Contains(ref, refTags)
+}
+
+// isGraphiteBaseBranch returns true if the branch is a special temporary branch
+// used by Graphite while it's rebasing the PR.
+func isGraphiteBaseBranch(branch string) bool {
+	return strings.HasPrefix(branch, "graphite-base/")
 }

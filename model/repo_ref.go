@@ -41,8 +41,8 @@ func (r *RepoRef) Add(ctx context.Context, creator *user.DBUser) error {
 	return r.addPermissions(ctx, creator)
 }
 
-// Insert is included here so ProjectRef.Insert() isn't mistakenly used.
-func (r *RepoRef) Insert() error {
+// Insert is included here so ProjectRef.Insert(context.Context) isn't mistakenly used.
+func (r *RepoRef) Insert(_ context.Context) error {
 	return errors.New("insert not supported for repoRef")
 }
 
@@ -247,7 +247,7 @@ func GetRepoAdminRole(repoId string) string {
 	return fmt.Sprintf("admin_repo_%s", repoId)
 }
 
-// IsAdminRepoRole returns whether or not the role ID is for an admin repo role.
-func IsAdminRepoRole(roleID string) bool {
-	return strings.HasPrefix(roleID, "admin_repo_")
+// IsAdminRepoOrProjectRole returns whether or not the role ID is for an admin repo or project role.
+func IsAdminRepoOrProjectRole(roleID string) bool {
+	return strings.HasPrefix(roleID, "admin_repo_") || strings.HasPrefix(roleID, "admin_project_")
 }

@@ -13,10 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
-	"github.com/robfig/cron"
-
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
@@ -26,12 +22,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/robfig/cron"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -306,6 +305,13 @@ func (opts *DockerOptions) Validate() error {
 	return catcher.Resolve()
 }
 
+// HostMetadataOptions are options related to the ec2 instance's metadata.
+type HostMetadataOptions struct {
+	CloudProviderData
+	HostID        string `json:"host_id"`
+	EC2InstanceID string `json:"ec2_instance_id"`
+}
+
 // ProvisionOptions is struct containing options about how a new spawn host should be set up.
 type ProvisionOptions struct {
 	// TaskId if non-empty will trigger the CLI tool to fetch source and
@@ -317,6 +323,10 @@ type ProvisionOptions struct {
 
 	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
 	SetupScript string `bson:"setup_script" json:"setup_script"`
+
+	// UseOAuth indicates whether to run `evergreen fetch` with static credentials (legacy)
+	// or whether to write the command to a file, and have the user run `evergreen host fetch` (OAuth).
+	UseOAuth bool `bson:"use_oauth" json:"use_oauth"`
 }
 
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
@@ -495,7 +505,7 @@ type HostModifyOptions struct {
 // sleep schedule.
 type SleepScheduleOptions struct {
 	// WholeWeekdaysOff are when the host is off for its sleep schedule.
-	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty" swaggertype:"array,integer"`
 	// DailyStartTime is the daily time to start the host for each day the host is on
 	// during its sleep schedule. The format is "HH:MM".
 	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
@@ -646,7 +656,7 @@ const (
 	// duration does not elapse. Otherwise, the agent monitor is considered dead
 	// (because it has failed to keep an agent alive that can contact the
 	// server).
-	MaxAgentMonitorUnresponsiveInterval = 15 * time.Minute
+	MaxAgentMonitorUnresponsiveInterval = 5 * time.Minute
 	// MaxStaticHostUnresponsiveInterval is the maximum amount of time that can
 	// elapse before a static host is considered unresponsive and unfixable. If
 	// the host is running and healthy, the agent must regularly contact the app
@@ -657,9 +667,16 @@ const (
 	// positives when automatically detecting unhealthy static hosts.
 	MaxStaticHostUnresponsiveInterval = 120 * time.Minute
 
-	// provisioningCutoff is the threshold before a host is considered stuck in
-	// provisioning.
-	provisioningCutoff = 25 * time.Minute
+	// linuxProvisioningCutoff is the threshold before a Linux host is
+	// considered stuck in provisioning. This is based on empirical data of how
+	// long Linux hosts typically take to provision.
+	linuxProvisioningCutoff = 8 * time.Minute
+
+	// windowsProvisioningCutoff is the threshold before a Windows host is
+	// considered stuck in provisioning. This is based on empirical data of how
+	// long Windows hosts typically take to provision. The Windows timeout is
+	// higher the one for Linux because Windows hosts take longer to provision.
+	windowsProvisioningCutoff = 10 * time.Minute
 
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
@@ -859,6 +876,11 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		query = bson.M{}
 	}
 	query[IdKey] = h.Id
+	// Only update if the database status matches our in-memory status.
+	// This prevents concurrent jobs with stale cached host objects from overwriting each
+	// other's status changes. Without this, jobs can apply updates in arbitrary order,
+	// causing status to regress (e.g., terminated->decommissioned) and duplicate events.
+	query[StatusKey] = h.Status
 
 	if setFields == nil {
 		setFields = bson.M{}
@@ -877,6 +899,22 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		query,
 		update,
 	); err != nil {
+		if adb.ResultsNotFound(err) {
+			// If it errored because the host doesn't exist, return an error.
+			dbHost, findErr := FindOneId(ctx, h.Id)
+			if findErr != nil {
+				return errors.Wrapf(findErr, "checking if host '%s' exists after update failure", h.Id)
+			}
+			if dbHost == nil {
+				return errors.Errorf("host '%s' not found in database", h.Id)
+			}
+
+			// Host exists. Check if the failure was due to status mismatch (concurrent modification).
+			if dbHost.Status != h.Status {
+				// The cached state is stale and attempting this status change is no longer valid.
+				return errors.Errorf("cached host status '%s' does not match database status '%s' (attempted to set to '%s')", h.Status, dbHost.Status, newStatus)
+			}
+		}
 		return err
 	}
 
@@ -1330,28 +1368,96 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
-// SetDNSName updates the DNS name for a given host. If the dnsName is empty,
-// this will no-op and will not unset the existing DNS name.
-func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
-	if h.Host == dnsName || dnsName == "" {
+func buildEC2MetadataUpdate(hostname, zone, publicIPv4, privateIPv4, ipv6 string, launchTime time.Time, volumes []VolumeAttachment) bson.M {
+	setFields := bson.M{}
+
+	if hostname != "" {
+		setFields[DNSKey] = hostname
+	}
+	if zone != "" {
+		setFields[ZoneKey] = zone
+	}
+	if !launchTime.IsZero() {
+		setFields[StartTimeKey] = launchTime
+	}
+	if publicIPv4 != "" {
+		setFields[PublicIPv4Key] = publicIPv4
+	}
+	if privateIPv4 != "" {
+		setFields[IPv4Key] = privateIPv4
+	}
+	if ipv6 != "" {
+		setFields[IPKey] = ipv6
+	}
+	if len(volumes) > 0 {
+		setFields[VolumesKey] = volumes
+	}
+
+	return setFields
+}
+
+// numMetadataFields is the number of fields required from EC2 in order
+// to have fully-populated a host's EC2 metadata
+const numMetadataFields = 7
+
+// SetEC2Metadata updates the EC2 metadata for a given host. Only non-zero
+// fields will be set.
+func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) error {
+	setFields := buildEC2MetadataUpdate(
+		params.PublicDNS,
+		params.Zone,
+		params.PublicIPv4,
+		params.PrivateIPv4,
+		params.IPv6,
+		params.StartedAt,
+		params.Volumes,
+	)
+
+	// If there is any missing data in setFields, no-op.
+	if len(setFields) < numMetadataFields {
 		return nil
 	}
 
+	// As a special case, do not mark unexpirable hosts as provisioned. This is because the cloud host ready job
+	// filters for hosts that have not been provisioned, and that job must run for unexpirable hosts because it
+	// sets the persistent DNS name for the host, which is required.
+	if !h.NoExpiration {
+		setFields[ProvisionedKey] = true
+		setFields[ProvisionTimeKey] = time.Now()
+	}
 	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				DNSKey: dnsName,
-			},
+			"$set": setFields,
 		},
 	); err != nil {
 		return err
 	}
 
-	h.Host = dnsName
+	if params.PublicDNS != "" {
+		h.Host = params.PublicDNS
+	}
+	if params.Zone != "" {
+		h.Zone = params.Zone
+	}
+	if !params.StartedAt.IsZero() {
+		h.StartTime = params.StartedAt
+	}
+	if params.PublicIPv4 != "" {
+		h.PublicIPv4 = params.PublicIPv4
+	}
+	if params.PrivateIPv4 != "" {
+		h.IPv4 = params.PrivateIPv4
+	}
+	if params.IPv6 != "" {
+		h.IP = params.IPv6
+	}
+	if len(params.Volumes) > 0 {
+		h.Volumes = params.Volumes
+	}
 
 	return nil
 }
@@ -2015,24 +2121,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return nil
 	}
 
-	if err := UpdateOne(
-		ctx,
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
-		return errors.WithStack(err)
-	}
-
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
-	grip.Info(message.Fields{
-		"message":    "host marked reachable",
-		"host_id":    h.Id,
-		"host_tag":   h.Tag,
-		"distro":     h.Distro.Id,
-		"old_status": h.Status,
-	})
-	h.Status = evergreen.HostRunning
-
-	return nil
+	return h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, "host marked reachable")
 }
 
 func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
@@ -2084,13 +2173,13 @@ func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
 // CloudProviderData represents data to cache in the host from its cloud
 // provider.
 type CloudProviderData struct {
-	Zone        string
-	StartedAt   time.Time
-	PublicDNS   string
-	PublicIPv4  string
-	PrivateIPv4 string
-	IPv6        string
-	Volumes     []VolumeAttachment
+	Zone        string             `json:"zone"`
+	StartedAt   time.Time          `json:"started_at"`
+	PublicDNS   string             `json:"public_dns"`
+	PublicIPv4  string             `json:"public_ipv4"`
+	PrivateIPv4 string             `json:"private_ipv4"`
+	IPv6        string             `json:"ipv6"`
+	Volumes     []VolumeAttachment `json:"volumes"`
 }
 
 // CacheAllCloudProviderData performs the same updates as
@@ -2100,7 +2189,17 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 	updates := make([]mongo.WriteModel, 0, len(hosts))
 	for hostID, data := range hosts {
 		filter := bson.M{IdKey: hostID}
-		update := cacheCloudProviderDataUpdate(data)
+		update := bson.M{
+			"$set": buildEC2MetadataUpdate(
+				data.PublicDNS,
+				data.Zone,
+				data.PublicIPv4,
+				data.PrivateIPv4,
+				data.IPv6,
+				data.StartedAt,
+				data.Volumes,
+			),
+		}
 		updates = append(updates, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
 	}
 	if len(updates) == 0 {
@@ -2108,27 +2207,6 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 	}
 	_, err := env.DB().Collection(Collection).BulkWrite(ctx, updates, options.BulkWrite().SetOrdered(false))
 	return err
-}
-
-// cacheCloudProviderDataUpdate returns an update for caching cloud provider
-// data.
-func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
-	setFields := bson.M{
-		ZoneKey:      data.Zone,
-		StartTimeKey: data.StartedAt,
-		IPv4Key:      data.PrivateIPv4,
-		IPKey:        data.IPv6,
-		VolumesKey:   data.Volumes,
-	}
-	if data.PublicIPv4 != "" {
-		setFields[PublicIPv4Key] = data.PublicIPv4
-	}
-	if data.PublicDNS != "" {
-		setFields[DNSKey] = data.PublicDNS
-	}
-	return bson.M{
-		"$set": setFields,
-	}
 }
 
 func (h *Host) Insert(ctx context.Context) error {
@@ -2257,6 +2335,47 @@ func (h *Host) AddSSHKeyName(ctx context.Context, name string) error {
 	return nil
 }
 
+// buildConditionalProvisioningTimeoutQuery creates a MongoDB query for hosts
+// that have exceeded a conditional provisioning timeout.
+func buildConditionalProvisioningTimeoutQuery(now time.Time, timeoutCondition bson.M, timeout time.Duration) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+
+	return bson.M{
+		"$and": []bson.M{
+			// Host is not yet done provisioning
+			{"$or": []bson.M{
+				{ProvisionedKey: false},
+				{StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}}},
+			}},
+			{"$or": []bson.M{
+				{
+					// Host is a user data host and either has not run a
+					// task yet or has not started its agent monitor -
+					// both are indicators that the host's agent is not
+					// up. The host has either 1. failed to start the
+					// agent or 2. failed to prove the agent's
+					// liveliness by continuously pinging the app server
+					// with requests.
+					"$or": []bson.M{
+						{RunningTaskKey: bson.M{"$exists": false}},
+						{LTCTaskKey: ""},
+					},
+					LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxAgentMonitorUnresponsiveInterval)},
+				}, {
+					// Host is not a user data host so cannot run tasks
+					// until done provisioning.
+					bootstrapKey: bson.M{"$ne": distro.BootstrapMethodUserData},
+				},
+			}},
+			timeoutCondition,
+		},
+		CreateTimeKey: bson.M{"$lte": now.Add(-timeout)},
+		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:  evergreen.User,
+		ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
+	}
+}
+
 func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 	// unreachableCutoff is the threshold to wait for an decommissioned host to
 	// become marked as reachable again before giving up and terminating it.
@@ -2264,7 +2383,7 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 
 	now := time.Now()
 
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+	archKey := bsonutil.GetDottedKeyName(DistroKey, distro.ArchKey)
 	query := bson.M{
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
@@ -2283,45 +2402,18 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 					evergreen.HostProvisionFailed},
 				},
 			},
-			{
-				// Either:
-				// - Host that does not provision with user data is taking too
-				//   long to provision.
-				// - Host that provisions with user data is taking too long to
-				//   provision. In addition, it is not currently running a task
-				//   and has not checked in recently.
-				"$and": []bson.M{
-					// Host is not yet done provisioning
-					{"$or": []bson.M{
-						{ProvisionedKey: false},
-						{StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}}},
-					}},
-					{"$or": []bson.M{
-						{
-							// Host is a user data host and either has not run a
-							// task yet or has not started its agent monitor -
-							// both are indicators that the host's agent is not
-							// up. The host has either 1. failed to start the
-							// agent or 2. failed to prove the agent's
-							// liveliness by continuously pinging the app server
-							// with requests.
-							"$or": []bson.M{
-								{RunningTaskKey: bson.M{"$exists": false}},
-								{LTCTaskKey: ""},
-							},
-							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxAgentMonitorUnresponsiveInterval)},
-						}, {
-							// Host is not a user data host so cannot run tasks
-							// until done provisioning.
-							bootstrapKey: bson.M{"$ne": distro.BootstrapMethodUserData},
-						},
-					}},
-				},
-				CreateTimeKey: bson.M{"$lte": now.Add(-provisioningCutoff)},
-				StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
-				StartedByKey:  evergreen.User,
-				ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
-			},
+			// Linux hosts taking too long to provision.
+			buildConditionalProvisioningTimeoutQuery(
+				now,
+				bson.M{archKey: bson.M{"$ne": evergreen.ArchWindowsAmd64}},
+				linuxProvisioningCutoff,
+			),
+			// Windows hosts taking too long to provision.
+			buildConditionalProvisioningTimeoutQuery(
+				now,
+				bson.M{archKey: evergreen.ArchWindowsAmd64},
+				windowsProvisioningCutoff,
+			),
 			{ // decommissioned hosts not running tasks
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,

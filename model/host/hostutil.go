@@ -32,7 +32,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const OutputBufferSize = 1000
+const (
+	OutputBufferSize       = 1000
+	whyIsMyDataMissingText = `The task data has not been fetched yet.
+To fetch the task data, run: "evergreen host fetch"`
+)
 
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
@@ -433,7 +437,28 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if err != nil {
 				return "", errors.Wrap(err, "constructing Jasper command to fetch task data")
 			}
-			postFetchClient += " && " + getTaskDataCmd
+			if !h.ProvisionOptions.UseOAuth {
+				// The legacy approach is to run `evergreen fetch` directly here with
+				// static credentials.
+				postFetchClient += " && " + getTaskDataCmd
+			} else {
+				// Escape single quotes in the command.
+				// This is done by closing the single quoted string, starting a
+				// double quoted string, having it's content be a single quote, then
+				// closing the double quoted string, and reopening the original
+				// single quoted string.
+				getTaskDataCmd := strings.ReplaceAll(getTaskDataCmd, "'", `'"'"'`)
+				// We write the command to a script because the user hasn't authenticated on this host yet.
+				// When the user SSH's in later, they have to run the script by running `evergreen host fetch`.
+				scriptPath := filepath.Join(h.Distro.HomeDir(), evergreen.SpawnhostFetchScriptName)
+				postFetchClient += " && " + fmt.Sprintf("echo '%s' > %s && chmod +x %s", getTaskDataCmd, scriptPath, scriptPath)
+
+				// Users might forget to run `evergreen host fetch`, so we add a note to
+				// where it usually is to remind them.
+				dataMissingFile := filepath.Join(h.Distro.WorkDir, evergreen.WhyIsMyDataMissingName)
+				postFetchClient += fmt.Sprintf(" && mkdir -p %s && chmod 777 %s ", h.Distro.WorkDir, h.Distro.WorkDir)
+				postFetchClient += fmt.Sprintf(" && echo '%s' >> %s && chmod 777 %s", whyIsMyDataMissingText, dataMissingFile, dataMissingFile)
+			}
 		}
 	}
 
@@ -1119,14 +1144,34 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 
 	conf := struct {
 		User          string `yaml:"user"`
-		APIKey        string `yaml:"api_key"`
+		APIKey        string `yaml:"api_key,omitempty"`
 		APIServerHost string `yaml:"api_server_host"`
 		UIServerHost  string `yaml:"ui_server_host"`
+		OAuth         struct {
+			Issuer          string `yaml:"issuer"`
+			ClientID        string `yaml:"client_id"`
+			ConnectorID     string `yaml:"connector_id"`
+			DoNotUseBrowser bool   `yaml:"do_not_use_browser"`
+		} `yaml:"oauth,omitempty"`
 	}{
-		User:          owner.Id,
-		APIKey:        owner.APIKey,
-		APIServerHost: settings.Api.URL + "/api",
-		UIServerHost:  settings.Ui.Url,
+		User: owner.Id,
+	}
+	if settings != nil {
+		conf.APIServerHost = settings.Api.URL + "/api"
+		conf.UIServerHost = settings.Ui.Url
+		if settings.AuthConfig.OAuth != nil {
+			conf.OAuth.Issuer = settings.AuthConfig.OAuth.Issuer
+			conf.OAuth.ClientID = settings.AuthConfig.OAuth.ClientID
+			conf.OAuth.ConnectorID = settings.AuthConfig.OAuth.ConnectorID
+			conf.OAuth.DoNotUseBrowser = true
+		}
+	}
+
+	if h.ProvisionOptions != nil && !h.ProvisionOptions.UseOAuth {
+		// If the host is not using OAuth, set the API key for the owner.
+		// We always set the 'user' field since it helps scripts identify
+		// which user is associated with the host.
+		conf.APIKey = owner.APIKey
 	}
 
 	return yaml.Marshal(conf)

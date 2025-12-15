@@ -1,7 +1,9 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -80,8 +83,7 @@ func (s *TaskAbortSuite) TestAbort() {
 }
 
 func TestFetchArtifacts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -212,8 +214,7 @@ func TestGetDisplayTask(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection))
 			defer func() {
@@ -261,8 +262,7 @@ func TestGeneratedTasksGetHandler(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			require.NoError(t, db.ClearCollections(task.Collection))
 
@@ -288,6 +288,383 @@ func TestGeneratedTasksGetHandler(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, rh, generatorID, generated)
+		})
+	}
+}
+
+func TestUpdateArtifactURLHandler(t *testing.T) {
+	for name, test := range map[string]func(t *testing.T){
+		"SuccessAndExecutionOverride": func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
+
+			tsk := task.Task{Id: "t1", BuildId: "b1", DisplayName: "disp", Execution: 0}
+			require.NoError(t, tsk.Insert(t.Context()))
+			entry := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name: "f1",
+						Link: "http://old.com/a",
+					},
+				},
+			}
+			require.NoError(t, entry.Upsert(t.Context()))
+
+			projCtx := serviceModel.Context{Task: &tsk}
+			u := &user.DBUser{Id: "u1"}
+			require.NoError(t, u.Insert(t.Context()))
+			ctxWithUser := gimlet.AttachUser(ctx, u)
+			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			body := map[string]string{"artifact_name": "f1", "current_url": "http://old.com/a", "new_url": "https://new.com/a"}
+			data, _ := json.Marshal(body)
+			h := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req, _ := http.NewRequest(http.MethodPatch, "/tasks/t1/artifacts/url", bytes.NewReader(data))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+			require.NoError(t, h.Parse(ctxWithProj, req))
+			resp := h.Run(ctxWithProj)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			apiTask, ok := resp.Data().(*model.APITask)
+			require.True(t, ok)
+			foundUpdated := false
+			for _, f := range apiTask.Artifacts {
+				if utility.FromStringPtr(f.Name) == "f1" && utility.FromStringPtr(f.Link) == "https://new.com/a" {
+					foundUpdated = true
+				}
+			}
+			assert.True(t, foundUpdated)
+
+			bad := map[string]string{"artifact_name": "f1", "current_url": "https://new.com/a", "new_url": "notaurl"}
+			badData, _ := json.Marshal(bad)
+			hBad := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			badReq, _ := http.NewRequest(http.MethodPatch, "/tasks/t1/artifacts/url", bytes.NewReader(badData))
+			badReq = gimlet.SetURLVars(badReq, map[string]string{"task_id": "t1"})
+			err := hBad.Parse(ctxWithProj, badReq)
+			assert.Error(t, err)
+
+			entry1 := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       1,
+				Files: []artifact.File{
+					{
+						Name: "f1",
+						Link: "http://old.com/a1",
+					},
+				},
+			}
+			require.NoError(t, entry1.Upsert(t.Context()))
+			require.NoError(t, db.Update(task.Collection, bson.M{"_id": tsk.Id}, bson.M{"$set": bson.M{"execution": 1}}))
+			refreshed, err := task.FindOneId(ctx, tsk.Id)
+			require.NoError(t, err)
+			projCtx.Task = refreshed
+			ctxWithProj = context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			bodyExec := map[string]string{"artifact_name": "f1", "current_url": "http://old.com/a1", "new_url": "https://new.com/a1"}
+			dataExec, _ := json.Marshal(bodyExec)
+			hExec := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			reqExec, _ := http.NewRequest(http.MethodPatch, "/tasks/t1/artifacts/url?execution=1", bytes.NewReader(dataExec))
+			reqExec = gimlet.SetURLVars(reqExec, map[string]string{"task_id": "t1"})
+			require.NoError(t, hExec.Parse(ctxWithProj, reqExec))
+			respExec := hExec.Run(ctxWithProj)
+			assert.Equal(t, http.StatusOK, respExec.Status())
+			apiTaskExec, ok := respExec.Data().(*model.APITask)
+			require.True(t, ok)
+			updated := false
+			for _, f := range apiTaskExec.Artifacts {
+				if utility.FromStringPtr(f.Name) == "f1" && utility.FromStringPtr(f.Link) == "https://new.com/a1" {
+					updated = true
+				}
+			}
+			assert.True(t, updated)
+		},
+		"NotFoundScenarios": func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
+
+			tsk := task.Task{Id: "nf1", BuildId: "b1", DisplayName: "disp", Execution: 0}
+			require.NoError(t, tsk.Insert(t.Context()))
+			entry := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name: "afile",
+						Link: "http://old.example/x",
+					},
+				},
+			}
+			require.NoError(t, entry.Upsert(t.Context()))
+
+			projCtx := serviceModel.Context{Task: &tsk}
+			u := &user.DBUser{Id: "userNF"}
+			require.NoError(t, u.Insert(t.Context()))
+			ctxWithUser := gimlet.AttachUser(ctx, u)
+			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			bodyBadName := map[string]string{"artifact_name": "wrong", "current_url": "http://old.example/x", "new_url": "https://new.example/x"}
+			dataBadName, _ := json.Marshal(bodyBadName)
+			hBadName := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			reqBadName, _ := http.NewRequest(http.MethodPatch, "/tasks/nf1/artifacts/url", bytes.NewReader(dataBadName))
+			reqBadName = gimlet.SetURLVars(reqBadName, map[string]string{"task_id": "nf1"})
+			require.NoError(t, hBadName.Parse(ctxWithProj, reqBadName))
+			respBadName := hBadName.Run(ctxWithProj)
+			assert.Equal(t, http.StatusNotFound, respBadName.Status())
+
+			bodyBadURL := map[string]string{"artifact_name": "afile", "current_url": "http://does-not-match", "new_url": "https://new.example/x"}
+			dataBadURL, _ := json.Marshal(bodyBadURL)
+			hBadURL := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			reqBadURL, _ := http.NewRequest(http.MethodPatch, "/tasks/nf1/artifacts/url", bytes.NewReader(dataBadURL))
+			reqBadURL = gimlet.SetURLVars(reqBadURL, map[string]string{"task_id": "nf1"})
+			require.NoError(t, hBadURL.Parse(ctxWithProj, reqBadURL))
+			respBadURL := hBadURL.Run(ctxWithProj)
+			assert.Equal(t, http.StatusNotFound, respBadURL.Status())
+		},
+		"DefaultsToLatestExecution": func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
+
+			// Task with two executions; latest is 2
+			tsk := task.Task{Id: "late1", BuildId: "b1", DisplayName: "disp", Execution: 2}
+			require.NoError(t, tsk.Insert(t.Context()))
+			// Execution 0
+			entry0 := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name: "afile",
+						Link: "http://old.example/x0",
+					},
+				},
+			}
+			require.NoError(t, entry0.Upsert(t.Context()))
+			// Execution 2 (latest)
+			entry2 := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       2,
+				Files: []artifact.File{
+					{
+						Name: "afile",
+						Link: "http://old.example/x2",
+					},
+				},
+			}
+			require.NoError(t, entry2.Upsert(t.Context()))
+
+			projCtx := serviceModel.Context{Task: &tsk}
+			u := &user.DBUser{Id: "userLate"}
+			require.NoError(t, u.Insert(t.Context()))
+			ctxWithUser := gimlet.AttachUser(ctx, u)
+			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			body := map[string]string{"artifact_name": "afile", "current_url": "http://old.example/x2", "new_url": "https://new.example/x2"}
+			data, _ := json.Marshal(body)
+			h := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req, _ := http.NewRequest(http.MethodPatch, "/tasks/late1/artifacts/url", bytes.NewReader(data))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "late1"})
+			require.NoError(t, h.Parse(ctxWithProj, req))
+			resp := h.Run(ctxWithProj)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			apiTask, ok := resp.Data().(*model.APITask)
+			require.True(t, ok)
+			// Ensure updated link is reflected.
+			found := false
+			for _, f := range apiTask.Artifacts {
+				if utility.FromStringPtr(f.Name) == "afile" && utility.FromStringPtr(f.Link) == "https://new.example/x2" {
+					found = true
+				}
+			}
+			assert.True(t, found)
+		},
+		"SignedURLSuccess": func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
+
+			tsk := task.Task{Id: "s1", BuildId: "b1", DisplayName: "disp", Execution: 0}
+			require.NoError(t, tsk.Insert(t.Context()))
+			entry := artifact.Entry{
+				TaskId:          tsk.Id,
+				TaskDisplayName: tsk.DisplayName,
+				BuildId:         tsk.BuildId,
+				Execution:       0,
+				Files: []artifact.File{
+					{
+						Name:    "signed_file",
+						Link:    "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+						FileKey: "evergreen/task_id/old.log",
+					},
+				},
+			}
+			require.NoError(t, entry.Upsert(t.Context()))
+
+			projCtx := serviceModel.Context{Task: &tsk}
+			u := &user.DBUser{Id: "userSigned"}
+			require.NoError(t, u.Insert(t.Context()))
+			ctxWithUser := gimlet.AttachUser(ctx, u)
+			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			body := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+				"new_url":       "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/new.log?Token=xyz&Expires=456",
+			}
+			data, _ := json.Marshal(body)
+			h := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req, _ := http.NewRequest(http.MethodPatch, "/tasks/s1/artifacts/url", bytes.NewReader(data))
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "s1"})
+			require.NoError(t, h.Parse(ctxWithProj, req))
+			assert.True(t, h.isSignedURL)
+			assert.Equal(t, "evergreen/task_id/old.log", h.currentFileKey)
+			assert.Equal(t, "evergreen/task_id/new.log", h.newFileKey)
+
+			resp := h.Run(ctxWithProj)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			// Verify the artifact was updated in the database.
+			updatedEntry, err := artifact.FindOne(ctx, artifact.ByTaskIdAndExecution(tsk.Id, 0))
+			require.NoError(t, err)
+			require.NotNil(t, updatedEntry)
+			require.Len(t, updatedEntry.Files, 1)
+			assert.Equal(t, "signed_file", updatedEntry.Files[0].Name)
+			assert.Equal(t, "evergreen/task_id/new.log", updatedEntry.Files[0].FileKey)
+		},
+		"SignedURLValidationErrors": func(t *testing.T) {
+			ctx := t.Context()
+			require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, user.Collection))
+
+			tsk := task.Task{Id: "s2", BuildId: "b1", DisplayName: "disp", Execution: 0}
+			require.NoError(t, tsk.Insert(t.Context()))
+
+			projCtx := serviceModel.Context{Task: &tsk}
+			u := &user.DBUser{Id: "userSigned2"}
+			require.NoError(t, u.Insert(t.Context()))
+			ctxWithUser := gimlet.AttachUser(ctx, u)
+			ctxWithProj := context.WithValue(ctxWithUser, RequestContext, &projCtx)
+
+			// Test invalid current URL.
+			body1 := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://example.com/notans3url?Token=abc",
+				"new_url":       "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/new.log?Token=xyz&Expires=456",
+			}
+			data1, _ := json.Marshal(body1)
+			h1 := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req1, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data1))
+			req1 = gimlet.SetURLVars(req1, map[string]string{"task_id": "s2"})
+			err1 := h1.Parse(ctxWithProj, req1)
+			require.ErrorContains(t, err1, "current_url must be a valid S3 URL")
+
+			// Test invalid new URL.
+			body2 := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/task_id/old.log?Token=abc&Expires=123",
+				"new_url":       "https://example.com/notans3url?Token=xyz",
+			}
+			data2, _ := json.Marshal(body2)
+			h2 := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req2, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data2))
+			req2 = gimlet.SetURLVars(req2, map[string]string{"task_id": "s2"})
+			err2 := h2.Parse(ctxWithProj, req2)
+			require.ErrorContains(t, err2, "new_url must be a valid S3 URL")
+
+			// Test different buckets.
+			body3 := map[string]string{
+				"artifact_name": "signed_file",
+				"current_url":   "https://bucket1.s3.us-east-1.amazonaws.com/path/old.log?Token=abc&Expires=123",
+				"new_url":       "https://bucket2.s3.us-east-1.amazonaws.com/path/new.log?Token=xyz&Expires=456",
+			}
+			data3, _ := json.Marshal(body3)
+			h3 := makeUpdateArtifactURLRoute().(*updateArtifactURLHandler)
+			req3, _ := http.NewRequest(http.MethodPatch, "/tasks/s2/artifacts/url", bytes.NewReader(data3))
+			req3 = gimlet.SetURLVars(req3, map[string]string{"task_id": "s2"})
+			err3 := h3.Parse(ctxWithProj, req3)
+			require.ErrorContains(t, err3, "current_url and new_url must be in the same S3 bucket")
+		},
+	} {
+		t.Run(name, test)
+	}
+}
+
+func TestParseS3URL(t *testing.T) {
+	testCases := []struct {
+		name           string
+		url            string
+		expectedBucket string
+		expectedKey    string
+	}{
+		{
+			name:           "VirtualHostedStyleNoRegion",
+			url:            "https://mybucket.s3.amazonaws.com/path/to/file.log",
+			expectedBucket: "mybucket",
+			expectedKey:    "path/to/file.log",
+		},
+		{
+			name:           "VirtualHostedStyleWithRegion",
+			url:            "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/path/file.log",
+			expectedBucket: "mciuploads",
+			expectedKey:    "evergreen/path/file.log",
+		},
+		{
+			name:           "VirtualHostedStyleWithPresignedURL",
+			url:            "https://mciuploads.s3.us-east-1.amazonaws.com/evergreen/path/file.log?X-Amz-Algorithm=fake&X-Amz-Date=20251118T224351Z",
+			expectedBucket: "mciuploads",
+			expectedKey:    "evergreen/path/file.log",
+		},
+		{
+			name:           "PathStyleNoRegion",
+			url:            "https://s3.amazonaws.com/mybucket/path/to/file.log",
+			expectedBucket: "mybucket",
+			expectedKey:    "path/to/file.log",
+		},
+		{
+			name:           "PathStyleWithRegion",
+			url:            "https://s3.us-west-2.amazonaws.com/mybucket/path/to/file.log",
+			expectedBucket: "mybucket",
+			expectedKey:    "path/to/file.log",
+		},
+		{
+			name:           "NonS3URL",
+			url:            "https://example.com/path/to/file.log",
+			expectedBucket: "",
+			expectedKey:    "",
+		},
+		{
+			name:           "InvalidURL",
+			url:            "not a url",
+			expectedBucket: "",
+			expectedKey:    "",
+		},
+		{
+			name:           "PathStyleBucketOnly",
+			url:            "https://s3.amazonaws.com/mybucket",
+			expectedBucket: "mybucket",
+			expectedKey:    "",
+		},
+		{
+			name:           "VirtualHostedStyleEmptyPath",
+			url:            "https://mybucket.s3.amazonaws.com",
+			expectedBucket: "mybucket",
+			expectedKey:    "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bucket, key := parseS3URL(tc.url)
+			assert.Equal(t, tc.expectedBucket, bucket)
+			assert.Equal(t, tc.expectedKey, key)
 		})
 	}
 }

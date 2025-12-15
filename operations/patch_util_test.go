@@ -2,10 +2,14 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -305,4 +309,224 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 	s.Error(err, "expected error due to conf.uncommittedChanges and ref being set")
 	s.Nil(assertRef)
 
+}
+
+func TestGetLocalModuleIncludes(t *testing.T) {
+	tempDir := t.TempDir()
+	moduleDir := filepath.Join(tempDir, "mymodule")
+	err := os.MkdirAll(filepath.Join(moduleDir, "evergreen", "my_project", "master"), 0755)
+	require.NoError(t, err)
+
+	testFiles := []struct {
+		path    string
+		content string
+	}{
+		{"evergreen/my_project/master/base.yml", "blah"},
+		{"evergreen/my_project/shared_tasks.yml", "blah"},
+		{"evergreen/my_project/master/compiles.yml", "blah"},
+		{"evergreen/my_project/master/variants.yml", "blah"},
+		{"evergreen/my_project/master/genny_tasks.yml", "blah"},
+	}
+
+	for _, file := range testFiles {
+		filePath := filepath.Join(moduleDir, file.path)
+		err := os.WriteFile(filePath, []byte(file.content), 0644)
+		require.NoError(t, err)
+	}
+
+	t.Run("AllIncludesProcessedWhenModulePathProvided", func(t *testing.T) {
+		projectYAML := `
+include:
+  - filename: evergreen/my_project/master/base.yml
+    module: mymodule
+  - filename: evergreen/my_project/shared_tasks.yml
+    module: mymodule
+  - filename: evergreen/my_project/master/compiles.yml
+    module: mymodule
+  - filename: evergreen/my_project/master/variants.yml
+    module: mymodule
+  - filename: evergreen/my_project/master/genny_tasks.yml
+    module: mymodule
+`
+
+		projectFile := filepath.Join(tempDir, "project.yml")
+		err := os.WriteFile(projectFile, []byte(projectYAML), 0644)
+		require.NoError(t, err)
+
+		params := &patchParams{
+			Project:     "test-project",
+			SkipConfirm: true,
+		}
+
+		conf := &ClientSettings{}
+		modulePathCache := map[string]string{
+			"mymodule": moduleDir,
+		}
+
+		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache)
+		require.NoError(t, err)
+
+		assert.Len(t, includes, 5)
+		for i, include := range includes {
+			assert.Equal(t, "mymodule", include.Module)
+			assert.Equal(t, testFiles[i].path, include.FileName)
+			assert.Equal(t, testFiles[i].content, string(include.FileContent))
+		}
+	})
+
+	t.Run("NoIncludesProcessedWhenModulePathNotProvided", func(t *testing.T) {
+		projectYAML := `
+include:
+  - filename: evergreen/my_project/master/base.yml
+    module: mymodule
+  - filename: evergreen/my_project/shared_tasks.yml
+    module: mymodule
+  - filename: evergreen/my_project/master/compiles.yml
+    module: mymodule
+`
+
+		projectFile := filepath.Join(tempDir, "project-no-path.yml")
+		err := os.WriteFile(projectFile, []byte(projectYAML), 0644)
+		require.NoError(t, err)
+
+		params := &patchParams{
+			Project:     "test-project",
+			SkipConfirm: true,
+		}
+
+		conf := &ClientSettings{}
+		modulePathCache := map[string]string{}
+
+		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache)
+
+		require.NoError(t, err)
+		assert.Len(t, includes, 0)
+	})
+
+	t.Run("MultipleModules", func(t *testing.T) {
+		multiModuleYAML := `
+include:
+  - filename: file1.yml
+    module: module1
+  - filename: file2.yml
+    module: module1
+  - filename: file3.yml
+    module: module2
+  - filename: file4.yml
+    module: module2
+  - filename: file5.yml
+    module: module1
+`
+
+		module1Dir := filepath.Join(tempDir, "module1")
+		module2Dir := filepath.Join(tempDir, "module2")
+		err := os.MkdirAll(module1Dir, 0755)
+		require.NoError(t, err)
+		err = os.MkdirAll(module2Dir, 0755)
+		require.NoError(t, err)
+
+		for i := 1; i <= 5; i++ {
+			var dir string
+			if i <= 2 || i == 5 {
+				dir = module1Dir
+			} else {
+				dir = module2Dir
+			}
+			filePath := filepath.Join(dir, fmt.Sprintf("file%d.yml", i))
+			content := fmt.Sprintf("content: file%d", i)
+			err := os.WriteFile(filePath, []byte(content), 0644)
+			require.NoError(t, err)
+		}
+
+		multiModuleFile := filepath.Join(tempDir, "multi-module.yml")
+		err = os.WriteFile(multiModuleFile, []byte(multiModuleYAML), 0644)
+		require.NoError(t, err)
+
+		params := &patchParams{
+			Project:     "test-project",
+			SkipConfirm: true,
+		}
+
+		conf := &ClientSettings{}
+		modulePathCache := map[string]string{
+			"module1": module1Dir,
+			"module2": module2Dir,
+		}
+
+		includes, err := getLocalModuleIncludes(params, conf, multiModuleFile, "", modulePathCache)
+		require.NoError(t, err)
+
+		assert.Len(t, includes, 5)
+
+		module1Count := 0
+		module2Count := 0
+		for _, inc := range includes {
+			if inc.Module == "module1" {
+				module1Count++
+			} else if inc.Module == "module2" {
+				module2Count++
+			}
+		}
+		assert.Equal(t, 3, module1Count)
+		assert.Equal(t, 2, module2Count)
+	})
+
+	t.Run("PartialProcessingWhenSomeModulesHavePaths", func(t *testing.T) {
+		multiModuleYAML := `
+include:
+  - filename: file1.yml
+    module: module1
+  - filename: file2.yml
+    module: module1
+  - filename: file3.yml
+    module: module2
+  - filename: file4.yml
+    module: module2
+`
+
+		module1Dir := filepath.Join(tempDir, "partial-module1")
+		module2Dir := filepath.Join(tempDir, "partial-module2")
+		err := os.MkdirAll(module1Dir, 0755)
+		require.NoError(t, err)
+		err = os.MkdirAll(module2Dir, 0755)
+		require.NoError(t, err)
+
+		for i := 1; i <= 4; i++ {
+			var dir string
+			if i <= 2 {
+				dir = module1Dir
+			} else {
+				dir = module2Dir
+			}
+			filePath := filepath.Join(dir, fmt.Sprintf("file%d.yml", i))
+			content := fmt.Sprintf("partial: file%d", i)
+			err := os.WriteFile(filePath, []byte(content), 0644)
+			require.NoError(t, err)
+		}
+
+		partialModuleFile := filepath.Join(tempDir, "partial-module.yml")
+		err = os.WriteFile(partialModuleFile, []byte(multiModuleYAML), 0644)
+		require.NoError(t, err)
+
+		params := &patchParams{
+			Project:     "test-project",
+			SkipConfirm: true,
+		}
+
+		conf := &ClientSettings{}
+		modulePathCache := map[string]string{
+			"module1": module1Dir,
+		}
+
+		includes, err := getLocalModuleIncludes(params, conf, partialModuleFile, "", modulePathCache)
+
+		require.NoError(t, err)
+
+		assert.Len(t, includes, 2)
+
+		for _, inc := range includes {
+			assert.Equal(t, "module1", inc.Module)
+			assert.Contains(t, []string{"file1.yml", "file2.yml"}, inc.FileName)
+		}
+	})
 }

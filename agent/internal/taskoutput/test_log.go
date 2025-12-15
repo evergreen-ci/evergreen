@@ -149,7 +149,9 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	close(work)
 
 	var wg sync.WaitGroup
-	for i := 0; i < runtime.NumCPU(); i++ {
+	// use runtime.GOMAXPROCS(0) instead of runtime.NumCPU() so that we get the number of CPUs available to Evergreen, not the number of CPUs on the node.
+	// The max procs is set to the actual number of CPUs by automaxprocs in startWebService.
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 		wg.Add(1)
 		go func() {
 			defer func() {
@@ -164,6 +166,10 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 				}
 
 				h.ingest(ctx, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
+
+				// In some intense-workflows, log uploading can starve other goroutines, so yield routinely
+				// to allow other goroutines to run.
+				runtime.Gosched()
 			}
 		}()
 	}

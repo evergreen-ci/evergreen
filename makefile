@@ -3,7 +3,7 @@ name := evergreen
 buildDir := bin
 nodeDir := public
 packages := $(name) agent agent-command agent-globals agent-util agent-internal agent-internal-client agent-internal-redactor agent-internal-taskoutput agent-internal-testutil operations cloud cloud-userdata
-packages += db util plugin units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
+packages += db util units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
 packages += model-commitqueue model-cache model-githubapp model-hoststat
 packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
@@ -94,7 +94,6 @@ clientBinaries := $(macOSBinaries) $(linuxBinaries) $(windowsBinaries)
 
 clientSource := cmd/evergreen/evergreen.go
 
-staticArtifacts := ./public ./service/templates
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
@@ -222,17 +221,8 @@ $(buildDir)/parse-host-file:cmd/parse-host-file/parse-host-file.go
 $(buildDir)/expansions.yml:$(buildDir)/parse-host-file
 # end host.create file parsing
 
-# npm setup
-$(buildDir)/.npmSetup:
-	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)npm install
-	touch $@
-# end npm setup
-
-
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
-	GOOS="" GOARCH="" $(gobin) build -o $@ $<
-$(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	GOOS="" GOARCH="" $(gobin) build -o $@ $<
 
 $(buildDir)/sign-executable:cmd/sign-executable/sign-executable.go
@@ -242,17 +232,12 @@ $(buildDir)/macnotary:$(buildDir)/sign-executable
 $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(unixBinaryBasename) $(buildDir)/macnotary
 	./$< sign --client $(buildDir)/macnotary --executable $(@D)/$(unixBinaryBasename) --server-url $(NOTARY_SERVER_URL) --bundle-id $(EVERGREEN_BUNDLE_ID)
 	touch $@
-$(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(staticArtifacts)
-	./$< --name $@ --prefix static_assets $(foreach item,$(staticArtifacts),--item $(item)) --exclude "public/node_modules"
-local: $(buildDir)/static_assets.tgz $(clientBinaries)
 # end main build
 
 # userfacing targets for basic build and development operations
 build:cli
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages) $(testOnlyPackages),test-$(target))
-js-test:$(buildDir)/.npmSetup
-	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
@@ -366,7 +351,7 @@ swaggo-format:
 	swag fmt -g service/service.go
 
 swaggo-build:
-	swag init -g service/service.go -o $(buildDir) --outputTypes json
+	swag init -g service/service.go -o $(buildDir) --outputTypes json --parseDependency --parseInternal
 
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
@@ -386,7 +371,7 @@ download-fws-config:
 	@echo "Authenticating to Kanopy..." && \
 	KANOPY_KEY=$$(kanopy-oidc login) && \
 	echo "Downloading OpenAPI config..." && \
-	curl -H "X-Kanopy-Authorization: Bearer $$KANOPY_KEY" -L -o $(OPENAPI_FWS_SCHEMA) $(OPENAPI_FWS_CONFIG_URL) && \
+	curl -H "Authorization: Bearer $$KANOPY_KEY" -L -o $(OPENAPI_FWS_SCHEMA) $(OPENAPI_FWS_CONFIG_URL) && \
 	echo "Downloaded OpenAPI config"
 
 generate-fws-client:

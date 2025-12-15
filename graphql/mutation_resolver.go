@@ -857,11 +857,22 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, err
 	}
+
+	usr := mustHaveUser(ctx)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	maxVolumeFromSettings := settings.Providers.AWS.MaxVolumeSizePerUser
+	if err := cloud.CheckVolumeLimitExceeded(ctx, usr.Username(), spawnVolumeInput.Size, maxVolumeFromSettings); err != nil {
+		return false, InputValidationError.Send(ctx, err.Error())
+	}
+
 	volumeRequest := host.Volume{
 		AvailabilityZone: spawnVolumeInput.AvailabilityZone,
 		Size:             int32(spawnVolumeInput.Size),
 		Type:             spawnVolumeInput.Type,
-		CreatedBy:        mustHaveUser(ctx).Id,
+		CreatedBy:        usr.Id,
 	}
 	vol, statusCode, err := cloud.RequestNewVolume(ctx, volumeRequest)
 	if err != nil {
@@ -1000,6 +1011,20 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 			// AWS does not allow decreasing volume size.
 			return false, InputValidationError.Send(ctx, fmt.Sprintf("new size must be equal to or greater than current size (%dGiB)", volume.Size))
 		}
+
+		sizeIncrease := int(newSize - volume.Size)
+		if sizeIncrease > 0 {
+			usr := mustHaveUser(ctx)
+			settings, err := evergreen.GetConfig(ctx)
+			if err != nil {
+				return false, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+			}
+			maxVolumeFromSettings := settings.Providers.AWS.MaxVolumeSizePerUser
+			if err := cloud.CheckVolumeLimitExceeded(ctx, usr.Username(), sizeIncrease, maxVolumeFromSettings); err != nil {
+				return false, InputValidationError.Send(ctx, err.Error())
+			}
+		}
+
 		updateOptions.Size = int32(utility.FromIntPtr(updateVolumeInput.Size))
 	}
 	err = applyVolumeOptions(ctx, *volume, updateOptions)
@@ -1060,6 +1085,9 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	if evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		return nil, InputValidationError.Send(ctx, "Merge queue tasks cannot be manually restarted.")
 	}
 	if err := model.ResetTaskOrDisplayTask(ctx, evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("restarting task '%s': %s", taskID, err.Error()))
@@ -1237,6 +1265,19 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
+}
+
+// ResetAPIKey is the resolver for the resetAPIKey field.
+func (r *mutationResolver) ResetAPIKey(ctx context.Context) (*UserConfig, error) {
+	usr := mustHaveUser(ctx)
+	newKey := utility.RandomString()
+	if err := usr.UpdateAPIKey(ctx, newKey); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating user API key: %s", err.Error()))
+	}
+	return &UserConfig{
+		User:   usr.Username(),
+		APIKey: newKey,
+	}, nil
 }
 
 // SaveSubscription is the resolver for the saveSubscription field.

@@ -46,17 +46,39 @@ Alternately, for a task that ran on a distro where spawning is enabled, you will
 
 ![task_page_spawn_host.png](../images/task_page_spawn_host.png)
 
-Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro, along with the option to fetch binaries and artifacts associated with the task and any tasks that it depended on.
+Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro.
 
 ![spawn_host_modal.png](../images/spawn_host_modal.png)
 
-Fetching artifacts can also be performed manually; see [fetch](../CLI#fetch) in the Evergreen command line tool documentation.
+Additionally, the page offers an option to load task-related data (such as binaries, artifacts, and the repository) which generates a pre-filled fetch command for you.
 
-Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching.
+Please note that the spawn host does not automatically download the task-related data during start-up because it does not have the required permissions. After establishing an SSH connection to the host, you’ll need to run the following command to fetch the files (this will prompt you to authenticate):
+
+```sh
+evergreen host fetch
+```
+
+> Important: This command must be executed for each spawn host that needs to fetch task artifacts and binaries.
+
+Alternatively, you can use the Evergreen CLI's [fetch command](../CLI#fetch) to manually retrieve task-related binaries and artifacts.
+
+Artifacts are placed in /data/mci.
 
 If your project has [a project setup script defined at the admin level](../Project-Configuration/Project-And-Distro-Settings.md#spawn-host-script-path), you can also check "Use project-specific setup script defined at ..." before creating the spawn host to run that script when the host starts up. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.mongodb.com/host/<host_id>`.
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
+
+## Evergreen CLI
+
+When using the Evergreen CLI on a spawn host, you will be prompted to authenticate by going to a URL and entering a code. If the link does not appear in the terminal, you may have to set `oauth.do_not_use_browser` to true in your Evergreen CLI config file (usually located at `~/.evergreen.yml`). Example:
+
+```yaml
+# ~/.evergreen.yml
+# ...
+oauth:
+  do_not_use_browser: true
+  # ...
+```
 
 ## Spawn Host Expiration
 
@@ -200,15 +222,7 @@ why you'd like your host to be permanently exempt from the uptime schedule.
 
 The Spruce hosts page offers three batch actions applicable to hosts:
 
-1. Update Status
-
-   You can force a state change to these statuses:
-
-   - Decommissioned: Terminate a host after it's done running its current task.
-   - Quarantined: Stop a host from running tasks without terminating it or shutting it down. This is to do ops work on it like temporary maintenance, debugging, etc. Once the maintenance is done, it's usually set back to running to pick up tasks like normal. Quarantined is used almost exclusively for static hosts.
-   - Terminate: Shut down the host.
-   - Stopped: Stop the host.
-   - Running: Start the host.
+1. Force a [status change](#statuses).
 
 2. Restart Jasper
 
@@ -217,6 +231,14 @@ The Spruce hosts page offers three batch actions applicable to hosts:
 3. Reprovision
 
    Hosts need to have a few starter files on the file system before they can run tasks. Sometimes static hosts can get into bad states (e.g. the file system is corrupted) and stop functioning correctly. Reprovisioning a host will repopulate these files for static hosts.
+
+## Statuses
+
+- Decommissioned: Terminate a host after it's done running its current task.
+- Quarantined: Stop a host from running tasks without terminating it or shutting it down. This is to do ops work on it like temporary maintenance, debugging, etc. Once the maintenance is done, it's usually set back to running to pick up tasks like normal. Quarantined is used almost exclusively for static hosts.
+- Terminate: Shut down the host.
+- Stopped: Stop the host.
+- Running: Start the host.
 
 ## Mounting Additional Storage
 

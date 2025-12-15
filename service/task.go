@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,44 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
-
-type logData struct {
-	Data chan apimodels.LogMessage
-	User gimlet.User
-}
-
-func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	executionStr := gimlet.GetVars(r)["execution"]
-	var execution int
-	var err error
-
-	if executionStr != "" {
-		execution, err = strconv.Atoi(executionStr)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
-			return
-		}
-	}
-	if projCtx.Task == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, projCtx.Task.Id, execution)
-	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
-}
 
 // the task's most recent log messages
 const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
@@ -139,7 +109,8 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
+	logType := getTaskLogTypeMapping(r.FormValue("type"))
+	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: logType})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -152,11 +123,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 			PrintPriority: r.FormValue("priority") == "true",
 		}))
 	} else {
-		data := logData{
-			Data: apimodels.StreamFromLogIterator(it),
-			User: gimlet.GetUser(r.Context()),
-		}
-		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+		http.Redirect(w, r, fmt.Sprintf("%s/task/%s/html-log?execution=%d&origin=%s", uis.Settings.Ui.UIv2Url, tsk.Id, tsk.Execution, logType), http.StatusPermanentRedirect)
 	}
 }
 
@@ -269,144 +236,6 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// avoids type-checking json params for the below function
-func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
-	if projCtx.Task == nil {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return
-	}
-
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-
-	reqBody, err := io.ReadAll(body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	putParams := struct {
-		Action   evergreen.ModificationAction `json:"action"`
-		Priority string                       `json:"priority"`
-
-		// for the set_active option
-		Active bool `json:"active"`
-	}{}
-
-	err = json.Unmarshal(reqBody, &putParams)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	ctx := r.Context()
-	authUser := gimlet.GetUser(ctx)
-	authName := authUser.DisplayName()
-	requiredPermission := gimlet.PermissionOpts{
-		Resource:      projCtx.ProjectRef.Id,
-		ResourceType:  "project",
-		Permission:    evergreen.PermissionTasks,
-		RequiredLevel: evergreen.TasksAdmin.Value,
-	}
-	taskAdmin := authUser.HasPermission(requiredPermission)
-
-	// determine what action needs to be taken
-	switch putParams.Action {
-	case evergreen.RestartAction:
-		if err = model.TryResetTask(ctx, uis.env.Settings(), projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
-			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
-			return
-		}
-
-		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		}
-		gimlet.WriteJSON(w, projCtx.Task)
-		return
-	case evergreen.AbortAction:
-		if err = model.AbortTask(ctx, projCtx.Task.Id, authName); err != nil {
-			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
-			return
-		}
-
-		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
-
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		}
-		gimlet.WriteJSON(w, projCtx.Task)
-		return
-	case evergreen.SetActiveAction:
-		active := putParams.Active
-		if active && projCtx.Task.Requester == evergreen.GithubMergeRequester {
-			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
-			return
-		}
-		if err = model.SetActiveState(r.Context(), authUser.Username(), active, *projCtx.Task); err != nil {
-			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
-				http.StatusInternalServerError)
-			return
-		}
-
-		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		}
-		gimlet.WriteJSON(w, projCtx.Task)
-		return
-	case evergreen.SetPriorityAction:
-		var priority int64
-		priority, err = strconv.ParseInt(putParams.Priority, 10, 64)
-		if err != nil {
-			http.Error(w, "Bad priority value, must be int", http.StatusBadRequest)
-			return
-		}
-		if priority > evergreen.MaxTaskPriority {
-			if !taskAdmin {
-				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority),
-					http.StatusUnauthorized)
-				return
-			}
-		}
-		if err = model.SetTaskPriority(r.Context(), *projCtx.Task, priority, authUser.Username()); err != nil {
-			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
-			return
-		}
-
-		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		}
-		gimlet.WriteJSON(w, projCtx.Task)
-		return
-	case "override_dependencies":
-		overrideRequesters := []string{
-			evergreen.PatchVersionRequester,
-			evergreen.GithubPRRequester,
-		}
-		if !utility.StringSliceContains(overrideRequesters, projCtx.Task.Requester) && !taskAdmin {
-			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
-			return
-		}
-		err = projCtx.Task.SetOverrideDependencies(ctx, authUser.Username())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		gimlet.WriteJSON(w, projCtx.Task)
-		return
-	default:
-		gimlet.WriteJSONError(w, "Unrecognized action: "+putParams.Action)
-	}
-}
-
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	vals := r.URL.Query()
@@ -444,10 +273,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			TimeZone:      getUserTimeZone(MustHaveUser(r)),
 		}))
 	} else {
-		data := logData{
-			Data: apimodels.StreamFromLogIterator(it),
-			User: gimlet.GetUser(r.Context()),
-		}
-		uis.render.Stream(w, http.StatusOK, data, "base", "task_log.html")
+		http.Redirect(w, r, fmt.Sprintf("%s/task/%s/test-html-log?execution=%d&testName=%s", uis.Settings.Ui.UIv2Url, tsk.Id, tsk.Execution, testName), http.StatusPermanentRedirect)
 	}
 }

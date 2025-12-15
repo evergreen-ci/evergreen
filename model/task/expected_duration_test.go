@@ -15,7 +15,7 @@ import (
 func TestExpectedDuration(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: DurationIndex})
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: TaskHistoricalDataIndex})
 	assert.NoError(err)
 	bv := "bv"
 	project := "proj"

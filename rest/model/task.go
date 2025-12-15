@@ -19,7 +19,6 @@ import (
 const (
 	TaskLogLinkFormat        = "%s/task_log_raw/%s/%d?type=%s"
 	ParsleyTaskLogLinkFormat = "%s/evergreen/%s/%d/%s"
-	EventLogLinkFormat       = "%s/event_log/task/%s"
 )
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
@@ -95,8 +94,9 @@ type APITask struct {
 	TimeTaken APIDuration `json:"time_taken_ms"`
 	// Cost breakdown for running this task
 	TaskCost *APITaskCost `json:"task_cost,omitempty"`
-	// Expected cost breakdown for running this task based on duration prediction
-	ExpectedTaskCost *APITaskCost `json:"expected_task_cost,omitempty"`
+	// Predicted cost breakdown based on historical task costs
+	PredictedTaskCost       *APITaskCost       `json:"predicted_task_cost,omitempty"`
+	PredictedTaskCostStdDev *APITaskCostStdDev `json:"predicted_task_cost_std_dev,omitempty"`
 	// Number of milliseconds expected for this task to execute
 	ExpectedDuration APIDuration `json:"expected_duration_ms"`
 	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
@@ -160,6 +160,13 @@ type APITaskCost struct {
 	AdjustedCost *float64 `json:"adjusted_cost,omitempty"`
 }
 
+type APITaskCostStdDev struct {
+	// OnDemandCost is the standard deviation of the on-demand cost
+	OnDemandCost *float64 `json:"on_demand_cost,omitempty"`
+	// AdjustedCost is the standard deviation of the adjusted cost
+	AdjustedCost *float64 `json:"adjusted_cost,omitempty"`
+}
+
 type LogLinks struct {
 	// Link to logs containing merged copy of all other logs
 	AllLogLink *string `json:"all_log"`
@@ -169,7 +176,6 @@ type LogLinks struct {
 	AgentLogLink *string `json:"agent_log"`
 	// Link to logs created by the machine running the task
 	SystemLogLink *string `json:"system_log"`
-	EventLogLink  *string `json:"event_log,omitempty"`
 }
 
 type ApiTaskEndDetail struct {
@@ -395,9 +401,13 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.TaskCost.BuildFromService(t.TaskCost)
 	}
 
-	if t.ExpectedTaskCost.OnDemandCost != 0 || t.ExpectedTaskCost.AdjustedCost != 0 {
-		at.ExpectedTaskCost = &APITaskCost{}
-		at.ExpectedTaskCost.BuildFromService(t.ExpectedTaskCost)
+	// Populate predicted cost fields if they exist (not zero)
+	if !t.PredictedTaskCost.IsZero() || !t.PredictedTaskCostStdDev.IsZero() {
+		at.PredictedTaskCost = &APITaskCost{}
+		at.PredictedTaskCost.BuildFromService(t.PredictedTaskCost)
+
+		at.PredictedTaskCostStdDev = &APITaskCostStdDev{}
+		at.PredictedTaskCostStdDev.BuildFromService(t.PredictedTaskCostStdDev)
 	}
 
 	if t.ParentPatchID != "" {
@@ -473,7 +483,6 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 			TaskLogLink:   utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "T")),
 			AgentLogLink:  utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "E")),
 			SystemLogLink: utility.ToStringPtr(fmt.Sprintf(TaskLogLinkFormat, args.LogURL, baseTaskID, t.Execution, "S")),
-			EventLogLink:  utility.ToStringPtr(fmt.Sprintf(EventLogLinkFormat, args.LogURL, baseTaskID)),
 		}
 		at.Logs = ll
 	}
@@ -584,10 +593,6 @@ func (at *APITask) ToService() (*task.Task, error) {
 
 	if at.TaskCost != nil {
 		st.TaskCost = at.TaskCost.ToService()
-	}
-
-	if at.ExpectedTaskCost != nil {
-		st.ExpectedTaskCost = at.ExpectedTaskCost.ToService()
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -735,6 +740,26 @@ func (c *APITaskCost) ToService() task.TaskCost {
 		taskCost.AdjustedCost = *c.AdjustedCost
 	}
 	return taskCost
+}
+
+func (c *APITaskCostStdDev) BuildFromService(taskCostStdDev task.TaskCostStdDev) {
+	if taskCostStdDev.OnDemandCost != 0 {
+		c.OnDemandCost = &taskCostStdDev.OnDemandCost
+	}
+	if taskCostStdDev.AdjustedCost != 0 {
+		c.AdjustedCost = &taskCostStdDev.AdjustedCost
+	}
+}
+
+func (c *APITaskCostStdDev) ToService() task.TaskCostStdDev {
+	taskCostStdDev := task.TaskCostStdDev{}
+	if c.OnDemandCost != nil {
+		taskCostStdDev.OnDemandCost = *c.OnDemandCost
+	}
+	if c.AdjustedCost != nil {
+		taskCostStdDev.AdjustedCost = *c.AdjustedCost
+	}
+	return taskCostStdDev
 }
 
 // APIGeneratedTaskInfo contains basic information about a generated task.

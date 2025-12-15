@@ -23,9 +23,14 @@ type requestInfo struct {
 	retryOn413 bool
 }
 
-// AuthError is a special error when the CLI receives 401 Unauthorized to
-// suggest logging in again as a possible solution to the error.
-var AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
+var (
+	// AuthError is a special error when the CLI receives 401 Unauthorized to
+	// suggest logging in again as a possible solution to the error.
+	AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
+	// VPNError is a special error when the CLI receives 403 Forbidden to
+	// suggest checking VPN connection as a possible solution to the error.
+	VPNError = "VPN connection required: please make sure you're on the VPN and have access to Evergreen."
+)
 
 func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Request, error) {
 	url := c.getPath(path)
@@ -47,15 +52,14 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		}
 	}
 
-	if c.apiUser != "" && c.apiKey != "" {
+	// The API user and key are mutually exclusive with JWT, so only set them if
+	// they are both set.
+	if c.oauth != "" {
+		r.Header.Add(evergreen.AuthorizationHeader, "Bearer "+c.oauth)
+	} else if c.apiUser != "" && c.apiKey != "" {
 		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
-	}
-	if c.jwt != "" {
-		r.Header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
-	}
-
-	if c.hostID != "" && c.hostSecret != "" {
+	} else if c.hostID != "" && c.hostSecret != "" {
 		r.Header.Add(evergreen.HostHeader, c.hostID)
 		r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
 	}
@@ -136,8 +140,11 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			MaxDelay:    c.timeoutMax,
 		},
 	})
+	// We return the response intentionally so that callers can read the body.
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 		return resp, util.RespError(resp, AuthError)
+	} else if resp != nil && resp.StatusCode == http.StatusForbidden {
+		return resp, util.RespError(resp, VPNError)
 	} else if err != nil {
 		return resp, err
 	}

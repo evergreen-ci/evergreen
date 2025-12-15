@@ -1,10 +1,7 @@
 package service
 
 import (
-	"fmt"
-	htmlTemplate "html/template"
 	"net/http"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -13,9 +10,6 @@ import (
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/graphql"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
@@ -32,8 +26,6 @@ import (
 
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
-	render     gimlet.Renderer
-	renderText gimlet.Renderer
 	// Home is the root path on disk from which relative urls are constructed for loading
 	// plugins or other assets.
 	Home string
@@ -50,22 +42,6 @@ type UIServer struct {
 
 	queue amboy.Queue
 	env   evergreen.Environment
-
-	plugin.PanelManager
-}
-
-// ViewData contains common data that is provided to all Evergreen pages
-type ViewData struct {
-	User        *user.DBUser
-	ProjectData projectContext
-	Project     model.Project
-	Flashes     []any
-	Banner      string
-	BannerTheme string
-	Csrf        htmlTemplate.HTML
-	JiraHost    string
-	IsAdmin     bool
-	NewUILink   string
 }
 
 const hostCacheTTL = 30 * time.Second
@@ -79,14 +55,8 @@ type hostCacheItem struct {
 	isRunning            bool
 }
 
-func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
+func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UIServer, error) {
 	settings := env.Settings()
-
-	ropts := gimlet.RendererOptions{
-		Directory:    filepath.Join(home, WebRootPath, Templates),
-		DisableCache: !settings.Ui.CacheTemplates,
-		Functions:    MakeTemplateFuncs(fo),
-	}
 
 	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
 	cookieStore.Options.HttpOnly = true
@@ -98,8 +68,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 		queue:       queue,
 		Home:        home,
 		CookieStore: cookieStore,
-		render:      gimlet.NewHTMLRenderer(ropts),
-		renderText:  gimlet.NewTextRenderer(ropts),
 		jiraHandler: thirdparty.NewJiraHandler(*settings.Jira.Export()),
 		umconf: gimlet.UserMiddlewareConfiguration{
 			HeaderKeyName:  evergreen.APIKeyHeader,
@@ -125,23 +93,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 
 	if err := uis.umconf.Validate(); err != nil {
 		return nil, errors.Wrap(err, "programmer error; invalid user middleware configuration")
-	}
-
-	plugins := plugin.GetPublished()
-	uis.PanelManager = &plugin.SimplePanelManager{}
-
-	if err := uis.PanelManager.RegisterPlugins(plugins); err != nil {
-		return nil, errors.Wrap(err, "problem initializing plugins")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, pl := range plugins {
-		// get the settings
-		catcher.Add(pl.Configure(uis.Settings.Plugins[pl.Name()]))
-	}
-
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
 	}
 
 	return uis, nil
@@ -173,81 +124,6 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 }
 
-// GetCommonViewData returns a struct that can supplement the struct used to provide data to
-// views. It contains data that is used for most/all Evergreen pages.
-// The needsUser and needsProject params will cause an error to be logged if there is no
-// user/project. Data will not be returned if the project cannot be found.
-func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
-	viewData := ViewData{}
-	ctx := r.Context()
-	userCtx := gimlet.GetUser(ctx)
-	if needsUser && userCtx == nil {
-		grip.Error(message.WrapError(errors.New("no user attached to request"), message.Fields{
-			"url":     r.URL,
-			"request": gimlet.GetRequestID(r.Context()),
-		}))
-	}
-	projectCtx, err := GetProjectContext(r)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get project context from request",
-			"url":     r.URL,
-			"request": gimlet.GetRequestID(r.Context()),
-		}))
-		return ViewData{}
-	}
-	if needsProject {
-		var project *model.Project
-		project, err = projectCtx.GetProject(r.Context())
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "could not find project from project context",
-				"url":     r.URL,
-				"request": gimlet.GetRequestID(r.Context()),
-			}))
-			return ViewData{}
-		}
-		if project == nil {
-			grip.Error(message.WrapError(errors.New("no project found"), message.Fields{
-				"url":     r.URL,
-				"request": gimlet.GetRequestID(r.Context()),
-			}))
-			return ViewData{}
-		}
-		viewData.Project = *project
-	}
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to retrieve admin settings",
-			"url":     r.URL,
-			"request": gimlet.GetRequestID(r.Context()),
-		}))
-		return ViewData{}
-	}
-
-	if u, ok := userCtx.(*user.DBUser); ok {
-		viewData.User = u
-		opts := gimlet.PermissionOpts{
-			Resource:      evergreen.SuperUserPermissionsID,
-			ResourceType:  evergreen.SuperUserResourceType,
-			Permission:    evergreen.PermissionAdminSettings,
-			RequiredLevel: evergreen.AdminSettingsEdit.Value,
-		}
-		viewData.IsAdmin = u.HasPermission(opts)
-	} else if userCtx != nil {
-		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
-	}
-
-	viewData.Banner = settings.Banner
-	viewData.BannerTheme = string(settings.BannerTheme)
-	viewData.ProjectData = projectCtx
-	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
-	viewData.Csrf = csrf.TemplateField(r)
-	viewData.JiraHost = uis.Settings.Jira.Host
-	return viewData
-}
-
 // NewRouter sets up a request router for the UI, installing
 // hard-coded routes as well as those belonging to plugins.
 func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
@@ -258,25 +134,24 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	wrapUserForMCP := gimlet.WrapperMiddleware(uis.wrapUserForMCP)
 	ownsHost := gimlet.WrapperMiddleware(uis.ownsHost)
 	vsCodeRunning := gimlet.WrapperMiddleware(uis.vsCodeRunning)
-	adminSettings := route.RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
-	editTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksBasic)
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)
-	submitPatches := route.RequiresProjectPermission(evergreen.PermissionPatches, evergreen.PatchSubmit)
-	viewProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsView)
-	editProjectSettings := route.RequiresProjectPermission(evergreen.PermissionProjectSettings, evergreen.ProjectSettingsEdit)
-	viewHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsView)
-	editHosts := route.RequiresDistroPermission(evergreen.PermissionHosts, evergreen.HostsEdit)
 	requireSage := route.NewSageMiddleware()
 
 	app := gimlet.NewApp()
 	app.NoVersions = true
 
 	// User login and logout
-	app.AddRoute("/login").Handler(uis.loginPage).Get()
+	app.AddRoute("/login").Handler(uis.loginRedirect).Get()
 	app.AddRoute("/login").Wrap(allowsCORS).Handler(uis.login).Post()
-	app.AddRoute("/login/key").Handler(uis.userGetKey).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
+
+	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
+		app.AddRoute("/login/redirect").Handler(h).Get()
+	}
+	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
+		app.AddRoute("/login/redirect/callback").Handler(h).Get()
+	}
 
 	app.AddRoute("/robots.txt").Get().Wrap(needsLogin).Handler(func(rw http.ResponseWriter, r *http.Request) {
 		_, err := rw.Write([]byte(strings.Join([]string{
@@ -287,13 +162,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
 		}
 	})
-
-	if h := uis.env.UserManager().GetLoginHandler(uis.RootURL); h != nil {
-		app.AddRoute("/login/redirect").Handler(h).Get()
-	}
-	if h := uis.env.UserManager().GetLoginCallbackHandler(); h != nil {
-		app.AddRoute("/login/redirect/callback").Handler(h).Get()
-	}
 
 	if uis.Settings.Ui.CsrfKey != "" {
 		app.AddMiddleware(gimlet.WrapperHandlerMiddleware(
@@ -319,14 +187,13 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		Post().Get()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.waterfallPage).Get().Head()
-	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext).Handler(uis.waterfallPage).Get()
-	app.AddRoute("/waterfall/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get().Head()
+	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get()
+	app.AddRoute("/waterfall/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyWaterfallPage).Get()
 
 	// Task page (and related routes)
-	app.AddRoute("/task/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskPage).Get()
-	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskPage).Get()
-	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.taskModify).Put()
+	app.AddRoute("/task/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskPage).Get()
+	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskPage).Get()
 	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
@@ -341,21 +208,14 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
 	// Build page
-	app.AddRoute("/build/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildPage).Get()
-	app.AddRoute("/builds/{build_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyBuild).Put()
-	app.AddRoute("/json/build_history/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildHistory).Get()
+	app.AddRoute("/build/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyBuildPage).Get()
 
 	// Version page
-	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionPage).Get()
-	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyVersion).Put()
-	app.AddRoute("/json/version_history/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistory).Get()
-	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionFind).Get()
+	app.AddRoute("/version/{version_id}").Wrap(needsLogin).Handler(uis.legacyVersionPage).Get()
 
 	// Hosts
-	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
-	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
-	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, viewHosts).Handler(uis.hostPage).Get()
-	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext, editHosts).Handler(uis.modifyHost).Put()
+	app.AddRoute("/hosts").Handler(uis.legacyHostsPage).Get()
+	app.AddRoute("/host/{host_id}").Handler(uis.legacyHostPage).Get()
 	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
@@ -370,85 +230,51 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}).Get()
 
 	// Distros
-	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
-
-	// TODO (EVG-17986): route should require pod-specific permissions.
-	app.AddRoute("/pod/{pod_id}").Wrap(needsLogin).Handler(uis.podPage).Get()
-
-	// Event Logs
-	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
+	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.legacyDistrosPage).Get()
 
 	// Task History
-	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.taskHistoryPage).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryPage).Get()
-
-	// History Drawer Endpoints
-	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
-	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistoryDrawer).Get()
+	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyTaskHistoryPage).Get()
 
 	// Variant History
-	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.variantHistory).Get()
+	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyVariantHistory).Get()
 
 	// Task queues
-	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskQueue).Get()
+	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyTaskQueue).Get()
 
 	// Patch pages
-	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.patchPage).Get()
-	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, submitPatches).Handler(uis.schedulePatchUI).Post()
-	app.AddRoute("/diff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.diffPage).Get()
-	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.fileDiffPage).Get()
-	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.rawDiffPage).Get()
-	app.AddRoute("/patches").Wrap(needsLogin, needsContext).Handler(uis.patchTimeline).Get()
-	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.projectPatchesTimeline).Get()
-	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin, needsContext).Handler(uis.userPatchesTimeline).Get()
-	app.AddRoute("/patches/mine").Wrap(needsLogin, needsContext).Handler(uis.myPatchesTimeline).Get()
-	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS, needsLogin, viewTasks).Handler(uis.patchTimelineJson).Get()
-	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS, needsLogin).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyPatchPage).Get()
+	app.AddRoute("/diff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyDiffPage).Get()
+	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyFileDiffPage).Get()
+	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext, allowsCORS, viewTasks).Handler(uis.rawDiffPage).Get()
+	app.AddRoute("/patches").Wrap(needsLogin).Handler(uis.legacyPatchesPage).Get()
+	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyProjectPatchesPage).Get()
+	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin).Handler(uis.legacyUserPatchesPage).Get()
+	app.AddRoute("/patches/mine").Wrap(needsLogin).Handler(uis.legacyMyPatchesPage).Get()
 
-	// Spawnhost routes
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.spawnPage).Get()
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.requestNewHost).Put()
-	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.modifySpawnHost).Post()
-	app.AddRoute("/spawn/hosts").Wrap(needsLogin, needsContext).Handler(uis.getSpawnedHosts).Get()
-	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
-	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
-	app.AddRoute("/spawn/types").Wrap(needsLogin, needsContext).Handler(uis.getAllowedInstanceTypes).Get()
-	app.AddRoute("/spawn/volumes").Wrap(needsLogin).Handler(uis.getVolumes).Get()
-	app.AddRoute("/spawn/volumes").Wrap(needsLogin, needsContext).Handler(uis.requestNewVolume).Put()
-	app.AddRoute("/spawn/volume/{volume_id}").Wrap(needsLogin).Handler(uis.modifyVolume).Post()
+	// Legacy Spawnhost routes - redirect to new UI
+	app.AddRoute("/spawn").Wrap(needsLogin).Handler(uis.legacySpawnHostPage).Get().Put().Post()
+	app.AddRoute("/spawn/hosts").Wrap(needsLogin).Handler(uis.legacySpawnHostPage).Get()
+	app.AddRoute("/spawn/volumes").Wrap(needsLogin).Handler(uis.legacySpawnVolumePage).Get().Put()
 
 	// User settings
-	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
-	app.AddRoute("/settings/newkey").Wrap(allowsCORS, needsLogin, needsContext).Handler(uis.newAPIKey).Post()
-	app.AddRoute("/settings/cleartoken").Wrap(needsLogin).Handler(uis.clearUserToken).Post()
-	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.notificationsPage).Get()
+	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.legacyUserSettingsPage).Get()
+	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.legacyNotificationsPage).Get()
 
 	// Task stats
-	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.taskTimingPage).Get()
-	app.AddRoute("/task_timing/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskTimingPage).Get()
-	app.AddRoute("/json/task_timing/{project_id}/{build_variant}/{request}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskTimingJSON).Get()
-	app.AddRoute("/json/task_timing/{project_id}/{build_variant}/{request}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskTimingJSON).Get()
+	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get()
+	app.AddRoute("/task_timing/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.legacyWaterfallPage).Get()
 
 	// Project routes
-	app.AddRoute("/projects/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.projectsPage).Get()
-	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, viewProjectSettings).Handler(uis.projectEvents).Get()
-	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext, editProjectSettings).Handler(uis.setRevision).Put()
+	app.AddRoute("/projects/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyProjectsPage).Get()
 
-	// Admin routes
-	app.AddRoute("/admin").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminSettings).Get()
-	app.AddRoute("/admin/cleartokens").Wrap(needsLogin, adminSettings).Handler(uis.clearAllUserTokens).Post()
-	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext, adminSettings).Handler(uis.adminEvents).Get()
-
-	// Plugin routes
-	app.PrefixRoute("/plugin").Route("/manifest/get/{project_id}/{revision}").Wrap(needsLogin, viewTasks).Handler(uis.GetManifest).Get()
-
-	//build baron
-	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbJiraSearch).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbGetCreatedTickets).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/custom_created_tickets/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.bbGetCustomCreatedTickets).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(bbGetNote).Get()
-	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(bbSaveNote).Put()
-	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.bbFileTicket).Post()
+	// Deprecated Build Baron routes - redirect to new Spruce UI
+	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/custom_created_tickets/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Put()
+	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.legacyBuildBaronPage).Post()
 
 	// Add an OPTIONS method to every POST and GET request to handle preflight OPTIONS requests.
 	// These requests must not check for credentials. They exist to validate whether a route exists, and to
@@ -460,18 +286,4 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	return app
-}
-
-// waterfallPage implements a permanent redirect to the new UI waterfall page
-func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject(r.Context())
-
-	if err != nil || project == nil {
-		http.Redirect(w, r, uis.Settings.Ui.UIv2Url, http.StatusMovedPermanently)
-		return
-	}
-
-	newUIURL := fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
-	http.Redirect(w, r, newUIURL, http.StatusMovedPermanently)
 }

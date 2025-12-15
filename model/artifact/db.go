@@ -21,6 +21,7 @@ var (
 	LinkKey        = bsonutil.MustHaveTag(File{}, "Link")
 	ContentTypeKey = bsonutil.MustHaveTag(File{}, "ContentType")
 	AWSSecretKey   = bsonutil.MustHaveTag(File{}, "AWSSecret")
+	FileKeyKey     = bsonutil.MustHaveTag(File{}, "FileKey")
 )
 
 type TaskIDAndExecution struct {
@@ -124,4 +125,39 @@ func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	entries := []Entry{}
 	err := db.FindAllQ(ctx, Collection, query, &entries)
 	return entries, err
+}
+
+// UpdateFileLink updates the link for a single artifact file matching task ID, execution,
+// file name, and current link. Returns db.ErrNotFound if no file matched.
+func UpdateFileLink(ctx context.Context, taskID string, execution int, fileName, currentLink, newLink string) error {
+	filter := bson.M{
+		TaskIdKey:    taskID,
+		ExecutionKey: execution,
+		FilesKey: bson.M{"$elemMatch": bson.M{
+			NameKey: fileName,
+			LinkKey: currentLink,
+		}},
+	}
+	update := bson.M{"$set": bson.M{
+		bsonutil.GetDottedKeyName(FilesKey, "$", LinkKey): newLink,
+	}}
+	return db.UpdateContext(ctx, Collection, filter, update)
+}
+
+// UpdateFileKey updates the S3 file key for a single artifact file matching task ID, execution,
+// file name, and current file key. This is used for rotating S3 signed artifacts to point to
+// a different object in the same bucket.
+func UpdateFileKey(ctx context.Context, taskID string, execution int, fileName, currentFileKey, newFileKey string) error {
+	filter := bson.M{
+		TaskIdKey:    taskID,
+		ExecutionKey: execution,
+		FilesKey: bson.M{"$elemMatch": bson.M{
+			NameKey:    fileName,
+			FileKeyKey: currentFileKey,
+		}},
+	}
+	update := bson.M{"$set": bson.M{
+		bsonutil.GetDottedKeyName(FilesKey, "$", FileKeyKey): newFileKey,
+	}}
+	return db.UpdateContext(ctx, Collection, filter, update)
 }
