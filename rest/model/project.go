@@ -717,6 +717,11 @@ type APIProjectRef struct {
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 	// Test selection settings.
 	TestSelection APITestSelectionSettings `json:"test_selection,omitzero"`
+	// Whether or not to run every mainline commit version.
+	RunEveryMainlineCommit *bool `json:"run_every_mainline_commit,omitzero"`
+	// Limit for the number of mainline commits to run when
+	// RunEveryMainlineCommit is true.
+	RunEveryMainlineCommitLimit *int `json:"run_every_mainline_commit_limit,omitzero"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -764,6 +769,8 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
+		RunEveryMainlineCommit:           utility.FromBoolPtr(p.RunEveryMainlineCommit),
+		RunEveryMainlineCommitLimit:      utility.FromIntPtr(p.RunEveryMainlineCommitLimit),
 	}
 
 	if projectRef.ProjectHealthView == "" {
@@ -885,6 +892,8 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
+	p.RunEveryMainlineCommit = utility.ToBoolPtr(projectRef.RunEveryMainlineCommit)
+	p.RunEveryMainlineCommitLimit = utility.ToIntPtr(projectRef.RunEveryMainlineCommitLimit)
 
 	if projectRef.ProjectHealthView == "" {
 		projectRef.ProjectHealthView = model.ProjectHealthViewFailed
