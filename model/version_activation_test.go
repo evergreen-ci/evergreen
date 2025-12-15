@@ -222,8 +222,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 	now := time.Now()
 
 	projectRef := &ProjectRef{
-		Id: projectID,
-		// ZACKARY RunEveryMainlineCommit: true,
+		Id:                     projectID,
+		RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -352,8 +352,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 	now := time.Now()
 
 	projectRef := &ProjectRef{
-		Id: projectID,
-		// ZACKARY RunEveryMainlineCommit: true,
+		Id:                     projectID,
+		RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -451,8 +451,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationSingleCommitBehaviorPres
 	now := time.Now()
 
 	projectRef := &ProjectRef{
-		Id: projectID,
-		// ZACKARY RunEveryMainlineCommit: true,
+		Id:                     projectID,
+		RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
@@ -558,8 +558,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
 	now := time.Now()
 
 	projectRef := &ProjectRef{
-		Id: projectID,
-		// ZACKARY RunEveryMainlineCommit: true,
+		Id:                     projectID,
+		RunEveryMainlineCommit: true,
 	}
 	require.NoError(projectRef.Insert(s.ctx))
 
