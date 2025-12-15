@@ -25,7 +25,7 @@ func TestRepoBuildFromService(t *testing.T) {
 			Allowed:        utility.FalsePtr(),
 			DefaultEnabled: utility.TruePtr(),
 		},
-		RunEveryMainlineCommit:      utility.TruePtr(),
+		RunEveryMainlineCommit:      true,
 		RunEveryMainlineCommitLimit: 20,
 	}}
 	apiRef := &APIProjectRef{}

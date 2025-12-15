@@ -769,7 +769,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		ProjectHealthView:                p.ProjectHealthView,
 		GitHubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 		TestSelection:                    p.TestSelection.ToService(),
-		RunEveryMainlineCommit:           utility.BoolPtrCopy(p.RunEveryMainlineCommit),
+		RunEveryMainlineCommit:           utility.FromBoolPtr(p.RunEveryMainlineCommit),
 		RunEveryMainlineCommitLimit:      utility.FromIntPtr(p.RunEveryMainlineCommitLimit),
 	}
 
@@ -892,7 +892,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.GithubMQTriggerAliases = utility.ToStringPtrSlice(projectRef.GithubMQTriggerAliases)
 	p.GitHubPermissionGroupByRequester = projectRef.GitHubPermissionGroupByRequester
 	p.TestSelection.BuildFromService(projectRef.TestSelection)
-	p.RunEveryMainlineCommit = utility.BoolPtrCopy(projectRef.RunEveryMainlineCommit)
+	p.RunEveryMainlineCommit = utility.ToBoolPtr(projectRef.RunEveryMainlineCommit)
 	p.RunEveryMainlineCommitLimit = utility.ToIntPtr(projectRef.RunEveryMainlineCommitLimit)
 
 	if projectRef.ProjectHealthView == "" {

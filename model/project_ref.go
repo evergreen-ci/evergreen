@@ -150,7 +150,7 @@ type ProjectRef struct {
 	// RunEveryMainlineCommit indicates that the project should activate the versions for all mainline commits.
 	// This goes against Evergreen's optimization of only activating the latest commit in a series of mainline commits.
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
-	RunEveryMainlineCommit *bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
+	RunEveryMainlineCommit bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
 
 	// RunEveryMainlineCommitLimit indicates the maximum number of mainline commits to activate in a single activation run.
 	RunEveryMainlineCommitLimit int `bson:"run_every_mainline_commit_limit,omitempty" json:"run_every_mainline_commit_limit,omitempty" yaml:"run_every_mainline_commit_limit,omitempty"`
