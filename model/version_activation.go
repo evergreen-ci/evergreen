@@ -161,6 +161,12 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 			}))
 		}
 	}
+	if err := v.UpdateAggregateTaskCosts(ctx); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "failed to update version expected costs after task activation",
+			"version": v.Id,
+		}))
+	}
 	// Update the stored version so that we don't attempt to reactivate any variants/tasks
 	return true, v.ActivateAndSetBuildVariants(ctx)
 }

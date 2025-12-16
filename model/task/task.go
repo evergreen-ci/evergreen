@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -64,38 +65,9 @@ var (
 	eitherSlash = regexp.MustCompile(`[/\\]`)
 )
 
-// TaskCost represents the cost breakdown for a task
-type TaskCost struct {
-	// OnDemandCost is the cost calculated using only on-demand rates
-	OnDemandCost float64 `bson:"on_demand_cost,omitempty" json:"on_demand_cost,omitempty"`
-	// AdjustedCost is the cost calculated using the finance formula with savings plan and on-demand components
-	AdjustedCost float64 `bson:"adjusted_cost,omitempty" json:"adjusted_cost,omitempty"`
-}
-
-// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
-// zero value for BSON marshalling.
-func (tc TaskCost) IsZero() bool {
-	return tc.OnDemandCost == 0 && tc.AdjustedCost == 0
-}
-
-// TaskCostStdDev represents the standard deviation of task costs
-type TaskCostStdDev struct {
-	// OnDemandCost is the standard deviation of the on-demand cost
-	OnDemandCost float64 `bson:"on_demand_cost,omitempty" json:"on_demand_cost,omitempty"`
-	// AdjustedCost is the standard deviation of the adjusted cost
-	AdjustedCost float64 `bson:"adjusted_cost,omitempty" json:"adjusted_cost,omitempty"`
-}
-
-// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
-// zero value for BSON marshalling.
-func (tcs TaskCostStdDev) IsZero() bool {
-	return tcs.OnDemandCost == 0 && tcs.AdjustedCost == 0
-}
-
 type Task struct {
 	Id     string `bson:"_id" json:"id"`
 	Secret string `bson:"secret" json:"secret"`
-
 	// time information for task
 	// CreateTime - the creation time for the task, derived from the commit time or the patch creation time.
 	// DispatchTime - the time the task runner starts up the agent on the host.
@@ -270,12 +242,10 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute (if it has finished) or how long the task has been running (if it has started)
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
-	// TaskCost is the cost of the task based on runtime and distro cost rates
-	TaskCost TaskCost `bson:"task_cost,omitempty" json:"task_cost,omitempty"`
-	// PredictedTaskCost is the predicted cost based on historical data for this task
-	PredictedTaskCost TaskCost `bson:"predicted_task_cost,omitempty" json:"predicted_task_cost,omitempty"`
-	// PredictedTaskCostStdDev is the standard deviation of the predicted cost
-	PredictedTaskCostStdDev TaskCostStdDev `bson:"predicted_task_cost_std_dev,omitempty" json:"predicted_task_cost_std_dev,omitempty"`
+	// PredictedTaskCost is the expected cost of running the task based on historical data
+	PredictedTaskCost cost.Cost `bson:"predicted_cost,omitempty" json:"predicted_cost,omitempty"`
+	// TaskCost is the actual cost of the task based on runtime and distro cost rates
+	TaskCost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -2146,13 +2116,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 				ActivatedTimeKey:            now,
 			}
 
-			// Only set predicted cost fields if they have values (no historical data = zero values)
-			if !prediction.PredictedCost.IsZero() {
-				setFields[PredictedTaskCostKey] = prediction.PredictedCost
-			}
-			if !prediction.PredictedCostStdDev.IsZero() {
-				setFields[PredictedTaskCostStdDevKey] = prediction.PredictedCostStdDev
-			}
+			addPredictedCostToUpdate(setFields, prediction.PredictedCost)
 
 			writes = append(writes, mongo.NewUpdateOneModel().
 				SetFilter(bson.M{IdKey: t.Id}).
@@ -2638,8 +2602,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
 		if prediction != nil {
-			t.PredictedTaskCost = prediction.PredictedCost
-			t.PredictedTaskCostStdDev = prediction.PredictedCostStdDev
+			t.SetPredictedCost(prediction.PredictedCost)
 		}
 		t.DisplayStatusCache = t.DetermineDisplayStatus()
 	}
@@ -2662,12 +2625,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 	}
 
 	if prediction != nil {
-		if !prediction.PredictedCost.IsZero() {
-			setFields[PredictedTaskCostKey] = prediction.PredictedCost
-		}
-		if !prediction.PredictedCostStdDev.IsZero() {
-			setFields[PredictedTaskCostStdDevKey] = prediction.PredictedCostStdDev
-		}
+		addPredictedCostToUpdate(setFields, prediction.PredictedCost)
 	}
 
 	update := []bson.M{
@@ -4335,10 +4293,10 @@ func CalculateAdjustedTaskCost(runtimeSeconds float64, distroCostData distro.Cos
 }
 
 // CalculateTaskCost calculates both on-demand and adjusted costs for a task.
-func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, financeConfig evergreen.CostConfig) TaskCost {
-	return TaskCost{
-		OnDemandCost: CalculateOnDemandCost(runtimeSeconds, distroCostData, financeConfig),
-		AdjustedCost: CalculateAdjustedTaskCost(runtimeSeconds, distroCostData, financeConfig),
+func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, financeConfig evergreen.CostConfig) cost.Cost {
+	return cost.Cost{
+		OnDemandEC2Cost: CalculateOnDemandCost(runtimeSeconds, distroCostData, financeConfig),
+		AdjustedEC2Cost: CalculateAdjustedTaskCost(runtimeSeconds, distroCostData, financeConfig),
 	}
 }
 
@@ -4367,7 +4325,6 @@ func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostCon
 	return financeConfig, d.CostData, nil
 }
 
-// UpdateTaskCost updates the task's cost based on its current TimeTaken duration.
 func (t *Task) UpdateTaskCost(ctx context.Context) error {
 	if t.TimeTaken <= 0 {
 		return nil
@@ -4383,24 +4340,20 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{
 		"$set": bson.M{
-			"task_cost": t.TaskCost,
+			TaskCostKey: t.TaskCost,
 		},
 	})
 }
 
-// CostPredictionResult contains the result of computing a predicted cost
 type CostPredictionResult struct {
-	PredictedCost       TaskCost
-	PredictedCostStdDev TaskCostStdDev
+	PredictedCost cost.Cost
 }
 
-// ComputePredictedCostForWeek computes the predicted cost for a task based on historical data
-// from the past week (7 days).
 func (t *Task) ComputePredictedCostForWeek(ctx context.Context) (CostPredictionResult, error) {
 	end := time.Now()
 	start := end.Add(-taskCompletionEstimateWindow)
 
-	results, err := getExpectedCostsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant, start, end)
+	results, err := getPredictedCostsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant, start, end)
 	if err != nil {
 		return CostPredictionResult{}, errors.Wrap(err, "querying expected costs")
 	}
@@ -4411,13 +4364,9 @@ func (t *Task) ComputePredictedCostForWeek(ctx context.Context) (CostPredictionR
 
 	result := results[0]
 	return CostPredictionResult{
-		PredictedCost: TaskCost{
-			OnDemandCost: result.AvgOnDemandCost,
-			AdjustedCost: result.AvgAdjustedCost,
-		},
-		PredictedCostStdDev: TaskCostStdDev{
-			OnDemandCost: result.StdDevOnDemandCost,
-			AdjustedCost: result.StdDevAdjustedCost,
+		PredictedCost: cost.Cost{
+			OnDemandEC2Cost: result.AvgOnDemandCost,
+			AdjustedEC2Cost: result.AvgAdjustedCost,
 		},
 	}, nil
 }
@@ -4426,14 +4375,24 @@ func (t *Task) HasCostPrediction() bool {
 	return !t.PredictedTaskCost.IsZero()
 }
 
-func (t *Task) GetDisplayCost() TaskCost {
+func (t *Task) GetDisplayCost() cost.Cost {
 	if !t.TaskCost.IsZero() {
 		return t.TaskCost
 	}
 	if !t.PredictedTaskCost.IsZero() {
 		return t.PredictedTaskCost
 	}
-	return TaskCost{}
+	return cost.Cost{}
+}
+
+func (t *Task) SetPredictedCost(c cost.Cost) {
+	t.PredictedTaskCost = c
+}
+
+func addPredictedCostToUpdate(setFields bson.M, predictedCost cost.Cost) {
+	if !predictedCost.IsZero() {
+		setFields[PredictedTaskCostKey] = predictedCost
+	}
 }
 
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket

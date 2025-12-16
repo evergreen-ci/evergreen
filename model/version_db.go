@@ -57,6 +57,8 @@ var (
 	VersionProjectStorageMethodKey              = bsonutil.MustHaveTag(Version{}, "ProjectStorageMethod")
 	VersionPreGenerationProjectStorageMethodKey = bsonutil.MustHaveTag(Version{}, "PreGenerationProjectStorageMethod")
 	VersionGitTagsTagKey                        = bsonutil.MustHaveTag(GitTag{}, "Tag")
+	VersionCostKey                              = bsonutil.MustHaveTag(Version{}, "Cost")
+	VersionPredictedCostKey                     = bsonutil.MustHaveTag(Version{}, "PredictedCost")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -477,3 +479,4 @@ func FindBaseVersionForVersion(ctx context.Context, versionID string) (*Version,
 		return previousVersion, nil
 	}
 }
+
