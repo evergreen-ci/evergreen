@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
+set -o errexit
+
+# Error handlers to provide helpful messages for different scenarios
+trap 'echo "Error: Script failed at line $LINENO. Check the output above for details." >&2' ERR
+trap 'echo "Script interrupted by user (Ctrl+C)" >&2; exit 130' INT
+trap 'echo "Script terminated by signal" >&2; exit 143' TERM
+
 # This script checks for go vulnerabilities.
 
 # User-configurable: List of package patterns to ignore (case-insensitive substring match)
 # Example: "docker" will match "github.com/docker/docker", "docker/go-connections", etc.
+# For each ignored package, include the corresponding ticket number in the inline comment.
+# Format: "<package-name>"    # DEVPROD-XXXXX Brief description
+# TODO: Each ignored package should be removed from this list once the corresponding tracking
+#       ticket has been completed and the vulnerability has been addressed.
 IGNORED_PACKAGES=(
-    # Add package patterns here, one per line
-    # Example: "docker"
-    "docker"
-    "stdlib"
+    "docker"    # DEVPROD-25292 Docker vulnerability tracking
+    "stdlib"    # DEVPROD-25290 Stdlib vulnerability tracking
 )
 
 govul="govulncheck"
@@ -33,8 +42,7 @@ fi
 # the agent picks up an older version that isn't compatible with govulncheck.
 export PATH="$GOROOT/bin:$PATH"
 
-result=$($govul -json -C $(pwd) ./... 2>&1)
-exit_code=$?
+result=$($govul -json -C "$(pwd)" ./...)
 
 # Parse vulnerabilities from govulncheck JSON output and remove duplicates
 # Note: Same vulnerability can appear multiple times due to different code paths
@@ -44,7 +52,7 @@ all_vulnerabilities=$(echo "$result" | jq -s '
         fixed_version: (.finding.fixed_version // "N/A"),
         module: (.finding.trace[0].module // "unknown")
     }] | unique_by(.osv)
-' 2>/dev/null)
+')
 
 # Build case-insensitive regex pattern from ignored packages
 if [ ${#IGNORED_PACKAGES[@]} -gt 0 ]; then
