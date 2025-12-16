@@ -179,13 +179,22 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 		go func() {
 			for filePath := range jobs {
-				results <- parseXMLFile(filePath)
+				select {
+				case <-ctx.Done():
+					return
+				case results <- parseXMLFile(filePath):
+				}
 			}
 		}()
 	}
 
 	for _, path := range reportFilePaths {
-		jobs <- path
+		select {
+		case <-ctx.Done():
+			close(jobs)
+			return errors.Wrap(ctx.Err(), "canceled while queuing files for parsing")
+		case jobs <- path:
+		}
 	}
 	close(jobs)
 
@@ -198,18 +207,22 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 	var numInvalid int
 	catcher := grip.NewBasicCatcher()
 	for i := 0; i < len(reportFilePaths); i++ {
-		result := <-results
-		if result.err != nil {
-			catcher.Add(result.err)
-			continue
-		}
-		if result.invalid {
-			numInvalid++
-			logger.Task().Infof("Result file '%s' does not exist or is a directory.", result.filePath)
-			continue
-		}
-		for idx, suite := range result.suites {
-			cumulative = addTestCasesForSuite(suite, idx, conf, cumulative, logger)
+		select {
+		case <-ctx.Done():
+			return errors.Wrap(ctx.Err(), "canceled while collecting parse results")
+		case result := <-results:
+			if result.err != nil {
+				catcher.Add(result.err)
+				continue
+			}
+			if result.invalid {
+				numInvalid++
+				logger.Task().Infof("Result file '%s' does not exist or is a directory.", result.filePath)
+				continue
+			}
+			for idx, suite := range result.suites {
+				cumulative = addTestCasesForSuite(suite, idx, conf, cumulative, logger)
+			}
 		}
 	}
 
