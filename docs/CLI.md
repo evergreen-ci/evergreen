@@ -33,7 +33,7 @@ After doing so, the next time you run an evergreen command that requires authent
 
 `evergreen patch` allows you to submit patches to test your local changes. It will also check your project YAML any for validation errors before submission. If you want to view warnings, look at the [validate](#validating-changes-to-config-files) command.
 
-To submit a patch, run this from your local copy of the mongodb/mongo repo:
+To submit a patch, run the below command from your local copy of the mongodb/mongo repo for your project:
 
 ```bash
 evergreen patch -p <project-id>
@@ -42,71 +42,71 @@ evergreen patch -p <project-id>
 Variants and tasks for a patch can be specified with the `-v` and `-t`:
 
 ```bash
-evergreen patch -v enterprise-suse11-64 -t compile
+evergreen patch -p <project-id> -v enterprise-suse11-64 -t compile
 ```
 
 Multiple tasks and variants are specified by passing the flags multiple times:
 
 ```bash
-evergreen patch -v enterprise-suse11-64 -v solaris-64-bit -t compile -t unittest -t jsCore
+evergreen patch -p <project-id> -v enterprise-suse11-64 -v solaris-64-bit -t compile -t unittest -t jsCore
 ```
 
 _Every_ task or variant can be specified by using the "all" keyword:
 
 ```bash
-evergreen patch -v all -t all
+evergreen patch -p <project-id> -v all -t all
 ```
 
 Tasks and variants can also be specified using the regex variants(-rv) and regex tasks(-rt) flags:
 
 ```bash
-evergreen patch --regex_variants "enterprise.*" --rt "test-.*"
+evergreen patch -p <project-id> --regex_variants "enterprise.*" --rt "test-.*"
 ```
 
 When specifying tasks or variants, _both_ must be specified:
 
 ```bash
-evergreen patch --regex_variants "enterprise.*" // not valid, will not select any tasks
-evergreen patch -t unittest // not valid, will not select any tasks
-evergreen patch -rv "enterprise.*" --regex_tasks test-.* // valid
-evergreen patch --regex_variants "enterprise.*" -t unittest // valid
+evergreen patch -p <project-id> --regex_variants "enterprise.*" // not valid, will not select any tasks
+evergreen patch -p <project-id> -t unittest // not valid, will not select any tasks
+evergreen patch -p <project-id> -rv "enterprise.*" --regex_tasks test-.* // valid
+evergreen patch -p <project-id> --regex_variants "enterprise.*" -t unittest // valid
 ```
 
 To use the same tasks and variants defined for the previous patch created for this project, you can use the `--reuse` flag. If any tasks/variants were defined for the previous patch but do not exist for the new patch, they will not be added. Note also that aliases will not be re-calculated; this is so if an alias had been given to the previous patch but then the user chose to tweak the specific tasks/variants, the final configuration is the one that we reuse.
 
 ```bash
-evergreen patch --reuse
+evergreen patch -p <project-id> --reuse
 ```
 
 To repeat a specific patch id, you can use the `--repeat-patch` flag.
 
 ```bash
-evergreen patch --repeat-patch <patch_id>
+evergreen patch -p <project-id> --repeat-patch <patch_id>
 ```
 
 Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
 
 ```bash
-evergreen patch --repeat-failed
+evergreen patch -p <project-id> --repeat-failed
 ```
 
 To repeat the failed of a specific patch, the `--repeat-failed` flag can be used with the `--repeat-patch` flag to specify the patch id.
 
 ```bash
-evergreen patch --repeat-failed --repeat-patch <patch_id>
+evergreen patch -p <project-id> --repeat-failed --repeat-patch <patch_id>
 ```
 
 To skip all (y/n) prompts, the `-y` keyword can be given:
 
 ```bash
-evergreen patch -y
+evergreen patch -p <project-id> -y
 ```
 
 To use local changes for an included file from a module, the `--include-modules` flag can be used:
 Note that `set-module` command will not work for module includes and this flag must be used instead.
 
 ```bash
-evergreen patch --include-modules
+evergreen patch -p <project-id> --include-modules
 ```
 
 ## Test Selection
