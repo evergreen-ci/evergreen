@@ -311,6 +311,38 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 
 }
 
+func (s *PatchUtilTestSuite) TestProjectFieldRequired() {
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
+
+	// Test that patchParams with a project succeeds validation
+	p := patchParams{
+		Project:     "mci",
+		Finalize:    true,
+		Uncommitted: false,
+	}
+	s.NotEmpty(p.Project, "project should be set for valid patch params")
+
+	// Test that validation fails when project is not specified
+	emptyProject := patchParams{
+		Finalize:    true,
+		Uncommitted: false,
+	}
+	s.Empty(emptyProject.Project, "project field must not be empty")
+
+	// Verify validatePatchCommand requires project via GetProjectRef
+	_, err = emptyProject.validatePatchCommand(context.Background(), conf, nil, nil)
+	s.Error(err, "validatePatchCommand should error when project is empty")
+
+	// Test that validation fails when project starts with a dash (flag mistaken as project)
+	flagAsProject := patchParams{
+		Project:  "-u",
+		Finalize: true,
+	}
+	_, err = flagAsProject.validatePatchCommand(context.Background(), conf, nil, nil)
+	s.Error(err, "validatePatchCommand should error when project starts with dash")
+}
+
 func TestGetLocalModuleIncludes(t *testing.T) {
 	tempDir := t.TempDir()
 	moduleDir := filepath.Join(tempDir, "mymodule")

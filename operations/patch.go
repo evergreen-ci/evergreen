@@ -112,6 +112,7 @@ func Patch() cli.Command {
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
 			setPlainLogger,
+			requireProjectFlag,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag),
@@ -407,6 +408,7 @@ func PatchFile() cli.Command {
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
 			setPlainLogger,
+			requireProjectFlag,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, diffPathFlagName, diffPatchIdFlagName),
 			mutuallyExclusiveArgs(false, allowEmptyFlagName, diffPatchIdFlagName),
