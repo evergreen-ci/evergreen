@@ -127,6 +127,16 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 	return res, nil
 }
 
+// IncludedLocalModules is the resolver for the includedLocalModules field.
+func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APILocalModuleInclude, error) {
+	// Convert []APILocalModuleInclude to []*APILocalModuleInclude
+	result := make([]*restModel.APILocalModuleInclude, len(obj.LocalModuleIncludes))
+	for i, module := range obj.LocalModuleIncludes {
+		result[i] = &module
+	}
+	return result, nil
+}
+
 // Parameters is the resolver for the parameters field.
 func (r *patchResolver) Parameters(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIParameter, error) {
 	config, err := evergreen.GetConfig(ctx)
@@ -286,6 +296,29 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 	}, nil
 }
 
+// User is the resolver for the user field.
+func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIDBUser, error) {
+	authorId := utility.FromStringPtr(obj.Author)
+	currentUser := mustHaveUser(ctx)
+	if currentUser.Id == authorId {
+		apiUser := &restModel.APIDBUser{}
+		apiUser.BuildFromService(*currentUser)
+		return apiUser, nil
+	}
+
+	author, err := user.FindOneByIdContext(ctx, authorId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
+	}
+	if author == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", authorId))
+	}
+
+	apiUser := &restModel.APIDBUser{}
+	apiUser.BuildFromService(*author)
+	return apiUser, nil
+}
+
 // VersionFull is the resolver for the versionFull field.
 func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)
@@ -302,16 +335,6 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	apiVersion := restModel.APIVersion{}
 	apiVersion.BuildFromService(ctx, *v)
 	return &apiVersion, nil
-}
-
-// IncludedLocalModules is the resolver for the includedLocalModules field.
-func (r *patchResolver) IncludedLocalModules(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APILocalModuleInclude, error) {
-	// Convert []APILocalModuleInclude to []*APILocalModuleInclude
-	result := make([]*restModel.APILocalModuleInclude, len(obj.LocalModuleIncludes))
-	for i, module := range obj.LocalModuleIncludes {
-		result[i] = &module
-	}
-	return result, nil
 }
 
 // Patch returns PatchResolver implementation.

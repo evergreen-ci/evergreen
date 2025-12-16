@@ -3,5 +3,9 @@
     id
     author
     githash
+    user {
+      userId
+      displayName
+    }
   }
 }
