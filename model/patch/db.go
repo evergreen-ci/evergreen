@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -180,6 +181,8 @@ var requesterExpression = bson.M{
 }
 
 func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]Patch, int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ByPatchNameStatusesMergeQueuePaginated")})
+
 	if opts.Project != nil && opts.Author != nil {
 		return nil, 0, errors.New("can't set both project and author")
 	}
@@ -240,17 +243,17 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 		}
 	}
 
-	resultsPipeline := []bson.M{}
+	resultPipeline := []bson.M{}
 	if opts.Page > 0 {
-		resultsPipeline = append(resultsPipeline, bson.M{"$skip": opts.Page * opts.Limit})
+		resultPipeline = append(resultPipeline, bson.M{"$skip": opts.Page * opts.Limit})
 	}
 	if opts.Limit > 0 {
-		resultsPipeline = append(resultsPipeline, bson.M{"$limit": opts.Limit})
+		resultPipeline = append(resultPipeline, bson.M{"$limit": opts.Limit})
 	}
 
 	pipeline = append(pipeline, bson.M{
 		"$facet": bson.M{
-			"results": resultsPipeline,
+			"results": resultPipeline,
 			"count":   []bson.M{{"$count": "count"}},
 		},
 	})
