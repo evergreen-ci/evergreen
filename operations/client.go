@@ -38,7 +38,7 @@ func getUser() cli.Command {
 		Aliases: []string{"user"},
 		Usage:   "get username from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -55,7 +55,7 @@ func getAPIKey() cli.Command {
 		Aliases: []string{"key"},
 		Usage:   "get API key from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -72,7 +72,7 @@ func getAPIUrl() cli.Command {
 		Aliases: []string{"api"},
 		Usage:   "get API URL from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -89,7 +89,7 @@ func getUIUrl() cli.Command {
 		Aliases: []string{"ui"},
 		Usage:   "get UI URL from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
