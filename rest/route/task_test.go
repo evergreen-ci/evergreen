@@ -359,7 +359,7 @@ func TestUpdateArtifactURLHandler(t *testing.T) {
 				},
 			}
 			require.NoError(t, entry1.Upsert(t.Context()))
-			require.NoError(t, db.Update(task.Collection, bson.M{"_id": tsk.Id}, bson.M{"$set": bson.M{"execution": 1}}))
+			require.NoError(t, db.UpdateContext(t.Context(), task.Collection, bson.M{"_id": tsk.Id}, bson.M{"$set": bson.M{"execution": 1}}))
 			refreshed, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			projCtx.Task = refreshed
