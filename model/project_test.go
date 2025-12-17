@@ -44,7 +44,7 @@ func TestFindProject(t *testing.T) {
 			projRef := &ProjectRef{
 				Id: "",
 			}
-			version, project, pp, err := FindLatestVersionWithValidProject(projRef.Id, false)
+			version, project, pp, err := FindLatestVersionWithValidProject(t.Context(), projRef.Id, false)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
 			So(pp, ShouldBeNil)
@@ -73,7 +73,7 @@ func TestFindProject(t *testing.T) {
 			}
 			require.NoError(t, pp.Insert(t.Context()))
 			require.NoError(t, v.Insert(t.Context()), "failed to insert test version: %v", v)
-			_, _, _, err := FindLatestVersionWithValidProject(p.Id, false)
+			_, _, _, err := FindLatestVersionWithValidProject(t.Context(), p.Id, false)
 			So(err, ShouldBeNil)
 
 		})
@@ -105,7 +105,7 @@ func TestFindProject(t *testing.T) {
 			So(badVersion.Insert(t.Context()), ShouldBeNil)
 			So(goodVersion.Insert(t.Context()), ShouldBeNil)
 			So(pp.Insert(t.Context()), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", false)
+			v, p, pp, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "good_version")
@@ -131,7 +131,7 @@ func TestFindProject(t *testing.T) {
 			So(pp.Insert(t.Context()), ShouldBeNil)
 			pp.Id = "pre_generation_good_version"
 			So(pp.Insert(t.Context()), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", true)
+			v, p, pp, err := FindLatestVersionWithValidProject(t.Context(), "project_test", true)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "pre_generation_good_version")
@@ -140,7 +140,7 @@ func TestFindProject(t *testing.T) {
 		})
 		Convey("error if no version exists", func() {
 			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
-			_, _, _, err := FindLatestVersionWithValidProject("project_test", false)
+			_, _, _, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
 			So(err, ShouldNotBeNil)
 		})
 	})
