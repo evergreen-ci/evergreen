@@ -165,7 +165,10 @@ var requesterExpression = bson.M{
 			{
 				"case": bson.M{
 					"$or": []bson.M{
-						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
+						{"$and": []bson.M{
+							{"$ifNull": []any{"$" + githubMergeDataKey, false}},
+							{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
+						}},
 						{"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias}},
 					},
 				},
