@@ -36,7 +36,7 @@ After doing so, the next time you run an evergreen command that requires authent
 To submit a patch, run this from your local copy of the mongodb/mongo repo:
 
 ```bash
-evergreen patch 
+evergreen patch
 ```
 
 Variants and tasks for a patch can be specified with the `-v` and `-t`:
