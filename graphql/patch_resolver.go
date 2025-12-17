@@ -310,8 +310,13 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
+	// This is most likely a reaped user, so just return their ID
 	if author == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", authorId))
+		apiUser := &restModel.APIDBUser{
+			UserID: utility.ToStringPtr(authorId),
+		}
+		apiUser.BuildFromService(*author)
+		return apiUser, nil
 	}
 
 	apiUser := &restModel.APIDBUser{}

@@ -43915,9 +43915,9 @@ func (ec *executionContext) _Patch_user(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Patch().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		ec.marshalOUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -68741,9 +68741,9 @@ func (ec *executionContext) _User_betaFeatures(ctx context.Context, field graphq
 			return obj.BetaFeatures, nil
 		},
 		nil,
-		ec.marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures,
+		ec.marshalOBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -68776,9 +68776,9 @@ func (ec *executionContext) _User_displayName(ctx context.Context, field graphql
 			return obj.DisplayName, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -68805,9 +68805,9 @@ func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphq
 			return obj.EmailAddress, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -68834,9 +68834,9 @@ func (ec *executionContext) _User_parsleyFilters(ctx context.Context, field grap
 			return obj.ParsleyFilters, nil
 		},
 		nil,
-		ec.marshalNParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ,
+		ec.marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -68873,9 +68873,9 @@ func (ec *executionContext) _User_parsleySettings(ctx context.Context, field gra
 			return obj.ParsleySettings, nil
 		},
 		nil,
-		ec.marshalNParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings,
+		ec.marshalOParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -68909,9 +68909,9 @@ func (ec *executionContext) _User_patches(ctx context.Context, field graphql.Col
 			return ec.resolvers.User().Patches(ctx, obj, fc.Args["patchesInput"].(PatchesInput))
 		},
 		nil,
-		ec.marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches,
+		ec.marshalOPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -68955,9 +68955,9 @@ func (ec *executionContext) _User_permissions(ctx context.Context, field graphql
 			return ec.resolvers.User().Permissions(ctx, obj)
 		},
 		nil,
-		ec.marshalNPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions,
+		ec.marshalOPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69000,9 +69000,9 @@ func (ec *executionContext) _User_settings(ctx context.Context, field graphql.Co
 			return obj.Settings, nil
 		},
 		nil,
-		ec.marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings,
+		ec.marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -71332,9 +71332,9 @@ func (ec *executionContext) _Version_user(ctx context.Context, field graphql.Col
 			return ec.resolvers.Version().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		ec.marshalOUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -94680,16 +94680,13 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 		case "user":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Patch_user(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -103766,42 +103763,24 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = graphql.MarshalString("User")
 		case "betaFeatures":
 			out.Values[i] = ec._User_betaFeatures(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "displayName":
 			out.Values[i] = ec._User_displayName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "emailAddress":
 			out.Values[i] = ec._User_emailAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "parsleyFilters":
 			out.Values[i] = ec._User_parsleyFilters(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "parsleySettings":
 			out.Values[i] = ec._User_parsleySettings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "patches":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._User_patches(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -103828,16 +103807,13 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "permissions":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._User_permissions(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -103863,9 +103839,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "settings":
 			out.Values[i] = ec._User_settings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "subscriptions":
 			field := field
 
@@ -104804,16 +104777,13 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 		case "user":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Version_user(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -109675,57 +109645,9 @@ func (ec *executionContext) marshalNParsleyFilter2githubᚗcomᚋevergreenᚑci�
 	return ec._ParsleyFilter(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIParsleyFilter) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, v any) (model.APIParsleyFilter, error) {
 	res, err := ec.unmarshalInputParsleyFilterInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v model.APIParsleySettings) graphql.Marshaler {
-	return ec._ParsleySettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalNParsleySettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, v any) (*model.APIParsleySettings, error) {
@@ -109885,20 +109807,6 @@ func (ec *executionContext) marshalNPeriodicBuild2githubᚗcomᚋevergreenᚑci�
 func (ec *executionContext) unmarshalNPeriodicBuildInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx context.Context, v any) (model.APIPeriodicBuildDefinition, error) {
 	res, err := ec.unmarshalInputPeriodicBuildInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v Permissions) graphql.Marshaler {
-	return ec._Permissions(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v *Permissions) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Permissions(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPlannerSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPlannerSettings(ctx context.Context, sel ast.SelectionSet, v model.APIPlannerSettings) graphql.Marshaler {
@@ -111863,10 +111771,6 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
-	return ec._UserSettings(ctx, sel, &v)
-}
-
 func (ec *executionContext) marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
 	return ec._VariantTask(ctx, sel, &v)
 }
@@ -112724,6 +112628,10 @@ func (ec *executionContext) marshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑci
 	_ = ctx
 	res := graphql.MarshalString(string(*v))
 	return res
+}
+
+func (ec *executionContext) marshalOBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v model.APIBetaFeatures) graphql.Marshaler {
+	return ec._BetaFeatures(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v *model.APIBetaFeatures) graphql.Marshaler {
@@ -114713,6 +114621,10 @@ func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋeverg
 	return res, nil
 }
 
+func (ec *executionContext) marshalOParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v model.APIParsleySettings) graphql.Marshaler {
+	return ec._ParsleySettings(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalOParsleySettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v *model.APIParsleySettings) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -114860,6 +114772,13 @@ func (ec *executionContext) unmarshalOPatchTriggerAliasInput2ᚕgithubᚗcomᚋe
 	return res, nil
 }
 
+func (ec *executionContext) marshalOPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx context.Context, sel ast.SelectionSet, v *Patches) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Patches(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOPeriodicBuild2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinitionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPeriodicBuildDefinition) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -114923,6 +114842,13 @@ func (ec *executionContext) unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋeverg
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v *Permissions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Permissions(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPersistentDNSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPersistentDNSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIPersistentDNSConfig) graphql.Marshaler {
@@ -116237,11 +116163,22 @@ func (ec *executionContext) unmarshalOUseSpruceOptionsInput2ᚖgithubᚗcomᚋev
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser(ctx context.Context, sel ast.SelectionSet, v *model.APIDBUser) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._User(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig(ctx context.Context, sel ast.SelectionSet, v *UserConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._UserConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
+	return ec._UserSettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, v any) (*model.APIUserSettings, error) {

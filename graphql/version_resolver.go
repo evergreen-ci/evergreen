@@ -504,15 +504,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 
 // User is the resolver for the user field.
 func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDBUser, error) {
-	versionId := utility.FromStringPtr(obj.Id)
-	authorId, err := model.GetVersionAuthorID(ctx, versionId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting author ID for version '%s': %s", versionId, err.Error()))
-	}
-	if authorId == "" {
-		return nil, nil
-	}
-
+	authorId := utility.FromStringPtr(obj.Author)
 	currentUser := mustHaveUser(ctx)
 	if currentUser.Id == authorId {
 		apiUser := &restModel.APIDBUser{}
@@ -524,8 +516,11 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
+	// This is most likely a reaped user, so just return their ID
 	if author == nil {
-		return nil, nil
+		return &restModel.APIDBUser{
+			UserID: utility.ToStringPtr(authorId),
+		}, nil
 	}
 
 	apiUser := &restModel.APIDBUser{}
