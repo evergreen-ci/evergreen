@@ -175,6 +175,9 @@ func escapeFile(path string) string {
 		return path
 	}
 	if looksAlreadyEscaped(base) {
+		// If the artifact provides a link that already appears to have an
+		// escaped base segment, skip escaping the file name to avoid
+		// double-escaping.
 		return path
 	}
 
@@ -190,10 +193,9 @@ func looksAlreadyEscaped(pathSegment string) bool {
 
 	unescaped, err := url.QueryUnescape(pathSegment)
 	if err != nil {
-		// Attempting to unescape didn't work, which means the URL is not a
-		// valid escaped string. Unescaping could fail for a valid URL if the
-		// URL happens to contain a % in it (which means the % needs to be
-		// escaped).
+		// Attempting to unescape didn't work, which means pathSegment is not a
+		// valid escaped string. For example, unescaping could error if the URL
+		// happens to contain a percent sign in it but isn't actually escaped.
 		return false
 	}
 
