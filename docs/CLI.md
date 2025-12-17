@@ -33,7 +33,7 @@ After doing so, the next time you run an evergreen command that requires authent
 
 `evergreen patch` allows you to submit patches to test your local changes. It will also check your project YAML any for validation errors before submission. If you want to view warnings, look at the [validate](#validating-changes-to-config-files) command.
 
-To submit a patch, run the below command from your local copy of the mongodb/mongo repo for your project:
+To submit a patch, run this from your local copy of the mongodb/mongo repo:
 
 ```bash
 evergreen patch 
