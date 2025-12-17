@@ -67,7 +67,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 		grip.Info(message.Fields{
 			"message":   "no versions to activate for repository",
 			"project":   projectRef.Id,
-			"operation": "project-activation",
+			"operation": "project-activation-every-commit",
 		})
 		return false, nil
 	}
@@ -82,7 +82,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 				"project":   projectRef.Id,
 				"version":   version.Id,
 				"revision":  version.Revision,
-				"operation": "project-activation",
+				"operation": "project-activation-every-commit",
 			}))
 			// Continue with other versions even if one fails
 			continue
@@ -95,7 +95,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 				"project":   projectRef.Id,
 				"version":   version.Id,
 				"revision":  version.Revision,
-				"operation": "project-activation",
+				"operation": "project-activation-every-commit",
 			})
 		}
 	}
@@ -111,7 +111,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 			"versions_checked":       len(activateVersions),
 			"versions_activated":     activatedCount,
 			"last_activated_version": lastActivatedInfo,
-			"operation":              "project-activation",
+			"operation":              "project-activation-every-commit",
 		})
 	}
 
