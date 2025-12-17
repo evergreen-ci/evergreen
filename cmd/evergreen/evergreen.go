@@ -19,6 +19,10 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	notFound = "Not found"
+)
+
 var (
 	panicReport *model.PanicReport
 
@@ -100,7 +104,7 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
-		setupProgramDetails(c)
+		setupPanicReport(c)
 		return loggingSetup(app.Name, c.String("level"))
 	}
 
@@ -125,19 +129,28 @@ func recoverFromPanic() {
 	}
 }
 
-// setupProgramDetails populates the global programDetails variable
+// setupPanicReport populates the global programDetails variable
 // used for telemetry.
-func setupProgramDetails(c *cli.Context) {
+func setupPanicReport(c *cli.Context) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		cwd = "Not found"
+		cwd = notFound
 	}
 	execPath, err := os.Executable()
 	if err != nil {
-		execPath = "Not found"
+		execPath = notFound
+	}
+	conf, err := operations.NewClientSettings(c.String(operations.ConfFlagName))
+	if err != nil {
+		conf = &operations.ClientSettings{
+			User:       notFound,
+			LoadedFrom: notFound,
+		}
 	}
 	panicReport = &model.PanicReport{
 		Version:                 evergreen.ClientVersion,
+		AgentVersion:            evergreen.AgentVersion,
+		BuildRevision:           evergreen.BuildRevision,
 		CurrentWorkingDirectory: cwd,
 		ExecutablePath:          execPath,
 		Arguments:               args,
@@ -145,6 +158,9 @@ func setupProgramDetails(c *cli.Context) {
 		OperatingSystem:         runtime.GOOS,
 		Architecture:            runtime.GOARCH,
 		ConfigFilePath:          c.String(operations.ConfFlagName),
+		ConfigAbsFilePath:       conf.LoadedFrom,
+		User:                    conf.User,
+		Project:                 conf.FindDefaultProject(cwd, true),
 	}
 }
 
