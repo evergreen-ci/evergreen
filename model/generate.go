@@ -174,9 +174,7 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 		return mongo.ErrNoDocuments
 	}
 
-	ppCtx, ppCancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
-	defer ppCancel()
-	if err := updateParserProject(ppCtx, settings, v, pp, t.Id); err != nil {
+	if err := updateParserProject(ctx, settings, v, pp, t.Id); err != nil {
 		return errors.WithStack(err)
 	}
 
