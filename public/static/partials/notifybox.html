@@ -1,8 +1,0 @@
-<div ng-controller="NotifyBoxCtrl">
-  <div ng-show="notifications.length > 0" id=[[destination]]>
-    <div ng-repeat="notification in notificationsForDest(destination) track by $index" class="alert error-flash" ng-class="notificationBoxClass(notification)">
-      <button type="button" class="alert-close pull-left" aria-hidden="true" ng-click="close($event)">&times;</button>
-      [[notification.msg]]
-    </div>
-  </div>
-</div>

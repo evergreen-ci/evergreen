@@ -114,7 +114,7 @@ func TestGetExpectedCostsForWindow(t *testing.T) {
 	})
 }
 
-func TestComputePredictedCost(t *testing.T) {
+func TestComputePredictedCostForWeek(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("ReturnsZero", func(t *testing.T) {
@@ -125,7 +125,7 @@ func TestComputePredictedCost(t *testing.T) {
 			Project:      "proj",
 		}
 
-		result, err := task.ComputePredictedCost(ctx)
+		result, err := task.ComputePredictedCostForWeek(ctx)
 		require.NoError(t, err)
 		assert.True(t, result.PredictedCost.IsZero())
 		assert.True(t, result.PredictedCostStdDev.IsZero())
@@ -162,7 +162,6 @@ func TestGetDisplayCost(t *testing.T) {
 			task: Task{
 				TaskCost:          TaskCost{OnDemandCost: 5.0, AdjustedCost: 4.0},
 				PredictedTaskCost: TaskCost{OnDemandCost: 3.0, AdjustedCost: 2.4},
-				ExpectedTaskCost:  TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8},
 			},
 			wantCost: TaskCost{OnDemandCost: 5.0, AdjustedCost: 4.0},
 		},
@@ -170,14 +169,8 @@ func TestGetDisplayCost(t *testing.T) {
 			name: "FallsBackToPredicted",
 			task: Task{
 				PredictedTaskCost: TaskCost{OnDemandCost: 3.0, AdjustedCost: 2.4},
-				ExpectedTaskCost:  TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8},
 			},
 			wantCost: TaskCost{OnDemandCost: 3.0, AdjustedCost: 2.4},
-		},
-		{
-			name:     "FallsBackToExpected",
-			task:     Task{ExpectedTaskCost: TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8}},
-			wantCost: TaskCost{OnDemandCost: 1.0, AdjustedCost: 0.8},
 		},
 		{
 			name:     "ReturnsZeroIfNoCosts",
@@ -211,5 +204,77 @@ func TestTaskCostStdDevIsZero(t *testing.T) {
 	t.Run("NonZeroBoth", func(t *testing.T) {
 		stdDev := TaskCostStdDev{OnDemandCost: 1.0, AdjustedCost: 0.8}
 		assert.False(t, stdDev.IsZero())
+	})
+}
+
+func TestComputeCostPredictionsInParallel(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("EmptyTasks", func(t *testing.T) {
+		predictions, err := computeCostPredictionsInParallel(ctx, []Task{})
+		require.NoError(t, err)
+		assert.Empty(t, predictions)
+	})
+
+	t.Run("SingleTask", func(t *testing.T) {
+		task := Task{
+			Id:           "task1",
+			DisplayName:  "test",
+			BuildVariant: "bv",
+			Project:      "proj",
+		}
+
+		predictions, err := computeCostPredictionsInParallel(ctx, []Task{task})
+		require.NoError(t, err)
+		assert.Len(t, predictions, 1)
+		assert.Contains(t, predictions, "task1")
+	})
+
+	t.Run("MultipleTasks", func(t *testing.T) {
+		tasks := []Task{
+			{Id: "task1", DisplayName: "test", BuildVariant: "bv", Project: "proj"},
+			{Id: "task2", DisplayName: "test2", BuildVariant: "bv", Project: "proj"},
+		}
+
+		predictions, err := computeCostPredictionsInParallel(ctx, tasks)
+		require.NoError(t, err)
+		assert.Len(t, predictions, 2)
+		assert.Contains(t, predictions, "task1")
+		assert.Contains(t, predictions, "task2")
+	})
+}
+
+func TestSetPredictedCostsForTasks(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("EmptyTasks", func(t *testing.T) {
+		err := SetPredictedCostsForTasks(ctx, Tasks{})
+		require.NoError(t, err)
+	})
+
+	t.Run("InactiveTasks", func(t *testing.T) {
+		task := &Task{
+			Id:        "task1",
+			Activated: false,
+		}
+
+		err := SetPredictedCostsForTasks(ctx, Tasks{task})
+		require.NoError(t, err)
+		assert.True(t, task.PredictedTaskCost.IsZero())
+	})
+
+	t.Run("ActivatedTasks", func(t *testing.T) {
+		task := &Task{
+			Id:           "task1",
+			DisplayName:  "test",
+			BuildVariant: "bv",
+			Project:      "proj",
+			Activated:    true,
+		}
+
+		err := SetPredictedCostsForTasks(ctx, Tasks{task})
+		require.NoError(t, err)
+		// Cost prediction should be zero since there's no historical data
+		assert.True(t, task.PredictedTaskCost.IsZero())
 	})
 }

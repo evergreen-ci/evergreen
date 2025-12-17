@@ -133,6 +133,7 @@ type Task {
   stepbackInfo: StepbackInfo
   taskLogs: TaskLogs!
   taskCost: TaskCost
+  predictedTaskCost: TaskCost
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   testSelectionEnabled: Boolean!

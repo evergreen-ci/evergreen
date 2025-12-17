@@ -39,14 +39,16 @@ import (
 const (
 	dependencyKey = "dependencies"
 
+	oneWeek = 7 * 24 * time.Hour
+
 	// UnschedulableThreshold is the threshold after which a task waiting to
 	// dispatch should be unscheduled due to staleness.
-	UnschedulableThreshold = 7 * 24 * time.Hour
+	UnschedulableThreshold = oneWeek
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
 	// completed within the last 7 days
-	taskCompletionEstimateWindow = 24 * 7 * time.Hour
+	taskCompletionEstimateWindow = oneWeek
 
 	// if we have no data on a given task, default to 10 minutes so we
 	// have some new hosts spawned
@@ -268,8 +270,6 @@ type Task struct {
 
 	// TimeTaken is how long the task took to execute (if it has finished) or how long the task has been running (if it has started)
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
-	// ExpectedTaskCost is the expected cost of running the task based on its predicted duration and distro cost rates
-	ExpectedTaskCost TaskCost `bson:"expected_task_cost,omitempty" json:"expected_task_cost,omitempty"`
 	// TaskCost is the cost of the task based on runtime and distro cost rates
 	TaskCost TaskCost `bson:"task_cost,omitempty" json:"task_cost,omitempty"`
 	// PredictedTaskCost is the predicted cost based on historical data for this task
@@ -2090,23 +2090,84 @@ func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateD
 // activateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
 // they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
 func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[string]Task, taskIDsToActivate []string, caller string) error {
-	_, err := UpdateAll(
-		ctx,
-		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
-		[]bson.M{
-			{
-				"$set": bson.M{
-					ActivatedKey:                true,
-					DeactivatedForDependencyKey: false,
-					ActivatedByKey:              caller,
-					ActivatedTimeKey:            time.Now(),
-				},
+	// Separate tasks by whether they need predictions
+	var tasksNeedingPredictions []Task
+	var taskIDsWithPredictions []string
+	for _, t := range tasksToActivate {
+		if t.PredictedTaskCost.IsZero() {
+			tasksNeedingPredictions = append(tasksNeedingPredictions, t)
+		} else {
+			taskIDsWithPredictions = append(taskIDsWithPredictions, t.Id)
+		}
+	}
+
+	now := time.Now()
+
+	// Activate tasks that already have predictions (no need to compute or set predictions)
+	if len(taskIDsWithPredictions) > 0 {
+		_, err := UpdateAll(
+			ctx,
+			bson.M{
+				IdKey: bson.M{"$in": taskIDsWithPredictions},
 			},
-			addDisplayStatusCache,
-		},
-	)
-	if err != nil {
-		return errors.Wrap(err, "updating activation for dependencies")
+			[]bson.M{
+				{
+					"$set": bson.M{
+						ActivatedKey:                true,
+						DeactivatedForDependencyKey: false,
+						ActivatedByKey:              caller,
+						ActivatedTimeKey:            now,
+					},
+				},
+				addDisplayStatusCache,
+			})
+		if err != nil {
+			return errors.Wrap(err, "activating dependent tasks with existing predictions")
+		}
+	}
+
+	// Compute and update predictions for tasks that need them
+	if len(tasksNeedingPredictions) > 0 {
+		predictions, err := computeCostPredictionsInParallel(ctx, tasksNeedingPredictions)
+		if err != nil {
+			return errors.Wrap(err, "computing cost predictions for dependencies")
+		}
+
+		env := evergreen.GetEnvironment()
+		coll := env.DB().Collection(Collection)
+		var writes []mongo.WriteModel
+
+		for _, t := range tasksNeedingPredictions {
+			prediction := predictions[t.Id]
+			setFields := bson.M{
+				ActivatedKey:                true,
+				DeactivatedForDependencyKey: false,
+				ActivatedByKey:              caller,
+				ActivatedTimeKey:            now,
+			}
+
+			// Only set predicted cost fields if they have values (no historical data = zero values)
+			if !prediction.PredictedCost.IsZero() {
+				setFields[PredictedTaskCostKey] = prediction.PredictedCost
+			}
+			if !prediction.PredictedCostStdDev.IsZero() {
+				setFields[PredictedTaskCostStdDevKey] = prediction.PredictedCostStdDev
+			}
+
+			writes = append(writes, mongo.NewUpdateOneModel().
+				SetFilter(bson.M{IdKey: t.Id}).
+				SetUpdate([]bson.M{
+					{"$set": setFields},
+					addDisplayStatusCache,
+				}))
+		}
+
+		if len(writes) > 0 {
+			_, err := coll.BulkWrite(ctx, writes)
+			if err != nil {
+				return errors.Wrap(err, "bulk updating dependent tasks with new predictions")
+			}
+		}
 	}
 
 	logs := []event.EventLogEntry{}
@@ -2474,7 +2535,7 @@ func (t *Task) Reset(ctx context.Context, caller string) error {
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
-		resetTaskUpdate(t, caller),
+		resetTaskUpdate(t, caller, nil),
 	)
 }
 
@@ -2484,27 +2545,66 @@ func ResetTasks(ctx context.Context, tasks []Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	var taskIDs []string
+
+	// Separate tasks by whether they need predictions
+	var tasksNeedingPredictions []Task
+	var tasksWithPredictions []Task
 	for _, t := range tasks {
-		taskIDs = append(taskIDs, t.Id)
+		if t.PredictedTaskCost.IsZero() {
+			tasksNeedingPredictions = append(tasksNeedingPredictions, t)
+		} else {
+			tasksWithPredictions = append(tasksWithPredictions, t)
+		}
 	}
 
-	if _, err := UpdateAll(
-		ctx,
-		bson.M{
-			IdKey:       bson.M{"$in": taskIDs},
-			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
-			CanResetKey: true,
-		},
-		resetTaskUpdate(nil, caller),
-	); err != nil {
-		return err
+	// Compute cost predictions only for tasks that need them
+	predictions, err := computeCostPredictionsInParallel(ctx, tasksNeedingPredictions)
+	if err != nil {
+		return errors.Wrap(err, "computing cost predictions for reset tasks")
+	}
+
+	env := evergreen.GetEnvironment()
+	coll := env.DB().Collection(Collection)
+	var writes []mongo.WriteModel
+
+	// Add tasks with new predictions
+	for _, t := range tasksNeedingPredictions {
+		prediction := predictions[t.Id]
+		update := resetTaskUpdate(nil, caller, &prediction)
+
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{
+				IdKey:       t.Id,
+				StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+				CanResetKey: true,
+			}).
+			SetUpdate(update))
+	}
+
+	// Add tasks with existing predictions
+	for _, t := range tasksWithPredictions {
+		update := resetTaskUpdate(nil, caller, nil)
+
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{
+				IdKey:       t.Id,
+				StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
+				CanResetKey: true,
+			}).
+			SetUpdate(update))
+	}
+
+	if len(writes) > 0 {
+		_, err := coll.BulkWrite(ctx, writes)
+		if err != nil {
+			return errors.Wrap(err, "bulk resetting tasks")
+		}
 	}
 
 	return nil
 }
 
-func resetTaskUpdate(t *Task, caller string) []bson.M {
+func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) []bson.M {
 	newSecret := utility.RandomString()
 	now := time.Now()
 	if t != nil {
@@ -2537,27 +2637,41 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
+		if prediction != nil {
+			t.PredictedTaskCost = prediction.PredictedCost
+			t.PredictedTaskCostStdDev = prediction.PredictedCostStdDev
+		}
 		t.DisplayStatusCache = t.DetermineDisplayStatus()
 	}
+
+	setFields := bson.M{
+		ActivatedKey:                   true,
+		ActivatedTimeKey:               now,
+		ActivatedByKey:                 caller,
+		SecretKey:                      newSecret,
+		StatusKey:                      evergreen.TaskUndispatched,
+		DispatchTimeKey:                utility.ZeroTime,
+		StartTimeKey:                   utility.ZeroTime,
+		ScheduledTimeKey:               utility.ZeroTime,
+		FinishTimeKey:                  utility.ZeroTime,
+		DependenciesMetTimeKey:         utility.ZeroTime,
+		TimeTakenKey:                   0,
+		LastHeartbeatKey:               utility.ZeroTime,
+		ContainerAllocationAttemptsKey: 0,
+		NumNextTaskDispatchesKey:       0,
+	}
+
+	if prediction != nil {
+		if !prediction.PredictedCost.IsZero() {
+			setFields[PredictedTaskCostKey] = prediction.PredictedCost
+		}
+		if !prediction.PredictedCostStdDev.IsZero() {
+			setFields[PredictedTaskCostStdDevKey] = prediction.PredictedCostStdDev
+		}
+	}
+
 	update := []bson.M{
-		{
-			"$set": bson.M{
-				ActivatedKey:                   true,
-				ActivatedTimeKey:               now,
-				ActivatedByKey:                 caller,
-				SecretKey:                      newSecret,
-				StatusKey:                      evergreen.TaskUndispatched,
-				DispatchTimeKey:                utility.ZeroTime,
-				StartTimeKey:                   utility.ZeroTime,
-				ScheduledTimeKey:               utility.ZeroTime,
-				FinishTimeKey:                  utility.ZeroTime,
-				DependenciesMetTimeKey:         utility.ZeroTime,
-				TimeTakenKey:                   0,
-				LastHeartbeatKey:               utility.ZeroTime,
-				ContainerAllocationAttemptsKey: 0,
-				NumNextTaskDispatchesKey:       0,
-			},
-		},
+		{"$set": setFields},
 		{
 			"$unset": []string{
 				DetailsKey,
@@ -2730,27 +2844,19 @@ func (t *Task) MarkStart(ctx context.Context, startTime time.Time) error {
 	t.Status = evergreen.TaskStarted
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
-	estimatedCost, err := t.GetEstimatedCost(ctx)
-	if err == nil && !estimatedCost.IsZero() {
-		t.ExpectedTaskCost = estimatedCost
-	}
-
-	setCommand := bson.M{
-		StatusKey:             evergreen.TaskStarted,
-		LastHeartbeatKey:      startTime,
-		StartTimeKey:          startTime,
-		DisplayStatusCacheKey: t.DisplayStatusCache,
-	}
-
-	if !t.ExpectedTaskCost.IsZero() {
-		setCommand[ExpectedTaskCostKey] = t.ExpectedTaskCost
-	}
 	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
-		bson.M{"$set": setCommand},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:             evergreen.TaskStarted,
+				LastHeartbeatKey:      startTime,
+				StartTimeKey:          startTime,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
+			},
+		},
 	)
 }
 
@@ -4282,41 +4388,38 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 	})
 }
 
-// GetEstimatedCost calculates the estimated cost for a task based on its DurationPrediction.
-// This is useful for in-progress tasks to show estimated costs without modifying the database.
-// Returns zero cost if no duration prediction is available or if cost configuration is not set up.
-func (t *Task) GetEstimatedCost(ctx context.Context) (TaskCost, error) {
-	var estimatedDuration time.Duration
-	if t.Status == evergreen.TaskStarted || t.Status == evergreen.TaskDispatched {
-		if t.DurationPrediction.Value > 0 {
-			estimatedDuration = t.DurationPrediction.Value
-		} else {
-			return TaskCost{}, nil
-		}
-	} else if t.TimeTaken > 0 {
-		estimatedDuration = t.TimeTaken
-	} else {
-		return TaskCost{}, nil
-	}
-
-	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
-		return TaskCost{}, nil
-	}
-
-	runtimeSeconds := estimatedDuration.Seconds()
-	return CalculateTaskCost(runtimeSeconds, costData, financeConfig), nil
-}
-
 // CostPredictionResult contains the result of computing a predicted cost
 type CostPredictionResult struct {
 	PredictedCost       TaskCost
 	PredictedCostStdDev TaskCostStdDev
 }
 
-func (t *Task) ComputePredictedCost(ctx context.Context) (CostPredictionResult, error) {
-	// todo: implement in DEVPROD-23644
-	return CostPredictionResult{}, nil
+// ComputePredictedCostForWeek computes the predicted cost for a task based on historical data
+// from the past week (7 days).
+func (t *Task) ComputePredictedCostForWeek(ctx context.Context) (CostPredictionResult, error) {
+	end := time.Now()
+	start := end.Add(-taskCompletionEstimateWindow)
+
+	results, err := getExpectedCostsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant, start, end)
+	if err != nil {
+		return CostPredictionResult{}, errors.Wrap(err, "querying expected costs")
+	}
+
+	if len(results) == 0 {
+		return CostPredictionResult{}, nil
+	}
+
+	result := results[0]
+	return CostPredictionResult{
+		PredictedCost: TaskCost{
+			OnDemandCost: result.AvgOnDemandCost,
+			AdjustedCost: result.AvgAdjustedCost,
+		},
+		PredictedCostStdDev: TaskCostStdDev{
+			OnDemandCost: result.StdDevOnDemandCost,
+			AdjustedCost: result.StdDevAdjustedCost,
+		},
+	}, nil
 }
 
 func (t *Task) HasCostPrediction() bool {
@@ -4330,14 +4433,11 @@ func (t *Task) GetDisplayCost() TaskCost {
 	if !t.PredictedTaskCost.IsZero() {
 		return t.PredictedTaskCost
 	}
-	if !t.ExpectedTaskCost.IsZero() {
-		return t.ExpectedTaskCost
-	}
 	return TaskCost{}
 }
 
-// MoveLogsByNamesToBucket moves task + test logs to the specified bucket
-func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput) error {
+// moveLogsByNamesToBucket moves task + test logs to the specified bucket
+func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput) error {
 	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
 		// test logs and task logs will always be in the same bucket
 		return errors.New("test log and task log buckets do not match")
@@ -4356,10 +4456,10 @@ func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergre
 	logNames := make([]string, 0, 4)
 	// add task logs
 	for _, logType := range []TaskLogType{TaskLogTypeAgent, TaskLogTypeSystem, TaskLogTypeTask} {
-		logNames = append(logNames, getLogName(*task, logType, output.TaskLogs.ID()))
+		logNames = append(logNames, getLogName(*t, logType, output.TaskLogs.ID()))
 	}
 	// add test logs
-	logNames = append(logNames, fmt.Sprintf("%s/%s/%d/%s", task.Project, task.Id, task.Execution, output.TestLogs.ID()))
+	logNames = append(logNames, fmt.Sprintf("%s/%s/%d/%s", t.Project, t.Id, t.Execution, output.TestLogs.ID()))
 
 	keys, err := logService.GetChunkKeys(ctx, logNames)
 	if err != nil {
@@ -4375,13 +4475,20 @@ func (task *Task) MoveLogsByNamesToBucket(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "moving logs to failed bucket")
 	}
 
-	// Update the task output info with the new bucket config. This will be persisted in
-	// markEnd and the agent will rotate the logger to the new config so the rest of
-	// the agent logs go directly to the failed bucket.
-	task.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
-	task.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
-	return nil
-
+	// Update the task output info with the new bucket config.
+	t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
+	t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
+	err = UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				TaskOutputInfoKey: t.TaskOutputInfo,
+			},
+		})
+	return errors.Wrapf(err, "updating task output for task %s", t.Id)
 }
 
 // MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
@@ -4394,7 +4501,7 @@ func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *
 		return nil
 	}
 
-	return t.MoveLogsByNamesToBucket(ctx, settings, output)
+	return t.moveLogsByNamesToBucket(ctx, settings, output)
 
 }
 

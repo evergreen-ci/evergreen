@@ -143,6 +143,9 @@ type Communicator interface {
 
 	// Validate validates a project configuration file.
 	Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error)
+
+	// SendPanicReport sends a panic report to the evergreen service.
+	SendPanicReport(ctx context.Context, details *restmodel.PanicReport) error
 }
 
 // GetTaskLogsOptions are the options for fetching task logs for a given task.

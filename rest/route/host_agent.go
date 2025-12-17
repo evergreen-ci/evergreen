@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -1345,8 +1346,11 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// If the task failed, move its logs to the failed bucket if the project is not
 	// configured to use long term retention.
 	if details.Status == evergreen.TaskFailed && !t.UsesLongRetentionBucket(h.env.Settings()) {
-		if err := t.MoveTestAndTaskLogsToFailedBucket(ctx, h.env.Settings()); err != nil {
-			grip.Error(errors.Wrap(err, "moving logs to failed bucket"))
+		j := units.NewMoveLogsToFailedBucketJob(h.env, t.Id, utility.RoundPartOfMinute(0).Format(units.TSFormat))
+		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not enqueue job to move logs to failed bucket",
+			}))
 		}
 	}
 

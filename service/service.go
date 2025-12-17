@@ -17,7 +17,6 @@ import (
 
 const (
 	WebRootPath  = "service"
-	Templates    = "templates"
 	DefaultLimit = 10
 )
 

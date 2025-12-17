@@ -29,13 +29,6 @@ const TranslateProjectError = "error translating project"
 const TranslateProjectConfigError = "unmarshalling project config from YAML"
 const EmptyConfigurationError = "received empty configuration file"
 
-// DefaultParserProjectAccessTimeout is the default timeout for accessing a
-// parser project. In general, the context timeout should prefer to be inherited
-// from a higher-level context (e.g. a REST request's context), so this timeout
-// should only be used as a last resort if the context cannot be easily passed
-// to the place where the parser project is accessed.
-const DefaultParserProjectAccessTimeout = 60 * time.Second
-
 // MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
 // config YAML.
 const MaxConfigSetPriority = 50

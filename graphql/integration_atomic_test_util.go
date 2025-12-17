@@ -506,6 +506,9 @@ func setupDBIndexes() error {
 	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: model.TaskHistoryIndex}); err != nil {
 		return errors.Wrap(err, "setting up task collection indexes")
 	}
+	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex}); err != nil {
+		return errors.Wrap(err, "setting up task historical data index")
+	}
 	return nil
 }
 
