@@ -868,8 +868,8 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
 	}
 
-	if h.NoExpiration {
-		// Clean up remaining DNS records for unexpirable hosts.
+	// Any host that has been unexpirable will have been given a DNS name, which we need to clean up.
+	if h.PersistentDNSName != "" {
 		grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
 			"message":    "could not delete host's persistent DNS name",
 			"op":         "delete",
