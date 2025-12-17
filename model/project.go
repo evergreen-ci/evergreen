@@ -1251,7 +1251,7 @@ func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project,
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
+	ctx, cancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
 	defer cancel()
 	env := evergreen.GetEnvironment()
 
