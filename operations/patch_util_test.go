@@ -315,6 +315,11 @@ func (s *PatchUtilTestSuite) TestProjectFieldRequired() {
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
+	// Remove default flag from all projects to test that project is required
+	for i := range conf.Projects {
+		conf.Projects[i].Default = false
+	}
+
 	// Test that patchParams with a project succeeds validation
 	p := patchParams{
 		Project:     "mci",
@@ -330,9 +335,10 @@ func (s *PatchUtilTestSuite) TestProjectFieldRequired() {
 	}
 	s.Empty(emptyProject.Project, "project field must not be empty")
 
-	// Verify validatePatchCommand requires project via GetProjectRef
+	// Verify validatePatchCommand requires project via loadProject
 	_, err = emptyProject.validatePatchCommand(context.Background(), conf, nil, nil)
 	s.Error(err, "validatePatchCommand should error when project is empty")
+	s.Contains(err.Error(), "project must be specified with -p or --project", "error message should indicate project is required")
 
 	// Test that validation fails when project starts with a dash (flag mistaken as project)
 	flagAsProject := patchParams{
