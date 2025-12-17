@@ -1251,8 +1251,6 @@ func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project,
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
-	defer cancel()
 	env := evergreen.GetEnvironment()
 
 	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver, false)
@@ -1303,8 +1301,6 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	ctx, cancel := context.WithTimeout(ctx, DefaultParserProjectAccessTimeout)
-	defer cancel()
 	for i := 0; i < retryCount; i++ {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {
