@@ -178,7 +178,6 @@ require (
 )
 
 require (
-	filippo.io/csrf v0.2.1
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.61.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.67.5
@@ -188,6 +187,7 @@ require (
 	github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c
 	github.com/fraugster/parquet-go v0.11.0
 	github.com/google/go-github/v70 v70.0.0
+	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.1
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383

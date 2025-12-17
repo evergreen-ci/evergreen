@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	csrf "filippo.io/csrf/gorilla"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/sessions"
 	"github.com/mongodb/amboy"
