@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -o errexit
 
-# Signal handlers to provide helpful messages for different scenarios
+# Error handlers to provide helpful messages for different scenarios
 trap 'echo "Error: Script failed at line $LINENO. Check the output above for details." >&2' ERR
 trap 'echo "Script interrupted by user (Ctrl+C)" >&2; exit 130' INT
 trap 'echo "Script terminated by signal" >&2; exit 143' TERM
