@@ -61,14 +61,8 @@ var (
 	}
 
 	requireProjectFlag = func(c *cli.Context) error {
-		project := strings.TrimSpace(c.String(projectFlagName))
-		if project == "" {
-			_ = cli.ShowCommandHelp(c, c.Command.Name)
-			return errors.New("project must be specified with -p or --project")
-		}
-		if strings.HasPrefix(project, "-") {
-			_ = cli.ShowCommandHelp(c, c.Command.Name)
-			return errors.New("invalid project name: project name cannot start with '-'")
+		if c.String(projectFlagName) == "" {
+			return errors.New("must specify a project")
 		}
 		return nil
 	}

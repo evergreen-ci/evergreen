@@ -244,7 +244,7 @@ func findBrowserCommand() ([]string, error) {
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if err := p.loadProject(conf); err != nil {
-		grip.Errorf("failed to resolve project: %s\n", err)
+		return nil, errors.Errorf("project must be specified with -p or --project as no default project is set\nRun `evergreen list --projects` to see all valid projects")
 	}
 
 	// If reusing a previous definition, ignore defaults.
@@ -330,7 +330,10 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 		p.Project = conf.FindDefaultProject(cwd, true)
 	}
 	if p.Project == "" {
-		return errors.New("Need to specify a project")
+		return errors.New("project must be specified with -p or --project as no default project is set")
+	}
+	if strings.HasPrefix(p.Project, "-") {
+		return errors.New("invalid project name: project name cannot start with '-'")
 	}
 
 	return nil
