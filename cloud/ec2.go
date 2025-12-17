@@ -872,16 +872,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	if h.PersistentDNSName != "" {
 		dnsName := h.PersistentDNSName
 		err := deleteHostPersistentDNSName(ctx, m.env, h, m.client)
-		if err == nil {
-			grip.Info(message.Fields{
-				"message":    "deleted host's persistent DNS name",
-				"op":         "delete",
-				"dashboard":  "evergreen sleep schedule health",
-				"host_id":    h.Id,
-				"started_by": h.StartedBy,
-				"dns_name":   dnsName,
-			})
-		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not delete host's persistent DNS name",
 			"op":         "delete",
@@ -890,7 +880,14 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 			"started_by": h.StartedBy,
 			"dns_name":   dnsName,
 		}))
-
+		grip.InfoWhen(err == nil, message.Fields{
+			"message":    "deleted host's persistent DNS name",
+			"op":         "delete",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"dns_name":   dnsName,
+		})
 	}
 
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
