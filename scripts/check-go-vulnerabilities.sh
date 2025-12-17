@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -o errexit
 
-# Error handlers to provide helpful messages for different scenarios
+# Signal handlers to provide helpful messages for different scenarios
 trap 'echo "Error: Script failed at line $LINENO. Check the output above for details." >&2' ERR
 trap 'echo "Script interrupted by user (Ctrl+C)" >&2; exit 130' INT
 trap 'echo "Script terminated by signal" >&2; exit 143' TERM
@@ -17,9 +17,9 @@ trap 'echo "Script terminated by signal" >&2; exit 143' TERM
 IGNORED_PACKAGES=(
     "docker"        # DEVPROD-25292 Docker vulnerability tracking
     "stdlib"        # DEVPROD-25290 Stdlib vulnerability tracking
-    "rardecode"     #DEVPROD-25293 Archiver / Rardecode vulnerability tracking
-    "archiver/v3"   #DEVPROD-25293 Archiver / Rardecode vulnerability tracking
-    "csrf"          #DEVPROD-25429 CSRF vulnerability tracking
+    "rardecode"     # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
+    "archiver/v3"   # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
+    "csrf"          # DEVPROD-25429 CSRF vulnerability tracking
 )
 
 # Validate that each ignored package has a tracking ticket
