@@ -282,8 +282,48 @@ func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {
 }
 
 func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
+	// Set up config file with a default project
+	fileContents := `projects:
+- name: evergreen
+  default: true
+`
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	s.Require().NoError(err)
+
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
+
+	// Test that loadProject succeeds with default project (verified by getting past loadProject and failing on uncommitted+ref validation)
+	defaultWithError := patchParams{
+		Uncommitted: true,
+		Ref:         "myref",
+	}
+	assertRef, err := defaultWithError.validatePatchCommand(context.Background(), conf, nil, nil)
+	s.Error(err, "expected error due to uncommitted and ref being set")
+	s.Contains(err.Error(), "cannot specify both --uncommitted and --ref", "should fail on uncommitted+ref validation, not project loading")
+	s.Nil(assertRef)
+
+	// Test that validatePatchCommand fails when no project specified and no default exists
+	conf.Projects[0].Default = false
+	noProject := patchParams{
+		Uncommitted: true,
+		Ref:         "myref",
+	}
+	assertRef, err = noProject.validatePatchCommand(context.Background(), conf, nil, nil)
+	s.Error(err, "expected error when no project is specified and no default exists")
+	s.Contains(err.Error(), "project must be specified with -p or --project", "error should indicate project is required")
+	s.Nil(assertRef)
+
+	// Test that validatePatchCommand fails when project starts with dash
+	flagAsProject := patchParams{
+		Project:     "-u",
+		Uncommitted: true,
+		Ref:         "myref",
+	}
+	assertRef, err = flagAsProject.validatePatchCommand(context.Background(), conf, nil, nil)
+	s.Error(err, "expected error when project starts with dash")
+	s.Contains(err.Error(), "invalid project name", "error should indicate invalid project name")
+	s.Nil(assertRef)
 
 	// uncommitted and ref should not be combined
 	p := patchParams{
@@ -293,7 +333,7 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 		Ref:         "myref",
 	}
 
-	assertRef, err := p.validatePatchCommand(context.Background(), conf, nil, nil)
+	assertRef, err = p.validatePatchCommand(context.Background(), conf, nil, nil)
 	s.Error(err, "expected error due to uncommitted and ref being set")
 	s.Nil(assertRef)
 
@@ -311,42 +351,49 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 
 }
 
-func (s *PatchUtilTestSuite) TestProjectFieldRequired() {
+func (s *PatchUtilTestSuite) TestLoadProject() {
+	// Test that loadProject uses default when no project is specified
+	fileContents := `projects:
+- name: evergreen
+  default: true
+- name: mci
+`
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	s.Require().NoError(err)
+
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
-	// Remove default flag from all projects to test that project is required
+	defaultProject := patchParams{}
+	err = defaultProject.loadProject(conf)
+	s.NoError(err, "loadProject should succeed when no project is specified but a default is set")
+	s.Equal("evergreen", defaultProject.Project, "loadProject should set project to default")
+
+	// Test that loadProject fails when no project is specified and no default exists
 	for i := range conf.Projects {
 		conf.Projects[i].Default = false
 	}
 
-	// Test that patchParams with a project succeeds validation
-	p := patchParams{
-		Project:     "mci",
-		Finalize:    true,
-		Uncommitted: false,
-	}
-	s.NotEmpty(p.Project, "project should be set for valid patch params")
-
-	// Test that validation fails when project is not specified
-	emptyProject := patchParams{
-		Finalize:    true,
-		Uncommitted: false,
-	}
-	s.Empty(emptyProject.Project, "project field must not be empty")
-
-	// Verify validatePatchCommand requires project via loadProject
-	_, err = emptyProject.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "validatePatchCommand should error when project is empty")
+	emptyProject := patchParams{}
+	err = emptyProject.loadProject(conf)
+	s.Error(err, "loadProject should error when no project is specified and no default exists")
 	s.Contains(err.Error(), "project must be specified with -p or --project", "error message should indicate project is required")
 
-	// Test that validation fails when project starts with a dash (flag mistaken as project)
+	// Test that loadProject fails when project starts with a dash
 	flagAsProject := patchParams{
-		Project:  "-u",
-		Finalize: true,
+		Project: "-u",
 	}
-	_, err = flagAsProject.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "validatePatchCommand should error when project starts with dash")
+	err = flagAsProject.loadProject(conf)
+	s.Error(err, "loadProject should error when project starts with dash")
+	s.Contains(err.Error(), "invalid project name", "error message should indicate invalid project name")
+
+	// Test that loadProject succeeds when valid project is specified
+	validProject := patchParams{
+		Project: "mci",
+	}
+	err = validProject.loadProject(conf)
+	s.NoError(err, "loadProject should succeed when valid project is specified")
+	s.Equal("mci", validProject.Project, "loadProject should preserve the specified project")
 }
 
 func TestGetLocalModuleIncludes(t *testing.T) {
