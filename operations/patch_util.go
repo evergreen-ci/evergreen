@@ -244,7 +244,7 @@ func findBrowserCommand() ([]string, error) {
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if err := p.loadProject(conf); err != nil {
-		return nil, errors.Errorf("project must be specified with -p or --project as no default project is set\nRun `evergreen list --projects` to see all valid projects")
+		return nil, errors.Wrap(err, "Run `evergreen list --projects` to see all valid projects")
 	}
 
 	// If reusing a previous definition, ignore defaults.
