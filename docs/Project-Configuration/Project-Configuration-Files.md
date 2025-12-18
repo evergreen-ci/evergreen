@@ -878,7 +878,8 @@ Every task has some expansions available by default:
 - `${github_org}` is the GitHub organization for the repo for the project
 - `${github_repo}` is the GitHub repo for the project
 - `${github_pr_number}` is the Github PR number associated with PR
-  patches and PR triggered merge queue items
+  patches. Patches from the merge queue will not have this expansion
+  because GitHub combines changes from multiple PRs in the queue.
 - `${github_pr_head_branch}` is the Github PR head branch name
 - `${github_pr_base_branch}` is the Github PR base branch name
 - `${is_commit_queue}` is the string "true" if this is a merge
