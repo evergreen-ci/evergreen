@@ -156,7 +156,7 @@ buildvariants:
 			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble,
 				taskSelector{Name: "t3", Variant: &variantSelector{StringSelector: "v0"}})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
-			So(bv.Tasks[1].Priority, ShouldEqual, 77)
+			So(bv.Tasks[1].Priority, ShouldEqual, MaxConfigSetPriority)
 		})
 		Convey("a file with oneline BVTs should parse", func() {
 			simple := `
