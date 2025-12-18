@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,9 @@ const EmptyConfigurationError = "received empty configuration file"
 // MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
 // config YAML.
 const MaxConfigSetPriority = 50
+
+// priorityBypassProjects is a list of projects that can set task priorities above MaxConfigSetPriority.
+var priorityBypassProjects = []string{"mongo-release"}
 
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
@@ -1013,8 +1017,10 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
 
-	capParserPriorities(&p)
-
+	// Special case: skip priority capping for the release projects.
+	if slices.Contains(priorityBypassProjects, p.Id) {
+		capParserPriorities(&p)
+	}
 	return &p, nil
 }
 
