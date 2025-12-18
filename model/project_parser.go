@@ -697,6 +697,11 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
+	// Cap priorities here so we can special case for certain projects.
+	if !slices.Contains(priorityBypassProjects, identifier) {
+		capParserPriorities(intermediateProject)
+	}
+
 	if len(intermediateProject.Include) > 0 {
 		if opts == nil {
 			err = errors.New("trying to open include files with empty options")
@@ -1017,10 +1022,18 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
 
-	// Special case: skip priority capping for the release projects.
-	if !slices.Contains(priorityBypassProjects, p.Id) {
-		capParserPriorities(&p)
-	}
+	//grip.Info(message.Fields{
+	//	"bynnbynn":   "loaded parser project",
+	//	"identifier": utility.FromStringPtr(p.Identifier),
+	//	"tasks":      len(p.Tasks),
+	//	"variants":   len(p.BuildVariants),
+	//	"parser":     p,
+	//})
+	//
+	//// Special case: skip priority capping for the release projects.
+	//if !slices.Contains(priorityBypassProjects, utility.FromStringPtr(p.Identifier)) {
+	//	capParserPriorities(&p)
+	//}
 	return &p, nil
 }
 
