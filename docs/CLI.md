@@ -662,7 +662,7 @@ The "url" keys in each list item should contain the appropriate URL to the binar
 
 ### Notifications
 
-The Evergreen CLI has the ability to send slack and email notifications for scripting. These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
+The Evergreen CLI has the ability to send slack and email notifications for scripting, **which is limited to service users**. These use Evergreen's account, so be cautious about rate limits or being marked as a spammer. 
 
 ```bash
 # Send a Slack message
