@@ -1018,7 +1018,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	}
 
 	// Special case: skip priority capping for the release projects.
-	if slices.Contains(priorityBypassProjects, p.Id) {
+	if !slices.Contains(priorityBypassProjects, p.Id) {
 		capParserPriorities(&p)
 	}
 	return &p, nil
