@@ -1498,7 +1498,7 @@ func checkBVTaskPriority(buildVariant *model.BuildVariant) ValidationErrors {
 		if t.Priority > model.MaxConfigSetPriority {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task '%s' has been set above %d priority in bv '%s', in YAML, will default priority to %d",
+					Message: fmt.Sprintf("task '%s' has been set above %d priority in build variant '%s', in YAML, will default priority to %d",
 						t.Name, model.MaxConfigSetPriority, buildVariant.Name, model.MaxConfigSetPriority),
 					Level: Notice,
 				})
