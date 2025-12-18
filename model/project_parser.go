@@ -1012,7 +1012,27 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
+
+	capParserPriorities(&p)
+
 	return &p, nil
+}
+
+// capParserPriorities caps all priority values in the parser project at MaxConfigSetPriority.
+// It caps priorities for both tasks and build variant tasks.
+func capParserPriorities(p *ParserProject) {
+	for i := range p.Tasks {
+		if p.Tasks[i].Priority > MaxConfigSetPriority {
+			p.Tasks[i].Priority = MaxConfigSetPriority
+		}
+	}
+	for i := range p.BuildVariants {
+		for j := range p.BuildVariants[i].Tasks {
+			if p.BuildVariants[i].Tasks[j].Priority > MaxConfigSetPriority {
+				p.BuildVariants[i].Tasks[j].Priority = MaxConfigSetPriority
+			}
+		}
+	}
 }
 
 // TranslateProject converts our intermediate project representation into
