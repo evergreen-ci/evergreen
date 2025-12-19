@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -180,6 +181,8 @@ var requesterExpression = bson.M{
 }
 
 func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]Patch, int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ByPatchNameStatusesMergeQueuePaginated")})
+
 	if opts.Project != nil && opts.Author != nil {
 		return nil, 0, errors.New("can't set both project and author")
 	}
@@ -203,6 +206,20 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 	if opts.Project != nil {
 		match[ProjectKey] = utility.FromStringPtr(opts.Project)
 	}
+
+	// This filter matches the logic in IsMergeQueuePatch() and results in significantly fewer documents being retrieved from the db.
+	if utility.FromBoolPtr(opts.OnlyMergeQueue) {
+		match["$or"] = []bson.M{
+			{
+				bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): bson.M{
+					"$exists": true,
+					"$ne":     "",
+				},
+			},
+			{AliasKey: evergreen.CommitQueueAlias},
+		}
+	}
+
 	pipeline = append(pipeline, bson.M{"$match": match})
 
 	sortStage := bson.M{
@@ -213,66 +230,63 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 
 	pipeline = append(pipeline, sortStage)
 
-	if len(opts.Requesters) > 0 || utility.FromBoolPtr(opts.OnlyMergeQueue) {
-		matchRequesterStage := bson.M{}
+	if len(opts.Requesters) > 0 && !utility.FromBoolPtr(opts.OnlyMergeQueue) {
 		validatedRequesters := []string{}
 		for _, requester := range opts.Requesters {
 			if evergreen.IsPatchRequester(requester) {
 				validatedRequesters = append(validatedRequesters, requester)
 			}
 		}
-		requesterMatch := bson.M{"$in": validatedRequesters}
-		// Conditionally add the merge queue requester filter if the user is explicitly filtering on it.
-		// This is only used on the project patches page when we want to conditionally only show merge queue patches.
-		if utility.FromBoolPtr(opts.OnlyMergeQueue) {
-			requesterMatch = bson.M{"$eq": evergreen.GithubMergeRequester}
+		if len(validatedRequesters) > 0 {
+			pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
+			pipeline = append(pipeline, bson.M{"$match": bson.M{"requester": bson.M{"$in": validatedRequesters}}})
 		}
-		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
-		matchRequesterStage["requester"] = requesterMatch
-		pipeline = append(pipeline, bson.M{"$match": matchRequesterStage})
 	}
 
-	resultPipeline := pipeline
+	resultPipeline := []bson.M{}
 	if opts.Page > 0 {
-		skipStage := bson.M{
-			"$skip": opts.Page * opts.Limit,
-		}
-		resultPipeline = append(resultPipeline, skipStage)
+		resultPipeline = append(resultPipeline, bson.M{"$skip": opts.Page * opts.Limit})
 	}
 	if opts.Limit > 0 {
-		limitStage := bson.M{
-			"$limit": opts.Limit,
-		}
-		resultPipeline = append(resultPipeline, limitStage)
+		resultPipeline = append(resultPipeline, bson.M{"$limit": opts.Limit})
 	}
 
-	results := []Patch{}
+	pipeline = append(pipeline, bson.M{
+		"$facet": bson.M{
+			"results": resultPipeline,
+			"count":   []bson.M{{"$count": "count"}},
+		},
+	})
+
+	type facetResult struct {
+		Results []Patch `bson:"results"`
+		Count   []struct {
+			Count int `bson:"count"`
+		} `bson:"count"`
+	}
+
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, resultPipeline)
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, 0, err
-	}
-	if err = cursor.All(ctx, &results); err != nil {
 		return nil, 0, err
 	}
 
-	// Will be used to get the total count of the filtered patches
-	countPipeline := append(pipeline, bson.M{"$count": "count"})
-	type countResult struct {
-		Count int `bson:"count"`
-	}
-	countResults := []countResult{}
-	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
-	if err != nil {
+	var facetResults []facetResult
+	if err = cursor.All(ctx, &facetResults); err != nil {
 		return nil, 0, err
 	}
-	if err = cursor.All(ctx, &countResults); err != nil {
-		return nil, 0, err
+
+	if len(facetResults) == 0 {
+		return nil, 0, nil
 	}
-	if len(countResults) == 0 {
-		return results, 0, nil
+
+	results := facetResults[0].Results
+	count := 0
+	if len(facetResults[0].Count) > 0 {
+		count = facetResults[0].Count[0].Count
 	}
-	return results, countResults[0].Count, nil
+
+	return results, count, nil
 }
 
 // ByUserPaginated produces a query that returns patches by the given user
