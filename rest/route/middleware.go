@@ -689,7 +689,6 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 		http.Error(rw, "not authenticated", http.StatusUnauthorized)
 		return
 	}
-
 	for _, item := range resources {
 		opts.Resource = item
 		if !user.HasPermission(opts) {

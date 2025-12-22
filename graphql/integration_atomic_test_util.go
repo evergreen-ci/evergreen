@@ -353,10 +353,11 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Name:  "superuser",
 		Scope: superUserScope.ID,
 		Permissions: map[string]int{
-			evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value,
-			evergreen.PermissionProjectCreate: evergreen.ProjectCreate.Value,
-			evergreen.PermissionDistroCreate:  evergreen.DistroCreate.Value,
-			evergreen.PermissionRoleModify:    evergreen.RoleModify.Value,
+			evergreen.PermissionAdminSettings:     evergreen.AdminSettingsEdit.Value,
+			evergreen.PermissionProjectCreate:     evergreen.ProjectCreate.Value,
+			evergreen.PermissionDistroCreate:      evergreen.DistroCreate.Value,
+			evergreen.PermissionRoleModify:        evergreen.RoleModify.Value,
+			evergreen.PermissionNotificationsSend: evergreen.NotificationsSend.Value,
 		},
 	}
 	err = roleManager.UpdateRole(superUserRole)
