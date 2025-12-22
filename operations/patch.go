@@ -181,6 +181,16 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
+			// Validate project early before expensive operations
+			if err := params.loadProject(conf); err != nil {
+				return errors.Wrap(err, "Error validating project")
+			}
+
+			// Error out if there are unexpected positional arguments
+			if len(args) > 0 {
+				return errors.Errorf("unexpected positional arguments: %v. Did you mean to use -p/--project?", args)
+			}
+
 			params.PreserveCommits = params.PreserveCommits || conf.PreserveCommits
 			if !params.SkipConfirm {
 				var keepGoing bool
@@ -463,6 +473,11 @@ func PatchFile() cli.Command {
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
+			}
+
+			// Validate project early before expensive operations
+			if err := params.loadProject(conf); err != nil {
+				return errors.Wrap(err, "Error validating project")
 			}
 
 			comm, err := conf.setupRestCommunicator(ctx, !outputJSON)

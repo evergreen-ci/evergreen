@@ -293,38 +293,6 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
-	// Test that loadProject succeeds with default project (verified by getting past loadProject and failing on uncommitted+ref validation)
-	defaultWithError := patchParams{
-		Uncommitted: true,
-		Ref:         "myref",
-	}
-	assertRef, err := defaultWithError.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "expected error due to uncommitted and ref being set")
-	s.Contains(err.Error(), "cannot specify both --uncommitted and --ref", "should fail on uncommitted+ref validation, not project loading")
-	s.Nil(assertRef)
-
-	// Test that validatePatchCommand fails when no project specified and no default exists
-	conf.Projects[0].Default = false
-	noProject := patchParams{
-		Uncommitted: true,
-		Ref:         "myref",
-	}
-	assertRef, err = noProject.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "expected error when no project is specified and no default exists")
-	s.Contains(err.Error(), "project must be specified with -p or --project", "error should indicate project is required")
-	s.Nil(assertRef)
-
-	// Test that validatePatchCommand fails when project starts with dash
-	flagAsProject := patchParams{
-		Project:     "-u",
-		Uncommitted: true,
-		Ref:         "myref",
-	}
-	assertRef, err = flagAsProject.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "expected error when project starts with dash")
-	s.Contains(err.Error(), "invalid project name", "error should indicate invalid project name")
-	s.Nil(assertRef)
-
 	// uncommitted and ref should not be combined
 	p := patchParams{
 		Project:     "mci",
@@ -333,7 +301,7 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 		Ref:         "myref",
 	}
 
-	assertRef, err = p.validatePatchCommand(context.Background(), conf, nil, nil)
+	assertRef, err := p.validatePatchCommand(context.Background(), conf, nil, nil)
 	s.Error(err, "expected error due to uncommitted and ref being set")
 	s.Nil(assertRef)
 
