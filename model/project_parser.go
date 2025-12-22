@@ -684,10 +684,10 @@ type yamlTuple struct {
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
+// and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
 	unmarshalStrict := false
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
@@ -697,8 +697,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
 
-	// Cap priorities here so we can special case for certain projects.
-	if !slices.Contains(priorityBypassProjects, identifier) {
+	if !slices.Contains(priorityBypassProjects, projectID) {
 		capParserPriorities(intermediateProject)
 	}
 
@@ -725,7 +724,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			go func() {
 				defer wg.Done()
 				for include := range includesToProcess {
-					processIntermediateProjectIncludes(ctx, identifier, intermediateProject, include, outputYAMLs, opts)
+					processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts)
 				}
 			}()
 		}
@@ -774,7 +773,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	if p != nil {
 		*project = *p
 	}
-	project.Identifier = identifier
+	project.Identifier = projectID
 
 	// Remove includes once the project is translated since translate project saves number of includes.
 	// Intermediate project is used to save parser project as a YAML so removing the includes verifies that
@@ -1022,18 +1021,6 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
 
-	//grip.Info(message.Fields{
-	//	"bynnbynn":   "loaded parser project",
-	//	"identifier": utility.FromStringPtr(p.Identifier),
-	//	"tasks":      len(p.Tasks),
-	//	"variants":   len(p.BuildVariants),
-	//	"parser":     p,
-	//})
-	//
-	//// Special case: skip priority capping for the release projects.
-	//if !slices.Contains(priorityBypassProjects, utility.FromStringPtr(p.Identifier)) {
-	//	capParserPriorities(&p)
-	//}
 	return &p, nil
 }
 
