@@ -182,7 +182,7 @@ require (
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
-	github.com/kanopy-platform/kanopy-oidc-lib v0.1.1
+	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.3
