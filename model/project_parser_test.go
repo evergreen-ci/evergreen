@@ -156,7 +156,6 @@ buildvariants:
 			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble,
 				taskSelector{Name: "t3", Variant: &variantSelector{StringSelector: "v0"}})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
-			So(bv.Tasks[1].Priority, ShouldEqual, MaxConfigSetPriority)
 		})
 		Convey("a file with oneline BVTs should parse", func() {
 			simple := `
@@ -3170,32 +3169,5 @@ func TestCapParserPriorities(t *testing.T) {
 		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[0].Priority)
 		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[1].Tasks[0].Priority)
 		assert.Equal(t, int64(MaxConfigSetPriority-5), p.BuildVariants[2].Tasks[0].Priority)
-	})
-
-	t.Run("IntegrationWithCreateIntermediateProject", func(t *testing.T) {
-		yamlConfig := `
-tasks:
-  - name: task1
-    priority: 100
-  - name: task2
-    priority: 25
-
-buildvariants:
-  - name: variant1
-    tasks:
-      - name: task1
-        priority: 200
-      - name: task2
-        priority: 10
-`
-		p, err := createIntermediateProject([]byte(yamlConfig), false)
-		require.NoError(t, err)
-		require.NotNil(t, p)
-
-		// Verify that priorities are capped by createIntermediateProject
-		assert.Equal(t, int64(MaxConfigSetPriority), p.Tasks[0].Priority)
-		assert.Equal(t, int64(25), p.Tasks[1].Priority)
-		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[0].Priority)
-		assert.Equal(t, int64(10), p.BuildVariants[0].Tasks[1].Priority)
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,9 @@ const EmptyConfigurationError = "received empty configuration file"
 // MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
 // config YAML.
 const MaxConfigSetPriority = 50
+
+// priorityBypassProjects is a list of projects that can set task priorities above MaxConfigSetPriority.
+var priorityBypassProjects = []string{"mongo-release"}
 
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
@@ -680,10 +684,10 @@ type yamlTuple struct {
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
+// and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
 	unmarshalStrict := false
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
@@ -691,6 +695,10 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	intermediateProject, err := createIntermediateProject(data, unmarshalStrict)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
+	}
+
+	if !slices.Contains(priorityBypassProjects, projectID) {
+		capParserPriorities(intermediateProject)
 	}
 
 	if len(intermediateProject.Include) > 0 {
@@ -716,7 +724,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			go func() {
 				defer wg.Done()
 				for include := range includesToProcess {
-					processIntermediateProjectIncludes(ctx, identifier, intermediateProject, include, outputYAMLs, opts)
+					processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts)
 				}
 			}()
 		}
@@ -765,7 +773,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	if p != nil {
 		*project = *p
 	}
-	project.Identifier = identifier
+	project.Identifier = projectID
 
 	// Remove includes once the project is translated since translate project saves number of includes.
 	// Intermediate project is used to save parser project as a YAML so removing the includes verifies that
@@ -1012,8 +1020,6 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
-
-	capParserPriorities(&p)
 
 	return &p, nil
 }
@@ -1486,9 +1492,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
-	}
-	if res.Priority > MaxConfigSetPriority {
-		res.Priority = MaxConfigSetPriority
 	}
 	if res.Patchable == nil {
 		res.Patchable = pt.Patchable
