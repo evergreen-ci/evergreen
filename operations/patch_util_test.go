@@ -302,7 +302,7 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 	}
 
 	assertRef, err := p.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "expected error due to uncommitted and ref being set")
+	s.Require().Error(err, "expected error due to uncommitted and ref being set")
 	s.Nil(assertRef)
 
 	// conf.Uncommitted should be considered
@@ -314,7 +314,7 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 
 	conf.UncommittedChanges = true
 	assertRef, err = p.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "expected error due to conf.uncommittedChanges and ref being set")
+	s.Require().Error(err, "expected error due to conf.uncommittedChanges and ref being set")
 	s.Nil(assertRef)
 
 }
