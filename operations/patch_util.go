@@ -328,9 +328,10 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 		cwd, err = filepath.EvalSymlinks(cwd)
 		grip.Error(errors.Wrap(err, "resolving current working directory symlinks"))
 		p.Project = conf.FindDefaultProject(cwd, true)
-		if p.Project != "" {
-			grip.Infof("Using default project '%s'. To specify a different project, use the -p/--project flag.", p.Project)
+		if p.Project == "" {
+			return errors.New("Need to specify a project")
 		}
+		grip.Infof("Using default project '%s'. To specify a different project, use the -p/--project flag.", p.Project)
 	}
 
 	return nil

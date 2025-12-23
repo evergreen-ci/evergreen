@@ -330,14 +330,15 @@ func (s *PatchUtilTestSuite) TestLoadProject() {
 	s.NoError(err, "loadProject should not error")
 	s.Equal("evergreen", defaultProject.Project, "loadProject should set project to default")
 
-	// Test that loadProject does not error when no project is specified and no default exists
+	// Test that loadProject errors when no project is specified and no default exists
 	for i := range conf.Projects {
 		conf.Projects[i].Default = false
 	}
 
 	emptyProject := patchParams{}
 	err = emptyProject.loadProject(conf)
-	s.NoError(err, "loadProject should not error even when no default exists")
+	s.Error(err, "loadProject should error when no default exists")
+	s.Contains(err.Error(), "Need to specify a project", "error message should indicate project is required")
 	s.Empty(emptyProject.Project, "loadProject should leave project empty when no default exists")
 
 	// Test that loadProject succeeds when valid project is specified
