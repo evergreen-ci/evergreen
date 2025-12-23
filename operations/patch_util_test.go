@@ -294,7 +294,7 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 	}
 
 	assertRef, err := p.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "expected error due to uncommitted and ref being set")
+	s.Require().Error(err, "expected error due to uncommitted and ref being set")
 	s.Nil(assertRef)
 
 	// conf.Uncommitted should be considered
@@ -306,9 +306,48 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 
 	conf.UncommittedChanges = true
 	assertRef, err = p.validatePatchCommand(context.Background(), conf, nil, nil)
-	s.Error(err, "expected error due to conf.uncommittedChanges and ref being set")
+	s.Require().Error(err, "expected error due to conf.uncommittedChanges and ref being set")
 	s.Nil(assertRef)
 
+}
+
+func (s *PatchUtilTestSuite) TestLoadProject() {
+	// Test that loadProject uses default when no project is specified
+	fileContents := `projects:
+- name: evergreen
+  default: true
+- name: mci
+`
+	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
+	s.Require().NoError(err)
+
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
+
+	// Test that loadProject sets the default project when none is specified
+	defaultProject := patchParams{}
+	err = defaultProject.loadProject(conf)
+	s.NoError(err, "loadProject should not error")
+	s.Equal("evergreen", defaultProject.Project, "loadProject should set project to default")
+
+	// Test that loadProject errors when no project is specified and no default exists
+	for i := range conf.Projects {
+		conf.Projects[i].Default = false
+	}
+
+	emptyProject := patchParams{}
+	err = emptyProject.loadProject(conf)
+	s.Error(err, "loadProject should error when no default exists")
+	s.Contains(err.Error(), "Need to specify a project", "error message should indicate project is required")
+	s.Empty(emptyProject.Project, "loadProject should leave project empty when no default exists")
+
+	// Test that loadProject succeeds when valid project is specified
+	validProject := patchParams{
+		Project: "mci",
+	}
+	err = validProject.loadProject(conf)
+	s.NoError(err, "loadProject should not error when valid project is specified")
+	s.Equal("mci", validProject.Project, "loadProject should preserve the specified project")
 }
 
 func TestGetLocalModuleIncludes(t *testing.T) {
