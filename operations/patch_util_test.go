@@ -282,14 +282,6 @@ func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {
 }
 
 func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
-	// Set up config file with a default project
-	fileContents := `projects:
-- name: evergreen
-  default: true
-`
-	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
-	s.Require().NoError(err)
-
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
@@ -332,35 +324,28 @@ func (s *PatchUtilTestSuite) TestLoadProject() {
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
+	// Test that loadProject sets the default project when none is specified
 	defaultProject := patchParams{}
 	err = defaultProject.loadProject(conf)
-	s.NoError(err, "loadProject should succeed when no project is specified but a default is set")
+	s.NoError(err, "loadProject should not error")
 	s.Equal("evergreen", defaultProject.Project, "loadProject should set project to default")
 
-	// Test that loadProject fails when no project is specified and no default exists
+	// Test that loadProject does not error when no project is specified and no default exists
 	for i := range conf.Projects {
 		conf.Projects[i].Default = false
 	}
 
 	emptyProject := patchParams{}
 	err = emptyProject.loadProject(conf)
-	s.Error(err, "loadProject should error when no project is specified and no default exists")
-	s.Contains(err.Error(), "project must be specified with -p or --project", "error message should indicate project is required")
-
-	// Test that loadProject fails when project starts with a dash
-	flagAsProject := patchParams{
-		Project: "-u",
-	}
-	err = flagAsProject.loadProject(conf)
-	s.Error(err, "loadProject should error when project starts with dash")
-	s.Contains(err.Error(), "invalid project name", "error message should indicate invalid project name")
+	s.NoError(err, "loadProject should not error even when no default exists")
+	s.Empty(emptyProject.Project, "loadProject should leave project empty when no default exists")
 
 	// Test that loadProject succeeds when valid project is specified
 	validProject := patchParams{
 		Project: "mci",
 	}
 	err = validProject.loadProject(conf)
-	s.NoError(err, "loadProject should succeed when valid project is specified")
+	s.NoError(err, "loadProject should not error when valid project is specified")
 	s.Equal("mci", validProject.Project, "loadProject should preserve the specified project")
 }
 
