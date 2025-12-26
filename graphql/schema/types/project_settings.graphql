@@ -45,6 +45,7 @@ input ProjectInput {
   commitQueue: CommitQueueParamsInput
   containerSizeDefinitions: [ContainerResourcesInput!]
   deactivatePrevious: Boolean
+  debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
