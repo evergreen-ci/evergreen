@@ -652,6 +652,8 @@ type APIProjectRef struct {
 	DispatchingDisabled *bool `json:"dispatching_disabled"`
 	// Disable stepback.
 	StepbackDisabled *bool `json:"stepback_disabled"`
+	// Enable debug spawn host functionality.
+	DebugSpawnHostsDisabled *bool `json:"debug_spawn_hosts_disabled"`
 	// Use bisect stepback instead of linear.
 	StepbackBisect *bool `json:"stepback_bisect"`
 	// Enable setting project aliases from version-controlled project configs.
@@ -722,8 +724,6 @@ type APIProjectRef struct {
 	// Limit for the number of mainline commits to run when
 	// RunEveryMainlineCommit is true.
 	RunEveryMainlineCommitLimit *int `json:"run_every_mainline_commit_limit,omitzero"`
-	// Enable debug spawn host functionality.
-	DebugSpawnHostsEnabled *bool `json:"debug_spawn_host_enabled"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -760,7 +760,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		VersionControlEnabled:            utility.BoolPtrCopy(p.VersionControlEnabled),
 		DisabledStatsCache:               utility.BoolPtrCopy(p.DisabledStatsCache),
 		NotifyOnBuildFailure:             utility.BoolPtrCopy(p.NotifyOnBuildFailure),
-		DebugSpawnHostsEnabled:           utility.BoolPtrCopy(p.DebugSpawnHostsEnabled),
+		DebugSpawnHostsDisabled:          utility.BoolPtrCopy(p.DebugSpawnHostsDisabled),
 		SpawnHostScriptPath:              utility.FromStringPtr(p.SpawnHostScriptPath),
 		OldestAllowedMergeBase:           utility.FromStringPtr(p.OldestAllowedMergeBase),
 		Admins:                           utility.FromStringPtrSlice(p.Admins),
@@ -886,7 +886,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)
 	p.DisabledStatsCache = utility.BoolPtrCopy(projectRef.DisabledStatsCache)
-	p.DebugSpawnHostsEnabled = utility.BoolPtrCopy(projectRef.DebugSpawnHostsEnabled)
+	p.DebugSpawnHostsDisabled = utility.BoolPtrCopy(projectRef.DebugSpawnHostsDisabled)
 	p.NotifyOnBuildFailure = utility.BoolPtrCopy(projectRef.NotifyOnBuildFailure)
 	p.SpawnHostScriptPath = utility.ToStringPtr(projectRef.SpawnHostScriptPath)
 	p.OldestAllowedMergeBase = utility.ToStringPtr(projectRef.OldestAllowedMergeBase)

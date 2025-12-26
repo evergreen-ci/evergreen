@@ -88,8 +88,8 @@ type ProjectRef struct {
 	// SpawnHostScriptPath is a path to a script to optionally be run by users on hosts triggered from tasks.
 	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
 
-	// DebugSpawnHostsEnabled indicates whether users can spawn debug hosts for tasks in this project.
-	DebugSpawnHostsEnabled *bool `bson:"debug_spawn_hosts_enabled,omitempty" json:"debug_spawn_hosts_enabled,omitempty" yaml:"debug_spawn_hosts_enabled,omitempty"`
+	// DebugSpawnHostsDisabled indicates whether users can spawn debug hosts for tasks in this project.
+	DebugSpawnHostsDisabled *bool `bson:"debug_spawn_hosts_disabled,omitempty" json:"debug_spawn_hosts_disabled,omitempty" yaml:"debug_spawn_hosts_disabled,omitempty"`
 
 	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
 	// If a repo is enabled and this is what creates the hook, then TracksPushEvents will be set at the repo level.
@@ -518,7 +518,7 @@ var (
 	projectRefVersionControlEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey                    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey                = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
-	projectRefDebugSpawnHostsEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "DebugSpawnHostsEnabled")
+	projectRefDebugSpawnHostsDisabledKey            = bsonutil.MustHaveTag(ProjectRef{}, "DebugSpawnHostsDisabled")
 	projectRefTriggersKey                           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPatchTriggerAliasesKey                = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
 	projectRefGithubPRTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubPRTriggerAliases")
@@ -620,7 +620,7 @@ func (p *ProjectRef) IsStatsCacheDisabled() bool {
 }
 
 func (p *ProjectRef) IsDebugSpawnHostsEnabled() bool {
-	return utility.FromBoolPtr(p.DebugSpawnHostsEnabled)
+	return !utility.FromBoolPtr(p.DebugSpawnHostsDisabled)
 }
 
 func (p *ProjectRef) IsHidden() bool {
@@ -2254,19 +2254,19 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
-			ProjectRefBranchKey:                 p.Branch,
-			ProjectRefBatchTimeKey:              p.BatchTime,
-			ProjectRefRemotePathKey:             p.RemotePath,
-			projectRefSpawnHostScriptPathKey:    p.SpawnHostScriptPath,
-			projectRefDispatchingDisabledKey:    p.DispatchingDisabled,
-			projectRefStepbackDisabledKey:       p.StepbackDisabled,
-			projectRefStepbackBisectKey:         p.StepbackBisect,
-			projectRefVersionControlEnabledKey:  p.VersionControlEnabled,
-			ProjectRefDeactivatePreviousKey:     p.DeactivatePrevious,
-			projectRefRepotrackerDisabledKey:    p.RepotrackerDisabled,
-			projectRefPatchingDisabledKey:       p.PatchingDisabled,
-			ProjectRefDisabledStatsCacheKey:     p.DisabledStatsCache,
-			projectRefDebugSpawnHostsEnabledKey: p.DebugSpawnHostsEnabled,
+			ProjectRefBranchKey:                  p.Branch,
+			ProjectRefBatchTimeKey:               p.BatchTime,
+			ProjectRefRemotePathKey:              p.RemotePath,
+			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
+			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			projectRefStepbackDisabledKey:        p.StepbackDisabled,
+			projectRefStepbackBisectKey:          p.StepbackBisect,
+			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,
+			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
+			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
+			projectRefPatchingDisabledKey:        p.PatchingDisabled,
+			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+			projectRefDebugSpawnHostsDisabledKey: p.DebugSpawnHostsDisabled,
 		}
 		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
 		if p.TracksPushEvents != nil {

@@ -1338,6 +1338,7 @@ type ComplexityRoot struct {
 		CommitQueue                        func(childComplexity int) int
 		ContainerSizeDefinitions           func(childComplexity int) int
 		DeactivatePrevious                 func(childComplexity int) int
+		DebugSpawnHostsDisabled            func(childComplexity int) int
 		DisabledStatsCache                 func(childComplexity int) int
 		DispatchingDisabled                func(childComplexity int) int
 		DisplayName                        func(childComplexity int) int
@@ -1545,6 +1546,7 @@ type ComplexityRoot struct {
 		CommitQueue                        func(childComplexity int) int
 		ContainerSizeDefinitions           func(childComplexity int) int
 		DeactivatePrevious                 func(childComplexity int) int
+		DebugSpawnHostsDisabled            func(childComplexity int) int
 		DisabledStatsCache                 func(childComplexity int) int
 		DispatchingDisabled                func(childComplexity int) int
 		DisplayName                        func(childComplexity int) int
@@ -8028,6 +8030,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.DeactivatePrevious(childComplexity), true
+	case "Project.debugSpawnHostsDisabled":
+		if e.complexity.Project.DebugSpawnHostsDisabled == nil {
+			break
+		}
+
+		return e.complexity.Project.DebugSpawnHostsDisabled(childComplexity), true
 	case "Project.disabledStatsCache":
 		if e.complexity.Project.DisabledStatsCache == nil {
 			break
@@ -9134,6 +9142,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.DeactivatePrevious(childComplexity), true
+	case "RepoRef.debugSpawnHostsDisabled":
+		if e.complexity.RepoRef.DebugSpawnHostsDisabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.DebugSpawnHostsDisabled(childComplexity), true
 	case "RepoRef.disabledStatsCache":
 		if e.complexity.RepoRef.DisabledStatsCache == nil {
 			break
@@ -28998,6 +29012,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -29183,6 +29199,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_RepoRef_spawnHostScriptPath(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_RepoRef_debugSpawnHostsDisabled(ctx, field)
 			case "stepbackDisabled":
 				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
@@ -36993,6 +37011,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37140,6 +37160,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37287,6 +37309,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37434,6 +37458,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37749,6 +37775,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -40128,6 +40156,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -40392,6 +40422,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -43668,6 +43700,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -47013,6 +47047,35 @@ func (ec *executionContext) fieldContext_Project_deactivatePrevious(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_debugSpawnHostsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_debugSpawnHostsDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostsDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_debugSpawnHostsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_disabledStatsCache(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49244,6 +49307,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -49717,6 +49782,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -51524,6 +51591,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -54645,6 +54714,35 @@ func (ec *executionContext) fieldContext_RepoRef_spawnHostScriptPath(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_debugSpawnHostsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoRef_debugSpawnHostsDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostsDisabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_debugSpawnHostsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_stepbackDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55170,6 +55268,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_RepoRef_spawnHostScriptPath(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_RepoRef_debugSpawnHostsDisabled(ctx, field)
 			case "stepbackDisabled":
 				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
@@ -62323,6 +62423,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -70909,6 +71011,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -81427,7 +81531,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81497,6 +81601,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.DeactivatePrevious = data
+		case "debugSpawnHostsDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHostsDisabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHostsDisabled = data
 		case "disabledStatsCache":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledStatsCache"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -82262,7 +82373,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82507,6 +82618,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.SpawnHostScriptPath = data
+		case "debugSpawnHostsDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHostsDisabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHostsDisabled = data
 		case "stepbackDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stepbackDisabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -95994,6 +96112,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_containerSizeDefinitions(ctx, field, obj)
 		case "deactivatePrevious":
 			out.Values[i] = ec._Project_deactivatePrevious(ctx, field, obj)
+		case "debugSpawnHostsDisabled":
+			out.Values[i] = ec._Project_debugSpawnHostsDisabled(ctx, field, obj)
 		case "disabledStatsCache":
 			out.Values[i] = ec._Project_disabledStatsCache(ctx, field, obj)
 		case "dispatchingDisabled":
@@ -98384,6 +98504,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "spawnHostScriptPath":
 			out.Values[i] = ec._RepoRef_spawnHostScriptPath(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "debugSpawnHostsDisabled":
+			out.Values[i] = ec._RepoRef_debugSpawnHostsDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
