@@ -1032,10 +1032,6 @@ func (h *Host) SetRunning(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostRunning, user, "")
 }
 
-func (h *Host) SetTerminated(ctx context.Context, user, reason string) error {
-	return h.SetStatus(ctx, evergreen.HostTerminated, user, reason)
-}
-
 func (h *Host) SetStopping(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }

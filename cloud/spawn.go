@@ -315,7 +315,7 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, host *ho
 		return errors.New("host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
-		return host.SetTerminated(ctx, user, "host is an intent host")
+		return host.Terminate(ctx, user, "host is an intent host")
 	}
 	cloudHost, err := GetCloudHost(ctx, host, env)
 	if err != nil {
