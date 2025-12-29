@@ -376,6 +376,61 @@ func TestFinalizePatch(t *testing.T) {
 			assert.NotEqual(t, "123", mfst.Modules["sandbox"].Revision)
 			assert.Equal(t, "abc", mfst.Modules["evergreen"].Revision)
 		},
+		"VersionCreationWithAutoUpdateModulesAndRef": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			modules := ModuleList{
+				{
+					Name:       "evergreen",
+					Branch:     "main",
+					Owner:      "evergreen-ci",
+					Repo:       "evergreen",
+					AutoUpdate: true,
+					Ref:        "ddf48e044c307e3f8734279be95f2d9d7134410f",
+				},
+				{
+					Name:   "sandbox",
+					Branch: "main",
+					Owner:  "evergreen-ci",
+					Repo:   "commit-queue-sandbox",
+				},
+			}
+
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			patchConfig.PatchedParserProject.Modules = modules
+			patchConfig.PatchedParserProject.Identifier = utility.ToStringPtr(p.Project)
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
+
+			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
+			require.NoError(t, p.Insert(t.Context()))
+
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p)
+			require.NoError(t, err)
+			assert.NotNil(t, project)
+			assert.NotNil(t, patchConfig)
+
+			baseManifest := manifest.Manifest{
+				Revision:    patchedRevision,
+				ProjectName: patchedProject,
+				Modules: map[string]*manifest.Module{
+					"evergreen": {Branch: "main", Repo: "evergreen", Owner: "evergreen-ci", Revision: "old_revision"},
+					"sandbox":   {Branch: "main", Repo: "sandbox", Owner: "evergreen-ci", Revision: "sandbox_rev"},
+				},
+				IsBase: true,
+			}
+			_, err = baseManifest.TryInsert(t.Context())
+			require.NoError(t, err)
+
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			require.NoError(t, err)
+			assert.NotNil(t, version)
+
+			mfst, err := manifest.FindOne(ctx, manifest.ById(p.Id.Hex()))
+			require.NoError(t, err)
+			assert.NotNil(t, mfst)
+			assert.Len(t, mfst.Modules, 2)
+
+			assert.Equal(t, "ddf48e044c307e3f8734279be95f2d9d7134410f", mfst.Modules["evergreen"].Revision)
+			assert.Equal(t, "sandbox_rev", mfst.Modules["sandbox"].Revision)
+		},
 		"EmptyCommitQueuePatchDoesntCreateVersion": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
 			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
