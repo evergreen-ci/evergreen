@@ -255,6 +255,7 @@ type Project {
   commitQueue: CommitQueueParams!
   containerSizeDefinitions: [ContainerResources!]
   deactivatePrevious: Boolean
+  debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String!

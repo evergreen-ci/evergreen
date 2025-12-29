@@ -777,6 +777,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Admins, utility.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
 	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
+	s.Equal(cachedProject.DebugSpawnHostsDisabled, projectRef.DebugSpawnHostsDisabled)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -956,11 +957,12 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		CommitQueue: serviceModel.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 		},
-		Hidden:               utility.FalsePtr(),
-		PatchingDisabled:     utility.FalsePtr(),
-		Admins:               []string{"langdon.alger"},
-		NotifyOnBuildFailure: utility.FalsePtr(),
-		DisabledStatsCache:   utility.TruePtr(),
+		Hidden:                  utility.FalsePtr(),
+		PatchingDisabled:        utility.FalsePtr(),
+		Admins:                  []string{"langdon.alger"},
+		NotifyOnBuildFailure:    utility.FalsePtr(),
+		DisabledStatsCache:      utility.TruePtr(),
+		DebugSpawnHostsDisabled: utility.TruePtr(),
 	}
 }
 

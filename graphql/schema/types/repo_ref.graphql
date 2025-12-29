@@ -34,6 +34,7 @@ input RepoRefInput {
   repotrackerDisabled: Boolean
   restricted: Boolean
   spawnHostScriptPath: String
+  debugSpawnHostsDisabled: Boolean
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
@@ -86,6 +87,7 @@ type RepoRef {
   repotrackerDisabled: Boolean!
   restricted: Boolean!
   spawnHostScriptPath: String!
+  debugSpawnHostsDisabled: Boolean!
   stepbackDisabled: Boolean!
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!

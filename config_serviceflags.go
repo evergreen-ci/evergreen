@@ -39,7 +39,7 @@ type ServiceFlags struct {
 	ElasticIPsDisabled              bool `bson:"elastic_ips_disabled" json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `bson:"release_mode_disabled" json:"release_mode_disabled"`
 	LegacyUIAdminPageDisabled       bool `bson:"legacy_ui_admin_page_disabled" json:"legacy_ui_admin_page_disabled"`
-	DebugSpawnHostDisabled          bool `bson:"debug_spawn_host_disabled" json:"debug_spawn_host_disabled"`
+	DebugSpawnHostsDisabled         bool `bson:"debug_spawn_hosts_disabled" json:"debug_spawn_hosts_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -95,7 +95,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			cpuDegradedModeDisabledKey:         c.CPUDegradedModeDisabled,
 			releaseModeDisabledKey:             c.ReleaseModeDisabled,
 			legacyUIAdminPageDisabledKey:       c.LegacyUIAdminPageDisabled,
-			debugSpawnHostDisabledKey:          c.DebugSpawnHostDisabled,
+			debugSpawnHostsDisabledKey:         c.DebugSpawnHostsDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
