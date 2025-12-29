@@ -181,7 +181,6 @@ EOF
 }
 
 cleanup() {
-    # Ensure we restore the original state if script exits
     if [ "$STASH_APPLIED" = "true" ]; then
         print_status "Restoring original code state..."
         git stash pop --quiet 2>/dev/null || true
@@ -191,7 +190,6 @@ cleanup() {
 main() {
     print_status "Starting config validation test"
 
-    # Set up cleanup trap
     trap cleanup EXIT
 
     if ! build_evergreen_cli; then
@@ -217,7 +215,6 @@ main() {
         exit 1
     fi
 
-    # Check if there are uncommitted changes to validator code
     STASH_APPLIED="false"
     if git diff --quiet validator/ && git diff --cached --quiet validator/; then
         print_status "No uncommitted changes to validator/, comparing against base branch"
@@ -231,7 +228,6 @@ main() {
         STASH_APPLIED="true"
     fi
 
-    # Build and run baseline validation
     print_status "Building baseline validator..."
     if ! build_validator; then
         if [ "$STASH_APPLIED" = "true" ]; then
@@ -256,17 +252,15 @@ main() {
         print_status "Baseline: $baseline_passed passed, $baseline_failed failed"
     fi
 
-    # Apply changes for patch validation
     if [ "$STASH_APPLIED" = "true" ]; then
         print_status "Applying validator changes for patch validation..."
         if ! git stash pop --quiet; then
             print_error "Failed to restore validator changes"
             exit 1
         fi
-        STASH_APPLIED="false"  # Mark as no longer stashed since we popped it
+        STASH_APPLIED="false"
     fi
 
-    # Rebuild validator with changes
     print_status "Building patch validator..."
     if ! build_validator; then
         print_error "Failed to build patch validator"
