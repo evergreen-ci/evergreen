@@ -7,9 +7,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
@@ -39,119 +39,22 @@ type runCommandsOptions struct {
 }
 
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
-func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBlock commandBlock) (err error) {
-	if cmdBlock.commands == nil {
-		return nil
+// This method delegates to the shared block executor for consistency with LocalTaskExecutor.
+func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBlock commandBlock) error {
+	agentExecutor := NewAgentCommandExecutor(a)
+	sharedExecutor := executor.NewSharedBlockExecutor(agentExecutor)
+	execCtx := NewTaskContextAdapter(tc)
+
+	execCmdBlock := executor.CommandBlock{
+		Block:               cmdBlock.block,
+		Commands:            cmdBlock.commands,
+		TimeoutKind:         cmdBlock.timeoutKind,
+		GetTimeout:          cmdBlock.getTimeout,
+		CanTimeOutHeartbeat: cmdBlock.canTimeOutHeartbeat,
+		CanFailTask:         cmdBlock.canFailTask,
 	}
 
-	var taskLogger grip.Journaler
-	var execLogger grip.Journaler
-	if tc.logger != nil {
-		taskLogger = tc.logger.Task()
-		execLogger = tc.logger.Execution()
-	} else {
-		// In the case of teardown group, it's not guaranteed that the agent has
-		// previously set up a valid logger set up, so use the fallback default
-		// logger if necessary.
-		taskLogger = grip.GetDefaultJournaler()
-		execLogger = grip.GetDefaultJournaler()
-	}
-
-	blockCtx, blockCancel := context.WithCancel(ctx)
-	defer blockCancel()
-	if cmdBlock.timeoutKind != "" && cmdBlock.getTimeout != nil {
-		// Start the block timeout, if any.
-		timeoutOpts := timeoutWatcherOptions{
-			tc:                    tc,
-			kind:                  cmdBlock.timeoutKind,
-			getTimeout:            cmdBlock.getTimeout,
-			canMarkTimeoutFailure: cmdBlock.canFailTask,
-		}
-		go a.startTimeoutWatcher(blockCtx, blockCancel, timeoutOpts)
-
-		if cmdBlock.canTimeOutHeartbeat {
-			execLogger.Infof("Setting heartbeat timeout to type '%s'.", cmdBlock.timeoutKind)
-			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
-				startAt:    time.Now(),
-				getTimeout: cmdBlock.getTimeout,
-				kind:       cmdBlock.timeoutKind,
-			})
-			defer func() {
-				execLogger.Infof("Resetting heartbeat timeout from type '%s' back to default.", cmdBlock.timeoutKind)
-				tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
-			}()
-		}
-	}
-
-	defer func() {
-		op := fmt.Sprintf("running commands for block '%s'", cmdBlock.block)
-		pErr := recovery.HandlePanicWithError(recover(), nil, op)
-		if pErr == nil {
-			return
-		}
-		err = a.logPanic(tc, pErr, err, op)
-	}()
-
-	legacyBlockName := a.blockToLegacyName(cmdBlock.block)
-	taskLogger.Infof("Running %s commands.", legacyBlockName)
-	start := time.Now()
-	defer func() {
-		if err != nil {
-			taskLogger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
-		}
-		taskLogger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
-	}()
-
-	commands := cmdBlock.commands.List()
-	for i, commandInfo := range commands {
-		if err := blockCtx.Err(); err != nil {
-			return errors.Wrap(err, "canceled while running commands")
-		}
-		blockInfo := command.BlockInfo{
-			Block:     cmdBlock.block,
-			CmdNum:    i + 1,
-			TotalCmds: len(commands),
-		}
-		cmds, err := command.Render(commandInfo, &tc.taskConfig.Project, blockInfo)
-		if err != nil {
-			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
-		}
-		runCmdOpts := runCommandsOptions{
-			block:       cmdBlock.block,
-			canFailTask: cmdBlock.canFailTask,
-		}
-		if err = a.runCommandOrFunc(blockCtx, tc, commandInfo, cmds, runCmdOpts); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-
-	return errors.WithStack(err)
-}
-
-// blockToLegacyName converts the name of a command block to the name it has
-// historically been referred to as in the task logs. The legacy name should not
-// be used anymore except where it is currently still needed.
-func (a *Agent) blockToLegacyName(block command.BlockType) string {
-	switch block {
-	case command.PreBlock:
-		return "pre-task"
-	case command.MainTaskBlock:
-		return "task"
-	case command.PostBlock:
-		return "post-task"
-	case command.TaskTimeoutBlock:
-		return "task-timeout"
-	case command.SetupGroupBlock:
-		return "setup-group"
-	case command.SetupTaskBlock:
-		return "setup-task"
-	case command.TeardownTaskBlock:
-		return "teardown-task"
-	case command.TeardownGroupBlock:
-		return "teardown-group"
-	default:
-		return string(block)
-	}
+	return sharedExecutor.RunCommandsInBlock(ctx, execCtx, execCmdBlock)
 }
 
 // runCommandOrFunc initializes and then executes a list of commands, which can
