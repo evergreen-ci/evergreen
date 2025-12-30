@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 // validationResult stores the validation outcome for a single config file
@@ -65,15 +67,16 @@ func validateConfigs(configsDir, outputFile string) error {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 10; i++ {
+	numWorkers := runtime.GOMAXPROCS(0)
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go func(workerID int) {
+		go func() {
 			defer wg.Done()
 			for configFile := range jobs {
 				result := validateSingleConfig(configFile)
 				results <- result
 			}
-		}(i)
+		}()
 	}
 
 	for _, configFile := range configFiles {
@@ -115,12 +118,12 @@ func validateConfigs(configsDir, outputFile string) error {
 func findConfigFiles(configsDir string) ([]string, error) {
 	var configFiles []string
 
-	err := filepath.Walk(configsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(configsDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if !info.IsDir() && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
+		if !d.IsDir() && (strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml")) {
 			configFiles = append(configFiles, path)
 		}
 
@@ -136,7 +139,7 @@ func validateSingleConfig(configFile string) validationResult {
 		Passed: true,
 	}
 
-	yamlBytes, err := ioutil.ReadFile(configFile)
+	yamlBytes, err := os.ReadFile(configFile)
 	if err != nil {
 		result.Passed = false
 		result.Errors = fmt.Sprintf("failed to read file: %v", err)
@@ -152,13 +155,20 @@ func validateSingleConfig(configFile string) validationResult {
 
 	project := model.Project{}
 
-	if _, err := model.LoadProjectInto(context.Background(), yamlBytes, nil, "", &project); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if _, err := model.LoadProjectInto(ctx, yamlBytes, nil, "", &project); err != nil {
 		result.Passed = false
-		result.Errors = fmt.Sprintf("failed to parse project: %v", err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			result.Errors = "validation timed out after 30 seconds"
+		} else {
+			result.Errors = fmt.Sprintf("failed to parse project: %v", err)
+		}
 		return result
 	}
 
-	validationErrors := validator.CheckProjectErrors(context.Background(), &project)
+	validationErrors := validator.CheckProjectErrors(ctx, &project)
 	errors := validationErrors.AtLevel(validator.Error)
 	if len(errors) > 0 {
 		result.Passed = false
@@ -178,5 +188,5 @@ func saveResults(results validationResults, outputFile string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(outputFile, data, 0644)
+	return os.WriteFile(outputFile, data, 0644)
 }

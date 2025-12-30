@@ -17,13 +17,28 @@ print_error() {
     echo -e "[ERROR] $1"
 }
 
-build_evergreen_cli() {
-    print_status "Building evergreen CLI..."
-
+get_go_binary() {
     local gobin="go"
     if [ -n "$GOROOT" ]; then
         gobin="$GOROOT/bin/go"
     fi
+    echo "$gobin"
+}
+
+get_validation_stats() {
+    local json_file=$1
+    python3 -c "
+import json
+with open('$json_file', 'r') as f:
+    data = json.load(f)
+    print(f\"{data['passed']} {data['failed']}\")
+"
+}
+
+build_evergreen_cli() {
+    print_status "Building evergreen CLI..."
+
+    local gobin=$(get_go_binary)
 
     if [ ! -f "bin/evergreen" ]; then
         if ! $gobin build -o bin/evergreen cmd/evergreen/evergreen.go; then
@@ -88,10 +103,7 @@ download_configs() {
 build_validator() {
     print_status "Building config validation program..."
 
-    local gobin="go"
-    if [ -n "$GOROOT" ]; then
-        gobin="$GOROOT/bin/go"
-    fi
+    local gobin=$(get_go_binary)
 
     if ! $gobin build -o bin/validate-all-configs scripts/validate-all-configs.go; then
         print_error "Failed to build validation program"
@@ -111,6 +123,7 @@ run_validation() {
         --configs-dir "$CONFIGS_DIR" \
         --output "$output_file"; then
         print_error "Validation program exited with non-zero status"
+        return 1
     fi
 
     return 0
@@ -123,59 +136,12 @@ compare_results() {
 
     print_status "Comparing validation results..."
 
-    cat > compare_results.py << 'EOF'
-import json
-import sys
-
-def load_results(filename):
-    with open(filename, 'r') as f:
-        data = json.load(f)
-    return {r['file']: r['passed'] for r in data['results']}
-
-def main():
-    baseline_file = sys.argv[1]
-    patch_file = sys.argv[2]
-    report_file = sys.argv[3]
-
-    baseline = load_results(baseline_file)
-    patch = load_results(patch_file)
-
-    regressions = []
-
-    for file, baseline_passed in baseline.items():
-        if baseline_passed and file in patch and not patch[file]:
-            regressions.append(file)
-
-    if regressions:
-        with open(report_file, 'w') as f:
-            f.write("REGRESSION DETECTED!\n")
-            f.write("==================\n\n")
-            f.write(f"Found {len(regressions)} config(s) that passed baseline but failed with patch:\n\n")
-            for config in sorted(regressions):
-                f.write(f"  - {config}\n")
-
-        print(f"Found {len(regressions)} regression(s)")
-        sys.exit(1)
-    else:
-        with open(report_file, 'w') as f:
-            f.write("No regressions detected.\n")
-            f.write("All configs that passed baseline also pass with patch.\n")
-
-        print("No regressions found")
-        sys.exit(0)
-
-if __name__ == "__main__":
-    main()
-EOF
-
-    if python3 compare_results.py "$baseline" "$patch" "$report"; then
+    if python3 scripts/compare-validation-results.py "$baseline" "$patch" "$report"; then
         print_status "No regressions found!"
-        rm -f compare_results.py
         return 0
     else
         print_error "Regressions detected!"
         cat "$report"
-        rm -f compare_results.py
         return 1
     fi
 }
@@ -238,7 +204,7 @@ main() {
     fi
 
     print_status "Running baseline validation..."
-    if ! run_validation "$BASELINE_RESULTS" true; then
+    if ! run_validation "$BASELINE_RESULTS"; then
         if [ "$STASH_APPLIED" = "true" ]; then
             git stash pop --quiet
         fi
@@ -247,8 +213,9 @@ main() {
     fi
 
     if [ -f "$BASELINE_RESULTS" ]; then
-        local baseline_passed=$(python3 -c "import json; data=json.load(open('$BASELINE_RESULTS')); print(data['passed'])")
-        local baseline_failed=$(python3 -c "import json; data=json.load(open('$BASELINE_RESULTS')); print(data['failed'])")
+        local stats=$(get_validation_stats "$BASELINE_RESULTS")
+        local baseline_passed=$(echo $stats | cut -d' ' -f1)
+        local baseline_failed=$(echo $stats | cut -d' ' -f2)
         print_status "Baseline: $baseline_passed passed, $baseline_failed failed"
     fi
 
@@ -268,14 +235,15 @@ main() {
     fi
 
     print_status "Running patch validation..."
-    if ! run_validation "$PATCH_RESULTS" true; then
+    if ! run_validation "$PATCH_RESULTS"; then
         print_error "Failed to run patch validation"
         exit 1
     fi
 
     if [ -f "$PATCH_RESULTS" ]; then
-        local patch_passed=$(python3 -c "import json; data=json.load(open('$PATCH_RESULTS')); print(data['passed'])")
-        local patch_failed=$(python3 -c "import json; data=json.load(open('$PATCH_RESULTS')); print(data['failed'])")
+        local stats=$(get_validation_stats "$PATCH_RESULTS")
+        local patch_passed=$(echo $stats | cut -d' ' -f1)
+        local patch_failed=$(echo $stats | cut -d' ' -f2)
         print_status "Patch: $patch_passed passed, $patch_failed failed"
     fi
 
