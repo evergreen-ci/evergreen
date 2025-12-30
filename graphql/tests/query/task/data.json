@@ -11,9 +11,9 @@
       "r": "github_pull_request",
       "branch": "spruce",
       "test_selection_enabled": true,
-      "task_cost": {
-        "on_demand_cost": 1.25,
-        "adjusted_cost": 0.89
+      "cost": {
+        "on_demand_ec2_cost": 1.25,
+        "adjusted_ec2_cost": 0.89
       }
     }
   ],

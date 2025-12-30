@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -43,7 +44,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					Revision:                    utility.ToStringPtr("testRevision"),
 					ProjectId:                   utility.ToStringPtr("testProject"),
 					Priority:                    100,
-					TaskCost:                    &APITaskCost{OnDemandCost: utility.ToFloat64Ptr(3.25), AdjustedCost: utility.ToFloat64Ptr(5.25)},
+					TaskCost:                    &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
 					Execution:                   2,
 					Activated:                   true,
 					ActivatedBy:                 utility.ToStringPtr("testActivator"),
@@ -101,7 +102,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					Revision:                    "testRevision",
 					Execution:                   2,
 					Priority:                    100,
-					TaskCost:                    task.TaskCost{OnDemandCost: 3.25, AdjustedCost: 5.25},
+					TaskCost:                    cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
 					Activated:                   true,
 					ActivatedBy:                 "testActivator",
 					ContainerAllocated:          true,

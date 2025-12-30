@@ -132,8 +132,8 @@ type Task {
   """
   stepbackInfo: StepbackInfo
   taskLogs: TaskLogs!
-  taskCost: TaskCost
-  predictedTaskCost: TaskCost
+  taskCost: Cost
+  predictedTaskCost: Cost
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   testSelectionEnabled: Boolean!
@@ -292,11 +292,11 @@ type TaskOwnerTeam {
 }
 
 """
-TaskCost represents the cost breakdown for a task.
+Cost represents the cost breakdown for a task or version.
 """
-type TaskCost {
-  onDemandCost: Float
-  adjustedCost: Float
+type Cost {
+  onDemandEC2Cost: Float
+  adjustedEC2Cost: Float
 }
 
 input QuarantineTestInput {

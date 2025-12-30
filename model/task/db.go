@@ -87,9 +87,8 @@ var (
 	AbortedKey                     = bsonutil.MustHaveTag(Task{}, "Aborted")
 	AbortInfoKey                   = bsonutil.MustHaveTag(Task{}, "AbortInfo")
 	TimeTakenKey                   = bsonutil.MustHaveTag(Task{}, "TimeTaken")
-	TaskCostKey                    = bsonutil.MustHaveTag(Task{}, "TaskCost")
 	PredictedTaskCostKey           = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
-	PredictedTaskCostStdDevKey     = bsonutil.MustHaveTag(Task{}, "PredictedTaskCostStdDev")
+	TaskCostKey                    = bsonutil.MustHaveTag(Task{}, "TaskCost")
 	ExpectedDurationKey            = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
 	ExpectedDurationStddevKey      = bsonutil.MustHaveTag(Task{}, "ExpectedDurationStdDev")
 	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
@@ -2722,13 +2721,7 @@ func activateTasks(ctx context.Context, taskIDs []string, caller string, activat
 				ActivatedTimeKey: activationTime,
 			}
 
-			// Only set predicted cost fields if they have values (no historical data = zero values)
-			if !prediction.PredictedCost.IsZero() {
-				setFields[PredictedTaskCostKey] = prediction.PredictedCost
-			}
-			if !prediction.PredictedCostStdDev.IsZero() {
-				setFields[PredictedTaskCostStdDevKey] = prediction.PredictedCostStdDev
-			}
+			addPredictedCostToUpdate(setFields, prediction.PredictedCost)
 
 			writes = append(writes, mongo.NewUpdateOneModel().
 				SetFilter(bson.M{IdKey: t.Id, ActivatedKey: false}).
@@ -2794,8 +2787,7 @@ func SetPredictedCostsForTasks(ctx context.Context, tasks Tasks) error {
 	for _, t := range activatedTasks {
 		prediction := predictions[t.Id]
 		taskPtr := taskPtrMap[t.Id]
-		taskPtr.PredictedTaskCost = prediction.PredictedCost
-		taskPtr.PredictedTaskCostStdDev = prediction.PredictedCostStdDev
+		taskPtr.SetPredictedCost(prediction.PredictedCost)
 	}
 
 	return nil
@@ -2817,7 +2809,6 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 		return map[string]CostPredictionResult{}, nil
 	}
 
-	// Group tasks by (project, variant, name) for batching
 	tasksByVariant := make(map[taskVariantKey][]Task)
 	for _, t := range tasks {
 		key := taskVariantKey{
@@ -3255,7 +3246,7 @@ func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) 
 	return nil, nil
 }
 
-type expectedCostResults struct {
+type predictedCostResults struct {
 	DisplayName        string  `bson:"_id"`
 	AvgOnDemandCost    float64 `bson:"avg_on_demand_cost"`
 	AvgAdjustedCost    float64 `bson:"avg_adjusted_cost"`
@@ -3263,7 +3254,7 @@ type expectedCostResults struct {
 	StdDevAdjustedCost float64 `bson:"std_dev_adjusted_cost"`
 }
 
-func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant string, start, end time.Time) ([]expectedCostResults, error) {
+func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant string, start, end time.Time) ([]predictedCostResults, error) {
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
@@ -3280,7 +3271,7 @@ func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant 
 			"$gte": start,
 			"$lte": end,
 		},
-		bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_cost"): bson.M{
+		bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_ec2_cost"): bson.M{
 			"$gt": 0,
 		},
 	}
@@ -3296,8 +3287,8 @@ func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant 
 		{
 			"$project": bson.M{
 				DisplayNameKey: 1,
-				bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_cost"): 1,
-				bsonutil.GetDottedKeyName(TaskCostKey, "adjusted_cost"):  1,
+				bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_ec2_cost"): 1,
+				bsonutil.GetDottedKeyName(TaskCostKey, "adjusted_ec2_cost"):  1,
 				IdKey: 0,
 			},
 		},
@@ -3305,16 +3296,16 @@ func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant 
 			"$group": bson.M{
 				"_id": fmt.Sprintf("$%s", DisplayNameKey),
 				"avg_on_demand_cost": bson.M{
-					"$avg": fmt.Sprintf("$%s.on_demand_cost", TaskCostKey),
+					"$avg": fmt.Sprintf("$%s.on_demand_ec2_cost", TaskCostKey),
 				},
 				"avg_adjusted_cost": bson.M{
-					"$avg": fmt.Sprintf("$%s.adjusted_cost", TaskCostKey),
+					"$avg": fmt.Sprintf("$%s.adjusted_ec2_cost", TaskCostKey),
 				},
 				"std_dev_on_demand_cost": bson.M{
-					"$stdDevPop": fmt.Sprintf("$%s.on_demand_cost", TaskCostKey),
+					"$stdDevPop": fmt.Sprintf("$%s.on_demand_ec2_cost", TaskCostKey),
 				},
 				"std_dev_adjusted_cost": bson.M{
-					"$stdDevPop": fmt.Sprintf("$%s.adjusted_cost", TaskCostKey),
+					"$stdDevPop": fmt.Sprintf("$%s.adjusted_ec2_cost", TaskCostKey),
 				},
 			},
 		},
@@ -3328,7 +3319,7 @@ func getExpectedCostsForWindow(ctx context.Context, name, project, buildVariant 
 		return nil, errors.Wrap(err, "aggregating task average cost")
 	}
 
-	var results []expectedCostResults
+	var results []predictedCostResults
 	if err := cursor.All(dbCtx, &results); err != nil {
 		return nil, errors.Wrap(err, "iterating and decoding task average cost")
 	}

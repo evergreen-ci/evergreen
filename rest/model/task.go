@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -93,10 +94,9 @@ type APITask struct {
 	// Number of milliseconds this task took during execution
 	TimeTaken APIDuration `json:"time_taken_ms"`
 	// Cost breakdown for running this task
-	TaskCost *APITaskCost `json:"task_cost,omitempty"`
+	TaskCost *cost.Cost `json:"task_cost,omitempty"`
 	// Predicted cost breakdown based on historical task costs
-	PredictedTaskCost       *APITaskCost       `json:"predicted_task_cost,omitempty"`
-	PredictedTaskCostStdDev *APITaskCostStdDev `json:"predicted_task_cost_std_dev,omitempty"`
+	PredictedTaskCost *cost.Cost `json:"predicted_task_cost,omitempty"`
 	// Number of milliseconds expected for this task to execute
 	ExpectedDuration APIDuration `json:"expected_duration_ms"`
 	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
@@ -151,20 +151,6 @@ type APIAbortInfo struct {
 	TaskID     string `json:"task_id,omitempty"`
 	NewVersion string `json:"new_version,omitempty"`
 	PRClosed   bool   `json:"pr_closed,omitempty"`
-}
-
-type APITaskCost struct {
-	// OnDemandCost is the cost calculated using only on-demand rates
-	OnDemandCost *float64 `json:"on_demand_cost,omitempty"`
-	// AdjustedCost is the cost calculated using the finance formula with savings plan and on-demand components
-	AdjustedCost *float64 `json:"adjusted_cost,omitempty"`
-}
-
-type APITaskCostStdDev struct {
-	// OnDemandCost is the standard deviation of the on-demand cost
-	OnDemandCost *float64 `json:"on_demand_cost,omitempty"`
-	// AdjustedCost is the standard deviation of the adjusted cost
-	AdjustedCost *float64 `json:"adjusted_cost,omitempty"`
 }
 
 type LogLinks struct {
@@ -396,18 +382,15 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.TimeTaken = NewAPIDuration(time.Since(t.StartTime))
 	}
 
-	if t.TaskCost.OnDemandCost != 0 || t.TaskCost.AdjustedCost != 0 {
-		at.TaskCost = &APITaskCost{}
-		at.TaskCost.BuildFromService(t.TaskCost)
+	if !t.TaskCost.IsZero() {
+		taskCost := t.TaskCost
+		at.TaskCost = &taskCost
 	}
 
-	// Populate predicted cost fields if they exist (not zero)
-	if !t.PredictedTaskCost.IsZero() || !t.PredictedTaskCostStdDev.IsZero() {
-		at.PredictedTaskCost = &APITaskCost{}
-		at.PredictedTaskCost.BuildFromService(t.PredictedTaskCost)
-
-		at.PredictedTaskCostStdDev = &APITaskCostStdDev{}
-		at.PredictedTaskCostStdDev.BuildFromService(t.PredictedTaskCostStdDev)
+	// Populate expected cost fields if they exist (not zero)
+	if !t.PredictedTaskCost.IsZero() {
+		predictedCost := t.PredictedTaskCost
+		at.PredictedTaskCost = &predictedCost
 	}
 
 	if t.ParentPatchID != "" {
@@ -592,7 +575,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 	}
 
 	if at.TaskCost != nil {
-		st.TaskCost = at.TaskCost.ToService()
+		st.TaskCost = *at.TaskCost
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -720,46 +703,6 @@ func (o *APIContainerOptions) ToService() task.ContainerOptions {
 		Arch:           evergreen.ContainerArch(utility.FromStringPtr(o.Arch)),
 		WindowsVersion: evergreen.WindowsVersion(utility.FromStringPtr(o.WindowsVersion)),
 	}
-}
-
-func (c *APITaskCost) BuildFromService(taskCost task.TaskCost) {
-	if taskCost.OnDemandCost != 0 {
-		c.OnDemandCost = &taskCost.OnDemandCost
-	}
-	if taskCost.AdjustedCost != 0 {
-		c.AdjustedCost = &taskCost.AdjustedCost
-	}
-}
-
-func (c *APITaskCost) ToService() task.TaskCost {
-	taskCost := task.TaskCost{}
-	if c.OnDemandCost != nil {
-		taskCost.OnDemandCost = *c.OnDemandCost
-	}
-	if c.AdjustedCost != nil {
-		taskCost.AdjustedCost = *c.AdjustedCost
-	}
-	return taskCost
-}
-
-func (c *APITaskCostStdDev) BuildFromService(taskCostStdDev task.TaskCostStdDev) {
-	if taskCostStdDev.OnDemandCost != 0 {
-		c.OnDemandCost = &taskCostStdDev.OnDemandCost
-	}
-	if taskCostStdDev.AdjustedCost != 0 {
-		c.AdjustedCost = &taskCostStdDev.AdjustedCost
-	}
-}
-
-func (c *APITaskCostStdDev) ToService() task.TaskCostStdDev {
-	taskCostStdDev := task.TaskCostStdDev{}
-	if c.OnDemandCost != nil {
-		taskCostStdDev.OnDemandCost = *c.OnDemandCost
-	}
-	if c.AdjustedCost != nil {
-		taskCostStdDev.AdjustedCost = *c.AdjustedCost
-	}
-	return taskCostStdDev
 }
 
 // APIGeneratedTaskInfo contains basic information about a generated task.

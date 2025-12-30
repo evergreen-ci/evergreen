@@ -796,8 +796,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
 		}
 		if err = task.SetPredictedCostsForTasks(ctx, tasksToInsert); err != nil {
-			return nil, errors.Wrapf(err, "computing predicted costs for tasks in version '%s'", patchVersion.Id)
+			return nil, errors.Wrapf(err, "computing expected costs for tasks in version '%s'", patchVersion.Id)
 		}
+
 		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
@@ -811,6 +812,34 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	if err != nil {
 		return nil, errors.Wrap(err, "finalizing patch")
 	}
+
+	// Update aggregate costs after transaction commits. We use a goroutine with
+	// retry logic to handle MongoDB transaction propagation delays.
+	go func(versionID string) {
+		bgCtx := context.Background()
+		const maxRetries = 5
+
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			if attempt > 0 {
+				backoff := time.Duration(100<<uint(attempt-1)) * time.Millisecond
+				time.Sleep(backoff)
+			}
+
+			v, err := VersionFindOneId(bgCtx, versionID)
+			if err != nil || v == nil {
+				break
+			}
+
+			if err := v.UpdateAggregateTaskCosts(bgCtx); err != nil {
+				break
+			}
+
+			// Check if costs were actually updated (not zero)
+			if !v.PredictedCost.IsZero() || !v.Cost.IsZero() {
+				break
+			}
+		}
+	}(patchVersion.Id)
 
 	if p.IsParent() {
 		// finalize child patches or subscribe on parent outcome based on parentStatus
