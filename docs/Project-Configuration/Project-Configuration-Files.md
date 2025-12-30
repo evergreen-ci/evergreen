@@ -878,7 +878,8 @@ Every task has some expansions available by default:
 - `${github_org}` is the GitHub organization for the repo for the project
 - `${github_repo}` is the GitHub repo for the project
 - `${github_pr_number}` is the Github PR number associated with PR
-  patches and PR triggered merge queue items
+  patches. Patches from the merge queue will not have this expansion
+  because GitHub combines changes from multiple PRs in the queue.
 - `${github_pr_head_branch}` is the Github PR head branch name
 - `${github_pr_base_branch}` is the Github PR base branch name
 - `${is_commit_queue}` is the string "true" if this is a merge
@@ -1741,10 +1742,10 @@ can also be used to define dependencies.
 
 ### Auto restarting tasks upon failure
 
-A given command can be configured to automatically restart the task upon failure
-by setting the `retry_on_failure` field on the command to true. The automatic
-restart will process after the command has failed and the task has completed its
-subsequent post task commands.
+A given command can be configured to automatically restart the task upon failure by setting the `retry_on_failure` field
+on the command to true. The automatic restart will process after the command has failed and the task has completed its
+subsequent post task commands. `retry_on_failure` can only be set on standalone commands or individual commands within
+functions; it cannot be set on an entire function.
 
 The retry will only occur if the task has _not_ been aborted, and if the failing command would have caused the overall task
 to fail. This means the retry will _not_ occur if:

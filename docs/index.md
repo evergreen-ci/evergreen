@@ -56,12 +56,6 @@ Once builds are scheduled, an internal heuristic decides how many cloud machines
 Evergreen sends an executable agent binary to each test machine, which begins running its given task.
 Logs are streamed back to the main server, along with system statistics and formatted test results.
 
-## Spruce: The New Evergreen UI
+## Spruce UI
 
-Evergreen's UI has a few different levels of information for a given patch build. The level of hierarchy determines which information gets surfaced on the page. Although this is true to some extent in both the legacy UI and the new UI, the new UI strives to keep only information relevant to the current level on the page.
-
-The top-most level for a given patch build is the [patch details page](https://spruce.mongodb.com/version/6843046566661b0007c7c209/tasks). This page contains information about the patch overall, e.g., patch title, which files are changed as of the patch, and which tasks are included in the patch.
-
-The next level is the [task details page](https://spruce.mongodb.com/task/evergreen_race_detector_test_agent_internal_taskoutput_d03d37ed2d43602506e276059634c580f3d5e46e_25_06_06_13_31_24/tests?execution=0), which contains information relevant to that specific task. This includes ETA if the task is running, estimated time to start and position in the task queue if the task is scheduled to run, as well as any test results and files of the task if it has already run. There are also tabs for the task history when viewing a mainline task.
-
-The [waterfall page](https://spruce.mongodb.com/project/evergreen/waterfall) lists all of the mainline commit builds for a project, and the status of each task in each build. This page is useful for getting a high-level overview of the health of a project.
+Evergreen's UI is accessible at <https://spruce.mongodb.com>.

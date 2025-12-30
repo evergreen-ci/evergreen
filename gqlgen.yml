@@ -905,6 +905,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskContainerCreationOpts:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPodTaskContainerCreationOptions
+  TaskCost:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskCost
   TaskEndDetail:
     model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
   TaskEventLogData:

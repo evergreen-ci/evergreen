@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -23,13 +24,18 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
-const (
-	refreshTokenClaimed = "claimed by another client"
+var (
+	// These should be lowercase.
+	oauthRetryErrors = []string{
+		"claimed by another client",
+		"refresh token expired",
+	}
 )
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
@@ -47,6 +53,9 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "creating spawn host")
@@ -75,6 +84,9 @@ func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*mo
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting spawn host '%s'", hostId)
 	}
@@ -102,6 +114,9 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "modifying spawn host '%s'", hostID)
@@ -133,6 +148,9 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, sub
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "stopping spawn host '%s'", hostID)
 	}
@@ -159,6 +177,9 @@ func (c *communicatorImpl) AttachVolume(ctx context.Context, hostID string, opts
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "attaching volume to host '%s'", hostID)
 	}
@@ -184,6 +205,9 @@ func (c *communicatorImpl) DetachVolume(ctx context.Context, hostID, volumeID st
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "detaching volume '%s' from host '%s'", volumeID, hostID)
 	}
@@ -205,6 +229,9 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "creating volume")
@@ -232,6 +259,9 @@ func (c *communicatorImpl) DeleteVolume(ctx context.Context, volumeID string) er
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "deleting volume '%s'", volumeID)
 	}
@@ -252,6 +282,9 @@ func (c *communicatorImpl) ModifyVolume(ctx context.Context, volumeID string, op
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "modifying volume '%s'", volumeID)
@@ -274,6 +307,9 @@ func (c *communicatorImpl) GetVolume(ctx context.Context, volumeID string) (*mod
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting volume '%s'", volumeID)
@@ -301,6 +337,9 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting volumes for user '%s'", c.apiUser)
@@ -372,6 +411,9 @@ func (c *communicatorImpl) StartSpawnHost(ctx context.Context, hostID string, su
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "starting host '%s'", hostID)
 	}
@@ -410,6 +452,9 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 			if resp.StatusCode == http.StatusUnauthorized {
 				return util.RespError(resp, AuthError)
 			}
+			if resp.StatusCode == http.StatusForbidden {
+				return util.RespError(resp, VPNError)
+			}
 			if resp.StatusCode != http.StatusOK {
 				return util.RespError(resp, "getting host status")
 			}
@@ -439,6 +484,9 @@ func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "terminating host '%s'", hostID)
 	}
@@ -462,6 +510,9 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "changing RDP password for host '%s'", hostID)
@@ -487,6 +538,9 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "changing expiration of host '%s'", hostID)
 	}
@@ -508,6 +562,9 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting hosts")
@@ -772,6 +829,9 @@ func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) erro
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return errors.Errorf("reverting event '%s'", guid)
 	}
@@ -793,6 +853,9 @@ func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUs
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting service users")
@@ -825,6 +888,9 @@ func (c *communicatorImpl) UpdateServiceUser(ctx context.Context, username, disp
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "updating service user '%s'", username)
 	}
@@ -847,6 +913,9 @@ func (c *communicatorImpl) DeleteServiceUser(ctx context.Context, username strin
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "deleting service user '%s'", username)
 	}
@@ -868,6 +937,9 @@ func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistr
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting all distros")
@@ -896,6 +968,9 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting public keys for user '%s'", c.apiUser)
@@ -930,6 +1005,9 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "adding public key '%s'", keyName)
 	}
@@ -951,6 +1029,9 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespErrorf(resp, "deleting public key '%s'", keyName)
@@ -975,6 +1056,9 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string, incl
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "listing project aliases")
@@ -1010,6 +1094,9 @@ func (c *communicatorImpl) ListPatchTriggerAliases(ctx context.Context, project 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "listing patch trigger aliases")
 	}
@@ -1035,6 +1122,9 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting latest CLI version information")
@@ -1066,6 +1156,9 @@ func (c *communicatorImpl) GetParameters(ctx context.Context, project string) ([
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting patch parameters for project '%s'", project)
 	}
@@ -1090,6 +1183,9 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting subscriptions for user '%s'", c.apiUser)
@@ -1136,6 +1232,9 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	if resp.StatusCode == http.StatusUnauthorized {
 		return util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return util.RespError(resp, "sending notification")
 	}
@@ -1156,6 +1255,9 @@ func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string)
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting manifest for task '%s'", taskId)
@@ -1190,6 +1292,9 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 
 			if resp.StatusCode == http.StatusUnauthorized {
 				return nil, util.RespError(resp, AuthError)
+			}
+			if resp.StatusCode == http.StatusForbidden {
+				return nil, util.RespError(resp, VPNError)
 			}
 			if resp.StatusCode != http.StatusOK {
 				return nil, util.RespError(resp, "running process on hosts")
@@ -1234,6 +1339,9 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 
 			if resp.StatusCode == http.StatusUnauthorized {
 				return nil, util.RespError(resp, AuthError)
+			}
+			if resp.StatusCode == http.StatusForbidden {
+				return nil, util.RespError(resp, VPNError)
 			}
 			if resp.StatusCode != http.StatusOK {
 				return nil, util.RespError(resp, "getting process output from hosts")
@@ -1284,6 +1392,9 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting versions for project '%s'", projectID)
 	}
@@ -1310,6 +1421,9 @@ func (c *communicatorImpl) GetBuildsForVersion(ctx context.Context, versionID st
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting builds for version '%s'", versionID)
@@ -1347,6 +1461,9 @@ func (c *communicatorImpl) GetTasksForBuild(ctx context.Context, buildID string,
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting tasks for build '%s'", buildID)
@@ -1403,6 +1520,16 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
+// Constants for retrying operations to initially provision a host. This
+// intentionally will retry many times and often because provisioning the host
+// must succeed for a host to be usable and should be as fast as possible to
+// avoid excessive idle time.
+const (
+	maxProvisioningRequestAttempts = 50
+	minProvisioningRequestDelay    = time.Second
+	maxProvisioningRequestDelay    = 10 * time.Second
+)
+
 func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetadataOptions) (*restmodel.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodPost,
@@ -1415,9 +1542,9 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetad
 	}
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
 		RetryOptions: utility.RetryOptions{
-			MaxAttempts: c.maxAttempts,
-			MinDelay:    c.timeoutStart,
-			MaxDelay:    c.timeoutMax,
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    minProvisioningRequestDelay,
+			MaxDelay:    maxProvisioningRequestDelay,
 		},
 	})
 	if err != nil {
@@ -1445,9 +1572,9 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 	}
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
 		RetryOptions: utility.RetryOptions{
-			MaxAttempts: c.maxAttempts,
-			MinDelay:    c.timeoutStart,
-			MaxDelay:    c.timeoutMax,
+			MaxAttempts: maxProvisioningRequestAttempts,
+			MinDelay:    minProvisioningRequestDelay,
+			MaxDelay:    maxProvisioningRequestDelay,
 		},
 	})
 	if err != nil {
@@ -1479,6 +1606,9 @@ func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting host by IP address")
 	}
@@ -1506,6 +1636,9 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting raw patch with modules")
 	}
@@ -1530,6 +1663,9 @@ func (c *communicatorImpl) GetManifestForVersion(ctx context.Context, versionID 
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode == http.StatusNotFound {
 		// Manifests are optional for versions that don't use modules, so the
@@ -1591,6 +1727,9 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting task logs")
 	}
@@ -1646,6 +1785,9 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting test logs")
@@ -1716,7 +1858,31 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
-func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
+func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *model.PanicReport) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "/panic",
+	}
+	resp, err := c.request(ctx, info, details)
+	if err != nil {
+		return errors.Wrap(err, "sending panic report to Evergreen")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return util.RespErrorf(resp, "sending panic report to Evergreen")
+	}
+
+	return nil
+}
+
+func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 	ctx = oidc.ClientContext(ctx, httpClient)
@@ -1742,19 +1908,42 @@ func (c *communicatorImpl) GetOAuthToken(ctx context.Context, doNotUseBrowser bo
 
 	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
 	if err != nil {
-		return nil, client.TokenFilePath(), err
+		return nil, "", err
 	}
 	defer client.Close()
 
-	// This attempt tries to get a token or refresh using the refresh token.
+	// We delete the lock file to ensure that if the previous
+	// token acquisition attempt was interrupted, we can still
+	// acquire a new token.
+	tokenLockFilePath := client.TokenFilePath() + ".lock"
+	if delErr := os.RemoveAll(tokenLockFilePath); delErr != nil {
+		grip.Warning(errors.Wrapf(delErr, "removing OAuth token lock file at '%s'", tokenLockFilePath))
+	}
+
+	// This attempt tries to get a token or refreshes using the refresh token.
 	token, err := client.Token()
-	if err == nil {
+	// We have to explicitly check the expiry is valid because the OAuth
+	// library doesn't consider a token with a zero time expiry as expired.
+	if err == nil && token.Expiry.After(time.Now()) {
 		return token, client.TokenFilePath(), nil
 	}
-	// Sometimes, the refresh token is invalid or claimed by another client.
-	// In this case, we need to run through the auth flow again without using
-	// the refresh token.
-	if !strings.Contains(err.Error(), refreshTokenClaimed) {
+
+	shouldRetry := false
+	if token != nil && token.Expiry.Before(time.Now()) {
+		// Retry if the token is expired.
+		shouldRetry = true
+	} else if err != nil {
+		// Otherwise, check the error to see if we should retry.
+		clientErrString := strings.ToLower(err.Error())
+		for _, retryIfFound := range oauthRetryErrors {
+			if strings.Contains(clientErrString, retryIfFound) {
+				shouldRetry = true
+				break
+			}
+		}
+	}
+
+	if !shouldRetry {
 		return nil, client.TokenFilePath(), err
 	}
 

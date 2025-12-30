@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -20,6 +22,13 @@ import (
 	anserdb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+)
+
+// Constants related to S3 URL normalization.
+const (
+	s3Amazonaws = "amazonaws"
+	s3          = "s3"
+	com         = "com"
 )
 
 // taskGetHandler implements the route GET /tasks/{task_id}. It fetches the associated
@@ -154,10 +163,15 @@ func makeModifyTaskRoute() gimlet.RouteHandler {
 //	PATCH /tasks/{task_id}/artifacts/url
 type updateArtifactURLHandler struct {
 	taskID    string
-	execution *int // optional, defaults to latest task execution
+	execution *int
 	body      updateArtifactURLRequest
 	task      *task.Task
 	user      gimlet.User
+
+	// fields for signed URL handling
+	isSignedURL    bool
+	currentFileKey string
+	newFileKey     string
 }
 
 // updateArtifactURLRequest represents the request body for updating a single
@@ -176,18 +190,14 @@ func makeUpdateArtifactURLRoute() gimlet.RouteHandler { return &updateArtifactUR
 // Factory creates an instance of the artifact URL update handler.
 //
 //	@Summary		Update an artifact file URL
-//	@Description	Update the URL of a single artifact file for a task execution. If the execution query parameter is omitted, the task's latest execution is used. The artifact file is matched by name and its current URL. Pre signed URLs are currently not supported.
+//	@Description	Updates the URL for an artifact file. For signed S3 URLs, both current_url and new_url must be valid S3 URLs in the same bucket, and the S3 file key is rotated. For non-signed URLs, the link is simply updated to the new URL.
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/artifacts/url [patch]
 //	@Security		Api-User || Api-Key
 //	@Param			task_id		path		string						true	"Task ID"
 //	@Param			execution	query		int							false	"0-based execution number; if omitted updates latest execution"
 //	@Param			{object}	body		updateArtifactURLRequest	true	"parameters"
-//	@Success		200			{object}	model.APITask				"Task including updated artifacts"
-//	@Failure		400			{object}	gimlet.ErrorResponse		"Invalid input"
-//	@Failure		404			{object}	gimlet.ErrorResponse		"Task or artifact not found"
-//	@Failure		500			{object}	gimlet.ErrorResponse		"Internal error"
-
+//	@Success		200			{object}	model.APITask
 func (h *updateArtifactURLHandler) Factory() gimlet.RouteHandler { return &updateArtifactURLHandler{} }
 
 func (h *updateArtifactURLHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -203,6 +213,26 @@ func (h *updateArtifactURLHandler) Parse(ctx context.Context, r *http.Request) e
 	if err := evergreenutil.CheckURL(h.body.NewURL); err != nil {
 		return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("new_url invalid: %s", err.Error())}
 	}
+
+	h.isSignedURL = strings.Contains(h.body.CurrentURL, "Token=")
+	if h.isSignedURL {
+		currentBucket, currentFileKey := parseS3URL(h.body.CurrentURL)
+		newBucket, newFileKey := parseS3URL(h.body.NewURL)
+
+		if currentBucket == "" {
+			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "current_url must be a valid S3 URL"}
+		}
+		if newBucket == "" {
+			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "new_url must be a valid S3 URL"}
+		}
+		if currentBucket != newBucket {
+			return gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: "current_url and new_url must be in the same S3 bucket"}
+		}
+
+		h.currentFileKey = currentFileKey
+		h.newFileKey = newFileKey
+	}
+
 	if execStr := r.URL.Query().Get("execution"); execStr != "" {
 		val, err := strconv.Atoi(execStr)
 		if err != nil || val < 0 {
@@ -220,13 +250,19 @@ func (h *updateArtifactURLHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *updateArtifactURLHandler) Run(ctx context.Context) gimlet.Responder {
-	// if a specific execution was not provided, use the task's latest execution
 	exec := h.task.Execution
 	if h.execution != nil {
 		exec = *h.execution
 	}
 
-	if err := artifact.UpdateFileLink(ctx, h.task.Id, exec, h.body.ArtifactName, h.body.CurrentURL, h.body.NewURL); err != nil {
+	var err error
+	if h.isSignedURL {
+		err = artifact.UpdateFileKey(ctx, h.task.Id, exec, h.body.ArtifactName, h.currentFileKey, h.newFileKey)
+	} else {
+		err = artifact.UpdateFileLink(ctx, h.task.Id, exec, h.body.ArtifactName, h.body.CurrentURL, h.body.NewURL)
+	}
+
+	if err != nil {
 		if err == anserdb.ErrNotFound {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{StatusCode: http.StatusNotFound, Message: "artifact file not found for task"})
 		}
@@ -247,6 +283,37 @@ func (h *updateArtifactURLHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "building API task model after artifact update"))
 	}
 	return gimlet.NewJSONResponse(apiTask)
+}
+
+// parseS3URL extracts the bucket name and file key from an S3 URL.
+// Supports both virtual-hosted-style and path-style S3 URLs.
+// Returns empty strings if the URL is not a valid S3 URL.
+//
+// Examples:
+//   - https://bucket.s3.amazonaws.com/path/to/file.log -> ("bucket", "path/to/file.log")
+//   - https://bucket.s3.us-east-1.amazonaws.com/path/file.log?X-Amz-... -> ("bucket", "path/file.log")
+//   - https://s3.amazonaws.com/bucket/path/to/file.log -> ("bucket", "path/to/file.log")
+func parseS3URL(raw string) (bucket, fileKey string) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", ""
+	}
+
+	parts := strings.Split(u.Host, ".")
+	path := strings.TrimPrefix(u.Path, "/")
+
+	// Virtual-hosted-style: bucket.s3[.region].amazonaws.com/path/to/file
+	if len(parts) >= 4 && parts[1] == s3 && parts[len(parts)-2] == s3Amazonaws && parts[len(parts)-1] == com {
+		return parts[0], path
+	}
+
+	// Path-style: s3[.region].amazonaws.com/bucket/path/to/file
+	if (len(parts) == 3 || len(parts) == 4) && parts[0] == s3 && parts[len(parts)-2] == s3Amazonaws && parts[len(parts)-1] == com {
+		bucket, fileKey, _ = strings.Cut(path, "/")
+		return bucket, fileKey
+	}
+
+	return "", ""
 }
 
 // Factory creates an instance of the handler.

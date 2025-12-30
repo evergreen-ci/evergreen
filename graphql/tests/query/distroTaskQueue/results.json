@@ -8,7 +8,7 @@
             {
               "id": "mongo_c_driver_os_x_108_64_nossl_compile_292ceeaae06844f3d759e4a05e9b9cb7be97171e_16_04_15_17_13_00",
               "expectedDuration": 600000,
-              "requester": "PATCH",
+              "requester": "patch_request",
               "displayName": "compile",
               "project": "0955b4913748caeffd8c4bcc9f13fd955fed40e41409d5181eb32967ebf582aa",
               "projectIdentifier": "evergreen",
@@ -20,7 +20,7 @@
             {
               "id": "mongodb_mongo_v3.0.11_osx_108_ssl_compile_336e39e76e7a65af1ec534f28e69f568ca97695c_16_06_13_21_07_12",
               "expectedDuration": 600000,
-              "requester": "COMMIT",
+              "requester": "gitter_request",
               "displayName": "compile",
               "project": "3d1b6a78a5bf2bd595e44fd5caf16aed41c89617ecc886d7deca821dbded94c6",
               "projectIdentifier": null,
@@ -32,7 +32,7 @@
             {
               "id": "mongo_c_driver_os_x_108_64_nossl_compile_292ceeaae06844f3d759e4a05e9b9cb7be97171e_16_04_15_16_54_00",
               "expectedDuration": 600000,
-              "requester": "PATCH",
+              "requester": "patch_request",
               "displayName": "compile",
               "project": "0955b4913748caeffd8c4bcc9f13fd955fed40e41409d5181eb32967ebf582aa",
               "projectIdentifier": "evergreen",

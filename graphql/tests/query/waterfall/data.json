@@ -93,7 +93,8 @@
           "build_variant": "enterprise-ubuntu1604-64",
           "display_name": "01 Ubuntu 16.04"
         }
-      ]
+      ],
+      "builds": ["evergreen_version3_build", "evergreen_version1_build_b"]
     },
     {
       "_id": "evergreen_version4",
@@ -284,6 +285,44 @@
       "display_task_id": "",
       "order": 45,
       "r": "gitter_request"
+    },
+    {
+      "_id": "task_6",
+      "version": "evergreen_version3",
+      "status": "success",
+      "display_status_cache": "success",
+      "display_name": "Task D",
+      "activated": false,
+      "branch": "spruce",
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "evergreen_version1_build_b",
+      "create_time": {
+        "$date": "2020-01-03T13:30:05Z"
+      },
+      "execution": 0,
+      "display_task_id": "",
+      "order": 43,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "task_7",
+      "version": "evergreen_version3",
+      "status": "started",
+      "display_status_cache": "started",
+      "display_name": "Task E",
+      "activated": false,
+      "branch": "spruce",
+      "build_variant": "enterprise-ubuntu1604-64",
+      "build_variant_display_name": "Ubuntu 16.04",
+      "build_id": "evergreen_version1_build_b",
+      "create_time": {
+        "$date": "2020-01-03T13:30:05Z"
+      },
+      "execution": 0,
+      "display_task_id": "",
+      "order": 43,
+      "r": "gitter_request"
     }
   ],
   "project_ref": [
@@ -346,6 +385,21 @@
         }
       ],
       "version": "evergreen_version5"
+    },
+    {
+      "_id": "evergreen_version1_build_b",
+      "activated": false,
+      "build_variant": "enterprise-ubuntu1604-64",
+      "display_name": "01 Ubuntu 16.04",
+      "tasks": [
+        {
+          "id": "task_6"
+        },
+        {
+          "id": "task_7"
+        }
+      ],
+      "version": "evergreen_version3"
     }
   ]
 }

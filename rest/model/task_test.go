@@ -145,7 +145,6 @@ func TestTaskBuildFromService(t *testing.T) {
 						TaskLogLink:   utility.ToStringPtr("url/task_log_raw//0?type=T"),
 						SystemLogLink: utility.ToStringPtr("url/task_log_raw//0?type=S"),
 						AgentLogLink:  utility.ToStringPtr("url/task_log_raw//0?type=E"),
-						EventLogLink:  utility.ToStringPtr("url/event_log/task/"),
 					},
 					ParsleyLogs: LogLinks{
 						AllLogLink:    utility.ToStringPtr("parsley/evergreen//0/all"),
@@ -173,7 +172,6 @@ func TestTaskBuildFromService(t *testing.T) {
 						TaskLogLink:   utility.ToStringPtr("url/task_log_raw/old_task_id/0?type=T"),
 						SystemLogLink: utility.ToStringPtr("url/task_log_raw/old_task_id/0?type=S"),
 						AgentLogLink:  utility.ToStringPtr("url/task_log_raw/old_task_id/0?type=E"),
-						EventLogLink:  utility.ToStringPtr("url/event_log/task/old_task_id"),
 					},
 					ParsleyLogs: LogLinks{
 						AllLogLink:    utility.ToStringPtr("parsley/evergreen/old_task_id/0/all"),

@@ -32,6 +32,7 @@ import (
 const (
 	patchIntentJobName         = "patch-intent-processor"
 	githubDependabotUser       = "dependabot[bot]"
+	githubActionsUser          = "github-actions[bot]"
 	BuildTasksAndVariantsError = "building tasks and variants"
 	maxPatchIntentJobTime      = 10 * time.Minute
 )
@@ -309,8 +310,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	if errs := validator.CheckProjectErrors(ctx, patchedProject).AtLevel(validator.Error); len(errs) != 0 {
-		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
+	vErrs := validator.CheckProjectErrors(ctx, patchedProject)
+	vErrs = append(vErrs, validator.CheckProjectMixedValidations(patchedProject).AtLevel(validator.Error)...)
+	if len(vErrs) != 0 {
+		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(vErrs))
 	}
 	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
@@ -1213,7 +1216,7 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 		}
 		return v, project, pp, nil
 	}
-	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project, true)
+	v, project, pp, err := model.FindLatestVersionWithValidProject(ctx, patchDoc.Project, true)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "getting downstream version to use for patch '%s'", patchDoc.Id.Hex())
 	}
@@ -1298,7 +1301,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	defer cancel()
 
 	// GitHub Dependabot patches should be automatically authorized.
-	if githubUser == githubDependabotUser {
+	if githubUser == githubDependabotUser || githubUser == githubActionsUser {
 		grip.Info(message.Fields{
 			"job":       j.ID(),
 			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),

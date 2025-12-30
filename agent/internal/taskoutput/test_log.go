@@ -166,6 +166,10 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 				}
 
 				h.ingest(ctx, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
+
+				// In some intense-workflows, log uploading can starve other goroutines, so yield routinely
+				// to allow other goroutines to run.
+				runtime.Gosched()
 			}
 		}()
 	}

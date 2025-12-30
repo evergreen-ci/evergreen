@@ -21,6 +21,7 @@ input ServiceFlagsInput {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
@@ -34,7 +35,6 @@ input ServiceFlagsInput {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
-  legacyUIAdminPageDisabled: Boolean
 }
 
 type ServiceFlags {
@@ -60,6 +60,7 @@ type ServiceFlags {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
@@ -73,5 +74,4 @@ type ServiceFlags {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
-  legacyUIAdminPageDisabled: Boolean
 }

@@ -505,7 +505,7 @@ type HostModifyOptions struct {
 // sleep schedule.
 type SleepScheduleOptions struct {
 	// WholeWeekdaysOff are when the host is off for its sleep schedule.
-	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty" swaggertype:"array,integer"`
 	// DailyStartTime is the daily time to start the host for each day the host is on
 	// during its sleep schedule. The format is "HH:MM".
 	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
@@ -656,7 +656,7 @@ const (
 	// duration does not elapse. Otherwise, the agent monitor is considered dead
 	// (because it has failed to keep an agent alive that can contact the
 	// server).
-	MaxAgentMonitorUnresponsiveInterval = 15 * time.Minute
+	MaxAgentMonitorUnresponsiveInterval = 5 * time.Minute
 	// MaxStaticHostUnresponsiveInterval is the maximum amount of time that can
 	// elapse before a static host is considered unresponsive and unfixable. If
 	// the host is running and healthy, the agent must regularly contact the app
@@ -667,9 +667,16 @@ const (
 	// positives when automatically detecting unhealthy static hosts.
 	MaxStaticHostUnresponsiveInterval = 120 * time.Minute
 
-	// provisioningCutoff is the threshold before a host is considered stuck in
-	// provisioning.
-	provisioningCutoff = 25 * time.Minute
+	// linuxProvisioningCutoff is the threshold before a Linux host is
+	// considered stuck in provisioning. This is based on empirical data of how
+	// long Linux hosts typically take to provision.
+	linuxProvisioningCutoff = 8 * time.Minute
+
+	// windowsProvisioningCutoff is the threshold before a Windows host is
+	// considered stuck in provisioning. This is based on empirical data of how
+	// long Windows hosts typically take to provision. The Windows timeout is
+	// higher the one for Linux because Windows hosts take longer to provision.
+	windowsProvisioningCutoff = 10 * time.Minute
 
 	MaxTagKeyLength   = 128
 	MaxTagValueLength = 256
@@ -869,6 +876,11 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		query = bson.M{}
 	}
 	query[IdKey] = h.Id
+	// Only update if the database status matches our in-memory status.
+	// This prevents concurrent jobs with stale cached host objects from overwriting each
+	// other's status changes. Without this, jobs can apply updates in arbitrary order,
+	// causing status to regress (e.g., terminated->decommissioned) and duplicate events.
+	query[StatusKey] = h.Status
 
 	if setFields == nil {
 		setFields = bson.M{}
@@ -887,6 +899,22 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		query,
 		update,
 	); err != nil {
+		if adb.ResultsNotFound(err) {
+			// If it errored because the host doesn't exist, return an error.
+			dbHost, findErr := FindOneId(ctx, h.Id)
+			if findErr != nil {
+				return errors.Wrapf(findErr, "checking if host '%s' exists after update failure", h.Id)
+			}
+			if dbHost == nil {
+				return errors.Errorf("host '%s' not found in database", h.Id)
+			}
+
+			// Host exists. Check if the failure was due to status mismatch (concurrent modification).
+			if dbHost.Status != h.Status {
+				// The cached state is stale and attempting this status change is no longer valid.
+				return errors.Errorf("cached host status '%s' does not match database status '%s' (attempted to set to '%s')", h.Status, dbHost.Status, newStatus)
+			}
+		}
 		return err
 	}
 
@@ -2093,24 +2121,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return nil
 	}
 
-	if err := UpdateOne(
-		ctx,
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}}); err != nil {
-		return errors.WithStack(err)
-	}
-
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
-	grip.Info(message.Fields{
-		"message":    "host marked reachable",
-		"host_id":    h.Id,
-		"host_tag":   h.Tag,
-		"distro":     h.Distro.Id,
-		"old_status": h.Status,
-	})
-	h.Status = evergreen.HostRunning
-
-	return nil
+	return h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, "host marked reachable")
 }
 
 func (h *Host) Upsert(ctx context.Context) (*mongo.UpdateResult, error) {
@@ -2324,6 +2335,47 @@ func (h *Host) AddSSHKeyName(ctx context.Context, name string) error {
 	return nil
 }
 
+// buildConditionalProvisioningTimeoutQuery creates a MongoDB query for hosts
+// that have exceeded a conditional provisioning timeout.
+func buildConditionalProvisioningTimeoutQuery(now time.Time, timeoutCondition bson.M, timeout time.Duration) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+
+	return bson.M{
+		"$and": []bson.M{
+			// Host is not yet done provisioning
+			{"$or": []bson.M{
+				{ProvisionedKey: false},
+				{StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}}},
+			}},
+			{"$or": []bson.M{
+				{
+					// Host is a user data host and either has not run a
+					// task yet or has not started its agent monitor -
+					// both are indicators that the host's agent is not
+					// up. The host has either 1. failed to start the
+					// agent or 2. failed to prove the agent's
+					// liveliness by continuously pinging the app server
+					// with requests.
+					"$or": []bson.M{
+						{RunningTaskKey: bson.M{"$exists": false}},
+						{LTCTaskKey: ""},
+					},
+					LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxAgentMonitorUnresponsiveInterval)},
+				}, {
+					// Host is not a user data host so cannot run tasks
+					// until done provisioning.
+					bootstrapKey: bson.M{"$ne": distro.BootstrapMethodUserData},
+				},
+			}},
+			timeoutCondition,
+		},
+		CreateTimeKey: bson.M{"$lte": now.Add(-timeout)},
+		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:  evergreen.User,
+		ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
+	}
+}
+
 func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 	// unreachableCutoff is the threshold to wait for an decommissioned host to
 	// become marked as reachable again before giving up and terminating it.
@@ -2331,7 +2383,7 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 
 	now := time.Now()
 
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+	archKey := bsonutil.GetDottedKeyName(DistroKey, distro.ArchKey)
 	query := bson.M{
 		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
@@ -2350,45 +2402,18 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 					evergreen.HostProvisionFailed},
 				},
 			},
-			{
-				// Either:
-				// - Host that does not provision with user data is taking too
-				//   long to provision.
-				// - Host that provisions with user data is taking too long to
-				//   provision. In addition, it is not currently running a task
-				//   and has not checked in recently.
-				"$and": []bson.M{
-					// Host is not yet done provisioning
-					{"$or": []bson.M{
-						{ProvisionedKey: false},
-						{StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostProvisioning}}},
-					}},
-					{"$or": []bson.M{
-						{
-							// Host is a user data host and either has not run a
-							// task yet or has not started its agent monitor -
-							// both are indicators that the host's agent is not
-							// up. The host has either 1. failed to start the
-							// agent or 2. failed to prove the agent's
-							// liveliness by continuously pinging the app server
-							// with requests.
-							"$or": []bson.M{
-								{RunningTaskKey: bson.M{"$exists": false}},
-								{LTCTaskKey: ""},
-							},
-							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxAgentMonitorUnresponsiveInterval)},
-						}, {
-							// Host is not a user data host so cannot run tasks
-							// until done provisioning.
-							bootstrapKey: bson.M{"$ne": distro.BootstrapMethodUserData},
-						},
-					}},
-				},
-				CreateTimeKey: bson.M{"$lte": now.Add(-provisioningCutoff)},
-				StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
-				StartedByKey:  evergreen.User,
-				ProviderKey:   bson.M{"$ne": evergreen.ProviderNameStatic},
-			},
+			// Linux hosts taking too long to provision.
+			buildConditionalProvisioningTimeoutQuery(
+				now,
+				bson.M{archKey: bson.M{"$ne": evergreen.ArchWindowsAmd64}},
+				linuxProvisioningCutoff,
+			),
+			// Windows hosts taking too long to provision.
+			buildConditionalProvisioningTimeoutQuery(
+				now,
+				bson.M{archKey: evergreen.ArchWindowsAmd64},
+				windowsProvisioningCutoff,
+			),
 			{ // decommissioned hosts not running tasks
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,

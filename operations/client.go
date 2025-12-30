@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -39,7 +38,7 @@ func getUser() cli.Command {
 		Aliases: []string{"user"},
 		Usage:   "get username from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -56,7 +55,7 @@ func getAPIKey() cli.Command {
 		Aliases: []string{"key"},
 		Usage:   "get API key from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -73,7 +72,7 @@ func getAPIUrl() cli.Command {
 		Aliases: []string{"api"},
 		Usage:   "get API URL from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -90,7 +89,7 @@ func getUIUrl() cli.Command {
 		Aliases: []string{"ui"},
 		Usage:   "get UI URL from client settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().String(ConfFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -106,22 +105,9 @@ func getOAuthToken() cli.Command {
 		Name:  "get-oauth-token",
 		Usage: "gets a valid OAuth token to authenticate with Evergreen's REST API",
 		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			confPath := c.Parent().String(confFlagName)
-			conf, err := NewClientSettings(confPath)
+			conf, err := login(c)
 			if err != nil {
-				return errors.Wrap(err, "loading configuration")
-			}
-			comm, err := conf.setupRestCommunicator(ctx, false)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer comm.Close()
-
-			if err = conf.SetOAuthToken(ctx, comm); err != nil {
-				return errors.Wrap(err, "setting config OAuth token")
+				return errors.Wrap(err, "logging in")
 			}
 
 			fmt.Println(conf.OAuth.AccessToken)

@@ -120,14 +120,13 @@ type ValidationInput struct {
 	ProjectID   string `json:"project_id" yaml:"project_id"`
 }
 
-// Functions used to validate the syntax of a project configuration file.
+// Functions used to validate the project configuration file for errors.
 // These are expected to only return ValidationError's with
 // a level of Error ValidationLevel. They must also explicitly return
 // Error as opposed to leaving the field blank.
 var projectErrorValidators = []projectValidator{
 	validateBVFields,
 	validateDependencyGraph,
-	validatePluginCommands,
 	validateProjectFields,
 	validateStatusesForTaskDependencies,
 	validateTaskNames,
@@ -152,9 +151,9 @@ var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigContainers,
 }
 
-// Functions used to validate the semantics of a project configuration file.
-// These are expected to only return ValidationError's with
-// a level of Warning ValidationLevel or Notice ValidationLevel.
+// Functions used to validate the project configuration file for warnings and
+// notices. These are expected to only return ValidationError's with a level of
+// Warning ValidationLevel or Notice ValidationLevel.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
 	checkTaskRuns,
@@ -164,6 +163,14 @@ var projectWarningValidators = []projectValidator{
 	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 	checkTaskUsage,
+}
+
+// Functions used to validate the project configuration file at any level. This
+// is useful for validation that could return a mix of errors and warnings and
+// can be an optimization to avoid processing the same project configuration
+// multiple times to perform validation checks at different levels.
+var projectMixedValidators = []projectValidator{
+	validatePluginCommands,
 }
 
 var projectAliasWarningValidators = []projectAliasValidator{
@@ -255,6 +262,7 @@ func addDistroWarning(distroWarnings map[string]string, distroName, warningNote 
 func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, projectRefId string, projectRefErr error) ValidationErrors {
 	isConfigDefined := config != nil
 	verrs := CheckProjectErrors(ctx, project)
+	verrs = append(verrs, CheckProjectMixedValidations(project)...)
 	verrs = append(verrs, CheckProjectWarnings(project)...)
 	if config != nil {
 		verrs = append(verrs, CheckProjectConfigErrors(ctx, config)...)
@@ -297,6 +305,17 @@ func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	for _, projectWarningValidator := range projectWarningValidators {
 		validationErrs = append(validationErrs,
 			projectWarningValidator(project)...)
+	}
+	return validationErrs
+}
+
+// CheckProjectMixedValidations returns validation errors about the project
+// configuration that can be at any validation level.
+func CheckProjectMixedValidations(project *model.Project) ValidationErrors {
+	validationErrs := ValidationErrors{}
+	for _, mixedValidator := range projectMixedValidators {
+		validationErrs = append(validationErrs,
+			mixedValidator(project)...)
 	}
 	return validationErrs
 }
@@ -374,6 +393,7 @@ func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.S
 	defer span.End()
 	catcher := grip.NewBasicCatcher()
 	projectErrors := CheckProjectErrors(ctx, project)
+	projectErrors = append(projectErrors, CheckProjectMixedValidations(project).AtLevel(Error)...)
 	if len(projectErrors) != 0 {
 		if errs := projectErrors.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors: %s", ValidationErrorsToString(errs))
@@ -1478,8 +1498,8 @@ func checkBVTaskPriority(buildVariant *model.BuildVariant) ValidationErrors {
 		if t.Priority > model.MaxConfigSetPriority {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("task '%s' has been set above %d priority, in YAML, will default priority to %d",
-						t.Name, model.MaxConfigSetPriority, model.MaxConfigSetPriority),
+					Message: fmt.Sprintf("task '%s' has been set above %d priority in build variant '%s', in YAML, will default priority to %d",
+						t.Name, model.MaxConfigSetPriority, buildVariant.Name, model.MaxConfigSetPriority),
 					Level: Notice,
 				})
 		}
@@ -1536,6 +1556,12 @@ func validateCommands(section, taskName, tgName string, project *model.Project, 
 			errs = append(errs, ValidationError{
 				Level:   Error,
 				Message: fmt.Sprintf("cannot specify both command '%s' and function '%s'%s", cmd.Command, cmd.Function, formattedTaskMsg),
+			})
+		}
+		if cmd.Function != "" && cmd.RetryOnFailure {
+			errs = append(errs, ValidationError{
+				Level:   Notice,
+				Message: fmt.Sprintf("cannot specify retry_on_failure with function '%s'%s, can only specify retry_on_failure on individual commands", cmd.Function, formattedTaskMsg),
 			})
 		}
 		if hasFuncOrCommand {

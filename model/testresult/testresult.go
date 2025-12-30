@@ -189,7 +189,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 			root,
 			url.PathEscape(tr.TaskID),
 			tr.Execution,
-			url.QueryEscape(tr.getLogTestName()),
+			url.QueryEscape(tr.GetLogTestName()),
 			tr.getLineNum(),
 		)
 	case evergreen.LogViewerParsley:
@@ -235,7 +235,7 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 		return fmt.Sprintf("%s/rest/v2/tasks/%s/build/TestLogs/%s?execution=%d&print_time=%v%s",
 			root,
 			url.PathEscape(tr.TaskID),
-			url.QueryEscape(tr.getLogTestName()),
+			url.QueryEscape(tr.GetLogTestName()),
 			tr.Execution,
 			printTime,
 			logsToMerge,
@@ -243,10 +243,10 @@ func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogVi
 	}
 }
 
-// getLogTestName returns the name of the test in the logging backend. This is
+// GetLogTestName returns the name of the test in the logging backend. This is
 // used for test logs where the name of the test in the logging service may
 // differ from that in the test results service.
-func (tr TestResult) getLogTestName() string {
+func (tr TestResult) GetLogTestName() string {
 	if tr.LogInfo != nil {
 		if tr.LogInfo.LogName != "" {
 			return tr.LogInfo.LogName

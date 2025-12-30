@@ -51,11 +51,6 @@ enum SortDirection {
   DESC
 }
 
-enum TaskQueueItemType {
-  COMMIT
-  PATCH
-}
-
 type SleepSchedule {
   dailyStartTime: String!
   dailyStopTime: String!

@@ -1251,8 +1251,6 @@ func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project,
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-	defer cancel()
 	env := evergreen.GetEnvironment()
 
 	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver, false)
@@ -1291,7 +1289,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 // project configurations. If the preGeneration flag is set, this will retrieve
 // a cached version of this version's parser project from before it was modified by
 // generate.tasks, which is required for child patches.
-func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
+func FindLatestVersionWithValidProject(ctx context.Context, projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
 	const retryCount = 5
 	if projectId == "" {
 		return nil, nil, nil, errors.New("cannot pass empty projectId to FindLatestVersionWithValidParserProject")
@@ -1300,12 +1298,9 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 	var project *Project
 	var pp *ParserProject
 
-	// TODO: ZACKARY PASS CONTEXT
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-	defer cancel()
 	for i := 0; i < retryCount; i++ {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {

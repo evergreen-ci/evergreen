@@ -156,7 +156,7 @@ buildvariants:
 			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble,
 				taskSelector{Name: "t3", Variant: &variantSelector{StringSelector: "v0"}})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
-			So(bv.Tasks[1].Priority, ShouldEqual, 77)
+			So(bv.Tasks[1].Priority, ShouldEqual, MaxConfigSetPriority)
 		})
 		Convey("a file with oneline BVTs should parse", func() {
 			simple := `
@@ -3021,4 +3021,181 @@ func TestMarshalBSON(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, decoded)
 	assert.Equal(t, utility.FromStringPtr(pp.Identifier), decoded.Identifier)
+}
+
+func TestCapParserPriorities(t *testing.T) {
+	t.Run("CapsTaskPriorityAboveMax", func(t *testing.T) {
+		p := &ParserProject{
+			Tasks: []parserTask{
+				{Name: "task1", Priority: MaxConfigSetPriority + 100},
+				{Name: "task2", Priority: MaxConfigSetPriority + 1},
+			},
+		}
+		capParserPriorities(p)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.Tasks[0].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.Tasks[1].Priority)
+	})
+
+	t.Run("DoesNotChangeTaskPriorityBelowOrEqualToMax", func(t *testing.T) {
+		p := &ParserProject{
+			Tasks: []parserTask{
+				{Name: "task1", Priority: MaxConfigSetPriority},
+				{Name: "task2", Priority: MaxConfigSetPriority - 1},
+				{Name: "task3", Priority: 0},
+				{Name: "task4", Priority: 10},
+			},
+		}
+		capParserPriorities(p)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.Tasks[0].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority-1), p.Tasks[1].Priority)
+		assert.Equal(t, int64(0), p.Tasks[2].Priority)
+		assert.Equal(t, int64(10), p.Tasks[3].Priority)
+	})
+
+	t.Run("CapsBuildVariantTaskPriorityAboveMax", func(t *testing.T) {
+		p := &ParserProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv1",
+					Tasks: []parserBVTaskUnit{
+						{Name: "task1", Priority: MaxConfigSetPriority + 200},
+						{Name: "task2", Priority: MaxConfigSetPriority + 50},
+					},
+				},
+				{
+					Name: "bv2",
+					Tasks: []parserBVTaskUnit{
+						{Name: "task3", Priority: MaxConfigSetPriority + 1},
+					},
+				},
+			},
+		}
+		capParserPriorities(p)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[0].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[1].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[1].Tasks[0].Priority)
+	})
+
+	t.Run("DoesNotChangeBuildVariantTaskPriorityBelowOrEqualToMax", func(t *testing.T) {
+		p := &ParserProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv1",
+					Tasks: []parserBVTaskUnit{
+						{Name: "task1", Priority: MaxConfigSetPriority},
+						{Name: "task2", Priority: MaxConfigSetPriority - 10},
+						{Name: "task3", Priority: 0},
+					},
+				},
+			},
+		}
+		capParserPriorities(p)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[0].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority-10), p.BuildVariants[0].Tasks[1].Priority)
+		assert.Equal(t, int64(0), p.BuildVariants[0].Tasks[2].Priority)
+	})
+
+	t.Run("HandlesEmptyProject", func(t *testing.T) {
+		p := &ParserProject{
+			Tasks:         []parserTask{},
+			BuildVariants: []parserBV{},
+		}
+		// Should not panic
+		capParserPriorities(p)
+		assert.Len(t, p.Tasks, 0)
+		assert.Len(t, p.BuildVariants, 0)
+	})
+
+	t.Run("HandlesNilSlices", func(t *testing.T) {
+		p := &ParserProject{}
+		// Should not panic
+		capParserPriorities(p)
+		assert.Nil(t, p.Tasks)
+		assert.Nil(t, p.BuildVariants)
+	})
+
+	t.Run("CapsMixedPriorities", func(t *testing.T) {
+		p := &ParserProject{
+			Tasks: []parserTask{
+				{Name: "task1", Priority: MaxConfigSetPriority + 100},
+				{Name: "task2", Priority: MaxConfigSetPriority - 10},
+				{Name: "task3", Priority: MaxConfigSetPriority},
+			},
+			BuildVariants: []parserBV{
+				{
+					Name: "bv1",
+					Tasks: []parserBVTaskUnit{
+						{Name: "task1", Priority: MaxConfigSetPriority + 200},
+						{Name: "task2", Priority: 25},
+						{Name: "task3", Priority: MaxConfigSetPriority},
+					},
+				},
+			},
+		}
+		capParserPriorities(p)
+		// Check tasks
+		assert.Equal(t, int64(MaxConfigSetPriority), p.Tasks[0].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority-10), p.Tasks[1].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.Tasks[2].Priority)
+		// Check build variant tasks
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[0].Priority)
+		assert.Equal(t, int64(25), p.BuildVariants[0].Tasks[1].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[2].Priority)
+	})
+
+	t.Run("CapsMultipleBuildVariants", func(t *testing.T) {
+		p := &ParserProject{
+			BuildVariants: []parserBV{
+				{
+					Name: "bv1",
+					Tasks: []parserBVTaskUnit{
+						{Name: "task1", Priority: MaxConfigSetPriority + 100},
+					},
+				},
+				{
+					Name: "bv2",
+					Tasks: []parserBVTaskUnit{
+						{Name: "task2", Priority: MaxConfigSetPriority + 200},
+					},
+				},
+				{
+					Name: "bv3",
+					Tasks: []parserBVTaskUnit{
+						{Name: "task3", Priority: MaxConfigSetPriority - 5},
+					},
+				},
+			},
+		}
+		capParserPriorities(p)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[0].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[1].Tasks[0].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority-5), p.BuildVariants[2].Tasks[0].Priority)
+	})
+
+	t.Run("IntegrationWithCreateIntermediateProject", func(t *testing.T) {
+		yamlConfig := `
+tasks:
+  - name: task1
+    priority: 100
+  - name: task2
+    priority: 25
+
+buildvariants:
+  - name: variant1
+    tasks:
+      - name: task1
+        priority: 200
+      - name: task2
+        priority: 10
+`
+		p, err := createIntermediateProject([]byte(yamlConfig), false)
+		require.NoError(t, err)
+		require.NotNil(t, p)
+
+		// Verify that priorities are capped by createIntermediateProject
+		assert.Equal(t, int64(MaxConfigSetPriority), p.Tasks[0].Priority)
+		assert.Equal(t, int64(25), p.Tasks[1].Priority)
+		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[0].Tasks[0].Priority)
+		assert.Equal(t, int64(10), p.BuildVariants[0].Tasks[1].Priority)
+	})
 }

@@ -73,7 +73,7 @@ You can start an Evergreen patch from other CI systems.
   service in Cedar.
 - [shrub](https://github.com/evergreen-ci/shrub) is Go library for generating
   Evergreen configuration files.
-- [spruce](https://github.com/evergreen-ci/spruce) is Evergreen's new
+- [spruce](https://github.com/evergreen-ci/spruce) is Evergreen's
   React-based UI.
 - [parsley](https://github.com/evergreen-ci/parsley) is Evergreen's React-based log viewer.
 

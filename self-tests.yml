@@ -98,6 +98,8 @@ variables:
       - command: github.generate_token
         params:
           expansion_name: github_token
+          permissions:
+            contents: read
       - command: subprocess.exec
         params:
           silent: true
@@ -151,20 +153,6 @@ variables:
           bucket: evg-bucket-evergreen
           permissions: public-read
           preserve_path: true
-
-  - &tar-and-push-static-assets
-    commands:
-      - func: get-project-and-modules
-      - func: run-make
-        vars: { target: "bin/static_assets.tgz" }
-      - command: s3.put
-        params:
-          role_arn: ${client_assume_role_arn}
-          local_file: evergreen/bin/static_assets.tgz
-          remote_file: evergreen/clients/${version_id}/static_assets.tgz
-          content_type: application/gzip
-          bucket: evg-bucket-evergreen
-          permissions: public-read
 
 #######################################
 #              Functions              #
@@ -236,7 +224,6 @@ functions:
         GOARCH: ${goarch}
         GOOS: ${goos}
         KARMA_REPORTER: junit
-        NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
@@ -594,9 +581,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-testlog
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-plugin
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
@@ -617,7 +601,6 @@ tasks:
           include_expansions_in_env: ["GOROOT"]
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
-    disable: true # TODO: re-enable in DEVPROD-5453
     tags: ["linter"]
     commands:
       - func: get-project-and-modules
@@ -681,7 +664,7 @@ tasks:
         params:
           working_dir: evergreen
           binary: npm
-          args: ["install", "--save-dev", "markdownlint-cli", "prettier"]
+          args: ["install", "--save-dev", "markdownlint-cli@0.45.0", "prettier"]
       - command: subprocess.exec
         params:
           working_dir: evergreen
@@ -808,18 +791,12 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin_arm64
     tags: ["build-macos"]
-  - <<: *tar-and-push-static-assets
-    name: tar-and-push-static-assets
-    tags: ["build"]
 
   - <<: *build-and-push-client
     name: build-linux-staging_amd64
     tags: ["build-staging"]
   - <<: *build-and-push-client
     name: build-windows-staging_amd64
-    tags: ["build-staging"]
-  - <<: *tar-and-push-static-assets
-    name: tar-and-push-static-assets-staging
     tags: ["build-staging"]
 
   - <<: *build-and-push-client

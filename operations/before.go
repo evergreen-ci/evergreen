@@ -13,7 +13,7 @@ import (
 
 var (
 	requireClientConfig = func(c *cli.Context) error {
-		if c.Parent().String(confFlagName) == "" {
+		if c.Parent().String(ConfFlagName) == "" {
 			return errors.New("command line configuration path is not specified")
 		}
 		return nil
@@ -105,7 +105,7 @@ var (
 			i++
 		}
 
-		confPath := rootCtx.String(confFlagName)
+		confPath := rootCtx.String(ConfFlagName)
 		// we do not return an error in case of failure to find the config path flag because we do not want to block the underlying CLI operation.
 		if confPath == "" {
 			grip.Warning("Config path flag had no config set, skipping auto upgrade CLI check.")

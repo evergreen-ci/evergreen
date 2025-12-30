@@ -94,42 +94,6 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalIDUntracked, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
 		},
-		"Success/UntrackedBranchFallback": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
-			// This covers the edge case where the branch is untracked, but the user
-			// has created an ExternalId mapping to the project's id.
-			awsClientMock.assumeRoleUseFallback = true
-			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
-			require.NoError(t, task.Insert(t.Context()))
-			project := model.ProjectRef{
-				Id:        projectID,
-				RepoRefId: repoRefID,
-				Enabled:   false,
-				Hidden:    utility.TruePtr(),
-			}
-			require.True(t, project.IsUntracked())
-			require.NoError(t, project.Insert(t.Context()))
-			// Only being attached to a repo shouldn't affect the outcome, since
-			// the project ref is a tracked branch.
-			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
-			require.NoError(t, repoRef.Replace(t.Context()))
-
-			creds, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
-				RoleARN:         roleARN,
-				Policy:          &policy,
-				DurationSeconds: aws.Int32(int32(time.Hour.Seconds())),
-			})
-			require.NoError(t, err)
-			// Return credentials
-			assert.Equal(t, "access_key", creds.AccessKeyID)
-			assert.Equal(t, "secret_key", creds.SecretAccessKey)
-			assert.Equal(t, "session_token", creds.SessionToken)
-			assert.WithinDuration(t, time.Now().Add(time.Hour), creds.Expiration, time.Second/4)
-
-			// Mock implementation received the correct input from the manager.
-			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
-			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
-			assert.Equal(t, externalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
-		},
 	}
 	for tName, tCase := range testCases {
 		t.Run(tName, func(t *testing.T) {

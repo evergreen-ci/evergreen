@@ -43,8 +43,8 @@ type Revision struct {
 }
 
 type GitTag struct {
-	Tag    string
-	Pusher string
+	Tag    string `bson:"tag"`
+	Pusher string `bson:"pusher"`
 }
 
 type GitTags []GitTag

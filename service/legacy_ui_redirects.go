@@ -150,3 +150,66 @@ func (uis *UIServer) legacyPatchPage(w http.ResponseWriter, r *http.Request) {
 	spruceLink := fmt.Sprintf("%s/patch/%s", uis.Settings.Ui.UIv2Url, patchId)
 	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
 }
+
+func (uis *UIServer) legacyDiffPage(w http.ResponseWriter, r *http.Request) {
+	versionId := gimlet.GetVars(r)["patch_id"]
+	spruceLink := fmt.Sprintf("%s/version/%s/diff", uis.Settings.Ui.UIv2Url, versionId)
+	// Spruce uses the same query params as legacy, so append them
+	if query := r.URL.Query().Encode(); query != "" {
+		spruceLink = fmt.Sprintf("%s?%s", spruceLink, query)
+	}
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyFileDiffPage(w http.ResponseWriter, r *http.Request) {
+	versionId := gimlet.GetVars(r)["patch_id"]
+	spruceLink := fmt.Sprintf("%s/version/%s/file-diff", uis.Settings.Ui.UIv2Url, versionId)
+	// Spruce uses the same query params as legacy, so append them
+	if query := r.URL.Query().Encode(); query != "" {
+		spruceLink = fmt.Sprintf("%s?%s", spruceLink, query)
+	}
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyVariantHistory(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+	variant := gimlet.GetVars(r)["variant"]
+
+	if err != nil || project == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("%s/variant-history/%s/%s", uis.Settings.Ui.UIv2Url, project.Identifier, variant), http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyBuildBaronPage(w http.ResponseWriter, r *http.Request) {
+	vars := gimlet.GetVars(r)
+	taskId := vars["task_id"]
+	executionStr := vars["execution"]
+
+	// Default to execution 0 if not specified
+	execution := 0
+	if executionStr != "" {
+		var err error
+		execution, err = strconv.Atoi(executionStr)
+		if err != nil {
+			execution = 0
+		}
+	}
+
+	spruceLink := fmt.Sprintf("%s/task/%s?execution=%d", uis.Settings.Ui.UIv2Url, taskId, execution)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}
+
+func (uis *UIServer) legacyBuildPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+
+	if projCtx.Build == nil || projCtx.Version == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	spruceLink := fmt.Sprintf("%s/version/%s/tasks?variant=^%s$", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.BuildVariant)
+	http.Redirect(w, r, spruceLink, http.StatusPermanentRedirect)
+}

@@ -2923,20 +2923,52 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 		{Id: "t1", BuildId: "b1", Status: evergreen.TaskUndispatched},
 		{Id: "t2", BuildId: "b0", DependsOn: []task.Dependency{{TaskId: "t1"}}, Status: evergreen.TaskUndispatched},
 		{Id: "t3", BuildId: "b0", DependsOn: []task.Dependency{{TaskId: "t0"}}, Status: evergreen.TaskUndispatched},
+		// Execution tasks for display tasks
+		{Id: "exec1", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("dt1")},
+		{Id: "exec2", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("dt1")},
+		{Id: "exec3", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("dt2")},
+		{Id: "exec4", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("dt2")},
+		{Id: "exec5", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("dt3")},
+		{Id: "exec6", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayTaskId: utility.ToStringPtr("dt3")},
+		// Display dbTask with all execution tasks in ignore list
+		{Id: "dt1", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayOnly: true, ExecutionTasks: []string{"exec1", "exec2"}},
+		// Display dbTask with some execution tasks in ignore list
+		{Id: "dt2", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayOnly: true, ExecutionTasks: []string{"exec3", "exec4"}},
+		// Display dbTask with no execution tasks in ignore list
+		{Id: "dt3", BuildId: "b0", Status: evergreen.TaskUndispatched, DisplayOnly: true, ExecutionTasks: []string{"exec5", "exec6"}},
 	}
 
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
 	}
 
-	// t0 should still be activated because it's a dependency of a task that is being activated
-	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, true, true, []string{"t0"}, ""))
+	// t0 should still be activated because it's a dependency of a dbTask that is being activated
+	// dt1 should NOT be activated because all its execution tasks (exec1, exec2) are in the ignore list
+	// dt2 should be activated because only some of its execution tasks (exec3) are in the ignore list
+	// dt3 should be activated because none of its execution tasks are in the ignore list
+	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, true, true, []string{"t0", "exec1", "exec2", "exec3"}, ""))
 
 	dbTasks, err := task.FindAll(ctx, task.All)
 	require.NoError(t, err)
-	require.Len(t, dbTasks, 4)
-	for _, task := range dbTasks {
-		assert.True(t, task.Activated)
+	require.Len(t, dbTasks, 13)
+	for _, dbTask := range dbTasks {
+		switch dbTask.Id {
+		case "exec1", "exec2", "exec3":
+			// Execution tasks in ignore list should NOT be activated
+			assert.False(t, dbTask.Activated, "%s should not be activated because it's in the ignore list", dbTask.Id)
+		case "dt1":
+			// Display dbTask with all execution tasks ignored should NOT be activated
+			assert.False(t, dbTask.Activated, "dt1 should not be activated because all its execution tasks are in the ignore list")
+		case "dt2", "dt3":
+			// Display dbTask with some or no execution tasks ignored should be activated
+			assert.True(t, dbTask.Activated, "%s should be activated because not all its execution tasks are in the ignore list", dbTask.Id)
+		case "t0":
+			// t0 is in ignore list but should be activated because it's a dependency
+			assert.True(t, dbTask.Activated, "t0 should be activated because it's a dependency")
+		default:
+			// All other tasks should be activated
+			assert.True(t, dbTask.Activated, "%s should be activated", dbTask.Id)
+		}
 	}
 }
 

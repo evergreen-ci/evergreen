@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -216,9 +217,19 @@ func (s *TestArtifactFileSuite) TestEscapeFiles() {
 		},
 	}
 
-	escapedFiles := EscapeFiles(files)
+	escapedFiles := EscapeFiles("", files)
 
 	s.Equal("https://bucket.s3.amazonaws.com/something/file%231.tar.gz", escapedFiles[0].Link)
 	s.Equal("https://notacat%230.png", escapedFiles[1].Link)
 
+}
+
+func TestLooksAlreadyEscaped(t *testing.T) {
+	assert.True(t, looksAlreadyEscaped("file%231.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("file%25231.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("file%hello.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("file%1zhello.tar.gz"))
+	assert.False(t, looksAlreadyEscaped("file.tar.gz"))
+	assert.False(t, looksAlreadyEscaped("file+hello.tar.gz"))
+	assert.True(t, looksAlreadyEscaped("baz%2Bqux.txt"))
 }

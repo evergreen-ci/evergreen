@@ -391,3 +391,94 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, v)
 }
+
+func TestRemoveGitTagFromVersions(t *testing.T) {
+	for name, run := range map[string]func(t *testing.T){
+		"RemovesTagFromMultipleVersions": func(t *testing.T) {
+			require.NoError(t, RemoveGitTagFromVersions(t.Context(), "owner", "repo", GitTag{Tag: "v1.0.1"}))
+
+			v, err := VersionFindOne(t.Context(), VersionById("one"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 1)
+			require.Equal(t, "v1.0.0", v.GitTags[0].Tag)
+
+			v, err = VersionFindOne(t.Context(), VersionById("two"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 1)
+			require.Equal(t, "v1.0.2", v.GitTags[0].Tag)
+
+			v, err = VersionFindOne(t.Context(), VersionById("three"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 3)
+		},
+		"RemovesTagFromSingleVersion": func(t *testing.T) {
+			require.NoError(t, RemoveGitTagFromVersions(t.Context(), "owner", "repo", GitTag{Tag: "v1.0.0"}))
+
+			v, err := VersionFindOne(t.Context(), VersionById("one"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 1)
+			require.Equal(t, "v1.0.1", v.GitTags[0].Tag)
+
+			v, err = VersionFindOne(t.Context(), VersionById("two"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 2)
+
+			v, err = VersionFindOne(t.Context(), VersionById("three"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 3)
+		},
+		"DoesNotRemoveAnyTagsIfNoneMatch": func(t *testing.T) {
+			require.NoError(t, RemoveGitTagFromVersions(t.Context(), "owner", "repo", GitTag{Tag: "v2.0.0"}))
+
+			v, err := VersionFindOne(t.Context(), VersionById("one"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 2)
+
+			v, err = VersionFindOne(t.Context(), VersionById("two"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 2)
+
+			v, err = VersionFindOne(t.Context(), VersionById("three"))
+			require.NoError(t, err)
+			require.Len(t, v.GitTags, 3)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection))
+
+			oneVersion := Version{
+				Id:    "one",
+				Owner: "owner",
+				Repo:  "repo",
+				GitTags: []GitTag{
+					{Tag: "v1.0.0"},
+					{Tag: "v1.0.1"},
+				},
+			}
+			require.NoError(t, oneVersion.Insert(t.Context()))
+			twoVersion := Version{
+				Id:    "two",
+				Owner: "owner",
+				Repo:  "repo",
+				GitTags: []GitTag{
+					{Tag: "v1.0.1"},
+					{Tag: "v1.0.2"},
+				},
+			}
+			require.NoError(t, twoVersion.Insert(t.Context()))
+			otherRepoVersion := Version{
+				Id:    "three",
+				Owner: "owner",
+				Repo:  "other_repo",
+				GitTags: []GitTag{
+					{Tag: "v1.0.0"},
+					{Tag: "v1.0.1"},
+					{Tag: "v1.0.2"},
+				},
+			}
+			require.NoError(t, otherRepoVersion.Insert(t.Context()))
+
+			run(t)
+		})
+	}
+}
