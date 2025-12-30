@@ -824,4 +824,3 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
 	})
 }
-

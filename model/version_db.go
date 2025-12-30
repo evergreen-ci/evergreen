@@ -479,4 +479,3 @@ func FindBaseVersionForVersion(ctx context.Context, versionID string) (*Version,
 		return previousVersion, nil
 	}
 }
-
