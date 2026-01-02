@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -61,8 +62,12 @@ func (s *SharedBlockExecutor) RunCommandsInBlock(ctx context.Context, execCtx Ex
 		op := fmt.Sprintf("running commands for block '%s'", cmdBlock.Block)
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
 		if pErr != nil {
+			taskLogger.Error(message.Fields{
+				"message":   "programmatic error: Evergreen agent hit panic",
+				"operation": op,
+				"error":     pErr.Error(),
+			})
 			err = errors.Wrap(pErr, op)
-			taskLogger.Error(err)
 		}
 	}()
 
