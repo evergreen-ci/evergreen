@@ -244,7 +244,7 @@ func findBrowserCommand() ([]string, error) {
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if err := p.loadProject(conf); err != nil {
-		grip.Errorf("failed to resolve project: %s\n", err)
+		return nil, errors.Wrap(err, "failed to resolve project")
 	}
 
 	// If reusing a previous definition, ignore defaults.
@@ -328,9 +328,10 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 		cwd, err = filepath.EvalSymlinks(cwd)
 		grip.Error(errors.Wrap(err, "resolving current working directory symlinks"))
 		p.Project = conf.FindDefaultProject(cwd, true)
-	}
-	if p.Project == "" {
-		return errors.New("Need to specify a project")
+		if p.Project == "" {
+			return errors.New("Need to specify a project")
+		}
+		grip.Infof("Using default project '%s'. To specify a different project, use the --project flag.", p.Project)
 	}
 
 	return nil
