@@ -378,6 +378,25 @@ functions:
         env:
           BRANCH_NAME: ${branch_name}
 
+  validate-all-project-configs:
+    - command: subprocess.exec
+      type: test
+      params:
+        working_dir: evergreen
+        binary: bash
+        args: ["scripts/validate-all-configs.sh"]
+        include_expansions_in_env:
+          - AWS_ACCESS_KEY_ID
+          - AWS_SECRET_ACCESS_KEY
+          - AWS_SESSION_TOKEN
+          - GOROOT
+          - api_key
+        env:
+          EVERGREEN_ALL: "true"
+          EVERGREEN_API_KEY: ${service_user_api_key}
+          EVERGREEN_API_USER: "alertmanager"
+          EVERGREEN_API_SERVER_HOST: "https://evergreen.mongodb.com/api"
+
   attach-test-results:
     - command: gotest.parse_files
       type: system
@@ -652,6 +671,12 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: verify-merge-function-update
+  - name: test-config-validation
+    patch_only: true
+    commands:
+      - func: get-project-and-modules
+      - func: setup-credentials
+      - func: validate-all-project-configs
   - name: verify-gqlgen
     tags: ["linter"]
     commands:
@@ -873,6 +898,17 @@ buildvariants:
       decompress: tar zxvf
     tasks:
       - name: ".smoke"
+
+  - name: test-config-validation
+    display_name: Validate External Configs
+    expansions:
+      GOROOT: /opt/golang/go1.24
+    paths:
+      - "validator/**"
+    run_on:
+      - ubuntu2204-small
+    tasks:
+      - name: test-config-validation
 
   - name: lint-markdown
     display_name: Lint Markdown
