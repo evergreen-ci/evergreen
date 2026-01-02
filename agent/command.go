@@ -8,8 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/executor"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
@@ -39,11 +41,55 @@ type runCommandsOptions struct {
 }
 
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
-// This method delegates to the shared block executor for consistency with LocalTaskExecutor.
 func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBlock commandBlock) error {
-	agentExecutor := NewAgentCommandExecutor(a)
-	sharedExecutor := executor.NewSharedBlockExecutor(agentExecutor)
-	execCtx := NewTaskContextAdapter(tc)
+	var taskLogger, execLogger grip.Journaler
+	if tc.logger != nil {
+		taskLogger = tc.logger.Task()
+		execLogger = tc.logger.Execution()
+	} else {
+		// In the case of teardown group, it's not guaranteed that the agent has
+		// previously set up a valid logger, so use the fallback default logger.
+		taskLogger = grip.GetDefaultJournaler()
+		execLogger = grip.GetDefaultJournaler()
+	}
+
+	deps := executor.BlockExecutorDeps{
+		JasperManager: a.jasper,
+		Tracer:        a.tracer,
+		TaskLogger:    taskLogger,
+		ExecLogger:    execLogger,
+		TaskConfig:    tc.taskConfig,
+
+		StartTimeoutWatcher: func(ctx context.Context, cancel context.CancelFunc, kind globals.TimeoutType, getTimeout func() time.Duration, canMarkFailure bool) {
+			opts := timeoutWatcherOptions{
+				tc:                    tc,
+				kind:                  kind,
+				getTimeout:            getTimeout,
+				canMarkTimeoutFailure: canMarkFailure,
+			}
+			a.startTimeoutWatcher(ctx, cancel, opts)
+		},
+		SetHeartbeatTimeout: func(startAt time.Time, getTimeout func() time.Duration, kind globals.TimeoutType) {
+			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
+				startAt:    startAt,
+				getTimeout: getTimeout,
+				kind:       kind,
+			})
+		},
+		ResetHeartbeatTimeout: func() {
+			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+		},
+		HandlePanic: func(panicErr error, originalErr error, op string) error {
+			return a.logPanic(tc, panicErr, originalErr, op)
+		},
+		RunCommandOrFunc: func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error {
+			opts := runCommandsOptions{
+				block:       block,
+				canFailTask: canFailTask,
+			}
+			return a.runCommandOrFunc(ctx, tc, commandInfo, cmds, opts)
+		},
+	}
 
 	execCmdBlock := executor.CommandBlock{
 		Block:               cmdBlock.block,
@@ -54,7 +100,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 		CanFailTask:         cmdBlock.canFailTask,
 	}
 
-	return sharedExecutor.RunCommandsInBlock(ctx, execCtx, execCmdBlock)
+	return executor.RunCommandsInBlock(ctx, deps, execCmdBlock)
 }
 
 // runCommandOrFunc initializes and then executes a list of commands, which can
