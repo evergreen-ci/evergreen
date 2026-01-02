@@ -29,13 +29,6 @@ const TranslateProjectError = "error translating project"
 const TranslateProjectConfigError = "unmarshalling project config from YAML"
 const EmptyConfigurationError = "received empty configuration file"
 
-// DefaultParserProjectAccessTimeout is the default timeout for accessing a
-// parser project. In general, the context timeout should prefer to be inherited
-// from a higher-level context (e.g. a REST request's context), so this timeout
-// should only be used as a last resort if the context cannot be easily passed
-// to the place where the parser project is accessed.
-const DefaultParserProjectAccessTimeout = 60 * time.Second
-
 // MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
 // config YAML.
 const MaxConfigSetPriority = 50
@@ -1019,7 +1012,27 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
+
+	capParserPriorities(&p)
+
 	return &p, nil
+}
+
+// capParserPriorities caps all priority values in the parser project at MaxConfigSetPriority.
+// It caps priorities for both tasks and build variant tasks.
+func capParserPriorities(p *ParserProject) {
+	for i := range p.Tasks {
+		if p.Tasks[i].Priority > MaxConfigSetPriority {
+			p.Tasks[i].Priority = MaxConfigSetPriority
+		}
+	}
+	for i := range p.BuildVariants {
+		for j := range p.BuildVariants[i].Tasks {
+			if p.BuildVariants[i].Tasks[j].Priority > MaxConfigSetPriority {
+				p.BuildVariants[i].Tasks[j].Priority = MaxConfigSetPriority
+			}
+		}
+	}
 }
 
 // TranslateProject converts our intermediate project representation into

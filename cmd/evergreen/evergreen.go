@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +19,16 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	notFound = "Not found"
+)
+
+var (
+	panicReport *model.PanicReport
+
+	args = os.Args
+)
+
 func main() {
 	// this is where the main action of the program starts. The
 	// command line interface is managed by the cli package and
@@ -21,7 +36,10 @@ func main() {
 	// in buildApp(), is all that's necessary for bootstrapping the
 	// environment.
 	app := buildApp()
-	grip.EmergencyFatal(app.Run(os.Args))
+
+	defer recoverFromPanic()
+
+	grip.EmergencyFatal(app.Run(args))
 }
 
 func buildApp() *cli.App {
@@ -86,10 +104,64 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
+		setupPanicReport(c)
 		return loggingSetup(app.Name, c.String("level"))
 	}
 
 	return app
+}
+
+func recoverFromPanic() {
+	if r := recover(); r != nil {
+		panicReport.Panic = r
+		panicReport.EndTime = time.Now()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := operations.SendPanicReport(ctx, panicReport); err != nil {
+			fmt.Fprintf(os.Stderr, "error: could not send panic report to Evergreen service, please reach out to the Evergreen team: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Fprintln(os.Stderr, "unexpected error: the Evergreen team has been sent a report:", panicReport.Panic)
+		os.Exit(1)
+	}
+}
+
+// setupPanicReport populates the global programDetails variable
+// used for telemetry.
+func setupPanicReport(c *cli.Context) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = notFound
+	}
+	execPath, err := os.Executable()
+	if err != nil {
+		execPath = notFound
+	}
+	conf, err := operations.NewClientSettings(c.String(operations.ConfFlagName))
+	if err != nil {
+		conf = &operations.ClientSettings{
+			User:       notFound,
+			LoadedFrom: notFound,
+		}
+	}
+	panicReport = &model.PanicReport{
+		Version:                 evergreen.ClientVersion,
+		AgentVersion:            evergreen.AgentVersion,
+		BuildRevision:           evergreen.BuildRevision,
+		CurrentWorkingDirectory: cwd,
+		ExecutablePath:          execPath,
+		Arguments:               args,
+		StartTime:               time.Now(),
+		OperatingSystem:         runtime.GOOS,
+		Architecture:            runtime.GOARCH,
+		ConfigFilePath:          c.String(operations.ConfFlagName),
+		ConfigAbsFilePath:       conf.LoadedFrom,
+		User:                    conf.User,
+		Project:                 conf.FindDefaultProject(cwd, true),
+	}
 }
 
 func loggingSetup(name, l string) error {

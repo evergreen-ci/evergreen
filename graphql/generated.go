@@ -1208,6 +1208,7 @@ type ComplexityRoot struct {
 		TaskStatuses         func(childComplexity int) int
 		Tasks                func(childComplexity int) int
 		Time                 func(childComplexity int) int
+		User                 func(childComplexity int) int
 		Variants             func(childComplexity int) int
 		VariantsTasks        func(childComplexity int) int
 		VersionFull          func(childComplexity int) int
@@ -1703,6 +1704,7 @@ type ComplexityRoot struct {
 		CacheStatsJobDisabled           func(childComplexity int) int
 		CheckBlockedTasksDisabled       func(childComplexity int) int
 		CloudCleanupDisabled            func(childComplexity int) int
+		DebugSpawnHostDisabled          func(childComplexity int) int
 		DegradedModeDisabled            func(childComplexity int) int
 		ElasticIPsDisabled              func(childComplexity int) int
 		EmailNotificationsDisabled      func(childComplexity int) int
@@ -2273,6 +2275,7 @@ type ComplexityRoot struct {
 		TaskStatuses             func(childComplexity int) int
 		Tasks                    func(childComplexity int, options TaskFilterOptions) int
 		UpstreamProject          func(childComplexity int) int
+		User                     func(childComplexity int) int
 		VersionTiming            func(childComplexity int) int
 		Warnings                 func(childComplexity int) int
 		WaterfallBuilds          func(childComplexity int) int
@@ -2501,6 +2504,8 @@ type PatchResolver interface {
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
 	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) ([]*GeneratedTaskCountResults, error)
 
+	IncludedLocalModules(ctx context.Context, obj *model.APIPatch) ([]*model.APILocalModuleInclude, error)
+
 	Parameters(ctx context.Context, obj *model.APIPatch) ([]*model.APIParameter, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
@@ -2513,9 +2518,9 @@ type PatchResolver interface {
 
 	TaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
+	User(ctx context.Context, obj *model.APIPatch) (*model.APIDBUser, error)
 
 	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
-	IncludedLocalModules(ctx context.Context, obj *model.APIPatch) ([]*model.APILocalModuleInclude, error)
 }
 type PermissionsResolver interface {
 	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
@@ -2727,6 +2732,7 @@ type VersionResolver interface {
 	TaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	TaskStatusStats(ctx context.Context, obj *model.APIVersion, options BuildVariantOptions) (*task.TaskStats, error)
 	UpstreamProject(ctx context.Context, obj *model.APIVersion) (*UpstreamProject, error)
+	User(ctx context.Context, obj *model.APIVersion) (*model.APIDBUser, error)
 	VersionTiming(ctx context.Context, obj *model.APIVersion) (*VersionTiming, error)
 	Warnings(ctx context.Context, obj *model.APIVersion) ([]string, error)
 	WaterfallBuilds(ctx context.Context, obj *model.APIVersion) ([]*model1.WaterfallBuild, error)
@@ -7494,6 +7500,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Time(childComplexity), true
+	case "Patch.user":
+		if e.complexity.Patch.User == nil {
+			break
+		}
+
+		return e.complexity.Patch.User(childComplexity), true
 	case "Patch.variants":
 		if e.complexity.Patch.Variants == nil {
 			break
@@ -9770,6 +9782,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.CloudCleanupDisabled(childComplexity), true
+	case "ServiceFlags.debugSpawnHostDisabled":
+		if e.complexity.ServiceFlags.DebugSpawnHostDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.DebugSpawnHostDisabled(childComplexity), true
 	case "ServiceFlags.degradedModeDisabled":
 		if e.complexity.ServiceFlags.DegradedModeDisabled == nil {
 			break
@@ -12273,6 +12291,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.UpstreamProject(childComplexity), true
+	case "Version.user":
+		if e.complexity.Version.User == nil {
+			break
+		}
+
+		return e.complexity.Version.User(childComplexity), true
 	case "Version.versionTiming":
 		if e.complexity.Version.VersionTiming == nil {
 			break
@@ -19413,6 +19437,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_backgroundReauthDisabled(ctx, field)
 			case "cloudCleanupDisabled":
 				return ec.fieldContext_ServiceFlags_cloudCleanupDisabled(ctx, field)
+			case "debugSpawnHostDisabled":
+				return ec.fieldContext_ServiceFlags_debugSpawnHostDisabled(ctx, field)
 			case "sleepScheduleDisabled":
 				return ec.fieldContext_ServiceFlags_sleepScheduleDisabled(ctx, field)
 			case "staticAPIKeysDisabled":
@@ -35228,6 +35254,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -35339,6 +35367,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -36755,6 +36785,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "includedLocalModules":
+				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -36781,14 +36813,14 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_taskStatuses(ctx, field)
 			case "time":
 				return ec.fieldContext_Patch_time(ctx, field)
+			case "user":
+				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
-			case "includedLocalModules":
-				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -36864,6 +36896,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "includedLocalModules":
+				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -36890,14 +36924,14 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_taskStatuses(ctx, field)
 			case "time":
 				return ec.fieldContext_Patch_time(ctx, field)
+			case "user":
+				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
-			case "includedLocalModules":
-				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -40872,6 +40906,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -43032,6 +43068,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "includedLocalModules":
+				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -43058,14 +43096,14 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_taskStatuses(ctx, field)
 			case "time":
 				return ec.fieldContext_Patch_time(ctx, field)
+			case "user":
+				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
-			case "includedLocalModules":
-				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -43307,6 +43345,41 @@ func (ec *executionContext) fieldContext_Patch_hidden(_ context.Context, field g
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_includedLocalModules(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_includedLocalModules,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Patch().IncludedLocalModules(ctx, obj)
+		},
+		nil,
+		ec.marshalNIncludedLocalModule2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILocalModuleIncludeᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_includedLocalModules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "module":
+				return ec.fieldContext_IncludedLocalModule_module(ctx, field)
+			case "fileName":
+				return ec.fieldContext_IncludedLocalModule_fileName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IncludedLocalModule", field.Name)
 		},
 	}
 	return fc, nil
@@ -43841,6 +43914,57 @@ func (ec *executionContext) fieldContext_Patch_time(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Patch_user(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_user,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Patch().User(ctx, obj)
+		},
+		nil,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "betaFeatures":
+				return ec.fieldContext_User_betaFeatures(ctx, field)
+			case "displayName":
+				return ec.fieldContext_User_displayName(ctx, field)
+			case "emailAddress":
+				return ec.fieldContext_User_emailAddress(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_User_parsleyFilters(ctx, field)
+			case "parsleySettings":
+				return ec.fieldContext_User_parsleySettings(ctx, field)
+			case "patches":
+				return ec.fieldContext_User_patches(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
+			case "settings":
+				return ec.fieldContext_User_settings(ctx, field)
+			case "subscriptions":
+				return ec.fieldContext_User_subscriptions(ctx, field)
+			case "userId":
+				return ec.fieldContext_User_userId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_variants(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44003,6 +44127,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -44011,41 +44137,6 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_includedLocalModules(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_includedLocalModules,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().IncludedLocalModules(ctx, obj)
-		},
-		nil,
-		ec.marshalNIncludedLocalModule2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPILocalModuleIncludeᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_includedLocalModules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "module":
-				return ec.fieldContext_IncludedLocalModule_module(ctx, field)
-			case "fileName":
-				return ec.fieldContext_IncludedLocalModule_fileName(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type IncludedLocalModule", field.Name)
 		},
 	}
 	return fc, nil
@@ -44601,6 +44692,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "includedLocalModules":
+				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -44627,14 +44720,14 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_taskStatuses(ctx, field)
 			case "time":
 				return ec.fieldContext_Patch_time(ctx, field)
+			case "user":
+				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
-			case "includedLocalModules":
-				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -51285,6 +51378,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "includedLocalModules":
+				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -51311,14 +51406,14 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_taskStatuses(ctx, field)
 			case "time":
 				return ec.fieldContext_Patch_time(ctx, field)
+			case "user":
+				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
-			case "includedLocalModules":
-				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -53022,6 +53117,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -57508,6 +57605,35 @@ func (ec *executionContext) _ServiceFlags_cloudCleanupDisabled(ctx context.Conte
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_cloudCleanupDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlags_debugSpawnHostDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_debugSpawnHostDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_debugSpawnHostDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServiceFlags",
 		Field:      field,
@@ -62011,6 +62137,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "includedLocalModules":
+				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -62037,14 +62165,14 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_taskStatuses(ctx, field)
 			case "time":
 				return ec.fieldContext_Patch_time(ctx, field)
+			case "user":
+				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
-			case "includedLocalModules":
-				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -63063,6 +63191,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -68595,6 +68725,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -69818,6 +69950,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -70056,6 +70190,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -70517,6 +70653,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_githubPatchData(ctx, field)
 			case "hidden":
 				return ec.fieldContext_Patch_hidden(ctx, field)
+			case "includedLocalModules":
+				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			case "moduleCodeChanges":
 				return ec.fieldContext_Patch_moduleCodeChanges(ctx, field)
 			case "parameters":
@@ -70543,14 +70681,14 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_taskStatuses(ctx, field)
 			case "time":
 				return ec.fieldContext_Patch_time(ctx, field)
+			case "user":
+				return ec.fieldContext_Patch_user(ctx, field)
 			case "variants":
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
-			case "includedLocalModules":
-				return ec.fieldContext_Patch_includedLocalModules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -70656,6 +70794,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -71215,6 +71355,57 @@ func (ec *executionContext) fieldContext_Version_upstreamProject(_ context.Conte
 				return ec.fieldContext_UpstreamProject_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UpstreamProject", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_user(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_user,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Version().User(ctx, obj)
+		},
+		nil,
+		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "betaFeatures":
+				return ec.fieldContext_User_betaFeatures(ctx, field)
+			case "displayName":
+				return ec.fieldContext_User_displayName(ctx, field)
+			case "emailAddress":
+				return ec.fieldContext_User_emailAddress(ctx, field)
+			case "parsleyFilters":
+				return ec.fieldContext_User_parsleyFilters(ctx, field)
+			case "parsleySettings":
+				return ec.fieldContext_User_parsleySettings(ctx, field)
+			case "patches":
+				return ec.fieldContext_User_patches(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
+			case "settings":
+				return ec.fieldContext_User_settings(ctx, field)
+			case "subscriptions":
+				return ec.fieldContext_User_subscriptions(ctx, field)
+			case "userId":
+				return ec.fieldContext_User_userId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -72165,6 +72356,8 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -72954,6 +73147,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_inactiveVersions(_ con
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -73065,6 +73260,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_version(_ context.Cont
 				return ec.fieldContext_Version_taskStatusStats(ctx, field)
 			case "upstreamProject":
 				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "user":
+				return ec.fieldContext_Version_user(ctx, field)
 			case "versionTiming":
 				return ec.fieldContext_Version_versionTiming(ctx, field)
 			case "warnings":
@@ -83190,7 +83387,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83351,6 +83548,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.CloudCleanupDisabled = data
+		case "debugSpawnHostDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHostDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHostDisabled = data
 		case "sleepScheduleDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sleepScheduleDisabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -94181,6 +94385,42 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "includedLocalModules":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_includedLocalModules(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "moduleCodeChanges":
 			out.Values[i] = ec._Patch_moduleCodeChanges(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94482,26 +94722,19 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "variants":
-			out.Values[i] = ec._Patch_variants(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "variantsTasks":
-			out.Values[i] = ec._Patch_variantsTasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "versionFull":
+		case "user":
 			field := field
 
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Patch_versionFull(ctx, field, obj)
+				res = ec._Patch_user(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -94525,19 +94758,26 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "includedLocalModules":
+		case "variants":
+			out.Values[i] = ec._Patch_variants(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "variantsTasks":
+			out.Values[i] = ec._Patch_variantsTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "versionFull":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Patch_includedLocalModules(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
+				res = ec._Patch_versionFull(ctx, field, obj)
 				return res
 			}
 
@@ -99181,6 +99421,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_backgroundReauthDisabled(ctx, field, obj)
 		case "cloudCleanupDisabled":
 			out.Values[i] = ec._ServiceFlags_cloudCleanupDisabled(ctx, field, obj)
+		case "debugSpawnHostDisabled":
+			out.Values[i] = ec._ServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
 		case "sleepScheduleDisabled":
 			out.Values[i] = ec._ServiceFlags_sleepScheduleDisabled(ctx, field, obj)
 		case "staticAPIKeysDisabled":
@@ -104583,6 +104825,42 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Version_upstreamProject(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "user":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_user(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

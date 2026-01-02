@@ -1216,7 +1216,7 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 		}
 		return v, project, pp, nil
 	}
-	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project, true)
+	v, project, pp, err := model.FindLatestVersionWithValidProject(ctx, patchDoc.Project, true)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "getting downstream version to use for patch '%s'", patchDoc.Id.Hex())
 	}
