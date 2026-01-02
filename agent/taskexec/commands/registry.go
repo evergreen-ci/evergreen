@@ -1,55 +1,49 @@
 package commands
 
 import (
-	"sync"
-
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/pkg/errors"
 )
 
-type CommandFactory func() interface{}
-
-type CommandRegistry struct {
-	mu   *sync.RWMutex
-	cmds map[string]CommandFactory
+// LocalCommand represents a command that can be executed locally.
+type LocalCommand interface {
+	command.Command
+	// LocalExecute runs the command in a local execution context
+	LocalExecute() error
 }
 
-func (r *CommandRegistry) RegisterCommand(name string, factory CommandFactory) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+// CommandFactory creates a new instance of a command.
+type CommandFactory func() command.Command
 
+// Registry provides access to the global command registry.
+type Registry struct{}
+
+// NewRegistry creates a new registry instance.
+func NewRegistry() *Registry {
+	return &Registry{}
+}
+
+// RegisterCommand registers a command factory with the global registry.
+func (r *Registry) RegisterCommand(name string, factory CommandFactory) error {
 	if name == "" {
 		return errors.New("cannot register a command without a name")
 	}
-
-	if _, ok := r.cmds[name]; ok {
-		return errors.Errorf("command '%s' is already registered", name)
-	}
-
 	if factory == nil {
 		return errors.Errorf("cannot register a nil factory for command '%s'", name)
 	}
-
-	r.cmds[name] = factory
-	return nil
+	return command.RegisterCommand(name, command.CommandFactory(factory))
 }
 
-func (r *CommandRegistry) GetCommandFactory(name string) (CommandFactory, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	factory, ok := r.cmds[name]
-	return factory, ok
-}
-
-func (r *CommandRegistry) RegisteredCommandNames() []string {
-	out := []string{}
-
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for name := range r.cmds {
-		out = append(out, name)
+// GetCommandFactory retrieves a command factory from the global registry.
+func (r *Registry) GetCommandFactory(name string) (CommandFactory, bool) {
+	factory, ok := command.GetCommandFactory(name)
+	if !ok {
+		return nil, false
 	}
+	return CommandFactory(factory), true
+}
 
-	return out
+// RegisteredCommandNames returns all registered command names from the global registry.
+func (r *Registry) RegisteredCommandNames() []string {
+	return command.RegisteredCommandNames()
 }

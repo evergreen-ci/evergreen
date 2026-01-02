@@ -1,3 +1,6 @@
+// Package taskexec provides simplified task execution infrastructure for local development.
+// It provides a lightweight alternative to the full agent infrastructure while
+// maintaining compatibility with existing command implementations.
 package taskexec
 
 import (
@@ -135,6 +138,8 @@ func (t *TaskConfig) GetAndClearCommandCleanups() []CommandCleanup {
 }
 
 func (t *TaskConfig) GetWorkingDirectory() string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.WorkDir
 }
 
@@ -162,12 +167,15 @@ func (t *TaskConfig) FindProjectTask(taskName string) *model.ProjectTask {
 	return nil
 }
 
-func (t *TaskConfig) SetProject(project *model.Project) {
+func (t *TaskConfig) SetProject(project *model.Project) error {
+	if project == nil {
+		return errors.New("project cannot be nil")
+	}
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if project != nil {
-		t.Project = *project
-	}
+	t.Project = *project
+	return nil
 }
 
 func (t *TaskConfig) UpdateExpansions(updates map[string]string) {
