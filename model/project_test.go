@@ -1875,6 +1875,38 @@ func (s *FindProjectsSuite) TestFetchByIdentifierDesc() {
 	s.Equal("projectD", projects[1].Identifier)
 }
 
+func (s *FindProjectsSuite) TestFilterByActiveOnly() {
+	// Test with activeOnly=false (should return both enabled and disabled projects)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", false)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 9) // All non-hidden projects (projectA-F + id-1 + id-2 + mci2)
+
+	// Test with activeOnly=true (should only return enabled projects)
+	projects, err = FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", true)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Require().Len(projects, 5) // Only enabled projects: projectA, projectB, projectC, id-1, id-2
+
+	// Verify all returned projects are enabled
+	for _, p := range projects {
+		s.True(p.Enabled, "project %s should be enabled", p.Identifier)
+	}
+}
+
+func (s *FindProjectsSuite) TestFilterByActiveWithOwnerAndRepo() {
+	// Test activeOnly=true combined with owner/repo filters
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "mongodb", "test-repo", true)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Require().Len(projects, 2) // id-1 and id-2 are enabled with mongodb/test-repo
+	for _, p := range projects {
+		s.True(p.Enabled)
+		s.Equal("mongodb", p.Owner)
+		s.Equal("test-repo", p.Repo)
+	}
+}
+
 func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
 	projRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(s.T().Context(), "octocat", "hello-world", "main")
 	s.NoError(err)
