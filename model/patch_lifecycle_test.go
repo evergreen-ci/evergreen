@@ -291,7 +291,7 @@ func TestFinalizePatch(t *testing.T) {
 
 	// Running a multi-document transaction requires the collections to exist
 	// first before any documents can be inserted.
-	require.NoError(t, db.CreateCollections(manifest.Collection, VersionCollection, ParserProjectCollection, ProjectConfigCollection))
+	require.NoError(t, db.CreateCollections(manifest.Collection, patch.Collection, VersionCollection, ParserProjectCollection, ProjectConfigCollection))
 	require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex}))
 
 	for name, test := range map[string]func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig){
