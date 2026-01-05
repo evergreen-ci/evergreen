@@ -620,7 +620,7 @@ func (p *ProjectRef) IsStatsCacheDisabled() bool {
 }
 
 func (p *ProjectRef) IsDebugSpawnHostsEnabled() bool {
-	return !utility.FromBoolPtr(p.DebugSpawnHostsDisabled)
+	return !utility.FromBoolTPtr(p.DebugSpawnHostsDisabled)
 }
 
 func (p *ProjectRef) IsHidden() bool {

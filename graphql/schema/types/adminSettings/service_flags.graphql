@@ -21,7 +21,7 @@ input ServiceFlagsInput {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
-  debugSpawnHostsDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
@@ -60,7 +60,7 @@ type ServiceFlags {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
-  debugSpawnHostsDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
