@@ -91,6 +91,9 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, 
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding host '%s'", hostID)
 	}
+	if dbHost == nil {
+		return AssumeRoleCredentials{}, fmt.Errorf("host '%s' not found", hostID)
+	}
 
 	externalID := createExternalID(t, p, dbHost.IsDebug)
 	creds, err := s.assumeRole(ctx, externalID, opts)
