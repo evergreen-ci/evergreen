@@ -135,7 +135,12 @@ type parseXMLFileResult struct {
 }
 
 // parseXMLFile parses a single xunit XML file and returns the test suites.
-func parseXMLFile(filePath string) parseXMLFileResult {
+func parseXMLFile(ctx context.Context, filePath string) parseXMLFileResult {
+	// Check if context is already cancelled before starting to parse.
+	if err := ctx.Err(); err != nil {
+		return parseXMLFileResult{filePath: filePath, err: errors.Wrap(err, "context cancelled before parsing")}
+	}
+
 	stat, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		return parseXMLFileResult{filePath: filePath, invalid: true}
@@ -149,7 +154,7 @@ func parseXMLFile(filePath string) parseXMLFileResult {
 		return parseXMLFileResult{filePath: filePath, err: errors.Wrapf(err, "opening xunit file '%s'", filePath)}
 	}
 
-	suites, err := parseXMLResults(file)
+	suites, err := parseXMLResults(ctx, file)
 	if err != nil {
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrapf(err, "parsing xunit file '%s'", filePath)
@@ -182,7 +187,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 				select {
 				case <-ctx.Done():
 					return
-				case results <- parseXMLFile(filePath):
+				case results <- parseXMLFile(ctx, filePath):
 				}
 			}
 		}()
@@ -268,6 +273,10 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 				}
 				atomic.AddInt64(&succeeded, 1)
 				cumulative.tests[cumulative.logIdxToTestIdx[item.idx]].LineNum = 1
+
+				// Yield to allow other goroutines to run and prevent starvation
+				// in intense log uploading workflows.
+				runtime.Gosched()
 			}
 		}()
 	}
