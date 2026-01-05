@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -19,7 +20,7 @@ import (
 // It's main purpose is to expose a friendly API for our own API server.
 type STSManager interface {
 	// AssumeRole gets the credentials for a role as the given task.
-	AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error)
+	AssumeRole(ctx context.Context, taskID, hostID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error)
 	// GetCallerIdentityARN gets the caller identity's ARN.
 	GetCallerIdentityARN(ctx context.Context) (string, error)
 }
@@ -67,7 +68,7 @@ type AssumeRoleCredentials struct {
 
 // AssumeRole gets the credentials for a role as the given task. It handles
 // the AWS API call and generating the ExternalID for the request.
-func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error) {
+func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error) {
 	if err := s.setupClient(ctx); err != nil {
 		return AssumeRoleCredentials{}, errors.Wrap(err, "creating AWS client")
 	}
@@ -85,7 +86,13 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	if p == nil {
 		return AssumeRoleCredentials{}, fmt.Errorf("project '%s' not found for task '%s'", t.Project, taskID)
 	}
-	externalID := createExternalID(t, p)
+
+	dbHost, err := host.FindOneId(ctx, hostID)
+	if err != nil {
+		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding host '%s'", hostID)
+	}
+
+	externalID := createExternalID(t, p, dbHost.IsDebug)
 	creds, err := s.assumeRole(ctx, externalID, opts)
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role: '%v'", err)
@@ -135,15 +142,24 @@ func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, erro
 	return *output.Arn, nil
 }
 
-func createExternalID(task *task.Task, projectRef *model.ProjectRef) string {
+func createExternalID(task *task.Task, projectRef *model.ProjectRef, isDebug bool) string {
 	// The external ID is used as a trust boundary for the AssumeRole call.
 	// It is an unconfigurable computed value from the task's properties
 	// to avoid the confused deputy problem since Evergreen
 	// assumes many roles on behalf of tasks.
+	externalID := createExternalIDHelper(task, projectRef)
+	if isDebug {
+		return fmt.Sprintf("debug-%s", externalID)
+	}
+	return externalID
+}
+
+func createExternalIDHelper(task *task.Task, projectRef *model.ProjectRef) string {
 	if projectRef.IsUntracked() {
 		return fmt.Sprintf("untracked-%s-%s", projectRef.RepoRefId, task.Requester)
 	}
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
+
 }
 
 func validateAssumeRoleOutput(assumeRole *sts.AssumeRoleOutput) error {
