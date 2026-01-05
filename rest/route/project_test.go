@@ -797,22 +797,28 @@ func TestProjectGetSuite(t *testing.T) {
 func (s *ProjectGetSuite) SetupSuite() {
 	pRefs := []serviceModel.ProjectRef{
 		{
-			Id: "projectA",
+			Id:         "projectA",
+			Identifier: "projectA",
 		},
 		{
-			Id: "projectB",
+			Id:         "projectB",
+			Identifier: "projectB",
 		},
 		{
-			Id: "projectC",
+			Id:         "projectC",
+			Identifier: "projectC",
 		},
 		{
-			Id: "projectD",
+			Id:         "projectD",
+			Identifier: "projectD",
 		},
 		{
-			Id: "projectE",
+			Id:         "projectE",
+			Identifier: "projectE",
 		},
 		{
-			Id: "projectF",
+			Id:         "projectF",
+			Identifier: "projectF",
 		},
 	}
 	for _, pRef := range pRefs {
