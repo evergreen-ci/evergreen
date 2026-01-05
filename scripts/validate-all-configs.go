@@ -36,8 +36,8 @@ type validationResults struct {
 
 func main() {
 	var (
-		configsDir   string
-		outputFile   string
+		configsDir string
+		outputFile string
 	)
 
 	flag.StringVar(&configsDir, "configs-dir", "downloaded_configs", "Directory containing config files")
