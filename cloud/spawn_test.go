@@ -102,3 +102,21 @@ func TestValidateSSHKey(t *testing.T) {
 	require.NoError(t, evergreen.ValidateSSHKey(ecdsaKey))
 	require.Error(t, evergreen.ValidateSSHKey(invalidKey))
 }
+
+// TestTerminateSpawnHostIntentHostSetsTerminationTime verifies termination_time
+// is set when terminating intent hosts.
+func TestTerminateSpawnHostIntentHostSetsTerminationTime(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.Clear(host.Collection))
+
+	intentHost := &host.Host{Id: "intent-test", Status: evergreen.HostUninitialized, Provider: evergreen.ProviderNameMock}
+	require.NoError(t, intentHost.Insert(ctx))
+
+	err := TerminateSpawnHost(ctx, evergreen.GetEnvironment(), intentHost, "test-user", "test")
+	require.NoError(t, err)
+
+	dbHost, err := host.FindOneId(ctx, "intent-test")
+	require.NoError(t, err)
+	assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+	assert.False(t, dbHost.TerminationTime.IsZero(), "termination_time must be set")
+}
