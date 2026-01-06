@@ -70,16 +70,6 @@ func (cf *customFloat) UnmarshalXMLAttr(attr xml.Attr) error {
 	return nil
 }
 
-type testSuites struct {
-	Suites   []testSuite `xml:"testsuite"`
-	Errors   int         `xml:"errors,attr"`
-	Failures int         `xml:"failures,attr"`
-	Skip     int         `xml:"skip,attr"`
-	Name     string      `xml:"name,attr"`
-	Time     customFloat `xml:"time,attr"`
-	Tests    int         `xml:"tests,attr"`
-}
-
 type testSuite struct {
 	Errors       int             `xml:"errors,attr"`
 	Failures     int             `xml:"failures,attr"`
