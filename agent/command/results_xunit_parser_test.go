@@ -21,6 +21,7 @@ import (
 )
 
 func TestXMLParsing(t *testing.T) {
+	ctx := t.Context()
 	cwd := testutil.GetDirectoryOfFile()
 
 	Convey("With some test xml files", t, func() {
@@ -30,7 +31,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -56,7 +57,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -82,7 +83,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -109,7 +110,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -131,7 +132,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldEqual, 187)
 
@@ -154,7 +155,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldEqual, 1)
 
@@ -176,7 +177,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldEqual, 1)
 
@@ -195,7 +196,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := parseXMLResults(file)
+				res, err := parseXMLResults(ctx, file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldEqual, 1)
 
@@ -216,11 +217,12 @@ func TestXMLParsing(t *testing.T) {
 }
 
 func TestXMLToModelConversion(t *testing.T) {
+	ctx := t.Context()
 	Convey("With a parsed XML file and a task", t, func() {
 		file, err := os.Open(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit", "junit_3.xml"))
 		require.NoError(t, err)
 		defer file.Close()
-		res, err := parseXMLResults(file)
+		res, err := parseXMLResults(ctx, file)
 		So(err, ShouldBeNil)
 		So(len(res), ShouldBeGreaterThan, 0)
 		conf := &internal.TaskConfig{
