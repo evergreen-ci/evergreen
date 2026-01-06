@@ -135,7 +135,8 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 	catcher := grip.NewBasicCatcher()
 
-	// CPU and disk metrics are not implemented by gopsutil for macOS.
+	// CPU and disk metrics require CGO on macOS (see cpu_darwin_nocgo.go and disk_darwin_nocgo.go in gopsutil).
+	// The agent builds with CGO_ENABLED=0 by default, so these metrics are unavailable on macOS.
 	if runtime.GOOS != "darwin" {
 		catcher.Wrap(addCPUMetrics(meter), "adding CPU metrics")
 		catcher.Wrap(addDiskMetrics(ctx, meter), "adding disk metrics")
