@@ -184,7 +184,7 @@ type Host struct {
 	// SleepSchedule stores host sleep schedule information.
 	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
 
-	// IsDebug True if the host is a debug spawn host.
+	// IsDebug is true if the host is a debug spawn host.
 	IsDebug bool `bson:"is_debug" json:"is_debug"`
 }
 
