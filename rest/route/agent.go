@@ -1823,6 +1823,11 @@ func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
 		return errors.New("missing task_id")
 	}
 
+	h.hostID = r.Header.Get(evergreen.HostHeader)
+	if h.hostID == "" {
+		return errors.New("missing host ID")
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return errors.Wrap(err, "reading body")
