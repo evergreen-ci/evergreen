@@ -1142,6 +1142,18 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 			// this looks like "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 			expansions.Put("github_head_branch", p.GithubMergeData.HeadBranch)
 		}
+		if v.IsChild() {
+			parentVersion, err := VersionFindOneId(ctx, v.ParentPatchID)
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding parent version '%s'", v.ParentPatchID)
+			}
+			if parentVersion != nil {
+				expansions.Put("parent_patch_id", v.ParentPatchID)
+				expansions.Put("parent_github_org", parentVersion.Owner)
+				expansions.Put("parent_github_repo", parentVersion.Repo)
+				expansions.Put("parent_github_branch", parentVersion.Branch)
+			}
+		}
 	} else {
 		expansions.Put("is_patch", "")
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
