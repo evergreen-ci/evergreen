@@ -58,6 +58,7 @@ You can leverage this data to get information about the host where a test was ru
 The agent collects the following system metrics every 15 seconds:
 
 **CPU Metrics** (not available on macOS):
+
 - `system.cpu.time.idle` - Idle CPU time
 - `system.cpu.time.system` - System CPU time
 - `system.cpu.time.user` - User CPU time
@@ -66,11 +67,13 @@ The agent collects the following system metrics every 15 seconds:
 - `system.cpu.utilization` - CPU utilization percentage
 
 **Memory Metrics**:
+
 - `system.memory.usage.available` - Available memory in bytes
 - `system.memory.usage.used` - Used memory in bytes
 - `system.memory.utilization` - Memory utilization percentage
 
 **Disk Metrics** (not available on macOS):
+
 - `system.disk.io.{disk}.read` - Bytes read from disk
 - `system.disk.io.{disk}.write` - Bytes written to disk
 - `system.disk.operations.{disk}.read` - Read operations count
@@ -82,6 +85,7 @@ The agent collects the following system metrics every 15 seconds:
 - `system.disk.usage.utilization` - Disk utilization percentage
 
 **Network Metrics**:
+
 - `system.network.io.transmit` - Total bytes transmitted
 - `system.network.io.receive` - Total bytes received
 - `system.network.io.transmit_bps` - Transmit rate in bytes/second
@@ -90,6 +94,7 @@ The agent collects the following system metrics every 15 seconds:
 - `system.network.io.max_receive_bps` - Peak receive rate
 
 **Socket Metrics**:
+
 - `system.network.socket.count.established` - Active connections
 - `system.network.socket.count.time_wait` - Connections in TIME_WAIT state (useful for diagnosing port exhaustion)
 - `system.network.socket.count.close_wait` - Connections waiting for local close
@@ -103,6 +108,7 @@ The agent collects the following system metrics every 15 seconds:
 - `system.network.socket.count.closed` - Fully closed connections
 
 **Process Metrics**:
+
 - On Windows: `system.process.count` - Total process count
 - On Linux/macOS: Process counts by state (running, sleeping, zombie, stopped)
 
