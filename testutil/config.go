@@ -204,6 +204,11 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		ConfigDir: "cfg_dir",
+		Cost: evergreen.CostConfig{
+			FinanceFormula:      0.5,
+			SavingsPlanDiscount: 0.3,
+			OnDemandDiscount:    0.1,
+		},
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
 				{
