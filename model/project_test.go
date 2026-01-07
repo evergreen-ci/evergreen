@@ -577,9 +577,6 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	assert := assert.New(t)
 
 	require.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
-	defer func() {
-		require.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
-	}()
 
 	h := host.Host{
 		Id: "h",
@@ -597,14 +594,21 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	}
 	require.NoError(projectRef.Insert(t.Context()))
 
-	// Create parent version
-	parentVersion := &Version{
-		Id:     "parentVersion",
-		Owner:  "parentOrg",
-		Repo:   "parentRepo",
-		Branch: "parentBranch",
+	// Create parent patch and project
+	parentRef := &ProjectRef{
+		Id:         "parentProject",
+		Identifier: "parent project",
+		Owner:      "parent_org",
+		Repo:       "parent_repo",
+		Branch:     "parent_branch",
 	}
-	require.NoError(parentVersion.Insert(t.Context()))
+	require.NoError(parentRef.Insert(t.Context()))
+
+	parentPatch := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: "parentProject",
+	}
+	require.NoError(parentPatch.Insert(t.Context()))
 
 	// Create child version with parent patch ID
 	childVersion := &Version{
@@ -612,7 +616,7 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 		Branch:        "childBranch",
 		Author:        "childAuthor",
 		Requester:     evergreen.PatchVersionRequester,
-		ParentPatchID: parentVersion.Id,
+		ParentPatchID: parentPatch.Id.Hex(),
 	}
 	require.NoError(childVersion.Insert(t.Context()))
 	childPatch := &patch.Patch{
@@ -634,10 +638,10 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	expansions, err := PopulateExpansions(t.Context(), taskDoc, &h, "")
 	require.NoError(err)
 
-	assert.Equal(parentVersion.Id, expansions.Get("parent_patch_id"))
-	assert.Equal(parentVersion.Owner, expansions.Get("parent_github_org"))
-	assert.Equal(parentVersion.Repo, expansions.Get("parent_github_repo"))
-	assert.Equal(parentVersion.Branch, expansions.Get("parent_github_branch"))
+	assert.Equal(childVersion.ParentPatchID, expansions.Get("parent_patch_id"))
+	assert.Equal(parentRef.Owner, expansions.Get("parent_github_org"))
+	assert.Equal(parentRef.Repo, expansions.Get("parent_github_repo"))
+	assert.Equal(parentRef.Branch, expansions.Get("parent_github_branch"))
 }
 
 type projectSuite struct {
