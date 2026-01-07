@@ -104,6 +104,10 @@
           "maximages": 0
         }
       ]
+    },
+    {
+      "_id": "service_flags",
+      "jwt_token_for_cli_disabled": true
     }
   ]
 }

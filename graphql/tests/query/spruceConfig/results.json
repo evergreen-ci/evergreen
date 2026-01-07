@@ -152,6 +152,18 @@
           }
         }
       }
+    },
+    {
+      "query_file": "user_service_flags.graphql",
+      "result": {
+        "data": {
+          "spruceConfig": {
+            "userServiceFlags": {
+              "jwtTokenForCLIDisabled": true
+            }
+          }
+        }
+      }
     }
   ]
 }
