@@ -38,6 +38,9 @@ func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *restModel.
 
 // UserServiceFlags is the resolver for the userServiceFlags field.
 func (r *spruceConfigResolver) UserServiceFlags(ctx context.Context, obj *restModel.APIAdminSettings) (*restModel.APIServiceFlags, error) {
+	if obj == nil {
+		return nil, InternalServerError.Send(ctx, "admin settings object undefined when attempting to resolve user service flags")
+	}
 	return obj.ServiceFlags, nil
 }
 
