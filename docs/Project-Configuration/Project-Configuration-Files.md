@@ -950,16 +950,14 @@ inter-project dependency:
   this trigger
 
 The following expansions are available if a task was created with a [patch trigger alias](Project-and-Distro-Settings#patch-trigger-aliases):
-- `#{parent_patch_id}` is the ID of the parent version for this task
-- `#{parent_github_org}` is the Github org for the parent version
-- `#{parent_github_repo}` is the Github repo for the parent version
-- `#{parent_github_branch}` is the branch tracked by the parent version
 
+- `${parent_patch_id}` is the ID of the parent version for this task
+- `${parent_github_org}` is the Github org for the parent version
+- `${parent_github_repo}` is the Github repo for the parent version
+- `${parent_github_branch}` is the branch tracked by the parent version
 
-The following expansions are available if a task has modules:
-
-`<module_name>` represents the name defined in the project yaml for a
-given module
+The following expansions are available if a task has modules, where `<module_name>` represents the name defined in the project yaml for a
+given module:
 
 - `${<module_name>_rev}` is the revision of the evergreen module
   associated with this task
