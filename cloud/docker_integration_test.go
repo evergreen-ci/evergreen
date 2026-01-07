@@ -1,18 +1,17 @@
 package cloud
 
 import (
-	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,16 +41,29 @@ func TestDockerIntegrationSuite(t *testing.T) {
 			evergreenSettings: settings,
 		},
 	}
-	assert.NoError(t, s.client.Init("1.37"))
+	require.NoError(t, s.client.Init(""))
+	dockerClient, err := s.client.generateClient(&s.host)
+
+	// kim: NOTE: ping and info both work and can retrieve info. Using API
+	// v1.40 based on ping output.
+	ping, err := dockerClient.Ping(t.Context())
+	require.NoError(t, err)
+	fmt.Printf("Docker server info: %#v\n", ping)
+	info, err := dockerClient.Info(t.Context())
+	require.NoError(t, err)
+	fmt.Printf("Docker info: %#v\n", info)
+
 	suite.Run(t, s)
 }
 
 func (s *DockerIntegrationSuite) TestImagePull() {
 	const imageName = "public.ecr.aws/docker/library/hello-world:latest"
 	var err error
-	ctx := context.Background()
+	ctx := s.T().Context()
+
 	// Retry pulling the Docker image to work around rate limits on
 	// unauthenciated pulls.
+	// kim: NOTE: this doesn't work when upgrading v24 to v28. Unsure why.
 	err = utility.Retry(ctx, func() (bool, error) {
 		err = s.client.pullImage(ctx, &s.host, imageName, "", "")
 		if err != nil {
@@ -65,9 +77,8 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	})
 	s.NoError(err)
 
-	images, err := s.client.client.ImageList(ctx, types.ImageListOptions{All: true})
+	images, err := s.client.client.ImageList(ctx, image.ListOptions{All: true})
 	s.NoError(err)
 	s.Require().Len(images, 1)
-	grip.Info(images)
 	s.Contains(images[0].RepoTags, imageName)
 }
