@@ -2224,7 +2224,7 @@ type ComplexityRoot struct {
 	}
 
 	UserServiceFlags struct {
-		JwtTokenForCLIDisabled func(childComplexity int) int
+		JWTTokenForCLIDisabled func(childComplexity int) int
 	}
 
 	UserSettings struct {
@@ -2628,7 +2628,7 @@ type SleepScheduleResolver interface {
 type SpruceConfigResolver interface {
 	SecretFields(ctx context.Context, obj *model.APIAdminSettings) ([]string, error)
 
-	UserServiceFlags(ctx context.Context, obj *model.APIAdminSettings) (*UserServiceFlags, error)
+	UserServiceFlags(ctx context.Context, obj *model.APIAdminSettings) (*model.APIServiceFlags, error)
 }
 type SubscriberWrapperResolver interface {
 	Subscriber(ctx context.Context, obj *model.APISubscriber) (*Subscriber, error)
@@ -12004,11 +12004,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		return e.complexity.UserConfig.User(childComplexity), true
 
 	case "UserServiceFlags.jwtTokenForCLIDisabled":
-		if e.complexity.UserServiceFlags.JwtTokenForCLIDisabled == nil {
+		if e.complexity.UserServiceFlags.JWTTokenForCLIDisabled == nil {
 			break
 		}
 
-		return e.complexity.UserServiceFlags.JwtTokenForCLIDisabled(childComplexity), true
+		return e.complexity.UserServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
 
 	case "UserSettings.dateFormat":
 		if e.complexity.UserSettings.DateFormat == nil {
@@ -59592,7 +59592,7 @@ func (ec *executionContext) _SpruceConfig_userServiceFlags(ctx context.Context, 
 			return ec.resolvers.SpruceConfig().UserServiceFlags(ctx, obj)
 		},
 		nil,
-		ec.marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserServiceFlags,
+		ec.marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags,
 		true,
 		true,
 	)
@@ -69513,17 +69513,17 @@ func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *UserServiceFlags) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled,
 		func(ctx context.Context) (any, error) {
-			return obj.JwtTokenForCLIDisabled, nil
+			return obj.JWTTokenForCLIDisabled, nil
 		},
 		nil,
-		ec.marshalOBoolean2ᚖbool,
+		ec.marshalOBoolean2bool,
 		true,
 		false,
 	)
@@ -104290,7 +104290,7 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 
 var userServiceFlagsImplementors = []string{"UserServiceFlags"}
 
-func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.SelectionSet, obj *UserServiceFlags) graphql.Marshaler {
+func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.SelectionSet, obj *model.APIServiceFlags) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userServiceFlagsImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -112191,11 +112191,11 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserServiceFlags2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserServiceFlags(ctx context.Context, sel ast.SelectionSet, v UserServiceFlags) graphql.Marshaler {
+func (ec *executionContext) marshalNUserServiceFlags2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v model.APIServiceFlags) graphql.Marshaler {
 	return ec._UserServiceFlags(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserServiceFlags(ctx context.Context, sel ast.SelectionSet, v *UserServiceFlags) graphql.Marshaler {
+func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
