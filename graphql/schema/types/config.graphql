@@ -180,6 +180,7 @@ type SpruceConfig {
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig!
+  userServiceFlags: UserServiceFlags!
 }
 
 """

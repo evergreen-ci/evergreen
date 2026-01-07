@@ -36,6 +36,13 @@ func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *restModel.
 	return redactedFieldsAsSlice, nil
 }
 
+// UserServiceFlags is the resolver for the userServiceFlags field.
+func (r *spruceConfigResolver) UserServiceFlags(ctx context.Context, obj *restModel.APIAdminSettings) (*UserServiceFlags, error) {
+	return &UserServiceFlags{
+		JwtTokenForCLIDisabled: &obj.ServiceFlags.JWTTokenForCLIDisabled,
+	}, nil
+}
+
 // BannerTheme is the resolver for the bannerTheme field.
 func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *restModel.APIAdminSettings, data *evergreen.BannerTheme) error {
 	if data == nil {

@@ -704,6 +704,10 @@ type UserConfig struct {
 	OauthConnectorID string `json:"oauth_connector_id"`
 }
 
+type UserServiceFlags struct {
+	JwtTokenForCLIDisabled *bool `json:"jwtTokenForCLIDisabled,omitempty"`
+}
+
 type VariantTasks struct {
 	DisplayTasks []*DisplayTask `json:"displayTasks"`
 	Tasks        []string       `json:"tasks"`
