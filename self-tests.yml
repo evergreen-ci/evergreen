@@ -452,8 +452,6 @@ tasks:
         variant: build-and-push
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
-    name: js-test
-  - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-thirdparty-docker
   - <<: *run-go-test-suite-with-mongodb
@@ -864,7 +862,6 @@ buildvariants:
       - name: ".test"
       - name: ".linter"
       - name: test-cloud
-      - name: "js-test"
       - name: generate-api-docs
       - name: write-downstream-expansions-for-pine
       - name: generate-graphql-merged-schema
