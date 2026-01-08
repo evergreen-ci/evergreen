@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/evergreen-ci/utility"
@@ -16,27 +17,82 @@ import (
 	"github.com/pkg/errors"
 )
 
+// resolveUnderRoot resolves symlinks for the given relative path under rootPath
+// and ensures that the final resolved path stays within rootPath.
+func resolveUnderRoot(rootPath, relPath string) (string, error) {
+	if filepath.IsAbs(relPath) {
+		return "", errors.New("filepath is absolute")
+	}
+	fullPath := filepath.Join(rootPath, relPath)
+
+	// Walk up until we find an existing ancestor to evaluate symlinks on.
+	cur := fullPath
+	var suffix []string
+	for {
+		if _, err := os.Lstat(cur); err == nil {
+			break
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			// Reached filesystem root without finding an existing component.
+			// Fall back to using rootPath directly.
+			cur = rootPath
+			break
+		}
+		suffix = append([]string{filepath.Base(cur)}, suffix...)
+		cur = parent
+	}
+
+	resolvedBase, err := filepath.EvalSymlinks(cur)
+	if err != nil {
+		return "", errors.Wrap(err, "evaluating symlinks")
+	}
+	finalPath := resolvedBase
+	if len(suffix) > 0 {
+		parts := append([]string{resolvedBase}, suffix...)
+		finalPath = filepath.Join(parts...)
+	}
+
+	rel, err := filepath.Rel(rootPath, finalPath)
+	if err != nil {
+		return "", errors.Wrap(err, "getting relative path")
+	}
+	if strings.HasPrefix(filepath.Clean(rel), "..") {
+		return "", errors.New("resolved path escapes root path")
+	}
+	return finalPath, nil
+}
+
 // validateRelativePath checks if the filePath is relative to the rootpath.
 func validateRelativePath(filePath, rootPath string) error {
-	if filepath.IsAbs(filePath) {
-		return errors.New("filepath is absolute")
+	// On Windows, keep the existing behavior since the data directory
+	// itself may be a symlink to another drive.
+	if runtime.GOOS == "windows" {
+		if filepath.IsAbs(filePath) {
+			return errors.New("filepath is absolute")
+		}
+		realPath := filepath.Join(rootPath, filePath)
+		// Generally, paths are resolved before they are passed
+		// to filepath.Rel to prevent tarballs from containing
+		// symlinks to files outside the data directory.
+		// However, on our Windows hosts, the data directory
+		// is symlinked to another drive so we can't resolve
+		// the symlinks or it will falsely report that the
+		// path is outside the data directory.
+		relpath, err := filepath.Rel(rootPath, realPath)
+		if err != nil {
+			return errors.Wrap(err, "getting relative path")
+		}
+		if strings.Contains(relpath, "..") {
+			return errors.New("relative path starts with '..'")
+		}
+		return nil
 	}
-	realPath := filepath.Join(rootPath, filePath)
-	// Generally, paths are resolved before they are passed
-	// to filepath.Rel to prevent tarballs from containing
-	// symlinks to files outside the data directory.
-	// However, on our Windows hosts, the data directory
-	// is symlinked to another drive so we can't resolve
-	// the symlinks or it will falsely report that the
-	// path is outside the data directory.
-	relpath, err := filepath.Rel(rootPath, realPath)
-	if err != nil {
-		return errors.Wrap(err, "getting relative path")
-	}
-	if strings.Contains(relpath, "..") {
-		return errors.New("relative path starts with '..'")
-	}
-	return nil
+
+	// On non-Windows platforms, resolve existing symlinks under rootPath
+	// before checking that the path does not escape rootPath.
+	_, err := resolveUnderRoot(rootPath, filePath)
+	return err
 }
 
 // buildArchive reads the rootPath directory into the tar.Writer,
