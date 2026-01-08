@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,8 +18,20 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+)
+
+const (
+	taskCollection       = "tasks"
+	oldTaskCollection    = "old_tasks"
+	taskVersionKey       = "version"
+	taskDisplayOnlyKey   = "display_only"
+	taskCostKey          = "cost"
+	taskPredictedCostKey = "predicted_cost"
+	taskOnDemandCostKey  = "on_demand_ec2_cost"
+	taskAdjustedCostKey  = "adjusted_ec2_cost"
 )
 
 type Version struct {
@@ -105,6 +118,11 @@ type Version struct {
 	// PreGenerationProjectStorageMethod describes how the cached parser project from before it was modified
 	// by generate.tasks for this version is stored. If this is empty, the default storage method is StorageMethodDB.
 	PreGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"pre_generation_storage_method" json:"pre_generation_storage_method,omitempty"`
+
+	// Cost stores the aggregated actual cost (on-demand and adjusted components) of all execution tasks in the version.
+	Cost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
+	// PredictedCost stores the aggregated predicted cost derived from tasks' predicted_cost.
+	PredictedCost cost.Cost `bson:"predicted_cost,omitempty" json:"predicted_cost,omitempty"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
@@ -217,6 +235,11 @@ func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified 
 	v.Status = newStatus
 	if evergreen.IsFinishedVersionStatus(newStatus) {
 		v.FinishTime = time.Now()
+		if modified {
+			if aggErr := v.UpdateAggregateTaskCosts(ctx); aggErr != nil {
+				grip.Error(errors.Wrapf(aggErr, "aggregating task costs for finished version '%s'", v.Id))
+			}
+		}
 	}
 
 	return modified, nil
@@ -313,6 +336,73 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 	v.BuildVariants = bvs
 
 	return v.BuildVariants, nil
+}
+
+// UpdateAggregateTaskCosts aggregates the actual and predicted costs from all execution tasks
+// in the version and updates the version's Cost and PredictedCost fields in the database.
+func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
+	env := evergreen.GetEnvironment()
+	tasksColl := env.DB().Collection(taskCollection)
+
+	match := bson.M{
+		taskVersionKey: v.Id,
+		taskDisplayOnlyKey: bson.M{
+			"$ne": true,
+		},
+	}
+
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$unionWith": bson.M{
+			"coll": oldTaskCollection,
+			"pipeline": []bson.M{
+				{"$match": match},
+			},
+		}},
+		{"$group": bson.M{
+			"_id":                nil,
+			"total_on_demand":    bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
+			"total_adjusted":     bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
+			"expected_on_demand": bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
+			"expected_adjusted":  bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
+		}},
+	}
+
+	cursor, err := tasksColl.Aggregate(ctx, pipeline)
+	if err != nil {
+		return errors.Wrap(err, "aggregating task costs for version")
+	}
+
+	var results []struct {
+		TotalOnDemand     float64 `bson:"total_on_demand"`
+		TotalAdjusted     float64 `bson:"total_adjusted"`
+		PredictedOnDemand float64 `bson:"expected_on_demand"`
+		PredictedAdjusted float64 `bson:"expected_adjusted"`
+	}
+	if err = cursor.All(ctx, &results); err != nil {
+		return errors.Wrap(err, "reading aggregated task cost results")
+	}
+
+	var total, predicted cost.Cost
+	if len(results) > 0 {
+		total.OnDemandEC2Cost = results[0].TotalOnDemand
+		total.AdjustedEC2Cost = results[0].TotalAdjusted
+		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
+		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
+	}
+
+	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{
+			VersionCostKey:          total,
+			VersionPredictedCostKey: predicted,
+		},
+	}); err != nil {
+		return errors.Wrap(err, "updating version aggregated task costs")
+	}
+
+	v.Cost = total
+	v.PredictedCost = predicted
+	return nil
 }
 
 // VersionBuildStatus stores metadata relating to each build
