@@ -229,6 +229,10 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		if err = as.Cedar.BuildFromService(v.Cedar); err != nil {
 			return errors.Wrap(err, "converting cedar config to API model")
 		}
+		as.ServiceFlags = &APIServiceFlags{}
+		if err = as.ServiceFlags.BuildFromService(v.ServiceFlags); err != nil {
+			return errors.Wrap(err, "converting service flags to API model")
+		}
 		as.ReleaseMode = &releaseModeConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
@@ -274,6 +278,13 @@ func (as *APIAdminSettings) ToService() (any, error) {
 	}
 	if as.PerfMonitoringKanopyURL != nil {
 		settings.PerfMonitoringKanopyURL = *as.PerfMonitoringKanopyURL
+	}
+	if as.ServiceFlags != nil {
+		sf, err := as.ServiceFlags.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting service flags to service model")
+		}
+		settings.ServiceFlags = sf.(evergreen.ServiceFlags)
 	}
 
 	apiModelReflect := reflect.ValueOf(*as)

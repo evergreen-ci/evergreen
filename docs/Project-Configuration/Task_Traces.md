@@ -53,6 +53,65 @@ Evergreen collects system-level metrics as a test runs and reports them to Honey
 
 You can leverage this data to get information about the host where a test was running. It can be useful to determine information like memory use, CPU use, I/O wait, etc, while the test was running.
 
+### Available Metrics
+
+The agent collects the following system metrics every 15 seconds:
+
+**CPU Metrics** (not available on macOS):
+
+- `system.cpu.time.idle` - Idle CPU time
+- `system.cpu.time.system` - System CPU time
+- `system.cpu.time.user` - User CPU time
+- `system.cpu.time.steal` - Steal CPU time
+- `system.cpu.time.iowait` - I/O wait time
+- `system.cpu.utilization` - CPU utilization percentage
+
+**Memory Metrics**:
+
+- `system.memory.usage.available` - Available memory in bytes
+- `system.memory.usage.used` - Used memory in bytes
+- `system.memory.utilization` - Memory utilization percentage
+
+**Disk Metrics** (not available on macOS):
+
+- `system.disk.io.{disk}.read` - Bytes read from disk
+- `system.disk.io.{disk}.write` - Bytes written to disk
+- `system.disk.operations.{disk}.read` - Read operations count
+- `system.disk.operations.{disk}.write` - Write operations count
+- `system.disk.io_time.{disk}` - Time disk spent activated
+- `system.disk.weighted_io.{disk}` - Weighted time spent doing I/Os (Linux only)
+- `system.disk.usage.available` - Available disk space in bytes
+- `system.disk.usage.used` - Used disk space in bytes
+- `system.disk.usage.utilization` - Disk utilization percentage
+
+**Network Metrics**:
+
+- `system.network.io.transmit` - Total bytes transmitted
+- `system.network.io.receive` - Total bytes received
+- `system.network.io.transmit_bps` - Transmit rate in bytes/second
+- `system.network.io.receive_bps` - Receive rate in bytes/second
+- `system.network.io.max_transmit_bps` - Peak transmit rate
+- `system.network.io.max_receive_bps` - Peak receive rate
+
+**Socket Metrics**:
+
+- `system.network.socket.count.established` - Active connections
+- `system.network.socket.count.time_wait` - Connections in TIME_WAIT state (useful for diagnosing port exhaustion)
+- `system.network.socket.count.close_wait` - Connections waiting for local close
+- `system.network.socket.count.listen` - Listening sockets
+- `system.network.socket.count.syn_sent` - Connection initiated
+- `system.network.socket.count.syn_recv` - Connection request received
+- `system.network.socket.count.fin_wait1` - Local close initiated
+- `system.network.socket.count.fin_wait2` - Waiting for remote close
+- `system.network.socket.count.last_ack` - Waiting for final acknowledgment
+- `system.network.socket.count.closing` - Both sides closing simultaneously
+- `system.network.socket.count.closed` - Fully closed connections
+
+**Process Metrics**:
+
+- On Windows: `system.process.count` - Total process count
+- On Linux/macOS: Process counts by state (running, sleeping, zombie, stopped)
+
 ### Example
 
 Here's an example showing a heatmap of the CPU use on the evergreen agents for several of our drivers:

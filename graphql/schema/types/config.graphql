@@ -176,6 +176,7 @@ type SpruceConfig {
   jira: JiraConfig
   providers: CloudProviderConfig
   secretFields: [String!]!
+  serviceFlags: UserServiceFlags!
   singleTaskDistro: SingleTaskDistroConfig
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
