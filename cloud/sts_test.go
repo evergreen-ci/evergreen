@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,7 @@ import (
 
 func TestAssumeRole(t *testing.T) {
 	taskID := "task_id"
+	hostID := "host_id"
 	projectID := "project_id"
 	repoRefID := "repo_ref_id"
 	requester := "requester"
@@ -25,14 +27,31 @@ func TestAssumeRole(t *testing.T) {
 	policy := "policy"
 	externalID := fmt.Sprintf("%s-%s", projectID, requester)
 	externalIDUntracked := fmt.Sprintf("untracked-%s-%s", repoRefID, requester)
+	externalIDDebug := fmt.Sprintf("debug-%s-%s", projectID, requester)
+	externalIDDebugUntracked := fmt.Sprintf("debug-untracked-%s-%s", repoRefID, requester)
 
 	testCases := map[string]func(t *testing.T, manager STSManager, awsClientMock *awsClientMock){
 		"InvalidTask": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
-			_, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
+			h := host.Host{Id: hostID, IsDebug: false}
+			require.NoError(t, h.Insert(t.Context()))
+			_, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
 				RoleARN: roleARN,
 				Policy:  &policy,
 			})
 			require.ErrorContains(t, err, fmt.Sprintf("task '%s' not found", taskID))
+		},
+		"InvalidHost": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
+			require.NoError(t, task.Insert(t.Context()))
+			project := model.ProjectRef{Id: projectID, RepoRefId: repoRefID}
+			require.NoError(t, project.Insert(t.Context()))
+			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
+			require.NoError(t, repoRef.Replace(t.Context()))
+			_, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
+				RoleARN: roleARN,
+				Policy:  &policy,
+			})
+			require.ErrorContains(t, err, fmt.Sprintf("host '%s' not found", hostID))
 		},
 		"Success": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
@@ -43,8 +62,10 @@ func TestAssumeRole(t *testing.T) {
 			// the project ref is a tracked branch.
 			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
 			require.NoError(t, repoRef.Replace(t.Context()))
+			h := host.Host{Id: hostID, IsDebug: false}
+			require.NoError(t, h.Insert(t.Context()))
 
-			creds, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
+			creds, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
 				RoleARN:         roleARN,
 				Policy:          &policy,
 				DurationSeconds: aws.Int32(int32(time.Hour.Seconds())),
@@ -76,8 +97,10 @@ func TestAssumeRole(t *testing.T) {
 			// the project ref is a tracked branch.
 			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
 			require.NoError(t, repoRef.Replace(t.Context()))
+			h := host.Host{Id: hostID, IsDebug: false}
+			require.NoError(t, h.Insert(t.Context()))
 
-			creds, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
+			creds, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
 				RoleARN:         roleARN,
 				Policy:          &policy,
 				DurationSeconds: aws.Int32(int32(time.Hour.Seconds())),
@@ -94,10 +117,70 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalIDUntracked, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
 		},
+		"Success/DebugHost": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
+			require.NoError(t, task.Insert(t.Context()))
+			project := model.ProjectRef{Id: projectID, RepoRefId: repoRefID}
+			require.NoError(t, project.Insert(t.Context()))
+			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
+			require.NoError(t, repoRef.Replace(t.Context()))
+			h := host.Host{Id: hostID, IsDebug: true}
+			require.NoError(t, h.Insert(t.Context()))
+
+			creds, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
+				RoleARN:         roleARN,
+				Policy:          &policy,
+				DurationSeconds: aws.Int32(int32(time.Hour.Seconds())),
+			})
+			require.NoError(t, err)
+			// Return credentials
+			assert.Equal(t, "access_key", creds.AccessKeyID)
+			assert.Equal(t, "secret_key", creds.SecretAccessKey)
+			assert.Equal(t, "session_token", creds.SessionToken)
+			assert.WithinDuration(t, time.Now().Add(time.Hour), creds.Expiration, time.Second/4)
+
+			// Mock implementation received the correct input from the manager, with debug prefix.
+			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
+			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
+			assert.Equal(t, externalIDDebug, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
+		},
+		"Success/DebugHost/UntrackedBranch": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
+			require.NoError(t, task.Insert(t.Context()))
+			project := model.ProjectRef{
+				Id:        projectID,
+				RepoRefId: repoRefID,
+				Enabled:   false,
+				Hidden:    utility.TruePtr(),
+			}
+			require.True(t, project.IsUntracked())
+			require.NoError(t, project.Insert(t.Context()))
+			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
+			require.NoError(t, repoRef.Replace(t.Context()))
+			h := host.Host{Id: hostID, IsDebug: true}
+			require.NoError(t, h.Insert(t.Context()))
+
+			creds, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
+				RoleARN:         roleARN,
+				Policy:          &policy,
+				DurationSeconds: aws.Int32(int32(time.Hour.Seconds())),
+			})
+			require.NoError(t, err)
+			// Return credentials
+			assert.Equal(t, "access_key", creds.AccessKeyID)
+			assert.Equal(t, "secret_key", creds.SecretAccessKey)
+			assert.Equal(t, "session_token", creds.SessionToken)
+			assert.WithinDuration(t, time.Now().Add(time.Hour), creds.Expiration, time.Second/4)
+
+			// Mock implementation received the correct input from the manager, with debug prefix.
+			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
+			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
+			assert.Equal(t, externalIDDebugUntracked, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
+		},
 	}
 	for tName, tCase := range testCases {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.RepoRefCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.RepoRefCollection, host.Collection))
 
 			manager := GetSTSManager(true)
 			stsManagerImpl, ok := manager.(*stsManagerImpl)

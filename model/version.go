@@ -900,7 +900,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			}
 		}
 
-		mfstModule, err := getManifestModule(ctx, v, projectRef, module)
+		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, v.Revision)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
@@ -911,7 +911,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	return newManifest, nil
 }
 
-func getManifestModule(ctx context.Context, v *Version, projectRef *ProjectRef, module Module) (*manifest.Module, error) {
+func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester, revision string) (*manifest.Module, error) {
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
@@ -926,10 +926,10 @@ func getManifestModule(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
 		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
 		// Otherwise, retrieve the module's commit from the time of the patch creation.
-		if !evergreen.IsPatchRequester(v.Requester) && v.Requester != evergreen.AdHocRequester {
-			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, v.Revision)
+		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester {
+			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, revision)
 			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", revision, projectRef.Owner, projectRef.Repo)
 			}
 			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
 				return nil, errors.New("malformed GitHub commit response")

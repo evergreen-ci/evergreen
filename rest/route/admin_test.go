@@ -383,8 +383,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 	// get the changes with the /admin/events route
 	ctx = context.Background()
 	route := makeFetchAdminEvents()
-	after := now.Add(time.Hour)
-	request, err = http.NewRequest(http.MethodGet, "/admin/events?limit=10&ts="+after.Format(time.RFC3339), nil)
+	request, err = http.NewRequest(http.MethodGet, "/admin/events?limit=10&ts=3026-01-02T15%3A04%3A05Z", nil)
 	s.NoError(err)
 	s.NoError(route.Parse(ctx, request))
 	response := route.Run(ctx)
