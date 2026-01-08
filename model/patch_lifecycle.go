@@ -911,7 +911,58 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 			patch: p,
 		},
 	}
+
+	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":  "failed to pre-fetch auto-update module revisions",
+			"patch_id": p.Id.Hex(),
+			"project":  p.Project,
+		}))
+	} else if len(autoUpdateRevisions) > 0 {
+		opts.AutoUpdateModuleRevisions = autoUpdateRevisions
+	}
+
 	return projectRef, &opts, nil
+}
+
+// prefetchAutoUpdateModuleRevisions fetches the latest revisions for modules with auto_update set
+func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, projectRef *ProjectRef, opts *GetProjectOpts) (map[string]string, error) {
+	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting patched project file as YAML")
+	}
+	type modules struct {
+		Modules []Module `yaml:"modules"`
+	}
+	var projectModulesOnly modules
+	if err := yaml.Unmarshal(projectFileBytes, &projectModulesOnly); err != nil {
+		return nil, errors.Wrap(err, "parsing modules from project YAML")
+	}
+
+	if len(projectModulesOnly.Modules) == 0 {
+		return nil, nil
+	}
+
+	autoUpdateRevisions := make(map[string]string)
+	for _, module := range projectModulesOnly.Modules {
+		if module.AutoUpdate {
+			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.Githash)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":     "failed to get revision for module",
+					"module_name": module.Name,
+					"patch_id":    p.Id.Hex(),
+				}))
+				continue
+			}
+			if mfstModule != nil {
+				autoUpdateRevisions[module.Name] = mfstModule.Revision
+			}
+		}
+	}
+
+	return autoUpdateRevisions, nil
 }
 
 func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string) error {

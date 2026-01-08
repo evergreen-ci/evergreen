@@ -119,7 +119,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 			if !container.SpawnOptions.SpawnedByTask && !isRunningInDocker[container.Id] {
 				if err := containerMgr.TerminateInstance(ctx, &container, evergreen.User, "container is not actually running"); err != nil {
 					j.AddError(errors.Wrap(err, "terminating Docker instance"))
-					j.AddError(container.SetTerminated(ctx, evergreen.User, "container is not actually running"))
+					j.AddError(container.Terminate(ctx, evergreen.User, "container is not actually running"))
 				}
 			}
 		}
