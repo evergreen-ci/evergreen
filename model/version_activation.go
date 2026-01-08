@@ -41,6 +41,8 @@ func activateMostRecentNonIgnoredCommitForProject(ctx context.Context, projectRe
 	return activated, nil
 }
 
+// activateEveryRecentMainlineCommitForProject activates all unactivated non-ignored versions
+// up to the limit specified in projectRef.RunEveryMainlineCommitLimit or up to the last activated version.
 func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef *ProjectRef, ts time.Time) (bool, error) {
 	lastActivatedVersion, err := VersionFindOne(ctx, VersionByMostRecentActivated(projectRef.Id, ts))
 	if err != nil {
