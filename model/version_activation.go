@@ -75,7 +75,6 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 	}
 	// Activate all eligible versions
 	anyActivated := false
-	activatedCount := 0
 	for _, version := range activateVersions {
 		activated, err := ActivateElapsedBuildsAndTasks(ctx, &version)
 		if err != nil {
@@ -91,23 +90,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 		}
 		if activated {
 			anyActivated = true
-			activatedCount++
 		}
-	}
-
-	if anyActivated {
-		lastActivatedInfo := "none"
-		if lastActivatedVersion != nil {
-			lastActivatedInfo = lastActivatedVersion.Id
-		}
-		grip.Info(message.Fields{
-			"message":                "project activation completed",
-			"project":                projectRef.Id,
-			"versions_checked":       len(activateVersions),
-			"versions_activated":     activatedCount,
-			"last_activated_version": lastActivatedInfo,
-			"operation":              "project-activation-every-commit",
-		})
 	}
 
 	return anyActivated, nil
