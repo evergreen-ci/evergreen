@@ -51,14 +51,14 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 
 	var activateVersions []Version
 	if lastActivatedVersion == nil {
-		// No previously activated versions - this might be a new project or first activation
-		// Activate ALL unactivated non-ignored versions to ensure complete coverage
+		// If there is no previous activated versions, this may be a new project or a project's first activation.
+		// In that case, activate previous unactivated non-ignored versions rather than since last activated.
 		activateVersions, err = VersionFind(ctx, VersionsAllUnactivatedNonIgnored(projectRef.Id, ts, projectRef.RunEveryMainlineCommitLimit))
 		if err != nil {
 			return false, errors.Wrapf(err, "finding all unactivated non-ignored versions")
 		}
 	} else {
-		// Find all unactivated versions since the last activated one
+		// If there is a last activated version, activate only versions since that one.
 		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber, projectRef.RunEveryMainlineCommitLimit))
 		if err != nil {
 			return false, errors.Wrapf(err, "finding unactivated versions since last activated version '%s'", lastActivatedVersion.Id)
