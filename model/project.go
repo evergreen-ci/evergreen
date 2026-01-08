@@ -1143,6 +1143,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 			expansions.Put("github_head_branch", p.GithubMergeData.HeadBranch)
 		}
 		if v.IsChild() {
+			expansions.Put("parent_patch_id", v.ParentPatchID)
 			parentPatch, err := patch.FindOneId(ctx, v.ParentPatchID)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding parent version '%s'", v.ParentPatchID)
@@ -1156,7 +1157,6 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 			}
 
 			if parentRef != nil {
-				expansions.Put("parent_patch_id", v.ParentPatchID)
 				expansions.Put("parent_github_org", parentRef.Owner)
 				expansions.Put("parent_github_repo", parentRef.Repo)
 				expansions.Put("parent_github_branch", parentRef.Branch)
