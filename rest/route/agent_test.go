@@ -845,10 +845,21 @@ func TestAWSAssumeRole(t *testing.T) {
 	repoRefID := "repo_ref_id"
 	roleARN := "unique_role_arn"
 	policy := "policy-num"
+	hostID := "hostID"
 	var duration int32 = 1600
 	json := `{"role_arn": "%s", "policy": "%s", "duration_seconds": %d}`
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ar *awsAssumeRole){
+		"ParseErrorsOnMissingHostHeader": func(ctx context.Context, t *testing.T, handler *awsAssumeRole) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(fmt.Sprintf(json, roleARN, policy, duration))))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing host ID")
+		},
 		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *awsAssumeRole) {
 			url := fmt.Sprintf(route, taskID)
 			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(nil))
@@ -856,6 +867,7 @@ func TestAWSAssumeRole(t *testing.T) {
 
 			options := map[string]string{"task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
+			request.Header.Set(evergreen.HostHeader, hostID)
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "reading assume role body for task 'taskID'")
 		},
@@ -866,6 +878,7 @@ func TestAWSAssumeRole(t *testing.T) {
 
 			options := map[string]string{"task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
+			request.Header.Set(evergreen.HostHeader, hostID)
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "validating assume role body for task 'taskID'")
 		},
@@ -876,6 +889,7 @@ func TestAWSAssumeRole(t *testing.T) {
 
 			options := map[string]string{"task_id": taskID}
 			request = gimlet.SetURLVars(request, options)
+			request.Header.Set(evergreen.HostHeader, hostID)
 
 			require.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, taskID, handler.taskID)
@@ -911,10 +925,17 @@ func TestAWSAssumeRole(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.RepoRefAdminsKey))
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.RepoRefAdminsKey, host.Collection))
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(t.Context()))
+
+			h := host.Host{
+				Id:          hostID,
+				Status:      evergreen.HostRunning,
+				RunningTask: taskID,
+			}
+			require.NoError(t, h.Insert(t.Context()))
 
 			manager := cloud.GetSTSManager(true)
 
