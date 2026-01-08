@@ -4375,6 +4375,7 @@ func (t *Task) HasCostPrediction() bool {
 	return !t.PredictedTaskCost.IsZero()
 }
 
+// GetDisplayCost returns the task's cost for display purposes.
 func (t *Task) GetDisplayCost() cost.Cost {
 	if !t.TaskCost.IsZero() {
 		return t.TaskCost
@@ -4385,6 +4386,7 @@ func (t *Task) GetDisplayCost() cost.Cost {
 	return cost.Cost{}
 }
 
+// SetPredictedCost sets the task's predicted cost.
 func (t *Task) SetPredictedCost(c cost.Cost) {
 	t.PredictedTaskCost = c
 }

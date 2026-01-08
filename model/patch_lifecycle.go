@@ -818,10 +818,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	go func(versionID string) {
 		bgCtx := context.Background()
 		const maxRetries = 5
+		const baseBackoffMilliseconds = 100
 
 		for attempt := 0; attempt < maxRetries; attempt++ {
 			if attempt > 0 {
-				backoff := time.Duration(100<<uint(attempt-1)) * time.Millisecond
+				backoffMilliseconds := baseBackoffMilliseconds << uint(attempt-1)
+				backoff := time.Duration(backoffMilliseconds) * time.Millisecond
 				time.Sleep(backoff)
 			}
 

@@ -20,6 +20,7 @@ var TaskHistoricalDataIndex = bson.D{
 	{Key: StartTimeKey, Value: 1},
 }
 
+// TaskVersionCostIndex is used to efficiently aggregate task costs by version.
 var TaskVersionCostIndex = bson.D{
 	{Key: VersionKey, Value: 1},
 	{Key: DisplayOnlyKey, Value: 1},

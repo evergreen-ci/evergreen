@@ -338,6 +338,8 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 	return v.BuildVariants, nil
 }
 
+// UpdateAggregateTaskCosts aggregates the actual and predicted costs from all execution tasks
+// in the version and updates the version's Cost and PredictedCost fields in the database.
 func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	env := evergreen.GetEnvironment()
 	tasksColl := env.DB().Collection(taskCollection)
@@ -366,7 +368,6 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		}},
 	}
 
-	// todo: check if an index is needed
 	cursor, err := tasksColl.Aggregate(ctx, pipeline)
 	if err != nil {
 		return errors.Wrap(err, "aggregating task costs for version")
