@@ -872,6 +872,32 @@
           }
         }
       }
+    },
+    {
+      "query_file": "variants_omit_inactive.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": []
+            },
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version4",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version3",
+                "waterfallBuilds": null
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

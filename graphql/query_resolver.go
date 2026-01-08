@@ -1056,6 +1056,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		Limit:                limit,
 		MaxOrder:             maxOrderOpt,
 		MinOrder:             minOrderOpt,
+		OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
 		Requesters:           requesters,
 		Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
 		Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
