@@ -49,6 +49,8 @@ type dockerClientImpl struct {
 	// httpDockerClient for making HTTP requests within the Docker dockerClient wrapper.
 	httpClient        *http.Client
 	client            *docker.Client
+	importHTTPClient  *http.Client
+	importClient      *docker.Client
 	evergreenSettings *evergreen.Settings
 }
 
@@ -72,83 +74,101 @@ func GetDockerClient(s *evergreen.Settings) DockerClient {
 // machine. The Docker client must be exposed and available for requests at the
 // client port 3369 on the host machine.
 func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) {
-	if h == nil {
-		return nil, errors.New("host cannot be nil")
-	}
-	if h.Host == "" {
-		return nil, errors.New("HostIP must not be blank")
-	}
-
-	// cache the *docker.Client in dockerClientImpl
 	if c.client != nil {
 		return c.client, nil
 	}
 
+	client, err := c.createClient(h, c.httpClient, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating Docker client")
+	}
+	c.client = client
+
+	return c.client, nil
+}
+
+// generateImportClient generates a Docker client with a higher request timeout
+// for importing images.
+func (c *dockerClientImpl) generateImportClient(h *host.Host) (*docker.Client, error) {
+	if c.importClient != nil {
+		return c.importClient, nil
+	}
+
+	client, err := c.createClient(h, c.importHTTPClient, imageImportTimeout)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating Docker client for imports")
+	}
+	c.importClient = client
+
+	return c.importClient, nil
+}
+
+func (c *dockerClientImpl) createClient(h *host.Host, httpClient *http.Client, timeout time.Duration) (*docker.Client, error) {
+	if h == nil {
+		return nil, errors.New("host cannot be nil")
+	}
+	if h.Host == "" {
+		return nil, errors.New("host DNS name must not be blank")
+	}
+
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
-	var err error
-	// kim: NOTE: Claude says to try https here instead of tcp but it still has
-	// the same error when pulling the image.
 	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, h.ContainerPoolSettings.Port)
 	opts := []docker.Opt{
 		docker.WithHost(endpoint),
 	}
-	if c.httpClient != nil {
-		opts = append(opts, docker.WithHTTPClient(c.httpClient))
+	if httpClient != nil {
+		opts = append(opts, docker.WithHTTPClient(httpClient))
 	}
 	if c.apiVersion != "" {
 		opts = append(opts, docker.WithVersion(c.apiVersion))
 	} else {
 		opts = append(opts, docker.WithAPIVersionNegotiation())
 	}
-	c.client, err = docker.NewClientWithOpts(opts...)
-	// kim: TODO: removing since it's being deprecated
-	// c.client, err = docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
+	if timeout > 0 {
+		opts = append(opts, docker.WithTimeout(timeout))
+	}
+	client, err := docker.NewClientWithOpts(opts...)
 	if err != nil {
-		grip.Error(message.Fields{
-			"message":     "Docker initialize client API call failed",
-			"host_id":     h.Id,
-			"error":       err,
-			"endpoint":    endpoint,
-			"api_version": c.apiVersion,
-		})
-		return nil, errors.Wrapf(err, "Docker initialize client API call failed at endpoint '%s'", endpoint)
+		return nil, errors.Wrapf(err, "initializing Docker client for endpoint '%s'", endpoint)
 	}
 
-	return c.client, nil
-}
-
-// changeTimeout changes the timeout of dockerClient's internal httpClient and
-// returns a new docker.Client with the updated timeout
-func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
-	var err error
-	c.httpClient.Timeout = newTimeout
-	c.client = nil // don't want to use cached client
-	c.client, err = c.generateClient(h)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to generate docker client")
-	}
-
-	return c.client, nil
+	return client, nil
 }
 
 // Init sets the Docker API version to use for API calls to the Docker client.
 func (c *dockerClientImpl) Init(apiVersion string) error {
 	c.apiVersion = apiVersion
 
-	// Create HTTP client
-	c.httpClient = utility.GetHTTPClient()
-
-	// Configure TLS to allow connections to Docker daemon with self-signed certificates
-	transport, ok := c.httpClient.Transport.(*http.Transport)
-	if !ok {
-		return errors.Errorf("Type assertion failed: type %T does not hold a *http.Transport", c.httpClient.Transport)
+	var err error
+	c.httpClient, err = c.getHTTPClient(0)
+	if err != nil {
+		return errors.Wrap(err, "creating HTTP client")
 	}
-	// kim: NOTE: this is suspicious, so it may be the source of the issue.
-	// Maybe Docker treats this differently between v24 and v28.
-	transport.TLSClientConfig.InsecureSkipVerify = true
+
+	// Create HTTP client for importing images with higher timeout.
+	c.importHTTPClient, err = c.getHTTPClient(imageImportTimeout)
+	if err != nil {
+		return errors.Wrap(err, "creating HTTP client for importing images")
+	}
 
 	return nil
+}
+
+// getHTTPClient returns an HTTP client for Docker.
+func (c *dockerClientImpl) getHTTPClient(timeout time.Duration) (*http.Client, error) {
+	client := utility.GetHTTPClient()
+
+	if timeout > 0 {
+		client.Timeout = timeout
+	}
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		return client, errors.New("type assertion failed: transport is not an *http.Transport")
+	}
+	transport.TLSClientConfig.InsecureSkipVerify = true
+
+	return client, nil
 }
 
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
@@ -207,9 +227,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 }
 
 func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, url string) error {
-	// Extend http client timeout for ImageImport
-	normalTimeout := c.httpClient.Timeout
-	dockerClient, err := c.changeTimeout(h, imageImportTimeout)
+	dockerClient, err := c.generateImportClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Error changing http client timeout")
 	}
@@ -224,13 +242,8 @@ func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, 
 
 	// Wait until ImageImport finishes
 	_, err = io.ReadAll(resp)
-	if err != nil {
-		return errors.Wrap(err, "Error reading ImageImport response")
-	}
+	return errors.Wrap(err, "reading ImportImage response")
 
-	// Reset http client timeout
-	_, err = c.changeTimeout(h, normalTimeout)
-	return errors.Wrap(err, "Error changing http client timeout")
 }
 
 func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, username, password string) error {
@@ -238,9 +251,11 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 	// different. May be worth debugging more and if nothing obvious comes up,
 	// just giving up and making a quick fix that just initializes a fresh HTTP
 	// client with the different timeout.
-	// normalTimeout := c.httpClient.Timeout
-	// dockerClient, err := c.changeTimeout(h, imageImportTimeout)
-	dockerClient, err := c.generateClient(h)
+	// kim: NOTE: changeTimeout is not using the same HTTP client because Docker
+	// client modified it. Notably, it has some state like targetScheme: "http",
+	// which the original clean HTTP client does not have. This state likely
+	// causes issues when re-initializing the Docker client.
+	dockerClient, err := c.generateImportClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Error changing http client timeout")
 	}
@@ -267,7 +282,6 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 	if err != nil {
 		return errors.Wrap(err, "error reading image pull response")
 	}
-	// _, err = c.changeTimeout(h, normalTimeout)
 	return errors.Wrap(err, "Error changing http client timeout")
 }
 

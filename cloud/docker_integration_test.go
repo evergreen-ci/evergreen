@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -44,14 +43,10 @@ func TestDockerIntegrationSuite(t *testing.T) {
 	require.NoError(t, s.client.Init(""))
 	dockerClient, err := s.client.generateClient(&s.host)
 
-	// kim: NOTE: ping and info both work and can retrieve info. Using API
-	// v1.40 based on ping output.
-	ping, err := dockerClient.Ping(t.Context())
+	// Verify that the Docker client can reach the Docker daemon before unit
+	// tests.
+	_, err = dockerClient.Ping(t.Context())
 	require.NoError(t, err)
-	fmt.Printf("Docker server info: %#v\n", ping)
-	info, err := dockerClient.Info(t.Context())
-	require.NoError(t, err)
-	fmt.Printf("Docker info: %#v\n", info)
 
 	suite.Run(t, s)
 }
@@ -63,7 +58,6 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 
 	// Retry pulling the Docker image to work around rate limits on
 	// unauthenciated pulls.
-	// kim: NOTE: this doesn't work when upgrading v24 to v28. Unsure why.
 	err = utility.Retry(ctx, func() (bool, error) {
 		err = s.client.pullImage(ctx, &s.host, imageName, "", "")
 		if err != nil {
