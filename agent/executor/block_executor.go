@@ -27,11 +27,23 @@ type BlockExecutorDeps struct {
 	ExecLogger    grip.Journaler
 	TaskConfig    *internal.TaskConfig
 
-	StartTimeoutWatcher   func(ctx context.Context, cancel context.CancelFunc, kind globals.TimeoutType, getTimeout func() time.Duration, canMarkFailure bool)
-	SetHeartbeatTimeout   func(startAt time.Time, getTimeout func() time.Duration, kind globals.TimeoutType)
+	// StartTimeoutWatcher starts a goroutine that cancels the context when the timeout is reached. If
+	// nil, no timeout watcher is started.
+	StartTimeoutWatcher func(ctx context.Context, cancel context.CancelFunc, kind globals.TimeoutType, getTimeout func() time.Duration, canMarkFailure bool)
+
+	// SetHeartbeatTimeout sets the heartbeat timeout for the task. If nil, heartbeat timeouts are not modified.
+	// This is only used in the agent to set heartbeat timeouts for blocks that can timeout.
+	SetHeartbeatTimeout func(startAt time.Time, getTimeout func() time.Duration, kind globals.TimeoutType)
+
+	// ResetHeartbeatTimeout resets the heartbeat timeout to default. If nil, heartbeat timeouts are not reset.
+	// Only used by the agent to restore default heartbeat timeout after a block completes.
 	ResetHeartbeatTimeout func()
-	HandlePanic           func(panicErr error, originalErr error, op string) error
-	RunCommandOrFunc      func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error
+
+	// HandlePanic handles panics that occur during command execution.
+	HandlePanic func(panicErr error, originalErr error, op string) error
+
+	// RunCommandOrFunc executes a command or function. If nil, commands are not executed.
+	RunCommandOrFunc func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error
 }
 
 // RunCommandsInBlock executes all commands in a block and can be integrated into
@@ -72,14 +84,19 @@ func RunCommandsInBlock(ctx context.Context, deps BlockExecutorDeps, cmdBlock Co
 		// otherwise fall back to basic logging (for local execution)
 		if deps.HandlePanic != nil {
 			err = deps.HandlePanic(pErr, err, op)
-		} else {
-			deps.TaskLogger.Error(message.Fields{
-				"message":   "programmatic error: Evergreen agent hit panic",
-				"operation": op,
-				"error":     pErr.Error(),
-			})
-			err = errors.Wrap(pErr, op)
+			return
 		}
+
+		logFields := message.Fields{
+			"message":   "programmatic error: Evergreen agent hit panic",
+			"operation": op,
+			"error":     pErr.Error(),
+		}
+		if err != nil {
+			logFields["original_error"] = err.Error()
+		}
+		deps.TaskLogger.Error(logFields)
+		err = errors.Wrap(pErr, op)
 	}()
 
 	legacyBlockName := blockToLegacyName(cmdBlock.Block)
@@ -119,7 +136,7 @@ func RunCommandsInBlock(ctx context.Context, deps BlockExecutorDeps, cmdBlock Co
 	return errors.WithStack(err)
 }
 
-// CommandBlock contains information for a block of commands
+// CommandBlock contains information for a block of commands.
 type CommandBlock struct {
 	Block               command.BlockType
 	Commands            *model.YAMLCommandSet
@@ -129,7 +146,7 @@ type CommandBlock struct {
 	CanFailTask         bool
 }
 
-// blockToLegacyName converts the name of a command block to the name it has
+// blockToLegacyName converts the name of a command block to the name it has in the logging format.
 func blockToLegacyName(block command.BlockType) string {
 	switch block {
 	case command.PreBlock:

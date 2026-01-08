@@ -19,8 +19,6 @@ import (
 )
 
 func TestRunCommandsInBlock(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("NilCommands", func(t *testing.T) {
 		deps := BlockExecutorDeps{
 			TaskLogger: grip.NewJournaler("test"),
@@ -29,7 +27,7 @@ func TestRunCommandsInBlock(t *testing.T) {
 		cmdBlock := CommandBlock{
 			Commands: nil,
 		}
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.NoError(t, err)
 	})
 
@@ -45,7 +43,7 @@ func TestRunCommandsInBlock(t *testing.T) {
 			Block:    command.MainTaskBlock,
 			Commands: &model.YAMLCommandSet{},
 		}
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.NoError(t, err)
 	})
 
@@ -78,13 +76,13 @@ func TestRunCommandsInBlock(t *testing.T) {
 			CanFailTask: true,
 		}
 
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.NoError(t, err)
 		assert.True(t, commandRun)
 	})
 
 	t.Run("TimeoutWatcher", func(t *testing.T) {
-		timeoutWatcherCalled := false
+		watcherCalled := make(chan bool, 1)
 		deps := BlockExecutorDeps{
 			TaskLogger: grip.NewJournaler("test"),
 			ExecLogger: grip.NewJournaler("test"),
@@ -92,10 +90,10 @@ func TestRunCommandsInBlock(t *testing.T) {
 				Project: model.Project{},
 			},
 			StartTimeoutWatcher: func(ctx context.Context, cancel context.CancelFunc, kind globals.TimeoutType, getTimeout func() time.Duration, canMarkFailure bool) {
-				timeoutWatcherCalled = true
 				assert.Equal(t, globals.ExecTimeout, kind)
 				assert.Equal(t, 5*time.Second, getTimeout())
 				assert.True(t, canMarkFailure)
+				watcherCalled <- true
 			},
 			RunCommandOrFunc: func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error {
 				return nil
@@ -119,9 +117,15 @@ func TestRunCommandsInBlock(t *testing.T) {
 			CanFailTask: true,
 		}
 
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.NoError(t, err)
-		assert.True(t, timeoutWatcherCalled)
+
+		select {
+		case <-watcherCalled:
+			// watcher was called
+		case <-time.After(1 * time.Second):
+			t.Fatal("Timeout waiting for StartTimeoutWatcher to be called")
+		}
 	})
 
 	t.Run("HeartbeatTimeout", func(t *testing.T) {
@@ -166,7 +170,7 @@ func TestRunCommandsInBlock(t *testing.T) {
 			CanTimeOutHeartbeat: true,
 		}
 
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.NoError(t, err)
 		assert.True(t, setHeartbeatCalled)
 		assert.True(t, resetHeartbeatCalled)
@@ -209,7 +213,7 @@ func TestRunCommandsInBlock(t *testing.T) {
 			},
 		}
 
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "test panic")
 		assert.True(t, panicHandlerCalled)
@@ -244,13 +248,19 @@ func TestRunCommandsInBlock(t *testing.T) {
 			},
 		}
 
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "test panic without handler")
 
-		msg := sender.GetMessage()
-		assert.NotNil(t, msg)
-		assert.Equal(t, level.Error, msg.Priority)
+		var foundError bool
+		for sender.Len() > 0 {
+			msg, ok := sender.GetMessageSafe()
+			if ok && msg != nil && msg.Priority == level.Error {
+				foundError = true
+				break
+			}
+		}
+		assert.True(t, foundError, "Should have logged an error message for panic recovery")
 	})
 
 	t.Run("CommandError", func(t *testing.T) {
@@ -279,13 +289,13 @@ func TestRunCommandsInBlock(t *testing.T) {
 			},
 		}
 
-		err := RunCommandsInBlock(ctx, deps, cmdBlock)
+		err := RunCommandsInBlock(t.Context(), deps, cmdBlock)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "command failed")
 	})
 
 	t.Run("ContextCancellation", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
 		deps := BlockExecutorDeps{
