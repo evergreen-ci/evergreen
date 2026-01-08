@@ -92,13 +92,6 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 		if activated {
 			anyActivated = true
 			activatedCount++
-			grip.Info(message.Fields{
-				"message":   "activated version",
-				"project":   projectRef.Id,
-				"version":   version.Id,
-				"revision":  version.Revision,
-				"operation": "project-activation-every-commit",
-			})
 		}
 	}
 
