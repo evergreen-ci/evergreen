@@ -247,14 +247,6 @@ func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, 
 }
 
 func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, username, password string) error {
-	// kim: TODO: removing timeout change fixes it, but I'm not sure why that's
-	// different. May be worth debugging more and if nothing obvious comes up,
-	// just giving up and making a quick fix that just initializes a fresh HTTP
-	// client with the different timeout.
-	// kim: NOTE: changeTimeout is not using the same HTTP client because Docker
-	// client modified it. Notably, it has some state like targetScheme: "http",
-	// which the original clean HTTP client does not have. This state likely
-	// causes issues when re-initializing the Docker client.
 	dockerClient, err := c.generateImportClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Error changing http client timeout")
