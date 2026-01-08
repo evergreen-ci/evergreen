@@ -4432,8 +4432,30 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		return errors.Wrap(err, "getting failed bucket")
 	}
 
+	largeAllKeys := len(allKeys) >= 1000
+	if largeAllKeys {
+		grip.Debug(message.Fields{
+			"investigation": "DEVPROD-25331",
+			"message":       "MoveObjectsToBucket called with more than 1000 object keys",
+			"task_id":       t.Id,
+		})
+	}
 	if err = logService.MoveObjectsToBucket(ctx, allKeys, failedBucket); err != nil {
+		if largeAllKeys {
+			grip.Debug(message.Fields{
+				"investigation": "DEVPROD-25331",
+				"message":       "Failed to run MoveObjectsToBucket with more than 1000 object keys",
+				"task_id":       t.Id,
+			})
+		}
 		return errors.Wrap(err, "moving logs to failed bucket")
+	}
+	if largeAllKeys {
+		grip.Debug(message.Fields{
+			"investigation": "DEVPROD-25331",
+			"message":       "Successfully ran MoveObjectsToBucket with more than 1000 object keys",
+			"task_id":       t.Id,
+		})
 	}
 
 	// Update the task output info with the new bucket config.
