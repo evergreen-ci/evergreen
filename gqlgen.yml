@@ -982,6 +982,8 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  UserServiceFlags:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
   UserSettingsInput:
