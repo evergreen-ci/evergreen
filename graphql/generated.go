@@ -50733,6 +50733,8 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_providers(ctx, field)
 			case "secretFields":
 				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
+			case "serviceFlags":
+				return ec.fieldContext_SpruceConfig_serviceFlags(ctx, field)
 			case "singleTaskDistro":
 				return ec.fieldContext_SpruceConfig_singleTaskDistro(ctx, field)
 			case "slack":
@@ -50741,8 +50743,6 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_spawnHost(ctx, field)
 			case "ui":
 				return ec.fieldContext_SpruceConfig_ui(ctx, field)
-			case "serviceFlags":
-				return ec.fieldContext_SpruceConfig_serviceFlags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpruceConfig", field.Name)
 		},
@@ -59410,6 +59410,39 @@ func (ec *executionContext) fieldContext_SpruceConfig_secretFields(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _SpruceConfig_serviceFlags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SpruceConfig_serviceFlags,
+		func(ctx context.Context) (any, error) {
+			return obj.ServiceFlags, nil
+		},
+		nil,
+		ec.marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "jwtTokenForCLIDisabled":
+				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SpruceConfig_singleTaskDistro(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -59575,39 +59608,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 				return ec.fieldContext_UIConfig_stagingEnvironment(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SpruceConfig_serviceFlags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SpruceConfig_serviceFlags,
-		func(ctx context.Context) (any, error) {
-			return obj.ServiceFlags, nil
-		},
-		nil,
-		ec.marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SpruceConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "jwtTokenForCLIDisabled":
-				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
 		},
 	}
 	return fc, nil
@@ -100228,6 +100228,11 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "serviceFlags":
+			out.Values[i] = ec._SpruceConfig_serviceFlags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "singleTaskDistro":
 			out.Values[i] = ec._SpruceConfig_singleTaskDistro(ctx, field, obj)
 		case "slack":
@@ -100239,11 +100244,6 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 		case "ui":
 			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "serviceFlags":
-			out.Values[i] = ec._SpruceConfig_serviceFlags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
