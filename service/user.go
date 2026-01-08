@@ -60,6 +60,7 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 			Value:   uis.Settings.Ui.StagingEnvironment,
 			Domain:  uis.Settings.Ui.LoginDomain,
 			Expires: time.Now().Add(evergreen.LoginCookieTTL),
+			Secure:  true,
 		})
 	}
 
