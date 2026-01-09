@@ -817,11 +817,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	}
 	if settings != nil {
 		config.UIServerHost = settings.Ui.Url
-		if !settings.ServiceFlags.JWTTokenForCLIDisabled {
-			config.APIServerHost = settings.Api.CorpURL + "/api"
-		} else {
-			config.APIServerHost = settings.Api.URL + "/api"
-		}
+		config.APIServerHost = settings.Api.URL + "/api"
 		if settings.AuthConfig.OAuth != nil {
 			config.OauthIssuer = settings.AuthConfig.OAuth.Issuer
 			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
