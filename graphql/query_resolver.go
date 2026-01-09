@@ -810,14 +810,21 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 // UserConfig is the resolver for the userConfig field.
 func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)
-	settings := evergreen.GetEnvironment().Settings()
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
 	config := &UserConfig{
 		User:   usr.Username(),
 		APIKey: usr.GetAPIKey(),
 	}
 	if settings != nil {
 		config.UIServerHost = settings.Ui.Url
-		config.APIServerHost = settings.Api.URL + "/api"
+		if !settings.ServiceFlags.JWTTokenForCLIDisabled {
+			config.APIServerHost = settings.Api.CorpURL + "/api"
+		} else {
+			config.APIServerHost = settings.Api.URL + "/api"
+		}
 		if settings.AuthConfig.OAuth != nil {
 			config.OauthIssuer = settings.AuthConfig.OAuth.Issuer
 			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
