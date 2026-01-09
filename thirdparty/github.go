@@ -53,6 +53,7 @@ const (
 	githubRetriesAttribute     = "evergreen.github.retries"
 	githubCachedAttribute      = "evergreen.github.cached"
 	githubLocalCachedAttribute = "evergreen.github.local_cached"
+	githubAuthMethodAttribute  = "evergreen.github.auth_method"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -508,7 +509,7 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref, projectToken str
 	defer span.End()
 
 	var outputFile *github.RepositoryContent
-	if err := runGitHubOp(ctx, owner, repo, projectToken, caller, func(githubClient *githubapp.GitHubClient) error {
+	if err := runGitHubOp(ctx, owner, repo, projectToken, caller, func(ctx context.Context, githubClient *githubapp.GitHubClient) error {
 		var opt *github.RepositoryContentGetOptions
 		if len(ref) != 0 {
 			opt = &github.RepositoryContentGetOptions{
@@ -550,14 +551,25 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref, projectToken str
 // with the provided project token, and if that fails (e.g. due to insufficient
 // project token permissions), it falls back to using the internal app for
 // installation tokens.
-func runGitHubOp(ctx context.Context, owner, repo, projectToken, caller string, op func(ghClient *githubapp.GitHubClient) error) error {
+func runGitHubOp(ctx context.Context, owner, repo, projectToken, caller string, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
 	if projectToken != "" {
 		// Try with the project token once to see if the operation succeeds.
+		ctx, span := tracer.Start(ctx, "github-op-with-project-app", trace.WithAttributes(
+			attribute.String(githubAuthMethodAttribute, "project_token"),
+		))
+		defer span.End()
+
 		ghClient := getGithubClient(projectToken, caller, retryConfig{})
 		defer ghClient.Close()
 
-		err := op(ghClient)
+		err := op(ctx, ghClient)
 		if err == nil {
+			grip.Info(message.Fields{
+				"message": "kim: successfully ran GitHub operation with project token",
+				"caller":  caller,
+				"owner":   owner,
+				"repo":    repo,
+			})
 			return nil
 		}
 
@@ -573,14 +585,21 @@ func runGitHubOp(ctx context.Context, owner, repo, projectToken, caller string, 
 	// available or if the operation with the project token failed. This is
 	// needed because the project's GitHub app may have insufficient permissions
 	// to perform the operation, whereas the internal app has broad permissions.
+	ctx, span := tracer.Start(ctx, "github-op-with-internal-app", trace.WithAttributes(
+		attribute.String(githubAuthMethodAttribute, "internal_app"),
+	))
+	defer span.End()
+
 	internalToken, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
+		span.RecordError(err)
 		return errors.Wrap(err, "getting installation token")
 	}
 	internalGHClient := getGithubClient(internalToken, caller, retryConfig{retry: true})
 	defer internalGHClient.Close()
 
-	return op(internalGHClient)
+	err = op(ctx, internalGHClient)
+	return err
 }
 
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
