@@ -21,14 +21,16 @@
       }
     },
     {
-      "query_file": "commit_queue_section.graphql",
+      "query_file": "github_and_commit_queue_section.graphql",
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
             "projectRef": {
               "commitQueue": {
                 "enabled": true
-              }
+              },
+              "runEveryMainlineCommit": true,
+              "runEveryMainlineCommitLimit": 21
             },
             "vars": {
               "vars": {

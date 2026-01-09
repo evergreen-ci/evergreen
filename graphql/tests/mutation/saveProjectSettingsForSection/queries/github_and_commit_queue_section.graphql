@@ -7,6 +7,8 @@ mutation {
         commitQueue: {
           enabled: true
         }
+        runEveryMainlineCommit: true
+        runEveryMainlineCommitLimit: 21
       }
       aliases: [
         {
@@ -27,6 +29,8 @@ mutation {
       commitQueue {
         enabled ## unchanged
       }
+      runEveryMainlineCommit
+      runEveryMainlineCommitLimit
     }
     vars {
       vars ## should be unchanged

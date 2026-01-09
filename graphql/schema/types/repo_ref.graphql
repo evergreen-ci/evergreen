@@ -5,7 +5,9 @@ input RepoRefInput {
   batchTime: Int
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
   deactivatePrevious: Boolean
+  debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
   displayName: String
@@ -33,8 +35,9 @@ input RepoRefInput {
   repo: String
   repotrackerDisabled: Boolean
   restricted: Boolean
+  runEveryMainlineCommit: Boolean
+  runEveryMainlineCommitLimit: Int
   spawnHostScriptPath: String
-  debugSpawnHostsDisabled: Boolean
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
@@ -43,7 +46,6 @@ input RepoRefInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
-  containerSizeDefinitions: [ContainerResourcesInput!]
 }
 
 ###### TYPES ######
@@ -60,10 +62,12 @@ type RepoRef {
   commitQueue: RepoCommitQueueParams!
   containerSizeDefinitions: [ContainerResources!]
   deactivatePrevious: Boolean!
+  debugSpawnHostsDisabled: Boolean!
   disabledStatsCache: Boolean!
   dispatchingDisabled: Boolean!
   displayName: String!
   enabled: Boolean!
+  externalLinks: [ExternalLink!]
   githubChecksEnabled: Boolean!
   githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
   githubPermissionGroupByRequester: StringMap
@@ -86,8 +90,9 @@ type RepoRef {
   repo: String!
   repotrackerDisabled: Boolean!
   restricted: Boolean!
+  runEveryMainlineCommit: Boolean!
+  runEveryMainlineCommitLimit: Int!
   spawnHostScriptPath: String!
-  debugSpawnHostsDisabled: Boolean!
   stepbackDisabled: Boolean!
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
@@ -96,7 +101,6 @@ type RepoRef {
   triggers: [TriggerAlias!]!
   versionControlEnabled: Boolean!
   workstationConfig: RepoWorkstationConfig!
-  externalLinks: [ExternalLink!]
 }
 
 type RepoCommitQueueParams {

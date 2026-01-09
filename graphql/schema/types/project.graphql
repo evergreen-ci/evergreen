@@ -290,6 +290,8 @@ type Project {
   repotrackerDisabled: Boolean
   repotrackerError: RepotrackerError
   restricted: Boolean
+  runEveryMainlineCommit: Boolean
+  runEveryMainlineCommitLimit: Int
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
