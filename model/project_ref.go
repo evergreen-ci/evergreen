@@ -217,9 +217,6 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 
 // GetGitHubAppAuth returns the App auth for the given project.
 // If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
-// kim: NOTE: use this to get the proper GitHub app auth for the project ref.
-// kim: TODO: write helper to wrap this and get the app auth only if it's
-// enabled in project ref.
 func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubAppAuth, error) {
 	appAuth, err := githubapp.FindOneGitHubAppAuth(ctx, p.Id)
 	if err != nil {
@@ -240,23 +237,18 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 
 }
 
-// GetGitHubAppTokenForAPI attempts to get a GitHub API token for this project
-// using its GitHub app.
-func (p *ProjectRef) GetGitHubAppTokenForAPI(ctx context.Context) (string, error) {
+// GetGitHubAppAuthForAPI gets this project's GitHub app auth (if any) for
+// usage in the GitHub API if the project is configured to use its own GitHub
+// appf or GitHub API operations.
+func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.GithubAppAuth, error) {
 	if !p.UseGitHubAppForAPI {
-		return "", nil
+		return nil, nil
 	}
 	appAuth, err := p.GetGitHubAppAuth(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "getting GitHub app auth")
+		return nil, errors.Wrap(err, "getting GitHub app auth")
 	}
-	if appAuth == nil {
-		return "", nil
-	}
-	// Assuming here that most GitHub API operations are reasonably expected to
-	// finish within a few minutes.
-	const tokenValidity = 15 * time.Minute
-	return appAuth.CreateCachedInstallationToken(ctx, p.Owner, p.Repo, tokenValidity, nil)
+	return appAuth, nil
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
@@ -3266,12 +3258,12 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		return "", nil
 	}
 	// kim: NOTE: this is proper merged branch project ref
-	token, err := pRef.GetGitHubAppTokenForAPI(ctx)
+	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
 		"project_id": pRef.Id,
 	}))
-	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, token)
+	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)

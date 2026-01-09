@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -491,10 +492,7 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
-// kim: TODO: audit callers to ensure they pass in a project ref properly so we
-// can get the GitHub app.
-// kim: TODO: test in staging
-func GetGithubFile(ctx context.Context, owner, repo, path, ref, projectToken string) (*github.RepositoryContent, error) {
+func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth *githubapp.GithubAppAuth) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
 	}
@@ -509,7 +507,7 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref, projectToken str
 	defer span.End()
 
 	var outputFile *github.RepositoryContent
-	if err := runGitHubOp(ctx, owner, repo, projectToken, caller, func(ctx context.Context, githubClient *githubapp.GitHubClient) error {
+	if err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, githubClient *githubapp.GitHubClient) error {
 		var opt *github.RepositoryContentGetOptions
 		if len(ref) != 0 {
 			opt = &github.RepositoryContentGetOptions{
@@ -548,37 +546,35 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref, projectToken str
 }
 
 // runGitHubOp attempts to run the given GitHub operation. It first attempts
-// with the provided project token, and if that fails (e.g. due to insufficient
-// project token permissions), it falls back to using the internal app for
-// installation tokens.
-func runGitHubOp(ctx context.Context, owner, repo, projectToken, caller string, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
-	if projectToken != "" {
-		// Try with the project token once to see if the operation succeeds.
-		ctx, span := tracer.Start(ctx, "github-op-with-project-app", trace.WithAttributes(
-			attribute.String(githubAuthMethodAttribute, "project_token"),
-		))
-		defer span.End()
-
-		ghClient := getGithubClient(projectToken, caller, retryConfig{})
-		defer ghClient.Close()
-
-		err := op(ctx, ghClient)
+// with GitHub app to authenticate (if provided). If that fails (e.g. due to
+// insufficient project token permissions) or no app is available, it falls back
+// to using the internal app for installation tokens.
+func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
+	if ghAppAuth != nil {
+		err := runGitHubOpWithExternalGitHubApp(ctx, owner, repo, caller, ghAppAuth, op)
 		if err == nil {
 			grip.Info(message.Fields{
-				"message": "kim: successfully ran GitHub operation with project token",
+				"message": "GitHub op suceeded with external GitHub app",
 				"caller":  caller,
 				"owner":   owner,
 				"repo":    repo,
 			})
 			return nil
 		}
-
 		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "GitHub operation with project token failed, falling back to attempt with internal app",
+			"message": "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
 			"caller":  caller,
 			"owner":   owner,
 			"repo":    repo,
 		}))
+	} else {
+		grip.Info(message.Fields{
+			"message": "external GitHub app is empty, using internal app",
+			"caller":  caller,
+			"owner":   owner,
+			"repo":    repo,
+			"stack":   string(debug.Stack()),
+		})
 	}
 
 	// Fall back to using the internal app if the project does not have a token
@@ -600,6 +596,25 @@ func runGitHubOp(ctx context.Context, owner, repo, projectToken, caller string, 
 
 	err = op(ctx, internalGHClient)
 	return err
+}
+
+func runGitHubOpWithExternalGitHubApp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
+	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+	if err != nil {
+
+	}
+	ctx, span := tracer.Start(ctx, "github-op-with-external-app", trace.WithAttributes(
+		attribute.String(githubAuthMethodAttribute, "external_app"),
+	))
+	defer span.End()
+
+	// This intentionally does not retry because if the GitHub app doesn't have
+	// the necessary permissions or has other issues like rate limits, then it's
+	// better to fall back to the internal app immediately.
+	ghClient := getGithubClient(token, caller, retryConfig{})
+	defer ghClient.Close()
+
+	return op(ctx, ghClient)
 }
 
 // SendPendingStatusToGithub sends a pending status to a Github PR patch

@@ -791,8 +791,6 @@ const (
 )
 
 type GetProjectOpts struct {
-	// kim: TODO: audit where Ref is set to ensure that it's not a dummy project
-	// ref and always passes in the full ref.
 	Ref                       *ProjectRef
 	PatchOpts                 *PatchOpts
 	LocalModules              map[string]string
@@ -852,14 +850,12 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	default:
-		// kim: NOTE: switch this to pass in project ref's GitHub app if
-		// possible. Project ref is opts.Ref.
-		token, err := opts.Ref.GetGitHubAppTokenForAPI(ctx)
+		ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, token)
+		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
@@ -913,8 +909,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	pRef.Owner = repoOwner
 	pRef.Repo = repoName
 	moduleOpts := GetProjectOpts{
-		// kim: NOTE: wtf this only passes in the repo owner and name, not the
-		// entire project ref. Should it pass in opts.Ref instead?
 		Ref:          &pRef,
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
@@ -956,15 +950,13 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		return nil, errors.New("project not passed in")
 	}
 	var projectFileBytes []byte
-	// kim: NOTE: switch this to pass in project ref's GitHub app if
-	// possible. Project ref is opts.Ref.
-	token, err := opts.Ref.GetGitHubAppTokenForAPI(ctx)
+	ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
 	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
-		opts.Ref.Repo, opts.RemotePath, opts.Revision, token)
+		opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.
