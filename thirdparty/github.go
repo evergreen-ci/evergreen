@@ -492,8 +492,8 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
 // kim: TODO: audit callers to ensure they pass in a project ref properly so we
 // can get the GitHub app.
-// kim: TODO: use token
-func GetGithubFile(ctx context.Context, owner, repo, path, ref, token string) (*github.RepositoryContent, error) {
+// kim: TODO: test in staging
+func GetGithubFile(ctx context.Context, owner, repo, path, ref, projectToken string) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
 	}
@@ -507,45 +507,80 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref, token string) (*
 	))
 	defer span.End()
 
-	// kim: TODO: get GH app token, make GH client with no retries, try with GH
-	// app token, then fall back to regular GH client with retries and internal
-	// token.
-	token, err := getInstallationToken(ctx, owner, repo, nil)
+	var outputFile *github.RepositoryContent
+	if err := runGitHubOp(ctx, owner, repo, projectToken, caller, func(githubClient *githubapp.GitHubClient) error {
+		var opt *github.RepositoryContentGetOptions
+		if len(ref) != 0 {
+			opt = &github.RepositoryContentGetOptions{
+				Ref: ref,
+			}
+		}
+
+		file, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, opt)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+			if resp.StatusCode == http.StatusNotFound {
+				return FileNotFoundError{filepath: path}
+			}
+			if err != nil {
+				return parseGithubErrorResponse(resp)
+			}
+		} else {
+			errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
+			grip.Error(errMsg)
+			return APIResponseError{errMsg}
+		}
+
+		if file == nil || file.Content == nil {
+			return APIRequestError{Message: "file is nil"}
+		}
+
+		outputFile = file
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return outputFile, nil
+}
+
+// runGitHubOp attempts to run the given GitHub operation. It first attempts
+// with the provided project token, and if that fails (e.g. due to insufficient
+// project token permissions), it falls back to using the internal app for
+// installation tokens.
+func runGitHubOp(ctx context.Context, owner, repo, projectToken, caller string, op func(ghClient *githubapp.GitHubClient) error) error {
+	if projectToken != "" {
+		// Try with the project token once to see if the operation succeeds.
+		ghClient := getGithubClient(projectToken, caller, retryConfig{})
+		defer ghClient.Close()
+
+		err := op(ghClient)
+		if err == nil {
+			return nil
+		}
+
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "GitHub operation with project token failed, falling back to attempt with internal app",
+			"caller":  caller,
+			"owner":   owner,
+			"repo":    repo,
+		}))
+	}
+
+	// Fall back to using the internal app if the project does not have a token
+	// available or if the operation with the project token failed. This is
+	// needed because the project's GitHub app may have insufficient permissions
+	// to perform the operation, whereas the internal app has broad permissions.
+	internalToken, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
+		return errors.Wrap(err, "getting installation token")
 	}
+	internalGHClient := getGithubClient(internalToken, caller, retryConfig{retry: true})
+	defer internalGHClient.Close()
 
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-
-	var opt *github.RepositoryContentGetOptions
-	if len(ref) != 0 {
-		opt = &github.RepositoryContentGetOptions{
-			Ref: ref,
-		}
-	}
-
-	file, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, opt)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, FileNotFoundError{filepath: path}
-		}
-		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
-
-	if file == nil || file.Content == nil {
-		return nil, APIRequestError{Message: "file is nil"}
-	}
-
-	return file, nil
+	return op(internalGHClient)
 }
 
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
