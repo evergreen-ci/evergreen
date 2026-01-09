@@ -552,12 +552,6 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 	if ghAppAuth != nil {
 		err := runGitHubOpWithExternalGitHubApp(ctx, owner, repo, caller, ghAppAuth, op)
 		if err == nil {
-			grip.Info(message.Fields{
-				"message": "GitHub op suceeded with external GitHub app",
-				"caller":  caller,
-				"owner":   owner,
-				"repo":    repo,
-			})
 			return nil
 		}
 
