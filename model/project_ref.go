@@ -525,6 +525,8 @@ var (
 	projectRefGithubMQTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubMQTriggerAliases")
 	projectRefPeriodicBuildsKey                     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefOldestAllowedMergeBaseKey             = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
+	projectRefRunEveryMainlineCommitKey             = bsonutil.MustHaveTag(ProjectRef{}, "RunEveryMainlineCommit")
+	projectRefRunEveryMainlineCommitLimitKey        = bsonutil.MustHaveTag(ProjectRef{}, "RunEveryMainlineCommitLimit")
 	projectRefWorkstationConfigKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey             = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
@@ -2315,14 +2317,16 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
-					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
-					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
-					projectRefGitTagVersionsEnabledKey:  p.GitTagVersionsEnabled,
-					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
-					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
-					projectRefCommitQueueKey:            p.CommitQueue,
-					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
+					projectRefPRTestingEnabledKey:            p.PRTestingEnabled,
+					projectRefManualPRTestingEnabledKey:      p.ManualPRTestingEnabled,
+					projectRefGithubChecksEnabledKey:         p.GithubChecksEnabled,
+					projectRefGitTagVersionsEnabledKey:       p.GitTagVersionsEnabled,
+					ProjectRefGitTagAuthorizedUsersKey:       p.GitTagAuthorizedUsers,
+					ProjectRefGitTagAuthorizedTeamsKey:       p.GitTagAuthorizedTeams,
+					projectRefCommitQueueKey:                 p.CommitQueue,
+					projectRefOldestAllowedMergeBaseKey:      p.OldestAllowedMergeBase,
+					projectRefRunEveryMainlineCommitKey:      p.RunEveryMainlineCommit,
+					projectRefRunEveryMainlineCommitLimitKey: p.RunEveryMainlineCommitLimit,
 				},
 			})
 	case ProjectPageNotificationsSection:
