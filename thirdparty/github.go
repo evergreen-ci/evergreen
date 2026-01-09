@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -561,20 +560,13 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 			})
 			return nil
 		}
+
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
 			"caller":  caller,
 			"owner":   owner,
 			"repo":    repo,
 		}))
-	} else {
-		grip.Info(message.Fields{
-			"message": "external GitHub app is empty, using internal app",
-			"caller":  caller,
-			"owner":   owner,
-			"repo":    repo,
-			"stack":   string(debug.Stack()),
-		})
 	}
 
 	// Fall back to using the internal app if the project does not have a token

@@ -3257,7 +3257,6 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if pRef.SpawnHostScriptPath == "" {
 		return "", nil
 	}
-	// kim: NOTE: this is proper merged branch project ref
 	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
