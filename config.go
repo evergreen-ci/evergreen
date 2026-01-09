@@ -36,7 +36,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-01-06"
+	AgentVersion = "2026-01-08"
 )
 
 const (
