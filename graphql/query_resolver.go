@@ -1251,6 +1251,9 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
+		// Use injest time rather than create time to ensure task history page is sorted in order of when the tasks
+		// were actually created.
+		t.CreateTime = t.IngestTime
 		apiTask := &restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
