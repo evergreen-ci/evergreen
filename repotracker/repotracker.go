@@ -405,6 +405,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 // configuration file - via the Id. Otherwise it defaults to the local
 // project file. An erroneous project file may be returned along with an error.
 func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (model.ProjectInfo, error) {
+	// kim: NOTE: this is the proper merged branch project ref.
 	projectRef := repoTracker.ProjectRef
 	projectInfo, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {

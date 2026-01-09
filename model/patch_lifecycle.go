@@ -932,6 +932,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 	}
 
 	opts := GetProjectOpts{
+		// kim: NOTE: this is proper merged branch project ref.
 		Ref:                 projectRef,
 		ReadFileFrom:        ReadFromPatch,
 		Revision:            hash,

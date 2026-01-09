@@ -157,7 +157,13 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 }
 
 func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.VersionMetadata, configFilePath string) error {
-	configFile, err := thirdparty.GetGithubFile(ctx, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision)
+	// kim: NOTE: this is proper merged branch project ref
+	token, err := j.project.GetGitHubAppTokenForAPI(ctx)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+		"project_id": j.project.Id,
+	}))
+	configFile, err := thirdparty.GetGithubFile(ctx, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision, token)
 	if err != nil {
 		return errors.Wrap(err, "getting config file from GitHub")
 	}

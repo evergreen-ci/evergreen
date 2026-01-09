@@ -490,7 +490,10 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
-func GetGithubFile(ctx context.Context, owner, repo, path, ref string) (*github.RepositoryContent, error) {
+// kim: TODO: audit callers to ensure they pass in a project ref properly so we
+// can get the GitHub app.
+// kim: TODO: use token
+func GetGithubFile(ctx context.Context, owner, repo, path, ref, token string) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
 	}
@@ -504,6 +507,9 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string) (*github.
 	))
 	defer span.End()
 
+	// kim: TODO: get GH app token, make GH client with no retries, try with GH
+	// app token, then fall back to regular GH client with retries and internal
+	// token.
 	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
