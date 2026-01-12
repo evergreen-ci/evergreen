@@ -30,7 +30,7 @@ not have any other effect.
 
 ## Cron
 
-Cron activates build variants or tasks on existing mainline commits based on a specified schedule using UTC timezone and [cron syntax](https://crontab.guru/) or descriptors such as [@daily](https://pkg.go.dev/github.com/robfig/cron). For example, if set up to run daily, it’ll activate the most recent build variant at that time daily (it will not create any new tasks, only activate existing ones). This is ideal for activating tasks/variants based on regular intervals tied to project commit activity. Cron will fail to activate builds/tasks if `activate` is set to false.
+Cron activates build variants or tasks on existing mainline commits based on a specified schedule. Cron schedules always run in UTC timezone regardless of your local timezone. Cron uses [cron syntax](https://crontab.guru/) or descriptors such as [@daily](https://pkg.go.dev/github.com/robfig/cron). For example, if set up to run daily, it’ll activate the most recent build variant at that time daily (it will not create any new tasks, only activate existing ones). This is ideal for activating tasks/variants based on regular intervals tied to project commit activity. Cron will fail to activate builds/tasks if `activate` is set to false.
 
 Cron can be specified in the buildvariants section in the project configuration file on a build variant or task level.
 
@@ -40,7 +40,7 @@ Cron can be specified in the buildvariants section in the project configuration 
 buildvariants:
   - name: the-main-bv
     display_name: The Main BV
-    cron: 0 12 * * * # at 12:00 every day
+    cron: 0 12 * * * # at 12:00 UTC every day
     run_on:
       - my-distro
     tasks:
@@ -49,11 +49,11 @@ buildvariants:
         cron: "@daily" # overrides build variant cron
 ```
 
-In the example above, when a mainline commit is triggered at 10:00, it will not initially schedule any tasks in `the-main-bv`. Let's also say that there was another mainline commit triggered at 11:00.
+In the example above, when a mainline commit is triggered at 10:00 UTC, it will not initially schedule any tasks in `the-main-bv`. Let's also say that there was another mainline commit triggered at 11:00 UTC.
 
-At 12:00, Evergreen's cron jobs will look for the latest mainline commit, which happens to be the one made at 11:00 in this example. Then, Evergreen will activate `first_test` task in the mainline commit that was created in 11:00 because the cron settings specify that the task should run at 12:00 every day.
+At 12:00 UTC, Evergreen's cron jobs will look for the latest mainline commit, which happens to be the one made at 11:00 in this example. Then, Evergreen will activate `first_test` task in the mainline commit that was created in 11:00 because the cron settings specify that the task should run at 12:00 UTC every day.
 
-Similarly, the `second_test` task will be scheduled at 0:00 on the latest mainline commit at the time due to the `@daily` cron.
+Similarly, the `second_test` task will be scheduled at 0:00 UTC (midnight) on the latest mainline commit at the time due to the `@daily` cron.
 
 ## Batchtime
 
