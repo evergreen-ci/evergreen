@@ -3,7 +3,7 @@ module github.com/evergreen-ci/evergreen
 go 1.24.0
 
 require (
-	github.com/99designs/gqlgen v0.17.84
+	github.com/99designs/gqlgen v0.17.86
 	github.com/PuerkitoBio/rehttp v1.4.0
 	github.com/aws/aws-sdk-go-v2 v1.41.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.3
@@ -61,7 +61,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.9.0
 	golang.org/x/crypto v0.46.0
 	golang.org/x/oauth2 v0.33.0
-	golang.org/x/text v0.32.0
+	golang.org/x/text v0.33.0
 	golang.org/x/tools v0.40.0 // indirect
 	gonum.org/v1/gonum v0.16.0
 	google.golang.org/grpc v1.77.0
@@ -200,7 +200,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.16.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
-	github.com/goccy/go-yaml v1.18.0 // indirect
+	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-github/v73 v73.0.0 // indirect
 	github.com/google/go-github/v75 v75.0.0 // indirect
 	github.com/google/go-github/v79 v79.0.0 // indirect
