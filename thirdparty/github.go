@@ -546,7 +546,7 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 
 // runGitHubOp attempts to run the given GitHub operation. It first attempts
 // with GitHub app to authenticate (if provided). If that fails (e.g. due to
-// insufficient project token permissions) or no app is available, it falls back
+// insufficient GitHub app permissions) or no app is available, it falls back
 // to using the internal app for installation tokens.
 func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
 	if ghAppAuth != nil {
@@ -556,15 +556,17 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 		}
 
 		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
-			"caller":  caller,
-			"owner":   owner,
-			"repo":    repo,
+			"message":    "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
+			"caller":     caller,
+			"owner":      owner,
+			"repo":       repo,
+			"project_id": ghAppAuth.Id,
+			"app_id":     ghAppAuth.AppID,
 		}))
 	}
 
 	// Fall back to using the internal app if the project does not have a token
-	// available or if the operation with the project token failed. This is
+	// available or if the operation with the GitHub app failed. This is
 	// needed because the project's GitHub app may have insufficient permissions
 	// to perform the operation, whereas the internal app has broad permissions.
 	ctx, span := tracer.Start(ctx, "github-op-with-internal-app", trace.WithAttributes(
@@ -597,6 +599,8 @@ func runGitHubOpWithExternalGitHubApp(ctx context.Context, owner, repo, caller s
 	// This intentionally does not retry because if the GitHub app doesn't have
 	// the necessary permissions or has other issues like rate limits, then it's
 	// better to fall back to the internal app immediately.
+	// TODO (DEVPROD-26276): reconsider whether this should retry and whether
+	// it's okay to continue falling back to the internal app.
 	ghClient := getGithubClient(token, caller, retryConfig{})
 	defer ghClient.Close()
 
