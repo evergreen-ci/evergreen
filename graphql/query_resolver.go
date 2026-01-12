@@ -815,8 +815,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	config := &UserConfig{
-		User:   usr.Username(),
-		APIKey: usr.GetAPIKey(),
+		User: usr.Username(),
 	}
 	if settings != nil {
 		config.UIServerHost = settings.Ui.Url
@@ -829,6 +828,9 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 			config.OauthIssuer = settings.AuthConfig.OAuth.Issuer
 			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
 			config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
+		}
+		if settings.ServiceFlags.StaticAPIKeysDisabled {
+			config.APIKey = usr.GetAPIKey()
 		}
 	}
 
