@@ -558,6 +558,7 @@ var (
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 	projectRefTestSelectionKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TestSelection")
+	projectRefUseGitHubAppForAPIKey                 = bsonutil.MustHaveTag(ProjectRef{}, "UseGitHubAppForAPI")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -3739,4 +3740,37 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 // GetProjectAdminRole returns the project admin role ID for the given project.
 func GetProjectAdminRole(projectId string) string {
 	return fmt.Sprintf("admin_project_%s", projectId)
+}
+
+// FindProjectRefsUsingGitHubAppForAPI returns all project or repo refs that use
+// GitHub app authentication for internal GitHub API requests. Does not return
+// project refs that inherit this setting from their repo ref.
+func FindProjectRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectRef, error) {
+	pRefs := []ProjectRef{}
+	if err := db.FindAllQ(ctx,
+		ProjectRefCollection,
+		db.Query(bson.M{
+			projectRefUseGitHubAppForAPIKey: true,
+		}),
+		&pRefs,
+	); err != nil {
+		return nil, errors.Wrap(err, "finding project refs using GitHub app for API")
+	}
+
+	repoRefs := []RepoRef{}
+	if err := db.FindAllQ(ctx,
+		RepoRefCollection,
+		db.Query(bson.M{
+			projectRefUseGitHubAppForAPIKey: true,
+		}),
+		&repoRefs,
+	); err != nil {
+		return nil, errors.Wrap(err, "finding repo refs using GitHub app for API")
+	}
+	repoRefsAsProjectRefs := make([]ProjectRef, 0, len(repoRefs))
+	for _, repoRef := range repoRefs {
+		repoRefsAsProjectRefs = append(repoRefsAsProjectRefs, repoRef.ProjectRef)
+	}
+
+	return append(pRefs, repoRefsAsProjectRefs...), nil
 }
