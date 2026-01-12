@@ -42,6 +42,7 @@ func TestDockerIntegrationSuite(t *testing.T) {
 	}
 	require.NoError(t, s.client.Init(""))
 	dockerClient, err := s.client.generateClient(&s.host)
+	require.NoError(t, err)
 
 	// Verify that the Docker client can reach the Docker daemon before unit
 	// tests.
