@@ -358,9 +358,7 @@ func CreateCollections(collections ...string) error {
 		if mongoErr, ok := errors.Cause(err).(mongo.CommandError); ok && mongoErr.HasErrorCode(namespaceExistsErrCode) {
 			continue
 		}
-		if err != nil {
-			return errors.Wrapf(err, "creating collection '%s'", collection)
-		}
+		return errors.Wrapf(err, "creating collection '%s'", collection)
 	}
 	return nil
 }
