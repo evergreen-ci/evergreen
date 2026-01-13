@@ -1,14 +1,15 @@
 {
   "tests": [
     {
-      "name": "withoutOAuthCLI",
+      "name": "withoutOAuth",
       "query_file": "user_config.graphql",
       "test_user_id": "regular_user",
       "data": {
         "admin": [
           {
             "_id": "service_flags",
-            "jwt_token_for_cli_disabled": true
+            "jwt_token_for_cli_disabled": true,
+            "static_api_keys_disabled": true
           }
         ]
       },
@@ -27,13 +28,13 @@
       }
     },
     {
-      "name": "withOAuthCLI",
+      "name": "withOAuth",
       "query_file": "user_config.graphql",
       "test_user_id": "regular_user",
       "result": {
         "data": {
           "userConfig": {
-            "api_key": "regular_api_key",
+            "api_key": "",
             "api_server_host": "https://localhost.corp:8443/api",
             "ui_server_host": "http://localhost",
             "user": "regular_user",

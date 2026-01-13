@@ -1270,6 +1270,13 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 // ResetAPIKey is the resolver for the resetAPIKey field.
 func (r *mutationResolver) ResetAPIKey(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	if !usr.OnlyAPI && settings.ServiceFlags.StaticAPIKeysDisabled {
+		return nil, Forbidden.Send(ctx, "static API keys are disabled")
+	}
 	newKey := utility.RandomString()
 	if err := usr.UpdateAPIKey(ctx, newKey); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating user API key: %s", err.Error()))
