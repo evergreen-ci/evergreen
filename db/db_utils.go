@@ -25,11 +25,7 @@ var (
 )
 
 type SessionFactory interface {
-	// GetSession uses the global environment's context to get a session and database.
-	GetSession() (db.Session, db.Database, error)
-	// GetContextSession uses the provided context to get a session and database.
-	// This is needed for operations that need control over the passed-in context.
-	// TODO DEVPROD-11824 Use this method instead of GetSession.
+	// GetSession uses the provided context to get a session and database.
 	GetContextSession(ctx context.Context) (db.Session, db.Database, error)
 }
 
@@ -346,7 +342,7 @@ func CreateCollections(collections ...string) error {
 	if !testing.Testing() {
 		panic("CreateCollections should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -372,7 +368,7 @@ func Clear(collection string) error {
 	if !testing.Testing() {
 		panic("Clear should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -389,7 +385,7 @@ func ClearCollections(collections ...string) error {
 	if !testing.Testing() {
 		panic("ClearCollections should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -417,7 +413,7 @@ func DropCollections(collections ...string) error {
 	if !testing.Testing() {
 		panic("DropCollections should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
 	if err != nil {
 		return err
 	}
