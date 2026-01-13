@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -14,24 +16,24 @@ import (
 // make API requests. Users cannot be created and must come from the database.
 func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 	opts := usercache.ExternalOptions{
-		PutUserGetToken: func(gimlet.User) (string, error) {
+		PutUserGetToken: func(context.Context, gimlet.User) (string, error) {
 			return "", errors.New("cannot put new users in DB")
 		},
-		GetUserByToken: func(string) (gimlet.User, bool, error) {
+		GetUserByToken: func(context.Context, string) (gimlet.User, bool, error) {
 			return nil, false, errors.New("cannot get user by login token")
 		},
-		ClearUserToken: func(gimlet.User, bool) error {
+		ClearUserToken: func(context.Context, gimlet.User, bool) error {
 			return errors.New("cannot clear user token")
 		},
-		GetUserByID: func(id string) (gimlet.User, bool, error) {
-			user, err := findOnlyAPIUser(id)
+		GetUserByID: func(ctx context.Context, id string) (gimlet.User, bool, error) {
+			user, err := findOnlyAPIUser(ctx, id)
 			if err != nil {
 				return nil, false, errors.Errorf("failed to get API-only user")
 			}
 			return user, true, nil
 		},
-		GetOrCreateUser: func(u gimlet.User) (gimlet.User, error) {
-			user, err := findOnlyAPIUser(u.Username())
+		GetOrCreateUser: func(ctx context.Context, u gimlet.User) (gimlet.User, error) {
+			user, err := findOnlyAPIUser(ctx, u.Username())
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get API-only user and cannot create new one")
 			}
@@ -46,8 +48,8 @@ func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 }
 
 // findOnlyAPIUser finds an API-only user by ID
-func findOnlyAPIUser(id string) (*user.DBUser, error) {
-	dbUser, err := user.FindOne(db.Query(bson.M{
+func findOnlyAPIUser(ctx context.Context, id string) (*user.DBUser, error) {
+	dbUser, err := user.FindOneContext(ctx, db.Query(bson.M{
 		user.IdKey:      id,
 		user.OnlyAPIKey: true,
 	}))

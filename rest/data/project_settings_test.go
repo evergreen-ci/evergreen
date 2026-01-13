@@ -216,25 +216,25 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			ID:        evergreen.AllProjectsScope,
 			Resources: []string{},
 		}
-		assert.NoError(t, rm.AddScope(allProjectsScope))
+		assert.NoError(t, rm.AddScope(t.Context(), allProjectsScope))
 		restrictedScope := gimlet.Scope{
 			ID:          evergreen.RestrictedProjectsScope,
 			Resources:   []string{},
 			ParentScope: evergreen.AllProjectsScope,
 		}
-		assert.NoError(t, rm.AddScope(restrictedScope))
+		assert.NoError(t, rm.AddScope(t.Context(), restrictedScope))
 		unrestrictedScope := gimlet.Scope{
 			ID:          evergreen.UnrestrictedProjectsScope,
 			Resources:   []string{pRefThatDefaults.Id, pRefThatDoesNotDefault.Id},
 			ParentScope: evergreen.AllProjectsScope,
 		}
-		assert.NoError(t, rm.AddScope(unrestrictedScope))
+		assert.NoError(t, rm.AddScope(t.Context(), unrestrictedScope))
 		adminScope := gimlet.Scope{
 			ID:        "project_scope",
 			Resources: []string{pRefThatDefaults.Id},
 			Type:      evergreen.ProjectResourceType,
 		}
-		assert.NoError(t, rm.AddScope(adminScope))
+		assert.NoError(t, rm.AddScope(t.Context(), adminScope))
 
 		adminRole := gimlet.Role{
 			ID:    "admin",
@@ -246,7 +246,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 				evergreen.PermissionLogs:            evergreen.LogsView.Value,
 			},
 		}
-		require.NoError(t, rm.UpdateRole(adminRole))
+		require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 		oldAdmin := user.DBUser{
 			Id:          "oldAdmin",
 			SystemRoles: []string{"admin"},
@@ -1039,25 +1039,25 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			ID:        evergreen.AllProjectsScope,
 			Resources: []string{},
 		}
-		assert.NoError(t, rm.AddScope(allProjectsScope))
+		assert.NoError(t, rm.AddScope(t.Context(), allProjectsScope))
 		restrictedScope := gimlet.Scope{
 			ID:          evergreen.RestrictedProjectsScope,
 			Resources:   []string{repoRef.Id},
 			ParentScope: evergreen.AllProjectsScope,
 		}
-		assert.NoError(t, rm.AddScope(restrictedScope))
+		assert.NoError(t, rm.AddScope(t.Context(), restrictedScope))
 		unrestrictedScope := gimlet.Scope{
 			ID:          evergreen.UnrestrictedProjectsScope,
 			Resources:   []string{pRef.Id},
 			ParentScope: evergreen.AllProjectsScope,
 		}
-		assert.NoError(t, rm.AddScope(unrestrictedScope))
+		assert.NoError(t, rm.AddScope(t.Context(), unrestrictedScope))
 		adminScope := gimlet.Scope{
 			ID:        "project_scope",
 			Resources: []string{pRef.Id},
 			Type:      evergreen.ProjectResourceType,
 		}
-		assert.NoError(t, rm.AddScope(adminScope))
+		assert.NoError(t, rm.AddScope(t.Context(), adminScope))
 
 		adminRole := gimlet.Role{
 			ID:    "admin",
@@ -1069,7 +1069,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				evergreen.PermissionLogs:            evergreen.LogsView.Value,
 			},
 		}
-		require.NoError(t, rm.UpdateRole(adminRole))
+		require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 		oldAdmin := user.DBUser{
 			Id:          "oldAdmin",
 			SystemRoles: []string{"admin"},
@@ -1444,19 +1444,19 @@ func TestCopyProject(t *testing.T) {
 			ID:        evergreen.AllProjectsScope,
 			Resources: []string{},
 		}
-		assert.NoError(t, rm.AddScope(allProjectsScope))
+		assert.NoError(t, rm.AddScope(t.Context(), allProjectsScope))
 		unrestrictedScope := gimlet.Scope{
 			ID:          evergreen.UnrestrictedProjectsScope,
 			Resources:   []string{pRef.Id},
 			ParentScope: evergreen.AllProjectsScope,
 		}
-		assert.NoError(t, rm.AddScope(unrestrictedScope))
+		assert.NoError(t, rm.AddScope(t.Context(), unrestrictedScope))
 		adminScope := gimlet.Scope{
 			ID:        "project_scope",
 			Resources: []string{pRef.Id},
 			Type:      evergreen.ProjectResourceType,
 		}
-		assert.NoError(t, rm.AddScope(adminScope))
+		assert.NoError(t, rm.AddScope(t.Context(), adminScope))
 
 		adminRole := gimlet.Role{
 			ID:    "admin",
@@ -1468,7 +1468,7 @@ func TestCopyProject(t *testing.T) {
 				evergreen.PermissionLogs:            evergreen.LogsView.Value,
 			},
 		}
-		require.NoError(t, rm.UpdateRole(adminRole))
+		require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 		oldAdmin := user.DBUser{
 			Id:          "oldAdmin",
 			SystemRoles: []string{"admin"},

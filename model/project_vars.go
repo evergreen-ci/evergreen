@@ -728,7 +728,7 @@ func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 	}
 	isAdmin := false
 	if u != nil {
-		isAdmin = u.HasPermission(gimlet.PermissionOpts{
+		isAdmin = u.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      t.Project,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,

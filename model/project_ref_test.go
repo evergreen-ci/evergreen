@@ -3190,10 +3190,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 
 	rm := env.RoleManager()
-	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
+	scope, err := rm.FindScopeForResources(t.Context(), evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)
 	assert.NotNil(scope)
-	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
+	role, err := rm.FindRoleWithPermissions(t.Context(), evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
@@ -3217,10 +3217,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 	assert.Equal(projectId, p.Id)
 
-	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
+	scope, err = rm.FindScopeForResources(t.Context(), evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)
 	assert.NotNil(scope)
-	role, err = rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
+	role, err = rm.FindRoleWithPermissions(t.Context(), evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
@@ -3245,13 +3245,13 @@ func TestUpdateAdminRoles(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"proj"},
 	}
-	require.NoError(t, rm.AddScope(adminScope))
+	require.NoError(t, rm.AddScope(t.Context(), adminScope))
 	adminRole := gimlet.Role{
 		ID:          "admin",
 		Scope:       evergreen.AllProjectsScope,
 		Permissions: adminPermissions,
 	}
-	require.NoError(t, rm.UpdateRole(adminRole))
+	require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 	oldAdmin := user.DBUser{
 		Id:          "oldAdmin",
 		SystemRoles: []string{"admin"},
@@ -3310,13 +3310,13 @@ func TestUpdateAdminRolesError(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"proj"},
 	}
-	require.NoError(t, rm.AddScope(adminScope))
+	require.NoError(t, rm.AddScope(t.Context(), adminScope))
 	adminRole := gimlet.Role{
 		ID:          "admin",
 		Scope:       evergreen.AllProjectsScope,
 		Permissions: adminPermissions,
 	}
-	require.NoError(t, rm.UpdateRole(adminRole))
+	require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 
 	// check that the existing users have been added and removed while returning an error
 	modified, err = p.UpdateAdminRoles(t.Context(), []string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
@@ -4236,7 +4236,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Scope:       wrongProjectScopeId,
 				Permissions: map[string]int{evergreen.PermissionProjectSettings: 20},
 			}
-			require.NoError(t, roleManager.UpdateRole(wrongProjectRole))
+			require.NoError(t, roleManager.UpdateRole(t.Context(), wrongProjectRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongProjectRole.ID))
 			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
@@ -4249,7 +4249,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Scope:       projectScopeId,
 				Permissions: map[string]int{evergreen.PermissionTasks: 30},
 			}
-			require.NoError(t, roleManager.UpdateRole(wrongPermissionRole))
+			require.NoError(t, roleManager.UpdateRole(t.Context(), wrongPermissionRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongPermissionRole.ID))
 			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
@@ -4262,7 +4262,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Scope:       projectScopeId,
 				Permissions: map[string]int{evergreen.PermissionProjectSettings: 20},
 			}
-			require.NoError(t, roleManager.UpdateRole(viewBranchRole))
+			require.NoError(t, roleManager.UpdateRole(t.Context(), viewBranchRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), viewBranchRole.ID))
 			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
@@ -4288,13 +4288,13 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{pRef.Id},
 			}
-			assert.NoError(t, roleManager.AddScope(projectScope))
+			assert.NoError(t, roleManager.AddScope(t.Context(), projectScope))
 			wrongProjectScope := gimlet.Scope{
 				ID:        wrongProjectScopeId,
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{wrongRef.Id},
 			}
-			assert.NoError(t, roleManager.AddScope(wrongProjectScope))
+			assert.NoError(t, roleManager.AddScope(t.Context(), wrongProjectScope))
 
 			usr := &user.DBUser{Id: "usr"}
 			assert.NoError(t, usr.Insert(t.Context()))

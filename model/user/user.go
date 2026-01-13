@@ -441,19 +441,19 @@ func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
 	return viewableProjects, nil
 }
 
-func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
+func (u *DBUser) HasPermission(ctx context.Context, opts gimlet.PermissionOpts) bool {
 	if evergreen.PermissionsDisabledForTests() {
 		return true
 	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
-	roles, err := roleManager.GetRoles(u.Roles())
+	roles, err := roleManager.GetRoles(ctx, u.Roles())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting roles",
 		}))
 		return false
 	}
-	roles, err = roleManager.FilterForResource(roles, opts.Resource, opts.ResourceType)
+	roles, err = roleManager.FilterForResource(ctx, roles, opts.Resource, opts.ResourceType)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error filtering resources",
@@ -470,9 +470,9 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 }
 
 // HasProjectCreatePermission returns true if the user is an admin for any existing project.
-func (u *DBUser) HasProjectCreatePermission() (bool, error) {
+func (u *DBUser) HasProjectCreatePermission(ctx context.Context) (bool, error) {
 	roleManager := evergreen.GetEnvironment().RoleManager()
-	roles, err := roleManager.GetRoles(u.Roles())
+	roles, err := roleManager.GetRoles(ctx, u.Roles())
 	if err != nil {
 		return false, errors.Wrap(err, "getting roles")
 	}
@@ -488,8 +488,8 @@ func (u *DBUser) HasProjectCreatePermission() (bool, error) {
 // HasDistroCreatePermission returns true if the user has permission to create
 // distros. This can also operate as a check for whether the user is a distro
 // admin, since only distro admins can create new distros.
-func (u *DBUser) HasDistroCreatePermission() bool {
-	return u.HasPermission(gimlet.PermissionOpts{
+func (u *DBUser) HasDistroCreatePermission(ctx context.Context) bool {
+	return u.HasPermission(ctx, gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,
 		Permission:    evergreen.PermissionDistroCreate,

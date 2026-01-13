@@ -564,10 +564,10 @@ func TestAddPermissions(t *testing.T) {
 	require.NoError(t, d.Add(ctx, &u))
 
 	rm := env.RoleManager()
-	scope, err := rm.FindScopeForResources(evergreen.DistroResourceType, d.Id)
+	scope, err := rm.FindScopeForResources(t.Context(), evergreen.DistroResourceType, d.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
-	role, err := rm.FindRoleWithPermissions(evergreen.DistroResourceType, []string{d.Id}, map[string]int{
+	role, err := rm.FindRoleWithPermissions(t.Context(), evergreen.DistroResourceType, []string{d.Id}, map[string]int{
 		evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
 		evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 	})

@@ -465,9 +465,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if h.originalProject.Restricted != mergedProjectRef.Restricted {
 		if mergedProjectRef.IsRestricted() {
-			err = mergedProjectRef.MakeRestricted()
+			err = mergedProjectRef.MakeRestricted(ctx)
 		} else {
-			err = mergedProjectRef.MakeUnrestricted()
+			err = mergedProjectRef.MakeUnrestricted(ctx)
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
@@ -476,7 +476,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// if owner/repo has changed and the project is attached to repo, update scope and repo accordingly
 	if h.newProjectRef.UseRepoSettings() && h.ownerRepoChanged() {
-		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
+		if err = h.newProjectRef.RemoveFromRepoScope(ctx); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project from old repo scope"))
 		}
 		if err = h.newProjectRef.AddToRepoScope(ctx, h.user); err != nil { // will re-add using the new owner/repo
@@ -1037,7 +1037,7 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 	user := MustHaveUser(ctx)
 	priority := utility.FromInt64Ptr(h.opts.Priority)
 	// Check for a valid priority and perform the update.
-	if ok := validPriority(priority, h.projectId, user); !ok {
+	if ok := validPriority(ctx, priority, h.projectId, user); !ok {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
 				"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

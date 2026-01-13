@@ -60,7 +60,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, um)
 
-			checkUser, err := um.GetUserByID(u1.Id)
+			checkUser, err := um.GetUserByID(t.Context(), u1.Id)
 			require.NoError(t, err)
 			checkDBUser, ok := checkUser.(*user.DBUser)
 			require.True(t, ok, "user manager in evergreen must return DBUser")
@@ -79,7 +79,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, um)
 
-			checkUser, err := um.GetUserByID("nonexistent")
+			checkUser, err := um.GetUserByID(t.Context(), "nonexistent")
 			assert.Error(t, err)
 			assert.Nil(t, checkUser)
 		},
@@ -99,7 +99,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, um)
 
-			checkUser, err := um.GetUserByID(regUser.Id)
+			checkUser, err := um.GetUserByID(t.Context(), regUser.Id)
 			assert.Error(t, err)
 			assert.Nil(t, checkUser)
 		},
@@ -132,11 +132,11 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, um)
 
-			token, err := um.CreateUserToken(apiUser.Id, "")
+			token, err := um.CreateUserToken(t.Context(), apiUser.Id, "")
 			assert.Error(t, err)
 			assert.Empty(t, token)
 
-			token, err = um.CreateUserToken("new_api_user", "")
+			token, err = um.CreateUserToken(t.Context(), "new_api_user", "")
 			assert.Error(t, err)
 			assert.Empty(t, token)
 		},
@@ -151,19 +151,19 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, um)
 
-			assert.Error(t, um.ClearUser(apiUser, false))
+			assert.Error(t, um.ClearUser(t.Context(), apiUser, false))
 			checkUser, err := user.FindOneByIdContext(t.Context(), apiUser.Id)
 			require.NoError(t, err)
 			require.NotNil(t, checkUser)
 			assert.Equal(t, checkUser.APIKey, apiUser.APIKey)
 
-			assert.Error(t, um.ClearUser(apiUser, true))
+			assert.Error(t, um.ClearUser(t.Context(), apiUser, true))
 			checkUser, err = user.FindOneByIdContext(t.Context(), apiUser.Id)
 			require.NoError(t, err)
 			require.NotNil(t, checkUser)
 			assert.Equal(t, checkUser.APIKey, apiUser.APIKey)
 
-			assert.Error(t, um.ClearUser(&user.DBUser{}, true))
+			assert.Error(t, um.ClearUser(t.Context(), &user.DBUser{}, true))
 			checkUser, err = user.FindOneByIdContext(t.Context(), apiUser.Id)
 			require.NoError(t, err)
 			require.NotNil(t, checkUser)
@@ -185,8 +185,8 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, um)
 
-			assert.Error(t, um.ReauthorizeUser(apiUser))
-			assert.Error(t, um.ReauthorizeUser(regUser))
+			assert.Error(t, um.ReauthorizeUser(t.Context(), apiUser))
+			assert.Error(t, um.ReauthorizeUser(t.Context(), regUser))
 		},
 		"GetGroupsForUserFails": func(t *testing.T) {
 			apiUser := &user.DBUser{

@@ -878,12 +878,12 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	}
 
 	// Add the project to the repo admin scope.
-	if err := rm.AddResourceToScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
 	// If the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access.
 	if !p.IsRestricted() {
-		if err := rm.AddResourceToScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+		if err := rm.AddResourceToScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
 	}
@@ -899,7 +899,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	}
 
 	// remove from relevant repo scopes
-	if err = p.RemoveFromRepoScope(); err != nil {
+	if err = p.RemoveFromRepoScope(ctx); err != nil {
 		return err
 	}
 
@@ -990,7 +990,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
 	if repoRef != nil {
-		isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
+		isRepoAdmin := u.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      repoRef.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,
@@ -1047,7 +1047,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 	}
 
 	if p.UseRepoSettings() {
-		if err := p.RemoveFromRepoScope(); err != nil {
+		if err := p.RemoveFromRepoScope(ctx); err != nil {
 			return errors.Wrap(err, "removing project from old repo scope")
 		}
 		if err := p.AddToRepoScope(ctx, u); err != nil {
@@ -1112,17 +1112,17 @@ func (p *ProjectRef) addGithubConflictsToUpdate(ctx context.Context, update bson
 }
 
 // RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope and removes branch edit access for repo admins.
-func (p *ProjectRef) RemoveFromRepoScope() error {
+func (p *ProjectRef) RemoveFromRepoScope(ctx context.Context) error {
 	if p.RepoRefId == "" {
 		return nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
 	if !p.IsRestricted() {
-		if err := rm.RemoveResourceFromScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+		if err := rm.RemoveResourceFromScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
 	}
-	if err := rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
+	if err := rm.RemoveResourceFromScope(ctx, GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "removing admin scope from repo '%s'", p.Repo)
 	}
 	p.RepoRefId = ""
@@ -1137,7 +1137,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 	if p.IsRestricted() {
 		parentScope = evergreen.RestrictedProjectsScope
 	}
-	if err := rm.AddResourceToScope(parentScope, p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, parentScope, p.Id); err != nil {
 		return errors.Wrapf(err, "adding project '%s' to the scope '%s'", p.Id, parentScope)
 	}
 
@@ -1148,7 +1148,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 		Name:      p.Id,
 		Type:      evergreen.ProjectResourceType,
 	}
-	if err := rm.AddScope(newScope); err != nil {
+	if err := rm.AddScope(ctx, newScope); err != nil {
 		return errors.Wrapf(err, "adding scope for project '%s'", p.Id)
 	}
 	newRole := gimlet.Role{
@@ -1159,7 +1159,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 	if creator != nil {
 		newRole.Owners = []string{creator.Id}
 	}
-	if err := rm.UpdateRole(newRole); err != nil {
+	if err := rm.UpdateRole(ctx, newRole); err != nil {
 		return errors.Wrapf(err, "adding admin role for project '%s'", p.Id)
 	}
 	if creator != nil {
@@ -1824,7 +1824,7 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 			Permission:    evergreen.PermissionProjectSettings,
 			RequiredLevel: evergreen.ProjectSettingsView.Value,
 		}
-		if u.HasPermission(opts) {
+		if u.HasPermission(ctx, opts) {
 			return true, nil
 		}
 	}
@@ -2931,40 +2931,40 @@ func RemoveAdminFromProjects(ctx context.Context, toDelete string) error {
 	return catcher.Resolve()
 }
 
-func (p *ProjectRef) MakeRestricted() error {
+func (p *ProjectRef) MakeRestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
 	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
-		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
+		if err := rm.RemoveResourceFromScope(ctx, scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
 	}
 
-	if err := rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.RemoveResourceFromScope(ctx, evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "removing project '%s' from list of unrestricted projects", p.Id)
 	}
-	if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, evergreen.RestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "adding project '%s' to list of restricted projects", p.Id)
 	}
 
 	return nil
 }
 
-func (p *ProjectRef) MakeUnrestricted() error {
+func (p *ProjectRef) MakeUnrestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
 	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
-		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
+		if err := rm.AddResourceToScope(ctx, scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
 	}
 
-	if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.RemoveResourceFromScope(ctx, evergreen.RestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "removing project '%s' from list of restricted projects", p.Id)
 	}
-	if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "adding project '%s' to list of unrestricted projects", p.Id)
 	}
 	return nil
@@ -2976,7 +2976,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
+	role, err := rm.FindRoleWithPermissions(ctx, evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
 	if err != nil {
 		return false, errors.Wrap(err, "finding role with admin permissions")
 	}
@@ -3043,7 +3043,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 		}))
 	}
 	if u != nil {
-		hasPermission := u.HasPermission(gimlet.PermissionOpts{
+		hasPermission := u.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      p.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionGitTagVersions,

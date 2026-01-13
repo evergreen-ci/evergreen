@@ -26,13 +26,13 @@ func TestRepoRefUpdateAdminRoles(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"proj", "other_project", "branch_project"},
 	}
-	require.NoError(t, rm.AddScope(adminScope))
+	require.NoError(t, rm.AddScope(t.Context(), adminScope))
 	adminRole := gimlet.Role{
 		ID:          fmt.Sprintf("admin_repo_%s", r.Id),
 		Scope:       "repo_scope",
 		Permissions: adminPermissions,
 	}
-	require.NoError(t, rm.UpdateRole(adminRole))
+	require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
 	oldAdmin := user.DBUser{
 		Id:          "oldAdmin",
 		SystemRoles: []string{adminRole.ID},

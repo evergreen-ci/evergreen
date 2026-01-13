@@ -47,7 +47,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 		Permission:    evergreen.PermissionPatches,
 		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
 	}
-	if !dbUser.HasPermission(opts) {
+	if !dbUser.HasPermission(ctx, opts) {
 		return "", http.StatusUnauthorized, errors.New("user is not authorized to patch on behalf of other users")
 	}
 
@@ -147,7 +147,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hasPermission := dbUser.HasPermission(gimlet.PermissionOpts{
+	hasPermission := dbUser.HasPermission(r.Context(), gimlet.PermissionOpts{
 		Resource:      pref.Id,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionPatches,

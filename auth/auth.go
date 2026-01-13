@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -174,12 +175,12 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 	http.SetCookie(w, authTokenCookie)
 }
 
-func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return user.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
+func getOrCreateUser(ctx context.Context, u gimlet.User) (gimlet.User, error) {
+	return user.GetOrCreateUser(ctx, u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
 }
 
-func getUserByID(id string) (gimlet.User, error) {
-	u, err := user.FindOneById(id)
+func getUserByID(ctx context.Context, id string) (gimlet.User, error) {
+	u, err := user.FindOneByIdContext(ctx, id)
 	if err != nil {
 		return nil, err
 	}

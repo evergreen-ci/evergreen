@@ -358,7 +358,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	dbUser := MustHaveUser(ctx)
 	username := ""
 	// only admins see hosts that aren't theirs
-	if h.params.Mine || !dbUser.HasDistroCreatePermission() {
+	if h.params.Mine || !dbUser.HasDistroCreatePermission(ctx) {
 		username = dbUser.Username()
 	}
 

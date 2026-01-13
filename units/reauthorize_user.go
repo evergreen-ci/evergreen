@@ -117,7 +117,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = um.ReauthorizeUser(j.user)
+	err = um.ReauthorizeUser(ctx, j.user)
 
 	// This handles a special Okta case in which the user's refresh token from
 	// Okta has expired, in which case they should be logged out, so that they

@@ -312,11 +312,9 @@ func DeleteServiceUser(ctx context.Context, id string) error {
 // name, email, access token, and refresh token and returns the updated user. If
 // no such user exists for that userId yet, it also sets the user's API key and
 // roles.
-func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken string, roles []string) (*DBUser, error) {
+func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToken, refreshToken string, roles []string) (*DBUser, error) {
 	u := &DBUser{}
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	setFields := bson.M{
 		DispNameKey:     displayName,
 		EmailAddressKey: email,
@@ -440,8 +438,8 @@ func FindServiceUsers(ctx context.Context) ([]DBUser, error) {
 
 // PutLoginCache generates a token if one does not exist, and sets the TTL to
 // now.
-func PutLoginCache(g gimlet.User) (string, error) {
-	u, err := FindOneById(g.Username())
+func PutLoginCache(ctx context.Context, g gimlet.User) (string, error) {
+	u, err := FindOneByIdContext(ctx, g.Username())
 	if err != nil {
 		return "", errors.Wrap(err, "finding user by ID")
 	}

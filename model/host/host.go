@@ -819,9 +819,9 @@ func (h *Host) NeedsPortBindings() bool {
 }
 
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
-func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
+func CanUpdateSpawnHost(ctx context.Context, h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
-		return usr.HasPermission(gimlet.PermissionOpts{
+		return usr.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      h.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,

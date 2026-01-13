@@ -1,6 +1,8 @@
 package thirdparty
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 )
@@ -24,7 +26,7 @@ func (u *GithubLoginUser) GetRefreshToken() string { return "" }
 func (u *GithubLoginUser) Roles() []string         { return []string{} }
 func (u *GithubLoginUser) IsAPIOnly() bool         { return false }
 
-func (u *GithubLoginUser) HasPermission(gimlet.PermissionOpts) bool {
+func (u *GithubLoginUser) HasPermission(context.Context, gimlet.PermissionOpts) bool {
 	grip.Alert("HasPermission has not been implemented for GithubLoginUser")
 	return false
 }

@@ -19,7 +19,7 @@ func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissi
 	if usr == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	return usr.HasDistroCreatePermission(), nil
+	return usr.HasDistroCreatePermission(ctx), nil
 }
 
 // CanCreateProject is the resolver for the canCreateProject field.
@@ -31,7 +31,7 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 	if usr == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	canCreate, err := usr.HasProjectCreatePermission()
+	canCreate, err := usr.HasProjectCreatePermission(ctx)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("checking project create permissions for user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -53,7 +53,7 @@ func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Per
 		Permission:    evergreen.PermissionAdminSettings,
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
-	return usr.HasPermission(opts), nil
+	return usr.HasPermission(ctx, opts), nil
 }
 
 // DistroPermissions is the resolver for the distroPermissions field.
@@ -66,9 +66,9 @@ func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permis
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	return &DistroPermissions{
-		Admin: userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
-		Edit:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
-		View:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsView.Value),
+		Admin: userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
+		Edit:  userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
+		View:  userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsView.Value),
 	}, nil
 }
 
@@ -89,8 +89,8 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", options.ProjectIdentifier))
 	}
 	return &ProjectPermissions{
-		Edit: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsEdit.Value),
-		View: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsView.Value),
+		Edit: userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsEdit.Value),
+		View: userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsView.Value),
 	}, nil
 }
 
@@ -117,7 +117,7 @@ func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissi
 	}
 
 	return &RepoPermissions{
-		Edit: userHasProjectSettingsPermission(usr, repo.Id, evergreen.ProjectSettingsEdit.Value),
+		Edit: userHasProjectSettingsPermission(ctx, usr, repo.Id, evergreen.ProjectSettingsEdit.Value),
 		View: hasRepoViewPermission,
 	}, nil
 }

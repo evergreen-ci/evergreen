@@ -1493,7 +1493,7 @@ func TestDistroCopySuite(t *testing.T) {
 func (s *distroCopySuite) SetupTest() {
 	s.NoError(db.ClearCollections(distro.Collection, user.Collection))
 	s.NoError(getMockDistrosdata())
-	_, err := user.GetOrCreateUser("user", "user", "", "token", "", nil)
+	_, err := user.GetOrCreateUser(s.T().Context(), "user", "user", "", "token", "", nil)
 	s.NoError(err)
 	s.rm = makeCopyDistro()
 }

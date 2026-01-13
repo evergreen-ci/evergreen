@@ -203,7 +203,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	newRole, err := rolemanager.MakeRoleWithPermissions(h.rm, h.permissions.ResourceType, h.permissions.Resources, h.permissions.Permissions)
+	newRole, err := rolemanager.MakeRoleWithPermissions(ctx, h.rm, h.permissions.ResourceType, h.permissions.Resources, h.permissions.Permissions)
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
@@ -297,7 +297,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	roles, err := h.rm.GetRoles(u.Roles())
+	roles, err := h.rm.GetRoles(ctx, u.Roles())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting current roles for user '%s'", u.Username()))
 	}
@@ -321,7 +321,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	rolesForResource, err := h.rm.FilterForResource(rolesToCheck, h.resourceId, h.resourceType)
+	rolesForResource, err := h.rm.FilterForResource(ctx, rolesToCheck, h.resourceId, h.resourceType)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "filtering user roles for resource '%s'", h.resourceId))
 	}
@@ -402,12 +402,12 @@ func (h *allUsersPermissionsGetHandler) Parse(ctx context.Context, r *http.Reque
 
 func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	// Get roles for resource ID.
-	allRoles, err := h.rm.GetAllRoles()
+	allRoles, err := h.rm.GetAllRoles(ctx)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting all roles"))
 	}
 
-	roles, err := h.rm.FilterForResource(allRoles, h.input.ResourceId, h.input.ResourceType)
+	roles, err := h.rm.FilterForResource(ctx, allRoles, h.input.ResourceId, h.input.ResourceType)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding roles for resource '%s'", h.input.ResourceId))
 	}
@@ -638,7 +638,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 				Id:          h.userID,
 				SystemRoles: h.rolesToAdd,
 			}
-			_, err = um.GetOrCreateUser(&newUser)
+			_, err = um.GetOrCreateUser(ctx, &newUser)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating new user '%s'", h.userID))
 			}
@@ -650,7 +650,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 	}
-	dbRoles, err := h.rm.GetRoles(h.rolesToAdd)
+	dbRoles, err := h.rm.GetRoles(ctx, h.rolesToAdd)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding roles for user '%s'", u.Username()).Error(),
@@ -1097,7 +1097,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"user":    ch.user,
 		}))
 
-		grip.Error(message.WrapError(ch.clearLogin(), message.Fields{
+		grip.Error(message.WrapError(ch.clearLogin(ctx), message.Fields{
 			"message": "could not clear login token",
 			"context": "user offboarding",
 			"user":    ch.user,
@@ -1120,14 +1120,14 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // clearLogin invalidates the user's login session.
-func (ch *offboardUserHandler) clearLogin() error {
+func (ch *offboardUserHandler) clearLogin(ctx context.Context) error {
 	usrMngr := ch.env.UserManager()
 	if usrMngr == nil {
 		return errors.New("no user manager found in environment")
 	}
-	usr, err := usrMngr.GetUserByID(ch.user)
+	usr, err := usrMngr.GetUserByID(ctx, ch.user)
 	if err != nil {
 		return errors.Wrap(err, "finding user")
 	}
-	return errors.Wrap(usrMngr.ClearUser(usr, false), "clearing login cache")
+	return errors.Wrap(usrMngr.ClearUser(ctx, usr, false), "clearing login cache")
 }

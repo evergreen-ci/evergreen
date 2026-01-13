@@ -132,29 +132,29 @@ func (s *UserTestSuite) SetupTest() {
 		Resources:   []string{"resource1", "resource2"},
 		ParentScope: "3",
 	}
-	s.NoError(rm.AddScope(scope1))
+	s.NoError(rm.AddScope(s.T().Context(), scope1))
 	scope2 := gimlet.Scope{
 		ID:          "2",
 		Resources:   []string{"resource3"},
 		ParentScope: "3",
 	}
-	s.NoError(rm.AddScope(scope2))
+	s.NoError(rm.AddScope(s.T().Context(), scope2))
 	scope3 := gimlet.Scope{
 		ID:          "3",
 		ParentScope: "root",
 	}
-	s.NoError(rm.AddScope(scope3))
+	s.NoError(rm.AddScope(s.T().Context(), scope3))
 	scope4 := gimlet.Scope{
 		ID:          "4",
 		Resources:   []string{"resource4"},
 		ParentScope: "root",
 	}
-	s.NoError(rm.AddScope(scope4))
+	s.NoError(rm.AddScope(s.T().Context(), scope4))
 	root := gimlet.Scope{
 		ID:        "root",
 		Resources: []string{"resource1", "resource2", "resource3", "resource4"},
 	}
-	s.NoError(rm.AddScope(root))
+	s.NoError(rm.AddScope(s.T().Context(), root))
 	r1p1 := gimlet.Role{
 		ID:    "r1p1",
 		Scope: "1",
@@ -162,7 +162,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 1,
 		},
 	}
-	s.NoError(rm.UpdateRole(r1p1))
+	s.NoError(rm.UpdateRole(s.T().Context(), r1p1))
 	r2p2 := gimlet.Role{
 		ID:    "r2p2",
 		Scope: "2",
@@ -170,7 +170,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 2,
 		},
 	}
-	s.NoError(rm.UpdateRole(r2p2))
+	s.NoError(rm.UpdateRole(s.T().Context(), r2p2))
 	r12p1 := gimlet.Role{
 		ID:    "r12p1",
 		Scope: "3",
@@ -178,7 +178,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 1,
 		},
 	}
-	s.NoError(rm.UpdateRole(r12p1))
+	s.NoError(rm.UpdateRole(s.T().Context(), r12p1))
 	r4p1 := gimlet.Role{
 		ID:    "r4p1",
 		Scope: "4",
@@ -186,7 +186,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 1,
 		},
 	}
-	s.NoError(rm.UpdateRole(r4p1))
+	s.NoError(rm.UpdateRole(s.T().Context(), r4p1))
 	r1234p2 := gimlet.Role{
 		ID:    "r1234p2",
 		Scope: "root",
@@ -194,7 +194,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 2,
 		},
 	}
-	s.NoError(rm.UpdateRole(r1234p2))
+	s.NoError(rm.UpdateRole(s.T().Context(), r1234p2))
 }
 
 func (s *UserTestSuite) TearDownTest() {
@@ -440,15 +440,15 @@ func (s *UserTestSuite) TestFindOneById() {
 }
 
 func (s *UserTestSuite) TestPutLoginCache() {
-	token1, err := PutLoginCache(s.users[0])
+	token1, err := PutLoginCache(s.T().Context(), s.users[0])
 	s.NoError(err)
 	s.NotEmpty(token1)
 
-	token2, err := PutLoginCache(s.users[1])
+	token2, err := PutLoginCache(s.T().Context(), s.users[1])
 	s.NoError(err)
 	s.NotEmpty(token2)
 
-	token3, err := PutLoginCache(&DBUser{Id: "asdf"})
+	token3, err := PutLoginCache(s.T().Context(), &DBUser{Id: "asdf"})
 	s.Error(err)
 	s.Empty(token3)
 
@@ -470,7 +470,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 
 	// Put to first user again, ensuring token stays the same but TTL changes
 	time.Sleep(time.Millisecond) // sleep to check TTL changed
-	token4, err := PutLoginCache(s.users[0])
+	token4, err := PutLoginCache(s.T().Context(), s.users[0])
 	s.NoError(err)
 	u4, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
@@ -481,7 +481,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	// Change access and refresh tokens, which should update
 	s.users[0].LoginCache.AccessToken = "new_access_token"
 	s.users[0].LoginCache.RefreshToken = "new_refresh_token"
-	token5, err := PutLoginCache(s.users[0])
+	token5, err := PutLoginCache(s.T().Context(), s.users[0])
 	s.NoError(err)
 	u5, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
@@ -491,7 +491,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.Equal(s.users[0].LoginCache.RefreshToken, u5.LoginCache.RefreshToken)
 
 	// Fresh user with no token should generate new token
-	token6, err := PutLoginCache(s.users[2])
+	token6, err := PutLoginCache(s.T().Context(), s.users[2])
 	s.NoError(err)
 	u6, err := FindOneByIdContext(s.T().Context(), s.users[2].Id)
 	s.Equal(token6, u6.LoginCache.Token)
@@ -608,34 +608,34 @@ func (s *UserTestSuite) TestHasPermission() {
 	u := s.users[0]
 
 	// no roles - no permission
-	hasPermission := u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
+	hasPermission := u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.False(hasPermission)
 
 	// has a role with explicit permission to the resource
 	s.NoError(u.AddRole(s.T().Context(), "r1p1"))
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
 	s.True(hasPermission)
 
 	// role with insufficient permission but the right resource
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 2})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 2})
 	s.False(hasPermission)
 
 	// role with a parent scope
 	s.NoError(u.AddRole(s.T().Context(), "r12p1"))
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
 
 	// role with no permission to the specified resource
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 1})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 1})
 	s.False(hasPermission)
 
 	// permission to everything
 	s.NoError(u.RemoveRole(s.T().Context(), "r1p1"))
 	s.NoError(u.RemoveRole(s.T().Context(), "r12p1"))
 	s.NoError(u.AddRole(s.T().Context(), "r1234p2"))
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
 }
 
@@ -646,7 +646,7 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 		Id: "basic_user",
 	}
 	s.NoError(usr.Insert(s.T().Context()))
-	s.Require().False(usr.HasDistroCreatePermission())
+	s.Require().False(usr.HasDistroCreatePermission(s.T().Context()))
 
 	createRole := gimlet.Role{
 		ID:          "create_distro",
@@ -654,7 +654,7 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 		Scope:       "superuser_scope",
 		Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
 	}
-	s.Require().NoError(roleManager.UpdateRole(createRole))
+	s.Require().NoError(roleManager.UpdateRole(s.T().Context(), createRole))
 	s.Require().NoError(usr.AddRole(s.T().Context(), createRole.ID))
 
 	superUserScope := gimlet.Scope{
@@ -663,9 +663,9 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{evergreen.SuperUserPermissionsID},
 	}
-	s.Require().NoError(roleManager.AddScope(superUserScope))
+	s.Require().NoError(roleManager.AddScope(s.T().Context(), superUserScope))
 
-	s.True(usr.HasDistroCreatePermission())
+	s.True(usr.HasDistroCreatePermission(s.T().Context()))
 }
 
 func (s *UserTestSuite) TestFindNeedsReauthorization() {
@@ -762,7 +762,7 @@ func TestGetOrCreateUser(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T){
 		"Succeeds": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -776,7 +776,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			assert.Equal(t, apiKey, dbUser.GetAPIKey())
 		},
 		"UpdateAlwaysSetsName": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -784,27 +784,27 @@ func TestGetOrCreateUser(t *testing.T) {
 			assert.NotEmpty(t, apiKey)
 
 			newName := "new_name"
-			user, err = GetOrCreateUser(id, newName, email, accessToken, refreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, newName, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, newName, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 		},
 		"UpdateSetsRefreshTokenIfNonempty": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			apiKey := user.GetAPIKey()
 			assert.NotEmpty(t, apiKey)
 
-			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 
-			user, err = GetOrCreateUser(id, name, email, accessToken, "", nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, accessToken, "", nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -812,7 +812,7 @@ func TestGetOrCreateUser(t *testing.T) {
 
 			newAccessToken := "new_access_token"
 			newRefreshToken := "new_refresh_token"
-			user, err = GetOrCreateUser(id, name, email, newAccessToken, newRefreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, newAccessToken, newRefreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, newAccessToken, newRefreshToken)
@@ -820,12 +820,12 @@ func TestGetOrCreateUser(t *testing.T) {
 		},
 		"RolesMergeCorrectly": func(t *testing.T) {
 			roles := []string{"one", "two"}
-			user, err := GetOrCreateUser(id, "", "", "token", "", roles)
+			user, err := GetOrCreateUser(t.Context(), id, "", "", "token", "", roles)
 			assert.NoError(t, err)
 			checkUser(t, user, id, "id", "", "token", "")
 			assert.Equal(t, roles, user.Roles())
 
-			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			assert.NoError(t, err)
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, roles, user.Roles())
@@ -874,7 +874,7 @@ func TestViewableProject(t *testing.T) {
 		Resources: []string{"parsley"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	err := rm.AddScope(restrictedProjectScope)
+	err := rm.AddScope(t.Context(), restrictedProjectScope)
 	assert.NoError(t, err)
 
 	parsleyAccessRoleId := "parsley_access"
@@ -884,7 +884,7 @@ func TestViewableProject(t *testing.T) {
 		Scope:       "restricted_project_scope",
 		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
 	}
-	err = rm.UpdateRole(parsleyAccessRole)
+	err = rm.UpdateRole(t.Context(), parsleyAccessRole)
 	assert.NoError(t, err)
 
 	unrestrictedProjectScope := gimlet.Scope{
@@ -893,7 +893,7 @@ func TestViewableProject(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"mci", "spruce"},
 	}
-	err = rm.AddScope(unrestrictedProjectScope)
+	err = rm.AddScope(t.Context(), unrestrictedProjectScope)
 	assert.NoError(t, err)
 
 	basicProjectAccessRole := gimlet.Role{
@@ -902,7 +902,7 @@ func TestViewableProject(t *testing.T) {
 		Scope:       evergreen.UnrestrictedProjectsScope,
 		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
 	}
-	err = rm.UpdateRole(basicProjectAccessRole)
+	err = rm.UpdateRole(t.Context(), basicProjectAccessRole)
 	assert.NoError(t, err)
 
 	myUser := DBUser{
@@ -943,7 +943,7 @@ func TestViewableProjectSettings(t *testing.T) {
 		Resources: []string{"edit1", "edit2"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	assert.NoError(t, rm.AddScope(editScope))
+	assert.NoError(t, rm.AddScope(t.Context(), editScope))
 	editPermissions := gimlet.Permissions{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 	}
@@ -952,13 +952,13 @@ func TestViewableProjectSettings(t *testing.T) {
 		Scope:       editScope.ID,
 		Permissions: editPermissions,
 	}
-	assert.NoError(t, rm.UpdateRole(editRole))
+	assert.NoError(t, rm.UpdateRole(t.Context(), editRole))
 	viewScope := gimlet.Scope{
 		ID:        "view_scope",
 		Resources: []string{"view1"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	assert.NoError(t, rm.AddScope(viewScope))
+	assert.NoError(t, rm.AddScope(t.Context(), viewScope))
 	viewPermissions := gimlet.Permissions{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
 	}
@@ -967,20 +967,20 @@ func TestViewableProjectSettings(t *testing.T) {
 		Scope:       viewScope.ID,
 		Permissions: viewPermissions,
 	}
-	assert.NoError(t, rm.UpdateRole(viewRole))
+	assert.NoError(t, rm.UpdateRole(t.Context(), viewRole))
 	otherScope := gimlet.Scope{
 		ID:        "others_scope",
 		Resources: []string{"other"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	assert.NoError(t, rm.AddScope(otherScope))
+	assert.NoError(t, rm.AddScope(t.Context(), otherScope))
 
 	otherRole := gimlet.Role{
 		ID:          "other_role",
 		Scope:       otherScope.ID,
 		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsNone.Value},
 	}
-	assert.NoError(t, rm.UpdateRole(otherRole))
+	assert.NoError(t, rm.UpdateRole(t.Context(), otherRole))
 	myUser := DBUser{
 		Id: "me",
 	}

@@ -367,7 +367,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
-			if !tep.user.HasPermission(requiredPermission) {
+			if !tep.user.HasPermission(ctx, requiredPermission) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
 						"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

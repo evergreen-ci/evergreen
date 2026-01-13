@@ -5348,12 +5348,12 @@ func TestFindHostsSuite(t *testing.T) {
 		}
 		s.NoError(root.Insert(t.Context()))
 		rm := evergreen.GetEnvironment().RoleManager()
-		s.NoError(rm.AddScope(gimlet.Scope{
+		s.NoError(rm.AddScope(ctx, gimlet.Scope{
 			ID:        "root",
 			Resources: []string{"distro2", "distro5"},
 			Type:      evergreen.DistroResourceType,
 		}))
-		s.NoError(rm.UpdateRole(gimlet.Role{
+		s.NoError(rm.UpdateRole(ctx, gimlet.Role{
 			ID:    "root",
 			Scope: "root",
 			Permissions: gimlet.Permissions{
