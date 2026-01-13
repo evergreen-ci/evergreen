@@ -142,29 +142,12 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 
 // daemonStatusCmd checks the debug daemon status
 func daemonStatusCmd(c *cli.Context) error {
-	url, err := getDaemonURL()
+	_, err := getDaemonURL()
 	if err != nil {
 		fmt.Println("Daemon is not running")
 		return nil
 	}
-
-	resp, err := http.Get(url + "/state")
-	if err != nil {
-		fmt.Println("Daemon is not responding")
-		return nil
-	}
-	defer resp.Body.Close()
-
-	var state map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&state); err != nil {
-		return err
-	}
-
 	fmt.Println("Daemon is running")
-	fmt.Printf("Loaded config: %s\n", state["loaded_config"])
-	fmt.Printf("Selected task: %s\n", state["selected_task"])
-	fmt.Printf("Current step: %v/%v\n", state["current_step"], state["total_steps"])
-
 	return nil
 }
 
