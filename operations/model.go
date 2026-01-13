@@ -455,19 +455,27 @@ func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, e
 	return module, nil
 }
 
-func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
-	if project, exists := s.ProjectsForDirectory[cwd]; exists {
-		return project
+// ResolveProject finds the project for the given directory. Returns the project name
+// and a boolean indicating if it was resolved to the default project (true) or from
+// an explicit directory mapping (false).
+func (s *ClientSettings) ResolveProject(cwd string, useRoot bool) (project string, isDefaultProject bool) {
+	if p, exists := s.ProjectsForDirectory[cwd]; exists {
+		return p, false
 	}
 
 	if useRoot {
 		for _, p := range s.Projects {
 			if p.Default {
-				return p.Name
+				return p.Name, true
 			}
 		}
 	}
-	return ""
+	return "", false
+}
+
+func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
+	project, _ := s.ResolveProject(cwd, useRoot)
+	return project
 }
 
 // getModulePathsForProject returns the map of modules to local paths for the given project.

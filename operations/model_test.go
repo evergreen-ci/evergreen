@@ -383,3 +383,129 @@ func TestIsFirstDateBefore(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveProject(t *testing.T) {
+	tests := []struct {
+		name              string
+		settings          *ClientSettings
+		cwd               string
+		useRoot           bool
+		expectedProject   string
+		expectedIsDefault bool
+	}{
+		{
+			name: "ExplicitDirectoryMapping",
+			settings: &ClientSettings{
+				ProjectsForDirectory: map[string]string{
+					"/path/to/repo": "my-project",
+				},
+				Projects: []ClientProjectConf{
+					{Name: "default-project", Default: true},
+				},
+			},
+			cwd:               "/path/to/repo",
+			useRoot:           true,
+			expectedProject:   "my-project",
+			expectedIsDefault: false,
+		},
+		{
+			name: "DefaultProjectWithUseRootTrue",
+			settings: &ClientSettings{
+				ProjectsForDirectory: map[string]string{},
+				Projects: []ClientProjectConf{
+					{Name: "default-project", Default: true},
+					{Name: "other-project", Default: false},
+				},
+			},
+			cwd:               "/some/other/path",
+			useRoot:           true,
+			expectedProject:   "default-project",
+			expectedIsDefault: true,
+		},
+		{
+			name: "NoProjectWithUseRootFalse",
+			settings: &ClientSettings{
+				ProjectsForDirectory: map[string]string{},
+				Projects: []ClientProjectConf{
+					{Name: "default-project", Default: true},
+				},
+			},
+			cwd:               "/some/path",
+			useRoot:           false,
+			expectedProject:   "",
+			expectedIsDefault: false,
+		},
+		{
+			name: "NoProjectWithUseRootTrue",
+			settings: &ClientSettings{
+				ProjectsForDirectory: map[string]string{},
+				Projects: []ClientProjectConf{
+					{Name: "project1", Default: false},
+					{Name: "project2", Default: false},
+				},
+			},
+			cwd:               "/some/path",
+			useRoot:           true,
+			expectedProject:   "",
+			expectedIsDefault: false,
+		},
+		{
+			name: "EmptyProjectsAndMappings",
+			settings: &ClientSettings{
+				ProjectsForDirectory: map[string]string{},
+				Projects:             []ClientProjectConf{},
+			},
+			cwd:               "/some/path",
+			useRoot:           true,
+			expectedProject:   "",
+			expectedIsDefault: false,
+		},
+		{
+			name: "ExplicitMappingTakesPrecedenceOverDefault",
+			settings: &ClientSettings{
+				ProjectsForDirectory: map[string]string{
+					"/explicit/path": "explicit-project",
+				},
+				Projects: []ClientProjectConf{
+					{Name: "default-project", Default: true},
+					{Name: "explicit-project", Default: false},
+				},
+			},
+			cwd:               "/explicit/path",
+			useRoot:           true,
+			expectedProject:   "explicit-project",
+			expectedIsDefault: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			project, isDefaultProject := test.settings.ResolveProject(test.cwd, test.useRoot)
+			assert.Equal(t, test.expectedProject, project)
+			assert.Equal(t, test.expectedIsDefault, isDefaultProject)
+		})
+	}
+}
+
+func TestFindDefaultProject(t *testing.T) {
+	settings := &ClientSettings{
+		ProjectsForDirectory: map[string]string{
+			"/path/to/repo": "my-project",
+		},
+		Projects: []ClientProjectConf{
+			{Name: "default-project", Default: true},
+		},
+	}
+
+	// Should return project from explicit mapping
+	project := settings.FindDefaultProject("/path/to/repo", true)
+	assert.Equal(t, "my-project", project)
+
+	// Should return default project
+	project = settings.FindDefaultProject("/other/path", true)
+	assert.Equal(t, "default-project", project)
+
+	// Should return empty string when no default and useRoot is false
+	project = settings.FindDefaultProject("/other/path", false)
+	assert.Equal(t, "", project)
+}
