@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/apm"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -964,4 +965,37 @@ func putSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, na
 		return "", errors.Errorf("parameter record '%s' not found after put", updatedParam.Name)
 	}
 	return record.LastUpdated.String(), nil
+}
+
+func UpdateBucketLifecycle(ctx context.Context, bucketField string, expirationDays, transitionToIADays, transitionToGlacierDays *int) error {
+	bucketsKey := (&BucketsConfig{}).SectionId()
+	set := bson.M{
+		bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
+	}
+	if expirationDays != nil {
+		set[bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigExpirationDaysKey)] = *expirationDays
+	}
+	if transitionToIADays != nil {
+		set[bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigTransitionToIADaysKey)] = *transitionToIADays
+	}
+	if transitionToGlacierDays != nil {
+		set[bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigTransitionToGlacierDaysKey)] = *transitionToGlacierDays
+	}
+
+	return setConfigSection(ctx, bucketsKey, bson.M{
+		"$set": set,
+		"$unset": bson.M{
+			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleSyncErrorKey): "",
+		},
+	})
+}
+
+func UpdateBucketLifecycleError(ctx context.Context, bucketField string, syncError string) error {
+	bucketsKey := (&BucketsConfig{}).SectionId()
+	return setConfigSection(ctx, bucketsKey, bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
+			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleSyncErrorKey):     syncError,
+		},
+	})
 }
