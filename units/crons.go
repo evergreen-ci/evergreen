@@ -1233,7 +1233,7 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 // information.
 func PopulateGithubAPILimitJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		ts := utility.RoundPartOfHour(0).Format(TSFormat)
-		return queue.Put(ctx, NewGithubAPILimitJob(ts))
+		ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+		return amboy.EnqueueUniqueJob(ctx, queue, NewGithubAPILimitJob(ts))
 	}
 }

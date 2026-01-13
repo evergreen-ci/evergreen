@@ -15,6 +15,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const githubAPILimitJobName = "github-api-limit"
@@ -79,7 +81,7 @@ func (j *githubAPILimitJob) logInternalAppRateLimit(ctx context.Context) {
 }
 
 func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
-	// Keep track of GitHub apps and the project IDs that use them. A single app
+	// Keep track of GitHub apps and the project(s) that use them. A single app
 	// could be reused by multiple projects.
 	type projectAndAppAuth struct {
 		appAuth     *githubapp.GithubAppAuth
@@ -88,8 +90,6 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 	}
 	ghAppsByAppID := map[int64]projectAndAppAuth{}
 
-	// kim: NOTE: project/repo ref with API enabled -> GH app -> log rate limit.
-	// kim: TODO: test logging in staging
 	pRefs, err := model.FindProjectRefsUsingGitHubAppForAPI(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding project refs using GitHub app for API"))
@@ -135,8 +135,6 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 		}
 
 		rateLimitInfo := getRateLimitInfo(limit)
-		// kim: NOTE: consider exposing as Honeycomb trace as well because users
-		// might use it.
 		grip.Info(message.Fields{
 			"message":           "project GitHub app API rate limit",
 			"app_id":            projectAppAuth.appAuth.AppID,
@@ -147,6 +145,27 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 			"minutes_remaining": rateLimitInfo.minsRemainingToReset,
 			"percentage":        rateLimitInfo.remainingPercentage,
 		})
+
+		const prefix = "evergreen.github_api_limit"
+		appIDAttr := fmt.Sprintf("%s.app_id", prefix)
+		projectIDAttr := fmt.Sprintf("%s.project_ids", prefix)
+		remainingAttr := fmt.Sprintf("%s.remaining", prefix)
+		limitAttr := fmt.Sprintf("%s.limit", prefix)
+		resetAttr := fmt.Sprintf("%s.reset", prefix)
+		minsRemainingAttr := fmt.Sprintf("%s.minutes_remaining", prefix)
+		percentageAttr := fmt.Sprintf("%s.remaining_percentage", prefix)
+		// Send OTel information about GitHub app rate limits. Create a new root
+		// span so that it ignores sampling.
+		_, span := tracer.Start(ctx, "github-app-api-limit", trace.WithNewRoot(), trace.WithAttributes(
+			attribute.String(appIDAttr, fmt.Sprintf("%d", projectAppAuth.appAuth.AppID)),
+			attribute.StringSlice(projectIDAttr, projectAppAuth.projectIDs),
+			attribute.String(remainingAttr, fmt.Sprintf("%d", rateLimitInfo.remaining)),
+			attribute.String(limitAttr, fmt.Sprintf("%d", rateLimitInfo.limit)),
+			attribute.String(resetAttr, rateLimitInfo.resetAt.String()),
+			attribute.String(minsRemainingAttr, fmt.Sprintf("%.2f", rateLimitInfo.minsRemainingToReset)),
+			attribute.String(percentageAttr, fmt.Sprintf("%.2f", rateLimitInfo.remainingPercentage)),
+		))
+		defer span.End()
 	}
 }
 
@@ -166,6 +185,8 @@ type ghRateLimitInfo struct {
 	minsRemainingToReset float64
 }
 
+// getRateLimitInfo extracts relevant rate limit information from the GitHub API
+// rate limit.
 func getRateLimitInfo(limit *github.RateLimits) ghRateLimitInfo {
 	remaining := limit.Core.Remaining
 	maxLimit := limit.Core.Limit
