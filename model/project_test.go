@@ -44,7 +44,7 @@ func TestFindProject(t *testing.T) {
 			projRef := &ProjectRef{
 				Id: "",
 			}
-			version, project, pp, err := FindLatestVersionWithValidProject(projRef.Id, false)
+			version, project, pp, err := FindLatestVersionWithValidProject(t.Context(), projRef.Id, false)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
 			So(pp, ShouldBeNil)
@@ -73,7 +73,7 @@ func TestFindProject(t *testing.T) {
 			}
 			require.NoError(t, pp.Insert(t.Context()))
 			require.NoError(t, v.Insert(t.Context()), "failed to insert test version: %v", v)
-			_, _, _, err := FindLatestVersionWithValidProject(p.Id, false)
+			_, _, _, err := FindLatestVersionWithValidProject(t.Context(), p.Id, false)
 			So(err, ShouldBeNil)
 
 		})
@@ -105,7 +105,7 @@ func TestFindProject(t *testing.T) {
 			So(badVersion.Insert(t.Context()), ShouldBeNil)
 			So(goodVersion.Insert(t.Context()), ShouldBeNil)
 			So(pp.Insert(t.Context()), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", false)
+			v, p, pp, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "good_version")
@@ -131,7 +131,7 @@ func TestFindProject(t *testing.T) {
 			So(pp.Insert(t.Context()), ShouldBeNil)
 			pp.Id = "pre_generation_good_version"
 			So(pp.Insert(t.Context()), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", true)
+			v, p, pp, err := FindLatestVersionWithValidProject(t.Context(), "project_test", true)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "pre_generation_good_version")
@@ -140,7 +140,7 @@ func TestFindProject(t *testing.T) {
 		})
 		Convey("error if no version exists", func() {
 			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
-			_, _, _, err := FindLatestVersionWithValidProject("project_test", false)
+			_, _, _, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
 			So(err, ShouldNotBeNil)
 		})
 	})
@@ -570,6 +570,78 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal(upstreamTask.Status, expansions.Get("trigger_status"))
 	assert.Equal(upstreamTask.Version, expansions.Get("trigger_version"))
 	assert.Equal(upstreamProject.Branch, expansions.Get("trigger_branch"))
+}
+
+func TestPopulateExpansionsChildPatch(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	require.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
+
+	h := host.Host{
+		Id: "h",
+		Distro: distro.Distro{
+			Id:      "d1",
+			WorkDir: "/home/evg",
+		},
+	}
+
+	projectRef := &ProjectRef{
+		Id:         "mci",
+		Identifier: "mci-favorite",
+		Owner:      "my_org",
+		Repo:       "my_repo",
+	}
+	require.NoError(projectRef.Insert(t.Context()))
+
+	// Create parent patch and project
+	parentRef := &ProjectRef{
+		Id:         "parentProject",
+		Identifier: "parent project",
+		Owner:      "parent_org",
+		Repo:       "parent_repo",
+		Branch:     "parent_branch",
+	}
+	require.NoError(parentRef.Insert(t.Context()))
+
+	parentPatch := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: "parentProject",
+	}
+	require.NoError(parentPatch.Insert(t.Context()))
+
+	// Create child version with parent patch ID
+	childVersion := &Version{
+		Id:            "childVersion",
+		Branch:        "childBranch",
+		Author:        "childAuthor",
+		Requester:     evergreen.PatchVersionRequester,
+		ParentPatchID: parentPatch.Id.Hex(),
+	}
+	require.NoError(childVersion.Insert(t.Context()))
+	childPatch := &patch.Patch{
+		Version: childVersion.Id,
+	}
+	require.NoError(childPatch.Insert(t.Context()))
+
+	taskDoc := &task.Task{
+		Id:           "t1",
+		DisplayName:  "test task",
+		Version:      childVersion.Id,
+		Execution:    0,
+		BuildId:      "b1",
+		BuildVariant: "bv1",
+		Revision:     "abc123",
+		Project:      "mci",
+	}
+
+	expansions, err := PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+
+	assert.Equal(childVersion.ParentPatchID, expansions.Get("parent_patch_id"))
+	assert.Equal(parentRef.Owner, expansions.Get("parent_github_org"))
+	assert.Equal(parentRef.Repo, expansions.Get("parent_github_repo"))
+	assert.Equal(parentRef.Branch, expansions.Get("parent_github_branch"))
 }
 
 type projectSuite struct {

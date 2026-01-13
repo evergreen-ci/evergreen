@@ -16,6 +16,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestLastKnownGoodConfig(t *testing.T) {
@@ -753,4 +754,73 @@ func TestGetBuildVariants(t *testing.T) {
 			tCase(t, &v)
 		})
 	}
+}
+
+func TestUpdateAggregateTaskCosts(t *testing.T) {
+	ctx := context.Background()
+	require.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
+
+	t.Run("AggregatesTaskAndPredictedCosts", func(t *testing.T) {
+		v := &Version{Id: "v1"}
+		require.NoError(t, v.Insert(ctx))
+
+		// Insert tasks using BSON directly to avoid import cycle
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t1", "version": "v1", "display_only": false,
+			"cost":           bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0},
+			"predicted_cost": bson.M{"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4},
+		}))
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t2", "version": "v1", "display_only": false,
+			"cost":           bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0},
+			"predicted_cost": bson.M{"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6},
+		}))
+
+		err := v.UpdateAggregateTaskCosts(ctx)
+		require.NoError(t, err)
+		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 5.0, v.PredictedCost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 4.0, v.PredictedCost.AdjustedEC2Cost, 0.01)
+	})
+
+	t.Run("ExcludesDisplayOnlyTasks", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
+		v := &Version{Id: "v2"}
+		require.NoError(t, v.Insert(ctx))
+
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t1", "version": "v2", "display_only": false,
+			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0},
+		}))
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "display", "version": "v2", "display_only": true,
+			"cost": bson.M{"on_demand_ec2_cost": 100.0, "adjusted_ec2_cost": 80.0},
+		}))
+
+		err := v.UpdateAggregateTaskCosts(ctx)
+		require.NoError(t, err)
+		assert.InDelta(t, 10.0, v.Cost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 8.0, v.Cost.AdjustedEC2Cost, 0.01)
+	})
+
+	t.Run("IncludesOldTaskExecutions", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection, oldTaskCollection))
+		v := &Version{Id: "v3"}
+		require.NoError(t, v.Insert(ctx))
+
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t1", "version": "v3", "display_only": false,
+			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0},
+		}))
+		require.NoError(t, db.Insert(ctx, oldTaskCollection, bson.M{
+			"_id": "t1_old", "version": "v3", "display_only": false,
+			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0},
+		}))
+
+		err := v.UpdateAggregateTaskCosts(ctx)
+		require.NoError(t, err)
+		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
+	})
 }

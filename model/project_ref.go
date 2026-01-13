@@ -88,6 +88,9 @@ type ProjectRef struct {
 	// SpawnHostScriptPath is a path to a script to optionally be run by users on hosts triggered from tasks.
 	SpawnHostScriptPath string `bson:"spawn_host_script_path" json:"spawn_host_script_path" yaml:"spawn_host_script_path"`
 
+	// DebugSpawnHostsDisabled indicates whether users can spawn debug hosts for tasks in this project.
+	DebugSpawnHostsDisabled *bool `bson:"debug_spawn_hosts_disabled,omitempty" json:"debug_spawn_hosts_disabled,omitempty" yaml:"debug_spawn_hosts_disabled,omitempty"`
+
 	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
 	// If a repo is enabled and this is what creates the hook, then TracksPushEvents will be set at the repo level.
 	TracksPushEvents *bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
@@ -154,6 +157,10 @@ type ProjectRef struct {
 
 	// RunEveryMainlineCommitLimit indicates the maximum number of mainline commits to activate in a single activation run.
 	RunEveryMainlineCommitLimit int `bson:"run_every_mainline_commit_limit,omitempty" json:"run_every_mainline_commit_limit,omitempty" yaml:"run_every_mainline_commit_limit,omitempty"`
+
+	// UseGitHubAppForAPI indicates whether to use the project's GitHub app for
+	// authenticated API requests to GitHub.
+	UseGitHubAppForAPI bool `bson:"use_github_app_for_api,omitempty" json:"use_github_app_for_api,omitempty" yaml:"use_github_app_for_api,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -228,6 +235,20 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 
 	return appAuth, nil
 
+}
+
+// GetGitHubAppAuthForAPI gets this project's GitHub app auth (if any) for
+// usage in the GitHub API if the project is configured to use its own GitHub
+// appf or GitHub API operations.
+func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.GithubAppAuth, error) {
+	if !p.UseGitHubAppForAPI {
+		return nil, nil
+	}
+	appAuth, err := p.GetGitHubAppAuth(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting GitHub app auth")
+	}
+	return appAuth, nil
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
@@ -515,6 +536,7 @@ var (
 	projectRefVersionControlEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
 	projectRefNotifyOnFailureKey                    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefSpawnHostScriptPathKey                = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
+	projectRefDebugSpawnHostsDisabledKey            = bsonutil.MustHaveTag(ProjectRef{}, "DebugSpawnHostsDisabled")
 	projectRefTriggersKey                           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 	projectRefPatchTriggerAliasesKey                = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
 	projectRefGithubPRTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubPRTriggerAliases")
@@ -613,6 +635,10 @@ func (p *ProjectRef) IsGitTagVersionsEnabled() bool {
 
 func (p *ProjectRef) IsStatsCacheDisabled() bool {
 	return utility.FromBoolPtr(p.DisabledStatsCache)
+}
+
+func (p *ProjectRef) IsDebugSpawnHostsEnabled() bool {
+	return !utility.FromBoolTPtr(p.DebugSpawnHostsDisabled)
 }
 
 func (p *ProjectRef) IsHidden() bool {
@@ -2246,18 +2272,19 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 	switch section {
 	case ProjectPageGeneralSection:
 		setUpdate := bson.M{
-			ProjectRefBranchKey:                p.Branch,
-			ProjectRefBatchTimeKey:             p.BatchTime,
-			ProjectRefRemotePathKey:            p.RemotePath,
-			projectRefSpawnHostScriptPathKey:   p.SpawnHostScriptPath,
-			projectRefDispatchingDisabledKey:   p.DispatchingDisabled,
-			projectRefStepbackDisabledKey:      p.StepbackDisabled,
-			projectRefStepbackBisectKey:        p.StepbackBisect,
-			projectRefVersionControlEnabledKey: p.VersionControlEnabled,
-			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
-			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
-			projectRefPatchingDisabledKey:      p.PatchingDisabled,
-			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
+			ProjectRefBranchKey:                  p.Branch,
+			ProjectRefBatchTimeKey:               p.BatchTime,
+			ProjectRefRemotePathKey:              p.RemotePath,
+			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
+			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			projectRefStepbackDisabledKey:        p.StepbackDisabled,
+			projectRefStepbackBisectKey:          p.StepbackBisect,
+			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,
+			ProjectRefDeactivatePreviousKey:      p.DeactivatePrevious,
+			projectRefRepotrackerDisabledKey:     p.RepotrackerDisabled,
+			projectRefPatchingDisabledKey:        p.PatchingDisabled,
+			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
+			projectRefDebugSpawnHostsDisabledKey: p.DebugSpawnHostsDisabled,
 		}
 		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
 		if p.TracksPushEvents != nil {
@@ -3230,7 +3257,12 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if pRef.SpawnHostScriptPath == "" {
 		return "", nil
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
+	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+		"project_id": pRef.Id,
+	}))
+	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
