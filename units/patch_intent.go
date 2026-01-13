@@ -243,7 +243,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.user == nil {
-		j.user, err = user.FindOneContext(ctx, user.ById(patchDoc.Author))
+		j.user, err = user.FindOne(ctx, user.ById(patchDoc.Author))
 		if err != nil {
 			return errors.Wrapf(err, "finding patch author '%s'", patchDoc.Author)
 		}
@@ -789,7 +789,7 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	var u *user.DBUser
 	var err error
 	if p.Author != "" {
-		u, err = user.FindOneByIdContext(ctx, p.Author)
+		u, err = user.FindOneById(ctx, p.Author)
 		if err != nil {
 			return errors.Wrap(err, "getting user")
 		}
@@ -1257,7 +1257,7 @@ func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, e
 	}
 
 	// Otherwise, use the GitHub patch user
-	u, err = user.FindOneContext(ctx, user.ById(evergreen.GithubPatchUser))
+	u, err = user.FindOne(ctx, user.ById(evergreen.GithubPatchUser))
 	if err != nil {
 		return u, errors.Wrap(err, "finding GitHub patch user")
 	}
@@ -1277,7 +1277,7 @@ func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, e
 }
 
 func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, error) {
-	u, err := user.FindOneContext(ctx, user.ById(evergreen.GithubMergeUser))
+	u, err := user.FindOne(ctx, user.ById(evergreen.GithubMergeUser))
 	if err != nil {
 		return u, errors.Wrap(err, "finding GitHub merge queue user")
 	}

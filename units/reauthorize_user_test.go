@@ -71,7 +71,7 @@ func TestReauthorizeUserJob(t *testing.T) {
 	ctx = testutil.TestSpan(ctx, t)
 
 	needsReauth := func(env *mock.Environment, u *user.DBUser) (bool, error) {
-		dbUser, err := user.FindOneByIdContext(t.Context(), u.Username())
+		dbUser, err := user.FindOneById(t.Context(), u.Username())
 		if err != nil {
 			return false, errors.WithStack(err)
 		}
@@ -93,7 +93,7 @@ func TestReauthorizeUserJob(t *testing.T) {
 		"NoopsIfSessionHasNotExceededReauthPeriod": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
 			_, err := user.PutLoginCache(ctx, u)
 			require.NoError(t, err)
-			u, err = user.FindOneByIdContext(t.Context(), u.Id)
+			u, err = user.FindOneById(t.Context(), u.Id)
 			require.NoError(t, err)
 			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
@@ -104,9 +104,9 @@ func TestReauthorizeUserJob(t *testing.T) {
 			assert.False(t, um.attemptedReauth)
 		},
 		"NoopsIfUserLoggedOut": func(ctx context.Context, t *testing.T, env *mock.Environment, um *mockReauthUserManager, u *user.DBUser) {
-			require.NoError(t, user.ClearLoginCache(u))
+			require.NoError(t, user.ClearLoginCache(ctx, u))
 			var err error
-			u, err = user.FindOneByIdContext(t.Context(), u.Id)
+			u, err = user.FindOneById(t.Context(), u.Id)
 			require.NoError(t, err)
 			j := NewReauthorizeUserJob(env, u, "test")
 			j.Run(ctx)
@@ -163,7 +163,7 @@ func TestReauthorizeUserJob(t *testing.T) {
 			assert.False(t, stillNeedsReauth)
 			assert.True(t, um.attemptedReauth)
 
-			dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
+			dbUser, err := user.FindOneById(t.Context(), u.Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbUser.LoginCache)
 		},

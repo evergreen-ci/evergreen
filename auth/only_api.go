@@ -49,7 +49,7 @@ func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 
 // findOnlyAPIUser finds an API-only user by ID
 func findOnlyAPIUser(ctx context.Context, id string) (*user.DBUser, error) {
-	dbUser, err := user.FindOneContext(ctx, db.Query(bson.M{
+	dbUser, err := user.FindOne(ctx, db.Query(bson.M{
 		user.IdKey:      id,
 		user.OnlyAPIKey: true,
 	}))

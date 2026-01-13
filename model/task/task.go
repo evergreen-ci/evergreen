@@ -1943,7 +1943,7 @@ func UpdateSchedulingLimit(ctx context.Context, username, requester string, numT
 	if maxScheduledTasks == 0 {
 		return nil
 	}
-	u, err := user.FindOneByIdContext(ctx, username)
+	u, err := user.FindOneById(ctx, username)
 	if err != nil {
 		return errors.Wrap(err, "getting user")
 	}

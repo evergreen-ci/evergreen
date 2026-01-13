@@ -192,7 +192,7 @@ func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string
 	catcher := grip.NewBasicCatcher()
 	adminRole := GetRepoAdminRole(r.Id)
 	for _, addedUser := range toAdd {
-		adminUser, err := user.FindOneByIdContext(ctx, addedUser)
+		adminUser, err := user.FindOneById(ctx, addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			r.removeFromAdminsList(addedUser)
@@ -211,7 +211,7 @@ func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string
 
 	}
 	for _, removedUser := range toRemove {
-		adminUser, err := user.FindOneByIdContext(ctx, removedUser)
+		adminUser, err := user.FindOneById(ctx, removedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue

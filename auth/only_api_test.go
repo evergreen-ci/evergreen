@@ -40,12 +40,12 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, um)
 
-			checkRegUser, err := user.FindOneByIdContext(t.Context(), regUser.Id)
+			checkRegUser, err := user.FindOneById(t.Context(), regUser.Id)
 			require.NoError(t, err)
 			require.NotNil(t, checkRegUser)
 			assert.Equal(t, regUser.APIKey, checkRegUser.APIKey)
 
-			checkAPIUser, err := user.FindOneByIdContext(t.Context(), apiUser.Id)
+			checkAPIUser, err := user.FindOneById(t.Context(), apiUser.Id)
 			assert.NoError(t, err)
 			assert.Nil(t, checkAPIUser)
 		},
@@ -152,19 +152,19 @@ func TestOnlyAPIUserManager(t *testing.T) {
 			require.NotNil(t, um)
 
 			assert.Error(t, um.ClearUser(t.Context(), apiUser, false))
-			checkUser, err := user.FindOneByIdContext(t.Context(), apiUser.Id)
+			checkUser, err := user.FindOneById(t.Context(), apiUser.Id)
 			require.NoError(t, err)
 			require.NotNil(t, checkUser)
 			assert.Equal(t, checkUser.APIKey, apiUser.APIKey)
 
 			assert.Error(t, um.ClearUser(t.Context(), apiUser, true))
-			checkUser, err = user.FindOneByIdContext(t.Context(), apiUser.Id)
+			checkUser, err = user.FindOneById(t.Context(), apiUser.Id)
 			require.NoError(t, err)
 			require.NotNil(t, checkUser)
 			assert.Equal(t, checkUser.APIKey, apiUser.APIKey)
 
 			assert.Error(t, um.ClearUser(t.Context(), &user.DBUser{}, true))
-			checkUser, err = user.FindOneByIdContext(t.Context(), apiUser.Id)
+			checkUser, err = user.FindOneById(t.Context(), apiUser.Id)
 			require.NoError(t, err)
 			require.NotNil(t, checkUser)
 			assert.Equal(t, checkUser.APIKey, apiUser.APIKey)

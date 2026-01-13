@@ -2291,7 +2291,7 @@ func TestActivateTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
-		u, err = user.FindOneContext(ctx, user.ById(u.Id))
+		u, err = user.FindOne(ctx, user.ById(u.Id))
 		require.NoError(t, err)
 		require.NotNil(t, u)
 		assert.Len(t, updatedIDs, u.NumScheduledPatchTasks)

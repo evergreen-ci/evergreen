@@ -123,21 +123,6 @@ func RemoveAll(ctx context.Context, collection string, query any) error {
 	return errors.Wrapf(errors.WithStack(err), "deleting documents")
 }
 
-// Update updates one matching document in the collection.
-// DEPRECATED (DEVPROD-15398): This is only here to support a cache
-// with Gimlet, use UpdateContext instead.
-func Update(collection string, query any, update any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Update(query, update)
-}
-
 // UpdateContext updates one matching document in the collection.
 func UpdateContext(ctx context.Context, collection string, query any, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
@@ -197,21 +182,6 @@ func UpdateIdContext(ctx context.Context, collection string, id, update any) err
 	}
 
 	return nil
-}
-
-// UpdateAll updates all matching documents in the collection.
-// DEPRECATED (DEVPROD-15398): This is only here to support a cache
-// with Gimlet, use UpdateAllContext instead.
-func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return nil, err
-	}
-	defer session.Close()
-
-	return db.C(collection).UpdateAll(query, update)
 }
 
 // Upsert run the specified update against the collection as an upsert operation.

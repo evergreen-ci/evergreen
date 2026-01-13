@@ -114,7 +114,7 @@ func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *getUserHandler) Run(ctx context.Context) gimlet.Responder {
-	usr, err := user.FindOneByIdContext(ctx, h.userId)
+	usr, err := user.FindOneById(ctx, h.userId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding user by ID"))
 	}
@@ -192,7 +192,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneByIdContext(ctx, h.userID)
+	u, err := user.FindOneById(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting user '%s'", h.userID))
 	}
@@ -278,7 +278,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneByIdContext(ctx, h.userID)
+	u, err := user.FindOneById(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", h.userID))
 	}
@@ -516,7 +516,7 @@ func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneByIdContext(ctx, h.userID)
+	u, err := user.FindOneById(ctx, h.userID)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error finding user",
@@ -627,7 +627,7 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneByIdContext(ctx, h.userID)
+	u, err := user.FindOneById(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", h.userID))
 	}
@@ -921,7 +921,7 @@ func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	if username == "" {
 		return errors.New("no user could be parsed from the email address")
 	}
-	h.oldUsr, err = user.FindOneByIdContext(ctx, username)
+	h.oldUsr, err = user.FindOneById(ctx, username)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding user '%s'", username).Error(),
@@ -1025,7 +1025,7 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 	if ch.user == "" {
 		return errors.New("no user could be parsed from the email address")
 	}
-	u, err := user.FindOneByIdContext(ctx, ch.user)
+	u, err := user.FindOneById(ctx, ch.user)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding user '%s'", ch.user).Error(),

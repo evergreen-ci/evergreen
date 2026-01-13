@@ -353,7 +353,7 @@ func authenticateSpecialUser(r *http.Request, requiredUsername, username, apiKey
 			Message:    "not authorized",
 		})
 	}
-	u, err := user.FindOneByIdContext(r.Context(), username)
+	u, err := user.FindOneById(r.Context(), username)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username))
 	}

@@ -718,7 +718,7 @@ func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 	} else if t.ActivatedBy == "" {
 		return false
 	}
-	u, err := user.FindOneByIdContext(ctx, t.ActivatedBy)
+	u, err := user.FindOneById(ctx, t.ActivatedBy)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),

@@ -118,7 +118,7 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Invalid MCP request", http.StatusBadRequest)
 			return
 		}
-		user, err := user.FindOneByIdContext(r.Context(), userId)
+		user, err := user.FindOneById(r.Context(), userId)
 		if err != nil {
 			grip.Error(message.Fields{
 				"message": "Error finding user in request",

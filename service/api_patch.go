@@ -72,7 +72,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 			"patch_id":        patchID,
 		})
 	} else if data.PatchAuthor != "" {
-		specifiedUser, err := user.FindOneByIdContext(ctx, data.PatchAuthor)
+		specifiedUser, err := user.FindOneById(ctx, data.PatchAuthor)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for author '%s'", data.PatchAuthor)
 		}

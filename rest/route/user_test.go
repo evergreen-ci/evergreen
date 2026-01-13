@@ -72,7 +72,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbUser, err := user.FindOneContext(ctx, user.ById("me"))
+	dbUser, err := user.FindOne(ctx, user.ById("me"))
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
@@ -108,7 +108,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbUser, err := user.FindOneContext(ctx, user.ById("me"))
+	dbUser, err := user.FindOne(ctx, user.ById("me"))
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues("something", dbUser.Settings.SlackUsername)
@@ -219,7 +219,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	roles, err := s.env.RoleManager().GetAllRoles(s.T().Context())
 	s.NoError(err)
 	s.Len(roles, 1)
-	dbUser, err := user.FindOneByIdContext(s.T().Context(), s.u.Id)
+	dbUser, err := user.FindOneById(s.T().Context(), s.u.Id)
 	s.NoError(err)
 	s.Equal(dbUser.SystemRoles[0], roles[0].ID)
 	foundScope, err := s.env.RoleManager().FindScopeForResources(s.T().Context(), evergreen.ProjectResourceType, "foo")
@@ -242,7 +242,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	s.Equal(newScope.ID, foundScope.ID)
 
 	// a matching role should just be added
-	dbUser, err = user.FindOneByIdContext(s.T().Context(), s.u.Id)
+	dbUser, err = user.FindOneById(s.T().Context(), s.u.Id)
 	s.NoError(err)
 	for _, role := range dbUser.Roles() {
 		s.NoError(dbUser.RemoveRole(s.T().Context(), role))
@@ -255,7 +255,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	s.NoError(err)
 	s.NotNil(foundScope)
 	s.Equal(newScope.ID, foundScope.ID)
-	dbUser, err = user.FindOneByIdContext(s.T().Context(), s.u.Id)
+	dbUser, err = user.FindOneById(s.T().Context(), s.u.Id)
 	s.NoError(err)
 	s.Len(dbUser.Roles(), 1)
 }
@@ -309,7 +309,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	roles, err := rm.GetAllRoles(t.Context())
 	assert.NoError(t, err)
 	require.Len(t, roles, 1)
-	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
+	dbUser, err := user.FindOneById(t.Context(), u.Id)
 	assert.NoError(t, err)
 	require.Len(t, dbUser.SystemRoles, 1)
 	assert.Contains(t, dbUser.SystemRoles, roles[0].ID)
@@ -350,7 +350,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp := handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
+	dbUser, err := user.FindOneById(t.Context(), u.Id)
 	require.NoError(t, err)
 	assert.Len(t, dbUser.SystemRoles, 5)
 	assert.NotContains(t, dbUser.SystemRoles, "role1")
@@ -365,7 +365,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err = user.FindOneByIdContext(t.Context(), u.Id)
+	dbUser, err = user.FindOneById(t.Context(), u.Id)
 	require.NoError(t, err)
 	assert.Empty(t, dbUser.SystemRoles)
 }
@@ -453,7 +453,7 @@ func TestPostUserRoles(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
+	dbUser, err := user.FindOneById(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"role1"}, dbUser.Roles())
 
@@ -469,7 +469,7 @@ func TestPostUserRoles(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err = user.FindOneByIdContext(t.Context(), newId)
+	dbUser, err = user.FindOneById(t.Context(), newId)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"role1"}, dbUser.Roles())
 
@@ -489,7 +489,7 @@ func TestPostUserRoles(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err = user.FindOneByIdContext(t.Context(), newId)
+	dbUser, err = user.FindOneById(t.Context(), newId)
 	assert.NoError(t, err)
 	assert.Empty(t, dbUser.Roles())
 }
@@ -848,7 +848,7 @@ func TestRenameUser(t *testing.T) {
 			resp := handler.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			newUsrFromDb, err := user.FindOneByIdContext(t.Context(), "new_me")
+			newUsrFromDb, err := user.FindOneById(t.Context(), "new_me")
 			assert.NoError(t, err)
 			assert.NotNil(t, newUsrFromDb)
 			assert.NotEqual(t, newUsr.APIKey, newUsrFromDb.GetAPIKey())
@@ -885,7 +885,7 @@ func TestRenameUser(t *testing.T) {
 			resp := handler.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			newUsrFromDb, err := user.FindOneByIdContext(t.Context(), "new_me")
+			newUsrFromDb, err := user.FindOneById(t.Context(), "new_me")
 			assert.NoError(t, err)
 			assert.NotNil(t, newUsrFromDb)
 			assert.NotEmpty(t, newUsrFromDb.GetAPIKey())

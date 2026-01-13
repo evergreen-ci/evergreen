@@ -113,7 +113,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NotNil(t, unrestrictedScope)
 			assert.NotContains(t, unrestrictedScope.Resources, projectThatDefaults.Id)
 
-			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
+			newAdminFromDB, err := user.FindOneById(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
@@ -139,12 +139,12 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NotNil(t, repoRefFromDb)
 			assert.Equal(t, []string{newAdmin.Id}, repoRefFromDb.Admins)
 
-			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
+			newAdminFromDB, err := user.FindOneById(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 
-			oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), "oldAdmin")
+			oldAdminFromDB, err := user.FindOneById(t.Context(), "oldAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, oldAdminFromDB)
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
@@ -631,7 +631,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, unrestrictedScope)
 			assert.NotContains(t, unrestrictedScope.Resources, ref.Id)
 
-			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
+			newAdminFromDB, err := user.FindOneById(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), "admin")
@@ -657,12 +657,12 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			// should still add newAdmin and delete oldAdmin even with errors
 			assert.Equal(t, []string{newAdmin.Id}, pRefFromDB.Admins)
 
-			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
+			newAdminFromDB, err := user.FindOneById(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), "admin")
 
-			oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), "oldAdmin")
+			oldAdminFromDB, err := user.FindOneById(t.Context(), "oldAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, oldAdminFromDB)
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))

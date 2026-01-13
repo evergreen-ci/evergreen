@@ -262,7 +262,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneByIdContext(s.T().Context(), testUser)
+	u, err := user.FindOneById(s.T().Context(), testUser)
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner(ctx, "host1", u)
@@ -274,7 +274,7 @@ func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneByIdContext(s.T().Context(), testUser)
+	u, err := user.FindOneById(s.T().Context(), testUser)
 	s.NoError(err)
 	s.NotNil(u)
 
@@ -287,7 +287,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneByIdContext(s.T().Context(), "root")
+	u, err := user.FindOneById(s.T().Context(), "root")
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner(ctx, "host2", u)

@@ -411,7 +411,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	s.Equal(h.distroID, dbDistro.Id)
 	s.True(dbDistro.HostAllocatorSettings.AutoTuneMaximumHosts)
 
-	dbUser, err := user.FindOneById("user")
+	dbUser, err := user.FindOneById(s.T().Context(), "user")
 	s.NoError(err)
 	s.Require().NotNil(dbUser)
 	s.Require().Len(dbUser.Roles(), 1)

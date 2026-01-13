@@ -180,7 +180,7 @@ func getOrCreateUser(ctx context.Context, u gimlet.User) (gimlet.User, error) {
 }
 
 func getUserByID(ctx context.Context, id string) (gimlet.User, error) {
-	u, err := user.FindOneByIdContext(ctx, id)
+	u, err := user.FindOneById(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -193,8 +193,8 @@ func getUserByID(ctx context.Context, id string) (gimlet.User, error) {
 // getUserWithExpiration returns a user by id and a boolean. True indicates the user is valid. False
 // indicates that the user has expired. An error is returned if the user does not exist or if there
 // is an error retrieving the user.
-func getUserByIdWithExpiration(id string, expireAfter time.Duration) (gimlet.User, bool, error) {
-	u, err := user.FindOneById(id)
+func getUserByIdWithExpiration(ctx context.Context, id string, expireAfter time.Duration) (gimlet.User, bool, error) {
+	u, err := user.FindOneById(ctx, id)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "problem getting user from cache")
 	}
