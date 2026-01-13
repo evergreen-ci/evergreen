@@ -3742,10 +3742,13 @@ func GetProjectAdminRole(projectId string) string {
 	return fmt.Sprintf("admin_project_%s", projectId)
 }
 
-// FindProjectRefsUsingGitHubAppForAPI returns all project or repo refs that use
-// GitHub app authentication for internal GitHub API requests. Does not return
-// project refs that inherit this setting from their repo ref.
-func FindProjectRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectRef, error) {
+// FindProjectAndRepoRefsUsingGitHubAppForAPI returns all branch project refs
+// and repo refs that use GitHub app authentication for internal GitHub API
+// requests. This does not take into account whether a branch project ref
+// inherits settings from the repo ref, so if a repo ref has the GitHub app
+// enabled for internal API usage, this function will return that repo ref but
+// will not return the branch projects that inherit that setting.
+func FindProjectAndRepoRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectRef, error) {
 	pRefs := []ProjectRef{}
 	if err := db.FindAllQ(ctx,
 		ProjectRefCollection,
