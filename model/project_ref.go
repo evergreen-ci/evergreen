@@ -2020,7 +2020,6 @@ func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete 
 func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int, ownerName, repoName string, activeOnly bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	// Determine pagination operator based on sort direction
 	paginationOp := "$gte"
 	sortSpec := ProjectRefIdentifierKey
 	if sortDir < 0 {
@@ -2028,18 +2027,15 @@ func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir i
 		sortSpec = "-" + sortSpec
 	}
 
-	// Build all filter conditions as an array
 	conditions := []bson.M{
 		{ProjectRefHiddenKey: bson.M{"$ne": true}},
 		{ProjectRefIdentifierKey: bson.M{"$ne": ""}},
 	}
 
-	// Add pagination condition if key provided
 	if key != "" {
 		conditions = append(conditions, bson.M{ProjectRefIdentifierKey: bson.M{paginationOp: key}})
 	}
 
-	// Add optional filters
 	if ownerName != "" {
 		conditions = append(conditions, bson.M{ProjectRefOwnerKey: ownerName})
 	}
@@ -2050,7 +2046,6 @@ func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir i
 		conditions = append(conditions, bson.M{ProjectRefEnabledKey: true})
 	}
 
-	// Use $and for all conditions
 	filter := bson.M{"$and": conditions}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)

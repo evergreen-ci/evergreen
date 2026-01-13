@@ -1929,7 +1929,7 @@ func (s *FindProjectsSuite) TestFilterNoMatches() {
 func (s *FindProjectsSuite) TestFetchByIdentifierAsc() {
 	projects, err := FindNonHiddenProjects(s.T().Context(), "id-1", 10, 1, "", "", false)
 	s.NoError(err)
-	s.Require().Len(projects, 9) // Should find all projects with identifier >= "id-1"
+	s.Require().Len(projects, 9)
 	s.Equal("id-1", projects[0].Identifier)
 	s.Equal("id-2", projects[1].Identifier)
 }
@@ -1937,7 +1937,7 @@ func (s *FindProjectsSuite) TestFetchByIdentifierAsc() {
 func (s *FindProjectsSuite) TestFetchByIdentifierDesc() {
 	projects, err := FindNonHiddenProjects(s.T().Context(), "projectF", 10, -1, "", "", false)
 	s.NoError(err)
-	s.Require().Len(projects, 8) // Should find all projects with identifier < "projectF"
+	s.Require().Len(projects, 8)
 	s.Equal("projectE", projects[0].Identifier)
 	s.Equal("projectD", projects[1].Identifier)
 }
@@ -1946,12 +1946,12 @@ func (s *FindProjectsSuite) TestFilterByActiveOnly() {
 	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 9) // All non-hidden projects (projectA-F + id-1 + id-2 + mci2)
+	s.Len(projects, 9)
 
 	projects, err = FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", true)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Require().Len(projects, 5) // Only enabled projects: projectA, projectB, projectC, id-1, id-2
+	s.Require().Len(projects, 5)
 
 	for _, p := range projects {
 		s.True(p.Enabled, "project %s should be enabled", p.Identifier)
@@ -1962,7 +1962,7 @@ func (s *FindProjectsSuite) TestFilterByActiveWithOwnerAndRepo() {
 	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "mongodb", "test-repo", true)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Require().Len(projects, 2) // id-1 and id-2 are enabled with mongodb/test-repo
+	s.Require().Len(projects, 2)
 	for _, p := range projects {
 		s.True(p.Enabled)
 		s.Equal("mongodb", p.Owner)
