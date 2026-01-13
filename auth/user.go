@@ -21,3 +21,4 @@ func (u *simpleUser) GetAccessToken() string                   { return "" }
 func (u *simpleUser) GetRefreshToken() string                  { return "" }
 func (u *simpleUser) Roles() []string                          { out := []string{}; copy(out, u.SiteRoles); return out }
 func (u *simpleUser) HasPermission(gimlet.PermissionOpts) bool { return true }
+func (u *simpleUser) IsAPIOnly() bool                          { return false }
