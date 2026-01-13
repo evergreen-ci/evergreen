@@ -498,6 +498,8 @@ const (
 	TaskDescriptionOtelAttribute    = "evergreen.task.description"
 	TaskTagsOtelAttribute           = "evergreen.task.tags"
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
+	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
+	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
 
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
@@ -516,6 +518,10 @@ const (
 	VersionTimeTakenSecondsOtelAttribute = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute            = "evergreen.version.pr_num"
 	VersionDescriptionOtelAttribute      = "evergreen.version.description"
+	VersionOnDemandCostOtelAttribute     = "evergreen.version.on_demand_cost"
+	VersionAdjustedCostOtelAttribute     = "evergreen.version.adjusted_cost"
+	VersionPredictedOnDemandCostOtelAttribute = "evergreen.version.predicted_on_demand_cost"
+	VersionPredictedAdjustedCostOtelAttribute = "evergreen.version.predicted_adjusted_cost"
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
