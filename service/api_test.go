@@ -57,6 +57,16 @@ func TestServerEndpoints(t *testing.T) {
 			expectedStatusCode:     401,
 			expectedErrorSubstring: "static API keys are disabled for human users",
 		},
+		{
+			name:                  "UsingCookiesAndStaticAPIKeys/DisabledStaticAPIKeys",
+			staticAPIKeysDisabled: true,
+			authHeader: map[string]string{
+				evergreen.AuthTokenCookie: "token",
+				evergreen.APIUserHeader:   serviceTestUtil.MockUser.Id,
+				evergreen.APIKeyHeader:    serviceTestUtil.MockUser.APIKey,
+			},
+			expectedStatusCode: 200,
+		},
 	}
 
 	for _, testCase := range testCases {
