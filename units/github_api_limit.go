@@ -23,7 +23,7 @@ const githubAPILimitJobName = "github-api-limit"
 
 func init() {
 	registry.AddJobType(githubAPILimitJobName, func() amboy.Job {
-		return makeGithubAPILimitJob()
+		return makeGitHubAPILimitJob()
 	})
 }
 
@@ -31,7 +31,7 @@ type githubAPILimitJob struct {
 	job.Base `bson:"base" json:"base" yaml:"base"`
 }
 
-func makeGithubAPILimitJob() *githubAPILimitJob {
+func makeGitHubAPILimitJob() *githubAPILimitJob {
 	j := &githubAPILimitJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -43,9 +43,9 @@ func makeGithubAPILimitJob() *githubAPILimitJob {
 	return j
 }
 
-// NewGithubAPILimitJob creates a job to log GitHub API rate limit information.
-func NewGithubAPILimitJob(ts string) amboy.Job {
-	j := makeGithubAPILimitJob()
+// NewGitHubAPILimitJob creates a job to log GitHub API rate limit information.
+func NewGitHubAPILimitJob(ts string) amboy.Job {
+	j := makeGitHubAPILimitJob()
 	j.SetID(fmt.Sprintf("%s.%s", githubAPILimitJobName, ts))
 	j.SetScopes([]string{githubAPILimitJobName})
 	j.SetEnqueueAllScopes(true)
