@@ -89,7 +89,7 @@ func init() {
 }
 
 func dropTestDB(t *testing.T) {
-	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	session, _, err := db.GetGlobalSessionFactory().GetContextSession(t.Context())
 	require.NoError(t, err)
 	defer session.Close()
 	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())

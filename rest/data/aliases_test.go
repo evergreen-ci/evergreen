@@ -24,7 +24,7 @@ func TestAliasSuite(t *testing.T) {
 }
 
 func (a *AliasSuite) SetupTest() {
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	session, _, _ := db.GetGlobalSessionFactory().GetContextSession(a.T().Context())
 	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase())
 
 	aliases := []model.ProjectAlias{

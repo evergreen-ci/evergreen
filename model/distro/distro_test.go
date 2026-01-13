@@ -23,12 +23,9 @@ import (
 )
 
 func TestFindDistroById(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
-	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	session, _, err := db.GetGlobalSessionFactory().GetContextSession(t.Context())
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()
@@ -39,20 +36,17 @@ func TestFindDistroById(t *testing.T) {
 	d := &Distro{
 		Id: id,
 	}
-	assert.NoError(d.Insert(ctx))
-	found, err := FindOneId(ctx, id)
+	assert.NoError(d.Insert(t.Context()))
+	found, err := FindOneId(t.Context(), id)
 	assert.NoError(err)
 	assert.Equal(found.Id, id, "The _ids should match")
 	assert.NotEqual(found.Id, -1, "The _ids should not match")
 }
 
 func TestFindAllDistros(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
-	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	session, _, err := db.GetGlobalSessionFactory().GetContextSession(t.Context())
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()
@@ -63,10 +57,10 @@ func TestFindAllDistros(t *testing.T) {
 		d := &Distro{
 			Id: fmt.Sprintf("distro_%d", rand.Int()),
 		}
-		assert.NoError(d.Insert(ctx))
+		assert.NoError(d.Insert(t.Context()))
 	}
 
-	found, err := AllDistros(ctx)
+	found, err := AllDistros(t.Context())
 	assert.NoError(err)
 	assert.Len(found, numDistros)
 }

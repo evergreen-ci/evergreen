@@ -136,7 +136,7 @@ func (s *HostConnectorSuite) SetupTest() {
 }
 
 func (s *HostConnectorSuite) TearDownSuite() {
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	session, _, _ := db.GetGlobalSessionFactory().GetContextSession(s.T().Context())
 	if session != nil {
 		err := session.DB(testConfig.Database.DB).DropDatabase()
 		if err != nil {
