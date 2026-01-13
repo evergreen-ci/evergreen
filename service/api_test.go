@@ -17,8 +17,7 @@ import (
 )
 
 func TestLimitedProjectEndPoint(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.Clear(model.ProjectRefCollection))
+	require.NoError(t, db.Clear(model.ProjectRefCollection))
 
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
@@ -45,22 +44,20 @@ func TestLimitedProjectEndPoint(t *testing.T) {
 	url := testApiServer.URL + path
 	request, err := http.NewRequest("GET", fmt.Sprintf(url, ref), bytes.NewBuffer([]byte{}))
 	request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-	assert.NoError(err)
+	require.NoError(t, err)
 	resp, err := http.DefaultClient.Do(request)
 	require.NoError(t, err, "problem making request")
 	defer resp.Body.Close()
-	assert.Equal(200, resp.StatusCode)
-
+	require.Equal(t, 200, resp.StatusCode)
 	limitedRef := restModel.APIProjectRef{}
 
 	err = utility.ReadJSON(resp.Body, &limitedRef)
-	assert.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal("repo", utility.FromStringPtr(limitedRef.Repo))
-	assert.Equal(ref, utility.FromStringPtr(limitedRef.Id))
-	assert.Equal(ref, utility.FromStringPtr(limitedRef.Identifier))
-	assert.Nil(limitedRef.GitTagVersionsEnabled)
-	assert.Nil(limitedRef.DisplayName)
-	assert.Nil(limitedRef.DeactivatePrevious)
-
+	assert.Equal(t, "repo", utility.FromStringPtr(limitedRef.Repo))
+	assert.Equal(t, ref, utility.FromStringPtr(limitedRef.Id))
+	assert.Equal(t, ref, utility.FromStringPtr(limitedRef.Identifier))
+	assert.Nil(t, limitedRef.GitTagVersionsEnabled)
+	assert.Nil(t, limitedRef.DisplayName)
+	assert.Nil(t, limitedRef.DeactivatePrevious)
 }
