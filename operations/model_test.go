@@ -480,7 +480,7 @@ func TestResolveProject(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			project, isDefaultProject := test.settings.ResolveProject(test.cwd, test.useRoot)
+			project, isDefaultProject := test.settings.resolveProject(test.cwd, test.useRoot)
 			assert.Equal(t, test.expectedProject, project)
 			assert.Equal(t, test.expectedIsDefault, isDefaultProject)
 		})
@@ -497,15 +497,12 @@ func TestFindDefaultProject(t *testing.T) {
 		},
 	}
 
-	// Should return project from explicit mapping
 	project := settings.FindDefaultProject("/path/to/repo", true)
 	assert.Equal(t, "my-project", project)
 
-	// Should return default project
 	project = settings.FindDefaultProject("/other/path", true)
 	assert.Equal(t, "default-project", project)
 
-	// Should return empty string when no default and useRoot is false
 	project = settings.FindDefaultProject("/other/path", false)
 	assert.Equal(t, "", project)
 }

@@ -328,7 +328,7 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 		cwd, err = filepath.EvalSymlinks(cwd)
 		grip.Error(errors.Wrap(err, "resolving current working directory symlinks"))
 
-		project, isDefaultProject := conf.ResolveProject(cwd, true)
+		project, isDefaultProject := conf.resolveProject(cwd, true)
 		if project == "" {
 			return errors.New("Need to specify a project")
 		}
