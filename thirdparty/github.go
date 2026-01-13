@@ -1163,7 +1163,8 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 }
 
 // CheckGithubAPILimit queries Github for all the API rate limits for the given
-// app. If no app is specified, it uses the	internal app.
+// app. If no app/owner/repo is specified, it queries the Evergreen internal
+// app's rate limit.
 func CheckGithubAPILimit(ctx context.Context, owner, repo string, ghAppAuth *githubapp.GithubAppAuth) (*github.RateLimits, error) {
 	caller := "CheckGithubAPILimit"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(

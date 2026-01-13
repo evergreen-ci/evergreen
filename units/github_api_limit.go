@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -52,21 +53,32 @@ func NewGithubAPILimitJob(ts string) amboy.Job {
 func (j *githubAPILimitJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	j.logInternalAppRateLimit(ctx)
+	j.logProjectAppRateLimit(ctx)
+}
+
+// logInternalAppRateLimit logs the GitHub rate limit info for the Evergreen
+// internal app.
+func (j *githubAPILimitJob) logInternalAppRateLimit(ctx context.Context) {
 	limit, err := thirdparty.CheckGithubAPILimit(ctx, "", "", nil)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "checking GitHub API rate limit"))
+		j.AddError(errors.Wrap(err, "checking Evergreen internal app GitHub API rate limit"))
 		return
 	}
 
+	rateLimitInfo := getRateLimitInfo(limit)
 	grip.Info(message.Fields{
 		"message":           "GitHub API rate limit",
-		"remaining":         limit.Core.Remaining,
-		"limit":             limit.Core.Limit,
-		"reset":             limit.Core.Reset.Time,
-		"minutes_remaining": time.Until(limit.Core.Reset.Time).Minutes(),
-		"percentage":        float32(limit.Core.Remaining) / float32(limit.Core.Limit),
+		"remaining":         rateLimitInfo.remaining,
+		"limit":             rateLimitInfo.limit,
+		"reset":             rateLimitInfo.resetAt,
+		"minutes_remaining": rateLimitInfo.minsRemainingToReset,
+		"percentage":        rateLimitInfo.remainingPercentage,
 	})
 
+}
+
+func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 	// Keep track of GitHub apps and the project IDs that use them. A single app
 	// could be reused by multiple projects.
 	type projectAndAppAuth struct {
@@ -117,22 +129,52 @@ func (j *githubAPILimitJob) Run(ctx context.Context) {
 		pRef := projectAppAuth.projectRefs[0]
 		limit, err := thirdparty.CheckGithubAPILimit(ctx, pRef.Owner, pRef.Repo, projectAppAuth.appAuth)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "checking GitHub API rate limit for app ID %d (used by projects '%s')",
-				projectAppAuth.appAuth.AppID, projectAppAuth.projectIDs))
+			j.AddError(errors.Wrapf(err, "checking GitHub API rate limit for app ID %d",
+				projectAppAuth.appAuth.AppID))
 			continue
 		}
 
+		rateLimitInfo := getRateLimitInfo(limit)
 		// kim: NOTE: consider exposing as Honeycomb trace as well because users
 		// might use it.
 		grip.Info(message.Fields{
 			"message":           "project GitHub app API rate limit",
 			"app_id":            projectAppAuth.appAuth.AppID,
 			"project_ids":       projectAppAuth.projectIDs,
-			"remaining":         limit.Core.Remaining,
-			"limit":             limit.Core.Limit,
-			"reset":             limit.Core.Reset.Time,
-			"minutes_remaining": time.Until(limit.Core.Reset.Time).Minutes(),
-			"percentage":        float32(limit.Core.Remaining) / float32(limit.Core.Limit),
+			"remaining":         rateLimitInfo.remaining,
+			"limit":             rateLimitInfo.limit,
+			"reset":             rateLimitInfo.resetAt,
+			"minutes_remaining": rateLimitInfo.minsRemainingToReset,
+			"percentage":        rateLimitInfo.remainingPercentage,
 		})
+	}
+}
+
+// ghRateLimitInfo contains GitHub API rate limit information.
+type ghRateLimitInfo struct {
+	// remaining is the total number of remaining requests.
+	remaining int
+	// limit is the total number of requests allowed.
+	limit int
+	// remainingPercentage is the percentage of remaining requests out of the
+	// limit.
+	remainingPercentage float32
+	// resetAt is the time when the rate limit resets.
+	resetAt time.Time
+	// minsRemainingToReset is the number of minutes until the rate limit
+	// resets.
+	minsRemainingToReset float64
+}
+
+func getRateLimitInfo(limit *github.RateLimits) ghRateLimitInfo {
+	remaining := limit.Core.Remaining
+	maxLimit := limit.Core.Limit
+	resetTime := limit.Core.Reset.Time
+	return ghRateLimitInfo{
+		remaining:            remaining,
+		limit:                maxLimit,
+		remainingPercentage:  float32(remaining) / float32(maxLimit),
+		resetAt:              resetTime,
+		minsRemainingToReset: time.Until(resetTime).Minutes(),
 	}
 }
