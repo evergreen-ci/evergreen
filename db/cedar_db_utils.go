@@ -22,9 +22,9 @@ func GetCedarGlobalSessionFactory() SessionFactory {
 	}
 }
 
-// GetContextSession creates a cedar database session and connection that uses the associated
+// GetSession creates a cedar database session and connection that uses the associated
 // context in its operations.
-func (s *cedarShimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db.Database, error) {
+func (s *cedarShimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Database, error) {
 	if s.env == nil {
 		return nil, nil, errors.New("undefined environment")
 	}

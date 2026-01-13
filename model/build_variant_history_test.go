@@ -15,7 +15,7 @@ import (
 )
 
 func dropTestDB(t *testing.T) {
-	session, _, err := db.GetGlobalSessionFactory().GetContextSession(t.Context())
+	session, _, err := db.GetGlobalSessionFactory().GetSession(t.Context())
 	require.NoError(t, err, "opening database session")
 	defer session.Close()
 	require.NoError(t, session.DB(testutil.TestConfig().Database.DB).DropDatabase())

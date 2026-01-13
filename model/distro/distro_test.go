@@ -25,7 +25,7 @@ import (
 func TestFindDistroById(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
-	session, _, err := db.GetGlobalSessionFactory().GetContextSession(t.Context())
+	session, _, err := db.GetGlobalSessionFactory().GetSession(t.Context())
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()
@@ -46,7 +46,7 @@ func TestFindDistroById(t *testing.T) {
 func TestFindAllDistros(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)
-	session, _, err := db.GetGlobalSessionFactory().GetContextSession(t.Context())
+	session, _, err := db.GetGlobalSessionFactory().GetSession(t.Context())
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()

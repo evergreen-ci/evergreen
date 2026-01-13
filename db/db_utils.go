@@ -26,7 +26,7 @@ var (
 
 type SessionFactory interface {
 	// GetSession uses the provided context to get a session and database.
-	GetContextSession(ctx context.Context) (db.Session, db.Database, error)
+	GetSession(ctx context.Context) (db.Session, db.Database, error)
 }
 
 type shimFactoryImpl struct {
@@ -43,9 +43,9 @@ func GetGlobalSessionFactory() SessionFactory {
 	}
 }
 
-// GetContextSession creates a database session and connection that uses the associated
+// GetSession creates a database session and connection that uses the associated
 // context in its operations.
-func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db.Database, error) {
+func (s *shimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Database, error) {
 	if s.env == nil {
 		return nil, nil, errors.New("undefined environment")
 	}
@@ -207,7 +207,7 @@ func FindOneQContext(ctx context.Context, collection string, q Q, out any) error
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func RemoveAllQ(ctx context.Context, collection string, q Q) error {
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
 func FindAndModify(ctx context.Context, collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
 
@@ -304,7 +304,7 @@ func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, err
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
 func Aggregate(ctx context.Context, collection string, pipeline any, out any) error {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(err)
@@ -327,7 +327,7 @@ func CreateCollections(collections ...string) error {
 	if !testing.Testing() {
 		panic("CreateCollections should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -353,7 +353,7 @@ func Clear(collection string) error {
 	if !testing.Testing() {
 		panic("Clear should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -370,7 +370,7 @@ func ClearCollections(collections ...string) error {
 	if !testing.Testing() {
 		panic("ClearCollections should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -398,7 +398,7 @@ func DropCollections(collections ...string) error {
 	if !testing.Testing() {
 		panic("DropCollections should only be called from tests")
 	}
-	session, db, err := GetGlobalSessionFactory().GetContextSession(context.Background())
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
