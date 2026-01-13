@@ -590,7 +590,7 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 func runGitHubOpWithExternalGitHubApp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
 	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
 	if err != nil {
-		return errors.Wrapf(err, "getting installation token with external GitHub app %d", ghAppAuth.AppID)
+		return errors.Wrapf(err, "getting installation token with external GitHub app '%d'", ghAppAuth.AppID)
 	}
 	ctx, span := tracer.Start(ctx, "github-op-with-external-app", trace.WithAttributes(
 		attribute.String(githubAuthMethodAttribute, "external_app"),
