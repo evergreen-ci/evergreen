@@ -29,7 +29,7 @@ func (s *cedarShimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.D
 		return nil, nil, errors.New("undefined environment")
 	}
 
-	session := s.env.CedarContextSession(ctx)
+	session := s.env.CedarSession(ctx)
 	if session == nil {
 		return nil, nil, errors.New("context session is not defined")
 	}

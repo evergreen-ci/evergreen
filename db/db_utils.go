@@ -50,7 +50,7 @@ func (s *shimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Databa
 		return nil, nil, errors.New("undefined environment")
 	}
 
-	session := s.env.ContextSession(ctx)
+	session := s.env.Session(ctx)
 	if session == nil {
 		return nil, nil, errors.New("context session is not defined")
 	}

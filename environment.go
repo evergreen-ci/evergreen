@@ -105,9 +105,8 @@ type Environment interface {
 	Settings() *Settings
 	Context() (context.Context, context.CancelFunc)
 
-	Session() db.Session
-	ContextSession(ctx context.Context) db.Session
-	CedarContextSession(ctx context.Context) db.Session
+	Session(ctx context.Context) db.Session
+	CedarSession(ctx context.Context) db.Session
 	Client() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
@@ -1200,21 +1199,14 @@ func (e *envState) RemoteQueueGroup() amboy.QueueGroup {
 	return e.remoteQueueGroup
 }
 
-func (e *envState) Session() db.Session {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	return db.WrapClient(e.ctx, e.client).Clone()
-}
-
-func (e *envState) ContextSession(ctx context.Context) db.Session {
+func (e *envState) Session(ctx context.Context) db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(ctx, e.client).Clone()
 }
 
-func (e *envState) CedarContextSession(ctx context.Context) db.Session {
+func (e *envState) CedarSession(ctx context.Context) db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
