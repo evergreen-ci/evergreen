@@ -165,7 +165,7 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 			attribute.String(minsRemainingAttr, fmt.Sprintf("%.2f", rateLimitInfo.minsRemainingToReset)),
 			attribute.String(percentageAttr, fmt.Sprintf("%.2f", rateLimitInfo.remainingPercentage)),
 		))
-		defer span.End()
+		span.End()
 	}
 }
 
