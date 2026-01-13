@@ -1997,34 +1997,43 @@ func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete 
 	return err
 }
 
-// FindNonHiddenProjects returns limit visible project refs starting at project id key in the sortDir direction.
-// Optionally filters by ownerName and repoName if provided.
+// FindNonHiddenProjects returns limit visible project refs starting at project identifier key in the sortDir direction.
+// Optionally filters by ownerName, repoName, and activeOnly (enabled projects only) if provided.
 func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int, ownerName, repoName string, activeOnly bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	filter := bson.M{
-		ProjectRefHiddenKey:     bson.M{"$ne": true},
-		ProjectRefIdentifierKey: bson.M{"$ne": ""},
-	}
+
+	// Determine pagination operator based on sort direction
+	paginationOp := "$gte"
 	sortSpec := ProjectRefIdentifierKey
-
 	if sortDir < 0 {
+		paginationOp = "$lt"
 		sortSpec = "-" + sortSpec
-		filter[ProjectRefIdentifierKey] = bson.M{"$lt": key}
-	} else {
-		filter[ProjectRefIdentifierKey] = bson.M{"$gte": key}
 	}
 
+	// Build all filter conditions as an array
+	conditions := []bson.M{
+		{ProjectRefHiddenKey: bson.M{"$ne": true}},
+		{ProjectRefIdentifierKey: bson.M{"$ne": ""}},
+	}
+
+	// Add pagination condition if key provided
+	if key != "" {
+		conditions = append(conditions, bson.M{ProjectRefIdentifierKey: bson.M{paginationOp: key}})
+	}
+
+	// Add optional filters
 	if ownerName != "" {
-		filter[ProjectRefOwnerKey] = ownerName
+		conditions = append(conditions, bson.M{ProjectRefOwnerKey: ownerName})
 	}
-
 	if repoName != "" {
-		filter[ProjectRefRepoKey] = repoName
+		conditions = append(conditions, bson.M{ProjectRefRepoKey: repoName})
+	}
+	if activeOnly {
+		conditions = append(conditions, bson.M{ProjectRefEnabledKey: true})
 	}
 
-	if activeOnly {
-		filter[ProjectRefEnabledKey] = true
-	}
+	// Use $and for all conditions
+	filter := bson.M{"$and": conditions}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)

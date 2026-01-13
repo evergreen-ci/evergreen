@@ -51,11 +51,11 @@ func makeFetchProjectsRoute() gimlet.RouteHandler {
 //	@Tags			projects
 //	@Router			/projects [get]
 //	@Security		Api-User || Api-Key
-//	@Param			start_at	query	string	false	"The identifier of the host to start at in the pagination"
-//	@Param			limit		query	int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+//	@Param			start_at	query	string	false	"The project identifier to start at in the pagination"
+//	@Param			limit		query	int		false	"The number of projects to be returned per page of pagination. Defaults to 100"
 //	@Param			owner_name	query	string	false	"Filter projects by owner name (GitHub organization)"
 //	@Param			repo_name	query	string	false	"Filter projects by repository name"
-//	@Param			active		query	bool	false	"If true, only return enabled/active projects"
+//	@Param			active		query	bool	false	"If true, only return projects that are currently enabled"
 //	@Success		200			{array}	model.APIProjectRef
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
 	return &projectGetHandler{}

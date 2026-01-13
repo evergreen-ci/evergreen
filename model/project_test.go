@@ -1668,7 +1668,6 @@ func TestFindProjectsSuite(t *testing.T) {
 				Id:     "projectF-hidden",
 				Hidden: utility.TruePtr(),
 			},
-			// Projects with ObjectId _id and human-readable identifier (production-like)
 			{
 				Id:          "507f1f77bcf86cd799439011",
 				Identifier:  "id-1",
