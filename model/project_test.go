@@ -1927,46 +1927,38 @@ func (s *FindProjectsSuite) TestFilterNoMatches() {
 }
 
 func (s *FindProjectsSuite) TestFetchByIdentifierAsc() {
-	// Test with identifier key ascending
 	projects, err := FindNonHiddenProjects(s.T().Context(), "id-1", 10, 1, "", "", false)
 	s.NoError(err)
 	s.Require().Len(projects, 9) // Should find all projects with identifier >= "id-1"
-	// Sorted by identifier: id-1, id-2, mci2, projectA, projectB, projectC, projectD, projectE, projectF
 	s.Equal("id-1", projects[0].Identifier)
 	s.Equal("id-2", projects[1].Identifier)
 }
 
 func (s *FindProjectsSuite) TestFetchByIdentifierDesc() {
-	// Test with identifier key descending
 	projects, err := FindNonHiddenProjects(s.T().Context(), "projectF", 10, -1, "", "", false)
 	s.NoError(err)
 	s.Require().Len(projects, 8) // Should find all projects with identifier < "projectF"
-	// Sorted descending: projectE, projectD, projectC, projectB, projectA, mci2, id-2, id-1
 	s.Equal("projectE", projects[0].Identifier)
 	s.Equal("projectD", projects[1].Identifier)
 }
 
 func (s *FindProjectsSuite) TestFilterByActiveOnly() {
-	// Test with activeOnly=false (should return both enabled and disabled projects)
 	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 9) // All non-hidden projects (projectA-F + id-1 + id-2 + mci2)
 
-	// Test with activeOnly=true (should only return enabled projects)
 	projects, err = FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", true)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Require().Len(projects, 5) // Only enabled projects: projectA, projectB, projectC, id-1, id-2
 
-	// Verify all returned projects are enabled
 	for _, p := range projects {
 		s.True(p.Enabled, "project %s should be enabled", p.Identifier)
 	}
 }
 
 func (s *FindProjectsSuite) TestFilterByActiveWithOwnerAndRepo() {
-	// Test activeOnly=true combined with owner/repo filters
 	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "mongodb", "test-repo", true)
 	s.NoError(err)
 	s.NotNil(projects)
