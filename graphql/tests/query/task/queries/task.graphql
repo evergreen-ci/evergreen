@@ -7,8 +7,8 @@
     revision
     testSelectionEnabled
     taskCost {
-      onDemandCost
-      adjustedCost
+      onDemandEC2Cost
+      adjustedEC2Cost
     }
   }
 }

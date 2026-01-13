@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -19,6 +20,44 @@ import (
 	"github.com/pkg/errors"
 )
 
+// contextReader wraps an io.Reader and checks context cancellation periodically.
+// It checks context every checkInterval bytes read.
+type contextReader struct {
+	ctx           context.Context
+	reader        io.Reader
+	checkInterval int
+	bytesRead     int
+}
+
+// newContextReader creates a reader that checks context every checkInterval bytes.
+func newContextReader(ctx context.Context, reader io.Reader, checkInterval int) *contextReader {
+	return &contextReader{
+		ctx:           ctx,
+		reader:        reader,
+		checkInterval: checkInterval,
+	}
+}
+
+func (r *contextReader) Read(p []byte) (n int, err error) {
+	// Check context before reading.
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+
+	n, err = r.reader.Read(p)
+	r.bytesRead += n
+
+	// Check context periodically based on bytes read.
+	if r.bytesRead >= r.checkInterval {
+		r.bytesRead = 0
+		if ctxErr := r.ctx.Err(); ctxErr != nil {
+			return n, ctxErr
+		}
+	}
+
+	return n, err
+}
+
 type customFloat float64
 
 func (cf *customFloat) UnmarshalXMLAttr(attr xml.Attr) error {
@@ -29,16 +68,6 @@ func (cf *customFloat) UnmarshalXMLAttr(attr xml.Attr) error {
 	}
 	*cf = customFloat(f)
 	return nil
-}
-
-type testSuites struct {
-	Suites   []testSuite `xml:"testsuite"`
-	Errors   int         `xml:"errors,attr"`
-	Failures int         `xml:"failures,attr"`
-	Skip     int         `xml:"skip,attr"`
-	Name     string      `xml:"name,attr"`
-	Time     customFloat `xml:"time,attr"`
-	Tests    int         `xml:"tests,attr"`
 }
 
 type testSuite struct {
@@ -72,24 +101,96 @@ type failureDetails struct {
 	Content string `xml:",chardata"`
 }
 
-func parseXMLResults(reader io.Reader) ([]testSuite, error) {
-	results := testSuites{}
-	fileData, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading results file")
-	}
-	// need to try to unmarshal into 2 different structs since the JUnit XML schema
-	// allows for <testsuite> or <testsuites> to be the root
+// contextCheckInterval is the number of bytes between context cancellation checks
+// during file reading. 64KB provides a good balance between responsiveness and overhead.
+const contextCheckInterval = 64 * 1024
+
+func parseXMLResults(ctx context.Context, reader io.Reader) ([]testSuite, error) {
+	// Wrap reader with context-aware reader to allow cancellation during I/O.
+	ctxReader := newContextReader(ctx, reader, contextCheckInterval)
+
+	// Use xml.Decoder for streaming parse with context checks between elements.
+	decoder := xml.NewDecoder(ctxReader)
+
+	var suites []testSuite
+
+	// Find the root element and parse accordingly.
+	// The JUnit XML schema allows for <testsuite> or <testsuites> to be the root.
 	// https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd
-	if err = xml.Unmarshal(fileData, &results); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling XML test suite")
-	}
-	if len(results.Suites) == 0 {
-		if err = xml.Unmarshal(fileData, &results.Suites); err != nil {
-			return nil, errors.Wrap(err, "unmarshalling XML test suites")
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, errors.Wrap(err, "context cancelled during XML parsing")
+		}
+
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "reading XML token")
+		}
+
+		startElem, ok := token.(xml.StartElement)
+		if !ok {
+			continue
+		}
+
+		switch startElem.Name.Local {
+		case "testsuites":
+			// Parse testsuites container - decode child testsuite elements one by one.
+			suites, err = parseTestSuitesStreaming(ctx, decoder)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing testsuites element")
+			}
+		case "testsuite":
+			// Single testsuite as root - decode it directly.
+			var suite testSuite
+			if err := decoder.DecodeElement(&suite, &startElem); err != nil {
+				return nil, errors.Wrap(err, "parsing testsuite element")
+			}
+			suites = append(suites, suite)
 		}
 	}
-	return results.Suites, nil
+
+	return suites, nil
+}
+
+// parseTestSuitesStreaming parses testsuite elements from within a testsuites container,
+// checking context between each suite for cancellation.
+func parseTestSuitesStreaming(ctx context.Context, decoder *xml.Decoder) ([]testSuite, error) {
+	var suites []testSuite
+
+	for {
+		// Check context between parsing each test suite.
+		if err := ctx.Err(); err != nil {
+			return nil, errors.Wrap(err, "context cancelled while parsing test suites")
+		}
+
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "reading XML token")
+		}
+
+		switch elem := token.(type) {
+		case xml.StartElement:
+			if elem.Name.Local == "testsuite" {
+				var suite testSuite
+				if err := decoder.DecodeElement(&suite, &elem); err != nil {
+					return nil, errors.Wrap(err, "parsing testsuite element")
+				}
+				suites = append(suites, suite)
+			}
+		case xml.EndElement:
+			if elem.Name.Local == "testsuites" {
+				return suites, nil
+			}
+		}
+	}
+
+	return suites, nil
 }
 
 // toModelTestResultAndLog converts an XUnit test case into a test result and

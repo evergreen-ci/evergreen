@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -52,6 +53,10 @@ type APIVersion struct {
 	GitTags []APIGitTag `json:"git_tags"`
 	// Indicates if the version was ignored due to only making changes to ignored files.
 	Ignored *bool `json:"ignored"`
+	// Aggregated actual cost of all tasks in the version
+	Cost *cost.Cost `json:"cost,omitempty"`
+	// Aggregated predicted cost of all tasks in the version
+	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
 }
 
 type APIGitTag struct {
@@ -120,6 +125,15 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 		if err == nil {
 			apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
+	}
+
+	if !v.Cost.IsZero() {
+		versionCost := v.Cost
+		apiVersion.Cost = &versionCost
+	}
+	if !v.PredictedCost.IsZero() {
+		predictedCost := v.PredictedCost
+		apiVersion.PredictedCost = &predictedCost
 	}
 }
 

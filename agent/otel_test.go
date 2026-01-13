@@ -79,6 +79,17 @@ func TestMetrics(t *testing.T) {
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		}
+		testCases["SocketMetrics"] = func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
+			assert.NoError(t, addSocketMetrics(t.Context(), meter))
+			var metrics metricdata.ResourceMetrics
+			assert.NoError(t, reader.Collect(ctx, &metrics))
+			require.NotEmpty(t, metrics.ScopeMetrics)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 11)
+			assert.Equal(t, fmt.Sprintf("%s.established", socketCountPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
+			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
+			// Socket count may be zero if no connections, so we just check the metric exists
+			assert.GreaterOrEqual(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value, int64(0))
+		}
 	} else {
 		testCases["ProcessMetrics"] = func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
 			assert.NoError(t, addProcessMetrics(meter))
@@ -99,6 +110,17 @@ func TestMetrics(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
+		}
+		testCases["SocketMetrics"] = func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
+			assert.NoError(t, addSocketMetrics(t.Context(), meter))
+			var metrics metricdata.ResourceMetrics
+			assert.NoError(t, reader.Collect(ctx, &metrics))
+			require.NotEmpty(t, metrics.ScopeMetrics)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 11)
+			assert.Equal(t, fmt.Sprintf("%s.established", socketCountPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
+			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
+			// Socket count may be zero if no connections, so we just check the metric exists
+			assert.GreaterOrEqual(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value, int64(0))
 		}
 	}
 

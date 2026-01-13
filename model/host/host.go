@@ -183,6 +183,9 @@ type Host struct {
 
 	// SleepSchedule stores host sleep schedule information.
 	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
+
+	// IsDebug is true if the host is a debug spawn host.
+	IsDebug bool `bson:"is_debug" json:"is_debug"`
 }
 
 type Tag struct {
