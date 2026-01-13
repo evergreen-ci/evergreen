@@ -1804,6 +1804,7 @@ func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 // This route is used to assume an AWS arn role for a task.
 type awsAssumeRole struct {
 	taskID string
+	hostID string
 	body   apimodels.AssumeRoleRequest
 
 	stsManager cloud.STSManager
@@ -1822,6 +1823,11 @@ func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
 		return errors.New("missing task_id")
 	}
 
+	h.hostID = r.Header.Get(evergreen.HostHeader)
+	if h.hostID == "" {
+		return errors.New("missing host ID")
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return errors.Wrap(err, "reading body")
@@ -1835,7 +1841,7 @@ func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
-	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
+	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, h.hostID, cloud.AssumeRoleOptions{
 		RoleARN:         h.body.RoleARN,
 		Policy:          h.body.Policy,
 		DurationSeconds: h.body.DurationSeconds,

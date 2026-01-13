@@ -572,6 +572,78 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal(upstreamProject.Branch, expansions.Get("trigger_branch"))
 }
 
+func TestPopulateExpansionsChildPatch(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	require.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
+
+	h := host.Host{
+		Id: "h",
+		Distro: distro.Distro{
+			Id:      "d1",
+			WorkDir: "/home/evg",
+		},
+	}
+
+	projectRef := &ProjectRef{
+		Id:         "mci",
+		Identifier: "mci-favorite",
+		Owner:      "my_org",
+		Repo:       "my_repo",
+	}
+	require.NoError(projectRef.Insert(t.Context()))
+
+	// Create parent patch and project
+	parentRef := &ProjectRef{
+		Id:         "parentProject",
+		Identifier: "parent project",
+		Owner:      "parent_org",
+		Repo:       "parent_repo",
+		Branch:     "parent_branch",
+	}
+	require.NoError(parentRef.Insert(t.Context()))
+
+	parentPatch := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: "parentProject",
+	}
+	require.NoError(parentPatch.Insert(t.Context()))
+
+	// Create child version with parent patch ID
+	childVersion := &Version{
+		Id:            "childVersion",
+		Branch:        "childBranch",
+		Author:        "childAuthor",
+		Requester:     evergreen.PatchVersionRequester,
+		ParentPatchID: parentPatch.Id.Hex(),
+	}
+	require.NoError(childVersion.Insert(t.Context()))
+	childPatch := &patch.Patch{
+		Version: childVersion.Id,
+	}
+	require.NoError(childPatch.Insert(t.Context()))
+
+	taskDoc := &task.Task{
+		Id:           "t1",
+		DisplayName:  "test task",
+		Version:      childVersion.Id,
+		Execution:    0,
+		BuildId:      "b1",
+		BuildVariant: "bv1",
+		Revision:     "abc123",
+		Project:      "mci",
+	}
+
+	expansions, err := PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+
+	assert.Equal(childVersion.ParentPatchID, expansions.Get("parent_patch_id"))
+	assert.Equal(parentRef.Owner, expansions.Get("parent_github_org"))
+	assert.Equal(parentRef.Repo, expansions.Get("parent_github_repo"))
+	assert.Equal(parentRef.Branch, expansions.Get("parent_github_branch"))
+}
+
 type projectSuite struct {
 	project *Project
 	vars    ProjectVars

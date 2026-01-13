@@ -91,15 +91,25 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 
 		// Reset database and populate with current test suite's data.
 		env := evergreen.GetEnvironment()
-		require.NoError(t, env.DB().Drop(ctx))
-		require.NoError(t, setupDBIndexes())
-		require.NoError(t, setupDBData(ctx, env, state.DBData))
-		require.NoError(t, setupTaskOutputData(ctx, state))
-		setupUsers(t)
-		setupScopesAndRoles(t, state)
+		setupDB := func(t *testing.T) {
+			require.NoError(t, env.DB().Drop(ctx))
+			require.NoError(t, setupDBIndexes())
+			require.NoError(t, setupDBData(ctx, env, state.DBData))
+			require.NoError(t, setupTaskOutputData(ctx, state))
+			setupUsers(t)
+			setupScopesAndRoles(t, state)
+		}
+		setupDB(t)
 
 		for _, testCase := range tests.Tests {
 			singleTest := func(t *testing.T) {
+				if testCase.Data != nil {
+					require.NoError(t, setupDBData(t.Context(), env, testCase.Data))
+					// Reset the database state after the test finishes.
+					defer func() {
+						setupDB(t)
+					}()
+				}
 				f, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
 				require.NoError(t, err)
 				jsonQuery := fmt.Sprintf(`{"operationName":null,"variables":{},"query":"%s"}`, escapeGQLQuery(string(f)))
@@ -115,6 +125,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				}
 				foundUser, err := user.FindOneByIdContext(t.Context(), testUserId)
 				require.NoError(t, err)
+				require.NotNil(t, foundUser, "finding test user '%s'", testUserId)
 				r.Header.Add(evergreen.APIUserHeader, foundUser.Id)
 				r.Header.Add(evergreen.APIKeyHeader, foundUser.APIKey)
 
@@ -148,8 +159,12 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 					grip.Info(actual.Bytes())
 				}
 			}
+			name := testCase.QueryFile
+			if testCase.Name != "" {
+				name += "/" + testCase.Name
+			}
 
-			t.Run(testCase.QueryFile, singleTest)
+			t.Run(name, singleTest)
 		}
 		directorySpecificTestCleanup(t, state.Directory)
 	}
@@ -491,6 +506,13 @@ type test struct {
 	QueryFile  string          `json:"query_file"`
 	TestUserId *string         `json:"test_user_id"`
 	Result     json.RawMessage `json:"result"`
+
+	// Data is an optional field that can be used to setup additional
+	// database state specific to this test. This only inserts data.
+	Data map[string]json.RawMessage `json:"data"`
+	// Name is an optional field that can be used to give an
+	// additional name to the test.
+	Name string `json:"name"`
 }
 
 // escapeGQLQuery replaces literal newlines with '\n' and literal double quotes with '\"'

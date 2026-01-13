@@ -183,6 +183,9 @@ type Host struct {
 
 	// SleepSchedule stores host sleep schedule information.
 	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
+
+	// IsDebug is true if the host is a debug spawn host.
+	IsDebug bool `bson:"is_debug" json:"is_debug"`
 }
 
 type Tag struct {
@@ -855,6 +858,11 @@ func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) erro
 	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
 }
 
+// eventLoggingTimeout is the timeout for logging host events. This ensures
+// that event logging has sufficient time to complete even if the parent context
+// is about to expire.
+const eventLoggingTimeout = 5 * time.Second
+
 // setStatusAndFields sets the status as well as any of the other given fields.
 // Accepts fields to query in addition to host status.
 func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, setFields, unsetFields bson.M, user, logs string) error {
@@ -918,7 +926,9 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		return err
 	}
 
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed",
 		"host_id":    h.Id,
@@ -961,7 +971,9 @@ func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, 
 		return errors.WithStack(err)
 	}
 
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed atomically",
 		"host_id":    h.Id,
@@ -1032,10 +1044,6 @@ func (h *Host) SetRunning(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostRunning, user, "")
 }
 
-func (h *Host) SetTerminated(ctx context.Context, user, reason string) error {
-	return h.SetStatus(ctx, evergreen.HostTerminated, user, reason)
-}
-
 func (h *Host) SetStopping(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }
@@ -1076,7 +1084,9 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 		return errors.Wrap(err, "setting host status to stopped")
 	}
 
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostStopped, user, "")
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, evergreen.HostStopped, user, "")
 	grip.Info(message.Fields{
 		"message":    "host stopped",
 		"host_id":    h.Id,
@@ -1873,7 +1883,9 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostRunningTaskCleared(eventCtx, h.Id, h.RunningTask, h.RunningTaskExecution)
 	grip.Info(message.Fields{
 		"message":         "cleared host running task and set last task",
 		"host_id":         h.Id,
@@ -1913,7 +1925,9 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 	}
 
 	if hadRunningTask {
-		event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
+		eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+		defer cancel()
+		event.LogHostRunningTaskCleared(eventCtx, h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
 			"message":        "cleared host running task",
 			"host_id":        h.Id,

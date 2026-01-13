@@ -1892,14 +1892,10 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	opts = append(opts,
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
+		dex.WithFallbackToStdOut(true),
+		dex.WithFlow("device"),
+		dex.WithNoBrowser(doNotUseBrowser),
 	)
-
-	if doNotUseBrowser {
-		opts = append(opts,
-			dex.WithNoBrowser(true),
-			dex.WithFlow("device"),
-		)
-	}
 
 	// The Dex client logs using logrus. The client doesn't
 	// have any way to turn off debug logs within it's API.

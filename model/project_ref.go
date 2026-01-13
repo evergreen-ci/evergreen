@@ -157,6 +157,10 @@ type ProjectRef struct {
 
 	// RunEveryMainlineCommitLimit indicates the maximum number of mainline commits to activate in a single activation run.
 	RunEveryMainlineCommitLimit int `bson:"run_every_mainline_commit_limit,omitempty" json:"run_every_mainline_commit_limit,omitempty" yaml:"run_every_mainline_commit_limit,omitempty"`
+
+	// UseGitHubAppForAPI indicates whether to use the project's GitHub app for
+	// authenticated API requests to GitHub.
+	UseGitHubAppForAPI bool `bson:"use_github_app_for_api,omitempty" json:"use_github_app_for_api,omitempty" yaml:"use_github_app_for_api,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -231,6 +235,20 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 
 	return appAuth, nil
 
+}
+
+// GetGitHubAppAuthForAPI gets this project's GitHub app auth (if any) for
+// usage in the GitHub API if the project is configured to use its own GitHub
+// appf or GitHub API operations.
+func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.GithubAppAuth, error) {
+	if !p.UseGitHubAppForAPI {
+		return nil, nil
+	}
+	appAuth, err := p.GetGitHubAppAuth(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting GitHub app auth")
+	}
+	return appAuth, nil
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
@@ -3253,7 +3271,12 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if pRef.SpawnHostScriptPath == "" {
 		return "", nil
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
+	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+		"project_id": pRef.Id,
+	}))
+	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)

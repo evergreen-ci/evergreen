@@ -1157,7 +1157,11 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		User: owner.Id,
 	}
 	if settings != nil {
-		conf.APIServerHost = settings.Api.URL + "/api"
+		if !settings.ServiceFlags.JWTTokenForCLIDisabled {
+			conf.APIServerHost = settings.Api.CorpURL + "/api"
+		} else {
+			conf.APIServerHost = settings.Api.URL + "/api"
+		}
 		conf.UIServerHost = settings.Ui.Url
 		if settings.AuthConfig.OAuth != nil {
 			conf.OAuth.Issuer = settings.AuthConfig.OAuth.Issuer
