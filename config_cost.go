@@ -9,6 +9,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// S3 Cost Calculation Constants
+const (
+	// S3PutRequestCost is the cost per S3 PUT request ($0.000005).
+	S3PutRequestCost = 0.000005
+)
+
 // CostConfig represents the admin config section for finance-related settings.
 type CostConfig struct {
 	// FinanceFormula determines the weighting/percentage of the two parts of total cost: savingsPlanComponent and onDemandComponent.
@@ -17,12 +23,32 @@ type CostConfig struct {
 	SavingsPlanDiscount float64 `bson:"savings_plan_discount" json:"savings_plan_discount" yaml:"savings_plan_discount"`
 	// OnDemandDiscount is the discount rate (0.0-1.0) applied to on-demand pricing
 	OnDemandDiscount float64 `bson:"on_demand_discount" json:"on_demand_discount" yaml:"on_demand_discount"`
+	// S3Cost holds S3-related cost discount configuration
+	S3Cost S3CostConfig `bson:"s3_cost" json:"s3_cost" yaml:"s3_cost"`
+}
+
+// S3UploadCostConfig represents S3 upload cost discount configuration.
+type S3UploadCostConfig struct {
+	UploadCostDiscount *float64 `bson:"upload_cost_discount,omitempty" json:"upload_cost_discount,omitempty" yaml:"upload_cost_discount,omitempty"`
+}
+
+// S3StorageCostConfig represents S3 storage cost discount configuration.
+type S3StorageCostConfig struct {
+	StandardStorageCostDiscount         *float64 `bson:"standard_storage_cost_discount,omitempty" json:"standard_storage_cost_discount,omitempty" yaml:"standard_storage_cost_discount,omitempty"`
+	InfrequentAccessStorageCostDiscount *float64 `bson:"infrequent_access_storage_cost_discount,omitempty" json:"infrequent_access_storage_cost_discount,omitempty" yaml:"infrequent_access_storage_cost_discount,omitempty"`
+}
+
+// S3CostConfig represents S3 cost configuration with separate upload and storage settings.
+type S3CostConfig struct {
+	Upload  S3UploadCostConfig  `bson:"upload" json:"upload" yaml:"upload"`
+	Storage S3StorageCostConfig `bson:"storage" json:"storage" yaml:"storage"`
 }
 
 var (
 	financeConfigFormulaKey             = bsonutil.MustHaveTag(CostConfig{}, "FinanceFormula")
 	financeConfigSavingsPlanDiscountKey = bsonutil.MustHaveTag(CostConfig{}, "SavingsPlanDiscount")
 	financeConfigOnDemandDiscountKey    = bsonutil.MustHaveTag(CostConfig{}, "OnDemandDiscount")
+	financeConfigS3CostKey              = bsonutil.MustHaveTag(CostConfig{}, "S3Cost")
 )
 
 func (*CostConfig) SectionId() string { return "cost" }
@@ -37,6 +63,7 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			financeConfigFormulaKey:             c.FinanceFormula,
 			financeConfigSavingsPlanDiscountKey: c.SavingsPlanDiscount,
 			financeConfigOnDemandDiscountKey:    c.OnDemandDiscount,
+			financeConfigS3CostKey:              c.S3Cost,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -53,11 +80,31 @@ func (c *CostConfig) ValidateAndDefault() error {
 	if c.OnDemandDiscount < 0.0 || c.OnDemandDiscount > 1.0 {
 		catcher.Add(errors.New("on demand discount must be between 0.0 and 1.0"))
 	}
+	if c.S3Cost.Upload.UploadCostDiscount != nil {
+		if *c.S3Cost.Upload.UploadCostDiscount < 0.0 || *c.S3Cost.Upload.UploadCostDiscount > 1.0 {
+			catcher.Add(errors.New("S3 upload cost discount must be between 0.0 and 1.0"))
+		}
+	}
+	if c.S3Cost.Storage.StandardStorageCostDiscount != nil {
+		if *c.S3Cost.Storage.StandardStorageCostDiscount < 0.0 || *c.S3Cost.Storage.StandardStorageCostDiscount > 1.0 {
+			catcher.Add(errors.New("S3 standard storage cost discount must be between 0.0 and 1.0"))
+		}
+	}
+	if c.S3Cost.Storage.InfrequentAccessStorageCostDiscount != nil {
+		if *c.S3Cost.Storage.InfrequentAccessStorageCostDiscount < 0.0 || *c.S3Cost.Storage.InfrequentAccessStorageCostDiscount > 1.0 {
+			catcher.Add(errors.New("S3 infrequent access storage cost discount must be between 0.0 and 1.0"))
+		}
+	}
 
 	return catcher.Resolve()
 }
 
 // IsConfigured returns true if any finance config field is set.
 func (c *CostConfig) IsConfigured() bool {
-	return c.FinanceFormula != 0 || c.SavingsPlanDiscount != 0 || c.OnDemandDiscount != 0
+	return c.FinanceFormula != 0 ||
+		c.SavingsPlanDiscount != 0 ||
+		c.OnDemandDiscount != 0 ||
+		c.S3Cost.Upload.UploadCostDiscount != nil ||
+		c.S3Cost.Storage.StandardStorageCostDiscount != nil ||
+		c.S3Cost.Storage.InfrequentAccessStorageCostDiscount != nil
 }
