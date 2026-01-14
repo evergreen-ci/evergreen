@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -34,17 +33,7 @@ type LocalExecutorOptions struct {
 
 // NewLocalExecutor creates a new local task executor
 func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
-	var logger grip.Journaler
-	if opts.LogFile != "" {
-		sender, err := send.MakeFileLogger(opts.LogFile)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating file logger")
-		}
-		logger = grip.NewJournaler("evergreen-local-file")
-		grip.SetSender(sender)
-	} else {
-		logger = grip.NewJournaler("evergreen-local")
-	}
+	logger := grip.NewJournaler("evergreen-local")
 
 	expansions := util.Expansions{}
 	if opts.WorkingDir != "" {
