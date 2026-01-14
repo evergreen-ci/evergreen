@@ -3269,7 +3269,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	}
 	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
-		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": pRef.Id,
 	}))
 	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
