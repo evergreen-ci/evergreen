@@ -180,10 +180,10 @@ func TestFindAllRulesForBucket(t *testing.T) {
 	}
 
 	tests := []struct {
-		bucket        string
-		wantCount     int
-		wantRuleID    string
-		wantErr       string
+		bucket     string
+		wantCount  int
+		wantRuleID string
+		wantErr    string
 	}{
 		{"bucket1", 3, "", ""},
 		{"bucket2", 1, "rule4", ""},

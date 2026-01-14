@@ -2268,6 +2268,7 @@ type APIServiceFlags struct {
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
 	LegacyUIAdminPageDisabled       bool `json:"legacy_ui_admin_page_disabled"`
 	DebugSpawnHostDisabled          bool `json:"debug_spawn_host_disabled"`
+	S3LifecycleSyncDisabled         bool `json:"s3_lifecycle_sync_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2700,6 +2701,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
 		as.LegacyUIAdminPageDisabled = v.LegacyUIAdminPageDisabled
 		as.DebugSpawnHostDisabled = v.DebugSpawnHostDisabled
+		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2746,6 +2748,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
 		LegacyUIAdminPageDisabled:       as.LegacyUIAdminPageDisabled,
 		DebugSpawnHostDisabled:          as.DebugSpawnHostDisabled,
+		S3LifecycleSyncDisabled:         as.S3LifecycleSyncDisabled,
 	}, nil
 }
 

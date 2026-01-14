@@ -995,7 +995,7 @@ func UpdateBucketLifecycleError(ctx context.Context, bucketField string, syncErr
 	return setConfigSection(ctx, bucketsKey, bson.M{
 		"$set": bson.M{
 			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
-			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleSyncErrorKey):     syncError,
+			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleSyncErrorKey):    syncError,
 		},
 	})
 }
