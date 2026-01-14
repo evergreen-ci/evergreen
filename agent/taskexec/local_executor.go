@@ -1,20 +1,35 @@
 package taskexec
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
+
+// localLoggerProducer implements the LoggerProducer interface for local execution
+type localLoggerProducer struct {
+	logger grip.Journaler
+	closed bool
+}
+
+func (l *localLoggerProducer) Execution() grip.Journaler       { return l.logger }
+func (l *localLoggerProducer) Task() grip.Journaler            { return l.logger }
+func (l *localLoggerProducer) System() grip.Journaler          { return l.logger }
+func (l *localLoggerProducer) Flush(ctx context.Context) error { return nil }
+func (l *localLoggerProducer) Close() error                    { l.closed = true; return nil }
+func (l *localLoggerProducer) Closed() bool                    { return l.closed }
 
 // LocalExecutor implements task execution for local YAML files
 type LocalExecutor struct {
@@ -25,6 +40,11 @@ type LocalExecutor struct {
 	logger        grip.Journaler
 	debugState    *DebugState
 	commandList   []model.PluginCommandConf
+
+	// Dependencies for command execution
+	communicator   client.Communicator
+	loggerProducer client.LoggerProducer
+	taskConfig     *internal.TaskConfig
 }
 
 // LocalExecutorOptions contains configuration for the local executor
@@ -48,11 +68,29 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		expansions.Put(k, v)
 	}
 
+	comm := client.NewMock("http://localhost")
+
+	loggerProducer := &localLoggerProducer{
+		logger: logger,
+	}
+
+	taskConfig := &internal.TaskConfig{
+		Expansions: expansions,
+		WorkDir:    opts.WorkingDir,
+		Task: task.Task{
+			Id:     "local-task",
+			Secret: "local-secret",
+		},
+	}
+
 	return &LocalExecutor{
-		workDir:    opts.WorkingDir,
-		expansions: &expansions,
-		logger:     logger,
-		debugState: NewDebugState(),
+		workDir:        opts.WorkingDir,
+		expansions:     &expansions,
+		logger:         logger,
+		debugState:     NewDebugState(),
+		communicator:   comm,
+		loggerProducer: loggerProducer,
+		taskConfig:     taskConfig,
 	}, nil
 }
 
@@ -79,6 +117,10 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 		return nil, errors.Wrap(err, "translating project")
 	}
 	e.project = project
+
+	if e.taskConfig != nil {
+		e.taskConfig.Project = *project
+	}
 
 	e.logger.Infof("Loaded project with %d tasks and %d build variants",
 		len(project.Tasks), len(project.BuildVariants))
@@ -130,77 +172,31 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	return nil
 }
 
-// executeCommand executes a single command using a simplified approach
+// executeCommand executes a single command using the agent command registry
 func (e *LocalExecutor) executeCommand(ctx context.Context, cmd model.PluginCommandConf) error {
-	// For now, we'll only handle shell.exec commands directly
-	// This is a simplified implementation that doesn't use the agent's command registry
-	if cmd.Command != "shell.exec" {
-		e.logger.Infof("Skipping non-shell command: %s", cmd.Command)
-		return nil
-	}
-
-	scriptParam, ok := cmd.Params["script"]
+	factory, ok := command.GetCommandFactory(cmd.Command)
 	if !ok {
-		return errors.New("no script parameter found")
+		e.logger.Warningf("Command '%s' not found in registry, skipping", cmd.Command)
+		return errors.Errorf("command '%s' is not registered", cmd.Command)
+	}
+	cmdInstance := factory()
+	if err := cmdInstance.ParseParams(cmd.Params); err != nil {
+		return errors.Wrapf(err, "parsing parameters for command '%s'", cmd.Command)
 	}
 
-	script, ok := scriptParam.(string)
-	if !ok {
-		return errors.New("script parameter is not a string")
+	cmdInstance.SetType(cmd.GetType(e.project))
+	cmdInstance.SetFullDisplayName(cmd.DisplayName)
+	if cmd.TimeoutSecs > 0 {
+		cmdInstance.SetIdleTimeout(time.Duration(cmd.TimeoutSecs) * time.Second)
 	}
+	cmdInstance.SetRetryOnFailure(cmd.RetryOnFailure)
+	cmdInstance.SetFailureMetadataTags(cmd.FailureMetadataTags)
 
-	script = e.expandString(script)
-	workDir := e.workDir
-	if workDirParam, ok := cmd.Params["working_dir"]; ok {
-		if wd, ok := workDirParam.(string); ok {
-			workDir = e.expandString(wd)
-		}
-	}
+	e.taskConfig.Expansions = *e.expansions
+	e.taskConfig.WorkDir = e.workDir
 
-	shell := "sh"
-	if shellParam, ok := cmd.Params["shell"]; ok {
-		if s, ok := shellParam.(string); ok {
-			shell = s
-		}
-	}
-
-	var execCmd *exec.Cmd
-	if shell == "bash" {
-		execCmd = exec.CommandContext(ctx, "bash", "-c", script)
-	} else {
-		execCmd = exec.CommandContext(ctx, "sh", "-c", script)
-	}
-
-	execCmd.Dir = workDir
-
-	execCmd.Env = os.Environ()
-	if envParams, ok := cmd.Params["env"]; ok {
-		if envMap, ok := envParams.(map[string]interface{}); ok {
-			for k, v := range envMap {
-				if vStr, ok := v.(string); ok {
-					execCmd.Env = append(execCmd.Env, fmt.Sprintf("%s=%s", k, e.expandString(vStr)))
-				}
-			}
-		}
-	}
-
-	var stdout, stderr bytes.Buffer
-	execCmd.Stdout = &stdout
-	execCmd.Stderr = &stderr
-
-	e.logger.Infof("Executing shell command in %s", workDir)
-	err := execCmd.Run()
-
-	output := stdout.String()
-	if stderr.Len() > 0 {
-		output += "\nSTDERR:\n" + stderr.String()
-	}
-
-	if output != "" {
-		e.logger.Info(output)
-	}
-
-	return err
+	e.logger.Infof("Executing command: %s", cmd.Command)
+	return cmdInstance.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 }
 
 // expandString expands variables in a string
