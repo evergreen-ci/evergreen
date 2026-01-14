@@ -34,7 +34,6 @@ type LocalExecutorOptions struct {
 
 // NewLocalExecutor creates a new local task executor
 func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
-	// Set up logging
 	var logger grip.Journaler
 	if opts.LogFile != "" {
 		sender, err := send.MakeFileLogger(opts.LogFile)
@@ -47,7 +46,6 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		logger = grip.NewJournaler("evergreen-local")
 	}
 
-	// Initialize expansions
 	expansions := util.Expansions{}
 	if opts.WorkingDir != "" {
 		expansions.Put("workdir", opts.WorkingDir)
