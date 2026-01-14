@@ -2016,29 +2016,38 @@ func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete 
 	return err
 }
 
-// FindNonHiddenProjects returns limit visible project refs starting at project id key in the sortDir direction.
-// Optionally filters by ownerName and repoName if provided.
-func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int, ownerName, repoName string) ([]ProjectRef, error) {
+// FindNonHiddenProjects returns limit visible project refs starting at project identifier key in the sortDir direction.
+// Optionally filters by ownerName, repoName, and activeOnly (enabled projects only) if provided.
+func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int, ownerName, repoName string, activeOnly bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	filter := bson.M{
-		ProjectRefHiddenKey: bson.M{"$ne": true},
-	}
-	sortSpec := ProjectRefIdKey
 
+	paginationOp := "$gte"
+	sortSpec := ProjectRefIdentifierKey
 	if sortDir < 0 {
+		paginationOp = "$lt"
 		sortSpec = "-" + sortSpec
-		filter[ProjectRefIdKey] = bson.M{"$lt": key}
-	} else {
-		filter[ProjectRefIdKey] = bson.M{"$gte": key}
+	}
+
+	conditions := []bson.M{
+		{ProjectRefHiddenKey: bson.M{"$ne": true}},
+		{ProjectRefIdentifierKey: bson.M{"$ne": ""}},
+	}
+
+	if key != "" {
+		conditions = append(conditions, bson.M{ProjectRefIdentifierKey: bson.M{paginationOp: key}})
 	}
 
 	if ownerName != "" {
-		filter[ProjectRefOwnerKey] = ownerName
+		conditions = append(conditions, bson.M{ProjectRefOwnerKey: ownerName})
+	}
+	if repoName != "" {
+		conditions = append(conditions, bson.M{ProjectRefRepoKey: repoName})
+	}
+	if activeOnly {
+		conditions = append(conditions, bson.M{ProjectRefEnabledKey: true})
 	}
 
-	if repoName != "" {
-		filter[ProjectRefRepoKey] = repoName
-	}
+	filter := bson.M{"$and": conditions}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
