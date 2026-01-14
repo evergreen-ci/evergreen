@@ -99,3 +99,13 @@ input FWSConfigInput {
 type FWSConfig {
   url: String!
 }
+
+input GraphiteConfigInput {
+  cliOptimizationToken: String @redactSecrets
+  serverUrl: String
+}
+
+type GraphiteConfig {
+  cliOptimizationToken: String @requireAdmin
+  serverUrl: String
+}

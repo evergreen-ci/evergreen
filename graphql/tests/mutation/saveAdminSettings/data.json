@@ -250,6 +250,11 @@
       "url": ""
     },
     {
+      "_id": "graphite",
+      "cli_optimization_token": "",
+      "server_url": ""
+    },
+    {
       "_id": "amboy",
       "name": "amboy-config",
       "database": "amboy",

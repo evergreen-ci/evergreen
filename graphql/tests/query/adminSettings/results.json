@@ -74,6 +74,10 @@
             "fws": {
               "url": "https://fws.example.com"
             },
+            "graphite": {
+              "cliOptimizationToken": "",
+              "serverUrl": ""
+            },
             "cedar": {
               "dbName": "cedar",
               "dbUrl": "mongodb://localhost:27017/cedar"

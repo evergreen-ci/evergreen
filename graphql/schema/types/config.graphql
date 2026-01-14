@@ -70,6 +70,7 @@ input AdminSettingsInput {
   domainName: String
   expansions: StringMap
   fws: FWSConfigInput
+  graphite: GraphiteConfigInput
   githubCheckRun: GitHubCheckRunConfigInput
   githubOrgs: [String!]
   githubPRCreatorOrg: String
@@ -125,6 +126,7 @@ type AdminSettings {
   domainName: String
   expansions: StringMap
   fws: FWSConfig
+  graphite: GraphiteConfig
   githubCheckRun: GitHubCheckRunConfig
   githubOrgs: [String!]
   githubPRCreatorOrg: String

@@ -224,6 +224,10 @@ func MockConfig() *evergreen.Settings {
 		FWS: evergreen.FWSConfig{
 			URL: "fws_url",
 		},
+		Graphite: evergreen.GraphiteConfig{
+			CLIOptimizationToken: "graphite_token",
+			ServerURL:            "https://graphite.example.com",
+		},
 		GithubPRCreatorOrg:  "org",
 		GithubWebhookSecret: "secret",
 		HostInit: evergreen.HostInitConfig{

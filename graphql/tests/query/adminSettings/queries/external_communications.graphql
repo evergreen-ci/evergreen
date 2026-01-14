@@ -37,6 +37,10 @@ query ExternalCommunications {
     fws {
       url
     }
+    graphite {
+      cliOptimizationToken
+      serverUrl
+    }
     cedar {
       dbName
       dbUrl
