@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bradleyfalzon/ghinstallation"
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/evergreen-ci/utility/ttlcache"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"

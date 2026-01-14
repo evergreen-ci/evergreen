@@ -60,8 +60,39 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 	container2, err := host.FindOne(ctx, host.ById("container-2"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostTerminated, container2.Status)
+	// Verify termination_time is set (DEVPROD-25714)
+	assert.False(container2.TerminationTime.IsZero(), "termination_time should be set when container is terminated")
 
 	container3, err := host.FindOne(ctx, host.ById("container-3"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostUninitialized, container3.Status)
+}
+
+// TestHostMonitoringContainerStateTerminationTime verifies termination_time is
+// set when containers not in Docker are terminated.
+func TestHostMonitoringContainerStateTerminationTime(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(host.Collection))
+
+	parent := &host.Host{Id: "parent-test", Status: evergreen.HostRunning, HasContainers: true}
+	decommissioned := &host.Host{Id: "decommissioned", Status: evergreen.HostDecommissioned, ParentID: "parent-test"}
+	running := &host.Host{Id: "running", Status: evergreen.HostRunning, ParentID: "parent-test"}
+
+	assert.NoError(parent.Insert(t.Context()))
+	assert.NoError(decommissioned.Insert(t.Context()))
+	assert.NoError(running.Insert(t.Context()))
+
+	j := NewHostMonitorContainerStateJob(parent, evergreen.ProviderNameDockerMock, "test")
+	j.Run(t.Context())
+	assert.NoError(j.Error())
+
+	dbContainer1, err := host.FindOne(t.Context(), host.ById("decommissioned"))
+	assert.NoError(err)
+	assert.Equal(evergreen.HostTerminated, dbContainer1.Status)
+	assert.False(dbContainer1.TerminationTime.IsZero(), "termination_time must be set")
+
+	dbContainer2, err := host.FindOne(t.Context(), host.ById("running"))
+	assert.NoError(err)
+	assert.Equal(evergreen.HostTerminated, dbContainer2.Status)
+	assert.False(dbContainer2.TerminationTime.IsZero(), "termination_time must be set")
 }

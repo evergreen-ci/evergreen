@@ -293,8 +293,8 @@ Fields:
   before activating this variant for mainline commits. The default is set on the project
   settings page. This cannot be set for individual tasks.
 - `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
-  Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
-  commit should be activated (cannot be combined with batchtime). This also
+  Month \| DayOfWeekOptional) when a task or variant in a mainline
+  commit should be activated (cannot be combined with batchtime). All cron schedules run in UTC timezone regardless of your local timezone. This also
   accepts descriptors such as `@daily` (reference
   [cron](https://godoc.org/github.com/robfig/cron) for more example), but does
   not accept intervals. (i.e. `@every <duration>`). Note that `cron` doesn't
@@ -878,7 +878,8 @@ Every task has some expansions available by default:
 - `${github_org}` is the GitHub organization for the repo for the project
 - `${github_repo}` is the GitHub repo for the project
 - `${github_pr_number}` is the Github PR number associated with PR
-  patches and PR triggered merge queue items
+  patches. Patches from the merge queue will not have this expansion
+  because GitHub combines changes from multiple PRs in the queue.
 - `${github_pr_head_branch}` is the Github PR head branch name
 - `${github_pr_base_branch}` is the Github PR base branch name
 - `${is_commit_queue}` is the string "true" if this is a merge
@@ -948,10 +949,15 @@ inter-project dependency:
 - `${trigger_branch}` is git branch for the project that initiated
   this trigger
 
-The following expansions are available if a task has modules:
+The following expansions are available if a task was created with a [patch trigger alias](Project-and-Distro-Settings#patch-trigger-aliases):
 
-`<module_name>` represents the name defined in the project yaml for a
-given module
+- `${parent_patch_id}` is the ID of the parent patch for this task
+- `${parent_github_org}` is the Github org for the parent patch
+- `${parent_github_repo}` is the Github repo for the parent patch
+- `${parent_github_branch}` is the branch tracked by the parent patch
+
+The following expansions are available if a task has modules, where `<module_name>` represents the name defined in the project yaml for a
+given module:
 
 - `${<module_name>_rev}` is the revision of the evergreen module
   associated with this task
@@ -1902,28 +1908,28 @@ buildvariants:
 # Project settings have a batchtime of 5 minutes.
 buildvariants:
   - name: bv1
-    cron: "0 4 * * *" # bv1 activates at 4 AM. The batchtime in the project settings is ignored.
+    cron: "0 4 * * *" # bv1 activates at 4 AM UTC. The batchtime in the project settings is ignored.
   - name: bv2 # bv2's batchtime is 5 minutes because it uses the batchtime from the project settings.
 ```
 
 ```yaml
 buildvariants:
   - name: bv1
-    cron: "0 4 * * *" # bv1 activates at 4 AM.
+    cron: "0 4 * * *" # bv1 activates at 4 AM UTC.
     tasks:
       - name: task1
-        cron: "0 5 * * *" # task1 does not activate until its cron elapses at 5 AM. The build variant cron is ignored.
-      - name: task2 # task2 activates at 4 AM when bv1's cron elapses.
+        cron: "0 5 * * *" # task1 does not activate until its cron elapses at 5 AM UTC. The build variant cron is ignored.
+      - name: task2 # task2 activates at 4 AM UTC when bv1's cron elapses.
 ```
 
 ```yaml
 buildvariants:
   - name: bv1
-    cron: "0 4 * * *" # bv1 activates at 4 AM.
+    cron: "0 4 * * *" # bv1 activates at 4 AM UTC.
     tasks:
       - name: task1
-        activate: false # task1 will not activate automatically, even when bv1's cron elapses at 4 AM.
-      - name: task2 # task2 activates at 4 AM when bv1's cron elapses.
+        activate: false # task1 will not activate automatically, even when bv1's cron elapses at 4 AM UTC.
+      - name: task2 # task2 activates at 4 AM UTC when bv1's cron elapses.
 ```
 
 ##### activate: true Special Case
@@ -1952,8 +1958,8 @@ buildvariants:
     batchtime: 60 # Batchtime of 1 hour
     activate: true # bv1 will respect the batchtime of 1 hour, so bv1 will not activate unless batchtime elapses.
   - name: bv2
-    cron: "0 4 * * *" # bv2 activates at 4 AM.
-    activate: true # bv2 will respect the cron setting, so bv2 will not activate until 4 AM.
+    cron: "0 4 * * *" # bv2 activates at 4 AM UTC.
+    activate: true # bv2 will respect the cron setting, so bv2 will not activate until 4 AM UTC.
 ```
 
 If `activate: true` and `activate: false` are used in different levels (i.e. one in the build variant, one in the task

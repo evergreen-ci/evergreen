@@ -83,6 +83,7 @@ type Version {
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]
+  predictedCost: Cost
 }
 
 type VersionTasks {

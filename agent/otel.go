@@ -16,7 +16,7 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
-	"go.opentelemetry.io/contrib/detectors/aws/ec2"
+	"go.opentelemetry.io/contrib/detectors/aws/ec2/v2"
 	"go.opentelemetry.io/contrib/detectors/aws/ecs"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -52,6 +52,8 @@ const (
 	diskUsageUtilizationInstrument = "system.disk.usage.utilization"
 
 	networkIOInstrumentPrefix = "system.network.io"
+
+	socketCountPrefix = "system.network.socket.count"
 
 	processCountPrefix = "system.process.count"
 )
@@ -133,7 +135,8 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 	catcher := grip.NewBasicCatcher()
 
-	// CPU and disk metrics are not implemented by gopsutil for macOS.
+	// CPU and disk metrics require CGO on macOS (see cpu_darwin_nocgo.go and disk_darwin_nocgo.go in gopsutil).
+	// The agent builds with CGO_ENABLED=0 by default, so these metrics are unavailable on macOS.
 	if runtime.GOOS != "darwin" {
 		catcher.Wrap(addCPUMetrics(meter), "adding CPU metrics")
 		catcher.Wrap(addDiskMetrics(ctx, meter), "adding disk metrics")
@@ -141,6 +144,7 @@ func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 
 	catcher.Wrap(addMemoryMetrics(meter), "adding memory metrics")
 	catcher.Wrap(addNetworkMetrics(ctx, meter), "adding network metrics")
+	catcher.Wrap(addSocketMetrics(ctx, meter), "adding socket metrics")
 	catcher.Wrap(addProcessMetrics(meter), "adding process metrics")
 
 	return catcher.Resolve()
@@ -454,6 +458,96 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		return nil
 	}, transmit, receive, transmitBps, receiveBps, maxTransmitBps, maxReceiveBps)
 	return errors.Wrap(err, "registering network io callback")
+}
+
+func addSocketMetrics(ctx context.Context, meter metric.Meter) error {
+	socketEstablished, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.established", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Active connections"))
+	if err != nil {
+		return errors.Wrap(err, "making established socket counter")
+	}
+	socketTimeWait, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.time_wait", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Closed connections waiting for delayed packets"))
+	if err != nil {
+		return errors.Wrap(err, "making time_wait socket counter")
+	}
+	socketCloseWait, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.close_wait", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Remote side closed, local waiting for close"))
+	if err != nil {
+		return errors.Wrap(err, "making close_wait socket counter")
+	}
+	socketListen, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.listen", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Listening for incoming connections"))
+	if err != nil {
+		return errors.Wrap(err, "making listen socket counter")
+	}
+	socketSynSent, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.syn_sent", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Connection initiated"))
+	if err != nil {
+		return errors.Wrap(err, "making syn_sent socket counter")
+	}
+	socketSynRecv, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.syn_recv", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Connection request received"))
+	if err != nil {
+		return errors.Wrap(err, "making syn_recv socket counter")
+	}
+	socketFinWait1, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.fin_wait1", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Local close initiated"))
+	if err != nil {
+		return errors.Wrap(err, "making fin_wait1 socket counter")
+	}
+	socketFinWait2, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.fin_wait2", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Waiting for remote close"))
+	if err != nil {
+		return errors.Wrap(err, "making fin_wait2 socket counter")
+	}
+	socketLastAck, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.last_ack", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Waiting for final acknowledgment"))
+	if err != nil {
+		return errors.Wrap(err, "making last_ack socket counter")
+	}
+	socketClosing, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.closing", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Both sides closing simultaneously"))
+	if err != nil {
+		return errors.Wrap(err, "making closing socket counter")
+	}
+	socketClosed, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.closed", socketCountPrefix), metric.WithUnit("{socket}"), metric.WithDescription("Fully closed connections"))
+	if err != nil {
+		return errors.Wrap(err, "making closed socket counter")
+	}
+
+	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
+		connections, err := net.ConnectionsWithContext(ctx, "tcp")
+		if err != nil {
+			return errors.Wrap(err, "getting TCP connections")
+		}
+
+		// Count sockets by state
+		counts := map[string]int64{
+			"ESTABLISHED": 0,
+			"TIME_WAIT":   0,
+			"CLOSE_WAIT":  0,
+			"LISTEN":      0,
+			"SYN_SENT":    0,
+			"SYN_RECV":    0,
+			"FIN_WAIT1":   0,
+			"FIN_WAIT2":   0,
+			"LAST_ACK":    0,
+			"CLOSING":     0,
+			"CLOSED":      0,
+		}
+
+		for _, conn := range connections {
+			if count, ok := counts[conn.Status]; ok {
+				counts[conn.Status] = count + 1
+			}
+		}
+
+		observer.ObserveInt64(socketEstablished, counts["ESTABLISHED"])
+		observer.ObserveInt64(socketTimeWait, counts["TIME_WAIT"])
+		observer.ObserveInt64(socketCloseWait, counts["CLOSE_WAIT"])
+		observer.ObserveInt64(socketListen, counts["LISTEN"])
+		observer.ObserveInt64(socketSynSent, counts["SYN_SENT"])
+		observer.ObserveInt64(socketSynRecv, counts["SYN_RECV"])
+		observer.ObserveInt64(socketFinWait1, counts["FIN_WAIT1"])
+		observer.ObserveInt64(socketFinWait2, counts["FIN_WAIT2"])
+		observer.ObserveInt64(socketLastAck, counts["LAST_ACK"])
+		observer.ObserveInt64(socketClosing, counts["CLOSING"])
+		observer.ObserveInt64(socketClosed, counts["CLOSED"])
+
+		return nil
+	}, socketEstablished, socketTimeWait, socketCloseWait, socketListen, socketSynSent, socketSynRecv, socketFinWait1, socketFinWait2, socketLastAck, socketClosing, socketClosed)
+	return errors.Wrap(err, "registering socket count callback")
 }
 
 func hostResource(ctx context.Context) *resource.Resource {

@@ -94,6 +94,7 @@ var (
 	elasticIPsDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "ElasticIPsDisabled")
 	releaseModeDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "ReleaseModeDisabled")
 	legacyUIAdminPageDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIAdminPageDisabled")
+	debugSpawnHostDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "DebugSpawnHostDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

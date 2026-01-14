@@ -21,6 +21,7 @@ input ServiceFlagsInput {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
@@ -59,6 +60,7 @@ type ServiceFlags {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
@@ -72,4 +74,9 @@ type ServiceFlags {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
+}
+
+# UserServiceFlags are service flags that users have permission to view.
+type UserServiceFlags {
+  jwtTokenForCLIDisabled: Boolean
 }
