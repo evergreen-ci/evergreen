@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -298,6 +299,14 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 
 // User is the resolver for the user field.
 func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIDBUser, error) {
+	// If only userId is requested, we can return it without a database call.
+	requestedFields := graphql.CollectAllFields(ctx)
+	if len(requestedFields) == 1 && requestedFields[0] == "userId" {
+		return &restModel.APIDBUser{
+			UserID: obj.Author,
+		}, nil
+	}
+
 	authorId := utility.FromStringPtr(obj.Author)
 	currentUser := mustHaveUser(ctx)
 	if currentUser.Id == authorId {
@@ -312,11 +321,9 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 	}
 	// This is most likely a reaped user, so just return their ID
 	if author == nil {
-		apiUser := &restModel.APIDBUser{
-			UserID: utility.ToStringPtr(authorId),
-		}
-		apiUser.BuildFromService(*author)
-		return apiUser, nil
+		return &restModel.APIDBUser{
+			UserID: obj.Author,
+		}, nil
 	}
 
 	apiUser := &restModel.APIDBUser{}

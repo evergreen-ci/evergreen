@@ -504,7 +504,26 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 
 // User is the resolver for the user field.
 func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIDBUser, error) {
-	authorId := utility.FromStringPtr(obj.Author)
+	// userId, displayName, and emailAddress are always returned from the version document.
+	// Other fields require a database call.
+	requestedFields := graphql.CollectAllFields(ctx)
+	needsDBFetch := false
+	for _, field := range requestedFields {
+		if field != "userId" && field != "displayName" && field != "emailAddress" {
+			needsDBFetch = true
+			break
+		}
+	}
+
+	if !needsDBFetch {
+		return &restModel.APIDBUser{
+			UserID:       obj.AuthorID,
+			DisplayName:  obj.Author,
+			EmailAddress: obj.AuthorEmail,
+		}, nil
+	}
+
+	authorId := utility.FromStringPtr(obj.AuthorID)
 	currentUser := mustHaveUser(ctx)
 	if currentUser.Id == authorId {
 		apiUser := &restModel.APIDBUser{}
@@ -516,10 +535,12 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
-	// This is most likely a reaped user, so just return their ID
+	// This is most likely a reaped user, so just return their info from version
 	if author == nil {
 		return &restModel.APIDBUser{
-			UserID: utility.ToStringPtr(authorId),
+			UserID:       obj.AuthorID,
+			DisplayName:  obj.Author,
+			EmailAddress: obj.AuthorEmail,
 		}, nil
 	}
 
