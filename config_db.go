@@ -124,8 +124,8 @@ var (
 	ProjectTasksPairsKey = bsonutil.MustHaveTag(SingleTaskDistroConfig{}, "ProjectTasksPairs")
 
 	// GraphiteConfig keys
-	graphiteCLIOptimizationTokenKey = bsonutil.MustHaveTag(GraphiteConfig{}, "CLIOptimizationToken")
-	graphiteServerURLKey            = bsonutil.MustHaveTag(GraphiteConfig{}, "ServerURL")
+	graphiteCIOptimizationTokenKey = bsonutil.MustHaveTag(GraphiteConfig{}, "CIOptimizationToken")
+	graphiteServerURLKey           = bsonutil.MustHaveTag(GraphiteConfig{}, "ServerURL")
 )
 
 func byId(id string) bson.M {

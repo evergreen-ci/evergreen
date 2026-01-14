@@ -38,7 +38,7 @@ query ExternalCommunications {
       url
     }
     graphite {
-      cliOptimizationToken
+      ciOptimizationToken
       serverUrl
     }
     cedar {

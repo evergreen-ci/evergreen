@@ -101,11 +101,11 @@ type FWSConfig {
 }
 
 input GraphiteConfigInput {
-  cliOptimizationToken: String @redactSecrets
+  ciOptimizationToken: String @redactSecrets
   serverUrl: String
 }
 
 type GraphiteConfig {
-  cliOptimizationToken: String @requireAdmin
+  ciOptimizationToken: String @requireAdmin
   serverUrl: String
 }

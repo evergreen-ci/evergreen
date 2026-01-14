@@ -283,7 +283,7 @@
     },
     {
       "_id": "graphite",
-      "cli_optimization_token": "",
+      "ci_optimization_token": "",
       "server_url": ""
     },
     {

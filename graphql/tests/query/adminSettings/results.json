@@ -75,7 +75,7 @@
               "url": "https://fws.example.com"
             },
             "graphite": {
-              "cliOptimizationToken": "",
+              "ciOptimizationToken": "",
               "serverUrl": ""
             },
             "cedar": {

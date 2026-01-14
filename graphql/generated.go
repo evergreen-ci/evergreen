@@ -681,8 +681,8 @@ type ComplexityRoot struct {
 	}
 
 	GraphiteConfig struct {
-		CLIOptimizationToken func(childComplexity int) int
-		ServerURL            func(childComplexity int) int
+		CIOptimizationToken func(childComplexity int) int
+		ServerURL           func(childComplexity int) int
 	}
 
 	GroupedBuildVariant struct {
@@ -5044,12 +5044,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GithubUser.UID(childComplexity), true
 
-	case "GraphiteConfig.cliOptimizationToken":
-		if e.complexity.GraphiteConfig.CLIOptimizationToken == nil {
+	case "GraphiteConfig.ciOptimizationToken":
+		if e.complexity.GraphiteConfig.CIOptimizationToken == nil {
 			break
 		}
 
-		return e.complexity.GraphiteConfig.CLIOptimizationToken(childComplexity), true
+		return e.complexity.GraphiteConfig.CIOptimizationToken(childComplexity), true
 	case "GraphiteConfig.serverUrl":
 		if e.complexity.GraphiteConfig.ServerURL == nil {
 			break
@@ -18591,8 +18591,8 @@ func (ec *executionContext) fieldContext_AdminSettings_graphite(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "cliOptimizationToken":
-				return ec.fieldContext_GraphiteConfig_cliOptimizationToken(ctx, field)
+			case "ciOptimizationToken":
+				return ec.fieldContext_GraphiteConfig_ciOptimizationToken(ctx, field)
 			case "serverUrl":
 				return ec.fieldContext_GraphiteConfig_serverUrl(ctx, field)
 			}
@@ -28713,14 +28713,14 @@ func (ec *executionContext) fieldContext_GithubUser_uid(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _GraphiteConfig_cliOptimizationToken(ctx context.Context, field graphql.CollectedField, obj *model.APIGraphiteConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _GraphiteConfig_ciOptimizationToken(ctx context.Context, field graphql.CollectedField, obj *model.APIGraphiteConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_GraphiteConfig_cliOptimizationToken,
+		ec.fieldContext_GraphiteConfig_ciOptimizationToken,
 		func(ctx context.Context) (any, error) {
-			return obj.CLIOptimizationToken, nil
+			return obj.CIOptimizationToken, nil
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -28742,7 +28742,7 @@ func (ec *executionContext) _GraphiteConfig_cliOptimizationToken(ctx context.Con
 	)
 }
 
-func (ec *executionContext) fieldContext_GraphiteConfig_cliOptimizationToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GraphiteConfig_ciOptimizationToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GraphiteConfig",
 		Field:      field,
@@ -79466,15 +79466,15 @@ func (ec *executionContext) unmarshalInputGraphiteConfigInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"cliOptimizationToken", "serverUrl"}
+	fieldsInOrder := [...]string{"ciOptimizationToken", "serverUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "cliOptimizationToken":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cliOptimizationToken"))
+		case "ciOptimizationToken":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ciOptimizationToken"))
 			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
 
 			directive1 := func(ctx context.Context) (any, error) {
@@ -79490,9 +79490,9 @@ func (ec *executionContext) unmarshalInputGraphiteConfigInput(ctx context.Contex
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			if data, ok := tmp.(*string); ok {
-				it.CLIOptimizationToken = data
+				it.CIOptimizationToken = data
 			} else if tmp == nil {
-				it.CLIOptimizationToken = nil
+				it.CIOptimizationToken = nil
 			} else {
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
@@ -90539,8 +90539,8 @@ func (ec *executionContext) _GraphiteConfig(ctx context.Context, sel ast.Selecti
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GraphiteConfig")
-		case "cliOptimizationToken":
-			out.Values[i] = ec._GraphiteConfig_cliOptimizationToken(ctx, field, obj)
+		case "ciOptimizationToken":
+			out.Values[i] = ec._GraphiteConfig_ciOptimizationToken(ctx, field, obj)
 		case "serverUrl":
 			out.Values[i] = ec._GraphiteConfig_serverUrl(ctx, field, obj)
 		default:

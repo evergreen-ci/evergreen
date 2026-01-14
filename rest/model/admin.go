@@ -2662,14 +2662,14 @@ func (a *APIFWSConfig) ToService() (interface{}, error) {
 }
 
 type APIGraphiteConfig struct {
-	CLIOptimizationToken *string `json:"cli_optimization_token"`
-	ServerURL            *string `json:"server_url"`
+	CIOptimizationToken *string `json:"ci_optimization_token"`
+	ServerURL           *string `json:"server_url"`
 }
 
 func (a *APIGraphiteConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.GraphiteConfig:
-		a.CLIOptimizationToken = utility.ToStringPtr(v.CLIOptimizationToken)
+		a.CIOptimizationToken = utility.ToStringPtr(v.CIOptimizationToken)
 		a.ServerURL = utility.ToStringPtr(v.ServerURL)
 	default:
 		return errors.Errorf("programmatic error: expected Graphite config but got type %T", h)
@@ -2679,8 +2679,8 @@ func (a *APIGraphiteConfig) BuildFromService(h interface{}) error {
 
 func (a *APIGraphiteConfig) ToService() (interface{}, error) {
 	return evergreen.GraphiteConfig{
-		CLIOptimizationToken: utility.FromStringPtr(a.CLIOptimizationToken),
-		ServerURL:            utility.FromStringPtr(a.ServerURL),
+		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
+		ServerURL:           utility.FromStringPtr(a.ServerURL),
 	}, nil
 }
 
