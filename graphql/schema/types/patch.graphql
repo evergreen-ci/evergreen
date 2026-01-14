@@ -94,7 +94,7 @@ type Patch {
   tasks: [String!]!
   taskStatuses: [String!]!
   time: PatchTime
-  user: User
+  user: User!
   variants: [String!]!
   variantsTasks: [VariantTask!]!
   versionFull: Version
