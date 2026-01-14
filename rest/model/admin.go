@@ -2666,7 +2666,7 @@ type APIGraphiteConfig struct {
 	ServerURL           *string `json:"server_url"`
 }
 
-func (a *APIGraphiteConfig) BuildFromService(h interface{}) error {
+func (a *APIGraphiteConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.GraphiteConfig:
 		a.CIOptimizationToken = utility.ToStringPtr(v.CIOptimizationToken)
