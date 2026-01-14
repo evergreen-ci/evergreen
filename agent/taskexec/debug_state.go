@@ -10,6 +10,7 @@ type DebugState struct {
 	LoadedProject    *model.Project
 	SelectedTask     string
 	SelectedVariant  string
+	CustomVars       map[string]string
 	CommandList      []CommandInfo
 	WorkingDir       string
 }
@@ -27,6 +28,12 @@ type CommandInfo struct {
 func NewDebugState() *DebugState {
 	return &DebugState{
 		CurrentStepIndex: 0,
+		CustomVars:       make(map[string]string),
 		CommandList:      []CommandInfo{},
 	}
+}
+
+// hasMoreSteps returns true if there are more steps to execute
+func (ds *DebugState) hasMoreSteps() bool {
+	return ds.CurrentStepIndex < len(ds.CommandList)
 }
