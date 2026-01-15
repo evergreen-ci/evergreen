@@ -1053,7 +1053,6 @@ func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResp
 			"operation":      "NextTask",
 			"host_id":        h.Id,
 			"host_tag":       h.Tag,
-			"source":         "database error",
 			"host_revision":  details.AgentRevision,
 			"agent_version":  evergreen.AgentVersion,
 			"build_revision": evergreen.BuildRevision,
