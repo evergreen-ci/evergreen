@@ -129,7 +129,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		if utility.StringSliceContains(pd.PodIDs, p.ID) {
 			// A pod will only be allocated if the dispatcher is actually in
 			// need of another pod to run its tasks.
-			if err := p.InsertWithContext(ctx, env); err != nil {
+			if err := p.Insert(ctx); err != nil {
 				return nil, errors.Wrap(err, "inserting new intent pod")
 			}
 		}
