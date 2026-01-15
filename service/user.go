@@ -39,7 +39,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := uis.env.UserManager().CreateUserToken(creds.Username, creds.Password)
+	token, err := uis.env.UserManager().CreateUserToken(r.Context(), creds.Username, creds.Password)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error creating user token",

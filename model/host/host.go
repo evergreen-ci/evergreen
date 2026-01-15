@@ -819,9 +819,9 @@ func (h *Host) NeedsPortBindings() bool {
 }
 
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
-func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
+func CanUpdateSpawnHost(ctx context.Context, h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
-		return usr.HasPermission(gimlet.PermissionOpts{
+		return usr.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      h.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
@@ -1941,9 +1941,10 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 	return nil
 }
 
-// ClearRunningTaskWithContext unsets the running task on the log. It does not
-// log an event for clearing the task.
-func (h *Host) ClearRunningTaskWithContext(ctx context.Context, env evergreen.Environment) error {
+// ClearRunningTaskWithEnv unsets the running task on the log. It does not
+// log an event for clearing the task. It uses the provided environment to
+// perform the database operation.
+func (h *Host) ClearRunningTaskWithEnv(ctx context.Context, env evergreen.Environment) error {
 	doUpdate := func(update bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, h.Id, update)
 		return err
@@ -1983,9 +1984,9 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 	return nil
 }
 
-// UpdateRunningTaskWithContext updates the running task for the host. It does
+// UpdateRunningTask updates the running task for the host. It does
 // not log an event for task assignment.
-func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
+func (h *Host) UpdateRunningTask(ctx context.Context, env evergreen.Environment, t *task.Task) error {
 	if t == nil {
 		return errors.New("received nil task, cannot update")
 	}
@@ -2223,20 +2224,16 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 	return err
 }
 
+// Insert inserts the host in to the database.
 func (h *Host) Insert(ctx context.Context) error {
-	if err := InsertOne(ctx, h); err != nil {
-		return errors.Wrap(err, "inserting host")
-	}
-	return nil
+	return InsertOne(ctx, h, evergreen.GetEnvironment())
 }
 
-// InsertWithContext is the same as Insert but accepts a context for the
-// operation.
-func (h *Host) InsertWithContext(ctx context.Context, env evergreen.Environment) error {
-	if _, err := env.DB().Collection(Collection).InsertOne(ctx, h); err != nil {
-		return errors.Wrap(err, "inserting host")
-	}
-	return nil
+// InsertWithEnv inserts the host into the given environment's database.
+// This is useful for transactions where the same client must be used for all
+// operations.
+func (h *Host) InsertWithEnv(ctx context.Context, env evergreen.Environment) error {
+	return InsertOne(ctx, h, env)
 }
 
 // Remove removes the host document from the DB.

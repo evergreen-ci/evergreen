@@ -151,7 +151,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
-	_, err = db.ReplaceContext(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version)
+	_, err = db.Replace(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -160,7 +160,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
-	_, err = db.ReplaceContext(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version)
+	_, err = db.Replace(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -169,7 +169,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionCreated
-	_, err = db.ReplaceContext(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version)
+	_, err = db.Replace(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)

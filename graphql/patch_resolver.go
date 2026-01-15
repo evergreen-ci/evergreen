@@ -21,7 +21,7 @@ import (
 // AuthorDisplayName is the resolver for the authorDisplayName field.
 func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	author := utility.FromStringPtr(obj.Author)
-	usr, err := user.FindOneByIdContext(ctx, author)
+	usr, err := user.FindOneById(ctx, author)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting user corresponding to author '%s': %s", author, err.Error()))
 	}
@@ -306,7 +306,7 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 		return apiUser, nil
 	}
 
-	author, err := user.FindOneByIdContext(ctx, authorId)
+	author, err := user.FindOneById(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}

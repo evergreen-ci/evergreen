@@ -609,7 +609,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		authorEmail = p.GitInfo.Email
 	}
 	if p.Author != "" {
-		u, err := user.FindOneByIdContext(ctx, p.Author)
+		u, err := user.FindOneById(ctx, p.Author)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting user")
 		}
@@ -788,7 +788,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			}
 		}
 		if mfst != nil {
-			if err = mfst.InsertWithContext(ctx); err != nil {
+			if err = mfst.Insert(ctx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}

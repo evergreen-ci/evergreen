@@ -375,7 +375,7 @@ func TestConsolidatePatchesForUser(t *testing.T) {
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, 9, patchFromDB.PatchNumber)
 
-	usr, err := user.FindOneByIdContext(t.Context(), "new_me")
+	usr, err := user.FindOneById(t.Context(), "new_me")
 	assert.NoError(t, err)
 	require.NotNil(t, usr)
 	assert.Equal(t, 9, usr.PatchNumber)

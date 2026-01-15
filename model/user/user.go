@@ -139,7 +139,7 @@ func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 // UpdateAPIKey updates the API key stored for the user.
 func (u *DBUser) UpdateAPIKey(ctx context.Context, newKey string) error {
 	update := bson.M{"$set": bson.M{APIKeyKey: newKey}}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "setting API key for user '%s'", u.Id)
 	}
 	u.APIKey = newKey
@@ -149,7 +149,7 @@ func (u *DBUser) UpdateAPIKey(ctx context.Context, newKey string) error {
 // UpdateSettings updates the user's settings.
 func (u *DBUser) UpdateSettings(ctx context.Context, settings UserSettings) error {
 	update := bson.M{"$set": bson.M{SettingsKey: settings}}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving user settings for user '%s'", u.Id)
 	}
 	u.Settings = settings
@@ -159,7 +159,7 @@ func (u *DBUser) UpdateSettings(ctx context.Context, settings UserSettings) erro
 // UpdateParsleySettings updates a user's settings for Parsley.
 func (u *DBUser) UpdateParsleySettings(ctx context.Context, settings parsley.Settings) error {
 	update := bson.M{"$set": bson.M{ParsleySettingsKey: settings}}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving Parsley settings for user '%s'", u.Id)
 	}
 	u.ParsleySettings = settings
@@ -169,7 +169,7 @@ func (u *DBUser) UpdateParsleySettings(ctx context.Context, settings parsley.Set
 // UpdateBetaFeatures updates a user's beta feature settings.
 func (u *DBUser) UpdateBetaFeatures(ctx context.Context, betaFeatures evergreen.BetaFeatures) error {
 	update := bson.M{"$set": bson.M{BetaFeaturesKey: betaFeatures}}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving beta feature settings for user '%s'", u.Id)
 	}
 	u.BetaFeatures = betaFeatures
@@ -208,7 +208,7 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(ctx context.Context, maxScheduled
 			},
 		}
 	}
-	return UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update)
+	return UpdateOne(ctx, bson.M{IdKey: u.Id}, update)
 }
 
 // getNewNumScheduledTasksCounter takes in the current number of tasks a user has scheduled within the
@@ -244,7 +244,7 @@ func (u *DBUser) AddPublicKey(ctx context.Context, keyName, keyValue string) err
 			"$set": bson.M{PubKeysKey: []PubKey{key}},
 		}
 	}
-	if err := UpdateOneContext(ctx, userWithoutKey, update); err != nil {
+	if err := UpdateOne(ctx, userWithoutKey, update); err != nil {
 		return err
 	}
 	u.PubKeys = append(u.PubKeys, key)
@@ -350,7 +350,7 @@ func (u *DBUser) AddFavoritedProject(ctx context.Context, identifier string) err
 	update := bson.M{
 		"$push": bson.M{FavoriteProjectsKey: identifier},
 	}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 
@@ -368,7 +368,7 @@ func (u *DBUser) RemoveFavoriteProject(ctx context.Context, identifier string) e
 	update := bson.M{
 		"$pull": bson.M{FavoriteProjectsKey: identifier},
 	}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 
@@ -388,7 +388,7 @@ func (u *DBUser) AddRole(ctx context.Context, role string) error {
 	update := bson.M{
 		"$addToSet": bson.M{RolesKey: role},
 	}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 	u.SystemRoles = append(u.SystemRoles, role)
@@ -401,7 +401,7 @@ func (u *DBUser) RemoveRole(ctx context.Context, role string) error {
 	update := bson.M{
 		"$pull": bson.M{RolesKey: role},
 	}
-	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 	for i := len(u.SystemRoles) - 1; i >= 0; i-- {
@@ -441,19 +441,19 @@ func (u *DBUser) GetViewableProjects(ctx context.Context) ([]string, error) {
 	return viewableProjects, nil
 }
 
-func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
+func (u *DBUser) HasPermission(ctx context.Context, opts gimlet.PermissionOpts) bool {
 	if evergreen.PermissionsDisabledForTests() {
 		return true
 	}
 	roleManager := evergreen.GetEnvironment().RoleManager()
-	roles, err := roleManager.GetRoles(u.Roles())
+	roles, err := roleManager.GetRoles(ctx, u.Roles())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting roles",
 		}))
 		return false
 	}
-	roles, err = roleManager.FilterForResource(roles, opts.Resource, opts.ResourceType)
+	roles, err = roleManager.FilterForResource(ctx, roles, opts.Resource, opts.ResourceType)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error filtering resources",
@@ -470,9 +470,9 @@ func (u *DBUser) HasPermission(opts gimlet.PermissionOpts) bool {
 }
 
 // HasProjectCreatePermission returns true if the user is an admin for any existing project.
-func (u *DBUser) HasProjectCreatePermission() (bool, error) {
+func (u *DBUser) HasProjectCreatePermission(ctx context.Context) (bool, error) {
 	roleManager := evergreen.GetEnvironment().RoleManager()
-	roles, err := roleManager.GetRoles(u.Roles())
+	roles, err := roleManager.GetRoles(ctx, u.Roles())
 	if err != nil {
 		return false, errors.Wrap(err, "getting roles")
 	}
@@ -488,8 +488,8 @@ func (u *DBUser) HasProjectCreatePermission() (bool, error) {
 // HasDistroCreatePermission returns true if the user has permission to create
 // distros. This can also operate as a check for whether the user is a distro
 // admin, since only distro admins can create new distros.
-func (u *DBUser) HasDistroCreatePermission() bool {
-	return u.HasPermission(gimlet.PermissionOpts{
+func (u *DBUser) HasDistroCreatePermission(ctx context.Context) bool {
+	return u.HasPermission(ctx, gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,
 		Permission:    evergreen.PermissionDistroCreate,

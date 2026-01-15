@@ -334,7 +334,7 @@ var ExcludePatchDiff = bson.M{
 // FindOne runs a patch query, returning one patch.
 func FindOne(ctx context.Context, query db.Q) (*Patch, error) {
 	patch := &Patch{}
-	err := db.FindOneQContext(ctx, Collection, query, patch)
+	err := db.FindOneQ(ctx, Collection, query, patch)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -362,12 +362,12 @@ func Remove(ctx context.Context, query db.Q) error {
 
 // UpdateAll runs an update on all patch documents.
 func UpdateAll(ctx context.Context, query any, update any) (info *adb.ChangeInfo, err error) {
-	return db.UpdateAllContext(ctx, Collection, query, update)
+	return db.UpdateAll(ctx, Collection, query, update)
 }
 
 // UpdateOne runs an update on a single patch document.
 func UpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(ctx, Collection, query, update)
+	return db.Update(ctx, Collection, query, update)
 }
 
 // PatchesByProject builds a query for patches that match the given
