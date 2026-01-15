@@ -2,7 +2,6 @@ package taskexec
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -35,10 +33,11 @@ func (l *localLoggerProducer) Close() error                    { l.closed = true
 func (l *localLoggerProducer) Closed() bool                    { return l.closed }
 
 type executorBlock struct {
-	blockType  command.BlockType
-	commands   *model.YAMLCommandSet
-	startIndex int
-	endIndex   int
+	blockType   command.BlockType
+	commands    *model.YAMLCommandSet
+	startIndex  int
+	endIndex    int
+	canFailTask bool
 }
 
 // LocalExecutor implements task execution for local YAML files
@@ -77,6 +76,7 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		expansions.Put(k, v)
 	}
 
+	// TODO: DEVPROD-24941 Send requests to app server
 	comm := client.NewMock("http://localhost")
 
 	loggerProducer := &localLoggerProducer{
@@ -86,10 +86,11 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 	taskConfig := &internal.TaskConfig{
 		Expansions: expansions,
 		WorkDir:    opts.WorkingDir,
-		Task: task.Task{
-			Id:     "local-task",
-			Secret: "local-secret",
-		},
+	}
+
+	jasperManager, err := jasper.NewSynchronizedManager(false)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating jasper manager")
 	}
 
 	return &LocalExecutor{
@@ -100,6 +101,8 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		communicator:   comm,
 		loggerProducer: loggerProducer,
 		taskConfig:     taskConfig,
+		jasperManager:  jasperManager,
+		commandBlocks:  []executorBlock{},
 	}, nil
 }
 
@@ -158,35 +161,8 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	return nil
 }
 
-// stepNext executes the current step and advances to the next
-func (e *LocalExecutor) stepNext(ctx context.Context) error {
-	fmt.Print("MALIK")
-	fmt.Println(len(e.commandBlocks))
-	fmt.Println(e.commandBlocks[0].endIndex)
-	if e.debugState.CurrentStepIndex >= e.commandBlocks[0].endIndex {
-		return errors.New("no more steps to execute")
-	}
-
-	cmdInfo := e.debugState.CommandList[e.debugState.CurrentStepIndex]
-
-	e.logger.Infof("Executing step %d: %s", e.debugState.CurrentStepIndex, cmdInfo.DisplayName)
-
-	err := e.executeCommand(ctx, cmdInfo)
-	if err != nil {
-		e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
-	} else {
-		e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
-	}
-
-	e.debugState.CurrentStepIndex++
-
-	return nil
-}
-
 // executeCommand executes a single command using the agent command registry
 func (e *LocalExecutor) executeCommand(ctx context.Context, cmdInfo CommandInfo) error {
-	fmt.Println("MALIK3")
-	fmt.Println(cmdInfo.Command.Command)
 	cmd := cmdInfo.Command.Command
 	factory, ok := command.GetCommandFactory(cmd)
 	if !ok {
@@ -205,6 +181,8 @@ func (e *LocalExecutor) executeCommand(ctx context.Context, cmdInfo CommandInfo)
 	}
 	cmdInstance.SetRetryOnFailure(cmdInfo.Command.RetryOnFailure)
 	cmdInstance.SetFailureMetadataTags(cmdInfo.Command.FailureMetadataTags)
+
+	cmdInstance.SetJasperManager(e.jasperManager)
 
 	e.taskConfig.Expansions = *e.expansions
 	e.taskConfig.WorkDir = e.workDir
@@ -229,14 +207,26 @@ func (e *LocalExecutor) expandString(s string) string {
 	return result
 }
 
-// RunAll executes all remaining steps
+// RunAll executes all steps in a task
 func (e *LocalExecutor) RunAll(ctx context.Context) error {
-	for e.debugState.hasMoreSteps() {
-		if err := e.stepNext(ctx); err != nil {
-			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
-			return nil
+	for _, block := range e.commandBlocks {
+		e.logger.Infof("Executing block: %s", block.blockType)
+
+		cmdBlock := executor.CommandBlock{
+			Block:       block.blockType,
+			Commands:    block.commands,
+			CanFailTask: block.canFailTask,
+		}
+
+		deps := e.createBlockDeps()
+		if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
+			e.logger.Warningf("Block %s failed: %v, continuing", block.blockType, err)
+		} else {
+			e.logger.Infof("Block %s completed successfully", block.blockType)
 		}
 	}
+
+	e.logger.Infof("All blocks executed")
 	return nil
 }
 
@@ -274,13 +264,11 @@ func (e *LocalExecutor) handleLocalPanic(panicErr error, originalErr error, op s
 // runCommandWithTracking executes commands with step tracking for debug mode
 func (e *LocalExecutor) runCommandWithTracking(
 	ctx context.Context,
-	commandInfo model.PluginCommandConf,
+	_ model.PluginCommandConf,
 	cmds []command.Command,
-	block command.BlockType,
+	_ command.BlockType,
 	canFailTask bool,
 ) error {
-	// For now, just execute all commands in the list
-	// TODO: Add step tracking logic here when step-by-step mode is enabled
 	for _, cmd := range cmds {
 		cmd.SetJasperManager(e.jasperManager)
 		err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
@@ -289,12 +277,10 @@ func (e *LocalExecutor) runCommandWithTracking(
 			if canFailTask {
 				return err
 			}
-			// Log but continue if command cannot fail task
 			e.logger.Warningf("Continuing after non-fatal error: %v", err)
 		}
 	}
 
-	// Advance step counter after successful execution
 	e.debugState.CurrentStepIndex++
 	return nil
 }
@@ -313,28 +299,23 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof("Preparing task: %s", taskName)
 
-	// Create main task block with all commands
 	mainBlock := executorBlock{
 		blockType: command.MainTaskBlock,
 		commands: &model.YAMLCommandSet{
 			MultiCommand: task.Commands,
 		},
-		startIndex: 0,
+		startIndex:  0,
+		canFailTask: true,
 	}
 
-	// Set command blocks
 	e.commandBlocks = []executorBlock{mainBlock}
-
-	// Rebuild the flattened command list for debug state
 	if err := e.rebuildCommandList(); err != nil {
 		return errors.Wrap(err, "rebuilding command list")
 	}
 
-	// Update endIndex after commands are expanded
 	if len(e.commandBlocks) > 0 && len(e.debugState.CommandList) > 0 {
 		e.commandBlocks[0].endIndex = len(e.debugState.CommandList) - 1
 	}
-
 	e.logger.Infof("Task prepared with %d commands in %d blocks",
 		len(e.debugState.CommandList), len(e.commandBlocks))
 
