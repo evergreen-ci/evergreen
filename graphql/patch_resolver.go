@@ -76,9 +76,7 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	}
 	versionIDs := []string{patchID}
 	if p.IsParent() {
-		for _, childPatchId := range p.Triggers.ChildPatches {
-			versionIDs = append(versionIDs, childPatchId)
-		}
+		versionIDs = append(versionIDs, p.Triggers.ChildPatches...)
 	}
 	query := db.Query(task.ByVersions(versionIDs)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(ctx, query)
