@@ -2,7 +2,6 @@ package taskexec
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -110,7 +109,7 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 	e.logger.Infof("Loading project from: %s", configPath)
 
-	yamlBytes, err := ioutil.ReadFile(configPath)
+	yamlBytes, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading config file '%s'", configPath)
 	}

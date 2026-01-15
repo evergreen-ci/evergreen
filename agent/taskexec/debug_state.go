@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 )
 
-// DebugState maintains the state of a debug session
+// DebugState maintains the state of a debug session.
 type DebugState struct {
 	CurrentStepIndex int
 	LoadedProject    *model.Project
@@ -16,7 +16,9 @@ type DebugState struct {
 	WorkingDir       string
 }
 
-// CommandInfo represents a single command in the flattened command list
+// CommandInfo represents a single command in the linear execution order.
+// Commands are flattened from their hierarchical structure into a
+// sequential list for step-by-step execution.
 type CommandInfo struct {
 	Index        int
 	Command      model.PluginCommandConf
@@ -28,7 +30,7 @@ type CommandInfo struct {
 	BlockCmdNum  int
 }
 
-// NewDebugState creates a new debug state
+// NewDebugState creates a new debug state.
 func NewDebugState() *DebugState {
 	return &DebugState{
 		CurrentStepIndex: 0,
