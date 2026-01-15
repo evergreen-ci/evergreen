@@ -46,7 +46,7 @@ func (s *ProjectAliasSuite) TestInsertTaskAndVariantWithNoTags() {
 	var out ProjectAlias
 	for i, a := range s.aliases {
 		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.NoError(db.FindOneQContext(s.T().Context(), ProjectAliasCollection, q, &out))
+		s.NoError(db.FindOneQ(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Variant, out.Variant)
@@ -67,7 +67,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 	var out ProjectAlias
 	for i, a := range s.aliases {
 		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.NoError(db.FindOneQContext(s.T().Context(), ProjectAliasCollection, q, &out))
+		s.NoError(db.FindOneQ(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Variant, out.Variant)
@@ -136,7 +136,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoVariant() {
 	var out ProjectAlias
 	for i, a := range s.aliases {
 		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.NoError(db.FindOneQContext(s.T().Context(), ProjectAliasCollection, q, &out))
+		s.NoError(db.FindOneQ(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Task, out.Task)

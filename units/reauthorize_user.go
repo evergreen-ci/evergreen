@@ -69,7 +69,7 @@ func NewReauthorizeUserJob(env evergreen.Environment, u *user.DBUser, id string)
 
 func (j *reauthorizeUserJob) Run(ctx context.Context) {
 	if j.user == nil {
-		user, err := user.FindOneByIdContext(ctx, j.UserID)
+		user, err := user.FindOneById(ctx, j.UserID)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding user '%s'", j.UserID))
 			return
@@ -117,7 +117,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = um.ReauthorizeUser(j.user)
+	err = um.ReauthorizeUser(ctx, j.user)
 
 	// This handles a special Okta case in which the user's refresh token from
 	// Okta has expired, in which case they should be logged out, so that they
@@ -128,7 +128,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 			"user":    j.UserID,
 			"job":     j.ID(),
 		}))
-		if err = user.ClearLoginCache(j.user); err != nil {
+		if err = user.ClearLoginCache(ctx, j.user); err != nil {
 			j.AddError(errors.Wrapf(err, "clearing login cache"))
 		}
 		return
@@ -142,7 +142,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 			"user":    j.UserID,
 			"job":     j.ID(),
 		}))
-		if err := user.ClearLoginCache(j.user); err != nil {
+		if err := user.ClearLoginCache(ctx, j.user); err != nil {
 			j.AddError(errors.Wrapf(err, "clearing login cache"))
 		}
 	}

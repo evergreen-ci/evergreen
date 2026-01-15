@@ -537,7 +537,7 @@ func AddBuildBreakSubscriptions(ctx context.Context, v *model.Version, projectRe
 	// don't send it to admins
 	catcher := grip.NewSimpleCatcher()
 	if v.AuthorID != "" && v.TriggerID == "" {
-		author, err := user.FindOneContext(ctx, user.ById(v.AuthorID))
+		author, err := user.FindOne(ctx, user.ById(v.AuthorID))
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "unable to retrieve user"))
 		} else if author.Settings.Notifications.BuildBreakID != "" {
@@ -570,7 +570,7 @@ func AddBuildBreakSubscriptions(ctx context.Context, v *model.Version, projectRe
 }
 
 func makeBuildBreakSubscriber(ctx context.Context, userID string) (*event.Subscriber, error) {
-	u, err := user.FindOneContext(ctx, user.ById(userID))
+	u, err := user.FindOne(ctx, user.ById(userID))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to find user")
 	}

@@ -198,7 +198,7 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 		evergreen.GithubPRRequester,
 	}
 	if len(obj.DependsOn) > 0 && (utility.StringSliceContains(overrideRequesters, utility.FromStringPtr(obj.Requester)) ||
-		currentUser.HasPermission(requiredPermission)) {
+		currentUser.HasPermission(ctx, requiredPermission)) {
 		return true, nil
 	}
 	return false, nil

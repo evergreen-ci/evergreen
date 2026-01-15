@@ -1018,14 +1018,14 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			Type:      evergreen.ProjectResourceType,
 			Resources: []string{"myProject"},
 		}
-		require.NoError(t, roleManager.AddScope(projectScope))
+		require.NoError(t, roleManager.AddScope(t.Context(), projectScope))
 
 		role := gimlet.Role{
 			ID:          "admin_role",
 			Scope:       projectScope.ID,
 			Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
 		}
-		require.NoError(t, roleManager.UpdateRole(role))
+		require.NoError(t, roleManager.UpdateRole(t.Context(), role))
 		require.NoError(t, adminUsr.AddRole(t.Context(), role.ID))
 		tsk := &task.Task{
 			Id:      "t1",

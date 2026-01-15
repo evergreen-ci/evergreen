@@ -365,7 +365,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 	}
 
 	for _, p := range patches {
-		if !userCanModifyPatch(user, p) {
+		if !userCanModifyPatch(ctx, user, p) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change visibility of patch '%s'", p.Id))
 		}
 		err = p.SetPatchVisibility(ctx, hidden)
@@ -701,7 +701,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", spawnHost.HostID))
 	}
 
-	if !host.CanUpdateSpawnHost(h, usr) {
+	if !host.CanUpdateSpawnHost(ctx, h, usr) {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", spawnHost.HostID))
 	}
 
@@ -832,7 +832,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 
 	// Only admins can spawn admin-only distros.
-	if !usr.HasDistroCreatePermission() {
+	if !usr.HasDistroCreatePermission(ctx) {
 		if d.AdminOnly {
 			// Admin-only distros can only be spawned by distro admins.
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to spawn host in admin-only distro '%s'", options.DistroID))
@@ -931,7 +931,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
-	if !host.CanUpdateSpawnHost(h, usr) {
+	if !host.CanUpdateSpawnHost(ctx, h, usr) {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", hostID))
 	}
 
