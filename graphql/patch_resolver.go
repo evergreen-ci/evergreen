@@ -67,7 +67,20 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 // Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	patchID := utility.FromStringPtr(obj.Id)
-	query := db.Query(task.ByVersion(patchID)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
+	p, err := patch.FindOneId(ctx, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
+	}
+	versionIDs := []string{patchID}
+	if p.IsParent() {
+		for _, childPatchId := range p.Triggers.ChildPatches {
+			versionIDs = append(versionIDs, childPatchId)
+		}
+	}
+	query := db.Query(task.ByVersions(versionIDs)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(ctx, query)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
@@ -276,11 +289,37 @@ func (r *patchResolver) TaskStatuses(ctx context.Context, obj *restModel.APIPatc
 func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*PatchTime, error) {
 	usr := mustHaveUser(ctx)
 
-	started, err := getFormattedDate(obj.StartTime, usr.Settings.Timezone)
+	startTime := obj.StartTime
+	finishTime := obj.FinishTime
+
+	patchID := utility.FromStringPtr(obj.Id)
+	p, err := patch.FindOneId(ctx, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
+	}
+	if p.IsParent() {
+		childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting child patches for patch '%s': %s", patchID, err.Error()))
+		}
+		for _, childPatch := range childPatches {
+			if childPatch.StartTime.Before(*startTime) {
+				startTime = &childPatch.StartTime
+			}
+			if childPatch.FinishTime.Before(*finishTime) {
+				finishTime = &childPatch.FinishTime
+			}
+		}
+	}
+
+	started, err := getFormattedDate(startTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	finished, err := getFormattedDate(obj.FinishTime, usr.Settings.Timezone)
+	finished, err := getFormattedDate(finishTime, usr.Settings.Timezone)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
