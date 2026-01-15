@@ -102,7 +102,7 @@ func InsertMany(ctx context.Context, items ...Notification) error {
 
 func Find(ctx context.Context, id string) (*Notification, error) {
 	notification := Notification{}
-	err := db.FindOneQContext(ctx, Collection, byID(id), &notification)
+	err := db.FindOneQ(ctx, Collection, byID(id), &notification)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil

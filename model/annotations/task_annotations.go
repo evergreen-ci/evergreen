@@ -148,7 +148,7 @@ func AddSuspectedIssueToAnnotation(ctx context.Context, taskId string, execution
 }
 
 func RemoveSuspectedIssueFromAnnotation(ctx context.Context, taskId string, execution int, issue IssueLink) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),

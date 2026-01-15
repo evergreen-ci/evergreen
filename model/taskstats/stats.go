@@ -57,7 +57,7 @@ func createDefaultStatsStatus(projectID string) StatsStatus {
 func GetStatsStatus(ctx context.Context, projectID string) (StatsStatus, error) {
 	status := StatsStatus{}
 	q := db.Query(statsStatusQuery(projectID))
-	err := db.FindOneQContext(ctx, DailyStatsStatusCollection, q, &status)
+	err := db.FindOneQ(ctx, DailyStatsStatusCollection, q, &status)
 	if adb.ResultsNotFound(err) {
 		return createDefaultStatsStatus(projectID), nil
 	}
@@ -75,7 +75,7 @@ func UpdateStatsStatus(ctx context.Context, projectID string, lastJobRun, proces
 		ProcessedTasksUntil: processedTasksUntil,
 		Runtime:             runtime,
 	}
-	_, err := db.ReplaceContext(ctx, DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
+	_, err := db.Replace(ctx, DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
 	if err != nil {
 		return errors.Wrap(err, "updating test stats status")
 	}

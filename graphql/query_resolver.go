@@ -235,7 +235,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		distros = d
 	}
 
-	userHasDistroCreatePermission := usr.HasDistroCreatePermission()
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission(ctx)
 
 	for _, d := range distros {
 		// Omit admin-only distros if user lacks permissions
@@ -412,7 +412,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	apiHosts := []*restModel.APIHost{}
 	for _, h := range hosts {
 		forbiddenHosts := []string{}
-		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
+		if !userHasHostPermission(ctx, usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
 			forbiddenHosts = append(forbiddenHosts, h.Id)
 		}
 		if len(forbiddenHosts) > 0 {
@@ -794,7 +794,7 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 	usr := mustHaveUser(ctx)
 	var err error
 	if userID != nil {
-		usr, err = user.FindOneByIdContext(ctx, utility.FromStringPtr(userID))
+		usr, err = user.FindOneById(ctx, utility.FromStringPtr(userID))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
 		}

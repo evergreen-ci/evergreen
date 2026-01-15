@@ -1308,7 +1308,7 @@ func FindTaskNamesByBuildVariant(ctx context.Context, projectId string, buildVar
 // FindOne returns a single task that satisfies the query.
 func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	task := &Task{}
-	err := db.FindOneQContext(ctx, Collection, query, task)
+	err := db.FindOneQ(ctx, Collection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1338,7 +1338,7 @@ func FindOneIdAndExecution(ctx context.Context, id string, execution int) (*Task
 		IdKey:        id,
 		ExecutionKey: execution,
 	})
-	err := db.FindOneQContext(ctx, Collection, query, task)
+	err := db.FindOneQ(ctx, Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
 		return FindOneOldByIdAndExecution(ctx, id, execution)
@@ -1407,7 +1407,7 @@ func findOneOldByIdAndExecutionWithDisplayStatus(ctx context.Context, id string,
 func FindOneOld(ctx context.Context, filter bson.M) (*Task, error) {
 	task := &Task{}
 	query := db.Query(filter)
-	err := db.FindOneQContext(ctx, OldCollection, query, task)
+	err := db.FindOneQ(ctx, OldCollection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1417,7 +1417,7 @@ func FindOneOld(ctx context.Context, filter bson.M) (*Task, error) {
 func FindOneOldWithFields(ctx context.Context, filter bson.M, fields ...string) (*Task, error) {
 	task := &Task{}
 	query := db.Query(filter).WithFields(fields...)
-	err := db.FindOneQContext(ctx, OldCollection, query, task)
+	err := db.FindOneQ(ctx, OldCollection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1451,7 +1451,7 @@ func FindOneIdWithFields(ctx context.Context, id string, projected ...string) (*
 		query = query.WithFields(projected...)
 	}
 
-	err := db.FindOneQContext(ctx, Collection, query, task)
+	err := db.FindOneQ(ctx, Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -1658,7 +1658,7 @@ func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 
 // UpdateOne updates one task.
 func UpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		Collection,
 		query,
@@ -1668,7 +1668,7 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 
 // updateOneOld updates one old task.
 func updateOneOld(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		OldCollection,
 		query,
@@ -1695,7 +1695,7 @@ func updateOneByIdAndExecution(ctx context.Context, taskId string, execution int
 }
 
 func UpdateAll(ctx context.Context, query any, update any) (*adb.ChangeInfo, error) {
-	return db.UpdateAllContext(
+	return db.UpdateAll(
 		ctx,
 		Collection,
 		query,

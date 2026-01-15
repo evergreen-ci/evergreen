@@ -164,7 +164,7 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 			numHostsToRenotify++
 		}
 	}
-	res, err := db.UpdateAllContext(s.ctx, alertrecord.Collection, bson.M{
+	res, err := db.UpdateAll(s.ctx, alertrecord.Collection, bson.M{
 		alertrecord.HostIdKey: bson.M{"$in": []string{"h1", "h2", "h3", "h4", "h5"}}}, bson.M{
 		"$set": bson.M{
 			alertrecord.AlertTimeKey: time.Now().Add(-7 * utility.Day),

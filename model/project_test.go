@@ -1666,11 +1666,13 @@ func TestFindProjectsSuite(t *testing.T) {
 		s.Require().NoError(db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, fakeparameter.Collection))
 
 		projectWithVars := &ProjectRef{
-			Id: projectId,
+			Id:         projectId,
+			Identifier: projectId,
 		}
 		projects := []*ProjectRef{
 			{
 				Id:          "projectA",
+				Identifier:  "projectA",
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1679,6 +1681,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectB",
+				Identifier:  "projectB",
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1687,6 +1690,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectC",
+				Identifier:  "projectC",
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
@@ -1721,17 +1725,38 @@ func TestFindProjectsSuite(t *testing.T) {
 				Branch:      "main",
 			},
 			{
-				Id: "projectD",
+				Id:         "projectD",
+				Identifier: "projectD",
 			},
 			{
-				Id: "projectE",
+				Id:         "projectE",
+				Identifier: "projectE",
 			},
 			{
-				Id: "projectF",
+				Id:         "projectF",
+				Identifier: "projectF",
 			},
 			{
 				Id:     "projectF-hidden",
 				Hidden: utility.TruePtr(),
+			},
+			{
+				Id:          "507f1f77bcf86cd799439011",
+				Identifier:  "id-1",
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "test-repo",
+				Branch:      "main",
+			},
+			{
+				Id:          "507f1f77bcf86cd799439012",
+				Identifier:  "id-2",
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "test-repo",
+				Branch:      "main",
 			},
 			projectWithVars,
 		}
@@ -1805,67 +1830,67 @@ func (s *FindProjectsSuite) TearDownSuite() {
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 7)
+	s.Len(projects, 8)
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 7)
+	s.Len(projects, 8)
 }
 
 func (s *FindProjectsSuite) TestFetchExactNumber() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1, "", "", false)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1, "", "", false)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1, "", "", false)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1, "", "", false)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFilterByOwnerName() {
 	// Test filtering by owner "evergreen-ci" - should return projectA and projectB
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "", false)
 	s.NoError(err)
 	s.Require().Len(projects, 2)
 	// Results should be sorted by ID, so projectA comes first
@@ -1877,7 +1902,7 @@ func (s *FindProjectsSuite) TestFilterByOwnerName() {
 
 func (s *FindProjectsSuite) TestFilterByRepoName() {
 	// Test filtering by repo "mongo" - should return projectC
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "mongo")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "mongo", false)
 	s.NoError(err)
 	s.Require().Len(projects, 1)
 	s.Equal("projectC", projects[0].Id)
@@ -1886,7 +1911,7 @@ func (s *FindProjectsSuite) TestFilterByRepoName() {
 
 func (s *FindProjectsSuite) TestFilterByOwnerAndRepo() {
 	// Test filtering by both owner "evergreen-ci" and repo "evergreen" - should return projectB
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "evergreen")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "evergreen", false)
 	s.NoError(err)
 	s.Require().Len(projects, 1)
 	s.Equal("projectB", projects[0].Id)
@@ -1896,9 +1921,53 @@ func (s *FindProjectsSuite) TestFilterByOwnerAndRepo() {
 
 func (s *FindProjectsSuite) TestFilterNoMatches() {
 	// Test filtering with non-existent owner/repo combination
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "nonexistent", "repo")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "nonexistent", "repo", false)
 	s.NoError(err)
 	s.Empty(projects)
+}
+
+func (s *FindProjectsSuite) TestFetchByIdentifierAsc() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "id-1", 10, 1, "", "", false)
+	s.NoError(err)
+	s.Require().Len(projects, 9)
+	s.Equal("id-1", projects[0].Identifier)
+	s.Equal("id-2", projects[1].Identifier)
+}
+
+func (s *FindProjectsSuite) TestFetchByIdentifierDesc() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectF", 10, -1, "", "", false)
+	s.NoError(err)
+	s.Require().Len(projects, 8)
+	s.Equal("projectE", projects[0].Identifier)
+	s.Equal("projectD", projects[1].Identifier)
+}
+
+func (s *FindProjectsSuite) TestFilterByActiveOnly() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", false)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 9)
+
+	projects, err = FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", true)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Require().Len(projects, 5)
+
+	for _, p := range projects {
+		s.True(p.Enabled, "project %s should be enabled", p.Identifier)
+	}
+}
+
+func (s *FindProjectsSuite) TestFilterByActiveWithOwnerAndRepo() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "mongodb", "test-repo", true)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Require().Len(projects, 2)
+	for _, p := range projects {
+		s.True(p.Enabled)
+		s.Equal("mongodb", p.Owner)
+		s.Equal("test-repo", p.Repo)
+	}
 }
 
 func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {

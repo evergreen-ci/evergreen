@@ -150,7 +150,7 @@ func FindHostByIdWithOwner(ctx context.Context, hostID string, user gimlet.User)
 	}
 
 	if user.Username() != hostById.StartedBy {
-		if !user.HasPermission(gimlet.PermissionOpts{
+		if !user.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      hostById.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
