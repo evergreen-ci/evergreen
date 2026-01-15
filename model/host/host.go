@@ -2213,11 +2213,16 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 	return err
 }
 
+// Insert inserts the host in to the database.
 func (h *Host) Insert(ctx context.Context) error {
-	if err := InsertOne(ctx, h); err != nil {
-		return errors.Wrap(err, "inserting host")
-	}
-	return nil
+	return InsertOne(ctx, h, evergreen.GetEnvironment())
+}
+
+// InsertWithEnv inserts the host into the given environment's database.
+// This is useful for transactions where the same client must be used for all
+// operations.
+func (h *Host) InsertWithEnv(ctx context.Context, env evergreen.Environment) error {
+	return InsertOne(ctx, h, env)
 }
 
 // Remove removes the host document from the DB.

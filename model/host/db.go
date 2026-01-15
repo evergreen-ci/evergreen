@@ -993,8 +993,8 @@ func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 }
 
 // InsertOne inserts the host into the hosts collection.
-func InsertOne(ctx context.Context, h *Host) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, h)
+func InsertOne(ctx context.Context, h *Host, env evergreen.Environment) error {
+	_, err := env.DB().Collection(Collection).InsertOne(ctx, h)
 	return errors.Wrap(err, "inserting host")
 }
 
@@ -1457,7 +1457,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
 		}
 
-		if err := toInsert.Insert(sessCtx); err != nil {
+		if err := toInsert.InsertWithEnv(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
 		grip.Info(message.Fields{
