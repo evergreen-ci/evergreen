@@ -1973,9 +1973,9 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 	return nil
 }
 
-// UpdateRunningTaskWithContext updates the running task for the host. It does
+// UpdateRunningTask updates the running task for the host. It does
 // not log an event for task assignment.
-func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
+func (h *Host) UpdateRunningTask(ctx context.Context, env evergreen.Environment, t *task.Task) error {
 	if t == nil {
 		return errors.New("received nil task, cannot update")
 	}

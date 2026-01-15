@@ -805,7 +805,7 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 
 func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
 	return func(ctx mongo.SessionContext) (any, error) {
-		if err := h.UpdateRunningTaskWithContext(ctx, env, t); err != nil {
+		if err := h.UpdateRunningTask(ctx, env, t); err != nil {
 			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
 		}
 
