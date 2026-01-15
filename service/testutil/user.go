@@ -14,6 +14,7 @@ import (
 type MockUserManager struct{}
 
 var MockUser = user.DBUser{Id: "testuser", APIKey: "testapikey"}
+var MockServiceUser = user.DBUser{Id: "serviceuser", APIKey: "serviceapikey", OnlyAPI: true}
 
 func (MockUserManager) GetUserByToken(_ context.Context, _ string) (gimlet.User, error) {
 	return &MockUser, nil
@@ -30,7 +31,12 @@ func (MockUserManager) ReauthorizeUser(gimlet.User) error {
 	return errors.New("not implemented")
 }
 func (MockUserManager) GetOrCreateUser(gimlet.User) (gimlet.User, error) { return &MockUser, nil }
-func (MockUserManager) GetUserByID(string) (gimlet.User, error)          { return &MockUser, nil }
+func (MockUserManager) GetUserByID(id string) (gimlet.User, error) {
+	if id == MockServiceUser.Id {
+		return &MockServiceUser, nil
+	}
+	return &MockUser, nil
+}
 func (MockUserManager) ClearUser(gimlet.User, bool) error {
 	return errors.New("MockUserManager does not support Clear User")
 }
