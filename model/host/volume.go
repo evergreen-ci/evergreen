@@ -102,7 +102,7 @@ func (v *Volume) Remove(ctx context.Context) error {
 func (v *Volume) SetExpiration(ctx context.Context, expiration time.Time) error {
 	v.Expiration = expiration
 
-	return db.UpdateIdContext(
+	return db.UpdateId(
 		ctx,
 		VolumesCollection,
 		v.ID,
@@ -112,7 +112,7 @@ func (v *Volume) SetExpiration(ctx context.Context, expiration time.Time) error 
 func (v *Volume) SetNoExpiration(ctx context.Context, noExpiration bool) error {
 	v.NoExpiration = noExpiration
 
-	return db.UpdateIdContext(
+	return db.UpdateId(
 		ctx,
 		VolumesCollection,
 		v.ID,

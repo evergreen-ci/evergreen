@@ -1021,7 +1021,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 		ProjectRefRepoRefIdKey: p.RepoRefId, // This is set locally in AddToRepoScope
 	}
 	update = p.addGithubConflictsToUpdate(ctx, update)
-	err = db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	err = db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set":   update,
 		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
@@ -1062,7 +1062,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 	}
 	update = p.addGithubConflictsToUpdate(ctx, update)
 
-	err = db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	err = db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set":   update,
 		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
@@ -2239,7 +2239,7 @@ func (p *ProjectRef) Replace(ctx context.Context) error {
 
 // SetRepotrackerError updates the repotracker error for the project ref.
 func (p *ProjectRef) SetRepotrackerError(ctx context.Context, d *RepositoryErrorDetails) error {
-	if err := db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	if err := db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set": bson.M{
 			ProjectRefRepotrackerErrorKey: d,
 		},
@@ -2252,7 +2252,7 @@ func (p *ProjectRef) SetRepotrackerError(ctx context.Context, d *RepositoryError
 
 // SetContainerSecrets updates the container secrets for the project ref.
 func (p *ProjectRef) SetContainerSecrets(ctx context.Context, secrets []ContainerSecret) error {
-	if err := db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	if err := db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set": bson.M{
 			projectRefContainerSecretsKey: secrets,
 		},

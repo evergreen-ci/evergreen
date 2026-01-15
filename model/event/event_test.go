@@ -279,7 +279,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.EqualError(event.MarkProcessed(s.T().Context()), "updating 'processed at' time: document not found")
 	s.NoError(event.Log(s.T().Context()))
 
-	s.NoError(db.UpdateIdContext(s.T().Context(), EventCollection, event.ID, bson.M{
+	s.NoError(db.UpdateId(s.T().Context(), EventCollection, event.ID, bson.M{
 		"$set": bson.M{
 			"processed_at": time.Time{},
 		},

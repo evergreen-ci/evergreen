@@ -149,8 +149,8 @@ func UpdateAll(ctx context.Context, collection string, query any, update any) (*
 	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
-// UpdateIdContext updates one _id-matching document in the collection.
-func UpdateIdContext(ctx context.Context, collection string, id, update any) error {
+// UpdateId updates one _id-matching document in the collection.
+func UpdateId(ctx context.Context, collection string, id, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		bson.D{{Key: "_id", Value: id}},
 		update,
