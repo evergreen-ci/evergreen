@@ -3,7 +3,9 @@ package cloud
 import (
 	"context"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -37,8 +39,9 @@ func (c *s3LifecycleClientImpl) GetBucketLifecycleConfiguration(ctx context.Cont
 	}
 
 	opts := pail.S3Options{
-		Name:   bucketName,
-		Region: region,
+		Name:       bucketName,
+		Region:     region,
+		MaxRetries: utility.ToIntPtr(evergreen.DefaultS3MaxRetries),
 	}
 	if roleARN != nil && *roleARN != "" {
 		opts.AssumeRoleARN = *roleARN

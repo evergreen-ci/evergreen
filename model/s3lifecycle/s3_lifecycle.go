@@ -125,14 +125,6 @@ type Transition struct {
 	StorageClass string `bson:"storage_class" json:"storage_class"`
 }
 
-func ConvertInt32PtrToIntPtr(val *int32) *int {
-	if val == nil {
-		return nil
-	}
-	v := int(*val)
-	return &v
-}
-
 func (s *S3LifecycleRuleDoc) Upsert(ctx context.Context) error {
 	if s.BucketName == "" {
 		return errors.New("bucket name cannot be empty")
@@ -171,6 +163,7 @@ func makeRuleID(bucketName, filterPrefix string) string {
 	return fmt.Sprintf("%s#%s", bucketName, filterPrefix)
 }
 
+// FindByBucketAndPrefix retrieves a single lifecycle rule document by bucket name and prefix.
 func FindByBucketAndPrefix(ctx context.Context, bucketName, filterPrefix string) (*S3LifecycleRuleDoc, error) {
 	if bucketName == "" {
 		return nil, errors.New("bucket name cannot be empty")

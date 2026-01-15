@@ -967,6 +967,7 @@ func putSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, na
 	return record.LastUpdated.String(), nil
 }
 
+// UpdateBucketLifecycle updates the lifecycle configuration for an admin-managed bucket in settings.
 func UpdateBucketLifecycle(ctx context.Context, bucketField string, expirationDays, transitionToIADays, transitionToGlacierDays *int) error {
 	bucketsKey := (&BucketsConfig{}).SectionId()
 	set := bson.M{
