@@ -328,7 +328,7 @@ func TestHostNextTask(t *testing.T) {
 					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
 					// setup host
-					require.NoError(t, db.UpdateContext(ctx, host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}))
+					require.NoError(t, db.Update(ctx, host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}))
 					dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 					require.NoError(t, err)
 					assert.Equal(t, evergreen.HostStarting, dbHost.Status)

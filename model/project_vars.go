@@ -151,7 +151,7 @@ type AWSSSHKey struct {
 func FindOneProjectVars(ctx context.Context, projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
 	q := db.Query(bson.M{projectVarIdKey: projectId})
-	err := db.FindOneQContext(ctx, ProjectVarsCollection, q, projectVars)
+	err := db.FindOneQ(ctx, ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -593,7 +593,7 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 			initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
 		}
 		if len(initializeUpdate) > 0 {
-			err := db.UpdateContext(ctx,
+			err := db.Update(ctx,
 				ProjectVarsCollection,
 				bson.M{projectVarIdKey: projectVars.Id},
 				bson.M{"$set": initializeUpdate},
@@ -683,7 +683,7 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
 	}
 
-	err := db.UpdateContext(ctx, ProjectVarsCollection,
+	err := db.Update(ctx, ProjectVarsCollection,
 		bson.M{ProjectRefIdKey: projectVars.Id},
 		bson.M{
 			"$unset": bson.M{
@@ -718,7 +718,7 @@ func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 	} else if t.ActivatedBy == "" {
 		return false
 	}
-	u, err := user.FindOneByIdContext(ctx, t.ActivatedBy)
+	u, err := user.FindOneById(ctx, t.ActivatedBy)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
@@ -728,7 +728,7 @@ func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 	}
 	isAdmin := false
 	if u != nil {
-		isAdmin = u.HasPermission(gimlet.PermissionOpts{
+		isAdmin = u.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      t.Project,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,

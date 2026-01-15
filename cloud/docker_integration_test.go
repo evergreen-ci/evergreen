@@ -1,18 +1,16 @@
 package cloud
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,14 +40,23 @@ func TestDockerIntegrationSuite(t *testing.T) {
 			evergreenSettings: settings,
 		},
 	}
-	assert.NoError(t, s.client.Init("1.37"))
+	require.NoError(t, s.client.Init(""))
+	dockerClient, err := s.client.generateClient(&s.host)
+	require.NoError(t, err)
+
+	// Verify that the Docker client can reach the Docker daemon before unit
+	// tests.
+	_, err = dockerClient.Ping(t.Context())
+	require.NoError(t, err)
+
 	suite.Run(t, s)
 }
 
 func (s *DockerIntegrationSuite) TestImagePull() {
 	const imageName = "public.ecr.aws/docker/library/hello-world:latest"
 	var err error
-	ctx := context.Background()
+	ctx := s.T().Context()
+
 	// Retry pulling the Docker image to work around rate limits on
 	// unauthenciated pulls.
 	err = utility.Retry(ctx, func() (bool, error) {
@@ -65,9 +72,8 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	})
 	s.NoError(err)
 
-	images, err := s.client.client.ImageList(ctx, types.ImageListOptions{All: true})
+	images, err := s.client.client.ImageList(ctx, image.ListOptions{All: true})
 	s.NoError(err)
 	s.Require().Len(images, 1)
-	grip.Info(images)
 	s.Contains(images[0].RepoTags, imageName)
 }

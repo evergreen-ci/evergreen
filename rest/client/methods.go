@@ -1892,14 +1892,10 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	opts = append(opts,
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
+		dex.WithFallbackToStdOut(true),
+		dex.WithFlow("device"),
+		dex.WithNoBrowser(doNotUseBrowser),
 	)
-
-	if doNotUseBrowser {
-		opts = append(opts,
-			dex.WithNoBrowser(true),
-			dex.WithFlow("device"),
-		)
-	}
 
 	// The Dex client logs using logrus. The client doesn't
 	// have any way to turn off debug logs within it's API.
@@ -1962,8 +1958,8 @@ type tokenLoaderWithoutRefresh struct {
 	dex.TokenLoader
 }
 
-func (t *tokenLoaderWithoutRefresh) LoadToken(_ string) (*oauth2.Token, error) {
-	token, err := t.TokenLoader.LoadToken("")
+func (t *tokenLoaderWithoutRefresh) LoadToken(path string) (*oauth2.Token, error) {
+	token, err := t.TokenLoader.LoadToken(path)
 	if err != nil {
 		return nil, err
 	}

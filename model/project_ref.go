@@ -157,6 +157,10 @@ type ProjectRef struct {
 
 	// RunEveryMainlineCommitLimit indicates the maximum number of mainline commits to activate in a single activation run.
 	RunEveryMainlineCommitLimit int `bson:"run_every_mainline_commit_limit,omitempty" json:"run_every_mainline_commit_limit,omitempty" yaml:"run_every_mainline_commit_limit,omitempty"`
+
+	// UseGitHubAppForAPI indicates whether to use the project's GitHub app for
+	// authenticated API requests to GitHub.
+	UseGitHubAppForAPI bool `bson:"use_github_app_for_api,omitempty" json:"use_github_app_for_api,omitempty" yaml:"use_github_app_for_api,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -231,6 +235,20 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 
 	return appAuth, nil
 
+}
+
+// GetGitHubAppAuthForAPI gets this project's GitHub app auth (if any) for
+// usage in the GitHub API if the project is configured to use its own GitHub
+// appf or GitHub API operations.
+func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.GithubAppAuth, error) {
+	if !p.UseGitHubAppForAPI {
+		return nil, nil
+	}
+	appAuth, err := p.GetGitHubAppAuth(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting GitHub app auth")
+	}
+	return appAuth, nil
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
@@ -540,6 +558,7 @@ var (
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 	projectRefTestSelectionKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TestSelection")
+	projectRefUseGitHubAppForAPIKey                 = bsonutil.MustHaveTag(ProjectRef{}, "UseGitHubAppForAPI")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -859,12 +878,12 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	}
 
 	// Add the project to the repo admin scope.
-	if err := rm.AddResourceToScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
 	// If the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access.
 	if !p.IsRestricted() {
-		if err := rm.AddResourceToScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+		if err := rm.AddResourceToScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
 	}
@@ -880,7 +899,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	}
 
 	// remove from relevant repo scopes
-	if err = p.RemoveFromRepoScope(); err != nil {
+	if err = p.RemoveFromRepoScope(ctx); err != nil {
 		return err
 	}
 
@@ -971,7 +990,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
 	if repoRef != nil {
-		isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
+		isRepoAdmin := u.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      repoRef.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,
@@ -1002,7 +1021,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 		ProjectRefRepoRefIdKey: p.RepoRefId, // This is set locally in AddToRepoScope
 	}
 	update = p.addGithubConflictsToUpdate(ctx, update)
-	err = db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	err = db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set":   update,
 		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
@@ -1028,7 +1047,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 	}
 
 	if p.UseRepoSettings() {
-		if err := p.RemoveFromRepoScope(); err != nil {
+		if err := p.RemoveFromRepoScope(ctx); err != nil {
 			return errors.Wrap(err, "removing project from old repo scope")
 		}
 		if err := p.AddToRepoScope(ctx, u); err != nil {
@@ -1043,7 +1062,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 	}
 	update = p.addGithubConflictsToUpdate(ctx, update)
 
-	err = db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	err = db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set":   update,
 		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
 	})
@@ -1093,17 +1112,17 @@ func (p *ProjectRef) addGithubConflictsToUpdate(ctx context.Context, update bson
 }
 
 // RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope and removes branch edit access for repo admins.
-func (p *ProjectRef) RemoveFromRepoScope() error {
+func (p *ProjectRef) RemoveFromRepoScope(ctx context.Context) error {
 	if p.RepoRefId == "" {
 		return nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
 	if !p.IsRestricted() {
-		if err := rm.RemoveResourceFromScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
+		if err := rm.RemoveResourceFromScope(ctx, GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
 	}
-	if err := rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
+	if err := rm.RemoveResourceFromScope(ctx, GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "removing admin scope from repo '%s'", p.Repo)
 	}
 	p.RepoRefId = ""
@@ -1118,7 +1137,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 	if p.IsRestricted() {
 		parentScope = evergreen.RestrictedProjectsScope
 	}
-	if err := rm.AddResourceToScope(parentScope, p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, parentScope, p.Id); err != nil {
 		return errors.Wrapf(err, "adding project '%s' to the scope '%s'", p.Id, parentScope)
 	}
 
@@ -1129,7 +1148,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 		Name:      p.Id,
 		Type:      evergreen.ProjectResourceType,
 	}
-	if err := rm.AddScope(newScope); err != nil {
+	if err := rm.AddScope(ctx, newScope); err != nil {
 		return errors.Wrapf(err, "adding scope for project '%s'", p.Id)
 	}
 	newRole := gimlet.Role{
@@ -1140,7 +1159,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 	if creator != nil {
 		newRole.Owners = []string{creator.Id}
 	}
-	if err := rm.UpdateRole(newRole); err != nil {
+	if err := rm.UpdateRole(ctx, newRole); err != nil {
 		return errors.Wrapf(err, "adding admin role for project '%s'", p.Id)
 	}
 	if creator != nil {
@@ -1158,7 +1177,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 
 func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOneQContext(ctx, ProjectRefCollection, query, projectRef)
+	err := db.FindOneQ(ctx, ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1805,7 +1824,7 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 			Permission:    evergreen.PermissionProjectSettings,
 			RequiredLevel: evergreen.ProjectSettingsView.Value,
 		}
-		if u.HasPermission(opts) {
+		if u.HasPermission(ctx, opts) {
 			return true, nil
 		}
 	}
@@ -1997,29 +2016,38 @@ func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete 
 	return err
 }
 
-// FindNonHiddenProjects returns limit visible project refs starting at project id key in the sortDir direction.
-// Optionally filters by ownerName and repoName if provided.
-func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int, ownerName, repoName string) ([]ProjectRef, error) {
+// FindNonHiddenProjects returns limit visible project refs starting at project identifier key in the sortDir direction.
+// Optionally filters by ownerName, repoName, and activeOnly (enabled projects only) if provided.
+func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int, ownerName, repoName string, activeOnly bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
-	filter := bson.M{
-		ProjectRefHiddenKey: bson.M{"$ne": true},
-	}
-	sortSpec := ProjectRefIdKey
 
+	paginationOp := "$gte"
+	sortSpec := ProjectRefIdentifierKey
 	if sortDir < 0 {
+		paginationOp = "$lt"
 		sortSpec = "-" + sortSpec
-		filter[ProjectRefIdKey] = bson.M{"$lt": key}
-	} else {
-		filter[ProjectRefIdKey] = bson.M{"$gte": key}
+	}
+
+	conditions := []bson.M{
+		{ProjectRefHiddenKey: bson.M{"$ne": true}},
+		{ProjectRefIdentifierKey: bson.M{"$ne": ""}},
+	}
+
+	if key != "" {
+		conditions = append(conditions, bson.M{ProjectRefIdentifierKey: bson.M{paginationOp: key}})
 	}
 
 	if ownerName != "" {
-		filter[ProjectRefOwnerKey] = ownerName
+		conditions = append(conditions, bson.M{ProjectRefOwnerKey: ownerName})
+	}
+	if repoName != "" {
+		conditions = append(conditions, bson.M{ProjectRefRepoKey: repoName})
+	}
+	if activeOnly {
+		conditions = append(conditions, bson.M{ProjectRefEnabledKey: true})
 	}
 
-	if repoName != "" {
-		filter[ProjectRefRepoKey] = repoName
-	}
+	filter := bson.M{"$and": conditions}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
@@ -2205,13 +2233,13 @@ func (p *ProjectRef) CanEnableCommitQueue(ctx context.Context) (bool, error) {
 // Replace updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
 func (p *ProjectRef) Replace(ctx context.Context) error {
-	_, err := db.ReplaceContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
+	_, err := db.Replace(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
 }
 
 // SetRepotrackerError updates the repotracker error for the project ref.
 func (p *ProjectRef) SetRepotrackerError(ctx context.Context, d *RepositoryErrorDetails) error {
-	if err := db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	if err := db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set": bson.M{
 			ProjectRefRepotrackerErrorKey: d,
 		},
@@ -2224,7 +2252,7 @@ func (p *ProjectRef) SetRepotrackerError(ctx context.Context, d *RepositoryError
 
 // SetContainerSecrets updates the container secrets for the project ref.
 func (p *ProjectRef) SetContainerSecrets(ctx context.Context, secrets []ContainerSecret) error {
-	if err := db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
+	if err := db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set": bson.M{
 			projectRefContainerSecretsKey: secrets,
 		},
@@ -2285,13 +2313,13 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": setUpdate,
 			})
 	case ProjectPagePluginSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2302,7 +2330,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageAccessSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2311,7 +2339,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageGithubAndCQSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2326,20 +2354,20 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageNotificationsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure,
 					projectRefBannerKey: p.Banner},
 			})
 	case ProjectPageWorkstationsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefWorkstationConfigKey: p.WorkstationConfig},
 			})
 	case ProjectPageTriggersSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2347,7 +2375,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPagePatchAliasSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2357,19 +2385,19 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPagePeriodicBuildsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
 	case ProjectPageContainerSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
 			})
 	case ProjectPageViewsAndFiltersSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2378,7 +2406,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageTestSelectionSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2386,7 +2414,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2394,7 +2422,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageGithubPermissionsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2632,7 +2660,7 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(ctx context.Context, maxDail
 			},
 		}
 	}
-	return errors.Wrap(db.UpdateContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
+	return errors.Wrap(db.Update(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
 const CronActiveRange = 5 * time.Minute
@@ -2896,47 +2924,47 @@ func RemoveAdminFromProjects(ctx context.Context, toDelete string) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	_, err := db.UpdateAllContext(ctx, ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
+	_, err := db.UpdateAll(ctx, ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
 	catcher.Wrap(err, "updating projects")
-	_, err = db.UpdateAllContext(ctx, RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
+	_, err = db.UpdateAll(ctx, RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
 	catcher.Wrap(err, "updating repos")
 	return catcher.Resolve()
 }
 
-func (p *ProjectRef) MakeRestricted() error {
+func (p *ProjectRef) MakeRestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
 	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
-		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
+		if err := rm.RemoveResourceFromScope(ctx, scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
 	}
 
-	if err := rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.RemoveResourceFromScope(ctx, evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "removing project '%s' from list of unrestricted projects", p.Id)
 	}
-	if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, evergreen.RestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "adding project '%s' to list of restricted projects", p.Id)
 	}
 
 	return nil
 }
 
-func (p *ProjectRef) MakeUnrestricted() error {
+func (p *ProjectRef) MakeUnrestricted(ctx context.Context) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// remove from the unrestricted branch project scope (if it exists)
 	if p.UseRepoSettings() {
 		scopeId := GetUnrestrictedBranchProjectsScope(p.RepoRefId)
-		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
+		if err := rm.AddResourceToScope(ctx, scopeId, p.Id); err != nil {
 			return errors.Wrap(err, "adding resource to unrestricted branches scope")
 		}
 	}
 
-	if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.RemoveResourceFromScope(ctx, evergreen.RestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "removing project '%s' from list of restricted projects", p.Id)
 	}
-	if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+	if err := rm.AddResourceToScope(ctx, evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
 		return errors.Wrapf(err, "adding project '%s' to list of unrestricted projects", p.Id)
 	}
 	return nil
@@ -2948,7 +2976,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		return false, nil
 	}
 	rm := evergreen.GetEnvironment().RoleManager()
-	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
+	role, err := rm.FindRoleWithPermissions(ctx, evergreen.ProjectResourceType, []string{p.Id}, adminPermissions)
 	if err != nil {
 		return false, errors.Wrap(err, "finding role with admin permissions")
 	}
@@ -2958,7 +2986,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 
 	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
-		adminUser, err := user.FindOneByIdContext(ctx, addedUser)
+		adminUser, err := user.FindOneById(ctx, addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			p.removeFromAdminsList(addedUser)
@@ -2976,7 +3004,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		}
 	}
 	for _, removedUser := range toRemove {
-		adminUser, err := user.FindOneByIdContext(ctx, removedUser)
+		adminUser, err := user.FindOneById(ctx, removedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue
@@ -3015,7 +3043,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 		}))
 	}
 	if u != nil {
-		hasPermission := u.HasPermission(gimlet.PermissionOpts{
+		hasPermission := u.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      p.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionGitTagVersions,
@@ -3239,7 +3267,12 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if pRef.SpawnHostScriptPath == "" {
 		return "", nil
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
+	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
+		"project_id": pRef.Id,
+	}))
+	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
@@ -3548,7 +3581,7 @@ func (c ContainerSecretCache) Put(ctx context.Context, sc cocoa.SecretCacheItem)
 	externalNameKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalNameKey)
 	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
 	externalIDUpdateKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, "$", containerSecretExternalIDKey)
-	return db.UpdateContext(ctx, ProjectRefCollection, bson.M{
+	return db.Update(ctx, ProjectRefCollection, bson.M{
 		externalNameKey: sc.Name,
 		externalIDKey: bson.M{
 			"$in": []any{"", sc.ID},
@@ -3564,7 +3597,7 @@ func (c ContainerSecretCache) Put(ctx context.Context, sc cocoa.SecretCacheItem)
 // identifier.
 func (c ContainerSecretCache) Delete(ctx context.Context, externalID string) error {
 	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
-	err := db.UpdateContext(ctx, ProjectRefCollection, bson.M{
+	err := db.Update(ctx, ProjectRefCollection, bson.M{
 		externalIDKey: externalID,
 	}, bson.M{
 		"$pull": bson.M{
@@ -3716,4 +3749,40 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 // GetProjectAdminRole returns the project admin role ID for the given project.
 func GetProjectAdminRole(projectId string) string {
 	return fmt.Sprintf("admin_project_%s", projectId)
+}
+
+// FindProjectAndRepoRefsUsingGitHubAppForAPI returns all branch project refs
+// and repo refs that use GitHub app authentication for internal GitHub API
+// requests. This does not take into account whether a branch project ref
+// inherits settings from the repo ref, so if a repo ref has the GitHub app
+// enabled for internal API usage, this function will return that repo ref but
+// will not return the branch projects that inherit that setting.
+func FindProjectAndRepoRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectRef, error) {
+	pRefs := []ProjectRef{}
+	if err := db.FindAllQ(ctx,
+		ProjectRefCollection,
+		db.Query(bson.M{
+			projectRefUseGitHubAppForAPIKey: true,
+		}),
+		&pRefs,
+	); err != nil {
+		return nil, errors.Wrap(err, "finding project refs using GitHub app for API")
+	}
+
+	repoRefs := []RepoRef{}
+	if err := db.FindAllQ(ctx,
+		RepoRefCollection,
+		db.Query(bson.M{
+			projectRefUseGitHubAppForAPIKey: true,
+		}),
+		&repoRefs,
+	); err != nil {
+		return nil, errors.Wrap(err, "finding repo refs using GitHub app for API")
+	}
+	repoRefsAsProjectRefs := make([]ProjectRef, 0, len(repoRefs))
+	for _, repoRef := range repoRefs {
+		repoRefsAsProjectRefs = append(repoRefsAsProjectRefs, repoRef.ProjectRef)
+	}
+
+	return append(pRefs, repoRefsAsProjectRefs...), nil
 }

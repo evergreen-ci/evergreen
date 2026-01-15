@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -11,44 +10,41 @@ import (
 )
 
 func TestExternalUserManager(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	require.NoError(t, db.Clear(user.Collection))
 	defer func() { require.NoError(t, db.Clear(user.Collection)) }()
 
 	userID := "bobby.tables"
 	displayName := "Bobby Tables"
-	usr, err := user.GetOrCreateUser(userID, displayName, "", "", "", nil)
+	usr, err := user.GetOrCreateUser(t.Context(), userID, displayName, "", "", "", nil)
 	require.NoError(t, err)
 
 	mgr, err := NewExternalUserManager()
 	assert.NoError(t, err)
 
 	t.Run("GetUserByID", func(t *testing.T) {
-		mgrUsr, err := mgr.GetUserByID(userID)
+		mgrUsr, err := mgr.GetUserByID(t.Context(), userID)
 		assert.NoError(t, err)
 		assert.Equal(t, usr, mgrUsr)
 	})
 
 	t.Run("GetOrCreateUser", func(t *testing.T) {
-		mgrUsr, err := mgr.GetOrCreateUser(usr)
+		mgrUsr, err := mgr.GetOrCreateUser(t.Context(), usr)
 		assert.NoError(t, err)
 		assert.Equal(t, usr, mgrUsr)
 	})
 
 	t.Run("GetUserByToken", func(t *testing.T) {
-		mgrUsr, err := mgr.GetUserByToken(ctx, "abc")
+		mgrUsr, err := mgr.GetUserByToken(t.Context(), "abc")
 		assert.Error(t, err)
 		assert.Nil(t, mgrUsr)
 	})
 
 	t.Run("ReauthorizeUser", func(t *testing.T) {
-		assert.Error(t, mgr.ReauthorizeUser(usr))
+		assert.Error(t, mgr.ReauthorizeUser(t.Context(), usr))
 	})
 
 	t.Run("CreateUserToken", func(t *testing.T) {
-		token, err := mgr.CreateUserToken(usr.Id, "abc")
+		token, err := mgr.CreateUserToken(t.Context(), usr.Id, "abc")
 		assert.Error(t, err)
 		assert.Empty(t, token)
 	})
@@ -66,6 +62,6 @@ func TestExternalUserManager(t *testing.T) {
 	})
 
 	t.Run("ClearUser", func(t *testing.T) {
-		assert.Error(t, mgr.ClearUser(usr, false))
+		assert.Error(t, mgr.ClearUser(t.Context(), usr, false))
 	})
 }
