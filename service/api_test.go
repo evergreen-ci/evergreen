@@ -65,6 +65,15 @@ func TestServerEndpoints(t *testing.T) {
 			},
 			expectedStatusCode: 200,
 		},
+		{
+			name:                  "UsingStaticAPIKeys/ServiceUser/DisabledStaticAPIKeys",
+			staticAPIKeysDisabled: true,
+			authHeader: map[string]string{
+				evergreen.APIUserHeader: serviceTestUtil.MockServiceUser.Id,
+				evergreen.APIKeyHeader:  serviceTestUtil.MockServiceUser.APIKey,
+			},
+			expectedStatusCode: 200,
+		},
 	}
 
 	for _, testCase := range testCases {
