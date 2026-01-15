@@ -2,18 +2,21 @@ package taskexec
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -31,20 +34,26 @@ func (l *localLoggerProducer) Flush(ctx context.Context) error { return nil }
 func (l *localLoggerProducer) Close() error                    { l.closed = true; return nil }
 func (l *localLoggerProducer) Closed() bool                    { return l.closed }
 
+type executorBlock struct {
+	blockType  command.BlockType
+	commands   *model.YAMLCommandSet
+	startIndex int
+	endIndex   int
+}
+
 // LocalExecutor implements task execution for local YAML files
 type LocalExecutor struct {
-	project       *model.Project
-	parserProject *model.ParserProject
-	workDir       string
-	expansions    *util.Expansions
-	logger        grip.Journaler
-	debugState    *DebugState
-	commandList   []model.PluginCommandConf
-
-	// Dependencies for command execution
+	project        *model.Project
+	parserProject  *model.ParserProject
+	workDir        string
+	expansions     *util.Expansions
+	logger         grip.Journaler
+	debugState     *DebugState
+	commandBlocks  []executorBlock
 	communicator   client.Communicator
 	loggerProducer client.LoggerProducer
 	taskConfig     *internal.TaskConfig
+	jasperManager  jasper.Manager
 }
 
 // LocalExecutorOptions contains configuration for the local executor
@@ -151,16 +160,18 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 
 // stepNext executes the current step and advances to the next
 func (e *LocalExecutor) stepNext(ctx context.Context) error {
-	if e.debugState.CurrentStepIndex >= len(e.commandList) {
+	fmt.Print("MALIK")
+	fmt.Println(len(e.commandBlocks))
+	fmt.Println(e.commandBlocks[0].endIndex)
+	if e.debugState.CurrentStepIndex >= e.commandBlocks[0].endIndex {
 		return errors.New("no more steps to execute")
 	}
 
-	cmd := e.commandList[e.debugState.CurrentStepIndex]
 	cmdInfo := e.debugState.CommandList[e.debugState.CurrentStepIndex]
 
 	e.logger.Infof("Executing step %d: %s", e.debugState.CurrentStepIndex, cmdInfo.DisplayName)
 
-	err := e.executeCommand(ctx, cmd)
+	err := e.executeCommand(ctx, cmdInfo)
 	if err != nil {
 		e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
 	} else {
@@ -173,29 +184,32 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 }
 
 // executeCommand executes a single command using the agent command registry
-func (e *LocalExecutor) executeCommand(ctx context.Context, cmd model.PluginCommandConf) error {
-	factory, ok := command.GetCommandFactory(cmd.Command)
+func (e *LocalExecutor) executeCommand(ctx context.Context, cmdInfo CommandInfo) error {
+	fmt.Println("MALIK3")
+	fmt.Println(cmdInfo.Command.Command)
+	cmd := cmdInfo.Command.Command
+	factory, ok := command.GetCommandFactory(cmd)
 	if !ok {
-		e.logger.Warningf("Command '%s' not found in registry, skipping", cmd.Command)
-		return errors.Errorf("command '%s' is not registered", cmd.Command)
+		e.logger.Warningf("Command '%s' not found in registry, skipping", cmd)
+		return errors.Errorf("command '%s' is not registered", cmd)
 	}
 	cmdInstance := factory()
-	if err := cmdInstance.ParseParams(cmd.Params); err != nil {
-		return errors.Wrapf(err, "parsing parameters for command '%s'", cmd.Command)
+	if err := cmdInstance.ParseParams(cmdInfo.Command.Params); err != nil {
+		return errors.Wrapf(err, "parsing parameters for command '%s'", cmd)
 	}
 
-	cmdInstance.SetType(cmd.GetType(e.project))
-	cmdInstance.SetFullDisplayName(cmd.DisplayName)
-	if cmd.TimeoutSecs > 0 {
-		cmdInstance.SetIdleTimeout(time.Duration(cmd.TimeoutSecs) * time.Second)
+	cmdInstance.SetType(cmdInfo.Command.GetType(e.project))
+	cmdInstance.SetFullDisplayName(cmdInfo.DisplayName)
+	if cmdInfo.Command.TimeoutSecs > 0 {
+		cmdInstance.SetIdleTimeout(time.Duration(cmdInfo.Command.TimeoutSecs) * time.Second)
 	}
-	cmdInstance.SetRetryOnFailure(cmd.RetryOnFailure)
-	cmdInstance.SetFailureMetadataTags(cmd.FailureMetadataTags)
+	cmdInstance.SetRetryOnFailure(cmdInfo.Command.RetryOnFailure)
+	cmdInstance.SetFailureMetadataTags(cmdInfo.Command.FailureMetadataTags)
 
 	e.taskConfig.Expansions = *e.expansions
 	e.taskConfig.WorkDir = e.workDir
 
-	e.logger.Infof("Executing command: %s", cmd.Command)
+	e.logger.Infof("Executing command: %s", cmdInfo.Command.Command)
 	return cmdInstance.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 }
 
@@ -220,6 +234,7 @@ func (e *LocalExecutor) RunAll(ctx context.Context) error {
 	for e.debugState.hasMoreSteps() {
 		if err := e.stepNext(ctx); err != nil {
 			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
+			return nil
 		}
 	}
 	return nil
@@ -228,4 +243,157 @@ func (e *LocalExecutor) RunAll(ctx context.Context) error {
 // GetDebugState returns the current debug state
 func (e *LocalExecutor) GetDebugState() *DebugState {
 	return e.debugState
+}
+
+// createBlockDeps creates BlockExecutorDeps for use with RunCommandsInBlock
+func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
+	return executor.BlockExecutorDeps{
+		JasperManager:         e.jasperManager,
+		TaskLogger:            e.logger,
+		ExecLogger:            e.logger,
+		TaskConfig:            e.taskConfig,
+		Tracer:                nil,
+		StartTimeoutWatcher:   nil,
+		SetHeartbeatTimeout:   nil,
+		ResetHeartbeatTimeout: nil,
+		HandlePanic:           e.handleLocalPanic,
+		RunCommandOrFunc:      e.runCommandWithTracking,
+	}
+}
+
+// handleLocalPanic handles panics that occur during command execution
+func (e *LocalExecutor) handleLocalPanic(panicErr error, originalErr error, op string) error {
+	e.logger.Errorf("Panic in %s: %v", op, panicErr)
+	if originalErr != nil {
+		e.logger.Errorf("Original error: %v", originalErr)
+		return errors.Wrapf(panicErr, "panic during %s (original error: %v)", op, originalErr)
+	}
+	return errors.Wrapf(panicErr, "panic during %s", op)
+}
+
+// runCommandWithTracking executes commands with step tracking for debug mode
+func (e *LocalExecutor) runCommandWithTracking(
+	ctx context.Context,
+	commandInfo model.PluginCommandConf,
+	cmds []command.Command,
+	block command.BlockType,
+	canFailTask bool,
+) error {
+	// For now, just execute all commands in the list
+	// TODO: Add step tracking logic here when step-by-step mode is enabled
+	for _, cmd := range cmds {
+		cmd.SetJasperManager(e.jasperManager)
+		err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
+		if err != nil {
+			e.logger.Errorf("Command failed: %v", err)
+			if canFailTask {
+				return err
+			}
+			// Log but continue if command cannot fail task
+			e.logger.Warningf("Continuing after non-fatal error: %v", err)
+		}
+	}
+
+	// Advance step counter after successful execution
+	e.debugState.CurrentStepIndex++
+	return nil
+}
+
+// PrepareTask prepares a task for execution by creating command blocks
+func (e *LocalExecutor) PrepareTask(taskName string) error {
+	if e.project == nil {
+		return errors.New("project not loaded")
+	}
+
+	task := e.project.FindProjectTask(taskName)
+	if task == nil {
+		return errors.Errorf("task '%s' not found in project", taskName)
+	}
+
+	e.debugState.SelectedTask = taskName
+	e.logger.Infof("Preparing task: %s", taskName)
+
+	// Create main task block with all commands
+	mainBlock := executorBlock{
+		blockType: command.MainTaskBlock,
+		commands: &model.YAMLCommandSet{
+			MultiCommand: task.Commands,
+		},
+		startIndex: 0,
+	}
+
+	// Set command blocks
+	e.commandBlocks = []executorBlock{mainBlock}
+
+	// Rebuild the flattened command list for debug state
+	if err := e.rebuildCommandList(); err != nil {
+		return errors.Wrap(err, "rebuilding command list")
+	}
+
+	// Update endIndex after commands are expanded
+	if len(e.commandBlocks) > 0 && len(e.debugState.CommandList) > 0 {
+		e.commandBlocks[0].endIndex = len(e.debugState.CommandList) - 1
+	}
+
+	e.logger.Infof("Task prepared with %d commands in %d blocks",
+		len(e.debugState.CommandList), len(e.commandBlocks))
+
+	return nil
+}
+
+// rebuildCommandList rebuilds the flattened command list from command blocks
+func (e *LocalExecutor) rebuildCommandList() error {
+	e.debugState.CommandList = []CommandInfo{}
+	globalIndex := 0
+
+	for blockIdx, block := range e.commandBlocks {
+		commands := block.commands.List()
+
+		for cmdIdx, cmd := range commands {
+			blockInfo := command.BlockInfo{
+				Block:     block.blockType,
+				CmdNum:    cmdIdx + 1,
+				TotalCmds: len(commands),
+			}
+
+			renderedCmds, err := command.Render(cmd, e.project, blockInfo)
+			if err != nil {
+				e.logger.Warningf("Failed to render command '%s': %v", cmd.Command, err)
+				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
+					Index:        globalIndex,
+					Command:      cmd,
+					DisplayName:  cmd.GetDisplayName(),
+					IsFunction:   cmd.Function != "",
+					FunctionName: cmd.Function,
+					BlockType:    block.blockType,
+					BlockIndex:   blockIdx,
+					BlockCmdNum:  cmdIdx + 1,
+				})
+				globalIndex++
+				continue
+			}
+
+			for _, rcmd := range renderedCmds {
+				displayName := rcmd.FullDisplayName()
+				if displayName == "" {
+					displayName = cmd.GetDisplayName()
+				}
+
+				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
+					Index:        globalIndex,
+					Command:      cmd,
+					DisplayName:  displayName,
+					IsFunction:   cmd.Function != "",
+					FunctionName: cmd.Function,
+					BlockType:    block.blockType,
+					BlockIndex:   blockIdx,
+					BlockCmdNum:  cmdIdx + 1,
+				})
+				globalIndex++
+			}
+		}
+	}
+
+	e.logger.Infof("Rebuilt command list with %d total commands", len(e.debugState.CommandList))
+	return nil
 }

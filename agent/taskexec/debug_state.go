@@ -1,6 +1,7 @@
 package taskexec
 
 import (
+	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/model"
 )
 
@@ -22,6 +23,9 @@ type CommandInfo struct {
 	IsFunction   bool
 	FunctionName string
 	DisplayName  string
+	BlockType    command.BlockType
+	BlockIndex   int
+	BlockCmdNum  int
 }
 
 // NewDebugState creates a new debug state
