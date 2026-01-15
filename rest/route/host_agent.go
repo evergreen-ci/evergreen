@@ -859,7 +859,7 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 
 func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
 	return func(ctx mongo.SessionContext) (any, error) {
-		if err := h.ClearRunningTaskWithContext(ctx, env); err != nil {
+		if err := h.ClearRunningTask(ctx); err != nil {
 			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
 		if err := t.MarkAsHostUndispatchedWithContext(ctx, env); err != nil {

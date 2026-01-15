@@ -1941,16 +1941,6 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 	return nil
 }
 
-// ClearRunningTaskWithContext unsets the running task on the log. It does not
-// log an event for clearing the task.
-func (h *Host) ClearRunningTaskWithContext(ctx context.Context, env evergreen.Environment) error {
-	doUpdate := func(update bson.M) error {
-		_, err := env.DB().Collection(Collection).UpdateByID(ctx, h.Id, update)
-		return err
-	}
-	return h.clearRunningTaskWithFunc(doUpdate)
-}
-
 func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) error {
 	if h.RunningTask == "" {
 		return nil
