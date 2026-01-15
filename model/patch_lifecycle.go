@@ -795,11 +795,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
 		}
-		if err = task.SetPredictedCostsForTasks(ctx, tasksToInsert); err != nil {
-			return nil, errors.Wrapf(err, "computing expected costs for tasks in version '%s'", patchVersion.Id)
+
+		predictions, err := task.ComputePredictedCostsForTasks(ctx, tasksToInsert)
+		if err != nil {
+			return nil, errors.Wrapf(err, "computing predicted costs for tasks in version '%s'", patchVersion.Id)
 		}
 
-		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
+		if err = tasksToInsert.InsertUnorderedWithPredictions(ctx, predictions); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
 		if err = p.SetFinalized(ctx, patchVersion.Id); err != nil {
