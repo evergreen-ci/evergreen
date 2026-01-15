@@ -32,6 +32,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -530,6 +531,9 @@ func setupDBIndexes() error {
 	}
 	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex}); err != nil {
 		return errors.Wrap(err, "setting up task historical data index")
+	}
+	if err := db.EnsureIndex(patch.Collection, mongo.IndexModel{Keys: bson.D{{Key: patch.ProjectKey, Value: 1}, {Key: patch.CreateTimeKey, Value: -1}}}); err != nil {
+		return errors.Wrap(err, "setting up patch collection indexes")
 	}
 	return nil
 }

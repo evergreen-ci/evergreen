@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mgobson "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestMostRecentByUserAndProject(t *testing.T) {
@@ -156,6 +158,7 @@ func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			assert.NoError(t, db.ClearCollections(Collection))
+			assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
 			ghPRPatch := Patch{
 				Id:          bson.NewObjectId(),
 				Project:     "evergreen",
@@ -187,6 +190,7 @@ func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
 }
 func TestByPatchNameStatusesMergeQueuePaginated(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
 
 	now := time.Now()
 	for i := 0; i < 10; i++ {
