@@ -35,7 +35,10 @@ func (MockUserManager) ReauthorizeUser(context.Context, gimlet.User) error {
 func (MockUserManager) GetOrCreateUser(context.Context, gimlet.User) (gimlet.User, error) {
 	return &MockUser, nil
 }
-func (MockUserManager) GetUserByID(context.Context, string) (gimlet.User, error) {
+func (MockUserManager) GetUserByID(_ context.Context, id string) (gimlet.User, error) {
+	if id == MockServiceUser.Id {
+		return &MockServiceUser, nil
+	}
 	return &MockUser, nil
 }
 func (MockUserManager) ClearUser(context.Context, gimlet.User, bool) error {
