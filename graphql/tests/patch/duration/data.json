@@ -23,6 +23,65 @@
       "finish_time": {
         "$date": "2019-11-18T18:57:15.053Z"
       }
+    },
+    {
+      "_id": {
+        "$oid": "parent_patch_12345"
+      },
+      "branch": "spruce",
+      "create_time": {
+        "$date": "2024-01-15T10:00:00Z"
+      },
+      "start_time": {
+        "$date": "2024-01-15T10:05:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-01-15T10:30:00Z"
+      },
+      "trigger_aliases": [
+        {
+          "child_patch_id": "child_patch_1",
+          "task_specifiers": [],
+          "variant_specifiers": [],
+          "status": "success"
+        },
+        {
+          "child_patch_id": "child_patch_2",
+          "task_specifiers": [],
+          "variant_specifiers": [],
+          "status": "success"
+        }
+      ]
+    },
+    {
+      "_id": {
+        "$oid": "child_patch_1"
+      },
+      "branch": "spruce",
+      "create_time": {
+        "$date": "2024-01-15T10:05:30Z"
+      },
+      "start_time": {
+        "$date": "2024-01-15T10:07:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-01-15T10:25:00Z"
+      }
+    },
+    {
+      "_id": {
+        "$oid": "child_patch_2"
+      },
+      "branch": "spruce",
+      "create_time": {
+        "$date": "2024-01-15T10:05:45Z"
+      },
+      "start_time": {
+        "$date": "2024-01-15T10:08:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-01-15T10:35:00Z"
+      }
     }
   ],
   "tasks": [

@@ -27,6 +27,19 @@
           }
         }
       }
+    },
+    {
+      "query_file": "parent_time.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": "Mar 01, 07:05 AM",
+              "finished": "Mar 01, 07:40 AM"
+            }
+          }
+        }
+      }
     }
   ]
 }

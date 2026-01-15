@@ -23,12 +23,80 @@
       "finish_time": {
         "$date": "2020-02-14T18:03:19Z"
       }
+    },
+    {
+      "_id": {
+        "$oid": "parent_patch_time_test"
+      },
+      "branch": "spruce",
+      "create_time": {
+        "$date": "2024-03-01T12:00:00Z"
+      },
+      "start_time": {
+        "$date": "2024-03-01T12:10:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-03-01T12:30:00Z"
+      },
+      "trigger_aliases": [
+        {
+          "child_patch_id": "child_patch_early",
+          "task_specifiers": [],
+          "variant_specifiers": [],
+          "status": "success"
+        },
+        {
+          "child_patch_id": "child_patch_late",
+          "task_specifiers": [],
+          "variant_specifiers": [],
+          "status": "success"
+        }
+      ]
+    },
+    {
+      "_id": {
+        "$oid": "child_patch_early"
+      },
+      "branch": "spruce",
+      "create_time": {
+        "$date": "2024-03-01T12:01:00Z"
+      },
+      "start_time": {
+        "$date": "2024-03-01T12:05:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-03-01T12:25:00Z"
+      }
+    },
+    {
+      "_id": {
+        "$oid": "child_patch_late"
+      },
+      "branch": "spruce",
+      "create_time": {
+        "$date": "2024-03-01T12:02:00Z"
+      },
+      "start_time": {
+        "$date": "2024-03-01T12:15:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-03-01T12:40:00Z"
+      }
     }
   ],
   "project_ref": [
     {
       "_id": "spruce",
       "identifier": "spruce"
+    }
+  ],
+  "users": [
+    {
+      "_id": "test_user",
+      "user_id": "test_user",
+      "settings": {
+        "timezone": "America/New_York"
+      }
     }
   ]
 }

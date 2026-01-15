@@ -1,0 +1,7 @@
+{
+  patch(patchId: "parent_patch_12345") {
+    duration {
+      timeTaken
+    }
+  }
+}

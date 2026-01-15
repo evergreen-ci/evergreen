@@ -1,0 +1,8 @@
+{
+  patch(patchId: "parent_patch_time_test") {
+    time {
+      started
+      finished
+    }
+  }
+}
