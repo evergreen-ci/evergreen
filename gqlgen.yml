@@ -292,10 +292,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFWSConfig
   FWSConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFWSConfig
-  GraphiteConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
-  GraphiteConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubAppAuth:
@@ -328,6 +324,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
   GitTag:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitTag
+  GraphiteConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
+  GraphiteConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
   GroupedTaskStatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
   HomeVolumeSettings:
