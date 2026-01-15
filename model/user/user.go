@@ -106,6 +106,7 @@ func (u *DBUser) Email() string           { return u.EmailAddress }
 func (u *DBUser) GetAPIKey() string       { return u.APIKey }
 func (u *DBUser) GetAccessToken() string  { return u.LoginCache.AccessToken }
 func (u *DBUser) GetRefreshToken() string { return u.LoginCache.RefreshToken }
+func (u *DBUser) IsAPIOnly() bool         { return u.OnlyAPI }
 func (u *DBUser) IsNil() bool             { return u == nil }
 
 func (u *DBUser) Roles() []string {

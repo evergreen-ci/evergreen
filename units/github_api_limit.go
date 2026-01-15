@@ -159,11 +159,11 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 		_, span := tracer.Start(ctx, "github-app-api-limit", trace.WithNewRoot(), trace.WithAttributes(
 			attribute.String(appIDAttr, fmt.Sprintf("%d", projectAppAuth.appAuth.AppID)),
 			attribute.StringSlice(projectIDAttr, projectAppAuth.projectIDs),
-			attribute.String(remainingAttr, fmt.Sprintf("%d", rateLimitInfo.remaining)),
-			attribute.String(limitAttr, fmt.Sprintf("%d", rateLimitInfo.limit)),
+			attribute.Int(remainingAttr, rateLimitInfo.remaining),
+			attribute.Int(limitAttr, rateLimitInfo.limit),
 			attribute.String(resetAttr, rateLimitInfo.resetAt.String()),
-			attribute.String(minsRemainingAttr, fmt.Sprintf("%.2f", rateLimitInfo.minsRemainingToReset)),
-			attribute.String(percentageAttr, fmt.Sprintf("%.2f", rateLimitInfo.remainingPercentage)),
+			attribute.Float64(minsRemainingAttr, rateLimitInfo.minsRemainingToReset),
+			attribute.Float64(percentageAttr, rateLimitInfo.remainingPercentage),
 		))
 		span.End()
 	}
@@ -177,7 +177,7 @@ type ghRateLimitInfo struct {
 	limit int
 	// remainingPercentage is the percentage of remaining requests out of the
 	// limit.
-	remainingPercentage float32
+	remainingPercentage float64
 	// resetAt is the time when the rate limit resets.
 	resetAt time.Time
 	// minsRemainingToReset is the number of minutes until the rate limit
@@ -194,7 +194,7 @@ func getRateLimitInfo(limit *github.RateLimits) ghRateLimitInfo {
 	return ghRateLimitInfo{
 		remaining:            remaining,
 		limit:                maxLimit,
-		remainingPercentage:  float32(remaining) / float32(maxLimit),
+		remainingPercentage:  float64(remaining) / float64(maxLimit),
 		resetAt:              resetTime,
 		minsRemainingToReset: time.Until(resetTime).Minutes(),
 	}
