@@ -15,9 +15,8 @@ import (
 
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
-	mu         sync.RWMutex
-	configPath string
-	port       int
+	mu   sync.RWMutex
+	port int
 }
 
 // newLocalDaemonREST creates a new REST daemon
@@ -43,7 +42,7 @@ func (d *localDaemonREST) Start() error {
 
 // handleHealth checks if the daemon is running
 func (d *localDaemonREST) handleHealth(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(map[string]bool{"healthy": true})
+	grip.Error(json.NewEncoder(w).Encode(map[string]bool{"healthy": true}))
 }
 
 // handleLoadConfig loads a configuration file
@@ -61,11 +60,11 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	defer d.mu.Unlock()
 
 	// TODO: DEVPROD-24304 load project from request config path, store it in daemon state.
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":       true,
 		"task_count":    -1,
 		"variant_count": -1,
-	})
+	}))
 }
 
 // writeDaemonInfo writes PID and port files
