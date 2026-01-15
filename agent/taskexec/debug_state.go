@@ -17,8 +17,8 @@ type DebugState struct {
 }
 
 // CommandInfo represents a single command in the linear execution order.
-// Commands are flattened from their hierarchical structure into a
-// sequential list for step-by-step execution.
+// Commands are flattened from their hierarchical structure (i.e. inside functions)
+// into a sequential list for step-by-step execution.
 type CommandInfo struct {
 	Index        int
 	Command      model.PluginCommandConf
