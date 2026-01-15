@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -86,6 +87,15 @@ func init() { globalEnvLock = &sync.RWMutex{} }
 // necessary to access the global environment. There is a mock
 // implementation for use in testing.
 func GetEnvironment() Environment {
+	// Use locking during tests to prevent race conditions during test teardown.
+	// In production, the environment is initialized once at startup and never modified,
+	// so concurrent reads are safe without locking. In tests, however, SetEnvironment
+	// is occasionally called to reset the global environment (e.g., in test teardown)
+	// while background goroutines may still be calling GetEnvironment, creating a read/write race.
+	if testing.Testing() {
+		globalEnvLock.RLock()
+		defer globalEnvLock.RUnlock()
+	}
 	return globalEnv
 }
 
