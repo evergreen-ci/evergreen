@@ -862,7 +862,7 @@ func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task)
 		if err := h.ClearRunningTask(ctx); err != nil {
 			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
-		if err := t.MarkAsHostUndispatchedWithContext(ctx, env); err != nil {
+		if err := t.MarkAsHostUndispatched(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as no longer dispatched", t.Id)
 		}
 		return nil, nil

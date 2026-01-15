@@ -1090,11 +1090,11 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error
 	return nil
 }
 
-// MarkAsHostUndispatchedWithContext marks that the host task is undispatched.
+// MarkAsHostUndispatched marks that the host task is undispatched.
 // If the task is already dispatched to a host, it aborts the dispatch by
 // undoing the dispatch updates. This is the inverse operation of
 // MarkAsHostDispatchedWithContext.
-func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergreen.Environment) error {
+func (t *Task) MarkAsHostUndispatched(ctx context.Context, env evergreen.Environment) error {
 	doUpdate := func(update []bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
 		return err
