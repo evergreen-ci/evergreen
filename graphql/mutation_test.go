@@ -32,7 +32,7 @@ func TestResetAPIKey(t *testing.T) {
 		assert.NotEqual(t, "old_api_key", result.APIKey)
 
 		// Verify the user's API key was updated in the database
-		updatedUser, err := user.FindOneByIdContext(t.Context(), "test_user")
+		updatedUser, err := user.FindOneById(t.Context(), "test_user")
 		require.NoError(t, err)
 		require.NotNil(t, updatedUser)
 		assert.Equal(t, result.APIKey, updatedUser.APIKey)
