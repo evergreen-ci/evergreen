@@ -991,6 +991,7 @@ func UpdateBucketLifecycle(ctx context.Context, bucketField string, expirationDa
 	})
 }
 
+// UpdateBucketLifecycleError records a sync error for an admin-managed bucket in settings.
 func UpdateBucketLifecycleError(ctx context.Context, bucketField string, syncError string) error {
 	bucketsKey := (&BucketsConfig{}).SectionId()
 	return setConfigSection(ctx, bucketsKey, bson.M{
