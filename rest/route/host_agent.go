@@ -810,7 +810,7 @@ func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) fun
 		}
 
 		dispatchedAt := time.Now()
-		if err := t.MarkAsHostDispatchedWithContext(ctx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
+		if err := t.MarkAsHostDispatched(ctx, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as dispatched to host '%s'", t.Id, h.Id)
 		}
 

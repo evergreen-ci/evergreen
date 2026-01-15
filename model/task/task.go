@@ -1045,17 +1045,6 @@ func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agent
 	return nil
 }
 
-// MarkAsHostDispatchedWithContext marks that the task has been dispatched onto
-// a particular host. Unlike MarkAsHostDispatched, this does not update the
-// parent display task.
-func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	doUpdate := func(update []bson.M) error {
-		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
-		return err
-	}
-	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
-}
-
 func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 
 	set := bson.M{
