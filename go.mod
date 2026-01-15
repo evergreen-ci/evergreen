@@ -90,16 +90,15 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20221221133751-67e37ae746cd // indirect
-	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
-	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dghubble/oauth1 v0.7.3 // indirect
-	github.com/docker/go-units v0.4.0 // indirect
+	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
-	github.com/evergreen-ci/aviation v0.0.0-20250224221603-9ff1979a684a // indirect
+	github.com/evergreen-ci/aviation v0.0.0-20260115180700-baca116d6d12 // indirect
 	github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 // indirect
 	github.com/evergreen-ci/bond v0.0.0-20251209195750-b541586174f7 // indirect
 	github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f // indirect
@@ -112,8 +111,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/godbus/dbus/v5 v5.0.4 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/godbus/dbus/v5 v5.2.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -136,7 +134,7 @@ require (
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
-	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
+	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/patrickmn/go-cache v0.0.0-20180815053127-5633e0862627 // indirect
 	github.com/peterhellberg/link v1.2.0 // indirect
 	github.com/phyber/negroni-gzip v1.0.0 // indirect
@@ -183,7 +181,7 @@ require (
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
-	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
+	github.com/mongodb/jasper v0.0.0-20260115181313-e094cd64f89f
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.1.0
@@ -198,9 +196,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sns v1.39.8 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/containerd/cgroups/v3 v3.1.2 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.16.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
@@ -212,11 +210,11 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.1.6 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
+	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/okta/okta-jwt-verifier-golang/v2 v2.1.1 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/urfave/cli/v3 v3.6.1 // indirect
-	go.mongodb.org/mongo-driver/v2 v2.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.39.0 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
