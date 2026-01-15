@@ -219,7 +219,7 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 }
 
 func UpdateAllBuilds(ctx context.Context, query any, update any) error {
-	_, err := db.UpdateAllContext(
+	_, err := db.UpdateAll(
 		ctx,
 		Collection,
 		query,

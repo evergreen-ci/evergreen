@@ -2924,9 +2924,9 @@ func RemoveAdminFromProjects(ctx context.Context, toDelete string) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	_, err := db.UpdateAllContext(ctx, ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
+	_, err := db.UpdateAll(ctx, ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
 	catcher.Wrap(err, "updating projects")
-	_, err = db.UpdateAllContext(ctx, RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
+	_, err = db.UpdateAll(ctx, RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
 	catcher.Wrap(err, "updating repos")
 	return catcher.Resolve()
 }

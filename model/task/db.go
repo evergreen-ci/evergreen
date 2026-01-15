@@ -1695,7 +1695,7 @@ func updateOneByIdAndExecution(ctx context.Context, taskId string, execution int
 }
 
 func UpdateAll(ctx context.Context, query any, update any) (*adb.ChangeInfo, error) {
-	return db.UpdateAllContext(
+	return db.UpdateAll(
 		ctx,
 		Collection,
 		query,

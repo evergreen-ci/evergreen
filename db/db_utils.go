@@ -136,8 +136,8 @@ func Replace(ctx context.Context, collection string, query any, replacement any)
 	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
 }
 
-// UpdateAllContext updates all matching documents in the collection.
-func UpdateAllContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+// UpdateAll updates all matching documents in the collection.
+func UpdateAll(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
 		query,
 		update,

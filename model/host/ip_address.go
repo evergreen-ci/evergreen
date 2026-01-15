@@ -71,7 +71,7 @@ func IPAddressUnsetHostTags(ctx context.Context, ids ...string) error {
 		return nil
 	}
 
-	_, err := db.UpdateAllContext(ctx, IPAddressCollection, bson.M{
+	_, err := db.UpdateAll(ctx, IPAddressCollection, bson.M{
 		ipAddressIDKey: bson.M{"$in": ids},
 	}, bson.M{
 		"$unset": bson.M{ipAddressHostTagKey: 1},

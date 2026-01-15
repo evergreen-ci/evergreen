@@ -288,7 +288,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 3)
 
 			// update the first and third
-			_, err = UpdateAllContext(
+			_, err = UpdateAll(
 				t.Context(),
 				collection,
 				bson.M{

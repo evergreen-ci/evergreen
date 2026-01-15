@@ -346,7 +346,7 @@ func VersionUpdateOne(ctx context.Context, query any, update any) error {
 }
 
 func ActivateVersions(ctx context.Context, versionIds []string) error {
-	_, err := db.UpdateAllContext(
+	_, err := db.UpdateAll(
 		ctx,
 		VersionCollection,
 		bson.M{
@@ -391,7 +391,7 @@ func AddGitTag(ctx context.Context, versionId string, tag GitTag) error {
 // It filters by owner and repo to limit the scope of the operation so we don't accidentally
 // remove same-named tags from other repositories.
 func RemoveGitTagFromVersions(ctx context.Context, owner, repo string, tag GitTag) error {
-	_, err := db.UpdateAllContext(
+	_, err := db.UpdateAll(
 		ctx,
 		VersionCollection,
 		bson.M{

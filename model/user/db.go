@@ -113,7 +113,7 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 
 // UpdateAll updates all users.
 func UpdateAll(ctx context.Context, query any, update any) error {
-	_, err := db.UpdateAllContext(
+	_, err := db.UpdateAll(
 		ctx,
 		Collection,
 		query,
