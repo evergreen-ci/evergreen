@@ -69,21 +69,24 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 // writeDaemonInfo writes PID and port files
 func (d *localDaemonREST) writeDaemonInfo() error {
-	homeDir, err := os.UserHomeDir()
+	dir, err := getDaemonDir()
 	if err != nil {
 		return err
 	}
 
-	daemonDir := filepath.Join(homeDir, ".evergreen-local")
-	if err := os.MkdirAll(daemonDir, 0755); err != nil {
-		return err
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return errors.Wrap(err, "creating daemon directory")
 	}
 
-	pidFile := filepath.Join(daemonDir, "daemon.pid")
+	pidFile := filepath.Join(dir, daemonPIDFile)
 	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
-		return err
+		return errors.Wrap(err, "writing PID file")
 	}
 
-	portFile := filepath.Join(daemonDir, "daemon.port")
-	return os.WriteFile(portFile, []byte(fmt.Sprintf("%d", d.port)), 0644)
+	portFile := filepath.Join(dir, daemonPortFile)
+	if err := os.WriteFile(portFile, []byte(fmt.Sprintf("%d", d.port)), 0644); err != nil {
+		return errors.Wrap(err, "writing port file")
+	}
+
+	return nil
 }
