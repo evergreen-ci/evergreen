@@ -788,7 +788,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			}
 		}
 		if mfst != nil {
-			if err = mfst.InsertWithContext(ctx); err != nil {
+			if err = mfst.Insert(ctx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}

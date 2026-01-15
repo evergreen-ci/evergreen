@@ -40,20 +40,17 @@ func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 // If the document already exists, it returns true and the error
 // If it does not it will return false and the error
 func (m *Manifest) TryInsert(ctx context.Context) (bool, error) {
-	err := db.Insert(ctx, Collection, m)
+	err := m.Insert(ctx)
 	if db.IsDuplicateKey(err) {
 		return true, nil
 	}
 	return false, err
 }
 
-// InsertWithContext is the same as Insert, but it respects the given context by
+// Insert is the same as Insert, but it respects the given context by
 // avoiding the global Anser DB session.
-func (m *Manifest) InsertWithContext(ctx context.Context) error {
-	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, m); err != nil {
-		return err
-	}
-	return nil
+func (m *Manifest) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, m)
 }
 
 // ById returns a query that contains an Id selector on the string, id.
