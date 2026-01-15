@@ -52,7 +52,7 @@ func (r *RepoRef) Insert(_ context.Context) error {
 func (r *RepoRef) Replace(ctx context.Context) error {
 	r.RepoRefId = ""
 	r.Branch = ""
-	_, err := db.ReplaceContext(
+	_, err := db.Replace(
 		ctx,
 		RepoRefCollection,
 		bson.M{

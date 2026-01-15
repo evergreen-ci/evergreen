@@ -66,7 +66,7 @@ func parserProjectById(id string) db.Q {
 
 // parserProjectReplaceOne updates one parser project in the DB.
 func parserProjectReplaceOne(ctx context.Context, query any, replacement any) error {
-	_, err := db.ReplaceContext(
+	_, err := db.Replace(
 		ctx,
 		ParserProjectCollection,
 		query,

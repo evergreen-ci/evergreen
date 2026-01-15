@@ -2233,7 +2233,7 @@ func (p *ProjectRef) CanEnableCommitQueue(ctx context.Context) (bool, error) {
 // Replace updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
 func (p *ProjectRef) Replace(ctx context.Context) error {
-	_, err := db.ReplaceContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
+	_, err := db.Replace(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
 }
 

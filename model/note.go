@@ -24,7 +24,7 @@ var NoteTaskIdKey = bsonutil.MustHaveTag(Note{}, "TaskId")
 
 // Replace overwrites an existing note if found, or inserts if not found.
 func (n *Note) Replace(ctx context.Context) error {
-	_, err := db.ReplaceContext(
+	_, err := db.Replace(
 		ctx,
 		NotesCollection,
 		bson.M{NoteTaskIdKey: n.TaskId},

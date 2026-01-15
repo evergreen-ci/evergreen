@@ -36,7 +36,7 @@ func (pd *PodDefinition) Insert(ctx context.Context) error {
 // Replace updates the pod definition in the db if an entry already exists,
 // overwriting the existing definition. If no definition exists, a new one is created.
 func (pd *PodDefinition) Replace(ctx context.Context) error {
-	_, err := db.ReplaceContext(ctx, Collection, ByID(pd.ID), pd)
+	_, err := db.Replace(ctx, Collection, ByID(pd.ID), pd)
 	return err
 }
 

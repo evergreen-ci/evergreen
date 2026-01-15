@@ -4751,11 +4751,11 @@ func TestHasResults(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
-				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 
@@ -4956,12 +4956,12 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
 				execTask.Archived = true
-				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 

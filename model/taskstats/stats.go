@@ -75,7 +75,7 @@ func UpdateStatsStatus(ctx context.Context, projectID string, lastJobRun, proces
 		ProcessedTasksUntil: processedTasksUntil,
 		Runtime:             runtime,
 	}
-	_, err := db.ReplaceContext(ctx, DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
+	_, err := db.Replace(ctx, DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
 	if err != nil {
 		return errors.Wrap(err, "updating test stats status")
 	}
