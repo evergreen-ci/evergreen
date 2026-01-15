@@ -29,13 +29,13 @@ type CostConfig struct {
 
 // S3UploadCostConfig represents S3 upload cost discount configuration.
 type S3UploadCostConfig struct {
-	UploadCostDiscount *float64 `bson:"upload_cost_discount,omitempty" json:"upload_cost_discount,omitempty" yaml:"upload_cost_discount,omitempty"`
+	UploadCostDiscount *float64 `bson:"upload_cost_discount" json:"upload_cost_discount,omitempty" yaml:"upload_cost_discount,omitempty"`
 }
 
 // S3StorageCostConfig represents S3 storage cost discount configuration.
 type S3StorageCostConfig struct {
-	StandardStorageCostDiscount         *float64 `bson:"standard_storage_cost_discount,omitempty" json:"standard_storage_cost_discount,omitempty" yaml:"standard_storage_cost_discount,omitempty"`
-	InfrequentAccessStorageCostDiscount *float64 `bson:"infrequent_access_storage_cost_discount,omitempty" json:"infrequent_access_storage_cost_discount,omitempty" yaml:"infrequent_access_storage_cost_discount,omitempty"`
+	StandardStorageCostDiscount         *float64 `bson:"standard_storage_cost_discount" json:"standard_storage_cost_discount,omitempty" yaml:"standard_storage_cost_discount,omitempty"`
+	InfrequentAccessStorageCostDiscount *float64 `bson:"infrequent_access_storage_cost_discount" json:"infrequent_access_storage_cost_discount,omitempty" yaml:"infrequent_access_storage_cost_discount,omitempty"`
 }
 
 // S3CostConfig represents S3 cost configuration with separate upload and storage settings.
