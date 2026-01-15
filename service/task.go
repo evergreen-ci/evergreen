@@ -18,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -297,14 +299,18 @@ var blockedCIDRs = []*net.IPNet{
 func mustParseCIDR(c string) *net.IPNet {
 	_, n, err := net.ParseCIDR(c)
 	if err != nil {
-		panic(err)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to parse CIDR",
+			"target":  c,
+		}))
+		return nil
 	}
 	return n
 }
 
 func isBlockedIP(ip net.IP) bool {
 	for _, n := range blockedCIDRs {
-		if n.Contains(ip) {
+		if n != nil && n.Contains(ip) {
 			return true
 		}
 	}
