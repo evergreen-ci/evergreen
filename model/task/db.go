@@ -1658,7 +1658,7 @@ func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 
 // UpdateOne updates one task.
 func UpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		Collection,
 		query,
@@ -1668,7 +1668,7 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 
 // updateOneOld updates one old task.
 func updateOneOld(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		OldCollection,
 		query,

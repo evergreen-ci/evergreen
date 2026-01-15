@@ -104,8 +104,8 @@ func RemoveAll(ctx context.Context, collection string, query any) error {
 	return errors.Wrapf(errors.WithStack(err), "deleting documents")
 }
 
-// UpdateContext updates one matching document in the collection.
-func UpdateContext(ctx context.Context, collection string, query any, update any) error {
+// Update updates one matching document in the collection.
+func Update(ctx context.Context, collection string, query any, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
 		update,

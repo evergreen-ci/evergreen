@@ -99,7 +99,7 @@ func FindOneByID(ctx context.Context, id string) (*Pod, error) {
 
 // UpdateOne updates one pod.
 func UpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		Collection,
 		query,

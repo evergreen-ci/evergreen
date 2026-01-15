@@ -44,7 +44,7 @@ func UpsertOne(ctx context.Context, query, update any) (*adb.ChangeInfo, error) 
 
 // UpdateOne updates an existing pod definition.
 func UpdateOne(ctx context.Context, query, update any) error {
-	return db.UpdateContext(ctx, Collection, query, update)
+	return db.Update(ctx, Collection, query, update)
 }
 
 // FindOneID returns a query to find a pod definition with the given ID.

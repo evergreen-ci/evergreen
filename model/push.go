@@ -60,7 +60,7 @@ func (pl *PushLog) Insert(ctx context.Context) error {
 }
 
 func (pl *PushLog) UpdateStatus(ctx context.Context, newStatus string) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		PushlogCollection,
 		bson.M{

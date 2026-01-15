@@ -477,7 +477,7 @@ outer:
 func dequeue(ctx context.Context, taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
-	return errors.WithStack(db.UpdateContext(
+	return errors.WithStack(db.Update(
 		ctx,
 		TaskQueuesCollection,
 		bson.M{

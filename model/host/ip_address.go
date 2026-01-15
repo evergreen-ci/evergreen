@@ -50,7 +50,7 @@ func AssignUnusedIPAddress(ctx context.Context, hostTag string) (*IPAddress, err
 // tag is not set to the expected IP address's host ID, this will return an
 // error.
 func (a *IPAddress) UnsetHostTag(ctx context.Context) error {
-	if err := db.UpdateContext(ctx, IPAddressCollection, bson.M{
+	if err := db.Update(ctx, IPAddressCollection, bson.M{
 		ipAddressIDKey:      a.ID,
 		ipAddressHostTagKey: a.HostTag,
 	}, bson.M{

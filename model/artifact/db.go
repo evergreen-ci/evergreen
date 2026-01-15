@@ -141,7 +141,7 @@ func UpdateFileLink(ctx context.Context, taskID string, execution int, fileName,
 	update := bson.M{"$set": bson.M{
 		bsonutil.GetDottedKeyName(FilesKey, "$", LinkKey): newLink,
 	}}
-	return db.UpdateContext(ctx, Collection, filter, update)
+	return db.Update(ctx, Collection, filter, update)
 }
 
 // UpdateFileKey updates the S3 file key for a single artifact file matching task ID, execution,
@@ -159,5 +159,5 @@ func UpdateFileKey(ctx context.Context, taskID string, execution int, fileName, 
 	update := bson.M{"$set": bson.M{
 		bsonutil.GetDottedKeyName(FilesKey, "$", FileKeyKey): newFileKey,
 	}}
-	return db.UpdateContext(ctx, Collection, filter, update)
+	return db.Update(ctx, Collection, filter, update)
 }

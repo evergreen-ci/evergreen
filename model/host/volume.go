@@ -35,7 +35,7 @@ func (v *Volume) Insert(ctx context.Context) error {
 }
 
 func (v *Volume) SetHost(ctx context.Context, id string) error {
-	err := db.UpdateContext(ctx, VolumesCollection,
+	err := db.Update(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeHostKey: id}})
 
@@ -48,13 +48,13 @@ func (v *Volume) SetHost(ctx context.Context, id string) error {
 }
 
 func UnsetVolumeHost(ctx context.Context, id string) error {
-	return errors.WithStack(db.UpdateContext(ctx, VolumesCollection,
+	return errors.WithStack(db.Update(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: id},
 		bson.M{"$unset": bson.M{VolumeHostKey: true}}))
 }
 
 func (v *Volume) SetDisplayName(ctx context.Context, displayName string) error {
-	err := db.UpdateContext(ctx, VolumesCollection,
+	err := db.Update(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeDisplayNameKey: displayName}})
 	if err != nil {
@@ -65,7 +65,7 @@ func (v *Volume) SetDisplayName(ctx context.Context, displayName string) error {
 }
 
 func (v *Volume) SetSize(ctx context.Context, size int32) error {
-	err := db.UpdateContext(ctx, VolumesCollection,
+	err := db.Update(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeSizeKey: size}})
 	if err != nil {
@@ -76,7 +76,7 @@ func (v *Volume) SetSize(ctx context.Context, size int32) error {
 }
 
 func (v *Volume) SetMigrating(ctx context.Context, migrating bool) error {
-	err := db.UpdateContext(ctx, VolumesCollection,
+	err := db.Update(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeMigratingKey: migrating}})
 	if err != nil {

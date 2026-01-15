@@ -766,7 +766,7 @@ func (s *taskSuite) TestRegression() {
 	// already failing task should not renotify if before the renotification interval
 	s.subs[2].TriggerData = map[string]string{event.RenotifyIntervalKey: "96"}
 	oldFinishTime := time.Now().Add(-3 * 24 * time.Hour)
-	s.NoError(db.UpdateContext(s.ctx, task.Collection, bson.M{"_id": "test4"}, bson.M{
+	s.NoError(db.Update(s.ctx, task.Collection, bson.M{"_id": "test4"}, bson.M{
 		"$set": bson.M{
 			"finish_time": oldFinishTime,
 		},

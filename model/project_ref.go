@@ -2313,13 +2313,13 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": setUpdate,
 			})
 	case ProjectPagePluginSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2330,7 +2330,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageAccessSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2339,7 +2339,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageGithubAndCQSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2354,20 +2354,20 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageNotificationsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure,
 					projectRefBannerKey: p.Banner},
 			})
 	case ProjectPageWorkstationsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefWorkstationConfigKey: p.WorkstationConfig},
 			})
 	case ProjectPageTriggersSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2375,7 +2375,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPagePatchAliasSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2385,19 +2385,19 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPagePeriodicBuildsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
 	case ProjectPageContainerSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
 			})
 	case ProjectPageViewsAndFiltersSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2406,7 +2406,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageTestSelectionSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2414,7 +2414,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2422,7 +2422,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				},
 			})
 	case ProjectPageGithubPermissionsSection:
-		err = db.UpdateContext(ctx, coll,
+		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2660,7 +2660,7 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(ctx context.Context, maxDail
 			},
 		}
 	}
-	return errors.Wrap(db.UpdateContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
+	return errors.Wrap(db.Update(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
 const CronActiveRange = 5 * time.Minute
@@ -3581,7 +3581,7 @@ func (c ContainerSecretCache) Put(ctx context.Context, sc cocoa.SecretCacheItem)
 	externalNameKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalNameKey)
 	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
 	externalIDUpdateKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, "$", containerSecretExternalIDKey)
-	return db.UpdateContext(ctx, ProjectRefCollection, bson.M{
+	return db.Update(ctx, ProjectRefCollection, bson.M{
 		externalNameKey: sc.Name,
 		externalIDKey: bson.M{
 			"$in": []any{"", sc.ID},
@@ -3597,7 +3597,7 @@ func (c ContainerSecretCache) Put(ctx context.Context, sc cocoa.SecretCacheItem)
 // identifier.
 func (c ContainerSecretCache) Delete(ctx context.Context, externalID string) error {
 	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
-	err := db.UpdateContext(ctx, ProjectRefCollection, bson.M{
+	err := db.Update(ctx, ProjectRefCollection, bson.M{
 		externalIDKey: externalID,
 	}, bson.M{
 		"$pull": bson.M{

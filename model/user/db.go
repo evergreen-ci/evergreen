@@ -103,7 +103,7 @@ func Find(ctx context.Context, query db.Q) ([]DBUser, error) {
 
 // UpdateOne updates one user.
 func UpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		Collection,
 		query,

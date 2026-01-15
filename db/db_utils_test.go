@@ -240,7 +240,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 2)
 
 			// update the second
-			err = UpdateContext(
+			err = Update(
 				t.Context(),
 				collection,
 				bson.M{

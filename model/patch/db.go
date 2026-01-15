@@ -367,7 +367,7 @@ func UpdateAll(ctx context.Context, query any, update any) (info *adb.ChangeInfo
 
 // UpdateOne runs an update on a single patch document.
 func UpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(ctx, Collection, query, update)
+	return db.Update(ctx, Collection, query, update)
 }
 
 // PatchesByProject builds a query for patches that match the given

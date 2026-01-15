@@ -593,7 +593,7 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 			initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
 		}
 		if len(initializeUpdate) > 0 {
-			err := db.UpdateContext(ctx,
+			err := db.Update(ctx,
 				ProjectVarsCollection,
 				bson.M{projectVarIdKey: projectVars.Id},
 				bson.M{"$set": initializeUpdate},
@@ -683,7 +683,7 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
 	}
 
-	err := db.UpdateContext(ctx, ProjectVarsCollection,
+	err := db.Update(ctx, ProjectVarsCollection,
 		bson.M{ProjectRefIdKey: projectVars.Id},
 		bson.M{
 			"$unset": bson.M{
