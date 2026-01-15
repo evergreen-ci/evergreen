@@ -767,6 +767,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 
+	predictions, err := task.ComputePredictedCostsForTasks(ctx, tasksToInsert)
+	if err != nil {
+		return nil, errors.Wrapf(err, "computing predicted costs for tasks in version '%s'", patchVersion.Id)
+	}
+
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
@@ -794,11 +799,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		}
 		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
-		}
-
-		predictions, err := task.ComputePredictedCostsForTasks(ctx, tasksToInsert)
-		if err != nil {
-			return nil, errors.Wrapf(err, "computing predicted costs for tasks in version '%s'", patchVersion.Id)
 		}
 
 		if err = tasksToInsert.InsertUnorderedWithPredictions(ctx, predictions); err != nil {

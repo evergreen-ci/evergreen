@@ -2778,8 +2778,8 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 		return map[string]cost.Cost{}, nil
 	}
 
-	// Use background context to avoid MongoDB session races in parallel queries
-	// The input ctx may have a transaction session which is not thread-safe
+	// Use background context to avoid MongoDB session races in parallel queries.
+	// The input ctx may have a transaction session which is not thread-safe.
 	bgCtx := context.Background()
 	predictions, err := computeCostPredictionsInParallel(bgCtx, activatedTasks)
 	if err != nil {
