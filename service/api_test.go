@@ -19,8 +19,6 @@ import (
 )
 
 func TestServerEndpoints(t *testing.T) {
-	require.NoError(t, db.Clear(model.ProjectRefCollection))
-
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	testConfig := testutil.TestConfig()
@@ -71,7 +69,7 @@ func TestServerEndpoints(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			require.NoError(t, db.DropCollections(model.ProjectRefCollection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 
 			evergreen.GetEnvironment().Settings().ServiceFlags.StaticAPIKeysDisabled = testCase.staticAPIKeysDisabled
 			testApiServer, err := CreateTestServer(t.Context(), testConfig, nil, false)
