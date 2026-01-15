@@ -171,7 +171,7 @@ func FindByBucketAndPrefix(ctx context.Context, bucketName, filterPrefix string)
 
 	docID := makeRuleID(bucketName, filterPrefix)
 	doc := &S3LifecycleRuleDoc{}
-	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{"_id": docID}), doc)
+	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{"_id": docID}), doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -283,7 +283,7 @@ func UpdateSyncError(ctx context.Context, bucketName, filterPrefix, syncError st
 	}
 
 	return errors.Wrapf(
-		db.UpdateIdContext(ctx, Collection, docID, update),
+		db.UpdateId(ctx, Collection, docID, update),
 		"updating sync error for bucket '%s' prefix '%s'",
 		bucketName, filterPrefix,
 	)
