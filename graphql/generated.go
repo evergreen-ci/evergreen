@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -405,6 +406,11 @@ type ComplexityRoot struct {
 		CPU      func(childComplexity int) int
 		MemoryMB func(childComplexity int) int
 		Name     func(childComplexity int) int
+	}
+
+	Cost struct {
+		AdjustedEC2Cost func(childComplexity int) int
+		OnDemandEC2Cost func(childComplexity int) int
 	}
 
 	CostConfig struct {
@@ -1822,6 +1828,7 @@ type ComplexityRoot struct {
 		Jira             func(childComplexity int) int
 		Providers        func(childComplexity int) int
 		SecretFields     func(childComplexity int) int
+		ServiceFlags     func(childComplexity int) int
 		SingleTaskDistro func(childComplexity int) int
 		Slack            func(childComplexity int) int
 		Spawnhost        func(childComplexity int) int
@@ -1953,11 +1960,6 @@ type ComplexityRoot struct {
 		MemoryMB   func(childComplexity int) int
 		Os         func(childComplexity int) int
 		WorkingDir func(childComplexity int) int
-	}
-
-	TaskCost struct {
-		AdjustedCost func(childComplexity int) int
-		OnDemandCost func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -2237,6 +2239,10 @@ type ComplexityRoot struct {
 		User             func(childComplexity int) int
 	}
 
+	UserServiceFlags struct {
+		JWTTokenForCLIDisabled func(childComplexity int) int
+	}
+
 	UserSettings struct {
 		DateFormat       func(childComplexity int) int
 		GithubUser       func(childComplexity int) int
@@ -2278,6 +2284,7 @@ type ComplexityRoot struct {
 		Order                    func(childComplexity int) int
 		Parameters               func(childComplexity int) int
 		Patch                    func(childComplexity int) int
+		PredictedCost            func(childComplexity int) int
 		PreviousVersion          func(childComplexity int) int
 		Project                  func(childComplexity int) int
 		ProjectIdentifier        func(childComplexity int) int
@@ -4059,6 +4066,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ContainerResources.Name(childComplexity), true
+
+	case "Cost.adjustedEC2Cost":
+		if e.complexity.Cost.AdjustedEC2Cost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedEC2Cost(childComplexity), true
+	case "Cost.onDemandEC2Cost":
+		if e.complexity.Cost.OnDemandEC2Cost == nil {
+			break
+		}
+
+		return e.complexity.Cost.OnDemandEC2Cost(childComplexity), true
 
 	case "CostConfig.financeFormula":
 		if e.complexity.CostConfig.FinanceFormula == nil {
@@ -10269,6 +10289,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SpruceConfig.SecretFields(childComplexity), true
+	case "SpruceConfig.serviceFlags":
+		if e.complexity.SpruceConfig.ServiceFlags == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.ServiceFlags(childComplexity), true
 	case "SpruceConfig.singleTaskDistro":
 		if e.complexity.SpruceConfig.SingleTaskDistro == nil {
 			break
@@ -10924,19 +10950,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskContainerCreationOpts.WorkingDir(childComplexity), true
-
-	case "TaskCost.adjustedCost":
-		if e.complexity.TaskCost.AdjustedCost == nil {
-			break
-		}
-
-		return e.complexity.TaskCost.AdjustedCost(childComplexity), true
-	case "TaskCost.onDemandCost":
-		if e.complexity.TaskCost.OnDemandCost == nil {
-			break
-		}
-
-		return e.complexity.TaskCost.OnDemandCost(childComplexity), true
 
 	case "TaskEndDetail.description":
 		if e.complexity.TaskEndDetail.Description == nil {
@@ -12044,6 +12057,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserConfig.User(childComplexity), true
 
+	case "UserServiceFlags.jwtTokenForCLIDisabled":
+		if e.complexity.UserServiceFlags.JWTTokenForCLIDisabled == nil {
+			break
+		}
+
+		return e.complexity.UserServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
+
 	case "UserSettings.dateFormat":
 		if e.complexity.UserSettings.DateFormat == nil {
 			break
@@ -12260,6 +12280,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.Patch(childComplexity), true
+	case "Version.predictedCost":
+		if e.complexity.Version.PredictedCost == nil {
+			break
+		}
+
+		return e.complexity.Version.PredictedCost(childComplexity), true
 	case "Version.previousVersion":
 		if e.complexity.Version.PreviousVersion == nil {
 			break
@@ -23893,6 +23919,64 @@ func (ec *executionContext) fieldContext_ContainerResources_memoryMb(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Cost_onDemandEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_onDemandEC2Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.OnDemandEC2Cost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_onDemandEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedEC2Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedEC2Cost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CostConfig_financeFormula(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -35374,6 +35458,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -35487,6 +35573,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -41040,6 +41128,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -44263,6 +44353,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -50809,6 +50901,8 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_providers(ctx, field)
 			case "secretFields":
 				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
+			case "serviceFlags":
+				return ec.fieldContext_SpruceConfig_serviceFlags(ctx, field)
 			case "singleTaskDistro":
 				return ec.fieldContext_SpruceConfig_singleTaskDistro(ctx, field)
 			case "slack":
@@ -53288,6 +53382,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -59639,6 +59735,39 @@ func (ec *executionContext) fieldContext_SpruceConfig_secretFields(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _SpruceConfig_serviceFlags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SpruceConfig_serviceFlags,
+		func(ctx context.Context) (any, error) {
+			return obj.ServiceFlags, nil
+		},
+		nil,
+		ec.marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "jwtTokenForCLIDisabled":
+				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SpruceConfig_singleTaskDistro(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -63209,7 +63338,7 @@ func (ec *executionContext) _Task_taskCost(ctx context.Context, field graphql.Co
 			return obj.TaskCost, nil
 		},
 		nil,
-		ec.marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost,
+		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
 		true,
 		false,
 	)
@@ -63223,12 +63352,12 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandCost":
-				return ec.fieldContext_TaskCost_onDemandCost(ctx, field)
-			case "adjustedCost":
-				return ec.fieldContext_TaskCost_adjustedCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
+			case "adjustedEC2Cost":
+				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskCost", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -63244,7 +63373,7 @@ func (ec *executionContext) _Task_predictedTaskCost(ctx context.Context, field g
 			return obj.PredictedTaskCost, nil
 		},
 		nil,
-		ec.marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost,
+		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
 		true,
 		false,
 	)
@@ -63258,12 +63387,12 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandCost":
-				return ec.fieldContext_TaskCost_onDemandCost(ctx, field)
-			case "adjustedCost":
-				return ec.fieldContext_TaskCost_adjustedCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
+			case "adjustedEC2Cost":
+				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskCost", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -63550,6 +63679,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -63761,64 +63892,6 @@ func (ec *executionContext) fieldContext_TaskContainerCreationOpts_workingDir(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskCost_onDemandCost(ctx context.Context, field graphql.CollectedField, obj *model.APITaskCost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TaskCost_onDemandCost,
-		func(ctx context.Context) (any, error) {
-			return obj.OnDemandCost, nil
-		},
-		nil,
-		ec.marshalOFloat2ᚖfloat64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TaskCost_onDemandCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskCost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskCost_adjustedCost(ctx context.Context, field graphql.CollectedField, obj *model.APITaskCost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TaskCost_adjustedCost,
-		func(ctx context.Context) (any, error) {
-			return obj.AdjustedCost, nil
-		},
-		nil,
-		ec.marshalOFloat2ᚖfloat64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TaskCost_adjustedCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskCost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -69084,6 +69157,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -69707,6 +69782,35 @@ func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.JWTTokenForCLIDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserSettings_githubUser(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -70309,6 +70413,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -70549,6 +70655,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -71153,6 +71261,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -71866,6 +71976,41 @@ func (ec *executionContext) fieldContext_Version_waterfallBuilds(_ context.Conte
 				return ec.fieldContext_WaterfallBuild_tasks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallBuild", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_predictedCost(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_predictedCost,
+		func(ctx context.Context) (any, error) {
+			return obj.PredictedCost, nil
+		},
+		nil,
+		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
+			case "adjustedEC2Cost":
+				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -72717,6 +72862,8 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -73508,6 +73655,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_inactiveVersions(_ con
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -73621,6 +73770,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_version(_ context.Cont
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -88579,6 +88730,44 @@ func (ec *executionContext) _ContainerResources(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var costImplementors = []string{"Cost"}
+
+func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj *cost.Cost) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, costImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Cost")
+		case "onDemandEC2Cost":
+			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
+		case "adjustedEC2Cost":
+			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var costConfigImplementors = []string{"CostConfig"}
 
 func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APICostConfig) graphql.Marshaler {
@@ -100611,6 +100800,11 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "serviceFlags":
+			out.Values[i] = ec._SpruceConfig_serviceFlags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "singleTaskDistro":
 			out.Values[i] = ec._SpruceConfig_singleTaskDistro(ctx, field, obj)
 		case "slack":
@@ -102462,44 +102656,6 @@ func (ec *executionContext) _TaskContainerCreationOpts(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var taskCostImplementors = []string{"TaskCost"}
-
-func (ec *executionContext) _TaskCost(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskCost) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, taskCostImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("TaskCost")
-		case "onDemandCost":
-			out.Values[i] = ec._TaskCost_onDemandCost(ctx, field, obj)
-		case "adjustedCost":
-			out.Values[i] = ec._TaskCost_adjustedCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -104633,6 +104789,42 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var userServiceFlagsImplementors = []string{"UserServiceFlags"}
+
+func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.SelectionSet, obj *model.APIServiceFlags) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userServiceFlagsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserServiceFlags")
+		case "jwtTokenForCLIDisabled":
+			out.Values[i] = ec._UserServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var userSettingsImplementors = []string{"UserSettings"}
 
 func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APIUserSettings) graphql.Marshaler {
@@ -105576,6 +105768,8 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "predictedCost":
+			out.Values[i] = ec._Version_predictedCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -112500,6 +112694,16 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._User(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UserServiceFlags(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
 	return ec._UserSettings(ctx, sel, &v)
 }
@@ -113716,6 +113920,13 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost(ctx context.Context, sel ast.SelectionSet, v *cost.Cost) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Cost(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOCostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APICostConfig) graphql.Marshaler {
@@ -116533,13 +116744,6 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 func (ec *executionContext) unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, v any) (model.APITaskAnnotationSettings, error) {
 	res, err := ec.unmarshalInputTaskAnnotationSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost(ctx context.Context, sel ast.SelectionSet, v *model.APITaskCost) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._TaskCost(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskCountOptions(ctx context.Context, v any) (*TaskCountOptions, error) {

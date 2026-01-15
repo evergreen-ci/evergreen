@@ -917,8 +917,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskContainerCreationOpts:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPodTaskContainerCreationOptions
-  TaskCost:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskCost
+  Cost:
+    model: github.com/evergreen-ci/evergreen/model/cost.Cost
   TaskEndDetail:
     model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
   TaskEventLogData:
@@ -994,6 +994,8 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  UserServiceFlags:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
   UserSettingsInput:

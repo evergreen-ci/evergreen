@@ -850,7 +850,12 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	default:
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+			"project_id": opts.Ref.Id,
+		}))
+		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
@@ -900,11 +905,11 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
 
 	}
+	pRef := *opts.Ref
+	pRef.Owner = repoOwner
+	pRef.Repo = repoName
 	moduleOpts := GetProjectOpts{
-		Ref: &ProjectRef{
-			Owner: repoOwner,
-			Repo:  repoName,
-		},
+		Ref:          &pRef,
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
 		ReadFileFrom: ReadFromGithub,
@@ -945,8 +950,13 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		return nil, errors.New("project not passed in")
 	}
 	var projectFileBytes []byte
+	ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+		"project_id": opts.Ref.Id,
+	}))
 	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
-		opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.
