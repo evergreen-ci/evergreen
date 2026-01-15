@@ -65,6 +65,16 @@ func Insert(ctx context.Context, collection string, item any) error {
 	return errors.Wrapf(errors.WithStack(err), "inserting document")
 }
 
+// InsertWithEnv inserts the specified item into the specified collection
+// using the given environment's database. This is useful for transactions
+// where the same client must be used for all operations.
+func InsertWithEnv(ctx context.Context, env evergreen.Environment, collection string, item any) error {
+	_, err := env.DB().Collection(collection).InsertOne(ctx,
+		item,
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting document")
+}
+
 func InsertMany(ctx context.Context, collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil

@@ -572,6 +572,13 @@ func (p *Pod) Insert(ctx context.Context) error {
 	return db.Insert(ctx, Collection, p)
 }
 
+// InsertWithEnv inserts a new pod into the collection using the given
+// environment's database. This is useful for transactions where the same client
+// must be used for all operations.
+func (p *Pod) InsertWithEnv(ctx context.Context, env evergreen.Environment) error {
+	return db.InsertWithEnv(ctx, env, Collection, p)
+}
+
 // Remove removes the pod from the collection.
 func (p *Pod) Remove(ctx context.Context) error {
 	return db.Remove(
