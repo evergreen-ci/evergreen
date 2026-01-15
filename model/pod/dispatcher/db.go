@@ -32,7 +32,7 @@ var (
 // FindOne finds one pod dispatcher for the given query.
 func FindOne(ctx context.Context, q db.Q) (*PodDispatcher, error) {
 	var pd PodDispatcher
-	err := db.FindOneQContext(ctx, Collection, q, &pd)
+	err := db.FindOneQ(ctx, Collection, q, &pd)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

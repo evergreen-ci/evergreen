@@ -1280,7 +1280,7 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 // FindOne gets one Volume for the given query.
 func FindOneVolume(ctx context.Context, query any) (*Volume, error) {
 	v := &Volume{}
-	err := db.FindOneQContext(ctx, VolumesCollection, db.Query(query), v)
+	err := db.FindOneQ(ctx, VolumesCollection, db.Query(query), v)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

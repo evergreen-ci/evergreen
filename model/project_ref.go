@@ -1177,7 +1177,7 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 
 func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOneQContext(ctx, ProjectRefCollection, query, projectRef)
+	err := db.FindOneQ(ctx, ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

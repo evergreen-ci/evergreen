@@ -72,7 +72,7 @@ func FindAllRepoRefs(ctx context.Context) ([]RepoRef, error) {
 // findOneRepoRefQ returns one RepoRef that satisfies the query.
 func findOneRepoRefQ(ctx context.Context, query db.Q) (*RepoRef, error) {
 	repoRef := &RepoRef{}
-	err := db.FindOneQContext(ctx, RepoRefCollection, query, repoRef)
+	err := db.FindOneQ(ctx, RepoRefCollection, query, repoRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

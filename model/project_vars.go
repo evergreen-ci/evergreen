@@ -151,7 +151,7 @@ type AWSSSHKey struct {
 func FindOneProjectVars(ctx context.Context, projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
 	q := db.Query(bson.M{projectVarIdKey: projectId})
-	err := db.FindOneQContext(ctx, ProjectVarsCollection, q, projectVars)
+	err := db.FindOneQ(ctx, ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

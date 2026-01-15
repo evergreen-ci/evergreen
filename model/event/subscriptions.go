@@ -521,7 +521,7 @@ func FindSubscriptionByID(ctx context.Context, id string) (*Subscription, error)
 			},
 		}
 	}
-	err := db.FindOneQContext(ctx, SubscriptionsCollection, db.Query(query), &out)
+	err := db.FindOneQ(ctx, SubscriptionsCollection, db.Query(query), &out)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

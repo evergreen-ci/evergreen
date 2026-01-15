@@ -83,7 +83,7 @@ func IPAddressUnsetHostTags(ctx context.Context, ids ...string) error {
 // allocation ID.
 func FindIPAddressByAllocationID(ctx context.Context, allocationID string) (*IPAddress, error) {
 	ipAddr := &IPAddress{}
-	err := db.FindOneQContext(ctx, IPAddressCollection, db.Query(bson.M{
+	err := db.FindOneQ(ctx, IPAddressCollection, db.Query(bson.M{
 		ipAddressAllocationIDKey: allocationID,
 	}), ipAddr)
 	if adb.ResultsNotFound(err) {

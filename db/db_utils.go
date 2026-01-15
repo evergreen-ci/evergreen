@@ -191,15 +191,7 @@ func Count(ctx context.Context, collection string, query any) (int, error) {
 
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
-// DEPRECATED (DEVPROD-15398): This is only here to support a cache
-// with Gimlet, use FindOneQContext instead.
-func FindOneQ(collection string, q Q, out any) error {
-	return FindOneQContext(context.Background(), collection, q, out)
-}
-
-// FindOneQContext runs a Q query against the given collection, applying the results to "out."
-// Only reads one document from the DB.
-func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
+func FindOneQ(ctx context.Context, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)

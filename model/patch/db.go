@@ -334,7 +334,7 @@ var ExcludePatchDiff = bson.M{
 // FindOne runs a patch query, returning one patch.
 func FindOne(ctx context.Context, query db.Q) (*Patch, error) {
 	patch := &Patch{}
-	err := db.FindOneQContext(ctx, Collection, query, patch)
+	err := db.FindOneQ(ctx, Collection, query, patch)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

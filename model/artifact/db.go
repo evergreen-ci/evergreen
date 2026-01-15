@@ -113,7 +113,7 @@ func (e Entry) Upsert(ctx context.Context) error {
 // FindOne gets one Entry for the given query
 func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 	entry := &Entry{}
-	err := db.FindOneQContext(ctx, Collection, query, entry)
+	err := db.FindOneQ(ctx, Collection, query, entry)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

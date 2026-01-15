@@ -295,7 +295,7 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 // VersionFindOne returns a version matching the query.
 func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	version := &Version{}
-	err := db.FindOneQContext(ctx, VersionCollection, query, version)
+	err := db.FindOneQ(ctx, VersionCollection, query, version)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -316,7 +316,7 @@ func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
 func VersionFindOneIdWithBuildVariants(ctx context.Context, id string) (*Version, error) {
 	q := VersionById(id)
 	v := &Version{}
-	err := db.FindOneQContext(ctx, VersionCollection, q, v)
+	err := db.FindOneQ(ctx, VersionCollection, q, v)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

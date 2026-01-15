@@ -29,7 +29,7 @@ var (
 // FindOne gets one Manifest for the given query.
 func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 	m := &Manifest{}
-	err := db.FindOneQContext(ctx, Collection, query, m)
+	err := db.FindOneQ(ctx, Collection, query, m)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

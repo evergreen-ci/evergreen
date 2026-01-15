@@ -286,7 +286,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	}))
 
 	var fetchedEvent EventLogEntry
-	s.NoError(db.FindOneQContext(s.T().Context(), EventCollection, db.Q{}, &fetchedEvent))
+	s.NoError(db.FindOneQ(s.T().Context(), EventCollection, db.Q{}, &fetchedEvent))
 
 	processed, ptime = fetchedEvent.Processed()
 	s.False(processed)

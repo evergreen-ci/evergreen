@@ -815,7 +815,7 @@ func (s *taskSuite) TestRegression() {
 	// suppose we reran task test4, it shouldn't generate because we already
 	// alerted on it
 	task4 := &task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{"_id": "test4"}), task4))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{"_id": "test4"}), task4))
 	s.NotZero(*task4)
 	task4.Execution = 1
 	s.task = *task4

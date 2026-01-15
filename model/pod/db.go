@@ -81,7 +81,7 @@ func Find(ctx context.Context, q db.Q) ([]Pod, error) {
 // FindOne finds one pod by the given query.
 func FindOne(ctx context.Context, q db.Q) (*Pod, error) {
 	var p Pod
-	err := db.FindOneQContext(ctx, Collection, q, &p)
+	err := db.FindOneQ(ctx, Collection, q, &p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

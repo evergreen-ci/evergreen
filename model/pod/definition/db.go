@@ -29,7 +29,7 @@ func Find(ctx context.Context, q db.Q) ([]PodDefinition, error) {
 // FindOne finds one pod definition by the given query.
 func FindOne(ctx context.Context, q db.Q) (*PodDefinition, error) {
 	var def PodDefinition
-	err := db.FindOneQContext(ctx, Collection, q, &def)
+	err := db.FindOneQ(ctx, Collection, q, &def)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

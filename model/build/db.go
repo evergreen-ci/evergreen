@@ -182,7 +182,7 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 // FindOne returns one build that satisfies the query.
 func FindOne(ctx context.Context, query db.Q) (*Build, error) {
 	build := &Build{}
-	err := db.FindOneQContext(ctx, Collection, query, build)
+	err := db.FindOneQ(ctx, Collection, query, build)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

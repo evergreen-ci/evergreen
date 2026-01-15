@@ -73,7 +73,7 @@ func ById(userId string) db.Q {
 // FindOne gets one DBUser for the given query.
 func FindOne(ctx context.Context, query db.Q) (*DBUser, error) {
 	u := &DBUser{}
-	err := db.FindOneQContext(ctx, Collection, query, u)
+	err := db.FindOneQ(ctx, Collection, query, u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -84,7 +84,7 @@ func FindOne(ctx context.Context, query db.Q) (*DBUser, error) {
 func FindOneById(ctx context.Context, id string) (*DBUser, error) {
 	u := &DBUser{}
 	query := ById(id)
-	err := db.FindOneQContext(ctx, Collection, query, u)
+	err := db.FindOneQ(ctx, Collection, query, u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -136,7 +136,7 @@ func UpsertOne(ctx context.Context, query any, update any) (*adb.ChangeInfo, err
 func FindOneByToken(ctx context.Context, token string) (*DBUser, error) {
 	u := &DBUser{}
 	query := db.Query(bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token})
-	err := db.FindOneQContext(ctx, Collection, query, u)
+	err := db.FindOneQ(ctx, Collection, query, u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -149,7 +149,7 @@ func FindOneByToken(ctx context.Context, token string) (*DBUser, error) {
 // FindByGithubUID finds a user with the given GitHub UID.
 func FindByGithubUID(ctx context.Context, uid int) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
+	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, GithubUserUIDKey): uid,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -165,7 +165,7 @@ func FindByGithubUID(ctx context.Context, uid int) (*DBUser, error) {
 // FindByGithubName finds a user with the given GitHub username.
 func FindByGithubName(ctx context.Context, name string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
+	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, githubUserLastKnownAsKey): name,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -181,7 +181,7 @@ func FindByGithubName(ctx context.Context, name string) (*DBUser, error) {
 // FindBySlackUsername finds a user with the given Slack Username.
 func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
+	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey): userName,
 	}), &u)
 	if adb.ResultsNotFound(err) {

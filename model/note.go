@@ -36,7 +36,7 @@ func (n *Note) Replace(ctx context.Context) error {
 // NoteForTask returns the note for the given task Id, if it exists.
 func NoteForTask(ctx context.Context, taskId string) (*Note, error) {
 	n := &Note{}
-	err := db.FindOneQContext(
+	err := db.FindOneQ(
 		ctx,
 		NotesCollection,
 		db.Query(bson.M{NoteTaskIdKey: taskId}),
