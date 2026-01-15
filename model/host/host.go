@@ -2220,15 +2220,6 @@ func (h *Host) Insert(ctx context.Context) error {
 	return nil
 }
 
-// InsertWithContext is the same as Insert but accepts a context for the
-// operation.
-func (h *Host) InsertWithContext(ctx context.Context, env evergreen.Environment) error {
-	if _, err := env.DB().Collection(Collection).InsertOne(ctx, h); err != nil {
-		return errors.Wrap(err, "inserting host")
-	}
-	return nil
-}
-
 // Remove removes the host document from the DB.
 // While it's fine to use this in tests, this should generally not be called in
 // production code since deleting the host document makes it difficult to trace

@@ -1457,7 +1457,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
 		}
 
-		if err := toInsert.InsertWithContext(sessCtx, env); err != nil {
+		if err := toInsert.Insert(sessCtx); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
 		grip.Info(message.Fields{
