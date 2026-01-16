@@ -9,6 +9,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -523,4 +524,79 @@ func TestFlattenOtelVariables(t *testing.T) {
 	val, ok = unnestedVars["k6.nested_k7"]
 	assert.True(t, ok)
 	assert.Equal(t, "v7", val)
+}
+
+func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(user.Collection, distro.Collection))
+
+	usr := &user.DBUser{
+		Id: "test_user",
+	}
+	assert.NoError(t, usr.Insert(ctx))
+
+	d := &distro.Distro{
+		Id:       "test-distro",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+	}
+	assert.NoError(t, d.Insert(ctx))
+	
+	t.Run("IsDebugTrueWithoutSpawnHostsStartedByTaskFails", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID:                "test-distro",
+			IsDebug:                 utility.ToBoolPtr(true),
+			SpawnHostsStartedByTask: utility.ToBoolPtr(false),
+			PublicKey: &PublicKeyInput{
+				Name: "test-key",
+				Key:  "ssh-rsa test",
+			},
+			Region:               "us-east-1",
+			IsVirtualWorkStation: false,
+			NoExpiration:         false,
+		}
+
+		options, err := getHostRequestOptions(ctx, usr, input)
+		assert.Error(t, err)
+		assert.Nil(t, options)
+		assert.Contains(t, err.Error(), "Debug spawn hosts can only be spawned by a task")
+	})
+
+	t.Run("IsDebugFalseWorks", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID: "test-distro",
+			IsDebug:  utility.ToBoolPtr(false),
+			PublicKey: &PublicKeyInput{
+				Name: "test-key",
+				Key:  "ssh-rsa test",
+			},
+			Region:               "us-east-1",
+			IsVirtualWorkStation: false,
+			NoExpiration:         false,
+		}
+
+		options, err := getHostRequestOptions(ctx, usr, input)
+		assert.NoError(t, err)
+		assert.NotNil(t, options)
+		assert.False(t, options.IsDebug, "IsDebug should be false")
+	})
+
+	t.Run("IsDebugNilDefaultsToFalse", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID: "test-distro",
+			PublicKey: &PublicKeyInput{
+				Name: "test-key",
+				Key:  "ssh-rsa test",
+			},
+			Region:               "us-east-1",
+			IsVirtualWorkStation: false,
+			NoExpiration:         false,
+		}
+
+		options, err := getHostRequestOptions(ctx, usr, input)
+		assert.NoError(t, err)
+		assert.NotNil(t, options)
+		assert.False(t, options.IsDebug, "IsDebug should default to false")
+	})
 }

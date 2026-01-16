@@ -53,6 +53,7 @@ input SpawnHostInput {
   useTaskConfig: Boolean
   volumeId: String
   useOAuth: Boolean
+  isDebug: Boolean
 }
 
 """
