@@ -972,22 +972,22 @@ func putSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, na
 func UpdateBucketLifecycle(ctx context.Context, bucketField string, expirationDays, transitionToIADays, transitionToGlacierDays *int) error {
 	bucketsKey := (&BucketsConfig{}).SectionId()
 	set := bson.M{
-		bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
+		bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
 	}
 	if expirationDays != nil {
-		set[bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigExpirationDaysKey)] = *expirationDays
+		set[bsonutil.GetDottedKeyName(bucketField, bucketConfigExpirationDaysKey)] = *expirationDays
 	}
 	if transitionToIADays != nil {
-		set[bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigTransitionToIADaysKey)] = *transitionToIADays
+		set[bsonutil.GetDottedKeyName(bucketField, bucketConfigTransitionToIADaysKey)] = *transitionToIADays
 	}
 	if transitionToGlacierDays != nil {
-		set[bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigTransitionToGlacierDaysKey)] = *transitionToGlacierDays
+		set[bsonutil.GetDottedKeyName(bucketField, bucketConfigTransitionToGlacierDaysKey)] = *transitionToGlacierDays
 	}
 
 	return setConfigSection(ctx, bucketsKey, bson.M{
 		"$set": set,
 		"$unset": bson.M{
-			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleSyncErrorKey): "",
+			bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleSyncErrorKey): "",
 		},
 	})
 }
@@ -997,8 +997,8 @@ func UpdateBucketLifecycleError(ctx context.Context, bucketField string, syncErr
 	bucketsKey := (&BucketsConfig{}).SectionId()
 	return setConfigSection(ctx, bucketsKey, bson.M{
 		"$set": bson.M{
-			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
-			bsonutil.GetDottedKeyName(bucketsKey, bucketField, bucketConfigLifecycleSyncErrorKey):    syncError,
+			bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
+			bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleSyncErrorKey):    syncError,
 		},
 	})
 }
