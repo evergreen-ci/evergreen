@@ -141,9 +141,41 @@ func TestHandleHealth(t *testing.T) {
 }
 
 func TestHandleLoadConfig(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test_config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	configPath := filepath.Join(tempDir, "test.yml")
+	configContent := `
+tasks:
+  - name: test_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+  - name: another_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "another"
+
+buildvariants:
+  - name: test_variant
+    tasks:
+      - name: test_task
+  - name: another_variant
+    tasks:
+      - name: another_task
+  - name: third_variant
+    tasks:
+      - name: test_task
+`
+	err = os.WriteFile(configPath, []byte(configContent), 0644)
+	require.NoError(t, err)
+
 	daemon := newLocalDaemonREST(9090)
 
-	reqBody := map[string]string{"config_path": "/path/to/config.yml"}
+	reqBody := map[string]string{"config_path": configPath}
 	jsonBody, err := json.Marshal(reqBody)
 	require.NoError(t, err)
 
@@ -160,8 +192,8 @@ func TestHandleLoadConfig(t *testing.T) {
 	err = json.NewDecoder(recorder.Body).Decode(&response)
 	require.NoError(t, err)
 	assert.True(t, response["success"].(bool))
-	assert.Equal(t, float64(-1), response["task_count"])
-	assert.Equal(t, float64(-1), response["variant_count"])
+	assert.Equal(t, float64(2), response["task_count"])
+	assert.Equal(t, float64(3), response["variant_count"])
 }
 
 func TestWriteDaemonInfo(t *testing.T) {
