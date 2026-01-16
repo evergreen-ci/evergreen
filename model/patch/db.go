@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -245,6 +246,9 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 		pipeline = append(pipeline, bson.M{"$match": bson.M{"requester": bson.M{"$in": validatedRequesters}}})
 	}
 
+	// Exclude large patch diff data to avoid exceeding MongoDB's 16MB document limit in the $facet output.
+	pipeline = append(pipeline, bson.M{"$project": ExcludePatchDiff})
+
 	resultPipeline := []bson.M{}
 	if opts.Page > 0 {
 		resultPipeline = append(resultPipeline, bson.M{"$skip": opts.Page * opts.Limit})
@@ -268,7 +272,13 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 	}
 
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+
+	var aggregateOpts *options.AggregateOptions
+	if onlyMergeQueue {
+		aggregateOpts = options.Aggregate().SetHint("branch_1_create_time_-1")
+	}
+
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, aggregateOpts)
 	if err != nil {
 		return nil, 0, err
 	}
