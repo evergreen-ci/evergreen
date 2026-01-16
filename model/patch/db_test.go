@@ -238,8 +238,8 @@ func TestByPatchNameStatusesMergeQueuePaginated(t *testing.T) {
 	assert.Equal(t, "patch 5", patches[0].Description)
 
 	opts = ByPatchNameStatusesMergeQueuePaginatedOptions{
-		Project:    utility.ToStringPtr("evergreen"),
-		Requesters: []string{evergreen.GithubMergeRequester},
+		Project:        utility.ToStringPtr("evergreen"),
+		OnlyMergeQueue: utility.TruePtr(),
 	}
 	patches, count, err = ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
 	assert.NoError(t, err)

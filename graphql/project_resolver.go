@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -30,18 +29,15 @@ func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProj
 
 // Patches is the resolver for the patches field.
 func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
-	requesters := patchesInput.Requesters
-	if utility.FromBoolPtr(patchesInput.OnlyMergeQueue) {
-		requesters = []string{evergreen.GithubMergeRequester}
-	}
 	opts := patch.ByPatchNameStatusesMergeQueuePaginatedOptions{
-		Project:       obj.Id,
-		PatchName:     patchesInput.PatchName,
-		Statuses:      patchesInput.Statuses,
-		Page:          patchesInput.Page,
-		Limit:         patchesInput.Limit,
-		IncludeHidden: patchesInput.IncludeHidden,
-		Requesters:    requesters,
+		Project:        obj.Id,
+		PatchName:      patchesInput.PatchName,
+		Statuses:       patchesInput.Statuses,
+		Page:           patchesInput.Page,
+		Limit:          patchesInput.Limit,
+		OnlyMergeQueue: patchesInput.OnlyMergeQueue,
+		IncludeHidden:  patchesInput.IncludeHidden,
+		Requesters:     patchesInput.Requesters,
 	}
 
 	patches, count, err := patch.ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
