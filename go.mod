@@ -240,6 +240,6 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 )
 
-replace github.com/fraugster/parquet-go => github.com/julianedwards/parquet-go v0.11.1-0.20220728161747-424e662fc55b
+replace github.com/fraugster/parquet-go => github.com/evergreen-ci/parquet-go v0.0.0-20260116211725-cd13d4127a88
 
 tool github.com/99designs/gqlgen

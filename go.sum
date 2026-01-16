@@ -179,6 +179,8 @@ github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/s
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
 github.com/evergreen-ci/pail v0.0.0-20260114155757-d6ea40d2432b h1:lBkxeAN8VEnuLUahxTqCs0vvOvPfZf0mFp6a12V/Dpg=
 github.com/evergreen-ci/pail v0.0.0-20260114155757-d6ea40d2432b/go.mod h1:SY1hmP1Mb98iGFcifg7B1m1HYVkzPanprn4RI3DmeeI=
+github.com/evergreen-ci/parquet-go v0.0.0-20260116211725-cd13d4127a88 h1:DyLcXo7JENHOHqZ1dStuxF8XNpYLfZsIL3hOuN8XEd4=
+github.com/evergreen-ci/parquet-go v0.0.0-20260116211725-cd13d4127a88/go.mod h1:/cbWpqWsSFXwnCHPaAMISfcSb16GJLV4lw6iOcA/E3c=
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581 h1:JOYnqPypLzZdjlFxS2ynWGKFPTrx0HAJwe6mi9P/lhk=
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581/go.mod h1:visOo9VGGrTN+jNPSg56zhbCH81sSlMRnXpJCYb+kt4=
 github.com/evergreen-ci/poplar v0.0.0-20251209144431-fdec8d7b2505 h1:bX9uq1ohxbgFgcZwpuIDk7MwOGGDfN5q8iYdWvfJE/I=
@@ -277,8 +279,6 @@ github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 h1:1dSBUfGl
 github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629/go.mod h1:mb5nS4uRANwOJSZj8rlCWAfAcGi72GGMIXx+xGOjA7M=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
-github.com/julianedwards/parquet-go v0.11.1-0.20220728161747-424e662fc55b h1:Ic3xmA2Esymf75kKBnNe2kEbKPO4gqNoh6Ctr/ORwgY=
-github.com/julianedwards/parquet-go v0.11.1-0.20220728161747-424e662fc55b/go.mod h1:/cbWpqWsSFXwnCHPaAMISfcSb16GJLV4lw6iOcA/E3c=
 github.com/kanopy-platform/kanopy-oidc-lib v0.1.3 h1:IZOXREL5IIBnMgA3tbBR5H70J4+WfTmDkCv9bdYkJw0=
 github.com/kanopy-platform/kanopy-oidc-lib v0.1.3/go.mod h1:2MslZKpACq93y7SHOqa3e5A+G3yUMnEuyOI3/1G7w2A=
 github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 h1:iQTw/8FWTuc7uiaSepXwyf3o52HaUYcV+Tu66S3F5GA=
