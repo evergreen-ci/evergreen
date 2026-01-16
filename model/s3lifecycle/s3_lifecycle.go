@@ -125,6 +125,7 @@ type Transition struct {
 	StorageClass string `bson:"storage_class" json:"storage_class"`
 }
 
+// Upsert inserts or updates the lifecycle rule document in the database.
 func (s *S3LifecycleRuleDoc) Upsert(ctx context.Context) error {
 	if s.BucketName == "" {
 		return errors.New("bucket name cannot be empty")
@@ -204,6 +205,7 @@ func FindMatchingRuleForFileKey(ctx context.Context, bucketName, fileKey string)
 	return nil, nil
 }
 
+// FindAllRulesForBucket retrieves all lifecycle rules for the specified bucket.
 func FindAllRulesForBucket(ctx context.Context, bucketName string) ([]S3LifecycleRuleDoc, error) {
 	if bucketName == "" {
 		return nil, errors.New("bucket name cannot be empty")
@@ -212,6 +214,7 @@ func FindAllRulesForBucket(ctx context.Context, bucketName string) ([]S3Lifecycl
 	return findS3LifecycleRules(ctx, bson.M{BucketNameKey: bucketName})
 }
 
+// FindDistinctBucketNames returns all unique bucket names for the given bucket type.
 func FindDistinctBucketNames(ctx context.Context, bucketType string) ([]string, error) {
 	if bucketType == "" {
 		return nil, errors.New("bucket type cannot be empty")
@@ -244,6 +247,7 @@ func findS3LifecycleRules(ctx context.Context, query bson.M) ([]S3LifecycleRuleD
 	return docs, db.FindAllQ(ctx, Collection, db.Query(query), &docs)
 }
 
+// Remove deletes the lifecycle rule for the specified bucket and prefix.
 func Remove(ctx context.Context, bucketName, filterPrefix string) error {
 	if bucketName == "" {
 		return errors.New("bucket name cannot be empty")
