@@ -90,11 +90,11 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.executor = executor
 	d.configPath = req.ConfigPath
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":       true,
 		"task_count":    len(project.Tasks),
 		"variant_count": len(project.BuildVariants),
-	})
+	}))
 }
 
 // handleSelectTask selects a task for debugging
@@ -122,10 +122,10 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}
 
 	state := d.executor.GetDebugState()
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":    true,
 		"step_count": len(state.CommandList),
-	})
+	}))
 }
 
 // writeDaemonInfo writes PID and port files
