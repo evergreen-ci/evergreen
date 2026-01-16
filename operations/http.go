@@ -582,6 +582,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		GithubAuthor                       string                     `json:"github_author"`
 		PatchAuthor                        string                     `json:"patch_author"`
 		LocalModuleIncludes                []patch.LocalModuleInclude `json:"local_module_includes"`
+		UsePathFilters                     bool                       `json:"use_path_filters"`
 	}{
 		Description:                        incomingPatch.description,
 		Project:                            incomingPatch.projectName,
@@ -607,6 +608,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		GithubAuthor:                       incomingPatch.githubAuthor,
 		PatchAuthor:                        incomingPatch.patchAuthor,
 		LocalModuleIncludes:                incomingPatch.localModuleIncludes,
+		UsePathFilters:                     incomingPatch.usePathFilters,
 	}
 
 	rPipe, wPipe := io.Pipe()
