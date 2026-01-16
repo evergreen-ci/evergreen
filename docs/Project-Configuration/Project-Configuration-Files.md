@@ -715,7 +715,7 @@ To address this, project files can define a top-level `ignore`
 list of gitignore-style globs which tell Evergreen to not automatically
 run tasks for commits that only change ignored files, and we will not
 create PR patches but instead send a successful status for all required
-checks as well as the base `evergreen` check. 
+checks as well as the base `evergreen` check.
 
 ```yaml
 ignore:
@@ -733,7 +733,7 @@ tasks, since only some of the commit's changed files are ignored.
 ##### Build Variant Path Filtering
 
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
-changed. This is the opposite of ignoring - it defines what files the variant cares about. 
+changed. This is the opposite of ignoring - it defines what files the variant cares about.
 **Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
 the path filter would have matched it.
 
