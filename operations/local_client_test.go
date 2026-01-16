@@ -256,12 +256,12 @@ func TestSelectTaskCmd(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			case "/task/select":
 				var reqBody map[string]string
-				json.NewDecoder(r.Body).Decode(&reqBody)
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
 				assert.Equal(t, "test_task", reqBody["task_name"])
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
 					"success":    true,
 					"step_count": 5,
-				})
+				}))
 			}
 		}))
 		defer server.Close()
@@ -293,7 +293,7 @@ func TestSelectTaskCmd(t *testing.T) {
 		os.Stdout = w
 
 		set := flag.NewFlagSet("test", 0)
-		set.Parse([]string{"test_task"})
+		require.NoError(t, set.Parse([]string{"test_task"}))
 		c := cli.NewContext(app, set, nil)
 
 		err = selectTaskCmd(c)
