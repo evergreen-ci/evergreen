@@ -40,13 +40,13 @@
       },
       "trigger_aliases": [
         {
-          "child_patch_id": "child_patch_early",
+          "child_patch_id": "9e4ff3abe3c3317e352062e8",
           "task_specifiers": [],
           "variant_specifiers": [],
           "status": "success"
         },
         {
-          "child_patch_id": "child_patch_late",
+          "child_patch_id": "9e4ff3abe3c3317e352062e9",
           "task_specifiers": [],
           "variant_specifiers": [],
           "status": "success"
@@ -55,7 +55,7 @@
     },
     {
       "_id": {
-        "$oid": "child_patch_early"
+        "$oid": "9e4ff3abe3c3317e352062e8"
       },
       "branch": "spruce",
       "create_time": {
@@ -70,7 +70,7 @@
     },
     {
       "_id": {
-        "$oid": "child_patch_late"
+        "$oid": "9e4ff3abe3c3317e352062e9"
       },
       "branch": "spruce",
       "create_time": {
