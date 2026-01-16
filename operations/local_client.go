@@ -101,6 +101,12 @@ func DaemonCommands() []cli.Command {
 			ArgsUsage: "<config.yml>",
 			Action:    loadConfigCmd,
 		},
+		{
+			Name:      "select",
+			Usage:     "Select a task for debugging",
+			ArgsUsage: "<task_name>",
+			Action:    selectTaskCmd,
+		},
 	}
 }
 
@@ -199,6 +205,39 @@ func loadConfigCmd(c *cli.Context) error {
 
 	grip.Infof("Loaded configuration: %s", configPath)
 	grip.Infof("Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
+
+	return nil
+}
+
+// selectTaskCmd selects a task for debugging
+func selectTaskCmd(c *cli.Context) error {
+	if c.NArg() < 1 {
+		return errors.New("task name required")
+	}
+
+	taskName := c.Args().Get(0)
+	variantName := c.String("variant")
+
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	reqBody := map[string]string{
+		"task_name":    taskName,
+		"variant_name": variantName,
+	}
+
+	resp, err := postJSON(url+"/task/select", reqBody)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Selected task: %s\n", taskName)
+	if variantName != "" {
+		fmt.Printf("Variant: %s\n", variantName)
+	}
+	fmt.Printf("Total steps: %v\n", resp["step_count"])
 
 	return nil
 }
