@@ -666,18 +666,17 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	if err != nil {
 		return false, errors.Wrap(err, "getting evergreen settings")
 	}
-	if settings.GraphiteConfig.ServerURL == "" || settings.GraphiteConfig.CIOptimizationToken == "" {
+	if settings.Graphite.ServerURL == "" || settings.Graphite.CIOptimizationToken == "" {
 		return false, nil
 	}
 
-	//optimizerEndpoint := fmt.Sprintf("%s/api/v1/ci/optimizer", settings.Graphite.ServerURL)
-	optimizerEndpoint := "https://api.graphite.dev/api/v1/ci/optimizer"
+	optimizerEndpoint := fmt.Sprintf("%s/api/v1/ci/optimizer", settings.Graphite.ServerURL)
 
 	// TODO DEVPROD-26489: Currently the 'kind' is hardcoded to GITHUB_ACTIONS because that is one of the only
 	// CI system that Graphite supports. Once Graphite supports more CI systems, we should
 	// make this dynamic based on the CI system Evergreen is running in, as well as delete the 'run' section.
 	requestBody := map[string]interface{}{
-		"token": "CBuuGiBhfFNaVSmr2BvoecmJegSog4CGv3zA6UIJkFbOuWMrb0flJ1vuAnIV",
+		"token": settings.Graphite.CIOptimizationToken,
 		"caller": map[string]interface{}{
 			"name":    "evergreen",
 			"version": evergreen.BuildRevision,
