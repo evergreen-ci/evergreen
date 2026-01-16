@@ -95,6 +95,7 @@ var (
 	releaseModeDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "ReleaseModeDisabled")
 	legacyUIAdminPageDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIAdminPageDisabled")
 	debugSpawnHostDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "DebugSpawnHostDisabled")
+	s3LifecycleSyncDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
