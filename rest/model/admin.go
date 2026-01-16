@@ -25,6 +25,7 @@ func NewConfigModel() *APIAdminSettings {
 		Expansions:          map[string]string{},
 		Cost:                &APICostConfig{},
 		FWS:                 &APIFWSConfig{},
+		Graphite:            &APIGraphiteConfig{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
 		Jira:                &APIJiraConfig{},
@@ -74,6 +75,7 @@ type APIAdminSettings struct {
 	Expansions              map[string]string             `json:"expansions,omitempty"`
 	Cost                    *APICostConfig                `json:"cost,omitempty"`
 	FWS                     *APIFWSConfig                 `json:"fws,omitempty"`
+	Graphite                *APIGraphiteConfig            `json:"graphite,omitempty"`
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
@@ -2657,6 +2659,29 @@ func (a *APIFWSConfig) BuildFromService(h interface{}) error {
 func (a *APIFWSConfig) ToService() (interface{}, error) {
 	return evergreen.FWSConfig{
 		URL: utility.FromStringPtr(a.URL),
+	}, nil
+}
+
+type APIGraphiteConfig struct {
+	CIOptimizationToken *string `json:"ci_optimization_token"`
+	ServerURL           *string `json:"server_url"`
+}
+
+func (a *APIGraphiteConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.GraphiteConfig:
+		a.CIOptimizationToken = utility.ToStringPtr(v.CIOptimizationToken)
+		a.ServerURL = utility.ToStringPtr(v.ServerURL)
+	default:
+		return errors.Errorf("programmatic error: expected Graphite config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIGraphiteConfig) ToService() (interface{}, error) {
+	return evergreen.GraphiteConfig{
+		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
+		ServerURL:           utility.FromStringPtr(a.ServerURL),
 	}, nil
 }
 
