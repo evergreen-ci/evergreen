@@ -2297,11 +2297,16 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 		bson.M{
 			IdKey: bson.M{"$in": taskIDsToUpdate},
 		},
-		bson.M{"$set": bson.M{
-			ActivatedKey:                false,
-			DeactivatedForDependencyKey: true,
-			ScheduledTimeKey:            utility.ZeroTime,
-		}},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:                false,
+					DeactivatedForDependencyKey: true,
+					ScheduledTimeKey:            utility.ZeroTime,
+				},
+			},
+			addDisplayStatusCache,
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
