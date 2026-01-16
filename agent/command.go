@@ -111,7 +111,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 	var functionSpan trace.Span
 	if commandInfo.Function != "" {
-		ctx, functionSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
+		ctx, functionSpan = a.tracer.Start(ctx, resolveFunctionSpan(commandInfo), trace.WithAttributes(
 			attribute.String(functionNameAttribute, commandInfo.Function),
 		))
 		defer functionSpan.End()
@@ -158,6 +158,15 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		commandSpan.End()
 	}
 	return nil
+}
+
+// resolveFunctionSpan returns the display name of the function span, if available, otherwise resolves to the default.
+func resolveFunctionSpan(commandInfo model.PluginCommandConf) string {
+	const defaultFunctionSpan = "function"
+	if displayName := commandInfo.GetDisplayName(); displayName != "" {
+		return displayName
+	}
+	return defaultFunctionSpan
 }
 
 // runCommand runs a single command, which is either a standalone command or a
