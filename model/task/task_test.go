@@ -2156,18 +2156,16 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestDeactivateDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
-		{Id: "t0"},
-		{Id: "t1"},
-		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
-		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
-		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
-		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
+		{Id: "t0", Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t1", Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
@@ -2185,6 +2183,8 @@ func TestDeactivateDependencies(t *testing.T) {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.False(t, task.Activated)
 			assert.True(t, task.DeactivatedForDependency)
+			assert.Equal(t, evergreen.TaskUnscheduled, task.DisplayStatusCache,
+				"DisplayStatusCache should be updated to 'unscheduled' for deactivated task %s", task.Id)
 		} else {
 			for _, origTask := range tasks {
 				if origTask.Id == task.Id {
