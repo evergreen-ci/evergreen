@@ -997,6 +997,11 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			usrId:              adminUsrId,
 			shouldGetAdminVars: true,
 		},
+		"debugRequesterShouldFail": {
+			requester:          evergreen.DebugRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: false,
+		},
 	}
 
 	for name, testCase := range testCases {
