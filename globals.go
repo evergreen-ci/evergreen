@@ -1174,10 +1174,11 @@ var (
 	SuperUserPermissionsID = "super_user"
 
 	// Admin permissions.
-	PermissionAdminSettings = "admin_settings"
-	PermissionProjectCreate = "project_create"
-	PermissionDistroCreate  = "distro_create"
-	PermissionRoleModify    = "modify_roles"
+	PermissionAdminSettings     = "admin_settings"
+	PermissionProjectCreate     = "project_create"
+	PermissionDistroCreate      = "distro_create"
+	PermissionNotificationsSend = "notifications_send"
+	PermissionRoleModify        = "modify_roles"
 	// Project permissions.
 	PermissionProjectSettings = "project_settings"
 
@@ -1203,6 +1204,10 @@ var (
 	}
 	DistroCreate = PermissionLevel{
 		Description: "Create new distros",
+		Value:       10,
+	}
+	NotificationsSend = PermissionLevel{
+		Description: "Send notifications as Evergreen",
 		Value:       10,
 	}
 	RoleModify = PermissionLevel{
@@ -1409,6 +1414,7 @@ var SuperuserPermissions = []string{
 	PermissionProjectCreate,
 	PermissionDistroCreate,
 	PermissionRoleModify,
+	PermissionNotificationsSend,
 }
 
 const (
