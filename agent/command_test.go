@@ -305,19 +305,11 @@ functions:
 }
 
 func TestResolveFunctionSpan(t *testing.T) {
-	t.Run("DisplayNameIsUsed", func(t *testing.T) {
+	t.Run("FunctionIsUsed", func(t *testing.T) {
 		commandInfo := model.PluginCommandConf{
-			DisplayName: "my display name",
-			Command:     "shell.exec",
+			Function: "test everything",
 		}
-		assert.Equal(t, commandInfo.DisplayName, resolveFunctionSpan(commandInfo))
-	})
-
-	t.Run("CommandIsUsed", func(t *testing.T) {
-		commandInfo := model.PluginCommandConf{
-			Command: "shell.exec",
-		}
-		assert.Equal(t, commandInfo.Command, resolveFunctionSpan(commandInfo))
+		assert.Equal(t, commandInfo.Function, resolveFunctionSpan(commandInfo))
 	})
 
 	t.Run("DefaultFunctionIsUsed", func(t *testing.T) {

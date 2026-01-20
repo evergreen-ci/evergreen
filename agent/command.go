@@ -160,11 +160,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 	return nil
 }
 
-// resolveFunctionSpan returns the display name of the function span, if available, otherwise resolves to the default.
+// resolveFunctionSpan returns the name of the function to use for the span, if available, otherwise resolves to the default.
 func resolveFunctionSpan(commandInfo model.PluginCommandConf) string {
 	const defaultFunctionSpan = "function"
-	if displayName := commandInfo.GetDisplayName(); displayName != "" {
-		return displayName
+	if commandInfo.Function != "" {
+		return commandInfo.Function
 	}
 	return defaultFunctionSpan
 }
