@@ -28,6 +28,7 @@ input ServiceFlagsInput {
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
+  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean
@@ -67,6 +68,7 @@ type ServiceFlags {
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
+  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean

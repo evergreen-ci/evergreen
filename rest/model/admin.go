@@ -2271,6 +2271,7 @@ type APIServiceFlags struct {
 	LegacyUIAdminPageDisabled       bool `json:"legacy_ui_admin_page_disabled"`
 	DebugSpawnHostDisabled          bool `json:"debug_spawn_host_disabled"`
 	S3LifecycleSyncDisabled         bool `json:"s3_lifecycle_sync_disabled"`
+	UseGitForGitHubFilesDisabled    bool `json:"use_git_for_github_files_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2727,6 +2728,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.LegacyUIAdminPageDisabled = v.LegacyUIAdminPageDisabled
 		as.DebugSpawnHostDisabled = v.DebugSpawnHostDisabled
 		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
+		as.UseGitForGitHubFilesDisabled = v.UseGitForGitHubFilesDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2774,6 +2776,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		LegacyUIAdminPageDisabled:       as.LegacyUIAdminPageDisabled,
 		DebugSpawnHostDisabled:          as.DebugSpawnHostDisabled,
 		S3LifecycleSyncDisabled:         as.S3LifecycleSyncDisabled,
+		UseGitForGitHubFilesDisabled:    as.UseGitForGitHubFilesDisabled,
 	}, nil
 }
 
