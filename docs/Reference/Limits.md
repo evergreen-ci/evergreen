@@ -12,9 +12,15 @@ Evergreen limits users to two never expiring spawn hosts at a time.
 Exceptions can be requested on a case-by-case which will be granted based on
 [our policy](https://mongodb.stackenterprise.co/questions/1122).
 
-## Task TTL
+## Task and Version TTL
 
-Tasks expire expire 365 days after creation. Expired tasks will not be available through Evergreen's API or UI, but finished tasks (tasks that ran) will continue to be available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics).
+Tasks and versions expire 365 days after creation. Expired tasks will not be available through Evergreen's API or UI, but finished tasks (tasks that ran) will continue to be available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics).
+
+### Impact on Parser Projects
+
+Projects that serve as child patch parsers (referenced by other projects via trigger aliases) require at least one active version to function properly. If all versions of a parser project expire due to the 365-day TTL, attempts to create patches that reference this project will fail with an error indicating no valid version was found.
+
+**Workaround:** To prevent this issue, ensure that parser projects receive at least one commit within every 365-day period. If a parser project's versions have all expired, push a new commit to the project's repository to create a fresh version and restore patch creation functionality.
 
 ## Task Artifacts Data Retention Policy
 

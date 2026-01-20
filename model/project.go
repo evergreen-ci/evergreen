@@ -1347,7 +1347,7 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 	}
 
 	if lastGoodVersion == nil {
-		return nil, nil, nil, errors.Errorf("did not find valid version for project '%s'", projectId)
+		return nil, nil, nil, errors.Errorf("did not find valid version for project '%s' - this can occur if all versions have expired due to the 365-day TTL or if the project has no mainline commits. To resolve, push a new commit to the project's repository to create a new version", projectId)
 	}
 
 	return nil, nil, nil, errors.Wrapf(err, "loading project from "+

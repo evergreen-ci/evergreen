@@ -86,7 +86,12 @@ func FindVersionByLastKnownGoodConfig(ctx context.Context, projectId string, rev
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding recent valid version for project '%s'", projectId)
 		}
-		if v == nil || len(v.Errors) == 0 {
+		if v == nil {
+			// No version found - this can happen if all versions have expired due to TTL (365 days)
+			// or if the project has never had any mainline commits.
+			return nil, nil
+		}
+		if len(v.Errors) == 0 {
 			return v, nil
 		}
 		// Try again with the new revision order number if error exists for version.
