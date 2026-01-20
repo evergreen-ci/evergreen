@@ -216,6 +216,7 @@ func selectTaskCmd(c *cli.Context) error {
 	}
 
 	taskName := c.Args().Get(0)
+	// TODO: DEVPROD-26690 Support selecting variant task and apply variant-specific expansions.
 	variantName := c.String("variant")
 
 	url, err := getDaemonURL()
