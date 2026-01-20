@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -15,6 +16,21 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
+
+var noOpCommands = map[string]bool{
+	evergreen.HostCreateCommandName:         true,
+	"host.list":                             true,
+	"generate.tasks":                        true,
+	"downstream_expansions.set":             true,
+	evergreen.AttachXUnitResultsCommandName: true,
+	evergreen.AttachResultsCommandName:      true,
+	evergreen.AttachArtifactsCommandName:    true,
+	"papertrail.trace":                      true,
+	"keyval.inc":                            true,
+	"perf.send":                             true,
+	"s3.put":                                true,
+	"s3Copy.copy":                           true,
+}
 
 // localLoggerProducer implements the LoggerProducer interface for local execution
 type localLoggerProducer struct {
@@ -221,6 +237,12 @@ func (e *LocalExecutor) runCommandWithTracking(
 	canFailTask bool,
 ) error {
 	for _, cmd := range cmds {
+		e.debugState.CurrentStepIndex++
+		if e.isLocalNoOpCommand(cmd) {
+			e.handleNoOpCommand(cmd)
+			continue
+		}
+
 		cmd.SetJasperManager(e.jasperManager)
 		err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 		if err != nil {
@@ -231,9 +253,35 @@ func (e *LocalExecutor) runCommandWithTracking(
 			e.logger.Warningf("Continuing after non-fatal error: %v", err)
 		}
 	}
-
-	e.debugState.CurrentStepIndex++
 	return nil
+}
+
+// isLocalNoOpCommand checks if a command should be no-op in local execution
+func (e *LocalExecutor) isLocalNoOpCommand(cmd command.Command) bool {
+	return noOpCommands[cmd.Name()]
+}
+
+// handleNoOpCommand logs a message for commands that are no-op in local execution
+func (e *LocalExecutor) handleNoOpCommand(cmd command.Command) {
+	messages := map[string]string{
+		evergreen.HostCreateCommandName:         "host.create: Skipping - dynamic host creation is not supported in local execution",
+		"host.list":                             "host.list: Skipping - host listing is not supported in local execution",
+		"generate.tasks":                        "generate.tasks: Skipping - dynamic task generation is not supported in local execution",
+		"downstream_expansions.set":             "downstream_expansions.set: Skipping - downstream expansions are not available in local execution",
+		evergreen.AttachXUnitResultsCommandName: "attach.xunit_results: Skipping - test result attachment is not supported in local execution",
+		evergreen.AttachResultsCommandName:      "attach.results: Skipping - result attachment is not supported in local execution",
+		evergreen.AttachArtifactsCommandName:    "attach.artifacts: Skipping - artifact attachment is not supported in local execution",
+		"papertrail.trace":                      "papertrail.trace: Skipping - papertrail tracing is not available in local execution",
+		"keyval.inc":                            "keyval.inc: Skipping - key-value increment operations are not supported in local execution",
+		"perf.send":                             "perf.send: Skipping - performance metrics submission is not supported in local execution",
+		"s3.put":                                "s3.put: Skipping - S3 upload operations are not supported in local execution",
+		"s3Copy.copy":                           "s3Copy.copy: Skipping - S3 copy operations are not supported in local execution",
+	}
+	message, ok := messages[cmd.Name()]
+	if !ok {
+		message = cmd.Name() + ": Skipping - command is not supported in local execution"
+	}
+	e.logger.Infof(message)
 }
 
 // PrepareTask prepares a task for execution by creating command blocks
