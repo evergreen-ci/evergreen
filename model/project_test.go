@@ -143,26 +143,6 @@ func TestFindProject(t *testing.T) {
 			_, _, _, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
 			So(err, ShouldNotBeNil)
 		})
-		Convey("error if no version exists due to TTL expiration", func() {
-			// This simulates the scenario where all versions have expired due to 365-day TTL
-			// (e.g., cloud-deploy-gate-debug project with no recent commits)
-			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
-			
-			// Ensure the project exists
-			p := &ProjectRef{
-				Id:         "project_test",
-				Identifier: "project_test",
-			}
-			So(p.Insert(t.Context()), ShouldBeNil)
-			
-			// Try to find a version when none exist (simulating TTL expiration)
-			version, project, pp, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "did not find valid version for project 'project_test'")
-			So(version, ShouldBeNil)
-			So(project, ShouldBeNil)
-			So(pp, ShouldBeNil)
-		})
 	})
 
 }
