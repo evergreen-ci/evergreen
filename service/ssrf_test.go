@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"net"
 	"testing"
 
@@ -9,8 +8,6 @@ import (
 )
 
 func TestValidateArtifactURL(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name    string
 		url     string
@@ -55,7 +52,7 @@ func TestValidateArtifactURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateArtifactURL(ctx, tt.url)
+			err := validateArtifactURL(t.Context(), tt.url)
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {
