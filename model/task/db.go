@@ -3313,7 +3313,8 @@ func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant
 	}
 
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
-	dbCtx, cancel := context.WithCancel(ctx)
+	// Use a fresh context to avoid sharing MongoDB sessions across goroutines.
+	dbCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(TaskHistoricalDataIndex))
 	if err != nil {
