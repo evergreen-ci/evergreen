@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 )
@@ -302,18 +301,4 @@ functions:
 	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
 	s.Error(err)
 	s.True(s.mockCommunicator.TaskShouldRetryOnFail)
-}
-
-func TestResolveFunctionSpan(t *testing.T) {
-	t.Run("FunctionIsUsed", func(t *testing.T) {
-		commandInfo := model.PluginCommandConf{
-			Function: "test everything",
-		}
-		assert.Equal(t, commandInfo.Function, resolveFunctionSpan(commandInfo))
-	})
-
-	t.Run("DefaultFunctionIsUsed", func(t *testing.T) {
-		commandInfo := model.PluginCommandConf{}
-		assert.Equal(t, "function", resolveFunctionSpan(commandInfo))
-	})
 }
