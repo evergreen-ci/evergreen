@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -57,6 +56,12 @@ const (
 
 	// githubWebhookTimeout is the maximum timeout for processing a GitHub webhook.
 	githubWebhookTimeout = 5 * time.Minute
+
+	// graphiteTimeout is the maximum timeout for communicating with Graphite.
+	graphiteTimeout = 10 * time.Second
+
+	// graphiteKind is what we have to pass into the Graphite CI API under current restrictions.
+	graphiteKind = "GITHUB_ACTIONS"
 )
 
 // skipCILabels are a set of labels which will skip creating PR patch if part of
@@ -675,15 +680,15 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	// TODO DEVPROD-26489: Currently the 'kind' is hardcoded to GITHUB_ACTIONS because that is one of the only
 	// CI system that Graphite supports. Once Graphite supports more CI systems, we should
 	// make this dynamic based on the CI system Evergreen is running in, as well as delete the 'run' section.
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"token": settings.Graphite.CIOptimizationToken,
-		"caller": map[string]interface{}{
+		"caller": map[string]any{
 			"name":    "evergreen",
 			"version": evergreen.BuildRevision,
 		},
-		"context": map[string]interface{}{
-			"kind": "GITHUB_ACTIONS",
-			"repository": map[string]interface{}{
+		"context": map[string]any{
+			"kind": graphiteKind,
+			"repository": map[string]any{
 				"owner": owner,
 				"name":  repo,
 			},
@@ -691,7 +696,7 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 			"sha":      sha,
 			"ref":      ref,
 			"head_ref": headRef,
-			"run": map[string]interface{}{
+			"run": map[string]any{
 				"workflow": "required",
 				"job":      "required",
 				"run":      0,
@@ -704,7 +709,7 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 		return false, errors.Wrap(err, "marshaling request body")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, graphiteTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, optimizerEndpoint, bytes.NewReader(requestBodyBytes))
@@ -764,7 +769,8 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	}
 
 	// Parse the response body
-	responseBodyBytes, err := io.ReadAll(resp.Body)
+	var responseBodyBytes []byte
+	err = utility.ReadJSON(resp.Body, &responseBodyBytes)
 	if err != nil {
 		return false, errors.Wrap(err, "reading response body")
 	}
@@ -797,7 +803,7 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 			"ref":     pr.Base.GetRef(),
 			"headRef": pr.Head.GetRef(),
 		}))
-		// Continue on error - don't block PR patch creation
+		// Continue on error - don't block PR patch creation.
 	} else if skip {
 		return nil
 	}
