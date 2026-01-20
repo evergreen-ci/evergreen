@@ -198,7 +198,9 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 		if !projectCached {
 			_, project, _, err = model.FindLatestVersionWithValidProject(ctx, alias.ChildProject, false)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting last known child project '%s' for alias '%s': %s", alias.ChildProject, alias.Alias, err.Error()))
+				// Skip this alias if the child project has no valid versions
+				// (e.g., all versions expired due to TTL or project has no mainline commits)
+				continue
 			}
 			projectCache[alias.ChildProject] = project
 		}
