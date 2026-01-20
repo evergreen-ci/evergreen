@@ -36,8 +36,6 @@ Artifact retention rates depend on which bucket they are stored in. Different pr
 
 - **MongoDB:** Expire after **365 days** based on `create_time`.
 
-**Important Note for Parser Projects:** Projects used as child patch parsers (referenced by other projects via trigger aliases) must have at least one active version to allow patch creation. If all versions expire due to the 365-day TTL, new patches cannot be created until a new commit is pushed to the project's repository. To prevent this issue for infrequently updated parser projects, ensure that at least one commit is made within the 365-day window.
-
 #### Hosts/Pods
 
 - **MongoDB:** Expire after **365 days** based on `termination_time` if applicable.
