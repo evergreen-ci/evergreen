@@ -2,10 +2,12 @@ package host
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math"
-	"math/rand"
+	mathrand "math/rand"
+	"math/big"
 	"net"
 	"os"
 	"path/filepath"
@@ -575,7 +577,12 @@ const passwordCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123
 func generatePassword(length int) string {
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = passwordCharset[rand.Int()%len(passwordCharset)]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(passwordCharset))))
+		if err != nil {
+			// In the unlikely event of a failure, panic to avoid using a weak password.
+			panic(fmt.Sprintf("failed to generate secure random password character: %v", err))
+		}
+		b[i] = passwordCharset[n.Int64()]
 	}
 	return string(b)
 }

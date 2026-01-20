@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -129,6 +130,20 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 		redirect := r.FormValue("redirect")
 		if redirect == "" {
 			redirect = "/"
+		} else {
+			// validate that redirect is a local path to avoid open redirects
+			normalized := strings.ReplaceAll(redirect, "\\", "/")
+			u, err := url.Parse(normalized)
+			if err != nil {
+				grip.Errorf("invalid redirect parameter %q: %+v", redirect, err)
+				redirect = "/"
+			} else if u.Scheme != "" || u.Hostname() != "" || !strings.HasPrefix(u.Path, "/") {
+				// disallow absolute or external URLs; require an absolute path within this host
+				grip.Errorf("disallowed redirect parameter %q (scheme=%q host=%q path=%q)", redirect, u.Scheme, u.Hostname(), u.Path)
+				redirect = "/"
+			} else {
+				redirect = u.String()
+			}
 		}
 		// create the state from the timestamp and Salt and check against the one GitHub sent back
 		timestamp := githubState[:len(time.Now().String())]
