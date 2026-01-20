@@ -3272,6 +3272,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": pRef.Id,
 	}))
+	// kim: NOTE: retrieving one file, just the spawn host setup script.
 	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
 	if err != nil {
 		return "", errors.Wrapf(err,

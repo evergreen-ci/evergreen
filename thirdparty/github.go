@@ -492,6 +492,12 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
+// kim: NOTE: has to be extended to support either a worktree-driven solution
+// (i.e. parallel git restores) as well as an isolated "single file" solution
+// (i.e. partial git clone, then git restore). That way, callers don't have to
+// set up a git clone and worktree just to get a single file, only if the caller
+// is fetching many files at once.
+// kim: TODO: Step 1 is to make single file restores work.
 func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth *githubapp.GithubAppAuth) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")

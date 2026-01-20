@@ -162,6 +162,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": j.project.Id,
 	}))
+	// kim: NOTE: retrieving one file, just the project config file.
 	configFile, err := thirdparty.GetGithubFile(ctx, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision, ghAppAuth)
 	if err != nil {
 		return errors.Wrap(err, "getting config file from GitHub")
