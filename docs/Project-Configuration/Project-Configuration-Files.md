@@ -734,6 +734,8 @@ tasks, since only some of the commit's changed files are ignored.
 
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
 changed. This is the opposite of ignoring - it defines what files the variant cares about.
+**Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
+the path filter would have matched it.
 
 Note: specifying paths could cause crons to not activate the build variants if the path filter does not match.
 
