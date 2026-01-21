@@ -67,6 +67,7 @@
               "taskLoggingDisabled": true,
               "taskReliabilityDisabled": true,
               "unrecognizedPodCleanupDisabled": true,
+              "useGitForGitHubFilesDisabled": true,
               "webhookNotificationsDisabled": true
             }
           }
