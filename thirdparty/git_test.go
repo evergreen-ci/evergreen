@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -115,6 +116,12 @@ func TestGitCloneAndRestore(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
 
+	fmt.Println("kim: PATH for git clone/restore test is: ", os.Getenv("PATH"))
+	fmt.Println("kim: TMPDIR for git clone/restore test is: ", os.Getenv("TMPDIR"))
+	gitPath, err := exec.LookPath("git")
+	require.NoError(t, err)
+	fmt.Println("kim: git found at: ", gitPath)
+
 	const (
 		owner = "evergreen-ci"
 		repo  = "sample"
@@ -133,9 +140,10 @@ func TestGitCloneAndRestore(t *testing.T) {
 	gitFileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
 	require.NoError(t, err)
 
-	comparisonFile, err := GetGithubFile(t.Context(), owner, repo, rev, file, nil)
+	comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
+	require.NoError(t, err)
 	comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
 	require.NoError(t, err)
 
-	assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
 }

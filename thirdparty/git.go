@@ -276,6 +276,10 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	// Clone the repository with the bare minimum metadata for just the one
 	// commit. Don't fetch any actual file blobs yet.
 	cmd := exec.CommandContext(ctx, "git", "clone",
+		// kim: NOTE: --revision is only supported in git v2.49+, which is too
+		// recent for the EC2 hosts and app servers (v2.34). Even Ubuntu 24.04
+		// doesn't have a new enough version. Would have to manually download
+		// newer git into the deploy container and compile for EC2 hosts.
 		fmt.Sprintf("--revision=%s", revision),
 		// Shallow clone: only fetch the one commit rather than the full commit
 		// history.
