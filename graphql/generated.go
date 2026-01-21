@@ -84587,7 +84587,7 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "sleepSchedule", "spawnHostsStartedByTask", "taskId", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId", "useOAuth"}
+	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "sleepSchedule", "spawnHostsStartedByTask", "taskId", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId", "useOAuth", "isDebug"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84713,6 +84713,13 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 				return it, err
 			}
 			it.UseOAuth = data
+		case "isDebug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isDebug"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsDebug = data
 		}
 	}
 
