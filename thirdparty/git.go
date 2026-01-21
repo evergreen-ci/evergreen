@@ -239,20 +239,30 @@ func ParseGitVersion(version string) (string, error) {
 // GetGitHubFileFromGit retrieves a single file's contents from GitHub using
 // git. Ref must be a commit hash or branch.
 func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) (string, error) {
-	dir, err := GitCloneMinimal(ctx, owner, repo, ref)
+	dir, err := gitCloneMinimal(ctx, owner, repo, ref)
 	if err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(dir)
-	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, file)
+	defer func() {
+		grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
+			"message": "could not clean up git clone directory",
+			"owner":   owner,
+			"repo":    repo,
+			"ref":     ref,
+			"file":    file,
+			"ticket":  "DEVPROD-26143",
+		}))
+	}()
+
+	fileContent, err := gitRestoreFile(ctx, owner, repo, ref, dir, file)
 	return fileContent, err
 }
 
-// GitCloneMinimal performs a minimal git clone of a repository using the GitHub
+// gitCloneMinimal performs a minimal git clone of a repository using the GitHub
 // app. The minimal clone contains only git metadata for the one revision and
 // has no file content. Callers are expected to clean up the returned git
 // directory when it is no longer needed.
-func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
+func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
 	ctx, span := tracer.Start(ctx, "git-clone-minimal", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
@@ -324,10 +334,10 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 
 const gitErrorFileNotFound = "did not match any file(s) known to git"
 
-// GitRestoreFile restores a git file within the given git directory and returns
+// gitRestoreFile restores a git file within the given git directory and returns
 // its contents. Callers are assumed to have already cloned the repo into dir
 // and HEAD is assumed to be already pointing to the desired revision.
-func GitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) (string, error) {
+func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) (string, error) {
 	ctx, span := tracer.Start(ctx, "git-restore", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
