@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -160,6 +161,49 @@ func TestFetchArtifacts(t *testing.T) {
 	apiTask = resp.Data().(*model.APITask)
 	require.Len(apiTask.PreviousExecutions, 1)
 	assert.NotZero(apiTask.PreviousExecutions[0])
+}
+
+func TestTaskGetHandlerComputesPredictedCost(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(task.Collection))
+
+	// Create historical completed tasks with costs for prediction.
+	for i := 0; i < 3; i++ {
+		historicalTask := task.Task{
+			Id:           fmt.Sprintf("historical_task_%d", i),
+			Project:      "test_project",
+			BuildVariant: "test_variant",
+			DisplayName:  "test_task",
+			Status:       evergreen.TaskSucceeded,
+			Activated:    true,
+		}
+		historicalTask.TaskCost.OnDemandEC2Cost = 10.0
+		historicalTask.TaskCost.AdjustedEC2Cost = 8.0
+		require.NoError(t, historicalTask.Insert(t.Context()))
+	}
+
+	taskWithoutCost := task.Task{
+		Id:           "task_no_cost",
+		Project:      "test_project",
+		BuildVariant: "test_variant",
+		DisplayName:  "test_task",
+		Status:       evergreen.TaskStarted,
+		Activated:    true,
+	}
+	require.NoError(t, taskWithoutCost.Insert(t.Context()))
+	assert.False(t, taskWithoutCost.HasCostPrediction())
+
+	handler := taskGetHandler{taskID: taskWithoutCost.Id}
+	resp := handler.Run(ctx)
+
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	apiTask := resp.Data().(*model.APITask)
+	assert.Equal(t, utility.ToStringPtr(taskWithoutCost.Id), apiTask.Id)
+	require.NotNil(t, apiTask.PredictedTaskCost)
+	assert.Greater(t, apiTask.PredictedTaskCost.OnDemandEC2Cost, 0.0)
+	assert.Greater(t, apiTask.PredictedTaskCost.AdjustedEC2Cost, 0.0)
 }
 
 func TestGetDisplayTask(t *testing.T) {
