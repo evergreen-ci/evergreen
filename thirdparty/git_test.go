@@ -2,9 +2,7 @@ package thirdparty
 
 import (
 	"encoding/base64"
-	"fmt"
 	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -116,34 +114,56 @@ func TestGitCloneAndRestore(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
 
-	fmt.Println("kim: PATH for git clone/restore test is: ", os.Getenv("PATH"))
-	fmt.Println("kim: TMPDIR for git clone/restore test is: ", os.Getenv("TMPDIR"))
-	gitPath, err := exec.LookPath("git")
-	require.NoError(t, err)
-	fmt.Println("kim: git found at: ", gitPath)
-
 	const (
 		owner = "evergreen-ci"
 		repo  = "sample"
 		rev   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
 		file  = "README.md"
 	)
+	t.Run("RestoresSameFileAsGitHubAPI", func(t *testing.T) {
+		dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.RemoveAll(dir))
+		}()
 
-	// kim: TODO: confirm that TMPDIR forces os.MkdirTemp to use /tmp.
-	dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
-	require.NoError(t, err)
-	fmt.Println("kim: cloned to ", dir)
-	defer func() {
-		assert.NoError(t, os.RemoveAll(dir))
-	}()
+		gitFileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
+		require.NoError(t, err)
 
-	gitFileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
-	require.NoError(t, err)
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
 
-	comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
-	require.NoError(t, err)
-	comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
-	require.NoError(t, err)
+		assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileForBranchName", func(t *testing.T) {
+		const branch = "main"
+		dir, err := GitCloneMinimal(t.Context(), owner, repo, branch)
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.RemoveAll(dir))
+		}()
 
-	assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+		gitFileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
+		require.NoError(t, err)
+
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, branch, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
+
+		assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileNotFoundForNonexistentFile", func(t *testing.T) {
+		dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.RemoveAll(dir))
+		}()
+
+		_, err = GitRestoreFile(t.Context(), owner, repo, rev, dir, "nonexistent-file")
+		assert.Error(t, err)
+		assert.True(t, IsFileNotFound(err))
+	})
 }
