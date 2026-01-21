@@ -3,6 +3,8 @@ package taskexec
 import (
 	"context"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/executor"
@@ -158,26 +160,122 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	return nil
 }
 
-// RunAll executes all steps in a task
-func (e *LocalExecutor) RunAll(ctx context.Context) error {
-	for _, block := range e.commandBlocks {
-		e.logger.Infof("Executing block: %s", block.blockType)
+// StepNext executes the current step and advances to the next
+func (e *LocalExecutor) StepNext(ctx context.Context) error {
+	if e.debugState.CurrentStepIndex >= len(e.debugState.CommandList) {
+		return errors.New("no more steps to execute")
+	}
+	return e.stepNextWithBlocks(ctx)
+}
 
+// stepNextWithBlocks executes the current step using RunCommandsInBlock
+func (e *LocalExecutor) stepNextWithBlocks(ctx context.Context) error {
+	if e.debugState.CurrentStepIndex >= len(e.debugState.CommandList) {
+		return errors.New("no more steps to execute")
+	}
+
+	for _, block := range e.commandBlocks {
 		cmdBlock := executor.CommandBlock{
-			Block:       block.blockType,
-			Commands:    block.commands,
-			CanFailTask: block.canFailTask,
+			Block:    block.blockType,
+			Commands: block.commands,
 		}
 
 		deps := e.createBlockDeps()
+
+		originalStepIndex := e.debugState.CurrentStepIndex
+		executed := false
+
+		deps.RunCommandOrFunc = func(
+			ctx context.Context,
+			commandInfo model.PluginCommandConf,
+			cmds []command.Command,
+			blockType command.BlockType,
+			canFailTask bool,
+		) error {
+			// Skip commands that are not the current step
+			if e.debugState.CurrentStepIndex != originalStepIndex || executed {
+				return nil
+			}
+
+			for _, cmd := range cmds {
+				cmd.SetJasperManager(e.jasperManager)
+				err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
+				if err != nil {
+					e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+					return err
+				}
+				e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
+			}
+
+			executed = true
+			e.debugState.CurrentStepIndex++
+			return nil
+		}
 		if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
-			e.logger.Warningf("Block %s failed: %v, continuing", block.blockType, err)
-		} else {
-			e.logger.Infof("Block %s completed successfully", block.blockType)
+			return err
+		}
+		if executed {
+			return nil
 		}
 	}
 
-	e.logger.Infof("All blocks executed")
+	return nil
+}
+
+// executeCommand executes a single command using the agent command registry
+func (e *LocalExecutor) executeCommand(ctx context.Context, cmdInfo CommandInfo) error {
+	cmd := cmdInfo.Command.Command
+	factory, ok := command.GetCommandFactory(cmd)
+	if !ok {
+		e.logger.Warningf("Command '%s' not found in registry, skipping", cmd)
+		return errors.Errorf("command '%s' is not registered", cmd)
+	}
+	cmdInstance := factory()
+	if err := cmdInstance.ParseParams(cmdInfo.Command.Params); err != nil {
+		return errors.Wrapf(err, "parsing parameters for command '%s'", cmd)
+	}
+
+	cmdInstance.SetType(cmdInfo.Command.GetType(e.project))
+	cmdInstance.SetFullDisplayName(cmdInfo.DisplayName)
+	if cmdInfo.Command.TimeoutSecs > 0 {
+		cmdInstance.SetIdleTimeout(time.Duration(cmdInfo.Command.TimeoutSecs) * time.Second)
+	}
+	cmdInstance.SetRetryOnFailure(cmdInfo.Command.RetryOnFailure)
+	cmdInstance.SetFailureMetadataTags(cmdInfo.Command.FailureMetadataTags)
+
+	cmdInstance.SetJasperManager(e.jasperManager)
+
+	e.taskConfig.Expansions = *e.expansions
+	e.taskConfig.WorkDir = e.workDir
+
+	e.logger.Infof("Executing command: %s", cmdInfo.Command.Command)
+	return cmdInstance.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
+}
+
+// expandString expands variables in a string
+func (e *LocalExecutor) expandString(s string) string {
+	if e.expansions == nil {
+		return s
+	}
+	result := s
+	expansions := e.expansions.Map()
+	for key, value := range expansions {
+		result = strings.ReplaceAll(result, "${"+key+"}", value)
+	}
+	for key, value := range e.debugState.CustomVars {
+		result = strings.ReplaceAll(result, "${"+key+"}", value)
+	}
+	return result
+}
+
+// RunAll executes all steps in a task
+func (e *LocalExecutor) RunAll(ctx context.Context) error {
+	for e.debugState.HasMoreSteps() {
+		if err := e.StepNext(ctx); err != nil {
+			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
+			return nil
+		}
+	}
 	return nil
 }
 

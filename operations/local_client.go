@@ -107,6 +107,16 @@ func DaemonCommands() []cli.Command {
 			ArgsUsage: "<task_name>",
 			Action:    selectTaskCmd,
 		},
+		{
+			Name:   "next",
+			Usage:  "Execute the next step",
+			Action: stepNextCmd,
+		},
+		{
+			Name:   "run-all",
+			Usage:  "Run all remaining steps",
+			Action: runAllCmd,
+		},
 	}
 }
 
@@ -240,6 +250,44 @@ func selectTaskCmd(c *cli.Context) error {
 	}
 	fmt.Printf("Total steps: %v\n", resp["step_count"])
 
+	return nil
+}
+
+// stepNextCmd executes the next step
+func stepNextCmd(c *cli.Context) error {
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	resp, err := postJSON(url+"/step/next", nil)
+	if err != nil {
+		return err
+	}
+
+	if resp["success"].(bool) {
+		fmt.Printf("Step executed successfully (now at step %v)\n", resp["current_step"])
+	} else {
+		fmt.Printf("Step failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
+	}
+
+	return nil
+}
+
+// runAllCmd runs all remaining steps
+func runAllCmd(c *cli.Context) error {
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Running all remaining steps...")
+	resp, err := postJSON(url+"/step/run-all", nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Execution complete (at step %v)\n", resp["current_step"])
 	return nil
 }
 
