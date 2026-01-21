@@ -2,7 +2,6 @@ package thirdparty
 
 import (
 	"encoding/base64"
-	"os"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -110,7 +109,7 @@ func TestParseGitVersionString(t *testing.T) {
 	}
 }
 
-func TestGitCloneAndRestore(t *testing.T) {
+func TestGetGitHubFileFromGit(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
 
@@ -121,13 +120,7 @@ func TestGitCloneAndRestore(t *testing.T) {
 		file  = "README.md"
 	)
 	t.Run("RestoresSameFileAsGitHubAPI", func(t *testing.T) {
-		dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
-		require.NoError(t, err)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(dir))
-		}()
-
-		gitFileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, file)
 		require.NoError(t, err)
 
 		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
@@ -139,13 +132,7 @@ func TestGitCloneAndRestore(t *testing.T) {
 	})
 	t.Run("ReturnsFileForBranchName", func(t *testing.T) {
 		const branch = "main"
-		dir, err := GitCloneMinimal(t.Context(), owner, repo, branch)
-		require.NoError(t, err)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(dir))
-		}()
-
-		gitFileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, branch, file)
 		require.NoError(t, err)
 
 		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, branch, nil)
@@ -156,13 +143,7 @@ func TestGitCloneAndRestore(t *testing.T) {
 		assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
 	})
 	t.Run("ReturnsFileNotFoundForNonexistentFile", func(t *testing.T) {
-		dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
-		require.NoError(t, err)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(dir))
-		}()
-
-		_, err = GitRestoreFile(t.Context(), owner, repo, rev, dir, "nonexistent-file")
+		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
 		assert.Error(t, err)
 		assert.True(t, IsFileNotFound(err))
 	})

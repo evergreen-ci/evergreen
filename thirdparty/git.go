@@ -238,13 +238,14 @@ func ParseGitVersion(version string) (string, error) {
 
 // GetGitHubFileFromGit retrieves a single file's contents from GitHub using
 // git. Ref must be a commit hash or branch.
-func GetGitHubFileFromGit(ctx context.Context, owner, repo, path, ref string) (string, error) {
+func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) (string, error) {
 	dir, err := GitCloneMinimal(ctx, owner, repo, ref)
 	if err != nil {
-		return "", errors.Wrap(err, "cloning repository")
+		return "", err
 	}
-	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, path)
-	return fileContent, errors.Wrap(err, "restoring file from git")
+	defer os.RemoveAll(dir)
+	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, file)
+	return fileContent, err
 }
 
 // GitCloneMinimal performs a minimal git clone of a repository using the GitHub
