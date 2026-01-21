@@ -527,75 +527,63 @@ func TestFlattenOtelVariables(t *testing.T) {
 }
 
 func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert.NoError(t, db.ClearCollections(user.Collection, distro.Collection))
 
 	usr := &user.DBUser{
 		Id: "test_user",
 	}
-	assert.NoError(t, usr.Insert(ctx))
+	assert.NoError(t, usr.Insert(t.Context()))
 
 	d := &distro.Distro{
 		Id:       "test-distro",
 		Provider: evergreen.ProviderNameEc2OnDemand,
 	}
-	assert.NoError(t, d.Insert(ctx))
+	assert.NoError(t, d.Insert(t.Context()))
 	t.Run("IsDebugTrueWithoutSpawnHostsStartedByTaskFails", func(t *testing.T) {
 		input := &SpawnHostInput{
-			DistroID:                "test-distro",
-			IsDebug:                 utility.ToBoolPtr(true),
-			SpawnHostsStartedByTask: utility.ToBoolPtr(false),
+			DistroID:                d.Id,
+			IsDebug:                 utility.TruePtr(),
+			SpawnHostsStartedByTask: utility.FalsePtr(),
 			PublicKey: &PublicKeyInput{
 				Name: "test-key",
 				Key:  "ssh-rsa test",
 			},
-			Region:               "us-east-1",
-			IsVirtualWorkStation: false,
-			NoExpiration:         false,
 		}
 
-		options, err := getHostRequestOptions(ctx, usr, input)
-		assert.Error(t, err)
+		options, err := getHostRequestOptions(t.Context(), usr, input)
+		require.Error(t, err)
 		assert.Nil(t, options)
 		assert.Contains(t, err.Error(), "Debug spawn hosts can only be spawned by a task")
 	})
 
 	t.Run("IsDebugFalseWorks", func(t *testing.T) {
 		input := &SpawnHostInput{
-			DistroID: "test-distro",
-			IsDebug:  utility.ToBoolPtr(false),
+			DistroID: d.Id,
+			IsDebug:  utility.FalsePtr(),
 			PublicKey: &PublicKeyInput{
 				Name: "test-key",
 				Key:  "ssh-rsa test",
 			},
-			Region:               "us-east-1",
-			IsVirtualWorkStation: false,
-			NoExpiration:         false,
 		}
 
-		options, err := getHostRequestOptions(ctx, usr, input)
+		options, err := getHostRequestOptions(t.Context(), usr, input)
 		assert.NoError(t, err)
-		assert.NotNil(t, options)
+		require.NotNil(t, options)
 		assert.False(t, options.IsDebug, "IsDebug should be false")
 	})
 
 	t.Run("IsDebugNilDefaultsToFalse", func(t *testing.T) {
 		input := &SpawnHostInput{
-			DistroID: "test-distro",
+			DistroID: d.Id,
 			PublicKey: &PublicKeyInput{
 				Name: "test-key",
 				Key:  "ssh-rsa test",
 			},
-			Region:               "us-east-1",
-			IsVirtualWorkStation: false,
-			NoExpiration:         false,
 		}
 
-		options, err := getHostRequestOptions(ctx, usr, input)
+		options, err := getHostRequestOptions(t.Context(), usr, input)
 		assert.NoError(t, err)
-		assert.NotNil(t, options)
+		require.NotNil(t, options)
 		assert.False(t, options.IsDebug, "IsDebug should default to false")
 	})
 }

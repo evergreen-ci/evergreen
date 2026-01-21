@@ -267,8 +267,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			intentHost, err := NewIntentHost(ctx, options, testUser, env)
 			s.NoError(err)
 			s.Require().NotNil(intentHost)
-
-			// Verify IsDebug field is false
+			
 			s.False(intentHost.IsDebug, "IsDebug should be false")
 
 			// Verify is_debug instance tag is NOT present

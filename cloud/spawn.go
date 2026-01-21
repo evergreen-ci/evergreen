@@ -197,22 +197,13 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		sleepSchedule = *schedule
 	}
 
-	instanceTags := so.InstanceTags
-	if so.IsDebug {
-		instanceTags = append(instanceTags, host.Tag{
-			Key:           "is_debug",
-			Value:         "true",
-			CanBeModified: false,
-		})
-	}
-
 	hostOptions := host.CreateOptions{
 		Distro:               *d,
 		ProvisionOptions:     so.ProvisionOptions,
 		UserName:             so.UserName,
 		ExpirationTime:       currentTime.Add(expiration),
 		UserHost:             true,
-		InstanceTags:         instanceTags,
+		InstanceTags:         so.InstanceTags,
 		InstanceType:         so.InstanceType,
 		NoExpiration:         so.NoExpiration,
 		SleepScheduleInfo:    sleepSchedule,
