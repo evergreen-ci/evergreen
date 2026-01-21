@@ -1,6 +1,10 @@
 package thirdparty
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
 
 // Infrastructure/communication-related errors
 
@@ -43,7 +47,7 @@ func (nfe FileNotFoundError) Error() string {
 
 func IsFileNotFound(err error) bool {
 	_, ok := err.(FileNotFoundError)
-	return ok
+	return ok || errors.Is(err, FileNotFoundError{})
 }
 
 type YAMLFormatError struct {

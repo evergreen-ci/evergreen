@@ -637,12 +637,6 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 
 func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
 	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
-	// kim: NOTE: to avoid the cost of cloning once per file, may need to
-	// consider git worktrees to avoid cloning and maintain file system state.
-	// If going with worktree approach, need to set up the worktrees serially
-	// before spawning goroutines to read files in parallel to avoid race
-	// conditions in git.
-
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
@@ -670,17 +664,9 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"module":      include.Module,
 	})
 	if include.Module != "" {
-		// kim: NOTE: this introduces complexity since we need to clone a
-		// module, not just the primary repo. It's possible that we might just
-		// have to do this one by one for modules and assume most files are
-		// retrieved from the primary repo.
 		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
-		// kim: NOTE: this is fetching one file for includes but the channel
-		// processes all includes. Since they're processed in goroutines, it may
-		// actually be okay to fetch files one at a time because it's already
-		// parallelized across worker goroutines.
 		yaml, err = retrieveFile(ctx, *localOpts)
 		err = errors.Wrapf(err, "%s: retrieving file for include '%s'", LoadProjectError, include.FileName)
 	}
@@ -733,8 +719,6 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 		// Be polite. Don't make more than 10 concurrent requests to GitHub.
 		const maxWorkers = 10
 		workers := util.Min(maxWorkers, len(intermediateProject.Include))
-		// kim: TODO: need to setup git and create one worktree per worker in
-		// advance.
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
 			go func() {
@@ -843,8 +827,6 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		opts.RemotePath = opts.Ref.RemotePath
 	}
 
-	// kim: NOTE: all switches call GetGithubFile except ReadFromLocal, so may
-	// have some opportunity to batch outside of this function.
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
 		fileContents, err := os.ReadFile(opts.RemotePath)
@@ -853,16 +835,12 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	case ReadFromPatch:
-		// kim: NOTE: this is retrieving one file but it's for YAML includes so
-		// it's called many times and may be batchable.
 		fileContents, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
 			return nil, errors.Wrap(err, "fetching remote configuration file")
 		}
 		return fileContents, nil
 	case ReadFromPatchDiff:
-		// kim: NOTE: this is retrieving one file but it's for YAML includes so
-		// it's called many times and may be batchable.
 		originalConfig, err := getFileForPatchDiff(ctx, opts)
 		if err != nil {
 			return nil, errors.Wrap(err, "fetching remote configuration file")
@@ -878,8 +856,6 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		// kim: NOTE: this is retrieving one file but it's for YAML includes so
-		// it's called many times and may be batchable.
 		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
@@ -985,8 +961,6 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.
-		// kim: NOTE: would have to special case handle a situation where the
-		// file is not found.
 		if !(opts.PatchOpts.patch.ConfigChanged(opts.RemotePath) && thirdparty.IsFileNotFound(err)) {
 			// return an error if the github error is network/auth-related or we aren't patching the config
 			return nil, errors.Wrapf(err, "getting GitHub file at '%s/%s'@%s: %s", opts.Ref.Owner,

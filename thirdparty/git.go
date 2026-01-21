@@ -18,7 +18,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -237,11 +236,21 @@ func ParseGitVersion(version string) (string, error) {
 	return matches[1], nil
 }
 
+// GetGitHubFileFromGit retrieves a single file's contents from GitHub using
+// git. Ref must be a commit hash or branch.
+func GetGitHubFileFromGit(ctx context.Context, owner, repo, path, ref string) (string, error) {
+	dir, err := GitCloneMinimal(ctx, owner, repo, ref)
+	if err != nil {
+		return "", errors.Wrap(err, "cloning repository")
+	}
+	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, path)
+	return fileContent, errors.Wrap(err, "restoring file from git")
+}
+
 // GitCloneMinimal performs a minimal git clone of a repository using the GitHub
 // app. The minimal clone contains only git metadata for the one revision and
 // has no file content. Callers are expected to clean up the returned git
 // directory when it is no longer needed.
-// kim: TODO: add unit tests for minimal git clone + restore.
 func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
 	ctx, span := tracer.Start(ctx, "git-clone-minimal", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
@@ -249,10 +258,6 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 		attribute.String(githubRefAttribute, revision),
 	))
 	defer span.End()
-
-	// kim: TODO: remove once done testing span data.
-	span.RecordError(errors.New("fake error to prevent sampling"))
-	span.SetStatus(codes.Error, "fake error to prevent sampling")
 
 	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
@@ -276,10 +281,6 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	// Clone the repository with the bare minimum metadata for just the one
 	// commit. Don't fetch any actual file blobs yet.
 	cmd := exec.CommandContext(ctx, "git", "clone",
-		// kim: NOTE: --revision is only supported in git v2.49+, which is too
-		// recent for the EC2 hosts and app servers (v2.34). Even Ubuntu 24.04
-		// doesn't have a new enough version. Would have to manually download
-		// newer git into the deploy container and compile for EC2 hosts.
 		fmt.Sprintf("--revision=%s", revision),
 		// Shallow clone: only fetch the one commit rather than the full commit
 		// history.
@@ -334,10 +335,6 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	))
 	defer span.End()
 
-	// kim: TODO: remove once done testing span data.
-	span.RecordError(errors.New("fake error to prevent sampling"))
-	span.SetStatus(codes.Error, "fake error to prevent sampling")
-
 	// Limit how long this can spend restoring the file to prevent this from
 	// running too long. This is an experimental feature and should not
 	// meaningfully impact performance while it's being tested out.
@@ -356,7 +353,7 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		if strings.Contains(err.Error(), gitErrorFileNotFound) {
+		if strings.Contains(stderr.String(), gitErrorFileNotFound) {
 			// To mirror GetGithubFile's behavior, return a FileNotFoundError if
 			// the file doesn't exist in the repo at the given revision.
 			return "", FileNotFoundError{filepath: fileName}

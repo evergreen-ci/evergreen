@@ -492,16 +492,6 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
-// kim: NOTE: has to be extended to support either a worktree-driven solution
-// (i.e. parallel git restores) as well as an isolated "single file" solution
-// (i.e. partial git clone, then git restore). That way, callers don't have to
-// set up a git clone and worktree just to get a single file, only if the caller
-// is fetching many files at once.
-// kim: TODO: Step 1 is to make single file restores work.
-// kim: TODO: since GetGithubFile and GetGitHubFileFromGit return different
-// types, create a wrapper function that calls both and compares the results for
-// each existing call to GetGithubFile. Also makes it easier to fall back to
-// GitHub API.
 func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth *githubapp.GithubAppAuth) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
@@ -553,20 +543,6 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 	}
 
 	return outputFile, nil
-}
-
-// GetGitHubFileFromGit retrieves a single file's contents from GitHub using
-// git. Ref must be a commit hash or branch.
-// kim: NOTE: callers of GetGithubFile also need to be a commit hash or branch,
-// so this is likely fine. We'll see in testing if they ever pass an unexpected
-// ref format.
-func GetGitHubFileFromGit(ctx context.Context, owner, repo, path, ref string) (string, error) {
-	dir, err := GitCloneMinimal(ctx, owner, repo, ref)
-	if err != nil {
-		return "", errors.Wrap(err, "cloning repository")
-	}
-	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, path)
-	return fileContent, errors.Wrap(err, "restoring file from git")
 }
 
 // runGitHubOp attempts to run the given GitHub operation. It first attempts
