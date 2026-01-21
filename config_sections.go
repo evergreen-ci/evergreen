@@ -32,6 +32,7 @@ func NewConfigSections() ConfigSections {
 		&ContainerPoolsConfig{},
 		&CostConfig{},
 		&FWSConfig{},
+		&GraphiteConfig{},
 		&HostInitConfig{},
 		&HostJasperConfig{},
 		&JiraConfig{},

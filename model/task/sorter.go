@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -40,6 +41,26 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 		return nil
 	}
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload(), options.InsertMany().SetOrdered(false))
+	return err
+}
+
+// InsertUnorderedWithPredictions inserts tasks with predicted costs applied without modifying the input tasks.
+func (t Tasks) InsertUnorderedWithPredictions(ctx context.Context, predictions map[string]cost.Cost) error {
+	if t.Len() == 0 {
+		return nil
+	}
+
+	// Create payload with predictions applied to copies
+	payload := make([]any, len(t))
+	for idx := range t {
+		taskCopy := *t[idx] // Make a copy to avoid modifying the original
+		if predictedCost, ok := predictions[taskCopy.Id]; ok && !predictedCost.IsZero() {
+			taskCopy.PredictedTaskCost = predictedCost
+		}
+		payload[idx] = any(&taskCopy)
+	}
+
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, payload, options.InsertMany().SetOrdered(false))
 	return err
 }
 

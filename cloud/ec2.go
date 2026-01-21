@@ -591,7 +591,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 
 	if noExpiration {
 		var userTimeZone string
-		u, err := user.FindOneByIdContext(ctx, h.StartedBy)
+		u, err := user.FindOneById(ctx, h.StartedBy)
 		if err != nil {
 			return errors.Wrapf(err, "finding owner '%s' for host '%s'", h.StartedBy, h.Id)
 		}

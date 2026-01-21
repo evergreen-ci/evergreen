@@ -213,6 +213,9 @@
             "fws": {
               "url": "https://fws.example.com"
             },
+            "graphite": {
+              "serverUrl": "https://graphite.example.com"
+            },
             "cedar": {
               "dbUrl": "mongodb://localhost:27017",
               "dbName": "cedar"

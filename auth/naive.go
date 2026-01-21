@@ -45,7 +45,7 @@ func (b *NaiveUserManager) GetUserByToken(_ context.Context, token string) (giml
 // CreateUserToken finds the user with the same username and password in its list of users and creates a token
 // that is a combination of the index of the list the user is at, the email address and a hash of the username
 // and password and returns that token.
-func (b *NaiveUserManager) CreateUserToken(username, password string) (string, error) {
+func (b *NaiveUserManager) CreateUserToken(_ context.Context, username, password string) (string, error) {
 	for i, user := range b.users {
 		if user.Username == username && user.Password == password {
 			// return a token that is a hash of the index, user's email and username and password hashed.
@@ -55,15 +55,19 @@ func (b *NaiveUserManager) CreateUserToken(username, password string) (string, e
 	return "", errors.New("No valid user for the given username and password")
 }
 
-func (*NaiveUserManager) GetLoginHandler(string) http.HandlerFunc    { return nil }
-func (*NaiveUserManager) GetLoginCallbackHandler() http.HandlerFunc  { return nil }
-func (*NaiveUserManager) IsRedirect() bool                           { return false }
-func (*NaiveUserManager) ReauthorizeUser(gimlet.User) error          { return errors.New("not implemented") }
-func (*NaiveUserManager) GetUserByID(id string) (gimlet.User, error) { return getUserByID(id) }
-func (*NaiveUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return getOrCreateUser(u)
+func (*NaiveUserManager) GetLoginHandler(string) http.HandlerFunc   { return nil }
+func (*NaiveUserManager) GetLoginCallbackHandler() http.HandlerFunc { return nil }
+func (*NaiveUserManager) IsRedirect() bool                          { return false }
+func (*NaiveUserManager) ReauthorizeUser(context.Context, gimlet.User) error {
+	return errors.New("not implemented")
 }
-func (*NaiveUserManager) ClearUser(_ gimlet.User, _ bool) error {
+func (*NaiveUserManager) GetUserByID(ctx context.Context, id string) (gimlet.User, error) {
+	return getUserByID(ctx, id)
+}
+func (*NaiveUserManager) GetOrCreateUser(ctx context.Context, u gimlet.User) (gimlet.User, error) {
+	return getOrCreateUser(ctx, u)
+}
+func (*NaiveUserManager) ClearUser(_ context.Context, _ gimlet.User, _ bool) error {
 	return errors.New("Naive Authentication does not support Clear User")
 }
 func (*NaiveUserManager) GetGroupsForUser(string) ([]string, error) {

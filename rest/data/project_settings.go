@@ -337,10 +337,10 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				return nil, errors.Wrapf(err, "finding branch projects for repo")
 			}
 			if makeRestricted {
-				catcher.Wrap(repoRef.MakeRestricted(branchProjects), "making repo restricted")
+				catcher.Wrap(repoRef.MakeRestricted(ctx, branchProjects), "making repo restricted")
 			}
 			if makeUnrestricted {
-				catcher.Wrap(repoRef.MakeUnrestricted(branchProjects), "making repo unrestricted")
+				catcher.Wrap(repoRef.MakeUnrestricted(ctx, branchProjects), "making repo unrestricted")
 			}
 		} else {
 			if modified, err = newProjectRef.UpdateAdminRoles(ctx, adminsToAdd, adminsToDelete); err != nil {
@@ -350,11 +350,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				}
 			}
 			if makeRestricted {
-				catcher.Wrap(mergedBeforeRef.MakeRestricted(), "making branch restricted")
+				catcher.Wrap(mergedBeforeRef.MakeRestricted(ctx), "making branch restricted")
 				modified = true
 			}
 			if makeUnrestricted {
-				catcher.Wrap(mergedBeforeRef.MakeUnrestricted(), "making branch unrestricted")
+				catcher.Wrap(mergedBeforeRef.MakeUnrestricted(ctx), "making branch unrestricted")
 				modified = true
 			}
 		}

@@ -235,7 +235,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		distros = d
 	}
 
-	userHasDistroCreatePermission := usr.HasDistroCreatePermission()
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission(ctx)
 
 	for _, d := range distros {
 		// Omit admin-only distros if user lacks permissions
@@ -412,7 +412,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	apiHosts := []*restModel.APIHost{}
 	for _, h := range hosts {
 		forbiddenHosts := []string{}
-		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
+		if !userHasHostPermission(ctx, usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
 			forbiddenHosts = append(forbiddenHosts, h.Id)
 		}
 		if len(forbiddenHosts) > 0 {
@@ -794,7 +794,7 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 	usr := mustHaveUser(ctx)
 	var err error
 	if userID != nil {
-		usr, err = user.FindOneByIdContext(ctx, utility.FromStringPtr(userID))
+		usr, err = user.FindOneById(ctx, utility.FromStringPtr(userID))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
 		}
@@ -829,7 +829,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
 			config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
 		}
-		if settings.ServiceFlags.StaticAPIKeysDisabled {
+		if !settings.ServiceFlags.StaticAPIKeysDisabled {
 			config.APIKey = usr.GetAPIKey()
 		}
 	}
@@ -1260,9 +1260,6 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
-		// Use injest time rather than create time to ensure task history page is sorted in order of when the tasks
-		// were actually created.
-		t.CreateTime = t.IngestTime
 		apiTask := &restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))

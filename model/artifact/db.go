@@ -113,7 +113,7 @@ func (e Entry) Upsert(ctx context.Context) error {
 // FindOne gets one Entry for the given query
 func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 	entry := &Entry{}
-	err := db.FindOneQContext(ctx, Collection, query, entry)
+	err := db.FindOneQ(ctx, Collection, query, entry)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -141,7 +141,7 @@ func UpdateFileLink(ctx context.Context, taskID string, execution int, fileName,
 	update := bson.M{"$set": bson.M{
 		bsonutil.GetDottedKeyName(FilesKey, "$", LinkKey): newLink,
 	}}
-	return db.UpdateContext(ctx, Collection, filter, update)
+	return db.Update(ctx, Collection, filter, update)
 }
 
 // UpdateFileKey updates the S3 file key for a single artifact file matching task ID, execution,
@@ -159,5 +159,5 @@ func UpdateFileKey(ctx context.Context, taskID string, execution int, fileName, 
 	update := bson.M{"$set": bson.M{
 		bsonutil.GetDottedKeyName(FilesKey, "$", FileKeyKey): newFileKey,
 	}}
-	return db.UpdateContext(ctx, Collection, filter, update)
+	return db.Update(ctx, Collection, filter, update)
 }

@@ -412,14 +412,14 @@ func TestHasLogViewPermission(t *testing.T) {
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{"project_id_belonging_to_user"},
 			}
-			err := roleManager.AddScope(projectScope)
+			err := roleManager.AddScope(ctx, projectScope)
 
 			logViewRole := gimlet.Role{
 				ID:          "view_log",
 				Scope:       projectScope.ID,
 				Permissions: map[string]int{evergreen.PermissionLogs: evergreen.LogsView.Value},
 			}
-			require.NoError(t, roleManager.UpdateRole(logViewRole))
+			require.NoError(t, roleManager.UpdateRole(ctx, logViewRole))
 
 			require.NoError(t, userWithRole.AddRole(t.Context(), "view_log"))
 			require.NoError(t, err)
@@ -471,14 +471,14 @@ func TestHasAnnotationPermission(t *testing.T) {
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{"project_id_belonging_to_user"},
 			}
-			err := roleManager.AddScope(projectScope)
+			err := roleManager.AddScope(ctx, projectScope)
 
 			annotationViewRole := gimlet.Role{
 				ID:          "view_annotation",
 				Scope:       projectScope.ID,
 				Permissions: map[string]int{evergreen.PermissionAnnotations: evergreen.AnnotationsView.Value},
 			}
-			require.NoError(t, roleManager.UpdateRole(annotationViewRole))
+			require.NoError(t, roleManager.UpdateRole(ctx, annotationViewRole))
 
 			require.NoError(t, usr.AddRole(t.Context(), "view_annotation"))
 			require.NoError(t, err)

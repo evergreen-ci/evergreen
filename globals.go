@@ -681,6 +681,7 @@ const (
 	TriggerRequester            = "trigger_request"
 	AdHocRequester              = "ad_hoc"               // periodic build
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
+	DebugRequester              = "debug_request"        // for debug spawn hosts
 )
 
 // Constants related to requester types.
@@ -701,6 +702,7 @@ var (
 		TriggerRequester,
 		AdHocRequester,
 		GithubMergeRequester,
+		DebugRequester,
 	}
 )
 

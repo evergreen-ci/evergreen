@@ -16,7 +16,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -137,14 +136,15 @@ func ByGithash(githash string) db.Q {
 }
 
 type ByPatchNameStatusesMergeQueuePaginatedOptions struct {
-	Author        *string
-	IncludeHidden *bool
-	Limit         int
-	Page          int
-	PatchName     string
-	Project       *string
-	Requesters    []string
-	Statuses      []string
+	Author         *string
+	IncludeHidden  *bool
+	Limit          int
+	OnlyMergeQueue *bool
+	Page           int
+	PatchName      string
+	Project        *string
+	Requesters     []string
+	Statuses       []string
 }
 
 // Based off of the implementation for Patch.GetRequester.
@@ -180,8 +180,6 @@ var requesterExpression = bson.M{
 }
 
 func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]Patch, int, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ByPatchNameStatusesMergeQueuePaginated")})
-
 	if opts.Project != nil && opts.Author != nil {
 		return nil, 0, errors.New("can't set both project and author")
 	}
@@ -205,29 +203,6 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 	if opts.Project != nil {
 		match[ProjectKey] = utility.FromStringPtr(opts.Project)
 	}
-
-	// Validate requesters and check if we're only filtering for merge queue patches.
-	validatedRequesters := []string{}
-	for _, requester := range opts.Requesters {
-		if evergreen.IsPatchRequester(requester) {
-			validatedRequesters = append(validatedRequesters, requester)
-		}
-	}
-	onlyMergeQueue := len(validatedRequesters) == 1 && validatedRequesters[0] == evergreen.GithubMergeRequester
-
-	// This filter matches the logic in IsMergeQueuePatch() and results in significantly fewer documents being retrieved from the db.
-	if onlyMergeQueue {
-		match["$or"] = []bson.M{
-			{
-				bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): bson.M{
-					"$exists": true,
-					"$ne":     "",
-				},
-			},
-			{AliasKey: evergreen.CommitQueueAlias},
-		}
-	}
-
 	pipeline = append(pipeline, bson.M{"$match": match})
 
 	sortStage := bson.M{
@@ -238,57 +213,66 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 
 	pipeline = append(pipeline, sortStage)
 
-	// Apply requester filtering using the computed requester expression.
-	// Skip this step if we're only filtering for merge queue patches since we already applied the optimization above.
-	if len(validatedRequesters) > 0 && !onlyMergeQueue {
+	if len(opts.Requesters) > 0 || utility.FromBoolPtr(opts.OnlyMergeQueue) {
+		matchRequesterStage := bson.M{}
+		validatedRequesters := []string{}
+		for _, requester := range opts.Requesters {
+			if evergreen.IsPatchRequester(requester) {
+				validatedRequesters = append(validatedRequesters, requester)
+			}
+		}
+		requesterMatch := bson.M{"$in": validatedRequesters}
+		// Conditionally add the merge queue requester filter if the user is explicitly filtering on it.
+		// This is only used on the project patches page when we want to conditionally only show merge queue patches.
+		if utility.FromBoolPtr(opts.OnlyMergeQueue) {
+			requesterMatch = bson.M{"$eq": evergreen.GithubMergeRequester}
+		}
 		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
-		pipeline = append(pipeline, bson.M{"$match": bson.M{"requester": bson.M{"$in": validatedRequesters}}})
+		matchRequesterStage["requester"] = requesterMatch
+		pipeline = append(pipeline, bson.M{"$match": matchRequesterStage})
 	}
 
-	resultPipeline := []bson.M{}
+	resultPipeline := pipeline
 	if opts.Page > 0 {
-		resultPipeline = append(resultPipeline, bson.M{"$skip": opts.Page * opts.Limit})
+		skipStage := bson.M{
+			"$skip": opts.Page * opts.Limit,
+		}
+		resultPipeline = append(resultPipeline, skipStage)
 	}
 	if opts.Limit > 0 {
-		resultPipeline = append(resultPipeline, bson.M{"$limit": opts.Limit})
+		limitStage := bson.M{
+			"$limit": opts.Limit,
+		}
+		resultPipeline = append(resultPipeline, limitStage)
 	}
 
-	pipeline = append(pipeline, bson.M{
-		"$facet": bson.M{
-			"results": resultPipeline,
-			"count":   []bson.M{{"$count": "count"}},
-		},
-	})
-
-	type facetResult struct {
-		Results []Patch `bson:"results"`
-		Count   []struct {
-			Count int `bson:"count"`
-		} `bson:"count"`
-	}
-
+	results := []Patch{}
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, resultPipeline)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	var facetResults []facetResult
-	if err = cursor.All(ctx, &facetResults); err != nil {
+	if err = cursor.All(ctx, &results); err != nil {
 		return nil, 0, err
 	}
 
-	if len(facetResults) == 0 {
-		return nil, 0, nil
+	// Will be used to get the total count of the filtered patches
+	countPipeline := append(pipeline, bson.M{"$count": "count"})
+	type countResult struct {
+		Count int `bson:"count"`
 	}
-
-	results := facetResults[0].Results
-	count := 0
-	if len(facetResults[0].Count) > 0 {
-		count = facetResults[0].Count[0].Count
+	countResults := []countResult{}
+	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
+	if err != nil {
+		return nil, 0, err
 	}
-
-	return results, count, nil
+	if err = cursor.All(ctx, &countResults); err != nil {
+		return nil, 0, err
+	}
+	if len(countResults) == 0 {
+		return results, 0, nil
+	}
+	return results, countResults[0].Count, nil
 }
 
 // ByUserPaginated produces a query that returns patches by the given user
@@ -334,7 +318,7 @@ var ExcludePatchDiff = bson.M{
 // FindOne runs a patch query, returning one patch.
 func FindOne(ctx context.Context, query db.Q) (*Patch, error) {
 	patch := &Patch{}
-	err := db.FindOneQContext(ctx, Collection, query, patch)
+	err := db.FindOneQ(ctx, Collection, query, patch)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -362,12 +346,12 @@ func Remove(ctx context.Context, query db.Q) error {
 
 // UpdateAll runs an update on all patch documents.
 func UpdateAll(ctx context.Context, query any, update any) (info *adb.ChangeInfo, err error) {
-	return db.UpdateAllContext(ctx, Collection, query, update)
+	return db.UpdateAll(ctx, Collection, query, update)
 }
 
 // UpdateOne runs an update on a single patch document.
 func UpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(ctx, Collection, query, update)
+	return db.Update(ctx, Collection, query, update)
 }
 
 // PatchesByProject builds a query for patches that match the given

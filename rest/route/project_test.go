@@ -98,13 +98,13 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		},
 	}
 	roleManager := s.env.RoleManager()
-	s.NoError(roleManager.UpdateRole(projectAdminRole))
+	s.NoError(roleManager.UpdateRole(ctx, projectAdminRole))
 	adminScope := gimlet.Scope{
 		ID:        "project_scope",
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"dimoxinil", "other_project", "branch_project"},
 	}
-	s.NoError(roleManager.AddScope(adminScope))
+	s.NoError(roleManager.AddScope(ctx, adminScope))
 }
 
 func (s *ProjectPatchByIDSuite) TearDownTest() {

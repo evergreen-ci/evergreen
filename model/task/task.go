@@ -1045,10 +1045,10 @@ func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agent
 	return nil
 }
 
-// MarkAsHostDispatchedWithContext marks that the task has been dispatched onto
+// MarkAsHostDispatchedWithEnv marks that the task has been dispatched onto
 // a particular host. Unlike MarkAsHostDispatched, this does not update the
 // parent display task.
-func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+func (t *Task) MarkAsHostDispatchedWithEnv(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
 		return err
@@ -1101,11 +1101,11 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error
 	return nil
 }
 
-// MarkAsHostUndispatchedWithContext marks that the host task is undispatched.
+// MarkAsHostUndispatched marks that the host task is undispatched.
 // If the task is already dispatched to a host, it aborts the dispatch by
 // undoing the dispatch updates. This is the inverse operation of
-// MarkAsHostDispatchedWithContext.
-func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergreen.Environment) error {
+// MarkAsHostDispatchedWithEnv.
+func (t *Task) MarkAsHostUndispatched(ctx context.Context, env evergreen.Environment) error {
 	doUpdate := func(update []bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
 		return err
@@ -1943,7 +1943,7 @@ func UpdateSchedulingLimit(ctx context.Context, username, requester string, numT
 	if maxScheduledTasks == 0 {
 		return nil
 	}
-	u, err := user.FindOneByIdContext(ctx, username)
+	u, err := user.FindOneById(ctx, username)
 	if err != nil {
 		return errors.Wrap(err, "getting user")
 	}
@@ -2297,11 +2297,16 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 		bson.M{
 			IdKey: bson.M{"$in": taskIDsToUpdate},
 		},
-		bson.M{"$set": bson.M{
-			ActivatedKey:                false,
-			DeactivatedForDependencyKey: true,
-			ScheduledTimeKey:            utility.ZeroTime,
-		}},
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:                false,
+					DeactivatedForDependencyKey: true,
+					ScheduledTimeKey:            utility.ZeroTime,
+				},
+			},
+			addDisplayStatusCache,
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
