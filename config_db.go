@@ -96,6 +96,7 @@ var (
 	legacyUIAdminPageDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIAdminPageDisabled")
 	debugSpawnHostDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "DebugSpawnHostDisabled")
 	s3LifecycleSyncDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
+	useGitForGitHubFilesDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "UseGitForGitHubFilesDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
