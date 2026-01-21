@@ -46,6 +46,7 @@ const (
 
 const (
 	githubEndpointAttribute    = "evergreen.github.endpoint"
+	githubAppIDAttribute       = "evergreen.github.app_id"
 	githubOwnerAttribute       = "evergreen.github.owner"
 	githubRepoAttribute        = "evergreen.github.repo"
 	githubRefAttribute         = "evergreen.github.ref"
@@ -53,6 +54,7 @@ const (
 	githubRetriesAttribute     = "evergreen.github.retries"
 	githubCachedAttribute      = "evergreen.github.cached"
 	githubLocalCachedAttribute = "evergreen.github.local_cached"
+	githubAuthMethodAttribute  = "evergreen.github.auth_method"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -490,7 +492,7 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
-func GetGithubFile(ctx context.Context, owner, repo, path, ref string) (*github.RepositoryContent, error) {
+func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth *githubapp.GithubAppAuth) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
 	}
@@ -504,42 +506,106 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string) (*github.
 	))
 	defer span.End()
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
+	var outputFile *github.RepositoryContent
+	if err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, githubClient *githubapp.GitHubClient) error {
+		var opt *github.RepositoryContentGetOptions
+		if len(ref) != 0 {
+			opt = &github.RepositoryContentGetOptions{
+				Ref: ref,
+			}
+		}
+
+		file, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, opt)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+			if resp.StatusCode == http.StatusNotFound {
+				return FileNotFoundError{filepath: path}
+			}
+			if err != nil {
+				return parseGithubErrorResponse(resp)
+			}
+		} else {
+			errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
+			grip.Error(errMsg)
+			return APIResponseError{errMsg}
+		}
+
+		if file == nil || file.Content == nil {
+			return APIRequestError{Message: "file is nil"}
+		}
+
+		outputFile = file
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return outputFile, nil
+}
+
+// runGitHubOp attempts to run the given GitHub operation. It first attempts
+// with GitHub app to authenticate (if provided). If that fails (e.g. due to
+// insufficient GitHub app permissions) or no app is available, it falls back
+// to using the internal app for installation tokens.
+func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
+	if ghAppAuth != nil {
+		err := runGitHubOpWithExternalGitHubApp(ctx, owner, repo, caller, ghAppAuth, op)
+		if err == nil {
+			return nil
+		}
+
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":    "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
+			"caller":     caller,
+			"owner":      owner,
+			"repo":       repo,
+			"project_id": ghAppAuth.Id,
+			"app_id":     ghAppAuth.AppID,
+		}))
+	}
+
+	// Fall back to using the internal app if the project does not have a token
+	// available or if the operation with the GitHub app failed. This is
+	// needed because the project's GitHub app may have insufficient permissions
+	// to perform the operation, whereas the internal app has broad permissions.
+	ctx, span := tracer.Start(ctx, "github-op-with-internal-app", trace.WithAttributes(
+		attribute.String(githubAuthMethodAttribute, "internal_app"),
+	))
+	defer span.End()
+
+	internalToken, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
+		span.RecordError(err)
+		return errors.Wrap(err, "getting installation token")
 	}
+	internalGHClient := getGithubClient(internalToken, caller, retryConfig{retry: true})
+	defer internalGHClient.Close()
 
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
+	err = op(ctx, internalGHClient)
+	return err
+}
 
-	var opt *github.RepositoryContentGetOptions
-	if len(ref) != 0 {
-		opt = &github.RepositoryContentGetOptions{
-			Ref: ref,
-		}
+func runGitHubOpWithExternalGitHubApp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
+	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+	if err != nil {
+		return errors.Wrapf(err, "getting installation token with external GitHub app '%d'", ghAppAuth.AppID)
 	}
+	ctx, span := tracer.Start(ctx, "github-op-with-external-app", trace.WithAttributes(
+		attribute.String(githubAuthMethodAttribute, "external_app"),
+	))
+	defer span.End()
 
-	file, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, opt)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, FileNotFoundError{filepath: path}
-		}
-		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
+	// This intentionally does not retry because if the GitHub app doesn't have
+	// the necessary permissions or has other issues like rate limits, then it's
+	// better to fall back to the internal app immediately.
+	// TODO (DEVPROD-26276): reconsider whether this should retry and whether
+	// it's okay to continue falling back to the internal app.
+	ghClient := getGithubClient(token, caller, retryConfig{})
+	defer ghClient.Close()
 
-	if file == nil || file.Content == nil {
-		return nil, APIRequestError{Message: "file is nil"}
-	}
-
-	return file, nil
+	return op(ctx, ghClient)
 }
 
 // SendPendingStatusToGithub sends a pending status to a Github PR patch
@@ -1096,17 +1162,37 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	}, isMember, err
 }
 
-// CheckGithubAPILimit queries Github for all the API rate limits
-func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
+// CheckGithubAPILimit queries Github for all the API rate limits for the given
+// app. If no app/owner/repo is specified, it queries the Evergreen internal
+// app's rate limit.
+func CheckGithubAPILimit(ctx context.Context, owner, repo string, ghAppAuth *githubapp.GithubAppAuth) (*github.RateLimits, error) {
 	caller := "CheckGithubAPILimit"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
 
-	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
+	if ghAppAuth != nil && (owner == "" || repo == "") {
+		return nil, errors.New("owner and repo must be specified when querying API limit with external GitHub app")
+	}
+
+	var token string
+	var err error
+	if ghAppAuth != nil {
+		span.SetAttributes(
+			attribute.String(githubAppIDAttribute, fmt.Sprint(ghAppAuth.AppID)),
+			attribute.String(githubOwnerAttribute, owner),
+			attribute.String(githubRepoAttribute, repo),
+		)
+		token, err = ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting installation token with external GitHub app ID %d for owner/repo '%s/%s'", ghAppAuth.AppID, owner, repo)
+		}
+	} else {
+		token, err = getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting installation token")
+		}
 	}
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
@@ -1118,7 +1204,6 @@ func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
-		grip.Errorf("github GET rate limit failed: %+v", err)
 		return nil, err
 	}
 	if limits.Core == nil {
@@ -1130,7 +1215,7 @@ func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
 
 // CheckGithubResource queries Github for the number of API requests remaining
 func CheckGithubResource(ctx context.Context) (int64, error) {
-	limits, err := CheckGithubAPILimit(ctx)
+	limits, err := CheckGithubAPILimit(ctx, "", "", nil)
 	if err != nil {
 		return int64(0), errors.Wrap(err, "getting github rate limit")
 	}

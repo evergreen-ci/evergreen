@@ -498,24 +498,30 @@ const (
 	TaskDescriptionOtelAttribute    = "evergreen.task.description"
 	TaskTagsOtelAttribute           = "evergreen.task.tags"
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
+	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
+	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
 
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
 
 	// version otel attributes
-	VersionIDOtelAttribute               = "evergreen.version.id"
-	VersionRequesterOtelAttribute        = "evergreen.version.requester"
-	VersionStatusOtelAttribute           = "evergreen.version.status"
-	VersionCreateTimeOtelAttribute       = "evergreen.version.create_time"
-	VersionStartTimeOtelAttribute        = "evergreen.version.start_time"
-	VersionFinishTimeOtelAttribute       = "evergreen.version.finish_time"
-	VersionAuthorOtelAttribute           = "evergreen.version.author"
-	VersionBranchOtelAttribute           = "evergreen.version.branch"
-	VersionMakespanSecondsOtelAttribute  = "evergreen.version.makespan_seconds"
-	VersionTimeTakenSecondsOtelAttribute = "evergreen.version.time_taken_seconds"
-	VersionPRNumOtelAttribute            = "evergreen.version.pr_num"
-	VersionDescriptionOtelAttribute      = "evergreen.version.description"
+	VersionIDOtelAttribute                    = "evergreen.version.id"
+	VersionRequesterOtelAttribute             = "evergreen.version.requester"
+	VersionStatusOtelAttribute                = "evergreen.version.status"
+	VersionCreateTimeOtelAttribute            = "evergreen.version.create_time"
+	VersionStartTimeOtelAttribute             = "evergreen.version.start_time"
+	VersionFinishTimeOtelAttribute            = "evergreen.version.finish_time"
+	VersionAuthorOtelAttribute                = "evergreen.version.author"
+	VersionBranchOtelAttribute                = "evergreen.version.branch"
+	VersionMakespanSecondsOtelAttribute       = "evergreen.version.makespan_seconds"
+	VersionTimeTakenSecondsOtelAttribute      = "evergreen.version.time_taken_seconds"
+	VersionPRNumOtelAttribute                 = "evergreen.version.pr_num"
+	VersionDescriptionOtelAttribute           = "evergreen.version.description"
+	VersionOnDemandCostOtelAttribute          = "evergreen.version.on_demand_cost"
+	VersionAdjustedCostOtelAttribute          = "evergreen.version.adjusted_cost"
+	VersionPredictedOnDemandCostOtelAttribute = "evergreen.version.predicted_on_demand_cost"
+	VersionPredictedAdjustedCostOtelAttribute = "evergreen.version.predicted_adjusted_cost"
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
@@ -675,6 +681,7 @@ const (
 	TriggerRequester            = "trigger_request"
 	AdHocRequester              = "ad_hoc"               // periodic build
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
+	DebugRequester              = "debug_request"        // for debug spawn hosts
 )
 
 // Constants related to requester types.
@@ -695,6 +702,7 @@ var (
 		TriggerRequester,
 		AdHocRequester,
 		GithubMergeRequester,
+		DebugRequester,
 	}
 )
 

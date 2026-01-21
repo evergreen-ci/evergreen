@@ -572,13 +572,11 @@ func (p *Pod) Insert(ctx context.Context) error {
 	return db.Insert(ctx, Collection, p)
 }
 
-// InsertWithContext is the same as Insert, but it respects the given context by
-// avoiding the global Anser DB session.
-func (p *Pod) InsertWithContext(ctx context.Context, env evergreen.Environment) error {
-	if _, err := env.DB().Collection(Collection).InsertOne(ctx, p); err != nil {
-		return err
-	}
-	return nil
+// InsertWithEnv inserts a new pod into the collection using the given
+// environment's database. This is useful for transactions where the same client
+// must be used for all operations.
+func (p *Pod) InsertWithEnv(ctx context.Context, env evergreen.Environment) error {
+	return db.InsertWithEnv(ctx, env, Collection, p)
 }
 
 // Remove removes the pod from the collection.

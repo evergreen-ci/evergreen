@@ -37,7 +37,7 @@ func GetGitHubAppID(ctx context.Context, projectId string) (*int64, error) {
 	githubAppAuth := &GithubAppAuth{}
 
 	q := byGithubAppAuthID(projectId).WithFields(GhAuthAppIdKey)
-	err := db.FindOneQContext(ctx, GitHubAppAuthCollection, q, githubAppAuth)
+	err := db.FindOneQ(ctx, GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -76,7 +76,7 @@ func FindOneGitHubAppAuth(ctx context.Context, id string) (*GithubAppAuth, error
 // findOneGitHubAppAuthDB finds the GitHub app auth in the database.
 func findOneGitHubAppAuthDB(ctx context.Context, id string) (*GithubAppAuth, error) {
 	appAuth := &GithubAppAuth{}
-	err := db.FindOneQContext(ctx, GitHubAppAuthCollection, byGithubAppAuthID(id), appAuth)
+	err := db.FindOneQ(ctx, GitHubAppAuthCollection, byGithubAppAuthID(id), appAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

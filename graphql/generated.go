@@ -184,6 +184,7 @@ type ComplexityRoot struct {
 		GithubOrgs              func(childComplexity int) int
 		GithubPRCreatorOrg      func(childComplexity int) int
 		GithubWebhookSecret     func(childComplexity int) int
+		Graphite                func(childComplexity int) int
 		HostInit                func(childComplexity int) int
 		HostJasper              func(childComplexity int) int
 		JIRANotifications       func(childComplexity int) int
@@ -677,6 +678,11 @@ type ComplexityRoot struct {
 	GithubUser struct {
 		LastKnownAs func(childComplexity int) int
 		UID         func(childComplexity int) int
+	}
+
+	GraphiteConfig struct {
+		CIOptimizationToken func(childComplexity int) int
+		ServerURL           func(childComplexity int) int
 	}
 
 	GroupedBuildVariant struct {
@@ -1729,6 +1735,7 @@ type ComplexityRoot struct {
 		PodInitDisabled                 func(childComplexity int) int
 		ReleaseModeDisabled             func(childComplexity int) int
 		RepotrackerDisabled             func(childComplexity int) int
+		S3LifecycleSyncDisabled         func(childComplexity int) int
 		SchedulerDisabled               func(childComplexity int) int
 		SlackNotificationsDisabled      func(childComplexity int) int
 		SleepScheduleDisabled           func(childComplexity int) int
@@ -3144,6 +3151,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.GithubWebhookSecret(childComplexity), true
+	case "AdminSettings.graphite":
+		if e.complexity.AdminSettings.Graphite == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Graphite(childComplexity), true
 	case "AdminSettings.hostInit":
 		if e.complexity.AdminSettings.HostInit == nil {
 			break
@@ -5031,6 +5044,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GithubUser.UID(childComplexity), true
+
+	case "GraphiteConfig.ciOptimizationToken":
+		if e.complexity.GraphiteConfig.CIOptimizationToken == nil {
+			break
+		}
+
+		return e.complexity.GraphiteConfig.CIOptimizationToken(childComplexity), true
+	case "GraphiteConfig.serverUrl":
+		if e.complexity.GraphiteConfig.ServerURL == nil {
+			break
+		}
+
+		return e.complexity.GraphiteConfig.ServerURL(childComplexity), true
 
 	case "GroupedBuildVariant.displayName":
 		if e.complexity.GroupedBuildVariant.DisplayName == nil {
@@ -9918,6 +9944,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.RepotrackerDisabled(childComplexity), true
+	case "ServiceFlags.s3LifecycleSyncDisabled":
+		if e.complexity.ServiceFlags.S3LifecycleSyncDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.S3LifecycleSyncDisabled(childComplexity), true
 	case "ServiceFlags.schedulerDisabled":
 		if e.complexity.ServiceFlags.SchedulerDisabled == nil {
 			break
@@ -12778,6 +12810,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput,
 		ec.unmarshalInputGithubAppAuthInput,
 		ec.unmarshalInputGithubUserInput,
+		ec.unmarshalInputGraphiteConfigInput,
 		ec.unmarshalInputHomeVolumeSettingsInput,
 		ec.unmarshalInputHostAllocatorSettingsInput,
 		ec.unmarshalInputHostEventsInput,
@@ -18541,6 +18574,41 @@ func (ec *executionContext) fieldContext_AdminSettings_fws(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_graphite(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_graphite,
+		func(ctx context.Context) (any, error) {
+			return obj.Graphite, nil
+		},
+		nil,
+		ec.marshalOGraphiteConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_graphite(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ciOptimizationToken":
+				return ec.fieldContext_GraphiteConfig_ciOptimizationToken(ctx, field)
+			case "serverUrl":
+				return ec.fieldContext_GraphiteConfig_serverUrl(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GraphiteConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_githubCheckRun(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19505,6 +19573,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_webhookNotificationsDisabled(ctx, field)
 			case "githubStatusAPIDisabled":
 				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
+			case "s3LifecycleSyncDisabled":
+				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
 		},
@@ -28652,6 +28722,77 @@ func (ec *executionContext) fieldContext_GithubUser_uid(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _GraphiteConfig_ciOptimizationToken(ctx context.Context, field graphql.CollectedField, obj *model.APIGraphiteConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GraphiteConfig_ciOptimizationToken,
+		func(ctx context.Context) (any, error) {
+			return obj.CIOptimizationToken, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GraphiteConfig_ciOptimizationToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GraphiteConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GraphiteConfig_serverUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIGraphiteConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GraphiteConfig_serverUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.ServerURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GraphiteConfig_serverUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GraphiteConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GroupedBuildVariant_displayName(ctx context.Context, field graphql.CollectedField, obj *GroupedBuildVariant) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36379,6 +36520,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_expansions(ctx, field)
 			case "fws":
 				return ec.fieldContext_AdminSettings_fws(ctx, field)
+			case "graphite":
+				return ec.fieldContext_AdminSettings_graphite(ctx, field)
 			case "githubCheckRun":
 				return ec.fieldContext_AdminSettings_githubCheckRun(ctx, field)
 			case "githubOrgs":
@@ -50537,6 +50680,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_expansions(ctx, field)
 			case "fws":
 				return ec.fieldContext_AdminSettings_fws(ctx, field)
+			case "graphite":
+				return ec.fieldContext_AdminSettings_graphite(ctx, field)
 			case "githubCheckRun":
 				return ec.fieldContext_AdminSettings_githubCheckRun(ctx, field)
 			case "githubOrgs":
@@ -58207,6 +58352,35 @@ func (ec *executionContext) _ServiceFlags_githubStatusAPIDisabled(ctx context.Co
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_githubStatusAPIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlags_s3LifecycleSyncDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.S3LifecycleSyncDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServiceFlags",
 		Field:      field,
@@ -75876,7 +76050,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76009,6 +76183,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.FWS = data
+		case "graphite":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphite"))
+			data, err := ec.unmarshalOGraphiteConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Graphite = data
 		case "githubCheckRun":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubCheckRun"))
 			data, err := ec.unmarshalOGitHubCheckRunConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubCheckRunConfig(ctx, v)
@@ -79310,6 +79491,57 @@ func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.LastKnownAs = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputGraphiteConfigInput(ctx context.Context, obj any) (model.APIGraphiteConfig, error) {
+	var it model.APIGraphiteConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"ciOptimizationToken", "serverUrl"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "ciOptimizationToken":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ciOptimizationToken"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.CIOptimizationToken = data
+			} else if tmp == nil {
+				it.CIOptimizationToken = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "serverUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServerURL = data
 		}
 	}
 
@@ -83656,7 +83888,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83915,6 +84147,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.GithubStatusAPIDisabled = data
+		case "s3LifecycleSyncDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3LifecycleSyncDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3LifecycleSyncDisabled = data
 		}
 	}
 
@@ -87023,6 +87262,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_expansions(ctx, field, obj)
 		case "fws":
 			out.Values[i] = ec._AdminSettings_fws(ctx, field, obj)
+		case "graphite":
+			out.Values[i] = ec._AdminSettings_graphite(ctx, field, obj)
 		case "githubCheckRun":
 			out.Values[i] = ec._AdminSettings_githubCheckRun(ctx, field, obj)
 		case "githubOrgs":
@@ -90316,6 +90557,44 @@ func (ec *executionContext) _GithubUser(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._GithubUser_lastKnownAs(ctx, field, obj)
 		case "uid":
 			out.Values[i] = ec._GithubUser_uid(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var graphiteConfigImplementors = []string{"GraphiteConfig"}
+
+func (ec *executionContext) _GraphiteConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIGraphiteConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, graphiteConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GraphiteConfig")
+		case "ciOptimizationToken":
+			out.Values[i] = ec._GraphiteConfig_ciOptimizationToken(ctx, field, obj)
+		case "serverUrl":
+			out.Values[i] = ec._GraphiteConfig_serverUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99770,6 +100049,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_webhookNotificationsDisabled(ctx, field, obj)
 		case "githubStatusAPIDisabled":
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
+		case "s3LifecycleSyncDisabled":
+			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -114176,6 +114457,21 @@ func (ec *executionContext) unmarshalOGithubUserInput2ᚖgithubᚗcomᚋevergree
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputGithubUserInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOGraphiteConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIGraphiteConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GraphiteConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGraphiteConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig(ctx context.Context, v any) (*model.APIGraphiteConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGraphiteConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

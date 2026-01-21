@@ -1007,10 +1007,12 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 
 	getExpected := func(oauth bool) string {
 		expected := "mkdir -m 777 -p /home/user/cli_bin" +
-			" && (sudo chown -R user /home/user/.evergreen.yml || true)" +
-			" && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n"
+			" && (sudo chown -R user /home/user/.evergreen.yml || true)"
 		if oauth {
-			expected += "oauth:\n    issuer: https://www.example.com\n    client_id: client_id\n    connector_id: connector_id\n    do_not_use_browser: true\n"
+			expected += " && echo \"user: user\napi_key: key\napi_server_host: www.corporation.example0.com/api\nui_server_host: www.example1.com\n" +
+				"oauth:\n    issuer: https://www.example.com\n    client_id: client_id\n    connector_id: connector_id\n    do_not_use_browser: true\n"
+		} else {
+			expected += " && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n"
 		}
 		expected += "\" > /home/user/.evergreen.yml" +
 			" && chmod +x /home/user/evergreen" +
@@ -1022,13 +1024,19 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 
 	getSettings := func() *evergreen.Settings {
 		return &evergreen.Settings{
-			Api: evergreen.APIConfig{URL: "www.example0.com"},
+			Api: evergreen.APIConfig{
+				URL:     "www.example0.com",
+				CorpURL: "www.corporation.example0.com",
+			},
 			Ui: evergreen.UIConfig{
 				Url: "www.example1.com",
 			},
 			HostJasper: evergreen.HostJasperConfig{
 				BinaryName: "jasper_cli",
 				Port:       12345,
+			},
+			ServiceFlags: evergreen.ServiceFlags{
+				JWTTokenForCLIDisabled: true,
 			},
 		}
 	}
@@ -1048,6 +1056,7 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 				ConnectorID: "connector_id",
 			},
 		}
+		settings.ServiceFlags.JWTTokenForCLIDisabled = false
 
 		cmd, err := h.SpawnHostSetupCommands(t.Context(), settings)
 		require.NoError(t, err)

@@ -52,7 +52,7 @@ func parserProjectFindOneById(ctx context.Context, id string) (*ParserProject, e
 // parserProjectFindOne finds a parser project in the DB with a given query.
 func parserProjectFindOne(ctx context.Context, query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
-	err := db.FindOneQContext(ctx, ParserProjectCollection, query, project)
+	err := db.FindOneQ(ctx, ParserProjectCollection, query, project)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -66,7 +66,7 @@ func parserProjectById(id string) db.Q {
 
 // parserProjectReplaceOne updates one parser project in the DB.
 func parserProjectReplaceOne(ctx context.Context, query any, replacement any) error {
-	_, err := db.ReplaceContext(
+	_, err := db.Replace(
 		ctx,
 		ParserProjectCollection,
 		query,

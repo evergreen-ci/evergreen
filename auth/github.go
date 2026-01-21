@@ -90,7 +90,7 @@ func (gum *GithubUserManager) GetUserByToken(ctx context.Context, token string) 
 }
 
 // CreateUserToken is not implemented in GithubUserManager
-func (*GithubUserManager) CreateUserToken(string, string) (string, error) {
+func (*GithubUserManager) CreateUserToken(context.Context, string, string) (string, error) {
 	return "", errors.New("GithubUserManager does not create tokens via username/password")
 }
 
@@ -155,13 +155,17 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 	}
 }
 
-func (*GithubUserManager) IsRedirect() bool                           { return true }
-func (*GithubUserManager) ReauthorizeUser(gimlet.User) error          { return errors.New("not implemented") }
-func (*GithubUserManager) GetUserByID(id string) (gimlet.User, error) { return getUserByID(id) }
-func (*GithubUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return getOrCreateUser(u)
+func (*GithubUserManager) IsRedirect() bool { return true }
+func (*GithubUserManager) ReauthorizeUser(context.Context, gimlet.User) error {
+	return errors.New("not implemented")
 }
-func (*GithubUserManager) ClearUser(u gimlet.User, all bool) error {
+func (*GithubUserManager) GetUserByID(ctx context.Context, id string) (gimlet.User, error) {
+	return getUserByID(ctx, id)
+}
+func (*GithubUserManager) GetOrCreateUser(ctx context.Context, u gimlet.User) (gimlet.User, error) {
+	return getOrCreateUser(ctx, u)
+}
+func (*GithubUserManager) ClearUser(_ context.Context, u gimlet.User, all bool) error {
 	return errors.New("GitHub Authentication does not support Clear User")
 }
 func (*GithubUserManager) GetGroupsForUser(string) ([]string, error) {

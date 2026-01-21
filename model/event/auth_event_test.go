@@ -30,7 +30,7 @@ func TestLogUserRolesEvent(t *testing.T) {
 			bsonutil.GetDottedKeyName("data", "before"): before,
 			bsonutil.GetDottedKeyName("data", "after"):  after,
 		})
-		err := db.FindOneQContext(t.Context(), EventCollection, q, e)
+		err := db.FindOneQ(t.Context(), EventCollection, q, e)
 		require.NoError(t, err)
 	})
 }

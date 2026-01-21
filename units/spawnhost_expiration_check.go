@@ -99,7 +99,7 @@ func tryIdleSpawnHostNotification(ctx context.Context, h *host.Host) error {
 	if err != nil || !shouldNotify {
 		return err
 	}
-	usr, err := user.FindOneByIdContext(ctx, h.StartedBy)
+	usr, err := user.FindOneById(ctx, h.StartedBy)
 	if err != nil {
 		return errors.Wrapf(err, "finding user '%s'", h.StartedBy)
 	}
