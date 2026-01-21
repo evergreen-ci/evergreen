@@ -21,10 +21,10 @@ require (
 	github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
 	github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d
-	github.com/evergreen-ci/pail v0.0.0-20260114155757-d6ea40d2432b
+	github.com/evergreen-ci/pail v0.0.0-20260120211115-7a5898d6ea1e
 	github.com/evergreen-ci/poplar v0.0.0-20251209144431-fdec8d7b2505
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
-	github.com/evergreen-ci/utility v0.0.0-20251203163234-8a1c0ea8b717
+	github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2
 	github.com/gonzojive/httpcache v0.0.0-20220509000156-e80a5e6a69fe
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/mux v1.8.1
@@ -121,7 +121,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
-	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/klauspost/pgzip v1.2.6
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
@@ -223,7 +223,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.19 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.21.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.17 // indirect

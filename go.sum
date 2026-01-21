@@ -42,8 +42,8 @@ github.com/aws/aws-sdk-go-v2/credentials v1.19.7 h1:tHK47VqqtJxOymRrNtUXN5SP/zUT
 github.com/aws/aws-sdk-go-v2/credentials v1.19.7/go.mod h1:qOZk8sPDrxhf+4Wf4oT2urYJrYt3RejHSzgAquYeppw=
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17 h1:I0GyV8wiYrP8XpA70g1HBcQO1JlQxCMTW9npl5UbDHY=
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17/go.mod h1:tyw7BOl5bBe/oqvoIeECFJjMdzXoa/dfVz3QQ5lgHGA=
-github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.19 h1:Gxj3kAlmM+a/VVO4YNsmgHGVUZhSxs0tuVwLIxZBCtM=
-github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.19/go.mod h1:XGq5kImVqQT4HUNbbG+0Y8O74URsPNH7CGPg1s1HW5E=
+github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.21.0 h1:pQZGI0qQXeCHZHMeWzhwPu+4jkWrdrIb2dgpG4OKmco=
+github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.21.0/go.mod h1:XGq5kImVqQT4HUNbbG+0Y8O74URsPNH7CGPg1s1HW5E=
 github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17 h1:xOLELNKGp2vsiteLsvLPwxC+mYmO6OZ8PYgiuPJzF8U=
 github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17/go.mod h1:5M5CI3D12dNOtH3/mk6minaRwI2/37ifCURZISxA/IQ=
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 h1:WWLqlh79iO48yLkj1v3ISRNiv+3KdQoZ6JWyfcsyQik=
@@ -177,8 +177,8 @@ github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f h1:sXisMMrOFZVbcl
 github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f/go.mod h1:6j2omnZaHKHv2WkpToHHsl0TK7Wja5GmxcYRvjkpJ2k=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
-github.com/evergreen-ci/pail v0.0.0-20260114155757-d6ea40d2432b h1:lBkxeAN8VEnuLUahxTqCs0vvOvPfZf0mFp6a12V/Dpg=
-github.com/evergreen-ci/pail v0.0.0-20260114155757-d6ea40d2432b/go.mod h1:SY1hmP1Mb98iGFcifg7B1m1HYVkzPanprn4RI3DmeeI=
+github.com/evergreen-ci/pail v0.0.0-20260120211115-7a5898d6ea1e h1:IzPdBFw9NsGQoGljBQkA74B0epqmORRtMBOkAQawJKw=
+github.com/evergreen-ci/pail v0.0.0-20260120211115-7a5898d6ea1e/go.mod h1:SY1hmP1Mb98iGFcifg7B1m1HYVkzPanprn4RI3DmeeI=
 github.com/evergreen-ci/parquet-go v0.0.0-20260116211725-cd13d4127a88 h1:DyLcXo7JENHOHqZ1dStuxF8XNpYLfZsIL3hOuN8XEd4=
 github.com/evergreen-ci/parquet-go v0.0.0-20260116211725-cd13d4127a88/go.mod h1:/cbWpqWsSFXwnCHPaAMISfcSb16GJLV4lw6iOcA/E3c=
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581 h1:JOYnqPypLzZdjlFxS2ynWGKFPTrx0HAJwe6mi9P/lhk=
@@ -189,8 +189,8 @@ github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154 h1:YO1VY9Qj68Kj
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154/go.mod h1:nDQB46oIkI/BmvuNKkHdJekvXuGm8lvfUBcbbjekMZM=
 github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c h1:khrBBgermfg8Hp9bAwU9B0nPHBfciLAq5+P1QAKfDWU=
 github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c/go.mod h1:0iD20pmczefJcyBCIuYuwfq9J3cqWOM5v61znyqcAwY=
-github.com/evergreen-ci/utility v0.0.0-20251203163234-8a1c0ea8b717 h1:g9yGrjUNAvxL6HFriXObL2jixogWc0dsJyWCJCvpzPQ=
-github.com/evergreen-ci/utility v0.0.0-20251203163234-8a1c0ea8b717/go.mod h1:Al1Mt6zmPNfdvH/Zd99nrjNoSyHK5g4zE/1tv9MiWQU=
+github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2 h1:p5kFLuoZu3SuP5AnmmLT58pSSxq8S0wNDEvjZHVcg2I=
+github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2/go.mod h1:Al1Mt6zmPNfdvH/Zd99nrjNoSyHK5g4zE/1tv9MiWQU=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
@@ -285,8 +285,8 @@ github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 h1:iQTw/8FWTuc7uia
 github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
 github.com/klauspost/compress v1.11.4/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
-github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=
-github.com/klauspost/compress v1.18.2/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
+github.com/klauspost/compress v1.18.3 h1:9PJRvfbmTabkOX8moIpXPbMMbYN60bWImDDU7L+/6zw=
+github.com/klauspost/compress v1.18.3/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/klauspost/cpuid v1.2.0/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
 github.com/klauspost/pgzip v1.2.5/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=

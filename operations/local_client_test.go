@@ -3,7 +3,9 @@ package operations
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli"
 )
 
 func TestGetDaemonDir(t *testing.T) {
@@ -138,9 +141,41 @@ func TestHandleHealth(t *testing.T) {
 }
 
 func TestHandleLoadConfig(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test_config")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	configPath := filepath.Join(tempDir, "test.yml")
+	configContent := `
+tasks:
+  - name: test_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+  - name: another_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "another"
+
+buildvariants:
+  - name: test_variant
+    tasks:
+      - name: test_task
+  - name: another_variant
+    tasks:
+      - name: another_task
+  - name: third_variant
+    tasks:
+      - name: test_task
+`
+	err = os.WriteFile(configPath, []byte(configContent), 0644)
+	require.NoError(t, err)
+
 	daemon := newLocalDaemonREST(9090)
 
-	reqBody := map[string]string{"config_path": "/path/to/config.yml"}
+	reqBody := map[string]string{"config_path": configPath}
 	jsonBody, err := json.Marshal(reqBody)
 	require.NoError(t, err)
 
@@ -157,8 +192,8 @@ func TestHandleLoadConfig(t *testing.T) {
 	err = json.NewDecoder(recorder.Body).Decode(&response)
 	require.NoError(t, err)
 	assert.True(t, response["success"].(bool))
-	assert.Equal(t, float64(-1), response["task_count"])
-	assert.Equal(t, float64(-1), response["variant_count"])
+	assert.Equal(t, float64(2), response["task_count"])
+	assert.Equal(t, float64(3), response["variant_count"])
 }
 
 func TestWriteDaemonInfo(t *testing.T) {
@@ -202,4 +237,75 @@ func TestRouterSetup(t *testing.T) {
 	router.ServeHTTP(recorder, req)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func TestSelectTaskCmd(t *testing.T) {
+	t.Run("no task name provided", func(t *testing.T) {
+		app := cli.NewApp()
+		set := flag.NewFlagSet("test", 0)
+		c := cli.NewContext(app, set, nil)
+		err := selectTaskCmd(c)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "task name required")
+	})
+
+	t.Run("successful task selection", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/health":
+				w.WriteHeader(http.StatusOK)
+			case "/task/select":
+				var reqBody map[string]string
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&reqBody))
+				assert.Equal(t, "test_task", reqBody["task_name"])
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+					"success":    true,
+					"step_count": 5,
+				}))
+			}
+		}))
+		defer server.Close()
+
+		tempDir, err := os.MkdirTemp("", "select_task_test")
+		require.NoError(t, err)
+		defer os.RemoveAll(tempDir)
+
+		origHome := os.Getenv("HOME")
+		err = os.Setenv("HOME", tempDir)
+		require.NoError(t, err)
+		defer os.Setenv("HOME", origHome)
+
+		daemonDir := filepath.Join(tempDir, ".evergreen-local")
+		err = os.MkdirAll(daemonDir, 0755)
+		require.NoError(t, err)
+
+		var port int
+		_, err = fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+
+		portFile := filepath.Join(daemonDir, "daemon.port")
+		err = os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644)
+		require.NoError(t, err)
+
+		app := cli.NewApp()
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		set := flag.NewFlagSet("test", 0)
+		require.NoError(t, set.Parse([]string{"test_task"}))
+		c := cli.NewContext(app, set, nil)
+
+		err = selectTaskCmd(c)
+
+		w.Close()
+		os.Stdout = oldStdout
+
+		out, _ := io.ReadAll(r)
+		output := string(out)
+
+		assert.NoError(t, err)
+		assert.Contains(t, output, "Selected task: test_task")
+		assert.Contains(t, output, "Total steps: 5")
+	})
 }

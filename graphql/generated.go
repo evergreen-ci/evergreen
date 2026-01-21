@@ -1735,6 +1735,7 @@ type ComplexityRoot struct {
 		PodInitDisabled                 func(childComplexity int) int
 		ReleaseModeDisabled             func(childComplexity int) int
 		RepotrackerDisabled             func(childComplexity int) int
+		S3LifecycleSyncDisabled         func(childComplexity int) int
 		SchedulerDisabled               func(childComplexity int) int
 		SlackNotificationsDisabled      func(childComplexity int) int
 		SleepScheduleDisabled           func(childComplexity int) int
@@ -9944,6 +9945,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.RepotrackerDisabled(childComplexity), true
+	case "ServiceFlags.s3LifecycleSyncDisabled":
+		if e.complexity.ServiceFlags.S3LifecycleSyncDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.S3LifecycleSyncDisabled(childComplexity), true
 	case "ServiceFlags.schedulerDisabled":
 		if e.complexity.ServiceFlags.SchedulerDisabled == nil {
 			break
@@ -19575,6 +19582,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_webhookNotificationsDisabled(ctx, field)
 			case "githubStatusAPIDisabled":
 				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
+			case "s3LifecycleSyncDisabled":
+				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
 		},
@@ -58393,6 +58402,35 @@ func (ec *executionContext) fieldContext_ServiceFlags_githubStatusAPIDisabled(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _ServiceFlags_s3LifecycleSyncDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.S3LifecycleSyncDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SetLastRevisionPayload_mergeBaseRevision(ctx context.Context, field graphql.CollectedField, obj *SetLastRevisionPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -83888,7 +83926,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84154,6 +84192,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.GithubStatusAPIDisabled = data
+		case "s3LifecycleSyncDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3LifecycleSyncDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3LifecycleSyncDisabled = data
 		}
 	}
 
@@ -100044,6 +100089,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_webhookNotificationsDisabled(ctx, field, obj)
 		case "githubStatusAPIDisabled":
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
+		case "s3LifecycleSyncDisabled":
+			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

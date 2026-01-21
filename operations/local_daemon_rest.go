@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/evergreen-ci/evergreen/agent/taskexec"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -15,8 +16,10 @@ import (
 
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
-	mu   sync.RWMutex
-	port int
+	executor   *taskexec.LocalExecutor
+	mu         sync.RWMutex
+	configPath string
+	port       int
 }
 
 // newLocalDaemonREST creates a new REST daemon
@@ -31,6 +34,7 @@ func (d *localDaemonREST) Start() error {
 	router := mux.NewRouter()
 	router.HandleFunc("/health", d.handleHealth).Methods("GET")
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
+	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -59,11 +63,68 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	// TODO: DEVPROD-24304 load project from request config path, store it in daemon state.
+	opts := taskexec.LocalExecutorOptions{
+		WorkingDir: filepath.Dir(req.ConfigPath),
+		LogLevel:   "info",
+		Timeout:    7200,
+	}
+
+	executor, err := taskexec.NewLocalExecutor(opts)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	project, err := executor.LoadProject(req.ConfigPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	workDir := filepath.Dir(req.ConfigPath)
+	if err := executor.SetupWorkingDirectory(workDir); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	d.executor = executor
+	d.configPath = req.ConfigPath
+
 	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":       true,
-		"task_count":    -1,
-		"variant_count": -1,
+		"task_count":    len(project.Tasks),
+		"variant_count": len(project.BuildVariants),
+	}))
+}
+
+// handleSelectTask selects a task for debugging
+func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		TaskName string `json:"task_name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	if err := d.executor.PrepareTask(req.TaskName); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	state := d.executor.GetDebugState()
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"step_count": len(state.CommandList),
 	}))
 }
 

@@ -36,6 +36,7 @@ input ServiceFlagsInput {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
+  s3LifecycleSyncDisabled: Boolean
 }
 
 type ServiceFlags {
@@ -76,6 +77,7 @@ type ServiceFlags {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
+  s3LifecycleSyncDisabled: Boolean
 }
 
 # UserServiceFlags are service flags that users have permission to view.
