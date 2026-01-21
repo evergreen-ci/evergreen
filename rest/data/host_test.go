@@ -246,11 +246,8 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			intentHost, err := NewIntentHost(ctx, options, testUser, env)
 			s.NoError(err)
 			s.Require().NotNil(intentHost)
-
-			// Verify IsDebug field is set
 			s.True(intentHost.IsDebug, "IsDebug should be true")
 
-			// Verify is_debug instance tag is present
 			var foundDebugTag bool
 			for _, tag := range intentHost.InstanceTags {
 				if tag.Key == "is_debug" {
@@ -267,10 +264,9 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			intentHost, err := NewIntentHost(ctx, options, testUser, env)
 			s.NoError(err)
 			s.Require().NotNil(intentHost)
-			
+
 			s.False(intentHost.IsDebug, "IsDebug should be false")
 
-			// Verify is_debug instance tag is NOT present
 			for _, tag := range intentHost.InstanceTags {
 				s.NotEqual("is_debug", tag.Key, "is_debug tag should not be present")
 			}
