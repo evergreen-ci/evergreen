@@ -1,11 +1,13 @@
 package thirdparty
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -128,7 +130,12 @@ func TestGitCloneAndRestore(t *testing.T) {
 		assert.NoError(t, os.RemoveAll(dir))
 	}()
 
-	fileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
+	gitFileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
 	require.NoError(t, err)
-	assert.Contains(t, fileContent, "Repo used to test GitHub functionality for Evergreen.")
+
+	comparisonFile, err := GetGithubFile(t.Context(), owner, repo, rev, file, nil)
+	comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+	require.NoError(t, err)
+
+	assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
 }
