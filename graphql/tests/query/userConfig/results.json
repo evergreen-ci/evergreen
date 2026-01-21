@@ -8,7 +8,8 @@
         "admin": [
           {
             "_id": "service_flags",
-            "static_api_keys_disabled": true
+            "static_api_keys_disabled": true,
+            "jwt_token_for_cli_disabled": true
           }
         ]
       },
