@@ -829,7 +829,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
 			config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
 		}
-		if settings.ServiceFlags.StaticAPIKeysDisabled {
+		if !settings.ServiceFlags.StaticAPIKeysDisabled {
 			config.APIKey = usr.GetAPIKey()
 		}
 	}
