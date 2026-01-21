@@ -1,6 +1,8 @@
 package thirdparty
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -105,4 +107,28 @@ func TestParseGitVersionString(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expected.expectedVersion, parsedVersion)
 	}
+}
+
+func TestGitCloneAndRestore(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	const (
+		owner = "evergreen-ci"
+		repo  = "sample"
+		rev   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+		file  = "README.md"
+	)
+
+	// kim: TODO: confirm that TMPDIR forces os.MkdirTemp to use /tmp.
+	dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
+	require.NoError(t, err)
+	fmt.Println("kim: cloned to ", dir)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(dir))
+	}()
+
+	fileContent, err := GitRestoreFile(t.Context(), owner, repo, rev, dir, file)
+	require.NoError(t, err)
+	assert.Contains(t, fileContent, "Repo used to test GitHub functionality for Evergreen.")
 }
