@@ -349,7 +349,8 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	defer span.End()
 
 	// Validate that the file is within the git directory to prevent attempts to
-	// access files outside the git repo.
+	// access files outside the git repo. The requested file could be
+	// user-provided (e.g. an include file), which is not trusted.
 	if err := validateFileIsWithinDirectory(dir, fileName); err != nil {
 		return "", errors.Wrapf(err, "validating file path '%s' is within git repo directory", fileName)
 	}
@@ -391,13 +392,13 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	}
 
 	// Validate that the restored file is not a symlink to prevent attempts to
-	// access a different file in the file system.
+	// access a different file in the file system (e.g. a file in the git repo
+	// that symlinks to "~/.ssh/id_rsa").
 	if err := validateFileIsNotSymlink(dir, fileName); err != nil {
 		return "", errors.Wrapf(err, "validating file '%s' is not a symlink", fileName)
 	}
 
-	fp := filepath.Join(dir, fileName)
-	contents, err := os.ReadFile(fp)
+	contents, err := os.ReadFile(filepath.Join(dir, fileName))
 	if err != nil {
 		return "", errors.Wrapf(err, "reading restored file '%s'", fileName)
 	}
@@ -407,7 +408,7 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 // validateFileIsWithinDirectory ensures that the given file path is
 // contained within the specified directory.
 func validateFileIsWithinDirectory(dir, file string) error {
-	// Normalize the path (removes redundant separators, resolves "." references)
+	// Normalize the path (e.g. removes redundant separators, resolves ".").
 	cleanPath := filepath.Clean(file)
 
 	if filepath.IsAbs(cleanPath) {
@@ -422,13 +423,13 @@ func validateFileIsWithinDirectory(dir, file string) error {
 	fullFilePath := filepath.Join(dir, cleanPath)
 
 	// Use filepath.Rel to verify fullFilePath is a filepath within dir to rule
-	// out complex path manipulations.
+	// out any other complex path manipulations.
 	relPath, err := filepath.Rel(dir, fullFilePath)
 	if err != nil {
 		return errors.Wrap(err, "verifying that the file is relative to the directory")
 	}
 
-	// If the relative path contains "..", it may try to escape the base
+	// If the relative path still contains "..", it may try to escape the
 	// directory.
 	if strings.Contains(relPath, "..") {
 		return errors.Errorf("file '%s' escapes directory using '..'", file)
@@ -443,16 +444,16 @@ func validateFileIsWithinDirectory(dir, file string) error {
 // metadata file).
 func validateFileIsNotSymlink(dir, file string) error {
 	fullFilePath := filepath.Join(dir, file)
-	// Use Lstat (not Stat) to get info about the file itself, not its target.
+	// Use lstat to get info about the file itself, not its target. In the case
+	// of a symlink, it'll get info about the symlink itself and not the file it
+	// points to.
 	fileInfo, err := os.Lstat(fullFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to stat file: %w", err)
+		return errors.Wrapf(err, "getting stat for file '%s'", file)
 	}
 
-	// Check that the file is not a symlink, so it cannot point to a different
-	// file.
 	if fileInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("symlinks are not allowed: %s", file)
+		return errors.Errorf("file '%s' is a symlink, which is disallowed", file)
 	}
 
 	return nil
