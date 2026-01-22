@@ -56288,7 +56288,7 @@ func (ec *executionContext) _S3StorageCostConfig_standardStorageCostDiscount(ctx
 			return obj.StandardStorageCostDiscount, nil
 		},
 		nil,
-		ec.marshalOFloat2ᚖfloat64,
+		ec.marshalOFloat2float64,
 		true,
 		false,
 	)
@@ -56317,7 +56317,7 @@ func (ec *executionContext) _S3StorageCostConfig_infrequentAccessStorageCostDisc
 			return obj.InfrequentAccessStorageCostDiscount, nil
 		},
 		nil,
-		ec.marshalOFloat2ᚖfloat64,
+		ec.marshalOFloat2float64,
 		true,
 		false,
 	)
@@ -56346,7 +56346,7 @@ func (ec *executionContext) _S3UploadCostConfig_uploadCostDiscount(ctx context.C
 			return obj.UploadCostDiscount, nil
 		},
 		nil,
-		ec.marshalOFloat2ᚖfloat64,
+		ec.marshalOFloat2float64,
 		true,
 		false,
 	)
@@ -83541,14 +83541,14 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 		switch k {
 		case "standardStorageCostDiscount":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("standardStorageCostDiscount"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StandardStorageCostDiscount = data
 		case "infrequentAccessStorageCostDiscount":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("infrequentAccessStorageCostDiscount"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -83575,7 +83575,7 @@ func (ec *executionContext) unmarshalInputS3UploadCostConfigInput(ctx context.Co
 		switch k {
 		case "uploadCostDiscount":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uploadCostDiscount"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
