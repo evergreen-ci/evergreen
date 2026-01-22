@@ -503,6 +503,7 @@ type SpawnHostInput struct {
 	UseTaskConfig           *bool                   `json:"useTaskConfig,omitempty"`
 	VolumeID                *string                 `json:"volumeId,omitempty"`
 	UseOAuth                *bool                   `json:"useOAuth,omitempty"`
+	IsDebug                 *bool                   `json:"isDebug,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.

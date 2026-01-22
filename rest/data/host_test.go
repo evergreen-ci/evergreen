@@ -241,6 +241,18 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			s.Require().Error(err)
 			s.Contains(err.Error(), "not been allowed by admins")
 		},
+		"NonDebugIntentHostHasIsDebugFalse": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			options.IsDebug = false
+			intentHost, err := NewIntentHost(ctx, options, testUser, env)
+			s.NoError(err)
+			s.Require().NotNil(intentHost)
+
+			s.False(intentHost.IsDebug, "IsDebug should be false")
+
+			for _, tag := range intentHost.InstanceTags {
+				s.NotEqual("is_debug", tag.Key, "is_debug tag should not be present")
+			}
+		},
 	} {
 		s.Run(tName, func() {
 			s.Require().NoError(db.ClearCollections(host.Collection))
