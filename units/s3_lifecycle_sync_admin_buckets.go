@@ -69,10 +69,9 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		return
 	}
 
-	settings := j.env.Settings()
-	bucketsConfig := settings.Buckets
+	bucketsConfig := j.env.Settings().Buckets
 
-	adminBuckets, err := s3lifecycle.DiscoverAdminManagedBuckets(ctx, settings)
+	adminBuckets, err := s3lifecycle.DiscoverAdminManagedBuckets(ctx, j.env.Settings())
 	if err != nil {
 		j.AddError(errors.Wrap(err, "discovering admin-managed buckets"))
 		return
@@ -123,10 +122,10 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 			continue
 		}
 
-		// Extract lifecycle values from first rule (admin buckets typically have one rule)
+		// Extract lifecycle values from first rule (admin buckets typically have one rule).
 		var expirationDays, transitionToIADays, transitionToGlacierDays *int
 		if len(rules) > 0 {
-			// Use the first enabled rule
+			// Use the first enabled rule.
 			for _, rule := range rules {
 				if rule.Status != "Enabled" {
 					continue

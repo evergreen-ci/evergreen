@@ -42,7 +42,6 @@ func TestRunWithDisabledFlag(t *testing.T) {
 	}
 	require.NoError(t, flags.Set(t.Context()))
 
-	// Create and run the job
 	job := makeS3LifecycleSyncAdminBucketsJob()
 	job.env = env
 	job.SetID("test-job-id")
