@@ -227,19 +227,13 @@ func (e *Environment) RemoteQueueGroup() amboy.QueueGroup {
 	return e.RemoteGroup
 }
 
-func (e *Environment) Session() db.Session {
+func (e *Environment) Session(_ context.Context) db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.DBSession
 }
 
-func (e *Environment) ContextSession(_ context.Context) db.Session {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.DBSession
-}
-
-func (e *Environment) CedarContextSession(_ context.Context) db.Session {
+func (e *Environment) CedarSession(_ context.Context) db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.DBSession

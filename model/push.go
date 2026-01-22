@@ -60,7 +60,7 @@ func (pl *PushLog) Insert(ctx context.Context) error {
 }
 
 func (pl *PushLog) UpdateStatus(ctx context.Context, newStatus string) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		PushlogCollection,
 		bson.M{
@@ -78,7 +78,7 @@ func FindOnePushLog(ctx context.Context, query any, projection any,
 	sort []string) (*PushLog, error) {
 	pushLog := &PushLog{}
 	q := db.Query(query).Project(projection).Sort(sort)
-	err := db.FindOneQContext(ctx, PushlogCollection, q, pushLog)
+	err := db.FindOneQ(ctx, PushlogCollection, q, pushLog)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

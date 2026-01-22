@@ -805,12 +805,12 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 
 func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
 	return func(ctx mongo.SessionContext) (any, error) {
-		if err := h.UpdateRunningTaskWithContext(ctx, env, t); err != nil {
+		if err := h.UpdateRunningTask(ctx, env, t); err != nil {
 			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
 		}
 
 		dispatchedAt := time.Now()
-		if err := t.MarkAsHostDispatchedWithContext(ctx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
+		if err := t.MarkAsHostDispatchedWithEnv(ctx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as dispatched to host '%s'", t.Id, h.Id)
 		}
 
@@ -859,10 +859,10 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 
 func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
 	return func(ctx mongo.SessionContext) (any, error) {
-		if err := h.ClearRunningTaskWithContext(ctx, env); err != nil {
+		if err := h.ClearRunningTaskWithEnv(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
-		if err := t.MarkAsHostUndispatchedWithContext(ctx, env); err != nil {
+		if err := t.MarkAsHostUndispatched(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as no longer dispatched", t.Id)
 		}
 		return nil, nil
@@ -1053,7 +1053,6 @@ func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResp
 			"operation":      "NextTask",
 			"host_id":        h.Id,
 			"host_tag":       h.Tag,
-			"source":         "database error",
 			"host_revision":  details.AgentRevision,
 			"agent_version":  evergreen.AgentVersion,
 			"build_revision": evergreen.BuildRevision,

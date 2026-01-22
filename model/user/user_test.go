@@ -132,29 +132,29 @@ func (s *UserTestSuite) SetupTest() {
 		Resources:   []string{"resource1", "resource2"},
 		ParentScope: "3",
 	}
-	s.NoError(rm.AddScope(scope1))
+	s.NoError(rm.AddScope(s.T().Context(), scope1))
 	scope2 := gimlet.Scope{
 		ID:          "2",
 		Resources:   []string{"resource3"},
 		ParentScope: "3",
 	}
-	s.NoError(rm.AddScope(scope2))
+	s.NoError(rm.AddScope(s.T().Context(), scope2))
 	scope3 := gimlet.Scope{
 		ID:          "3",
 		ParentScope: "root",
 	}
-	s.NoError(rm.AddScope(scope3))
+	s.NoError(rm.AddScope(s.T().Context(), scope3))
 	scope4 := gimlet.Scope{
 		ID:          "4",
 		Resources:   []string{"resource4"},
 		ParentScope: "root",
 	}
-	s.NoError(rm.AddScope(scope4))
+	s.NoError(rm.AddScope(s.T().Context(), scope4))
 	root := gimlet.Scope{
 		ID:        "root",
 		Resources: []string{"resource1", "resource2", "resource3", "resource4"},
 	}
-	s.NoError(rm.AddScope(root))
+	s.NoError(rm.AddScope(s.T().Context(), root))
 	r1p1 := gimlet.Role{
 		ID:    "r1p1",
 		Scope: "1",
@@ -162,7 +162,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 1,
 		},
 	}
-	s.NoError(rm.UpdateRole(r1p1))
+	s.NoError(rm.UpdateRole(s.T().Context(), r1p1))
 	r2p2 := gimlet.Role{
 		ID:    "r2p2",
 		Scope: "2",
@@ -170,7 +170,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 2,
 		},
 	}
-	s.NoError(rm.UpdateRole(r2p2))
+	s.NoError(rm.UpdateRole(s.T().Context(), r2p2))
 	r12p1 := gimlet.Role{
 		ID:    "r12p1",
 		Scope: "3",
@@ -178,7 +178,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 1,
 		},
 	}
-	s.NoError(rm.UpdateRole(r12p1))
+	s.NoError(rm.UpdateRole(s.T().Context(), r12p1))
 	r4p1 := gimlet.Role{
 		ID:    "r4p1",
 		Scope: "4",
@@ -186,7 +186,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 1,
 		},
 	}
-	s.NoError(rm.UpdateRole(r4p1))
+	s.NoError(rm.UpdateRole(s.T().Context(), r4p1))
 	r1234p2 := gimlet.Role{
 		ID:    "r1234p2",
 		Scope: "root",
@@ -194,7 +194,7 @@ func (s *UserTestSuite) SetupTest() {
 			"permission": 2,
 		},
 	}
-	s.NoError(rm.UpdateRole(r1234p2))
+	s.NoError(rm.UpdateRole(s.T().Context(), r1234p2))
 }
 
 func (s *UserTestSuite) TearDownTest() {
@@ -228,7 +228,7 @@ func (s *UserTestSuite) TestAddKey() {
 	s.Require().NoError(err)
 	s.Equal("ssh-mock 67890", key)
 
-	u, err := FindOneContext(s.T().Context(), ById(s.users[0].Id))
+	u, err := FindOne(s.T().Context(), ById(s.users[0].Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 
@@ -244,14 +244,14 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 
 	// Should not be able to go to a negative counter
 	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 100, false))
-	u, err := FindOneContext(s.T().Context(), ById(u.Id))
+	u, err := FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm scheduling tasks less than the limit is allowed
 	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 99, true))
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
@@ -260,7 +260,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks))
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
@@ -268,7 +268,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// Confirm unscheduling one task brings the count-down to 98
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, false)
 	s.Require().NoError(err)
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(98, u.NumScheduledPatchTasks)
@@ -276,7 +276,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// Confirm that scheduling one more task is now possible
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().NoError(err)
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
@@ -286,7 +286,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, true)
 	s.Require().NoError(err)
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(5, u.NumScheduledPatchTasks)
@@ -296,7 +296,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, false)
 	s.Require().NoError(err)
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
@@ -306,7 +306,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 101, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, 100))
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
@@ -315,10 +315,10 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Minute)
 	u.NumScheduledPatchTasks = 120
 	update := bson.M{"$set": bson.M{NumScheduledPatchTasksKey: 120}}
-	s.Require().NoError(UpdateOneContext(s.T().Context(), bson.M{IdKey: u.Id}, update))
+	s.Require().NoError(UpdateOne(s.T().Context(), bson.M{IdKey: u.Id}, update))
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 10, false)
 	s.Require().NoError(err)
-	u, err = FindOneContext(s.T().Context(), ById(u.Id))
+	u, err = FindOne(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(110, u.NumScheduledPatchTasks)
@@ -329,7 +329,7 @@ func (s *UserTestSuite) TestAddDuplicateKeyFails() {
 	s.Error(err)
 	s.Contains(err.Error(), "not found")
 
-	u, err := FindOneContext(s.T().Context(), ById(s.users[1].Id))
+	u, err := FindOne(s.T().Context(), ById(s.users[1].Id))
 	s.NoError(err)
 	s.NotNil(u)
 	s.checkUserNotDestroyed(u, s.users[1])
@@ -346,7 +346,7 @@ func (s *UserTestSuite) TestUpdatePublicKey() {
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
+	u, err := FindOne(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
@@ -357,7 +357,7 @@ func (s *UserTestSuite) TestUpdatePublicKeyWithSameKeyName() {
 	s.Contains(s.users[5].PubKeys[0].Name, "keyAmazing")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
+	u, err := FindOne(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
@@ -368,7 +368,7 @@ func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "ssh-mock 12345")
 
-	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
+	u, err := FindOne(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
@@ -378,7 +378,7 @@ func (s *UserTestSuite) TestDeletePublicKey() {
 	s.Empty(s.users[1].PubKeys)
 	s.Equal("67890", s.users[1].APIKey)
 
-	u, err := FindOneContext(s.T().Context(), ById(s.users[1].Id))
+	u, err := FindOne(s.T().Context(), ById(s.users[1].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[1])
 }
@@ -388,7 +388,7 @@ func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
 	s.Empty(s.users[0].PubKeys)
 	s.Equal("12345", s.users[0].APIKey)
 
-	u, err := FindOneContext(s.T().Context(), ById(s.users[0].Id))
+	u, err := FindOne(s.T().Context(), ById(s.users[0].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[0])
 }
@@ -408,57 +408,57 @@ func (s *UserTestSuite) TestFindByGithubUID() {
 }
 
 func (s *UserTestSuite) TestFindOneByToken() {
-	u, err := FindOneByToken("1234")
+	u, err := FindOneByToken(s.T().Context(), "1234")
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test1", u.Id)
 
-	u, err = FindOneByToken("4321")
+	u, err = FindOneByToken(s.T().Context(), "4321")
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test2", u.Id)
 
-	u, err = FindOneByToken("1111")
+	u, err = FindOneByToken(s.T().Context(), "1111")
 	s.NoError(err)
 	s.Nil(u)
 }
 
 func (s *UserTestSuite) TestFindOneById() {
-	u, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
+	u, err := FindOneById(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test1", u.Id)
 
-	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
+	u, err = FindOneById(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test2", u.Id)
 
-	u, err = FindOneByToken("1111")
+	u, err = FindOneByToken(s.T().Context(), "1111")
 	s.NoError(err)
 	s.Nil(u)
 }
 
 func (s *UserTestSuite) TestPutLoginCache() {
-	token1, err := PutLoginCache(s.users[0])
+	token1, err := PutLoginCache(s.T().Context(), s.users[0])
 	s.NoError(err)
 	s.NotEmpty(token1)
 
-	token2, err := PutLoginCache(s.users[1])
+	token2, err := PutLoginCache(s.T().Context(), s.users[1])
 	s.NoError(err)
 	s.NotEmpty(token2)
 
-	token3, err := PutLoginCache(&DBUser{Id: "asdf"})
+	token3, err := PutLoginCache(s.T().Context(), &DBUser{Id: "asdf"})
 	s.Error(err)
 	s.Empty(token3)
 
-	u1, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
+	u1, err := FindOneById(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(s.users[0].Id, u1.Id)
 	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
 	s.Equal(s.users[0].LoginCache.RefreshToken, u1.LoginCache.RefreshToken)
 
-	u2, err := FindOneByIdContext(s.T().Context(), s.users[1].Id)
+	u2, err := FindOneById(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.Equal(s.users[1].Id, u2.Id)
 	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
@@ -470,9 +470,9 @@ func (s *UserTestSuite) TestPutLoginCache() {
 
 	// Put to first user again, ensuring token stays the same but TTL changes
 	time.Sleep(time.Millisecond) // sleep to check TTL changed
-	token4, err := PutLoginCache(s.users[0])
+	token4, err := PutLoginCache(s.T().Context(), s.users[0])
 	s.NoError(err)
-	u4, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
+	u4, err := FindOneById(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(u1.LoginCache.Token, u4.LoginCache.Token)
 	s.NotEqual(u1.LoginCache.TTL, u4.LoginCache.TTL)
@@ -481,9 +481,9 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	// Change access and refresh tokens, which should update
 	s.users[0].LoginCache.AccessToken = "new_access_token"
 	s.users[0].LoginCache.RefreshToken = "new_refresh_token"
-	token5, err := PutLoginCache(s.users[0])
+	token5, err := PutLoginCache(s.T().Context(), s.users[0])
 	s.NoError(err)
-	u5, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
+	u5, err := FindOneById(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(u1.LoginCache.Token, u5.LoginCache.Token)
 	s.Equal(token1, token5)
@@ -491,9 +491,9 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.Equal(s.users[0].LoginCache.RefreshToken, u5.LoginCache.RefreshToken)
 
 	// Fresh user with no token should generate new token
-	token6, err := PutLoginCache(s.users[2])
+	token6, err := PutLoginCache(s.T().Context(), s.users[2])
 	s.NoError(err)
-	u6, err := FindOneByIdContext(s.T().Context(), s.users[2].Id)
+	u6, err := FindOneById(s.T().Context(), s.users[2].Id)
 	s.Equal(token6, u6.LoginCache.Token)
 	s.NoError(err)
 	s.NotEmpty(token6)
@@ -505,17 +505,17 @@ func (s *UserTestSuite) TestPutLoginCache() {
 }
 
 func (s *UserTestSuite) TestGetLoginCache() {
-	u, valid, err := GetLoginCache("1234", time.Minute)
+	u, valid, err := GetLoginCache(s.T().Context(), "1234", time.Minute)
 	s.NoError(err)
 	s.True(valid)
 	s.Equal("Test1", u.Username())
 
-	u, valid, err = GetLoginCache("4321", time.Minute)
+	u, valid, err = GetLoginCache(s.T().Context(), "4321", time.Minute)
 	s.NoError(err)
 	s.False(valid)
 	s.Equal("Test2", u.Username())
 
-	u, valid, err = GetLoginCache("asdf", time.Minute)
+	u, valid, err = GetLoginCache(s.T().Context(), "asdf", time.Minute)
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u)
@@ -523,28 +523,28 @@ func (s *UserTestSuite) TestGetLoginCache() {
 
 func (s *UserTestSuite) TestClearLoginCache() {
 	// Error on non-existent user
-	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}))
+	s.Error(ClearLoginCache(s.T().Context(), &DBUser{Id: "asdf"}))
 
 	// Two valid users...
-	u1, valid, err := GetLoginCache("1234", time.Minute)
+	u1, valid, err := GetLoginCache(s.T().Context(), "1234", time.Minute)
 	s.Require().NoError(err)
 	s.Require().True(valid)
 	s.Require().Equal("Test1", u1.Username())
-	u2, valid, err := GetLoginCache("5678", time.Minute)
+	u2, valid, err := GetLoginCache(s.T().Context(), "5678", time.Minute)
 	s.Require().NoError(err)
 	s.Require().True(valid)
 	s.Require().Equal("Test4", u2.Username())
 
 	// One is cleared...
-	s.NoError(ClearLoginCache(u1))
+	s.NoError(ClearLoginCache(s.T().Context(), u1))
 	// and is no longer found
-	u1, valid, err = GetLoginCache("1234", time.Minute)
+	u1, valid, err = GetLoginCache(s.T().Context(), "1234", time.Minute)
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u1)
 
 	// The other user remains
-	u2, valid, err = GetLoginCache("5678", time.Minute)
+	u2, valid, err = GetLoginCache(s.T().Context(), "5678", time.Minute)
 	s.NoError(err)
 	s.True(valid)
 	s.Equal("Test4", u2.Username())
@@ -552,9 +552,9 @@ func (s *UserTestSuite) TestClearLoginCache() {
 
 func (s *UserTestSuite) TestClearAllLoginCaches() {
 	// Clear all users
-	s.NoError(ClearAllLoginCaches())
+	s.NoError(ClearAllLoginCaches(s.T().Context()))
 	// Sample user is no longer in cache
-	u, valid, err := GetLoginCache("1234", time.Minute)
+	u, valid, err := GetLoginCache(s.T().Context(), "1234", time.Minute)
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u)
@@ -565,12 +565,12 @@ func (s *UserTestSuite) TestRoles() {
 	for i := 1; i <= 3; i++ {
 		s.NoError(u.AddRole(s.T().Context(), strconv.Itoa(i)))
 	}
-	dbUser, err := FindOneByIdContext(s.T().Context(), u.Id)
+	dbUser, err := FindOneById(s.T().Context(), u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 
 	s.NoError(u.RemoveRole(s.T().Context(), "2"))
-	dbUser, err = FindOneByIdContext(s.T().Context(), u.Id)
+	dbUser, err = FindOneById(s.T().Context(), u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 	s.NoError(u.RemoveRole(s.T().Context(), "definitely non-existent role"))
@@ -608,34 +608,34 @@ func (s *UserTestSuite) TestHasPermission() {
 	u := s.users[0]
 
 	// no roles - no permission
-	hasPermission := u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
+	hasPermission := u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.False(hasPermission)
 
 	// has a role with explicit permission to the resource
 	s.NoError(u.AddRole(s.T().Context(), "r1p1"))
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
 	s.True(hasPermission)
 
 	// role with insufficient permission but the right resource
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 2})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 2})
 	s.False(hasPermission)
 
 	// role with a parent scope
 	s.NoError(u.AddRole(s.T().Context(), "r12p1"))
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
 
 	// role with no permission to the specified resource
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 1})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 1})
 	s.False(hasPermission)
 
 	// permission to everything
 	s.NoError(u.RemoveRole(s.T().Context(), "r1p1"))
 	s.NoError(u.RemoveRole(s.T().Context(), "r12p1"))
 	s.NoError(u.AddRole(s.T().Context(), "r1234p2"))
-	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
+	hasPermission = u.HasPermission(s.T().Context(), gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
 }
 
@@ -646,7 +646,7 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 		Id: "basic_user",
 	}
 	s.NoError(usr.Insert(s.T().Context()))
-	s.Require().False(usr.HasDistroCreatePermission())
+	s.Require().False(usr.HasDistroCreatePermission(s.T().Context()))
 
 	createRole := gimlet.Role{
 		ID:          "create_distro",
@@ -654,7 +654,7 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 		Scope:       "superuser_scope",
 		Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
 	}
-	s.Require().NoError(roleManager.UpdateRole(createRole))
+	s.Require().NoError(roleManager.UpdateRole(s.T().Context(), createRole))
 	s.Require().NoError(usr.AddRole(s.T().Context(), createRole.ID))
 
 	superUserScope := gimlet.Scope{
@@ -663,9 +663,9 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{evergreen.SuperUserPermissionsID},
 	}
-	s.Require().NoError(roleManager.AddScope(superUserScope))
+	s.Require().NoError(roleManager.AddScope(s.T().Context(), superUserScope))
 
-	s.True(usr.HasDistroCreatePermission())
+	s.True(usr.HasDistroCreatePermission(s.T().Context()))
 }
 
 func (s *UserTestSuite) TestFindNeedsReauthorization() {
@@ -714,7 +714,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.EqualError(t, AddOrUpdateServiceUser(t.Context(), u), "cannot update a non-service user")
 	u.OnlyAPI = true
 	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
-	dbUser, err := FindOneByIdContext(t.Context(), u.Id)
+	dbUser, err := FindOneById(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
 	assert.Equal(t, u.DispName, dbUser.DispName)
@@ -725,7 +725,7 @@ func TestServiceUserOperations(t *testing.T) {
 	u.DispName = "another"
 	u.SystemRoles = []string{"one", "two"}
 	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
-	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
+	dbUser, err = FindOneById(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
 	assert.Equal(t, u.DispName, dbUser.DispName)
@@ -741,7 +741,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.EqualError(t, err, "service user 'doesntexist' not found")
 	err = DeleteServiceUser(ctx, u.Id)
 	assert.NoError(t, err)
-	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
+	dbUser, err = FindOneById(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.Nil(t, dbUser)
 }
@@ -762,21 +762,21 @@ func TestGetOrCreateUser(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T){
 		"Succeeds": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			apiKey := user.GetAPIKey()
 			assert.NotEmpty(t, apiKey)
 
-			dbUser, err := FindOneByIdContext(t.Context(), id)
+			dbUser, err := FindOneById(t.Context(), id)
 			require.NoError(t, err)
 			require.NotZero(t, dbUser)
 			checkUser(t, dbUser, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, dbUser.GetAPIKey())
 		},
 		"UpdateAlwaysSetsName": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -784,27 +784,27 @@ func TestGetOrCreateUser(t *testing.T) {
 			assert.NotEmpty(t, apiKey)
 
 			newName := "new_name"
-			user, err = GetOrCreateUser(id, newName, email, accessToken, refreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, newName, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, newName, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 		},
 		"UpdateSetsRefreshTokenIfNonempty": func(t *testing.T) {
-			user, err := GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			apiKey := user.GetAPIKey()
 			assert.NotEmpty(t, apiKey)
 
-			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, user.GetAPIKey())
 
-			user, err = GetOrCreateUser(id, name, email, accessToken, "", nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, accessToken, "", nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
@@ -812,7 +812,7 @@ func TestGetOrCreateUser(t *testing.T) {
 
 			newAccessToken := "new_access_token"
 			newRefreshToken := "new_refresh_token"
-			user, err = GetOrCreateUser(id, name, email, newAccessToken, newRefreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, newAccessToken, newRefreshToken, nil)
 			require.NoError(t, err)
 
 			checkUser(t, user, id, name, email, newAccessToken, newRefreshToken)
@@ -820,12 +820,12 @@ func TestGetOrCreateUser(t *testing.T) {
 		},
 		"RolesMergeCorrectly": func(t *testing.T) {
 			roles := []string{"one", "two"}
-			user, err := GetOrCreateUser(id, "", "", "token", "", roles)
+			user, err := GetOrCreateUser(t.Context(), id, "", "", "token", "", roles)
 			assert.NoError(t, err)
 			checkUser(t, user, id, "id", "", "token", "")
 			assert.Equal(t, roles, user.Roles())
 
-			user, err = GetOrCreateUser(id, name, email, accessToken, refreshToken, nil)
+			user, err = GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)
 			assert.NoError(t, err)
 			checkUser(t, user, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, roles, user.Roles())
@@ -874,7 +874,7 @@ func TestViewableProject(t *testing.T) {
 		Resources: []string{"parsley"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	err := rm.AddScope(restrictedProjectScope)
+	err := rm.AddScope(t.Context(), restrictedProjectScope)
 	assert.NoError(t, err)
 
 	parsleyAccessRoleId := "parsley_access"
@@ -884,7 +884,7 @@ func TestViewableProject(t *testing.T) {
 		Scope:       "restricted_project_scope",
 		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
 	}
-	err = rm.UpdateRole(parsleyAccessRole)
+	err = rm.UpdateRole(t.Context(), parsleyAccessRole)
 	assert.NoError(t, err)
 
 	unrestrictedProjectScope := gimlet.Scope{
@@ -893,7 +893,7 @@ func TestViewableProject(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"mci", "spruce"},
 	}
-	err = rm.AddScope(unrestrictedProjectScope)
+	err = rm.AddScope(t.Context(), unrestrictedProjectScope)
 	assert.NoError(t, err)
 
 	basicProjectAccessRole := gimlet.Role{
@@ -902,7 +902,7 @@ func TestViewableProject(t *testing.T) {
 		Scope:       evergreen.UnrestrictedProjectsScope,
 		Permissions: map[string]int{evergreen.PermissionTasks: 20, evergreen.PermissionPatches: 10, evergreen.PermissionLogs: 10, evergreen.PermissionAnnotations: 10},
 	}
-	err = rm.UpdateRole(basicProjectAccessRole)
+	err = rm.UpdateRole(t.Context(), basicProjectAccessRole)
 	assert.NoError(t, err)
 
 	myUser := DBUser{
@@ -943,7 +943,7 @@ func TestViewableProjectSettings(t *testing.T) {
 		Resources: []string{"edit1", "edit2"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	assert.NoError(t, rm.AddScope(editScope))
+	assert.NoError(t, rm.AddScope(t.Context(), editScope))
 	editPermissions := gimlet.Permissions{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 	}
@@ -952,13 +952,13 @@ func TestViewableProjectSettings(t *testing.T) {
 		Scope:       editScope.ID,
 		Permissions: editPermissions,
 	}
-	assert.NoError(t, rm.UpdateRole(editRole))
+	assert.NoError(t, rm.UpdateRole(t.Context(), editRole))
 	viewScope := gimlet.Scope{
 		ID:        "view_scope",
 		Resources: []string{"view1"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	assert.NoError(t, rm.AddScope(viewScope))
+	assert.NoError(t, rm.AddScope(t.Context(), viewScope))
 	viewPermissions := gimlet.Permissions{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
 	}
@@ -967,20 +967,20 @@ func TestViewableProjectSettings(t *testing.T) {
 		Scope:       viewScope.ID,
 		Permissions: viewPermissions,
 	}
-	assert.NoError(t, rm.UpdateRole(viewRole))
+	assert.NoError(t, rm.UpdateRole(t.Context(), viewRole))
 	otherScope := gimlet.Scope{
 		ID:        "others_scope",
 		Resources: []string{"other"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	assert.NoError(t, rm.AddScope(otherScope))
+	assert.NoError(t, rm.AddScope(t.Context(), otherScope))
 
 	otherRole := gimlet.Role{
 		ID:          "other_role",
 		Scope:       otherScope.ID,
 		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsNone.Value},
 	}
-	assert.NoError(t, rm.UpdateRole(otherRole))
+	assert.NoError(t, rm.UpdateRole(t.Context(), otherRole))
 	myUser := DBUser{
 		Id: "me",
 	}
@@ -1014,7 +1014,7 @@ func TestUpdateParsleySettings(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled))
 
-	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
+	dbUser, err := FindOneById(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.False(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled))
@@ -1028,7 +1028,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	}
 	require.NoError(t, usr.Insert(t.Context()))
 
-	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
+	dbUser, err := FindOneById(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.False(t, dbUser.BetaFeatures.ParsleyAIEnabled)
@@ -1040,7 +1040,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, usr.BetaFeatures.ParsleyAIEnabled)
 
-	dbUser, err = FindOneByIdContext(t.Context(), usr.Id)
+	dbUser, err = FindOneById(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.True(t, dbUser.BetaFeatures.ParsleyAIEnabled)
@@ -1050,7 +1050,7 @@ func (s *UserTestSuite) TestClearUser() {
 	// Error on non-existent user.
 	s.Error(ClearUser(s.T().Context(), "asdf"))
 
-	u, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
+	u, err := FindOneById(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.NotEmpty(u.Settings)
@@ -1063,7 +1063,7 @@ func (s *UserTestSuite) TestClearUser() {
 	s.NoError(ClearUser(s.T().Context(), u.Id))
 
 	// Sensitive settings and roles should now be empty.
-	u, err = FindOneByIdContext(s.T().Context(), s.users[0].Id)
+	u, err = FindOneById(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 
@@ -1078,12 +1078,12 @@ func (s *UserTestSuite) TestClearUser() {
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 
 	// Should enable for user that previously had it false
-	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
+	u, err = FindOneById(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.False(u.Settings.UseSpruceOptions.SpruceV1)
 	s.NoError(ClearUser(s.T().Context(), u.Id))
-	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
+	u, err = FindOneById(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 }

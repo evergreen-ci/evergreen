@@ -293,8 +293,8 @@ Fields:
   before activating this variant for mainline commits. The default is set on the project
   settings page. This cannot be set for individual tasks.
 - `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
-  Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
-  commit should be activated (cannot be combined with batchtime). This also
+  Month \| DayOfWeekOptional) when a task or variant in a mainline
+  commit should be activated (cannot be combined with batchtime). All cron schedules run in UTC timezone regardless of your local timezone. This also
   accepts descriptors such as `@daily` (reference
   [cron](https://godoc.org/github.com/robfig/cron) for more example), but does
   not accept intervals. (i.e. `@every <duration>`). Note that `cron` doesn't
@@ -734,6 +734,8 @@ tasks, since only some of the commit's changed files are ignored.
 
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
 changed. This is the opposite of ignoring - it defines what files the variant cares about.
+**Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
+the path filter would have matched it.
 
 Note: specifying paths could cause crons to not activate the build variants if the path filter does not match.
 
@@ -1908,28 +1910,28 @@ buildvariants:
 # Project settings have a batchtime of 5 minutes.
 buildvariants:
   - name: bv1
-    cron: "0 4 * * *" # bv1 activates at 4 AM. The batchtime in the project settings is ignored.
+    cron: "0 4 * * *" # bv1 activates at 4 AM UTC. The batchtime in the project settings is ignored.
   - name: bv2 # bv2's batchtime is 5 minutes because it uses the batchtime from the project settings.
 ```
 
 ```yaml
 buildvariants:
   - name: bv1
-    cron: "0 4 * * *" # bv1 activates at 4 AM.
+    cron: "0 4 * * *" # bv1 activates at 4 AM UTC.
     tasks:
       - name: task1
-        cron: "0 5 * * *" # task1 does not activate until its cron elapses at 5 AM. The build variant cron is ignored.
-      - name: task2 # task2 activates at 4 AM when bv1's cron elapses.
+        cron: "0 5 * * *" # task1 does not activate until its cron elapses at 5 AM UTC. The build variant cron is ignored.
+      - name: task2 # task2 activates at 4 AM UTC when bv1's cron elapses.
 ```
 
 ```yaml
 buildvariants:
   - name: bv1
-    cron: "0 4 * * *" # bv1 activates at 4 AM.
+    cron: "0 4 * * *" # bv1 activates at 4 AM UTC.
     tasks:
       - name: task1
-        activate: false # task1 will not activate automatically, even when bv1's cron elapses at 4 AM.
-      - name: task2 # task2 activates at 4 AM when bv1's cron elapses.
+        activate: false # task1 will not activate automatically, even when bv1's cron elapses at 4 AM UTC.
+      - name: task2 # task2 activates at 4 AM UTC when bv1's cron elapses.
 ```
 
 ##### activate: true Special Case
@@ -1958,8 +1960,8 @@ buildvariants:
     batchtime: 60 # Batchtime of 1 hour
     activate: true # bv1 will respect the batchtime of 1 hour, so bv1 will not activate unless batchtime elapses.
   - name: bv2
-    cron: "0 4 * * *" # bv2 activates at 4 AM.
-    activate: true # bv2 will respect the cron setting, so bv2 will not activate until 4 AM.
+    cron: "0 4 * * *" # bv2 activates at 4 AM UTC.
+    activate: true # bv2 will respect the cron setting, so bv2 will not activate until 4 AM UTC.
 ```
 
 If `activate: true` and `activate: false` are used in different levels (i.e. one in the build variant, one in the task

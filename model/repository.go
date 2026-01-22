@@ -61,7 +61,7 @@ func (tags GitTags) String() string {
 func FindRepository(ctx context.Context, projectId string) (*Repository, error) {
 	repository := &Repository{}
 	q := db.Query(bson.M{RepoProjectKey: projectId})
-	err := db.FindOneQContext(ctx, RepositoriesCollection, q, repository)
+	err := db.FindOneQ(ctx, RepositoriesCollection, q, repository)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -70,7 +70,7 @@ func FindRepository(ctx context.Context, projectId string) (*Repository, error) 
 
 // UpdateLastRevision updates the last created revision of a project.
 func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		RepositoriesCollection,
 		bson.M{

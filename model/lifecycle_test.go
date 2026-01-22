@@ -2454,7 +2454,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller"))
 
 	// Confirm that marking a display task to reset when finished increments the user's scheduling limit
-	dbUser, err := user.FindOneByIdContext(t.Context(), "caller")
+	dbUser, err := user.FindOneById(t.Context(), "caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(2, dbUser.NumScheduledPatchTasks)
@@ -2471,7 +2471,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		}
 	}
 	// Confirm that resetting a display task does not affect the user's scheduling limit
-	dbUser, err = user.FindOneByIdContext(t.Context(), "caller")
+	dbUser, err = user.FindOneById(t.Context(), "caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(2, dbUser.NumScheduledPatchTasks)
@@ -2512,7 +2512,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			assert.Equal(t, 1, dt.Execution)
 			assert.False(t, dt.ResetWhenFinished)
 
-			dbUser, err := user.FindOneByIdContext(t.Context(), "caller")
+			dbUser, err := user.FindOneById(t.Context(), "caller")
 			assert.NoError(t, err)
 			require.NotNil(t, dbUser)
 			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
@@ -2540,7 +2540,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			require.NotNil(t, successfulExecTask)
 			assert.Equal(t, evergreen.TaskSucceeded, successfulExecTask.Status, "successful execution task should not be reset")
 
-			dbUser, err := user.FindOneByIdContext(t.Context(), "caller")
+			dbUser, err := user.FindOneById(t.Context(), "caller")
 			assert.NoError(t, err)
 			require.NotNil(t, dbUser)
 			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)

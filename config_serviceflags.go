@@ -40,6 +40,8 @@ type ServiceFlags struct {
 	ReleaseModeDisabled             bool `bson:"release_mode_disabled" json:"release_mode_disabled"`
 	LegacyUIAdminPageDisabled       bool `bson:"legacy_ui_admin_page_disabled" json:"legacy_ui_admin_page_disabled"`
 	DebugSpawnHostDisabled          bool `bson:"debug_spawn_host_disabled" json:"debug_spawn_host_disabled"`
+	S3LifecycleSyncDisabled         bool `bson:"s3_lifecycle_sync_disabled" json:"s3_lifecycle_sync_disabled"`
+	UseGitForGitHubFilesDisabled    bool `bson:"use_git_for_github_files_disabled" json:"use_git_for_github_files_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -96,6 +98,8 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			releaseModeDisabledKey:             c.ReleaseModeDisabled,
 			legacyUIAdminPageDisabledKey:       c.LegacyUIAdminPageDisabled,
 			debugSpawnHostDisabledKey:          c.DebugSpawnHostDisabled,
+			s3LifecycleSyncDisabledKey:         c.S3LifecycleSyncDisabled,
+			useGitForGitHubFilesDisabledKey:    c.UseGitForGitHubFilesDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

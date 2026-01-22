@@ -46,6 +46,7 @@ const (
 
 const (
 	githubEndpointAttribute    = "evergreen.github.endpoint"
+	githubAppIDAttribute       = "evergreen.github.app_id"
 	githubOwnerAttribute       = "evergreen.github.owner"
 	githubRepoAttribute        = "evergreen.github.repo"
 	githubRefAttribute         = "evergreen.github.ref"
@@ -589,7 +590,7 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 func runGitHubOpWithExternalGitHubApp(ctx context.Context, owner, repo, caller string, ghAppAuth *githubapp.GithubAppAuth, op func(ctx context.Context, ghClient *githubapp.GitHubClient) error) error {
 	token, err := ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
 	if err != nil {
-
+		return errors.Wrapf(err, "getting installation token with external GitHub app '%d'", ghAppAuth.AppID)
 	}
 	ctx, span := tracer.Start(ctx, "github-op-with-external-app", trace.WithAttributes(
 		attribute.String(githubAuthMethodAttribute, "external_app"),
@@ -1161,17 +1162,37 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	}, isMember, err
 }
 
-// CheckGithubAPILimit queries Github for all the API rate limits
-func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
+// CheckGithubAPILimit queries Github for all the API rate limits for the given
+// app. If no app/owner/repo is specified, it queries the Evergreen internal
+// app's rate limit.
+func CheckGithubAPILimit(ctx context.Context, owner, repo string, ghAppAuth *githubapp.GithubAppAuth) (*github.RateLimits, error) {
 	caller := "CheckGithubAPILimit"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
 	defer span.End()
 
-	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
+	if ghAppAuth != nil && (owner == "" || repo == "") {
+		return nil, errors.New("owner and repo must be specified when querying API limit with external GitHub app")
+	}
+
+	var token string
+	var err error
+	if ghAppAuth != nil {
+		span.SetAttributes(
+			attribute.String(githubAppIDAttribute, fmt.Sprint(ghAppAuth.AppID)),
+			attribute.String(githubOwnerAttribute, owner),
+			attribute.String(githubRepoAttribute, repo),
+		)
+		token, err = ghAppAuth.CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, nil)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting installation token with external GitHub app ID %d for owner/repo '%s/%s'", ghAppAuth.AppID, owner, repo)
+		}
+	} else {
+		token, err = getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting installation token")
+		}
 	}
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
@@ -1183,7 +1204,6 @@ func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
-		grip.Errorf("github GET rate limit failed: %+v", err)
 		return nil, err
 	}
 	if limits.Core == nil {
@@ -1195,7 +1215,7 @@ func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
 
 // CheckGithubResource queries Github for the number of API requests remaining
 func CheckGithubResource(ctx context.Context) (int64, error) {
-	limits, err := CheckGithubAPILimit(ctx)
+	limits, err := CheckGithubAPILimit(ctx, "", "", nil)
 	if err != nil {
 		return int64(0), errors.Wrap(err, "getting github rate limit")
 	}

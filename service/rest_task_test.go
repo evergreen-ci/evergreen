@@ -501,7 +501,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil, t.TempDir())
 	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
-	err = db.UpdateContext(t.Context(), task.Collection,
+	err = db.Update(t.Context(), task.Collection,
 		bson.M{task.IdKey: displayTaskId},
 		bson.M{"$set": bson.M{
 			task.ExecutionTasksKey: []string{executionTaskId},

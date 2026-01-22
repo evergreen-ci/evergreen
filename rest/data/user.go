@@ -147,7 +147,7 @@ func GetServiceUsers(ctx context.Context) ([]restModel.APIDBUser, error) {
 
 func AddOrUpdateServiceUser(ctx context.Context, toUpdate restModel.APIDBUser) error {
 	userID := utility.FromStringPtr(toUpdate.UserID)
-	existingUser, err := user.FindOneByIdContext(ctx, userID)
+	existingUser, err := user.FindOneById(ctx, userID)
 	if err != nil {
 		return errors.Wrapf(err, "finding user '%s'", userID)
 	}
