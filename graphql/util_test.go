@@ -9,6 +9,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -412,14 +413,14 @@ func TestHasLogViewPermission(t *testing.T) {
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{"project_id_belonging_to_user"},
 			}
-			err := roleManager.AddScope(projectScope)
+			err := roleManager.AddScope(ctx, projectScope)
 
 			logViewRole := gimlet.Role{
 				ID:          "view_log",
 				Scope:       projectScope.ID,
 				Permissions: map[string]int{evergreen.PermissionLogs: evergreen.LogsView.Value},
 			}
-			require.NoError(t, roleManager.UpdateRole(logViewRole))
+			require.NoError(t, roleManager.UpdateRole(ctx, logViewRole))
 
 			require.NoError(t, userWithRole.AddRole(t.Context(), "view_log"))
 			require.NoError(t, err)
@@ -471,14 +472,14 @@ func TestHasAnnotationPermission(t *testing.T) {
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{"project_id_belonging_to_user"},
 			}
-			err := roleManager.AddScope(projectScope)
+			err := roleManager.AddScope(ctx, projectScope)
 
 			annotationViewRole := gimlet.Role{
 				ID:          "view_annotation",
 				Scope:       projectScope.ID,
 				Permissions: map[string]int{evergreen.PermissionAnnotations: evergreen.AnnotationsView.Value},
 			}
-			require.NoError(t, roleManager.UpdateRole(annotationViewRole))
+			require.NoError(t, roleManager.UpdateRole(ctx, annotationViewRole))
 
 			require.NoError(t, usr.AddRole(t.Context(), "view_annotation"))
 			require.NoError(t, err)
@@ -523,4 +524,66 @@ func TestFlattenOtelVariables(t *testing.T) {
 	val, ok = unnestedVars["k6.nested_k7"]
 	assert.True(t, ok)
 	assert.Equal(t, "v7", val)
+}
+
+func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(user.Collection, distro.Collection))
+
+	usr := &user.DBUser{
+		Id: "test_user",
+	}
+	assert.NoError(t, usr.Insert(t.Context()))
+
+	d := &distro.Distro{
+		Id:       "test-distro",
+		Provider: evergreen.ProviderNameEc2OnDemand,
+	}
+	assert.NoError(t, d.Insert(t.Context()))
+	t.Run("IsDebugTrueWithoutSpawnHostsStartedByTaskFails", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID:                d.Id,
+			IsDebug:                 utility.TruePtr(),
+			SpawnHostsStartedByTask: utility.FalsePtr(),
+			PublicKey: &PublicKeyInput{
+				Name: "test-key",
+				Key:  "ssh-rsa test",
+			},
+		}
+
+		options, err := getHostRequestOptions(t.Context(), usr, input)
+		require.Error(t, err)
+		assert.Nil(t, options)
+		assert.Contains(t, err.Error(), "Debug spawn hosts can only be spawned by a task")
+	})
+
+	t.Run("IsDebugFalseWorks", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID: d.Id,
+			IsDebug:  utility.FalsePtr(),
+			PublicKey: &PublicKeyInput{
+				Name: "test-key",
+				Key:  "ssh-rsa test",
+			},
+		}
+
+		options, err := getHostRequestOptions(t.Context(), usr, input)
+		assert.NoError(t, err)
+		require.NotNil(t, options)
+		assert.False(t, options.IsDebug, "IsDebug should be false")
+	})
+
+	t.Run("IsDebugNilDefaultsToFalse", func(t *testing.T) {
+		input := &SpawnHostInput{
+			DistroID: d.Id,
+			PublicKey: &PublicKeyInput{
+				Name: "test-key",
+				Key:  "ssh-rsa test",
+			},
+		}
+
+		options, err := getHostRequestOptions(t.Context(), usr, input)
+		assert.NoError(t, err)
+		require.NotNil(t, options)
+		assert.False(t, options.IsDebug, "IsDebug should default to false")
+	})
 }

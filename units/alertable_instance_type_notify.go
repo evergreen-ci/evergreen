@@ -129,7 +129,7 @@ func tryAlertableInstanceTypeNotification(ctx context.Context, h *host.Host) (bo
 	}
 
 	// Insert subscriptions for the user, if needed.
-	usr, err := user.FindOneByIdContext(ctx, h.StartedBy)
+	usr, err := user.FindOneById(ctx, h.StartedBy)
 	if err != nil {
 		return false, errors.Wrapf(err, "finding user '%s'", h.StartedBy)
 	}

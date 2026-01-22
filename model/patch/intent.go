@@ -61,7 +61,7 @@ func FindIntent(ctx context.Context, id, intentType string) (Intent, error) {
 		return nil, errors.Errorf("no intent of type '%s' registered", intentType)
 	}
 
-	err := db.FindOneQContext(ctx, IntentCollection, db.Query(bson.M{"_id": id}), intent)
+	err := db.FindOneQ(ctx, IntentCollection, db.Query(bson.M{"_id": id}), intent)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

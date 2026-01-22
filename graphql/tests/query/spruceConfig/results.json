@@ -110,6 +110,7 @@
               "amboyDB",
               "apiKey",
               "appId",
+              "ciOptimizationToken",
               "clientId",
               "clientSecret",
               "collectorAPIKey",

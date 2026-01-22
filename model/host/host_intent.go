@@ -35,6 +35,7 @@ type CreateOptions struct {
 	IsCluster            bool
 	HomeVolumeSize       int
 	HomeVolumeID         string
+	IsDebug              bool
 }
 
 // NewIntent creates an intent host using the given host settings. An intent host is a host that
@@ -75,6 +76,7 @@ func NewIntent(options CreateOptions) *Host {
 		SleepSchedule:         options.SleepScheduleInfo,
 		ExpirationTime:        options.ExpirationTime,
 		ProvisionOptions:      options.ProvisionOptions,
+		IsDebug:               options.IsDebug,
 	}
 
 	return intentHost
@@ -97,6 +99,7 @@ func (h *Host) GetCreateOptions() CreateOptions {
 		NoExpiration:          h.NoExpiration,
 		ExpirationTime:        h.ExpirationTime,
 		ProvisionOptions:      h.ProvisionOptions,
+		IsDebug:               h.IsDebug,
 	}
 }
 

@@ -163,7 +163,7 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
-	_, err = db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
+	_, err = db.Replace(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -172,7 +172,7 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
-	_, err = db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
+	_, err = db.Replace(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)

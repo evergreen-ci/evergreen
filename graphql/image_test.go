@@ -153,7 +153,7 @@ func TestDistros(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)
 
-	usr, err := user.GetOrCreateUser(testUser, "User Name", "testuser@mongodb.com", "access_token", "refresh_token", []string{})
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", "testuser@mongodb.com", "access_token", "refresh_token", []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 	ctx = gimlet.AttachUser(ctx, usr)

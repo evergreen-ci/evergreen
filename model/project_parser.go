@@ -852,7 +852,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	default:
 		ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
 		grip.Warning(message.WrapError(err, message.Fields{
-			"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
 		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
@@ -952,7 +952,7 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	var projectFileBytes []byte
 	ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
-		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
+		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
 	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
