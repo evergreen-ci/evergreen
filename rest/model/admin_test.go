@@ -584,17 +584,6 @@ func TestAPIS3UploadCostConfig(t *testing.T) {
 			require.NotNil(t, api.UploadCostDiscount)
 			assert.Equal(t, 0.25, *api.UploadCostDiscount)
 		})
-
-		t.Run("WithPointer", func(t *testing.T) {
-			value := 0.15
-			svc := &evergreen.S3UploadCostConfig{
-				UploadCostDiscount: &value,
-			}
-			api := APIS3UploadCostConfig{}
-			assert.NoError(t, api.BuildFromService(svc))
-			require.NotNil(t, api.UploadCostDiscount)
-			assert.Equal(t, 0.15, *api.UploadCostDiscount)
-		})
 	})
 
 	t.Run("ToService", func(t *testing.T) {
@@ -651,17 +640,6 @@ func TestAPIS3StorageCostConfig(t *testing.T) {
 			assert.Equal(t, 0.2, *api.StandardStorageCostDiscount)
 			require.NotNil(t, api.InfrequentAccessStorageCostDiscount)
 			assert.Equal(t, 0.4, *api.InfrequentAccessStorageCostDiscount)
-		})
-
-		t.Run("WithPointer", func(t *testing.T) {
-			standard := 0.15
-			svc := &evergreen.S3StorageCostConfig{
-				StandardStorageCostDiscount: &standard,
-			}
-			api := APIS3StorageCostConfig{}
-			assert.NoError(t, api.BuildFromService(svc))
-			require.NotNil(t, api.StandardStorageCostDiscount)
-			assert.Equal(t, 0.15, *api.StandardStorageCostDiscount)
 		})
 	})
 
@@ -744,19 +722,6 @@ func TestAPIS3CostConfig(t *testing.T) {
 			assert.Equal(t, 0.2, *api.Storage.StandardStorageCostDiscount)
 			require.NotNil(t, api.Storage.InfrequentAccessStorageCostDiscount)
 			assert.Equal(t, 0.3, *api.Storage.InfrequentAccessStorageCostDiscount)
-		})
-
-		t.Run("WithPointer", func(t *testing.T) {
-			upload := 0.15
-			svc := &evergreen.S3CostConfig{
-				Upload: evergreen.S3UploadCostConfig{
-					UploadCostDiscount: &upload,
-				},
-			}
-			api := APIS3CostConfig{}
-			assert.NoError(t, api.BuildFromService(svc))
-			require.NotNil(t, api.Upload.UploadCostDiscount)
-			assert.Equal(t, 0.15, *api.Upload.UploadCostDiscount)
 		})
 	})
 

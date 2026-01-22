@@ -426,9 +426,3 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		assert.Nil(t, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
 	})
 }
-
-func TestS3PutRequestCost(t *testing.T) {
-	t.Run("ConstantValue", func(t *testing.T) {
-		assert.Equal(t, 0.000005, S3PutRequestCost)
-	})
-}

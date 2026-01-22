@@ -68,33 +68,29 @@ func (c *CostConfig) Set(ctx context.Context) error {
 	)
 }
 
+func validateDiscountRange(catcher grip.Catcher, discount *float64, fieldName string) {
+	if discount != nil {
+		if *discount < 0.0 || *discount > 1.0 {
+			catcher.Errorf("%s must be between 0.0 and 1.0", fieldName)
+		}
+	}
+}
+
 func (c *CostConfig) ValidateAndDefault() error {
 	catcher := grip.NewBasicCatcher()
 
 	if c.FinanceFormula < 0.0 || c.FinanceFormula > 1.0 {
-		catcher.Add(errors.New("finance formula must be between 0.0 and 1.0"))
+		catcher.New("finance formula must be between 0.0 and 1.0")
 	}
 	if c.SavingsPlanDiscount < 0.0 || c.SavingsPlanDiscount > 1.0 {
-		catcher.Add(errors.New("savings plan discount must be between 0.0 and 1.0"))
+		catcher.New("savings plan discount must be between 0.0 and 1.0")
 	}
 	if c.OnDemandDiscount < 0.0 || c.OnDemandDiscount > 1.0 {
-		catcher.Add(errors.New("on demand discount must be between 0.0 and 1.0"))
+		catcher.New("on demand discount must be between 0.0 and 1.0")
 	}
-	if c.S3Cost.Upload.UploadCostDiscount != nil {
-		if *c.S3Cost.Upload.UploadCostDiscount < 0.0 || *c.S3Cost.Upload.UploadCostDiscount > 1.0 {
-			catcher.Add(errors.New("S3 upload cost discount must be between 0.0 and 1.0"))
-		}
-	}
-	if c.S3Cost.Storage.StandardStorageCostDiscount != nil {
-		if *c.S3Cost.Storage.StandardStorageCostDiscount < 0.0 || *c.S3Cost.Storage.StandardStorageCostDiscount > 1.0 {
-			catcher.Add(errors.New("S3 standard storage cost discount must be between 0.0 and 1.0"))
-		}
-	}
-	if c.S3Cost.Storage.InfrequentAccessStorageCostDiscount != nil {
-		if *c.S3Cost.Storage.InfrequentAccessStorageCostDiscount < 0.0 || *c.S3Cost.Storage.InfrequentAccessStorageCostDiscount > 1.0 {
-			catcher.Add(errors.New("S3 infrequent access storage cost discount must be between 0.0 and 1.0"))
-		}
-	}
+	validateDiscountRange(catcher, c.S3Cost.Upload.UploadCostDiscount, "S3 upload cost discount")
+	validateDiscountRange(catcher, c.S3Cost.Storage.StandardStorageCostDiscount, "S3 standard storage cost discount")
+	validateDiscountRange(catcher, c.S3Cost.Storage.InfrequentAccessStorageCostDiscount, "S3 infrequent access storage cost discount")
 
 	return catcher.Resolve()
 }
