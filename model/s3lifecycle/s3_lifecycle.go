@@ -6,10 +6,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -49,9 +53,10 @@ var (
 
 // BucketInfo contains information needed to fetch lifecycle rules for a bucket.
 type BucketInfo struct {
-	Name    string
-	Region  string
-	RoleARN *string
+	Name       string
+	Region     string
+	RoleARN    *string
+	ExternalID *string
 }
 
 // DiscoverAdminManagedBuckets returns information about admin-managed buckets from BucketsConfig.
@@ -81,6 +86,11 @@ func DiscoverAdminManagedBuckets(ctx context.Context, settings *evergreen.Settin
 			info.RoleARN = &arn
 		}
 
+		if bucket.ExternalID != "" {
+			extID := bucket.ExternalID
+			info.ExternalID = &extID
+		}
+
 		buckets[bucket.Name] = info
 	}
 
@@ -89,6 +99,85 @@ func DiscoverAdminManagedBuckets(ctx context.Context, settings *evergreen.Settin
 	}
 
 	return buckets, nil
+}
+
+// DiscoverAndCacheProjectBucket checks if we have lifecycle rules cached for a bucket and fetches them if not.
+// It returns true if rules were successfully cached (discovery succeeded), false if already cached or discovery failed.
+// This is best-effort - errors are logged but not returned to avoid failing file uploads.
+func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, client cloud.S3LifecycleClient) bool {
+	existingRules, err := FindAllRulesForBucket(ctx, bucketName)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "error checking for existing bucket lifecycle rules",
+			"bucket":  bucketName,
+		}))
+		return false
+	}
+
+	if len(existingRules) > 0 {
+		return false
+	}
+
+	grip.Info(message.Fields{
+		"message": "discovering lifecycle rules for new bucket",
+		"bucket":  bucketName,
+		"project": projectID,
+	})
+
+	awsRules, err := client.GetBucketLifecycleConfiguration(ctx, bucketName, region, roleARN, externalID)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "failed to discover bucket lifecycle rules",
+			"bucket":  bucketName,
+			"project": projectID,
+		}))
+		return false
+	}
+
+	for _, awsRule := range awsRules {
+		doc := &S3LifecycleRuleDoc{
+			BucketName:              bucketName,
+			FilterPrefix:            awsRule.Prefix,
+			BucketType:              BucketTypeUserSpecified,
+			Region:                  region,
+			RuleID:                  awsRule.ID,
+			RuleStatus:              awsRule.Status,
+			ExpirationDays:          utility.ConvertInt32PtrToIntPtr(awsRule.ExpirationDays),
+			TransitionToIADays:      utility.ConvertInt32PtrToIntPtr(awsRule.TransitionToIADays),
+			TransitionToGlacierDays: utility.ConvertInt32PtrToIntPtr(awsRule.TransitionToGlacierDays),
+			Transitions:             convertPailTransitions(awsRule.Transitions),
+			ProjectAssociations:     []string{projectID},
+			LastSyncedAt:            time.Now(),
+		}
+
+		if err := doc.Upsert(ctx); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "failed to cache lifecycle rule",
+				"bucket":  bucketName,
+				"prefix":  awsRule.Prefix,
+			}))
+		}
+	}
+
+	grip.Info(message.Fields{
+		"message":     "successfully cached lifecycle rules for bucket",
+		"bucket":      bucketName,
+		"rules_count": len(awsRules),
+		"project":     projectID,
+	})
+	return true
+}
+
+// convertPailTransitions converts pail.Transition to s3lifecycle.Transition.
+func convertPailTransitions(pailTransitions []pail.Transition) []Transition {
+	transitions := make([]Transition, 0, len(pailTransitions))
+	for _, pt := range pailTransitions {
+		transitions = append(transitions, Transition{
+			Days:         pt.Days,
+			StorageClass: pt.StorageClass,
+		})
+	}
+	return transitions
 }
 
 // S3LifecycleRuleDoc represents a single S3 lifecycle rule for a bucket+prefix combination.

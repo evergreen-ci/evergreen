@@ -1,12 +1,15 @@
 package s3lifecycle
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/pail"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -280,4 +283,118 @@ func TestDiscoverAdminManagedBuckets(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mockS3LifecycleClient is a mock implementation of cloud.S3LifecycleClient for testing.
+type mockS3LifecycleClient struct {
+	rules []pail.LifecycleRule
+	err   error
+}
+
+func (m *mockS3LifecycleClient) GetBucketLifecycleConfiguration(ctx context.Context, bucket, region string, roleARN *string, externalID *string) ([]pail.LifecycleRule, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.rules, nil
+}
+
+func TestDiscoverAndCacheProjectBucket(t *testing.T) {
+	t.Run("NewBucket", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		mockClient := &mockS3LifecycleClient{
+			rules: []pail.LifecycleRule{
+				{
+					ID:             "rule1",
+					Prefix:         "sandbox/",
+					Status:         "Enabled",
+					ExpirationDays: ptr(int32(30)),
+				},
+				{
+					ID:             "rule2",
+					Prefix:         "",
+					Status:         "Enabled",
+					ExpirationDays: ptr(int32(90)),
+				},
+			},
+		}
+
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "test-bucket", "us-east-1", nil, nil, "test-project", mockClient)
+		assert.True(t, discovered, "should trigger discovery for new bucket")
+
+		rules, err := FindAllRulesForBucket(t.Context(), "test-bucket")
+		require.NoError(t, err)
+		assert.Len(t, rules, 2)
+
+		sandboxRule, err := FindByBucketAndPrefix(t.Context(), "test-bucket", "sandbox/")
+		require.NoError(t, err)
+		require.NotNil(t, sandboxRule)
+		assert.Equal(t, "test-bucket#sandbox/", sandboxRule.ID)
+		assert.Equal(t, BucketTypeUserSpecified, sandboxRule.BucketType)
+		assert.Equal(t, []string{"test-project"}, sandboxRule.ProjectAssociations)
+		assert.Equal(t, 30, *sandboxRule.ExpirationDays)
+
+		defaultRule, err := FindByBucketAndPrefix(t.Context(), "test-bucket", "")
+		require.NoError(t, err)
+		require.NotNil(t, defaultRule)
+		assert.Equal(t, "test-bucket#", defaultRule.ID)
+		assert.Equal(t, 90, *defaultRule.ExpirationDays)
+	})
+
+	t.Run("AlreadyCached", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		existingRule := &S3LifecycleRuleDoc{
+			BucketName:   "cached-bucket",
+			FilterPrefix: "",
+			BucketType:   BucketTypeUserSpecified,
+			Region:       "us-east-1",
+			RuleID:       "existing-rule",
+			RuleStatus:   "Enabled",
+			LastSyncedAt: time.Now(),
+		}
+		require.NoError(t, existingRule.Upsert(t.Context()))
+
+		mockClient := &mockS3LifecycleClient{
+			rules: []pail.LifecycleRule{{ID: "should-not-be-called"}},
+		}
+
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "cached-bucket", "us-east-1", nil, nil, "test-project", mockClient)
+		assert.False(t, discovered, "should skip discovery for cached bucket")
+
+		rules, err := FindAllRulesForBucket(t.Context(), "cached-bucket")
+		require.NoError(t, err)
+		assert.Len(t, rules, 1)
+		assert.Equal(t, "existing-rule", rules[0].RuleID)
+	})
+
+	t.Run("AWSError", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		mockClient := &mockS3LifecycleClient{
+			err: errors.New("AWS API error"),
+		}
+
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "error-bucket", "us-east-1", nil, nil, "test-project", mockClient)
+		assert.True(t, discovered, "should return true even if AWS call fails")
+
+		rules, err := FindAllRulesForBucket(t.Context(), "error-bucket")
+		require.NoError(t, err)
+		assert.Len(t, rules, 0)
+	})
+
+	t.Run("NoLifecycleRules", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		mockClient := &mockS3LifecycleClient{
+			rules: []pail.LifecycleRule{},
+		}
+
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "empty-bucket", "us-east-1", nil, nil, "test-project", mockClient)
+		assert.True(t, discovered, "should trigger discovery even if no rules returned")
+
+		rules, err := FindAllRulesForBucket(t.Context(), "empty-bucket")
+		require.NoError(t, err)
+		assert.Len(t, rules, 0)
+	})
 }
