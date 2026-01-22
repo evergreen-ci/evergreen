@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -10,11 +11,14 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -230,4 +234,160 @@ func ParseGitVersion(version string) (string, error) {
 	}
 
 	return matches[1], nil
+}
+
+// GetGitHubFileFromGit retrieves a single file's contents from GitHub using
+// git. Ref must be a commit hash or branch.
+func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) (string, error) {
+	dir, err := gitCloneMinimal(ctx, owner, repo, ref)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
+			"message": "could not clean up git clone directory",
+			"owner":   owner,
+			"repo":    repo,
+			"ref":     ref,
+			"file":    file,
+			"ticket":  "DEVPROD-26143",
+		}))
+	}()
+
+	fileContent, err := gitRestoreFile(ctx, owner, repo, ref, dir, file)
+	return fileContent, err
+}
+
+const gitOperationTimeout = 15 * time.Second
+
+// gitCloneMinimal performs a minimal git clone of a repository using the GitHub
+// app. The minimal clone contains only git metadata for the one revision and
+// has no file content. Callers are expected to clean up the returned git
+// directory when it is no longer needed.
+func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
+	ctx, span := tracer.Start(ctx, "git-clone-minimal", trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, revision),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "creating GitHub app installation token")
+	}
+
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("git-clone-%s-%s-", owner, repo))
+	if err != nil {
+		return "", errors.Wrap(err, "creating temp dir for git clone")
+	}
+
+	repoURL := FormGitURLForApp(owner, repo, token)
+
+	// Limit how long this can clone to prevent this from running too long. This
+	// is an experimental feature and should not meaningfully impact performance
+	// while it's being tested out. Realistically, if it took more than this
+	// long to do a minimal clone, it would be too slow to be usable.
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	defer cancel()
+
+	// Clone the repository with the bare minimum metadata for just the one
+	// commit. Don't fetch any actual file blobs yet.
+	cmd := exec.CommandContext(ctx, "git", "clone",
+		fmt.Sprintf("--revision=%s", revision),
+		// Shallow clone: only fetch the one commit rather than the full commit
+		// history.
+		"--depth=1",
+		// Partial clone: don't fetch any file blobs initially (so the repo
+		// contains no actual file contents).
+		"--filter=blob:none",
+		// Don't populate the working directory with any of the files initially.
+		"--no-checkout",
+		// Don't fetch tags as they're unnecessary extra data.
+		"--no-tags",
+		repoURL,
+		tmpDir,
+	)
+	var (
+		stdout strings.Builder
+		stderr strings.Builder
+	)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "minimal git clone failed",
+			"ticket":   "DEVPROD-26143",
+			"owner":    owner,
+			"repo":     repo,
+			"revision": revision,
+			"stdout":   stdout.String(),
+			"stderr":   stderr.String(),
+		}))
+		catcher := grip.NewBasicCatcher()
+		catcher.Wrapf(err, "git cloning repo '%s/%s'", owner, repo)
+		catcher.Wrap(os.RemoveAll(tmpDir), "cleaning up temp dir after failed git clone")
+		return "", catcher.Resolve()
+	}
+
+	return tmpDir, nil
+}
+
+const gitErrorFileNotFound = "did not match any file(s) known to git"
+
+// gitRestoreFile restores a git file within the given git directory and returns
+// its contents. Callers are assumed to have already cloned the repo into dir
+// and HEAD is assumed to be already pointing to the desired revision.
+func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) (string, error) {
+	ctx, span := tracer.Start(ctx, "git-restore", trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, revision),
+		attribute.String(githubPathAttribute, fileName),
+	))
+	defer span.End()
+
+	// Limit how long this can spend restoring the file to prevent this from
+	// running too long. This is an experimental feature and should not
+	// meaningfully impact performance while it's being tested out.
+	// Realistically, if it took more than this long to restore a single file,
+	// it would be too slow to be usable.
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", fileName)
+	cmd.Dir = dir
+	var (
+		stdout strings.Builder
+		stderr strings.Builder
+	)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		if strings.Contains(stderr.String(), gitErrorFileNotFound) {
+			// To mirror GetGithubFile's behavior, return a FileNotFoundError if
+			// the file doesn't exist in the repo at the given revision.
+			return "", FileNotFoundError{filepath: fileName}
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "git restore failed",
+			"ticket":    "DEVPROD-26143",
+			"owner":     owner,
+			"repo":      repo,
+			"revision":  revision,
+			"stdout":    stdout.String(),
+			"stderr":    stderr.String(),
+			"file_name": fileName,
+		}))
+		return "", errors.Wrapf(err, "restoring file '%s'", fileName)
+	}
+
+	fp := filepath.Join(dir, fileName)
+	contents, err := os.ReadFile(fp)
+	if err != nil {
+		return "", errors.Wrapf(err, "reading restored file '%s'", fileName)
+	}
+	return string(contents), nil
 }

@@ -1,9 +1,11 @@
 package thirdparty
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -105,4 +107,44 @@ func TestParseGitVersionString(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expected.expectedVersion, parsedVersion)
 	}
+}
+
+func TestGetGitHubFileFromGit(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	const (
+		owner = "evergreen-ci"
+		repo  = "sample"
+		rev   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+		file  = "README.md"
+	)
+	t.Run("RestoresSameFileAsGitHubAPI", func(t *testing.T) {
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, file)
+		require.NoError(t, err)
+
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
+
+		assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileForBranchName", func(t *testing.T) {
+		const branch = "main"
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, branch, file)
+		require.NoError(t, err)
+
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, branch, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
+
+		assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileNotFoundForNonexistentFile", func(t *testing.T) {
+		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
+		assert.Error(t, err)
+		assert.True(t, IsFileNotFound(err))
+	})
 }
