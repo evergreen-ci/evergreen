@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -23,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -166,6 +168,7 @@ func TestFetchArtifacts(t *testing.T) {
 func TestTaskGetHandlerComputesPredictedCost(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(task.Collection))
+	require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex}))
 
 	// Create historical completed tasks with costs for prediction.
 	for i := 0; i < 3; i++ {
@@ -176,6 +179,7 @@ func TestTaskGetHandlerComputesPredictedCost(t *testing.T) {
 			DisplayName:  "test_task",
 			Status:       evergreen.TaskSucceeded,
 			Activated:    true,
+			FinishTime:   time.Now(),
 		}
 		historicalTask.TaskCost.OnDemandEC2Cost = 10.0
 		historicalTask.TaskCost.AdjustedEC2Cost = 8.0
