@@ -48,12 +48,12 @@ type BucketsConfig struct {
 }
 
 var (
-	bucketsConfigLogBucketKey              = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
-	bucketsConfigLogBucketLongRetentionKey = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
-	bucketsConfigLogBucketFailedTasksKey   = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
-	bucketsConfigLongRetentionProjectsKey  = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
-	bucketsConfigTestResultsBucketKey      = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
-	bucketsConfigCredentialsKey            = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	BucketsConfigLogBucketKey              = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	BucketsConfigLogBucketLongRetentionKey = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
+	BucketsConfigLogBucketFailedTasksKey   = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
+	BucketsConfigLongRetentionProjectsKey  = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
+	BucketsConfigTestResultsBucketKey      = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
+	BucketsConfigCredentialsKey            = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -102,12 +102,12 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(
 		setConfigSection(ctx, c.SectionId(), bson.M{
 			"$set": bson.M{
-				bucketsConfigLogBucketKey:              c.LogBucket,
-				bucketsConfigLogBucketLongRetentionKey: c.LogBucketLongRetention,
-				bucketsConfigLogBucketFailedTasksKey:   c.LogBucketFailedTasks,
-				bucketsConfigLongRetentionProjectsKey:  c.LongRetentionProjects,
-				bucketsConfigTestResultsBucketKey:      c.TestResultsBucket,
-				bucketsConfigCredentialsKey:            c.Credentials,
+				BucketsConfigLogBucketKey:              c.LogBucket,
+				BucketsConfigLogBucketLongRetentionKey: c.LogBucketLongRetention,
+				BucketsConfigLogBucketFailedTasksKey:   c.LogBucketFailedTasks,
+				BucketsConfigLongRetentionProjectsKey:  c.LongRetentionProjects,
+				BucketsConfigTestResultsBucketKey:      c.TestResultsBucket,
+				BucketsConfigCredentialsKey:            c.Credentials,
 			},
 		}),
 		"updating config section '%s'", c.SectionId(),
