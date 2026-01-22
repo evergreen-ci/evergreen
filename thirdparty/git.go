@@ -241,7 +241,7 @@ func ParseGitVersion(version string) (string, error) {
 func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) (string, error) {
 	dir, err := gitCloneMinimal(ctx, owner, repo, ref)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "git cloning repository")
 	}
 	defer func() {
 		grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
@@ -255,7 +255,7 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) (s
 	}()
 
 	fileContent, err := gitRestoreFile(ctx, owner, repo, ref, dir, file)
-	return fileContent, err
+	return fileContent, errors.Wrap(err, "restoring git file")
 }
 
 const gitOperationTimeout = 15 * time.Second
@@ -405,13 +405,8 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 }
 
 // validateFileIsWithinDirectory ensures that the given file path is
-// contained within the specified directory. It's assumed that dir is an
-// absolute path.
+// contained within the specified directory.
 func validateFileIsWithinDirectory(dir, file string) error {
-	if !filepath.IsAbs(dir) {
-		return errors.Errorf("directory '%s' must be an absolute path", dir)
-	}
-
 	// Normalize the path (removes redundant separators, resolves "." references)
 	cleanPath := filepath.Clean(file)
 
@@ -424,19 +419,18 @@ func validateFileIsWithinDirectory(dir, file string) error {
 		return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
 	}
 
-	// Verify the final resolved path is within the directory.
-	absFilePath := filepath.Join(dir, cleanPath)
+	fullFilePath := filepath.Join(dir, cleanPath)
 
-	// Use filepath.Rel to verify absFilePath is a filepath within dir to rule
+	// Use filepath.Rel to verify fullFilePath is a filepath within dir to rule
 	// out complex path manipulations.
-	relPath, err := filepath.Rel(dir, absFilePath)
+	relPath, err := filepath.Rel(dir, fullFilePath)
 	if err != nil {
 		return errors.Wrap(err, "verifying that the file is relative to the directory")
 	}
 
-	// If the relative path starts with "..", it's trying to escape the
+	// If the relative path contains "..", it may try to escape the base
 	// directory.
-	if strings.HasPrefix(relPath, "..") {
+	if strings.Contains(relPath, "..") {
 		return errors.Errorf("file '%s' escapes directory using '..'", file)
 	}
 
@@ -448,9 +442,9 @@ func validateFileIsWithinDirectory(dir, file string) error {
 // repository or to unintended files (e.g. a symlink that attempts to read a git
 // metadata file).
 func validateFileIsNotSymlink(dir, file string) error {
-	absFilePath := filepath.Join(dir, file)
+	fullFilePath := filepath.Join(dir, file)
 	// Use Lstat (not Stat) to get info about the file itself, not its target.
-	fileInfo, err := os.Lstat(absFilePath)
+	fileInfo, err := os.Lstat(fullFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to stat file: %w", err)
 	}

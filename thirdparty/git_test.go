@@ -2,6 +2,8 @@ package thirdparty
 
 import (
 	"encoding/base64"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -146,5 +148,60 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
 		assert.Error(t, err)
 		assert.True(t, IsFileNotFound(err))
+	})
+}
+
+func TestValidateFileIsWithinDirectory(t *testing.T) {
+	const parentDirectory = "/tmp/dir"
+	for testName, testCase := range map[string]struct {
+		filePath  string
+		shouldErr bool
+	}{
+		"RelativePathAllowed": {
+			filePath:  "src/main.go",
+			shouldErr: false,
+		},
+		"RelativePathAllowedWithRedundantSeparators": {
+			filePath:  "src//main.go",
+			shouldErr: false,
+		},
+		"FilePathWithTraversalDisallowed": {
+			filePath:  "../etc/passwd",
+			shouldErr: true,
+		},
+		"AbsolutePathDisallowed": {
+			filePath:  "/absolute/path/to/file",
+			shouldErr: true,
+		},
+		"FilePathWithMixedTraversalDisallowed": {
+			filePath:  "src/../etc/../../passwd",
+			shouldErr: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			err := validateFileIsWithinDirectory(parentDirectory, testCase.filePath)
+			if testCase.shouldErr {
+				assert.Error(t, err, "expected an error for file path: %s", testCase.filePath)
+			} else {
+				assert.NoError(t, err, "did not expect an error for file path: %s", testCase.filePath)
+			}
+		})
+	}
+}
+
+func TestValidateFileIsNotSymlink(t *testing.T) {
+	t.Run("DoesNotErrorForRegularFile", func(t *testing.T) {
+		const fileName = "file.txt"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, fileName), []byte("hello world"), 0644))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.NoError(t, validateFileIsNotSymlink(tmpDir, fileName))
+	})
+	t.Run("ErrorsForSymlink", func(t *testing.T) {
+		const fileName = "symlink"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.Symlink("/etc/passwd", filepath.Join(tmpDir, fileName)))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.Error(t, validateFileIsNotSymlink(tmpDir, fileName))
 	})
 }
