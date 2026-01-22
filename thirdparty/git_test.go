@@ -152,41 +152,32 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 }
 
 func TestValidateFileIsWithinDirectory(t *testing.T) {
-	const parentDirectory = "/tmp/dir"
-	for testName, testCase := range map[string]struct {
-		filePath  string
-		shouldErr bool
-	}{
-		"RelativePathAllowed": {
-			filePath:  "src/main.go",
-			shouldErr: false,
-		},
-		"RelativePathAllowedWithRedundantSeparators": {
-			filePath:  "src//main.go",
-			shouldErr: false,
-		},
-		"FilePathWithTraversalDisallowed": {
-			filePath:  "../etc/passwd",
-			shouldErr: true,
-		},
-		"AbsolutePathDisallowed": {
-			filePath:  "/absolute/path/to/file",
-			shouldErr: true,
-		},
-		"FilePathWithMixedTraversalDisallowed": {
-			filePath:  "src/../etc/../../passwd",
-			shouldErr: true,
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			err := validateFileIsWithinDirectory(parentDirectory, testCase.filePath)
-			if testCase.shouldErr {
-				assert.Error(t, err, "expected an error for file path: %s", testCase.filePath)
-			} else {
-				assert.NoError(t, err, "did not expect an error for file path: %s", testCase.filePath)
-			}
-		})
-	}
+	const parentDir = "/tmp/dir"
+
+	t.Run("RelativePathAllowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("RelativePathAllowedWithRedundantSeparators", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src//main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("FilePathWithTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "../etc/passwd")
+		assert.Error(t, err)
+	})
+
+	t.Run("AbsolutePathDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "/absolute/path/to/file")
+		assert.Error(t, err)
+	})
+
+	t.Run("FilePathWithMixedTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/../etc/../../passwd")
+		assert.Error(t, err)
+	})
 }
 
 func TestValidateFileIsNotSymlink(t *testing.T) {

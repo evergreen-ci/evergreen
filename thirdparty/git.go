@@ -393,7 +393,7 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 
 	// Validate that the restored file is not a symlink to prevent attempts to
 	// access a different file in the file system (e.g. a file in the git repo
-	// that symlinks to "~/.ssh/id_rsa").
+	// that symlinks to `~/.ssh/id_rsa`).
 	if err := validateFileIsNotSymlink(dir, fileName); err != nil {
 		return "", errors.Wrapf(err, "validating file '%s' is not a symlink", fileName)
 	}
