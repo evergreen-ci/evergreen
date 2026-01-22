@@ -40,6 +40,11 @@ rebasing](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphit
 Once Graphite finishes rebasing (which may happen automatically or may require manual intervention), the CI tests will
 run.
 
+Another reason Evergreen would not run CI tests on your Graphite PR is if the CI optimization is on. CI optimization
+allows us to only run CI on certain PR's on the stack. For more information on CI optimization, please refer to the
+[Graphite documentation](https://graphite.com/docs/stacking-and-ci). The default optimization rule is to only run CI on
+only the top and bottom PR's in the stack.
+
 If you're unsure about the state of your stacked PR, please check the PR in the Graphite UI instead of GitHub. The
 Graphite UI can provide helpful warnings/errors and advice on how to fix them. If you find that your PR is still having
 issues with Graphite's automatic rebasing, please make sure to review [the Graphite
