@@ -47,7 +47,8 @@ func (nfe FileNotFoundError) Error() string {
 
 func IsFileNotFound(err error) bool {
 	_, ok := err.(FileNotFoundError)
-	return ok || errors.Is(err, &FileNotFoundError{})
+	var fnf FileNotFoundError
+	return ok || errors.As(err, &fnf)
 }
 
 type YAMLFormatError struct {

@@ -258,6 +258,8 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) (s
 	return fileContent, err
 }
 
+const gitOperationTimeout = 15 * time.Second
+
 // gitCloneMinimal performs a minimal git clone of a repository using the GitHub
 // app. The minimal clone contains only git metadata for the one revision and
 // has no file content. Callers are expected to clean up the returned git
@@ -286,7 +288,7 @@ func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	// is an experimental feature and should not meaningfully impact performance
 	// while it's being tested out. Realistically, if it took more than this
 	// long to do a minimal clone, it would be too slow to be usable.
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
 	defer cancel()
 
 	// Clone the repository with the bare minimum metadata for just the one
@@ -351,7 +353,7 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	// meaningfully impact performance while it's being tested out.
 	// Realistically, if it took more than this long to restore a single file,
 	// it would be too slow to be usable.
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", fileName)
