@@ -178,7 +178,7 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 		response["error"] = err.Error()
 	}
 
-	json.NewEncoder(w).Encode(response)
+	grip.Error(json.NewEncoder(w).Encode(response))
 }
 
 // handleStepNext executes the next step
@@ -204,5 +204,5 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 		response["error"] = err.Error()
 	}
 
-	json.NewEncoder(w).Encode(response)
+	grip.Error(json.NewEncoder(w).Encode(response))
 }
