@@ -3268,7 +3268,7 @@ func (a *APIS3CostConfig) ToService() (any, error) {
 }
 
 type APIS3UploadCostConfig struct {
-	UploadCostDiscount *float64 `json:"upload_cost_discount"`
+	UploadCostDiscount float64 `json:"upload_cost_discount"`
 }
 
 func (a *APIS3UploadCostConfig) BuildFromService(h any) error {
@@ -3288,8 +3288,8 @@ func (a *APIS3UploadCostConfig) ToService() (any, error) {
 }
 
 type APIS3StorageCostConfig struct {
-	StandardStorageCostDiscount         *float64 `json:"standard_storage_cost_discount"`
-	InfrequentAccessStorageCostDiscount *float64 `json:"infrequent_access_storage_cost_discount"`
+	StandardStorageCostDiscount         float64 `json:"standard_storage_cost_discount"`
+	InfrequentAccessStorageCostDiscount float64 `json:"infrequent_access_storage_cost_discount"`
 }
 
 func (a *APIS3StorageCostConfig) BuildFromService(h any) error {

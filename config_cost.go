@@ -29,13 +29,13 @@ type CostConfig struct {
 
 // S3UploadCostConfig represents S3 upload cost discount configuration.
 type S3UploadCostConfig struct {
-	UploadCostDiscount *float64 `bson:"upload_cost_discount" json:"upload_cost_discount,omitempty" yaml:"upload_cost_discount,omitempty"`
+	UploadCostDiscount float64 `bson:"upload_cost_discount" json:"upload_cost_discount" yaml:"upload_cost_discount"`
 }
 
 // S3StorageCostConfig represents S3 storage cost discount configuration.
 type S3StorageCostConfig struct {
-	StandardStorageCostDiscount         *float64 `bson:"standard_storage_cost_discount" json:"standard_storage_cost_discount,omitempty" yaml:"standard_storage_cost_discount,omitempty"`
-	InfrequentAccessStorageCostDiscount *float64 `bson:"infrequent_access_storage_cost_discount" json:"infrequent_access_storage_cost_discount,omitempty" yaml:"infrequent_access_storage_cost_discount,omitempty"`
+	StandardStorageCostDiscount         float64 `bson:"standard_storage_cost_discount" json:"standard_storage_cost_discount" yaml:"standard_storage_cost_discount"`
+	InfrequentAccessStorageCostDiscount float64 `bson:"infrequent_access_storage_cost_discount" json:"infrequent_access_storage_cost_discount" yaml:"infrequent_access_storage_cost_discount"`
 }
 
 // S3CostConfig represents S3 cost configuration with separate upload and storage settings.
@@ -68,14 +68,6 @@ func (c *CostConfig) Set(ctx context.Context) error {
 	)
 }
 
-func validateDiscountRange(catcher grip.Catcher, discount *float64, fieldName string) {
-	if discount != nil {
-		if *discount < 0.0 || *discount > 1.0 {
-			catcher.Errorf("%s must be between 0.0 and 1.0", fieldName)
-		}
-	}
-}
-
 func (c *CostConfig) ValidateAndDefault() error {
 	catcher := grip.NewBasicCatcher()
 
@@ -88,9 +80,15 @@ func (c *CostConfig) ValidateAndDefault() error {
 	if c.OnDemandDiscount < 0.0 || c.OnDemandDiscount > 1.0 {
 		catcher.New("on demand discount must be between 0.0 and 1.0")
 	}
-	validateDiscountRange(catcher, c.S3Cost.Upload.UploadCostDiscount, "S3 upload cost discount")
-	validateDiscountRange(catcher, c.S3Cost.Storage.StandardStorageCostDiscount, "S3 standard storage cost discount")
-	validateDiscountRange(catcher, c.S3Cost.Storage.InfrequentAccessStorageCostDiscount, "S3 infrequent access storage cost discount")
+	if c.S3Cost.Upload.UploadCostDiscount < 0.0 || c.S3Cost.Upload.UploadCostDiscount > 1.0 {
+		catcher.New("S3 upload cost discount must be between 0.0 and 1.0")
+	}
+	if c.S3Cost.Storage.StandardStorageCostDiscount < 0.0 || c.S3Cost.Storage.StandardStorageCostDiscount > 1.0 {
+		catcher.New("S3 standard storage cost discount must be between 0.0 and 1.0")
+	}
+	if c.S3Cost.Storage.InfrequentAccessStorageCostDiscount < 0.0 || c.S3Cost.Storage.InfrequentAccessStorageCostDiscount > 1.0 {
+		catcher.New("S3 infrequent access storage cost discount must be between 0.0 and 1.0")
+	}
 
 	return catcher.Resolve()
 }
@@ -100,7 +98,7 @@ func (c *CostConfig) IsConfigured() bool {
 	return c.FinanceFormula != 0 ||
 		c.SavingsPlanDiscount != 0 ||
 		c.OnDemandDiscount != 0 ||
-		c.S3Cost.Upload.UploadCostDiscount != nil ||
-		c.S3Cost.Storage.StandardStorageCostDiscount != nil ||
-		c.S3Cost.Storage.InfrequentAccessStorageCostDiscount != nil
+		c.S3Cost.Upload.UploadCostDiscount != 0 ||
+		c.S3Cost.Storage.StandardStorageCostDiscount != 0 ||
+		c.S3Cost.Storage.InfrequentAccessStorageCostDiscount != 0
 }

@@ -43,62 +43,39 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
-	t.Run("S3CostNilFields", func(t *testing.T) {
-		c := CostConfig{
-			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: nil},
-				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         nil,
-					InfrequentAccessStorageCostDiscount: nil,
-				},
-			},
-		}
-		assert.NoError(t, c.ValidateAndDefault())
-	})
-
 	t.Run("ValidS3UploadCostDiscount", func(t *testing.T) {
-		zero := 0.0
-		half := 0.5
-		one := 1.0
-
 		c := CostConfig{
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &zero},
+				Upload: S3UploadCostConfig{UploadCostDiscount: 0.0},
 			},
 		}
 		assert.NoError(t, c.ValidateAndDefault())
 
-		c.S3Cost.Upload.UploadCostDiscount = &half
+		c.S3Cost.Upload.UploadCostDiscount = 0.5
 		assert.NoError(t, c.ValidateAndDefault())
 
-		c.S3Cost.Upload.UploadCostDiscount = &one
+		c.S3Cost.Upload.UploadCostDiscount = 1.0
 		assert.NoError(t, c.ValidateAndDefault())
 	})
 
 	t.Run("InvalidS3UploadCostDiscount", func(t *testing.T) {
-		negative := -0.1
-		overOne := 1.5
-
 		c := CostConfig{
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &negative},
+				Upload: S3UploadCostConfig{UploadCostDiscount: -0.1},
 			},
 		}
 		assert.Error(t, c.ValidateAndDefault())
 
-		c.S3Cost.Upload.UploadCostDiscount = &overOne
+		c.S3Cost.Upload.UploadCostDiscount = 1.5
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
 	t.Run("ValidS3StorageCostDiscounts", func(t *testing.T) {
-		zero := 0.0
-		half := 0.5
-
 		c := CostConfig{
 			S3Cost: S3CostConfig{
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         &zero,
-					InfrequentAccessStorageCostDiscount: &half,
+					StandardStorageCostDiscount:         0.0,
+					InfrequentAccessStorageCostDiscount: 0.5,
 				},
 			},
 		}
@@ -106,50 +83,41 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 	})
 
 	t.Run("InvalidS3StandardStorageCostDiscount", func(t *testing.T) {
-		negative := -0.1
-		overOne := 1.5
-
 		c := CostConfig{
 			S3Cost: S3CostConfig{
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount: &negative,
+					StandardStorageCostDiscount: -0.1,
 				},
 			},
 		}
 		assert.Error(t, c.ValidateAndDefault())
 
-		c.S3Cost.Storage.StandardStorageCostDiscount = &overOne
+		c.S3Cost.Storage.StandardStorageCostDiscount = 1.5
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
 	t.Run("InvalidS3InfrequentAccessStorageCostDiscount", func(t *testing.T) {
-		negative := -0.1
-		overOne := 1.5
-
 		c := CostConfig{
 			S3Cost: S3CostConfig{
 				Storage: S3StorageCostConfig{
-					InfrequentAccessStorageCostDiscount: &negative,
+					InfrequentAccessStorageCostDiscount: -0.1,
 				},
 			},
 		}
 		assert.Error(t, c.ValidateAndDefault())
 
-		c.S3Cost.Storage.InfrequentAccessStorageCostDiscount = &overOne
+		c.S3Cost.Storage.InfrequentAccessStorageCostDiscount = 1.5
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
 	t.Run("MultipleInvalidFields", func(t *testing.T) {
-		negative := -0.1
-		overOne := 1.5
-
 		c := CostConfig{
 			FinanceFormula:      1.5,
 			SavingsPlanDiscount: -0.1,
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &negative},
+				Upload: S3UploadCostConfig{UploadCostDiscount: -0.1},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount: &overOne,
+					StandardStorageCostDiscount: 1.5,
 				},
 			},
 		}
@@ -179,81 +147,22 @@ func TestCostConfigIsConfigured(t *testing.T) {
 		assert.True(t, c.IsConfigured())
 	})
 
-	t.Run("S3UploadCostDiscountNil", func(t *testing.T) {
-		c := CostConfig{
-			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: nil},
-			},
-		}
-		assert.False(t, c.IsConfigured())
-	})
-
-	t.Run("S3UploadCostDiscountSetToZero", func(t *testing.T) {
-		zero := 0.0
-		c := CostConfig{
-			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &zero},
-			},
-		}
-		assert.True(t, c.IsConfigured())
-	})
-
 	t.Run("S3UploadCostDiscountSetToNonZero", func(t *testing.T) {
-		value := 0.5
 		c := CostConfig{
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &value},
-			},
-		}
-		assert.True(t, c.IsConfigured())
-	})
-
-	t.Run("S3StandardStorageCostDiscountNil", func(t *testing.T) {
-		c := CostConfig{
-			S3Cost: S3CostConfig{
-				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount: nil,
-				},
-			},
-		}
-		assert.False(t, c.IsConfigured())
-	})
-
-	t.Run("S3StandardStorageCostDiscountSetToZero", func(t *testing.T) {
-		zero := 0.0
-		c := CostConfig{
-			S3Cost: S3CostConfig{
-				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount: &zero,
-				},
-			},
-		}
-		assert.True(t, c.IsConfigured())
-	})
-
-	t.Run("S3InfrequentAccessStorageCostDiscountSetToZero", func(t *testing.T) {
-		zero := 0.0
-		c := CostConfig{
-			S3Cost: S3CostConfig{
-				Storage: S3StorageCostConfig{
-					InfrequentAccessStorageCostDiscount: &zero,
-				},
+				Upload: S3UploadCostConfig{UploadCostDiscount: 0.5},
 			},
 		}
 		assert.True(t, c.IsConfigured())
 	})
 
 	t.Run("AllS3FieldsSet", func(t *testing.T) {
-		upload := 0.1
-		standard := 0.2
-		infrequent := 0.3
-
 		c := CostConfig{
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &upload},
+				Upload: S3UploadCostConfig{UploadCostDiscount: 0.1},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         &standard,
-					InfrequentAccessStorageCostDiscount: &infrequent,
+					StandardStorageCostDiscount:         0.2,
+					InfrequentAccessStorageCostDiscount: 0.3,
 				},
 			},
 		}
@@ -261,12 +170,10 @@ func TestCostConfigIsConfigured(t *testing.T) {
 	})
 
 	t.Run("MixedFinanceAndS3Fields", func(t *testing.T) {
-		upload := 0.1
-
 		c := CostConfig{
 			FinanceFormula: 0.5,
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &upload},
+				Upload: S3UploadCostConfig{UploadCostDiscount: 0.1},
 			},
 		}
 		assert.True(t, c.IsConfigured())
@@ -298,44 +205,18 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		assert.Equal(t, original.OnDemandDiscount, retrieved.OnDemandDiscount)
 	})
 
-	t.Run("SetAndGetS3CostWithNilFields", func(t *testing.T) {
-		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
-		defer func() {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
-		}()
-
-		original := CostConfig{
-			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: nil},
-				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         nil,
-					InfrequentAccessStorageCostDiscount: nil,
-				},
-			},
-		}
-		require.NoError(t, original.Set(ctx))
-
-		retrieved := CostConfig{}
-		require.NoError(t, retrieved.Get(ctx))
-
-		assert.Nil(t, retrieved.S3Cost.Upload.UploadCostDiscount)
-		assert.Nil(t, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-		assert.Nil(t, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
-	})
-
 	t.Run("SetAndGetS3CostWithZeroValues", func(t *testing.T) {
 		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
 		defer func() {
 			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
 		}()
 
-		zero := 0.0
 		original := CostConfig{
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &zero},
+				Upload: S3UploadCostConfig{UploadCostDiscount: 0.0},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         &zero,
-					InfrequentAccessStorageCostDiscount: &zero,
+					StandardStorageCostDiscount:         0.0,
+					InfrequentAccessStorageCostDiscount: 0.0,
 				},
 			},
 		}
@@ -344,14 +225,9 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		retrieved := CostConfig{}
 		require.NoError(t, retrieved.Get(ctx))
 
-		require.NotNil(t, retrieved.S3Cost.Upload.UploadCostDiscount)
-		assert.Equal(t, 0.0, *retrieved.S3Cost.Upload.UploadCostDiscount)
-
-		require.NotNil(t, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-		assert.Equal(t, 0.0, *retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-
-		require.NotNil(t, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
-		assert.Equal(t, 0.0, *retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
+		assert.Equal(t, 0.0, retrieved.S3Cost.Upload.UploadCostDiscount)
+		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
+		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
 	})
 
 	t.Run("SetAndGetS3CostWithNonZeroValues", func(t *testing.T) {
@@ -360,16 +236,12 @@ func TestCostConfigSetAndGet(t *testing.T) {
 			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
 		}()
 
-		upload := 0.1
-		standard := 0.2
-		infrequent := 0.3
-
 		original := CostConfig{
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &upload},
+				Upload: S3UploadCostConfig{UploadCostDiscount: 0.1},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         &standard,
-					InfrequentAccessStorageCostDiscount: &infrequent,
+					StandardStorageCostDiscount:         0.2,
+					InfrequentAccessStorageCostDiscount: 0.3,
 				},
 			},
 		}
@@ -378,14 +250,9 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		retrieved := CostConfig{}
 		require.NoError(t, retrieved.Get(ctx))
 
-		require.NotNil(t, retrieved.S3Cost.Upload.UploadCostDiscount)
-		assert.Equal(t, 0.1, *retrieved.S3Cost.Upload.UploadCostDiscount)
-
-		require.NotNil(t, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-		assert.Equal(t, 0.2, *retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-
-		require.NotNil(t, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
-		assert.Equal(t, 0.3, *retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
+		assert.Equal(t, 0.1, retrieved.S3Cost.Upload.UploadCostDiscount)
+		assert.Equal(t, 0.2, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
+		assert.Equal(t, 0.3, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
 	})
 
 	t.Run("SetAndGetMixedFinanceAndS3Fields", func(t *testing.T) {
@@ -394,17 +261,14 @@ func TestCostConfigSetAndGet(t *testing.T) {
 			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
 		}()
 
-		upload := 0.1
-		standard := 0.2
-
 		original := CostConfig{
 			FinanceFormula:      0.5,
 			SavingsPlanDiscount: 0.3,
 			OnDemandDiscount:    0.2,
 			S3Cost: S3CostConfig{
-				Upload: S3UploadCostConfig{UploadCostDiscount: &upload},
+				Upload: S3UploadCostConfig{UploadCostDiscount: 0.1},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount: &standard,
+					StandardStorageCostDiscount: 0.2,
 				},
 			},
 		}
@@ -417,12 +281,8 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		assert.Equal(t, original.SavingsPlanDiscount, retrieved.SavingsPlanDiscount)
 		assert.Equal(t, original.OnDemandDiscount, retrieved.OnDemandDiscount)
 
-		require.NotNil(t, retrieved.S3Cost.Upload.UploadCostDiscount)
-		assert.Equal(t, 0.1, *retrieved.S3Cost.Upload.UploadCostDiscount)
-
-		require.NotNil(t, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-		assert.Equal(t, 0.2, *retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-
-		assert.Nil(t, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
+		assert.Equal(t, 0.1, retrieved.S3Cost.Upload.UploadCostDiscount)
+		assert.Equal(t, 0.2, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
+		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
 	})
 }
