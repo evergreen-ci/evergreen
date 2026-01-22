@@ -348,6 +348,12 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	))
 	defer span.End()
 
+	// Validate that the file is within the git directory to prevent attempts to
+	// access files outside the git repo.
+	if err := validateFileIsWithinDirectory(dir, fileName); err != nil {
+		return "", errors.Wrapf(err, "validating file path '%s' is within git repo directory", fileName)
+	}
+
 	// Limit how long this can spend restoring the file to prevent this from
 	// running too long. This is an experimental feature and should not
 	// meaningfully impact performance while it's being tested out.
@@ -384,10 +390,76 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 		return "", errors.Wrapf(err, "restoring file '%s'", fileName)
 	}
 
+	// Validate that the restored file is not a symlink to prevent attempts to
+	// access a different file in the file system.
+	if err := validateFileIsNotSymlink(dir, fileName); err != nil {
+		return "", errors.Wrapf(err, "validating file '%s' is not a symlink", fileName)
+	}
+
 	fp := filepath.Join(dir, fileName)
 	contents, err := os.ReadFile(fp)
 	if err != nil {
 		return "", errors.Wrapf(err, "reading restored file '%s'", fileName)
 	}
 	return string(contents), nil
+}
+
+// validateFileIsWithinDirectory ensures that the given file path is
+// contained within the specified directory. It's assumed that dir is an
+// absolute path.
+func validateFileIsWithinDirectory(dir, file string) error {
+	if !filepath.IsAbs(dir) {
+		return errors.Errorf("directory '%s' must be an absolute path", dir)
+	}
+
+	// Normalize the path (removes redundant separators, resolves "." references)
+	cleanPath := filepath.Clean(file)
+
+	if filepath.IsAbs(cleanPath) {
+		return errors.Errorf("file '%s' must be a relative path, not absolute", file)
+	}
+
+	// Reject paths containing ".." (prevent attempts to escape the directory).
+	if strings.Contains(cleanPath, "..") {
+		return errors.Errorf("file '%s' cannot traverse directories using '..'", file)
+	}
+
+	// Verify the final resolved path is within the directory.
+	absFilePath := filepath.Join(dir, cleanPath)
+
+	// Use filepath.Rel to verify absFilePath is a filepath within dir to rule
+	// out complex path manipulations.
+	relPath, err := filepath.Rel(dir, absFilePath)
+	if err != nil {
+		return errors.Wrap(err, "verifying that the file is relative to the directory")
+	}
+
+	// If the relative path starts with "..", it's trying to escape the
+	// directory.
+	if strings.HasPrefix(relPath, "..") {
+		return errors.Errorf("file '%s' escapes directory using '..'", file)
+	}
+
+	return nil
+}
+
+// validateFileIsNotSymlink checks that the specified file is not a symlink.
+// This protects against symlinks in the git repo pointing outside the
+// repository or to unintended files (e.g. a symlink that attempts to read a git
+// metadata file).
+func validateFileIsNotSymlink(dir, file string) error {
+	absFilePath := filepath.Join(dir, file)
+	// Use Lstat (not Stat) to get info about the file itself, not its target.
+	fileInfo, err := os.Lstat(absFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	// Check that the file is not a symlink, so it cannot point to a different
+	// file.
+	if fileInfo.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("symlinks are not allowed: %s", file)
+	}
+
+	return nil
 }
