@@ -33,7 +33,7 @@ func setupPermissions(t *testing.T) {
 
 	roleManager := env.RoleManager()
 
-	roles, err := roleManager.GetAllRoles(t.Context())
+	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
 	require.Empty(t, roles)
 
@@ -48,7 +48,7 @@ func setupPermissions(t *testing.T) {
 			evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value,
 		},
 	}
-	err = roleManager.UpdateRole(t.Context(), superUserRole)
+	err = roleManager.UpdateRole(superUserRole)
 	require.NoError(t, err)
 
 	superUserScope := gimlet.Scope{
@@ -57,7 +57,7 @@ func setupPermissions(t *testing.T) {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{"super_user"},
 	}
-	err = roleManager.AddScope(t.Context(), superUserScope)
+	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
 	superUserProjectRole := gimlet.Role{
@@ -72,7 +72,7 @@ func setupPermissions(t *testing.T) {
 			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
 		},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), superUserProjectRole))
+	require.NoError(t, roleManager.UpdateRole(superUserProjectRole))
 
 	superUserProjectScope := gimlet.Scope{
 		ID:        evergreen.AllProjectsScope,
@@ -80,7 +80,7 @@ func setupPermissions(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"project_id"},
 	}
-	require.NoError(t, roleManager.AddScope(t.Context(), superUserProjectScope))
+	require.NoError(t, roleManager.AddScope(superUserProjectScope))
 
 	superUserDistroRole := gimlet.Role{
 		ID:    evergreen.SuperUserDistroAccessRole,
@@ -91,7 +91,7 @@ func setupPermissions(t *testing.T) {
 			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 		},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), superUserDistroRole))
+	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
 
 	superUserDistroScope := gimlet.Scope{
 		ID:        evergreen.AllDistrosScope,
@@ -99,7 +99,7 @@ func setupPermissions(t *testing.T) {
 		Type:      evergreen.DistroResourceType,
 		Resources: []string{"distro-id"},
 	}
-	require.NoError(t, roleManager.AddScope(t.Context(), superUserDistroScope))
+	require.NoError(t, roleManager.AddScope(superUserDistroScope))
 
 	projectScope := gimlet.Scope{
 		ID:        "project_scope",
@@ -107,7 +107,7 @@ func setupPermissions(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"project_id"},
 	}
-	err = roleManager.AddScope(t.Context(), projectScope)
+	err = roleManager.AddScope(projectScope)
 	require.NoError(t, err)
 
 	projectAdminRole := gimlet.Role{
@@ -120,7 +120,7 @@ func setupPermissions(t *testing.T) {
 			evergreen.PermissionLogs:            evergreen.LogsView.Value,
 		},
 	}
-	err = roleManager.UpdateRole(t.Context(), projectAdminRole)
+	err = roleManager.UpdateRole(projectAdminRole)
 	require.NoError(t, err)
 
 	projectViewRole := gimlet.Role{
@@ -133,7 +133,7 @@ func setupPermissions(t *testing.T) {
 			evergreen.PermissionLogs:            evergreen.LogsView.Value,
 		},
 	}
-	err = roleManager.UpdateRole(t.Context(), projectViewRole)
+	err = roleManager.UpdateRole(projectViewRole)
 	require.NoError(t, err)
 
 	distroScope := gimlet.Scope{
@@ -142,98 +142,98 @@ func setupPermissions(t *testing.T) {
 		Type:      evergreen.DistroResourceType,
 		Resources: []string{"distro-id"},
 	}
-	require.NoError(t, roleManager.AddScope(t.Context(), distroScope))
+	require.NoError(t, roleManager.AddScope(distroScope))
 
 	distroAdminRole := gimlet.Role{
 		ID:          "admin_distro-id",
 		Scope:       distroScope.ID,
 		Permissions: map[string]int{evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), distroAdminRole))
+	require.NoError(t, roleManager.UpdateRole(distroAdminRole))
 
 	distroEditRole := gimlet.Role{
 		ID:          "edit_distro-id",
 		Scope:       distroScope.ID,
 		Permissions: map[string]int{evergreen.PermissionDistroSettings: evergreen.DistroSettingsEdit.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), distroEditRole))
+	require.NoError(t, roleManager.UpdateRole(distroEditRole))
 
 	distroViewRole := gimlet.Role{
 		ID:          "view_distro-id",
 		Scope:       distroScope.ID,
 		Permissions: map[string]int{evergreen.PermissionDistroSettings: evergreen.DistroSettingsView.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), distroViewRole))
+	require.NoError(t, roleManager.UpdateRole(distroViewRole))
 
 	hostEditRole := gimlet.Role{
 		ID:          "edit_host-id",
 		Scope:       distroScope.ID,
 		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsEdit.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), hostEditRole))
+	require.NoError(t, roleManager.UpdateRole(hostEditRole))
 
 	hostViewRole := gimlet.Role{
 		ID:          "view_host-id",
 		Scope:       distroScope.ID,
 		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsView.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), hostViewRole))
+	require.NoError(t, roleManager.UpdateRole(hostViewRole))
 
 	taskAdminRole := gimlet.Role{
 		ID:          "admin_task",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksAdmin.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), taskAdminRole))
+	require.NoError(t, roleManager.UpdateRole(taskAdminRole))
 
 	taskEditRole := gimlet.Role{
 		ID:          "edit_task",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksBasic.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), taskEditRole))
+	require.NoError(t, roleManager.UpdateRole(taskEditRole))
 
 	taskViewRole := gimlet.Role{
 		ID:          "view_task",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), taskViewRole))
+	require.NoError(t, roleManager.UpdateRole(taskViewRole))
 
 	annotationEditRole := gimlet.Role{
 		ID:          "edit_annotation",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionAnnotations: evergreen.AnnotationsModify.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), annotationEditRole))
+	require.NoError(t, roleManager.UpdateRole(annotationEditRole))
 
 	annotationViewRole := gimlet.Role{
 		ID:          "view_annotation",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionAnnotations: evergreen.AnnotationsView.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), annotationViewRole))
+	require.NoError(t, roleManager.UpdateRole(annotationViewRole))
 
 	patchAdminRole := gimlet.Role{
 		ID:          "admin_patch",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), patchAdminRole))
+	require.NoError(t, roleManager.UpdateRole(patchAdminRole))
 
 	patchEditRole := gimlet.Role{
 		ID:          "edit_patch",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), patchEditRole))
+	require.NoError(t, roleManager.UpdateRole(patchEditRole))
 
 	logViewRole := gimlet.Role{
 		ID:          "view_logs",
 		Scope:       projectScope.ID,
 		Permissions: map[string]int{evergreen.PermissionLogs: evergreen.LogsView.Value},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), logViewRole))
+	require.NoError(t, roleManager.UpdateRole(logViewRole))
 }
 func TestRequireHostAccess(t *testing.T) {
 	defer func() {
@@ -376,7 +376,7 @@ func TestRequireDistroAccess(t *testing.T) {
 		return nil, nil
 	}
 
-	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -522,7 +522,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		return nil, nil
 	}
 
-	usr, err := user.GetOrCreateUser(t.Context(), testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -677,7 +677,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	return user.GetOrCreateUser(t.Context(), testUser, "Evergreen User", email, accessToken, refreshToken, []string{})
+	return user.GetOrCreateUser(testUser, "Evergreen User", email, accessToken, refreshToken, []string{})
 }
 
 func TestRequireProjectSettingsAccess(t *testing.T) {

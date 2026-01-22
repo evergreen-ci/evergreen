@@ -365,7 +365,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 	}
 
 	for _, p := range patches {
-		if !userCanModifyPatch(ctx, user, p) {
+		if !userCanModifyPatch(user, p) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change visibility of patch '%s'", p.Id))
 		}
 		err = p.SetPatchVisibility(ctx, hidden)
@@ -701,7 +701,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", spawnHost.HostID))
 	}
 
-	if !host.CanUpdateSpawnHost(ctx, h, usr) {
+	if !host.CanUpdateSpawnHost(h, usr) {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", spawnHost.HostID))
 	}
 
@@ -832,7 +832,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 
 	// Only admins can spawn admin-only distros.
-	if !usr.HasDistroCreatePermission(ctx) {
+	if !usr.HasDistroCreatePermission() {
 		if d.AdminOnly {
 			// Admin-only distros can only be spawned by distro admins.
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to spawn host in admin-only distro '%s'", options.DistroID))
@@ -931,7 +931,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
-	if !host.CanUpdateSpawnHost(ctx, h, usr) {
+	if !host.CanUpdateSpawnHost(h, usr) {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", hostID))
 	}
 
@@ -1270,13 +1270,6 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 // ResetAPIKey is the resolver for the resetAPIKey field.
 func (r *mutationResolver) ResetAPIKey(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
-	}
-	if !usr.OnlyAPI && settings.ServiceFlags.StaticAPIKeysDisabled {
-		return nil, Forbidden.Send(ctx, "static API keys are disabled")
-	}
 	newKey := utility.RandomString()
 	if err := usr.UpdateAPIKey(ctx, newKey); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating user API key: %s", err.Error()))

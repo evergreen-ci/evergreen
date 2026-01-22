@@ -609,7 +609,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		authorEmail = p.GitInfo.Email
 	}
 	if p.Author != "" {
-		u, err := user.FindOneById(ctx, p.Author)
+		u, err := user.FindOneByIdContext(ctx, p.Author)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting user")
 		}
@@ -767,11 +767,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 
-	predictions, err := task.ComputePredictedCostsForTasks(ctx, tasksToInsert)
-	if err != nil {
-		return nil, errors.Wrapf(err, "computing predicted costs for tasks in version '%s'", patchVersion.Id)
-	}
-
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
@@ -793,15 +788,18 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			}
 		}
 		if mfst != nil {
-			if err = mfst.Insert(ctx); err != nil {
+			if err = mfst.InsertWithContext(ctx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}
 		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
 		}
+		if err = task.SetPredictedCostsForTasks(ctx, tasksToInsert); err != nil {
+			return nil, errors.Wrapf(err, "computing expected costs for tasks in version '%s'", patchVersion.Id)
+		}
 
-		if err = tasksToInsert.InsertUnorderedWithPredictions(ctx, predictions); err != nil {
+		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
 		if err = p.SetFinalized(ctx, patchVersion.Id); err != nil {

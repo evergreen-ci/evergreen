@@ -123,7 +123,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				if testUserId == "" {
 					testUserId = adminUser
 				}
-				foundUser, err := user.FindOneById(t.Context(), testUserId)
+				foundUser, err := user.FindOneByIdContext(t.Context(), testUserId)
 				require.NoError(t, err)
 				require.NotNil(t, foundUser, "finding test user '%s'", testUserId)
 				r.Header.Add(evergreen.APIUserHeader, foundUser.Id)
@@ -268,7 +268,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 	env := evergreen.GetEnvironment()
 	roleManager := env.RoleManager()
 
-	roles, err := roleManager.GetAllRoles(t.Context())
+	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
 	require.Empty(t, roles)
 
@@ -277,9 +277,9 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.AllProjectsScope,
 		Name:      "all projects",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"mci", "happyAbyssinian", "grumpyCat", "spruce", "evergreen", "repo_sandbox", "project_sandbox", "sandbox_no_child_versions", "child_no_versions"},
+		Resources: []string{"mci", "happyAbyssinian", "grumpyCat", "spruce", "evergreen", "repo_sandbox", "project_sandbox"},
 	}
-	err = roleManager.AddScope(t.Context(), allProjectScope)
+	err = roleManager.AddScope(allProjectScope)
 	require.NoError(t, err)
 
 	unrestrictedProjectScope := gimlet.Scope{
@@ -288,7 +288,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"spruce"},
 	}
-	err = roleManager.AddScope(t.Context(), unrestrictedProjectScope)
+	err = roleManager.AddScope(unrestrictedProjectScope)
 	require.NoError(t, err)
 
 	adminProjectAccessRole := gimlet.Role{
@@ -303,7 +303,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
 		},
 	}
-	err = roleManager.UpdateRole(t.Context(), adminProjectAccessRole)
+	err = roleManager.UpdateRole(adminProjectAccessRole)
 	require.NoError(t, err)
 
 	basicProjectAccessRole := gimlet.Role{
@@ -317,7 +317,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 			evergreen.PermissionAnnotations: evergreen.AnnotationsModify.Value,
 		},
 	}
-	err = roleManager.UpdateRole(t.Context(), basicProjectAccessRole)
+	err = roleManager.UpdateRole(basicProjectAccessRole)
 	require.NoError(t, err)
 
 	// Set up scopes and roles for distros.
@@ -327,7 +327,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.DistroResourceType,
 		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small", "ubuntu1604-power8-large", "centos6-perf", "macos-1014", "debian92-small", "ubuntu1804-power8-small"},
 	}
-	err = roleManager.AddScope(t.Context(), distroScope)
+	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)
 
 	adminDistroAccessRole := gimlet.Role{
@@ -339,7 +339,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 		},
 	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), adminDistroAccessRole))
+	require.NoError(t, roleManager.UpdateRole(adminDistroAccessRole))
 
 	basicDistroAccessRole := gimlet.Role{
 		ID:    evergreen.BasicDistroAccessRole,
@@ -350,7 +350,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 			evergreen.PermissionHosts:          evergreen.HostsView.Value,
 		},
 	}
-	err = roleManager.UpdateRole(t.Context(), basicDistroAccessRole)
+	err = roleManager.UpdateRole(basicDistroAccessRole)
 	require.NoError(t, err)
 
 	// Set up scopes and roles for superuser.
@@ -360,7 +360,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{evergreen.SuperUserPermissionsID},
 	}
-	err = roleManager.AddScope(t.Context(), superUserScope)
+	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
 	superUserRole := gimlet.Role{
@@ -374,7 +374,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 			evergreen.PermissionRoleModify:    evergreen.RoleModify.Value,
 		},
 	}
-	err = roleManager.UpdateRole(t.Context(), superUserRole)
+	err = roleManager.UpdateRole(superUserRole)
 	require.NoError(t, err)
 
 	// Set up scopes and roles for individual projects.
@@ -392,7 +392,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"spruce"},
 	}
-	err = roleManager.AddScope(t.Context(), projectSpruceScope)
+	err = roleManager.AddScope(projectSpruceScope)
 	require.NoError(t, err)
 
 	projectSpruceRole := gimlet.Role{
@@ -401,7 +401,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Scope:       projectSpruceScope.ID,
 		Permissions: projectPermissions,
 	}
-	err = roleManager.UpdateRole(t.Context(), projectSpruceRole)
+	err = roleManager.UpdateRole(projectSpruceRole)
 	require.NoError(t, err)
 
 	projectEvergreenScope := gimlet.Scope{
@@ -410,7 +410,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"evergreen"},
 	}
-	err = roleManager.AddScope(t.Context(), projectEvergreenScope)
+	err = roleManager.AddScope(projectEvergreenScope)
 	require.NoError(t, err)
 
 	projectEvergreenRole := gimlet.Role{
@@ -419,7 +419,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Scope:       projectEvergreenScope.ID,
 		Permissions: projectPermissions,
 	}
-	err = roleManager.UpdateRole(t.Context(), projectEvergreenRole)
+	err = roleManager.UpdateRole(projectEvergreenRole)
 	require.NoError(t, err)
 
 	projectSandboxScope := gimlet.Scope{
@@ -428,7 +428,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"sandbox_project_id"},
 	}
-	err = roleManager.AddScope(t.Context(), projectSandboxScope)
+	err = roleManager.AddScope(projectSandboxScope)
 	require.NoError(t, err)
 
 	projectSandboxRole := gimlet.Role{
@@ -437,7 +437,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Scope:       projectSandboxScope.ID,
 		Permissions: projectPermissions,
 	}
-	err = roleManager.UpdateRole(t.Context(), projectSandboxRole)
+	err = roleManager.UpdateRole(projectSandboxRole)
 	require.NoError(t, err)
 
 	projectGrumpyCatScope := gimlet.Scope{
@@ -446,7 +446,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"grumpyCat"},
 	}
-	err = roleManager.AddScope(t.Context(), projectGrumpyCatScope)
+	err = roleManager.AddScope(projectGrumpyCatScope)
 	require.NoError(t, err)
 
 	projectGrumpyCatRole := gimlet.Role{
@@ -455,7 +455,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Scope:       projectGrumpyCatScope.ID,
 		Permissions: projectPermissions,
 	}
-	err = roleManager.UpdateRole(t.Context(), projectGrumpyCatRole)
+	err = roleManager.UpdateRole(projectGrumpyCatRole)
 	require.NoError(t, err)
 
 	projectHappyAbyssinianScope := gimlet.Scope{
@@ -464,7 +464,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"happyAbyssinian"},
 	}
-	err = roleManager.AddScope(t.Context(), projectHappyAbyssinianScope)
+	err = roleManager.AddScope(projectHappyAbyssinianScope)
 	require.NoError(t, err)
 
 	projectHappyAbyssinianRole := gimlet.Role{
@@ -473,7 +473,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Scope:       projectHappyAbyssinianScope.ID,
 		Permissions: projectPermissions,
 	}
-	err = roleManager.UpdateRole(t.Context(), projectHappyAbyssinianRole)
+	err = roleManager.UpdateRole(projectHappyAbyssinianRole)
 	require.NoError(t, err)
 
 	// Set up scopes and roles for individual repos.
@@ -483,7 +483,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"sandbox_repo_id"},
 	}
-	err = roleManager.AddScope(t.Context(), repoSandboxScope)
+	err = roleManager.AddScope(repoSandboxScope)
 	require.NoError(t, err)
 
 	repoSandboxRole := gimlet.Role{
@@ -492,7 +492,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Scope:       repoSandboxScope.ID,
 		Permissions: projectPermissions,
 	}
-	err = roleManager.UpdateRole(t.Context(), repoSandboxRole)
+	err = roleManager.UpdateRole(repoSandboxRole)
 	require.NoError(t, err)
 
 	directorySpecificTestSetup(t, *state)

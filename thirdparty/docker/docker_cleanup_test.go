@@ -6,11 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/evergreen-ci/utility"
@@ -40,8 +38,8 @@ func TestCleanup(t *testing.T) {
 				Image: imageName,
 			}, nil, nil, nil, "")
 			require.NoError(t, err)
-			require.NoError(t, dockerClient.ContainerStart(t.Context(), resp.ID, container.StartOptions{}))
-			var info system.Info
+			require.NoError(t, dockerClient.ContainerStart(t.Context(), resp.ID, types.ContainerStartOptions{}))
+			var info types.Info
 			info, err = dockerClient.Info(t.Context())
 			require.NoError(t, err)
 			require.Positive(t, info.ContainersRunning)
@@ -55,7 +53,7 @@ func TestCleanup(t *testing.T) {
 		"CleanImages": func(t *testing.T) {
 			assert.NoError(t, cleanImages(t.Context(), dockerClient, grip.NewJournaler("")))
 
-			var info system.Info
+			var info types.Info
 			info, err = dockerClient.Info(t.Context())
 			assert.NoError(t, err)
 			assert.Zero(t, info.Images)
@@ -74,14 +72,14 @@ func TestCleanup(t *testing.T) {
 			assert.Empty(t, volumes.Volumes)
 		},
 		"CleanNetworks": func(t *testing.T) {
-			_, err := dockerClient.NetworkCreate(t.Context(), "test-network", network.CreateOptions{})
+			_, err := dockerClient.NetworkCreate(t.Context(), "test-network", types.NetworkCreate{})
 			require.NoError(t, err)
 
 			customNetworkFilter := filters.NewArgs(filters.KeyValuePair{
 				Key:   "type",
 				Value: "custom",
 			})
-			networks, err := dockerClient.NetworkList(t.Context(), network.ListOptions{
+			networks, err := dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
 				Filters: customNetworkFilter,
 			})
 			require.NoError(t, err)
@@ -89,7 +87,7 @@ func TestCleanup(t *testing.T) {
 
 			assert.NoError(t, cleanNetworks(t.Context(), dockerClient, grip.NewJournaler("")))
 
-			networks, err = dockerClient.NetworkList(t.Context(), network.ListOptions{
+			networks, err = dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
 				Filters: customNetworkFilter,
 			})
 			assert.NoError(t, err)
@@ -100,7 +98,7 @@ func TestCleanup(t *testing.T) {
 				Image: imageName,
 			}, nil, nil, nil, "")
 			require.NoError(t, err)
-			require.NoError(t, dockerClient.ContainerStart(t.Context(), resp.ID, container.StartOptions{}))
+			require.NoError(t, dockerClient.ContainerStart(t.Context(), resp.ID, types.ContainerStartOptions{}))
 			info, err := dockerClient.Info(t.Context())
 			require.NoError(t, err)
 			require.Positive(t, info.ContainersRunning)
@@ -112,13 +110,13 @@ func TestCleanup(t *testing.T) {
 			require.NoError(t, err)
 			require.NotEmpty(t, volumes.Volumes)
 
-			_, err = dockerClient.NetworkCreate(t.Context(), "test-network", network.CreateOptions{})
+			_, err = dockerClient.NetworkCreate(t.Context(), "test-network", types.NetworkCreate{})
 			require.NoError(t, err)
 			customNetworkFilter := filters.NewArgs(filters.KeyValuePair{
 				Key:   "type",
 				Value: "custom",
 			})
-			networks, err := dockerClient.NetworkList(t.Context(), network.ListOptions{
+			networks, err := dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
 				Filters: customNetworkFilter,
 			})
 			require.NoError(t, err)
@@ -135,7 +133,7 @@ func TestCleanup(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, volumes.Volumes)
 
-			networks, err = dockerClient.NetworkList(t.Context(), network.ListOptions{
+			networks, err = dockerClient.NetworkList(t.Context(), types.NetworkListOptions{
 				Filters: customNetworkFilter,
 			})
 			assert.NoError(t, err)
@@ -145,7 +143,7 @@ func TestCleanup(t *testing.T) {
 		// Retry pulling the Docker image to work around rate limits on
 		// unauthenciated pulls.
 		require.NoError(t, utility.Retry(t.Context(), func() (bool, error) {
-			out, err := dockerClient.ImagePull(t.Context(), imageName, image.PullOptions{})
+			out, err := dockerClient.ImagePull(t.Context(), imageName, types.ImagePullOptions{})
 			if err != nil {
 				return true, err
 			}
@@ -161,7 +159,7 @@ func TestCleanup(t *testing.T) {
 			if err := out.Close(); err != nil {
 				return true, err
 			}
-			images, err := dockerClient.ImageList(t.Context(), image.ListOptions{All: true})
+			images, err := dockerClient.ImageList(t.Context(), types.ImageListOptions{All: true})
 			if err != nil {
 				return true, err
 			}

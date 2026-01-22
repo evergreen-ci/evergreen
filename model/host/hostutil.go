@@ -1137,7 +1137,7 @@ func (h *Host) spawnHostConfigFile() string {
 // spawnHostCLIConfig returns the evergreen configuration for a spawn host CLI
 // in yaml format.
 func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings) ([]byte, error) {
-	owner, err := user.FindOne(ctx, user.ById(h.ProvisionOptions.OwnerId))
+	owner, err := user.FindOneContext(ctx, user.ById(h.ProvisionOptions.OwnerId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner '%s' for host", h.ProvisionOptions.OwnerId)
 	}

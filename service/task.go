@@ -1,12 +1,9 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -18,8 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -217,11 +212,6 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateArtifactURL(r.Context(), tFile.Link); err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "artifact link not allowed"))
-		return
-	}
-
 	response, err := http.Get(tFile.Link)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "downloading file"))
@@ -285,70 +275,4 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.Redirect(w, r, fmt.Sprintf("%s/task/%s/test-html-log?execution=%d&testName=%s", uis.Settings.Ui.UIv2Url, tsk.Id, tsk.Execution, testName), http.StatusPermanentRedirect)
 	}
-}
-
-var blockedCIDRs = []*net.IPNet{
-	// AWS metadata endpoints
-	mustParseCIDR("169.254.0.0/16"),
-	mustParseCIDR("fe80::/10"),
-	// Loopback endpoints
-	mustParseCIDR("127.0.0.0/8"),
-	mustParseCIDR("::1/128"),
-}
-
-func mustParseCIDR(c string) *net.IPNet {
-	_, n, err := net.ParseCIDR(c)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "failed to parse CIDR",
-			"target":  c,
-		}))
-		return nil
-	}
-	return n
-}
-
-func isBlockedIP(ip net.IP) bool {
-	for _, n := range blockedCIDRs {
-		if n != nil && n.Contains(ip) {
-			return true
-		}
-	}
-	return false
-}
-
-// validateArtifactURL validates that a URL is safe to fetch
-func validateArtifactURL(ctx context.Context, raw string) error {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return errors.Wrap(err, "invalid URL")
-	}
-
-	// Only allow HTTP and HTTPS
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return errors.Errorf("unsupported scheme %s", u.Scheme)
-	}
-
-	host := u.Hostname()
-	if host == "" {
-		return errors.New("missing host")
-	}
-
-	// Block literal IP addresses entirely
-	if ip := net.ParseIP(host); ip != nil {
-		return errors.New("literal IP hosts are not allowed")
-	}
-
-	// Resolve hostname and check all returned IPs
-	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
-	if err != nil {
-		return errors.Wrap(err, "DNS resolution failed")
-	}
-
-	for _, ip := range ips {
-		if isBlockedIP(ip) {
-			return errors.Errorf("host %s resolves to blocked address %s", host, ip.String())
-		}
-	}
-	return nil
 }

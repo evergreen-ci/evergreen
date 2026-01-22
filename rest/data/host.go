@@ -150,7 +150,7 @@ func FindHostByIdWithOwner(ctx context.Context, hostID string, user gimlet.User)
 	}
 
 	if user.Username() != hostById.StartedBy {
-		if !user.HasPermission(ctx, gimlet.PermissionOpts{
+		if !user.HasPermission(gimlet.PermissionOpts{
 			Resource:      hostById.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
@@ -303,7 +303,6 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		Expiration:            options.Expiration,
 		SleepScheduleOptions:  options.SleepScheduleOptions,
 		UseProjectSetupScript: options.UseProjectSetupScript,
-		IsDebug:               options.IsDebug,
 		ProvisionOptions: &host.ProvisionOptions{
 			TaskId:      options.TaskID,
 			SetupScript: options.SetupScript,

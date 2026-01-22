@@ -224,10 +224,6 @@ func MockConfig() *evergreen.Settings {
 		FWS: evergreen.FWSConfig{
 			URL: "fws_url",
 		},
-		Graphite: evergreen.GraphiteConfig{
-			CIOptimizationToken: "graphite_token",
-			ServerURL:           "https://graphite.example.com",
-		},
 		GithubPRCreatorOrg:  "org",
 		GithubWebhookSecret: "secret",
 		HostInit: evergreen.HostInitConfig{
@@ -413,7 +409,6 @@ func MockConfig() *evergreen.Settings {
 			ReleaseModeDisabled:             true,
 			LegacyUIAdminPageDisabled:       true,
 			DebugSpawnHostDisabled:          true,
-			UseGitForGitHubFilesDisabled:    true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{

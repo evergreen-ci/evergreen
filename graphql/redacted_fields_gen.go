@@ -7,7 +7,6 @@ var redactedFields = map[string]bool{
 	"amboyDB": true,
 	"apiKey": true,
 	"appId": true,
-	"ciOptimizationToken": true,
 	"clientId": true,
 	"clientSecret": true,
 	"collectorAPIKey": true,

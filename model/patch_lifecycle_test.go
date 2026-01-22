@@ -920,7 +920,7 @@ func TestAddNewPatch(t *testing.T) {
 
 	_, _, err = addNewTasksToExistingBuilds(t.Context(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
-	dbUser, err := user.FindOneById(t.Context(), u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(4, dbUser.NumScheduledPatchTasks)

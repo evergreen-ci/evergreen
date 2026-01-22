@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"context"
-
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/cached"
 	"github.com/evergreen-ci/gimlet/usercache"
@@ -13,13 +11,11 @@ import (
 // user cache.
 func NewExternalUserManager() (gimlet.UserManager, error) {
 	cache, err := usercache.NewExternal(usercache.ExternalOptions{
-		PutUserGetToken: func(context.Context, gimlet.User) (string, error) { return "", errors.New("not implemented") },
-		GetUserByToken: func(_ context.Context, token string) (gimlet.User, bool, error) {
-			return nil, false, errors.New("not implemented")
-		},
-		ClearUserToken: func(_ context.Context, u gimlet.User, all bool) error { return errors.New("not implemented") },
-		GetUserByID: func(ctx context.Context, id string) (gimlet.User, bool, error) {
-			user, err := getUserByID(ctx, id)
+		PutUserGetToken: func(gimlet.User) (string, error) { return "", errors.New("not implemented") },
+		GetUserByToken:  func(token string) (gimlet.User, bool, error) { return nil, false, errors.New("not implemented") },
+		ClearUserToken:  func(u gimlet.User, all bool) error { return errors.New("not implemented") },
+		GetUserByID: func(id string) (gimlet.User, bool, error) {
+			user, err := getUserByID(id)
 			return user, true, err
 		},
 		GetOrCreateUser: getOrCreateUser,

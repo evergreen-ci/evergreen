@@ -72,7 +72,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 		hph.options.SetDefaultTimeZone(user.Settings.Timezone)
 	}
 
-	if !user.HasDistroCreatePermission(ctx) {
+	if !user.HasDistroCreatePermission() {
 		d, err := distro.FindOneId(ctx, hph.options.DistroID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", hph.options.DistroID))

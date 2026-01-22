@@ -13,11 +13,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/registry"
 	docker "github.com/docker/docker/client"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -34,13 +31,13 @@ type DockerClient interface {
 	EnsureImageDownloaded(context.Context, *host.Host, host.DockerOptions) (string, error)
 	BuildImageWithAgent(context.Context, string, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host) error
-	GetContainer(context.Context, *host.Host, string) (*container.InspectResponse, error)
-	ListContainers(context.Context, *host.Host) ([]container.Summary, error)
+	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
+	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
 	StartContainer(context.Context, *host.Host, string) error
 	AttachToContainer(context.Context, *host.Host, string, host.DockerOptions) (*types.HijackedResponse, error)
-	ListImages(context.Context, *host.Host) ([]image.Summary, error)
+	ListImages(context.Context, *host.Host) ([]types.ImageSummary, error)
 }
 
 type dockerClientImpl struct {
@@ -49,8 +46,6 @@ type dockerClientImpl struct {
 	// httpDockerClient for making HTTP requests within the Docker dockerClient wrapper.
 	httpClient        *http.Client
 	client            *docker.Client
-	importHTTPClient  *http.Client
-	importClient      *docker.Client
 	evergreenSettings *evergreen.Settings
 }
 
@@ -74,101 +69,69 @@ func GetDockerClient(s *evergreen.Settings) DockerClient {
 // machine. The Docker client must be exposed and available for requests at the
 // client port 3369 on the host machine.
 func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) {
-	if c.client != nil {
-		return c.client, nil
-	}
-
-	client, err := c.createClient(h, c.httpClient, 0)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating Docker client")
-	}
-	c.client = client
-
-	return c.client, nil
-}
-
-// generateImportClient generates a Docker client with a higher request timeout
-// for importing images.
-func (c *dockerClientImpl) generateImportClient(h *host.Host) (*docker.Client, error) {
-	if c.importClient != nil {
-		return c.importClient, nil
-	}
-
-	client, err := c.createClient(h, c.importHTTPClient, imageImportTimeout)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating Docker client for imports")
-	}
-	c.importClient = client
-
-	return c.importClient, nil
-}
-
-func (c *dockerClientImpl) createClient(h *host.Host, httpClient *http.Client, timeout time.Duration) (*docker.Client, error) {
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
 	if h.Host == "" {
-		return nil, errors.New("host DNS name must not be blank")
+		return nil, errors.New("HostIP must not be blank")
+	}
+
+	// cache the *docker.Client in dockerClientImpl
+	if c.client != nil {
+		return c.client, nil
 	}
 
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
+	var err error
 	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, h.ContainerPoolSettings.Port)
-	opts := []docker.Opt{
-		docker.WithHost(endpoint),
-	}
-	if httpClient != nil {
-		opts = append(opts, docker.WithHTTPClient(httpClient))
-	}
-	if c.apiVersion != "" {
-		opts = append(opts, docker.WithVersion(c.apiVersion))
-	} else {
-		opts = append(opts, docker.WithAPIVersionNegotiation())
-	}
-	if timeout > 0 {
-		opts = append(opts, docker.WithTimeout(timeout))
-	}
-	client, err := docker.NewClientWithOpts(opts...)
+	c.client, err = docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "initializing Docker client for endpoint '%s'", endpoint)
+		grip.Error(message.Fields{
+			"message":     "Docker initialize client API call failed",
+			"host_id":     h.Id,
+			"error":       err,
+			"endpoint":    endpoint,
+			"api_version": c.apiVersion,
+		})
+		return nil, errors.Wrapf(err, "Docker initialize client API call failed at endpoint '%s'", endpoint)
 	}
 
-	return client, nil
+	return c.client, nil
+}
+
+// changeTimeout changes the timeout of dockerClient's internal httpClient and
+// returns a new docker.Client with the updated timeout
+func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
+	var err error
+	c.httpClient.Timeout = newTimeout
+	c.client = nil // don't want to use cached client
+	c.client, err = c.generateClient(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	return c.client, nil
 }
 
 // Init sets the Docker API version to use for API calls to the Docker client.
 func (c *dockerClientImpl) Init(apiVersion string) error {
+	if apiVersion == "" {
+		return errors.Errorf("Docker API version '%s' is invalid", apiVersion)
+	}
 	c.apiVersion = apiVersion
 
-	var err error
-	c.httpClient, err = c.getHTTPClient(0)
-	if err != nil {
-		return errors.Wrap(err, "creating HTTP client")
-	}
+	// Create HTTP client
+	c.httpClient = utility.GetHTTPClient()
 
-	// Create HTTP client for importing images with higher timeout.
-	c.importHTTPClient, err = c.getHTTPClient(imageImportTimeout)
-	if err != nil {
-		return errors.Wrap(err, "creating HTTP client for importing images")
-	}
-
-	return nil
-}
-
-// getHTTPClient returns an HTTP client for Docker.
-func (c *dockerClientImpl) getHTTPClient(timeout time.Duration) (*http.Client, error) {
-	client := utility.GetHTTPClient()
-
-	if timeout > 0 {
-		client.Timeout = timeout
-	}
-	transport, ok := client.Transport.(*http.Transport)
+	// allow connections to Docker daemon with self-signed certificates
+	transport, ok := c.httpClient.Transport.(*http.Transport)
 	if !ok {
-		return client, errors.New("type assertion failed: transport is not an *http.Transport")
+		return errors.Errorf("Type assertion failed: type %T does not hold a *http.Transport", c.httpClient.Transport)
 	}
 	transport.TLSClientConfig.InsecureSkipVerify = true
 
-	return client, nil
+	return nil
 }
 
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
@@ -227,34 +190,42 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 }
 
 func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, url string) error {
-	dockerClient, err := c.generateImportClient(h)
+	// Extend http client timeout for ImageImport
+	normalTimeout := c.httpClient.Timeout
+	dockerClient, err := c.changeTimeout(h, imageImportTimeout)
 	if err != nil {
 		return errors.Wrap(err, "Error changing http client timeout")
 	}
 
 	// Image does not exist, import from remote tarball
-	source := image.ImportSource{SourceName: url}
+	source := types.ImageImportSource{SourceName: url}
 	var resp io.ReadCloser
-	resp, err = dockerClient.ImageImport(ctx, source, name, image.ImportOptions{})
+	resp, err = dockerClient.ImageImport(ctx, source, name, types.ImageImportOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "Error importing image from %s", url)
 	}
 
 	// Wait until ImageImport finishes
 	_, err = io.ReadAll(resp)
-	return errors.Wrap(err, "reading ImportImage response")
+	if err != nil {
+		return errors.Wrap(err, "Error reading ImageImport response")
+	}
 
+	// Reset http client timeout
+	_, err = c.changeTimeout(h, normalTimeout)
+	return errors.Wrap(err, "Error changing http client timeout")
 }
 
 func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, username, password string) error {
-	dockerClient, err := c.generateImportClient(h)
+	normalTimeout := c.httpClient.Timeout
+	dockerClient, err := c.changeTimeout(h, imageImportTimeout)
 	if err != nil {
 		return errors.Wrap(err, "Error changing http client timeout")
 	}
 
 	var auth string
 	if username != "" {
-		authConfig := registry.AuthConfig{
+		authConfig := types.AuthConfig{
 			Username: username,
 			Password: password,
 		}
@@ -266,7 +237,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 		auth = base64.URLEncoding.EncodeToString(jsonBytes)
 	}
 
-	resp, err := dockerClient.ImagePull(ctx, url, image.PullOptions{RegistryAuth: auth})
+	resp, err := dockerClient.ImagePull(ctx, url, types.ImagePullOptions{RegistryAuth: auth})
 	if err != nil {
 		return errors.Wrap(err, "error pulling image from registry")
 	}
@@ -274,6 +245,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 	if err != nil {
 		return errors.Wrap(err, "error reading image pull response")
 	}
+	_, err = c.changeTimeout(h, normalTimeout)
 	return errors.Wrap(err, "Error changing http client timeout")
 }
 
@@ -308,7 +280,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, s3URLPrefix 
 		dockerfileRoute,
 	}, "/")
 
-	options := build.ImageBuildOptions{
+	options := types.ImageBuildOptions{
 		BuildArgs: map[string]*string{
 			"BASE_IMAGE":          &baseImage,
 			"EXECUTABLE_SUB_PATH": &executableSubPath,
@@ -428,7 +400,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 
 // GetContainer returns low-level information on the Docker container with the
 // specified ID running on the specified host machine.
-func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host, containerID string) (*container.InspectResponse, error) {
+func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host, containerID string) (*types.ContainerJSON, error) {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
@@ -450,7 +422,7 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 	}
 
 	// Get all running containers
-	opts := container.ListOptions{All: false}
+	opts := types.ContainerListOptions{All: false}
 	containers, err := dockerClient.ContainerList(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "Docker list API call failed")
@@ -460,14 +432,14 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 }
 
 // ListImages lists all images on the specified host machine.
-func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]image.Summary, error) {
+func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]types.ImageSummary, error) {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
 
 	// Get all container images
-	opts := image.ListOptions{All: false}
+	opts := types.ImageListOptions{All: false}
 	images, err := dockerClient.ImageList(ctx, opts)
 	if err != nil {
 		err = errors.Wrap(err, "Docker list API call failed")
@@ -484,7 +456,7 @@ func (c *dockerClientImpl) RemoveImage(ctx context.Context, h *host.Host, imageI
 		return errors.Wrap(err, "generating Docker client")
 	}
 
-	opts := image.RemoveOptions{Force: true}
+	opts := types.ImageRemoveOptions{Force: true}
 	removed, err := dockerClient.ImageRemove(ctx, imageID, opts)
 	if err != nil {
 		return errors.Wrapf(err, "removing image '%s'", imageID)
@@ -503,7 +475,7 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, co
 		return errors.Wrap(err, "generating Docker client")
 	}
 
-	opts := container.RemoveOptions{Force: true}
+	opts := types.ContainerRemoveOptions{Force: true}
 	if err = dockerClient.ContainerRemove(ctx, containerID, opts); err != nil {
 		return errors.Wrapf(err, "removing container '%s'", containerID)
 	}
@@ -518,7 +490,7 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 		return errors.Wrap(err, "generating Docker client")
 	}
 
-	opts := container.StartOptions{}
+	opts := types.ContainerStartOptions{}
 	if err := dockerClient.ContainerStart(ctx, containerID, opts); err != nil {
 		return errors.Wrapf(err, "starting container '%s'", containerID)
 	}
@@ -535,7 +507,7 @@ func (c *dockerClientImpl) AttachToContainer(ctx context.Context, h *host.Host, 
 		return nil, errors.Wrap(err, "generating Docker client")
 	}
 
-	stream, err := dockerClient.ContainerAttach(ctx, containerID, container.AttachOptions{
+	stream, err := dockerClient.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  true,
 	})

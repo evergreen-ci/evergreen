@@ -230,7 +230,7 @@ func (n *Notification) MarkSent(ctx context.Context) error {
 		},
 	}
 
-	if err := db.UpdateId(ctx, Collection, n.ID, update); err != nil {
+	if err := db.UpdateIdContext(ctx, Collection, n.ID, update); err != nil {
 		return errors.Wrap(err, "marking notification as sent")
 	}
 
@@ -258,7 +258,7 @@ func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 	}
 	n.Error = errMsg
 
-	if err := db.UpdateId(ctx, Collection, n.ID, update); err != nil {
+	if err := db.UpdateIdContext(ctx, Collection, n.ID, update); err != nil {
 		n.Error = ""
 		return errors.Wrap(err, "setting error for notification")
 	}

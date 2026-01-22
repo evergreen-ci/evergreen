@@ -271,10 +271,8 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		}
 	}
 
-	if conf.Distro != nil {
-		if execUser := conf.Distro.ExecUser; execUser != "" {
-			cmd.SudoAs(execUser)
-		}
+	if execUser := conf.Distro.ExecUser; execUser != "" {
+		cmd.SudoAs(execUser)
 	}
 
 	return cmd

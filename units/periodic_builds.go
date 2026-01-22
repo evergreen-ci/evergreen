@@ -159,7 +159,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.VersionMetadata, configFilePath string) error {
 	ghAppAuth, err := j.project.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
-		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
+		"message":    "errored while attempting to generate GitHub app token for API, will fall back to using Evergreen-internal app",
 		"project_id": j.project.Id,
 	}))
 	configFile, err := thirdparty.GetGithubFile(ctx, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision, ghAppAuth)

@@ -139,7 +139,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildSucceeded
 	s.data.Status = evergreen.BuildSucceeded
-	_, err = db.Replace(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -148,7 +148,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildFailed
-	_, err = db.Replace(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -157,7 +157,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildCreated
-	_, err = db.Replace(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
@@ -166,7 +166,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.GithubCheckStatus = evergreen.BuildFailed
 	s.data.GithubCheckStatus = evergreen.BuildFailed
-	_, err = db.Replace(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
 	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)

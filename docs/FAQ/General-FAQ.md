@@ -18,7 +18,7 @@ Some Caveats to be aware of:
 ## What is the difference between cron, batchtime, and periodic build?
 
 - **Batchtime**: Delays activating a task on an existing mainline version until a specified time has passed since it's last run.
-- **Cron**: Activates a task on an existing mainline version at a specified time or interval. All cron schedules run in UTC timezone regardless of your local timezone.
+- **Cron**: Activates a task on an existing mainline version at a specified time or interval.
 - **Periodic Builds**: Creates a new version that runs at a specified time or interval, regardless if the project has had any commits.
 
 For more on their differences and examples, see [controlling when tasks run](Project-Configuration/Controlling-when-tasks-run).

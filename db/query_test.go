@@ -29,7 +29,7 @@ func TestQueryExecution(t *testing.T) {
 			Convey("the item should be findable with a Query", func() {
 				out := &insertableStruct{}
 				query := Query(bson.M{"one": "1"})
-				err := FindOneQ(t.Context(), collection, query, out)
+				err := FindOneQContext(t.Context(), collection, query, out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 			})

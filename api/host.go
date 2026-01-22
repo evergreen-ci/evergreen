@@ -58,7 +58,7 @@ func GetHostsAndUserPermissions(ctx context.Context, user *user.DBUser, hostIds 
 
 	rm := evergreen.GetEnvironment().RoleManager()
 
-	permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(ctx, user.Roles(), evergreen.DistroResourceType, rm)
+	permissions, err = rolemanager.HighestPermissionsForRolesAndResourceType(user.Roles(), evergreen.DistroResourceType, rm)
 	if err != nil {
 		return nil, nil, http.StatusInternalServerError, errors.New("unable to get user permissions")
 	}

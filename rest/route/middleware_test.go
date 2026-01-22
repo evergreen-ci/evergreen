@@ -120,9 +120,9 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 		Scope:       "orchard",
 		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(t.Context(), adminRole))
+	assert.NoError(env.RoleManager().UpdateRole(adminRole))
 	adminScope := gimlet.Scope{ID: "orchard", Resources: []string{"orchard"}, Type: evergreen.ProjectResourceType}
-	assert.NoError(env.RoleManager().AddScope(t.Context(), adminScope))
+	assert.NoError(env.RoleManager().AddScope(adminScope))
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "not.admin"})
 	r, err := http.NewRequest(http.MethodGet, "/projects/orchard", nil)
@@ -156,7 +156,7 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 		Scope:       "anything",
 		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(t.Context(), adminRole))
+	assert.NoError(env.RoleManager().UpdateRole(adminRole))
 
 	opCtx := model.Context{}
 
@@ -575,25 +575,25 @@ func TestProjectViewPermission(t *testing.T) {
 		Scope:       "restricted_scope",
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(t.Context(), restrictedRole))
+	assert.NoError(env.RoleManager().UpdateRole(restrictedRole))
 	unrestrictedRole := gimlet.Role{
 		ID:          "default_role",
 		Scope:       "unrestricted_scope",
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(t.Context(), unrestrictedRole))
+	assert.NoError(env.RoleManager().UpdateRole(unrestrictedRole))
 	restrictedScope := gimlet.Scope{
 		ID:        "restricted_scope",
 		Resources: []string{"restrictedProject"},
 		Type:      "project",
 	}
-	assert.NoError(env.RoleManager().AddScope(t.Context(), restrictedScope))
+	assert.NoError(env.RoleManager().AddScope(restrictedScope))
 	unrestrictedScope := gimlet.Scope{
 		ID:        "unrestricted_scope",
 		Resources: []string{"unrestrictedProject"},
 		Type:      "project",
 	}
-	assert.NoError(env.RoleManager().AddScope(t.Context(), unrestrictedScope))
+	assert.NoError(env.RoleManager().AddScope(unrestrictedScope))
 	restrictedProject := model.ProjectRef{
 		Id: "restrictedProject",
 	}
@@ -642,7 +642,7 @@ func TestProjectViewPermission(t *testing.T) {
 	require.NoError(err)
 	usr = gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").
 		Roles(unrestrictedRole.ID).RoleManager(env.RoleManager()))
-	_, err = um.GetOrCreateUser(t.Context(), usr)
+	_, err = um.GetOrCreateUser(usr)
 	assert.NoError(err)
 	ctx = gimlet.AttachUser(req.Context(), usr)
 	req = req.WithContext(ctx)
@@ -653,7 +653,7 @@ func TestProjectViewPermission(t *testing.T) {
 	// give user permissions to both projects
 	usr = gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").
 		Roles(unrestrictedRole.ID, restrictedRole.ID).RoleManager(env.RoleManager()))
-	_, err = um.GetOrCreateUser(t.Context(), usr)
+	_, err = um.GetOrCreateUser(usr)
 	assert.NoError(err)
 	ctx = gimlet.AttachUser(req.Context(), usr)
 	req = req.WithContext(ctx)
@@ -681,37 +681,37 @@ func TestEventLogPermission(t *testing.T) {
 		Scope:       "proj1",
 		Permissions: map[string]int{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(t.Context(), projRole))
+	assert.NoError(env.RoleManager().UpdateRole(projRole))
 	distroRole := gimlet.Role{
 		ID:          "distro",
 		Scope:       "distro1",
 		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsView.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(t.Context(), distroRole))
+	assert.NoError(env.RoleManager().UpdateRole(distroRole))
 	superuserRole := gimlet.Role{
 		ID:          "superuser",
 		Scope:       "superuser",
 		Permissions: map[string]int{evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(t.Context(), superuserRole))
+	assert.NoError(env.RoleManager().UpdateRole(superuserRole))
 	scope1 := gimlet.Scope{
 		ID:        "proj1",
 		Resources: []string{"proj1"},
 		Type:      evergreen.ProjectResourceType,
 	}
-	assert.NoError(env.RoleManager().AddScope(t.Context(), scope1))
+	assert.NoError(env.RoleManager().AddScope(scope1))
 	scope2 := gimlet.Scope{
 		ID:        "distro1",
 		Resources: []string{"distro1"},
 		Type:      evergreen.DistroResourceType,
 	}
-	assert.NoError(env.RoleManager().AddScope(t.Context(), scope2))
+	assert.NoError(env.RoleManager().AddScope(scope2))
 	scope3 := gimlet.Scope{
 		ID:        "superuser",
 		Resources: []string{evergreen.SuperUserPermissionsID},
 		Type:      evergreen.SuperUserResourceType,
 	}
-	assert.NoError(env.RoleManager().AddScope(t.Context(), scope3))
+	assert.NoError(env.RoleManager().AddScope(scope3))
 	proj1 := model.ProjectRef{
 		Id: "proj1",
 	}

@@ -1958,8 +1958,8 @@ type tokenLoaderWithoutRefresh struct {
 	dex.TokenLoader
 }
 
-func (t *tokenLoaderWithoutRefresh) LoadToken(path string) (*oauth2.Token, error) {
-	token, err := t.TokenLoader.LoadToken(path)
+func (t *tokenLoaderWithoutRefresh) LoadToken(_ string) (*oauth2.Token, error) {
+	token, err := t.TokenLoader.LoadToken("")
 	if err != nil {
 		return nil, err
 	}

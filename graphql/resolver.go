@@ -59,7 +59,7 @@ func New(apiURL string) Config {
 
 		forbiddenPatches := []string{}
 		for _, p := range patches {
-			if !userCanModifyPatch(ctx, user, p) {
+			if !userCanModifyPatch(user, p) {
 				forbiddenPatches = append(forbiddenPatches, p.Id.Hex())
 			}
 		}
@@ -105,7 +105,7 @@ func New(apiURL string) Config {
 		}
 		forbiddenHosts := []string{}
 		for _, h := range hostsToCheck {
-			if !userHasHostPermission(ctx, user, h.Distro.Id, requiredLevel, h.StartedBy) {
+			if !userHasHostPermission(user, h.Distro.Id, requiredLevel, h.StartedBy) {
 				forbiddenHosts = append(forbiddenHosts, h.Id)
 			}
 		}
@@ -124,7 +124,7 @@ func New(apiURL string) Config {
 		// If directive is checking for create permissions, no distro ID is required.
 		if access == DistroSettingsAccessCreate {
 
-			if user.HasDistroCreatePermission(ctx) {
+			if user.HasDistroCreatePermission() {
 				return next(ctx)
 			}
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))
@@ -155,7 +155,7 @@ func New(apiURL string) Config {
 			return nil, Forbidden.Send(ctx, "Permission not specified")
 		}
 
-		if userHasDistroPermission(ctx, user, distroId, requiredLevel) {
+		if userHasDistroPermission(user, distroId, requiredLevel) {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access settings for the distro '%s'", user.Username(), distroId))
@@ -169,14 +169,14 @@ func New(apiURL string) Config {
 			Permission:    evergreen.PermissionProjectCreate,
 			RequiredLevel: evergreen.ProjectCreate.Value,
 		}
-		if user.HasPermission(ctx, opts) {
+		if user.HasPermission(opts) {
 			return next(ctx)
 		}
 
 		operationContext := graphql.GetOperationContext(ctx).OperationName
 
 		if operationContext == CreateProjectMutation {
-			canCreate, err := user.HasProjectCreatePermission(ctx)
+			canCreate, err := user.HasProjectCreatePermission()
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking user permissions: %s", err.Error()))
 			}
@@ -205,7 +205,7 @@ func New(apiURL string) Config {
 				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
 			}
 			opts := getPermissionOpts(projectIdToCopy)
-			if user.HasPermission(ctx, opts) {
+			if user.HasPermission(opts) {
 				return next(ctx)
 			}
 		}
@@ -216,7 +216,7 @@ func New(apiURL string) Config {
 				return nil, InternalServerError.Send(ctx, "finding projectId for delete project operation")
 			}
 			opts := getPermissionOpts(projectId)
-			if user.HasPermission(ctx, opts) {
+			if user.HasPermission(opts) {
 				return next(ctx)
 			}
 		}
@@ -234,7 +234,7 @@ func New(apiURL string) Config {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
 			}
 			opts := getPermissionOpts(project.Id)
-			if user.HasPermission(ctx, opts) {
+			if user.HasPermission(opts) {
 				return next(ctx)
 			}
 		}
@@ -264,7 +264,7 @@ func New(apiURL string) Config {
 			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
 		}
 
-		hasPermission := usr.HasPermission(ctx, gimlet.PermissionOpts{
+		hasPermission := usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      projectId,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    requiredPermission,
@@ -301,7 +301,7 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "project not specified")
 		}
 
-		hasPermission := usr.HasPermission(ctx, gimlet.PermissionOpts{
+		hasPermission := usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      projectId,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,
@@ -335,7 +335,7 @@ func New(apiURL string) Config {
 			RequiredLevel: evergreen.AdminSettingsEdit.Value,
 		}
 
-		if dbUser.HasPermission(ctx, permissions) {
+		if dbUser.HasPermission(permissions) {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))

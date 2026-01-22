@@ -71,13 +71,13 @@ func TestCache(t *testing.T) {
 		assert.True(t, ok)
 
 		before := cacheItem{}
-		require.NoError(t, db.FindOneQ(t.Context(), collection, db.Query(bson.M{IDKey: key}), &before))
+		require.NoError(t, db.FindOneQContext(t.Context(), collection, db.Query(bson.M{IDKey: key}), &before))
 
 		time.Sleep(100 * time.Millisecond)
 		require.NoError(t, cache.Set(t.Context(), key, value))
 
 		after := cacheItem{}
-		require.NoError(t, db.FindOneQ(t.Context(), collection, db.Query(bson.M{IDKey: key}), &after))
+		require.NoError(t, db.FindOneQContext(t.Context(), collection, db.Query(bson.M{IDKey: key}), &after))
 
 		assert.True(t, after.Updated.After(before.Updated))
 	})

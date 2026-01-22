@@ -42,7 +42,7 @@ func FindLastKnownGoodProjectConfig(ctx context.Context, projectId string) (*Pro
 
 func ProjectConfigFindOne(ctx context.Context, query db.Q) (*ProjectConfig, error) {
 	projectConfig := &ProjectConfig{}
-	err := db.FindOneQ(ctx, ProjectConfigCollection, query, projectConfig)
+	err := db.FindOneQContext(ctx, ProjectConfigCollection, query, projectConfig)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -53,7 +53,7 @@ func ProjectConfigFindOne(ctx context.Context, query db.Q) (*ProjectConfig, erro
 func FindProjectConfigById(ctx context.Context, id string) (*ProjectConfig, error) {
 	project := &ProjectConfig{}
 	query := db.Query(bson.M{ProjectConfigIdKey: id})
-	err := db.FindOneQ(ctx, ProjectConfigCollection, query, project)
+	err := db.FindOneQContext(ctx, ProjectConfigCollection, query, project)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

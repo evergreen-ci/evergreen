@@ -71,9 +71,18 @@ func ById(userId string) db.Q {
 }
 
 // FindOne gets one DBUser for the given query.
-func FindOne(ctx context.Context, query db.Q) (*DBUser, error) {
+func FindOne(query db.Q) (*DBUser, error) {
 	u := &DBUser{}
-	err := db.FindOneQ(ctx, Collection, query, u)
+	err := db.FindOneQ(Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return u, err
+}
+
+func FindOneContext(ctx context.Context, query db.Q) (*DBUser, error) {
+	u := &DBUser{}
+	err := db.FindOneQContext(ctx, Collection, query, u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -81,10 +90,24 @@ func FindOne(ctx context.Context, query db.Q) (*DBUser, error) {
 }
 
 // FindOneById gets a DBUser by ID.
-func FindOneById(ctx context.Context, id string) (*DBUser, error) {
+func FindOneById(id string) (*DBUser, error) {
 	u := &DBUser{}
 	query := ById(id)
-	err := db.FindOneQ(ctx, Collection, query, u)
+	err := db.FindOneQ(Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding user by ID")
+	}
+	return u, nil
+}
+
+// FindOneById gets a DBUser by ID.
+func FindOneByIdContext(ctx context.Context, id string) (*DBUser, error) {
+	u := &DBUser{}
+	query := ById(id)
+	err := db.FindOneQContext(ctx, Collection, query, u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -102,8 +125,16 @@ func Find(ctx context.Context, query db.Q) ([]DBUser, error) {
 }
 
 // UpdateOne updates one user.
-func UpdateOne(ctx context.Context, query any, update any) error {
+func UpdateOne(query any, update any) error {
 	return db.Update(
+		Collection,
+		query,
+		update,
+	)
+}
+
+func UpdateOneContext(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(
 		ctx,
 		Collection,
 		query,
@@ -112,9 +143,8 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 }
 
 // UpdateAll updates all users.
-func UpdateAll(ctx context.Context, query any, update any) error {
+func UpdateAll(query any, update any) error {
 	_, err := db.UpdateAll(
-		ctx,
 		Collection,
 		query,
 		update,
@@ -133,10 +163,10 @@ func UpsertOne(ctx context.Context, query any, update any) (*adb.ChangeInfo, err
 }
 
 // FindOneByToken gets a DBUser by cached login token.
-func FindOneByToken(ctx context.Context, token string) (*DBUser, error) {
+func FindOneByToken(token string) (*DBUser, error) {
 	u := &DBUser{}
 	query := db.Query(bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token})
-	err := db.FindOneQ(ctx, Collection, query, u)
+	err := db.FindOneQ(Collection, query, u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -149,7 +179,7 @@ func FindOneByToken(ctx context.Context, token string) (*DBUser, error) {
 // FindByGithubUID finds a user with the given GitHub UID.
 func FindByGithubUID(ctx context.Context, uid int) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, GithubUserUIDKey): uid,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -165,7 +195,7 @@ func FindByGithubUID(ctx context.Context, uid int) (*DBUser, error) {
 // FindByGithubName finds a user with the given GitHub username.
 func FindByGithubName(ctx context.Context, name string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, githubUserLastKnownAsKey): name,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -181,7 +211,7 @@ func FindByGithubName(ctx context.Context, name string) (*DBUser, error) {
 // FindBySlackUsername finds a user with the given Slack Username.
 func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(ctx, Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey): userName,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -247,14 +277,14 @@ func FindHumanUsersByRoles(ctx context.Context, roles []string) ([]DBUser, error
 // GetPeriodicBuild returns the matching user if applicable, and otherwise returns the default periodic build user.
 func GetPeriodicBuildUser(ctx context.Context, user string) (*DBUser, error) {
 	if user != "" {
-		usr, err := FindOneById(ctx, user)
+		usr, err := FindOneByIdContext(ctx, user)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", user)
 		}
 		return usr, nil
 	}
 
-	usr, err := FindOneById(ctx, evergreen.PeriodicBuildUser)
+	usr, err := FindOneByIdContext(ctx, evergreen.PeriodicBuildUser)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting periodic build user")
 	}
@@ -282,9 +312,11 @@ func DeleteServiceUser(ctx context.Context, id string) error {
 // name, email, access token, and refresh token and returns the updated user. If
 // no such user exists for that userId yet, it also sets the user's API key and
 // roles.
-func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToken, refreshToken string, roles []string) (*DBUser, error) {
+func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken string, roles []string) (*DBUser, error) {
 	u := &DBUser{}
 	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
 	setFields := bson.M{
 		DispNameKey:     displayName,
 		EmailAddressKey: email,
@@ -370,7 +402,7 @@ func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUs
 
 	update := bson.M{"$set": slackFields}
 
-	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrap(err, "updating slack information")
 	}
 
@@ -408,8 +440,8 @@ func FindServiceUsers(ctx context.Context) ([]DBUser, error) {
 
 // PutLoginCache generates a token if one does not exist, and sets the TTL to
 // now.
-func PutLoginCache(ctx context.Context, g gimlet.User) (string, error) {
-	u, err := FindOneById(ctx, g.Username())
+func PutLoginCache(g gimlet.User) (string, error) {
+	u, err := FindOneById(g.Username())
 	if err != nil {
 		return "", errors.Wrap(err, "finding user by ID")
 	}
@@ -434,7 +466,7 @@ func PutLoginCache(ctx context.Context, g gimlet.User) (string, error) {
 	}
 	update := bson.M{"$set": setFields}
 
-	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return "", errors.Wrap(err, "updating user cache")
 	}
 	return token, nil
@@ -445,8 +477,8 @@ func PutLoginCache(ctx context.Context, g gimlet.User) (string, error) {
 // It returns (<user>, true, nil) if the user is present in the cache and is valid.
 // It returns (<user>, false, nil) if the user is present in the cache but has expired.
 // It returns (nil, false, nil) if the user is not present in the cache.
-func GetLoginCache(ctx context.Context, token string, expireAfter time.Duration) (gimlet.User, bool, error) {
-	u, err := FindOneByToken(ctx, token)
+func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, error) {
+	u, err := FindOneByToken(token)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "getting user from cache")
 	}
@@ -460,10 +492,10 @@ func GetLoginCache(ctx context.Context, token string, expireAfter time.Duration)
 }
 
 // ClearLoginCache clears one user's login cache, forcibly logging them out.
-func ClearLoginCache(ctx context.Context, user gimlet.User) error {
+func ClearLoginCache(user gimlet.User) error {
 	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
 
-	u, err := FindOneById(ctx, user.Username())
+	u, err := FindOneById(user.Username())
 	if err != nil {
 		return errors.Wrapf(err, "finding user '%s' by ID", user.Username())
 	}
@@ -471,7 +503,7 @@ func ClearLoginCache(ctx context.Context, user gimlet.User) error {
 		return errors.Errorf("user '%s' not found", user.Username())
 	}
 	query := bson.M{IdKey: u.Id}
-	if err := UpdateOne(ctx, query, update); err != nil {
+	if err := UpdateOne(query, update); err != nil {
 		return errors.Wrap(err, "updating user cache")
 	}
 
@@ -491,7 +523,7 @@ func ClearUser(ctx context.Context, userId string) error {
 		},
 	}
 	query := bson.M{IdKey: userId}
-	if err := UpdateOne(ctx, query, unsetUpdate); err != nil {
+	if err := UpdateOneContext(ctx, query, unsetUpdate); err != nil {
 		return errors.Wrap(err, "unsetting user settings")
 	}
 	setUpdate := bson.M{
@@ -503,15 +535,15 @@ func ClearUser(ctx context.Context, userId string) error {
 			},
 		},
 	}
-	return errors.Wrap(UpdateOne(ctx, query, setUpdate), "defaulting spruce setting")
+	return errors.Wrap(UpdateOneContext(ctx, query, setUpdate), "defaulting spruce setting")
 }
 
 // ClearAllLoginCaches clears all users' login caches, forcibly logging them
 // out.
-func ClearAllLoginCaches(ctx context.Context) error {
+func ClearAllLoginCaches() error {
 	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
 	query := bson.M{}
-	if err := UpdateAll(ctx, query, update); err != nil {
+	if err := UpdateAll(query, update); err != nil {
 		return errors.Wrap(err, "updating user cache")
 	}
 	return nil

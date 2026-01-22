@@ -52,7 +52,7 @@ func (r *RepoRef) Insert(_ context.Context) error {
 func (r *RepoRef) Replace(ctx context.Context) error {
 	r.RepoRefId = ""
 	r.Branch = ""
-	_, err := db.Replace(
+	_, err := db.ReplaceContext(
 		ctx,
 		RepoRefCollection,
 		bson.M{
@@ -72,7 +72,7 @@ func FindAllRepoRefs(ctx context.Context) ([]RepoRef, error) {
 // findOneRepoRefQ returns one RepoRef that satisfies the query.
 func findOneRepoRefQ(ctx context.Context, query db.Q) (*RepoRef, error) {
 	repoRef := &RepoRef{}
-	err := db.FindOneQ(ctx, RepoRefCollection, query, repoRef)
+	err := db.FindOneQContext(ctx, RepoRefCollection, query, repoRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -101,7 +101,7 @@ func FindRepoRefByOwnerAndRepo(ctx context.Context, owner, repoName string) (*Re
 func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// Add to the general scope.
-	if err := rm.AddResourceToScope(ctx, evergreen.AllProjectsScope, r.Id); err != nil {
+	if err := rm.AddResourceToScope(evergreen.AllProjectsScope, r.Id); err != nil {
 		return errors.Wrapf(err, "adding repo '%s' to the scope '%s'", r.Id, evergreen.AllProjectsScope)
 	}
 
@@ -111,7 +111,7 @@ func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) erro
 		Name:      r.Id,
 		Type:      evergreen.ProjectResourceType,
 	}
-	if err := rm.AddScope(ctx, adminScope); err != nil {
+	if err := rm.AddScope(adminScope); err != nil {
 		return errors.Wrapf(err, "adding scope for repo project '%s'", r.Id)
 	}
 
@@ -126,11 +126,11 @@ func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) erro
 		Scope:       adminScope.ID,
 		Permissions: adminPermissions,
 	}
-	if err := rm.AddScope(ctx, unrestrictedBranchesScope); err != nil {
+	if err := rm.AddScope(unrestrictedBranchesScope); err != nil {
 		return errors.Wrapf(err, "adding scope for repo project '%s'", r.Id)
 	}
 
-	if err := rm.UpdateRole(ctx, newAdminRole); err != nil {
+	if err := rm.UpdateRole(newAdminRole); err != nil {
 		return errors.Wrapf(err, "adding admin role for repo project '%s'", r.Id)
 	}
 	if creator != nil {
@@ -141,7 +141,7 @@ func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) erro
 	return nil
 }
 
-func (r *RepoRef) MakeRestricted(ctx context.Context, branchProjects []ProjectRef) error {
+func (r *RepoRef) MakeRestricted(branchProjects []ProjectRef) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
 
@@ -150,20 +150,20 @@ func (r *RepoRef) MakeRestricted(ctx context.Context, branchProjects []ProjectRe
 		if !p.IsRestricted() {
 			continue
 		}
-		if err := rm.RemoveResourceFromScope(ctx, scopeId, p.Id); err != nil {
+		if err := rm.RemoveResourceFromScope(scopeId, p.Id); err != nil {
 			return errors.Wrapf(err, "removing resource '%s' from unrestricted branches scope", p.Id)
 		}
-		if err := rm.RemoveResourceFromScope(ctx, evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+		if err := rm.RemoveResourceFromScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
 			return errors.Wrapf(err, "removing resource '%s' from unrestricted projects scope", p.Id)
 		}
-		if err := rm.AddResourceToScope(ctx, evergreen.RestrictedProjectsScope, p.Id); err != nil {
+		if err := rm.AddResourceToScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
 			return errors.Wrapf(err, "adding resource '%s' to restricted projects scope", p.Id)
 		}
 	}
 	return nil
 }
 
-func (r *RepoRef) MakeUnrestricted(ctx context.Context, branchProjects []ProjectRef) error {
+func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	scopeId := GetUnrestrictedBranchProjectsScope(r.Id)
 	// if the branch project is now unrestricted, add it to the unrestricted scopes
@@ -171,13 +171,13 @@ func (r *RepoRef) MakeUnrestricted(ctx context.Context, branchProjects []Project
 		if p.IsRestricted() {
 			continue
 		}
-		if err := rm.AddResourceToScope(ctx, scopeId, p.Id); err != nil {
+		if err := rm.AddResourceToScope(scopeId, p.Id); err != nil {
 			return errors.Wrapf(err, "adding resource '%s' to unrestricted branches scope", p.Id)
 		}
-		if err := rm.RemoveResourceFromScope(ctx, evergreen.RestrictedProjectsScope, p.Id); err != nil {
+		if err := rm.RemoveResourceFromScope(evergreen.RestrictedProjectsScope, p.Id); err != nil {
 			return errors.Wrapf(err, "removing resource '%s' from restricted projects scope", p.Id)
 		}
-		if err := rm.AddResourceToScope(ctx, evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
+		if err := rm.AddResourceToScope(evergreen.UnrestrictedProjectsScope, p.Id); err != nil {
 			return errors.Wrapf(err, "adding resource '%s' to unrestricted projects scope", p.Id)
 		}
 	}
@@ -192,7 +192,7 @@ func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string
 	catcher := grip.NewBasicCatcher()
 	adminRole := GetRepoAdminRole(r.Id)
 	for _, addedUser := range toAdd {
-		adminUser, err := user.FindOneById(ctx, addedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			r.removeFromAdminsList(addedUser)
@@ -211,7 +211,7 @@ func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string
 
 	}
 	for _, removedUser := range toRemove {
-		adminUser, err := user.FindOneById(ctx, removedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, removedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue

@@ -36,7 +36,7 @@ const (
 // FindOne gets one TaskAnnotation for the given query.
 func FindOne(ctx context.Context, query db.Q) (*TaskAnnotation, error) {
 	annotation := &TaskAnnotation{}
-	err := db.FindOneQ(ctx, Collection, query, annotation)
+	err := db.FindOneQContext(ctx, Collection, query, annotation)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

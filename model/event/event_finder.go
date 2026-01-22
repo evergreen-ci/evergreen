@@ -85,7 +85,7 @@ func FindByID(ctx context.Context, eventID string) (*EventLogEntry, error) {
 	}
 
 	var e EventLogEntry
-	if err := db.FindOneQ(ctx, EventCollection, db.Query(query), &e); err != nil {
+	if err := db.FindOneQContext(ctx, EventCollection, db.Query(query), &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
@@ -102,7 +102,7 @@ func FindLastProcessedEvent(ctx context.Context) (*EventLogEntry, error) {
 	}).Sort([]string{"-" + processedAtKey})
 
 	e := EventLogEntry{}
-	if err := db.FindOneQ(ctx, EventCollection, q, &e); err != nil {
+	if err := db.FindOneQContext(ctx, EventCollection, q, &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}

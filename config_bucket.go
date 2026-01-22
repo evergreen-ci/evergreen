@@ -3,7 +3,6 @@ package evergreen
 import (
 	"context"
 	"slices"
-	"time"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -30,7 +29,7 @@ func (b BucketType) validate() error {
 	}
 }
 
-// BucketsConfig represents the admin config section for internally-owned
+// BucketsConfig represents the admin config section for interally-owned
 // Evergreen data bucket storage.
 type BucketsConfig struct {
 	// LogBucket is the default bucket information for logs.
@@ -63,22 +62,7 @@ type BucketConfig struct {
 	DBName            string     `bson:"db_name" json:"db_name" yaml:"db_name"`
 	TestResultsPrefix string     `bson:"test_results_prefix" json:"test_results_prefix" yaml:"test_results_prefix"`
 	RoleARN           string     `bson:"role_arn" json:"role_arn" yaml:"role_arn"`
-
-	// Lifecycle configuration fields for cost calculation
-	ExpirationDays          *int      `bson:"expiration_days,omitempty" json:"expiration_days,omitempty" yaml:"expiration_days,omitempty"`
-	TransitionToIADays      *int      `bson:"transition_to_ia_days,omitempty" json:"transition_to_ia_days,omitempty" yaml:"transition_to_ia_days,omitempty"`
-	TransitionToGlacierDays *int      `bson:"transition_to_glacier_days,omitempty" json:"transition_to_glacier_days,omitempty" yaml:"transition_to_glacier_days,omitempty"`
-	LifecycleLastSyncedAt   time.Time `bson:"lifecycle_last_synced_at,omitempty" json:"lifecycle_last_synced_at,omitempty" yaml:"lifecycle_last_synced_at,omitempty"`
-	LifecycleSyncError      string    `bson:"lifecycle_sync_error,omitempty" json:"lifecycle_sync_error,omitempty" yaml:"lifecycle_sync_error,omitempty"`
 }
-
-var (
-	bucketConfigExpirationDaysKey          = bsonutil.MustHaveTag(BucketConfig{}, "ExpirationDays")
-	bucketConfigTransitionToIADaysKey      = bsonutil.MustHaveTag(BucketConfig{}, "TransitionToIADays")
-	bucketConfigTransitionToGlacierDaysKey = bsonutil.MustHaveTag(BucketConfig{}, "TransitionToGlacierDays")
-	bucketConfigLifecycleLastSyncedAtKey   = bsonutil.MustHaveTag(BucketConfig{}, "LifecycleLastSyncedAt")
-	bucketConfigLifecycleSyncErrorKey      = bsonutil.MustHaveTag(BucketConfig{}, "LifecycleSyncError")
-)
 
 func (c *BucketConfig) validate() error {
 	if c.Type == "" {

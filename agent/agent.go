@@ -1371,7 +1371,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 	logger.Infof("Cleaning up task because %s", reason)
 
-	if tc.task.ID != "" && tc.taskConfig != nil && tc.taskConfig.Distro != nil {
+	if tc.task.ID != "" && tc.taskConfig != nil {
 		logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
 		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
 			// If the host is in a state where ps is timing out we need human intervention.

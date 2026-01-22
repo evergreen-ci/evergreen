@@ -2156,16 +2156,18 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestDeactivateDependencies(t *testing.T) {
-	ctx := t.Context()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
-		{Id: "t0", Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
-		{Id: "t1", Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
-		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
-		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
-		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
-		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t0"},
+		{Id: "t1"},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
@@ -2183,8 +2185,6 @@ func TestDeactivateDependencies(t *testing.T) {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.False(t, task.Activated)
 			assert.True(t, task.DeactivatedForDependency)
-			assert.Equal(t, evergreen.TaskUnscheduled, task.DisplayStatusCache,
-				"DisplayStatusCache should be updated to 'unscheduled' for deactivated task %s", task.Id)
 		} else {
 			for _, origTask := range tasks {
 				if origTask.Id == task.Id {
@@ -2291,7 +2291,7 @@ func TestActivateTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
-		u, err = user.FindOne(ctx, user.ById(u.Id))
+		u, err = user.FindOneContext(ctx, user.ById(u.Id))
 		require.NoError(t, err)
 		require.NotNil(t, u)
 		assert.Len(t, updatedIDs, u.NumScheduledPatchTasks)
@@ -4751,11 +4751,11 @@ func TestHasResults(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
-				_, err := db.Replace(t.Context(), OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 
@@ -4956,12 +4956,12 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
 				execTask.Archived = true
-				_, err := db.Replace(t.Context(), OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 

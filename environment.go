@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -87,15 +86,6 @@ func init() { globalEnvLock = &sync.RWMutex{} }
 // necessary to access the global environment. There is a mock
 // implementation for use in testing.
 func GetEnvironment() Environment {
-	// Use locking during tests to prevent race conditions during test teardown.
-	// In production, the environment is initialized once at startup and never modified,
-	// so concurrent reads are safe without locking. In tests, however, SetEnvironment
-	// is occasionally called to reset the global environment (e.g., in test teardown)
-	// while background goroutines may still be calling GetEnvironment, creating a read/write race.
-	if testing.Testing() {
-		globalEnvLock.RLock()
-		defer globalEnvLock.RUnlock()
-	}
 	return globalEnv
 }
 
@@ -115,8 +105,9 @@ type Environment interface {
 	Settings() *Settings
 	Context() (context.Context, context.CancelFunc)
 
-	Session(ctx context.Context) db.Session
-	CedarSession(ctx context.Context) db.Session
+	Session() db.Session
+	ContextSession(ctx context.Context) db.Session
+	CedarContextSession(ctx context.Context) db.Session
 	Client() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
@@ -1209,14 +1200,21 @@ func (e *envState) RemoteQueueGroup() amboy.QueueGroup {
 	return e.remoteQueueGroup
 }
 
-func (e *envState) Session(ctx context.Context) db.Session {
+func (e *envState) Session() db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return db.WrapClient(e.ctx, e.client).Clone()
+}
+
+func (e *envState) ContextSession(ctx context.Context) db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(ctx, e.client).Clone()
 }
 
-func (e *envState) CedarSession(ctx context.Context) db.Session {
+func (e *envState) CedarContextSession(ctx context.Context) db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 

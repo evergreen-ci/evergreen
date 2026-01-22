@@ -12,26 +12,26 @@ import (
 
 // CanCreateDistro is the resolver for the canCreateDistro field.
 func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error) {
-	usr, err := user.FindOneById(ctx, obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
 	if usr == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	return usr.HasDistroCreatePermission(ctx), nil
+	return usr.HasDistroCreatePermission(), nil
 }
 
 // CanCreateProject is the resolver for the canCreateProject field.
 func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permissions) (bool, error) {
-	usr, err := user.FindOneById(ctx, obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
 	if usr == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	canCreate, err := usr.HasProjectCreatePermission(ctx)
+	canCreate, err := usr.HasProjectCreatePermission()
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("checking project create permissions for user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -40,7 +40,7 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 
 // CanEditAdminSettings is the resolver for the canEditAdminSettings field.
 func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error) {
-	usr, err := user.FindOneById(ctx, obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -53,12 +53,12 @@ func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Per
 		Permission:    evergreen.PermissionAdminSettings,
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
-	return usr.HasPermission(ctx, opts), nil
+	return usr.HasPermission(opts), nil
 }
 
 // DistroPermissions is the resolver for the distroPermissions field.
 func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error) {
-	usr, err := user.FindOneById(ctx, obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -66,15 +66,15 @@ func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permis
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	return &DistroPermissions{
-		Admin: userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
-		Edit:  userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
-		View:  userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsView.Value),
+		Admin: userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
+		Edit:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
+		View:  userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsView.Value),
 	}, nil
 }
 
 // ProjectPermissions is the resolver for the projectPermissions field.
 func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permissions, options ProjectPermissionsOptions) (*ProjectPermissions, error) {
-	usr, err := user.FindOneById(ctx, obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -89,14 +89,14 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", options.ProjectIdentifier))
 	}
 	return &ProjectPermissions{
-		Edit: userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsEdit.Value),
-		View: userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsView.Value),
+		Edit: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsEdit.Value),
+		View: userHasProjectSettingsPermission(usr, project.Id, evergreen.ProjectSettingsView.Value),
 	}, nil
 }
 
 // RepoPermissions is the resolver for the repoPermissions field.
 func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error) {
-	usr, err := user.FindOneById(ctx, obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -117,7 +117,7 @@ func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissi
 	}
 
 	return &RepoPermissions{
-		Edit: userHasProjectSettingsPermission(ctx, usr, repo.Id, evergreen.ProjectSettingsEdit.Value),
+		Edit: userHasProjectSettingsPermission(usr, repo.Id, evergreen.ProjectSettingsEdit.Value),
 		View: hasRepoViewPermission,
 	}, nil
 }

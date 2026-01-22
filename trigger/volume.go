@@ -113,7 +113,7 @@ func (t *volumeTriggers) volumeExpiration(ctx context.Context, sub *event.Subscr
 }
 
 func getUserTimeZone(ctx context.Context, userID string) (*time.Location, error) {
-	user, err := user.FindOneById(ctx, userID)
+	user, err := user.FindOneByIdContext(ctx, userID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding user '%s' for subscription owner", userID)
 	}

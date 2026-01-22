@@ -29,7 +29,7 @@ var (
 // FindOne gets one Manifest for the given query.
 func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 	m := &Manifest{}
-	err := db.FindOneQ(ctx, Collection, query, m)
+	err := db.FindOneQContext(ctx, Collection, query, m)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -40,17 +40,20 @@ func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 // If the document already exists, it returns true and the error
 // If it does not it will return false and the error
 func (m *Manifest) TryInsert(ctx context.Context) (bool, error) {
-	err := m.Insert(ctx)
+	err := db.Insert(ctx, Collection, m)
 	if db.IsDuplicateKey(err) {
 		return true, nil
 	}
 	return false, err
 }
 
-// Insert is the same as Insert, but it respects the given context by
+// InsertWithContext is the same as Insert, but it respects the given context by
 // avoiding the global Anser DB session.
-func (m *Manifest) Insert(ctx context.Context) error {
-	return db.Insert(ctx, Collection, m)
+func (m *Manifest) InsertWithContext(ctx context.Context) error {
+	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, m); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ById returns a query that contains an Id selector on the string, id.

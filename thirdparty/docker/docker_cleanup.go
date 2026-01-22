@@ -3,10 +3,8 @@ package docker
 import (
 	"context"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/mongodb/grip"
@@ -47,31 +45,31 @@ func Cleanup(ctx context.Context, logger grip.Journaler) error {
 }
 
 func cleanContainers(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, types.ContainerListOptions{All: true})
 	if err != nil {
 		return errors.Wrap(err, "getting containers list")
 	}
 
 	logger.Infof("Removing %d containers", len(containers))
 	catcher := grip.NewBasicCatcher()
-	for _, c := range containers {
-		catcher.Wrapf(dockerClient.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true}), "removing container '%s'", c.ID)
+	for _, container := range containers {
+		catcher.Wrapf(dockerClient.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true}), "removing container '%s'", container.ID)
 	}
 
 	return catcher.Resolve()
 }
 
 func cleanImages(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
-	images, err := dockerClient.ImageList(ctx, image.ListOptions{All: true})
+	images, err := dockerClient.ImageList(ctx, types.ImageListOptions{All: true})
 	if err != nil {
 		return errors.Wrap(err, "getting image list")
 	}
 
 	logger.Infof("Removing %d images", len(images))
 	catcher := grip.NewBasicCatcher()
-	for _, img := range images {
-		_, err := dockerClient.ImageRemove(ctx, img.ID, image.RemoveOptions{Force: true})
-		catcher.Wrapf(err, "removing image '%s'", img.ID)
+	for _, image := range images {
+		_, err := dockerClient.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true})
+		catcher.Wrapf(err, "removing image '%s'", image.ID)
 	}
 
 	return catcher.Resolve()
@@ -93,7 +91,7 @@ func cleanVolumes(ctx context.Context, dockerClient *client.Client, logger grip.
 }
 
 func cleanNetworks(ctx context.Context, dockerClient *client.Client, logger grip.Journaler) error {
-	networks, err := dockerClient.NetworkList(ctx, network.ListOptions{
+	networks, err := dockerClient.NetworkList(ctx, types.NetworkListOptions{
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			// Filter out built-in networks. They come with Docker by default
 			// and cannot be removed.

@@ -83,7 +83,7 @@ func GetDistroSecondaryQueueInfo(ctx context.Context, distroID string) (DistroQu
 func getDistroQueueInfoCollection(ctx context.Context, distroID, collection string) (DistroQueueInfo, error) {
 	taskQueue := &TaskQueue{}
 	q := db.Query(bson.M{taskQueueDistroKey: distroID}).Project(bson.M{taskQueueDistroQueueInfoKey: 1})
-	err := db.FindOneQ(ctx, collection, q, taskQueue)
+	err := db.FindOneQContext(ctx, collection, q, taskQueue)
 
 	if err != nil {
 		return DistroQueueInfo{}, errors.Wrapf(err, "finding distro queue info for distro '%s'", distroID)
@@ -434,14 +434,14 @@ func FindAllTaskQueues(ctx context.Context) ([]TaskQueue, error) {
 
 func FindDistroTaskQueue(ctx context.Context, distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
-	err := db.FindOneQ(ctx, TaskQueuesCollection, db.Query(bson.M{taskQueueDistroKey: distroID}), &queue)
+	err := db.FindOneQContext(ctx, TaskQueuesCollection, db.Query(bson.M{taskQueueDistroKey: distroID}), &queue)
 	return queue, errors.WithStack(err)
 }
 
 func FindDistroSecondaryTaskQueue(ctx context.Context, distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
 	q := db.Query(bson.M{taskQueueDistroKey: distroID})
-	err := db.FindOneQ(ctx, TaskSecondaryQueuesCollection, q, &queue)
+	err := db.FindOneQContext(ctx, TaskSecondaryQueuesCollection, q, &queue)
 
 	return queue, errors.WithStack(err)
 }
@@ -477,7 +477,7 @@ outer:
 func dequeue(ctx context.Context, taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
-	return errors.WithStack(db.Update(
+	return errors.WithStack(db.UpdateContext(
 		ctx,
 		TaskQueuesCollection,
 		bson.M{

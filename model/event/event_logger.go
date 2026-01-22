@@ -38,7 +38,7 @@ func (e *EventLogEntry) MarkProcessed(ctx context.Context) error {
 		},
 	}
 
-	if err := db.Update(ctx, EventCollection, filter, update); err != nil {
+	if err := db.UpdateContext(ctx, EventCollection, filter, update); err != nil {
 		return errors.Wrap(err, "updating 'processed at' time")
 	}
 

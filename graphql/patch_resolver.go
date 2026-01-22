@@ -21,7 +21,7 @@ import (
 // AuthorDisplayName is the resolver for the authorDisplayName field.
 func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	author := utility.FromStringPtr(obj.Author)
-	usr, err := user.FindOneById(ctx, author)
+	usr, err := user.FindOneByIdContext(ctx, author)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting user corresponding to author '%s': %s", author, err.Error()))
 	}
@@ -198,9 +198,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 		if !projectCached {
 			_, project, _, err = model.FindLatestVersionWithValidProject(ctx, alias.ChildProject, false)
 			if err != nil {
-				// Skip this alias if the child project has no valid versions.
-				// E.g., all versions expired due to TTL or project has no mainline commits.
-				continue
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting last known child project '%s' for alias '%s': %s", alias.ChildProject, alias.Alias, err.Error()))
 			}
 			projectCache[alias.ChildProject] = project
 		}
@@ -308,7 +306,7 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 		return apiUser, nil
 	}
 
-	author, err := user.FindOneById(ctx, authorId)
+	author, err := user.FindOneByIdContext(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}

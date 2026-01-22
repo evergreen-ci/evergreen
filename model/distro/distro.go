@@ -794,7 +794,7 @@ func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
 
 func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	if err := rm.AddResourceToScope(ctx, evergreen.AllDistrosScope, d.Id); err != nil {
+	if err := rm.AddResourceToScope(evergreen.AllDistrosScope, d.Id); err != nil {
 		return errors.Wrapf(err, "adding distro '%s' to permissions scope containing all distros", d.Id)
 	}
 	newScope := gimlet.Scope{
@@ -804,7 +804,7 @@ func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error
 		Type:        evergreen.DistroResourceType,
 		ParentScope: evergreen.AllDistrosScope,
 	}
-	if err := rm.AddScope(ctx, newScope); err != nil && !db.IsDuplicateKey(err) {
+	if err := rm.AddScope(newScope); err != nil && !db.IsDuplicateKey(err) {
 		return errors.Wrapf(err, "adding scope for distro '%s'", d.Id)
 	}
 	if creator != nil {
@@ -817,7 +817,7 @@ func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error
 				evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 			},
 		}
-		if err := rm.UpdateRole(ctx, newRole); err != nil {
+		if err := rm.UpdateRole(newRole); err != nil {
 			return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
 		}
 		if err := creator.AddRole(ctx, newRole.ID); err != nil {

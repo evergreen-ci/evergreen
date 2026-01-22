@@ -41,7 +41,7 @@ var (
 func FindOneTestLogById(ctx context.Context, id string) (*TestLog, error) {
 	tl := &TestLog{}
 	q := db.Query(bson.M{TestLogIdKey: id})
-	err := db.FindOneQ(ctx, TestLogCollection, q, tl)
+	err := db.FindOneQContext(ctx, TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -57,7 +57,7 @@ func FindOneTestLog(ctx context.Context, name, task string, execution int) (*Tes
 		TestLogTaskKey:          task,
 		TestLogTaskExecutionKey: execution,
 	})
-	err := db.FindOneQ(ctx, TestLogCollection, q, tl)
+	err := db.FindOneQContext(ctx, TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

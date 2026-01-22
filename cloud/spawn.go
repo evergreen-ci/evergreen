@@ -41,7 +41,6 @@ type SpawnOptions struct {
 	HomeVolumeSize       int
 	HomeVolumeID         string
 	Expiration           *time.Time
-	IsDebug              bool
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -196,7 +195,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 		sleepSchedule = *schedule
 	}
-
 	hostOptions := host.CreateOptions{
 		Distro:               *d,
 		ProvisionOptions:     so.ProvisionOptions,
@@ -212,7 +210,6 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		HomeVolumeSize:       so.HomeVolumeSize,
 		HomeVolumeID:         so.HomeVolumeID,
 		Region:               so.Region,
-		IsDebug:              so.IsDebug,
 	}
 
 	intentHost := host.NewIntent(hostOptions)

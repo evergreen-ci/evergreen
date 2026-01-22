@@ -38,7 +38,7 @@ func getContext(t *testing.T) context.Context {
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
 	ctx := context.Background()
-	usr, err := user.GetOrCreateUser(t.Context(), testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	assert.NotNil(t, usr)
 

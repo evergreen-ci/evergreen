@@ -101,15 +101,6 @@
       "version": "5e4ff3abe3c3317e352062e4",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
-    },
-    {
-      "_id": {
-        "$oid": "5e4ff3abe3c3317e352062e5"
-      },
-      "branch": "sandbox_no_child_versions",
-      "version": "5e4ff3abe3c3317e352062e5",
-      "activated": true,
-      "githash": "abc123def456"
     }
   ],
   "project_ref": [
@@ -134,28 +125,6 @@
     {
       "_id": "spruce",
       "identifier": "spruce"
-    },
-    {
-      "_id": "sandbox_no_child_versions",
-      "identifier": "sandbox_no_child_versions",
-      "owner_name": "evergreen-ci",
-      "repo_name": "sandbox",
-      "patch_trigger_aliases": [
-        {
-          "alias": "trigger-no-versions",
-          "child_project": "child_no_versions",
-          "task_specifiers": [
-            {
-              "task_regex": ".*",
-              "variant_regex": ".*"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "_id": "child_no_versions",
-      "identifier": "child_no_versions"
     }
   ]
 }

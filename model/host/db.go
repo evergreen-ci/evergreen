@@ -993,8 +993,8 @@ func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 }
 
 // InsertOne inserts the host into the hosts collection.
-func InsertOne(ctx context.Context, h *Host, env evergreen.Environment) error {
-	_, err := env.DB().Collection(Collection).InsertOne(ctx, h)
+func InsertOne(ctx context.Context, h *Host) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, h)
 	return errors.Wrap(err, "inserting host")
 }
 
@@ -1280,7 +1280,7 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 // FindOne gets one Volume for the given query.
 func FindOneVolume(ctx context.Context, query any) (*Volume, error) {
 	v := &Volume{}
-	err := db.FindOneQ(ctx, VolumesCollection, db.Query(query), v)
+	err := db.FindOneQContext(ctx, VolumesCollection, db.Query(query), v)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1457,7 +1457,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
 		}
 
-		if err := toInsert.InsertWithEnv(sessCtx, env); err != nil {
+		if err := toInsert.InsertWithContext(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
 		grip.Info(message.Fields{

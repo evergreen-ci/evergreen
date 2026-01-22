@@ -111,7 +111,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 	var functionSpan trace.Span
 	if commandInfo.Function != "" {
-		ctx, functionSpan = a.tracer.Start(ctx, commandInfo.Function, trace.WithAttributes(
+		ctx, functionSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
 			attribute.String(functionNameAttribute, commandInfo.Function),
 		))
 		defer functionSpan.End()

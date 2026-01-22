@@ -120,9 +120,9 @@ func MustHaveUser(ctx context.Context) *user.DBUser {
 	return usr
 }
 
-func validPriority(ctx context.Context, priority int64, project string, user gimlet.User) bool {
+func validPriority(priority int64, project string, user gimlet.User) bool {
 	if priority > evergreen.MaxTaskPriority {
-		return user.HasPermission(ctx, gimlet.PermissionOpts{
+		return user.HasPermission(gimlet.PermissionOpts{
 			Resource:      project,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionTasks,
@@ -152,7 +152,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	isAdmin := user.HasPermission(ctx, gimlet.PermissionOpts{
+	isAdmin := user.HasPermission(gimlet.PermissionOpts{
 		Resource:      opCtx.GetProjectOrRepoRefId(),
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
@@ -180,7 +180,7 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	ctx := r.Context()
 	user := MustHaveUser(ctx)
 
-	canCreate, err := user.HasProjectCreatePermission(ctx)
+	canCreate, err := user.HasProjectCreatePermission()
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -353,7 +353,7 @@ func authenticateSpecialUser(r *http.Request, requiredUsername, username, apiKey
 			Message:    "not authorized",
 		})
 	}
-	u, err := user.FindOneById(r.Context(), username)
+	u, err := user.FindOneByIdContext(r.Context(), username)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username))
 	}
@@ -692,7 +692,7 @@ func (m *EventLogPermissionsMiddleware) ServeHTTP(rw http.ResponseWriter, r *htt
 
 	for _, item := range resources {
 		opts.Resource = item
-		if !user.HasPermission(ctx, opts) {
+		if !user.HasPermission(opts) {
 			http.Error(rw, "not authorized for this action", http.StatusUnauthorized)
 			return
 		}

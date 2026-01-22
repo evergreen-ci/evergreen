@@ -15,6 +15,7 @@ trap 'echo "Script terminated by signal" >&2; exit 143' TERM
 # TODO: Each ignored package should be removed from this list once the corresponding tracking
 #       ticket has been completed and the vulnerability has been addressed.
 IGNORED_PACKAGES=(
+    "docker"        # DEVPROD-25292 Docker vulnerability tracking
     "stdlib"        # DEVPROD-25290 Stdlib vulnerability tracking
     "rardecode"     # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
     "archiver/v3"   # DEVPROD-25293 Archiver / Rardecode vulnerability tracking

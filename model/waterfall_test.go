@@ -130,27 +130,6 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			require.Len(t, versions, 1)
 			assert.EqualValues(t, "v_3", versions[0].Id)
 		},
-		"Returns no versions if there is no matching active build variant and omit inactive builds is true": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
-				Limit:              4,
-				Requesters:         evergreen.SystemVersionRequesterTypes,
-				Variants:           []string{"Build Variant 2"},
-				OmitInactiveBuilds: true,
-			})
-			assert.NoError(t, err)
-			require.Len(t, versions, 0)
-		},
-		"Returns versions with active build variant when omit inactive builds is true": func(t *testing.T, ctx context.Context) {
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
-				Limit:              4,
-				Requesters:         evergreen.SystemVersionRequesterTypes,
-				Variants:           []string{"Build Variant 1"},
-				OmitInactiveBuilds: true,
-			})
-			assert.NoError(t, err)
-			require.Len(t, versions, 1)
-			assert.EqualValues(t, "v_4", versions[0].Id)
-		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))

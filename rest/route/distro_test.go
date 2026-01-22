@@ -411,7 +411,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	s.Equal(h.distroID, dbDistro.Id)
 	s.True(dbDistro.HostAllocatorSettings.AutoTuneMaximumHosts)
 
-	dbUser, err := user.FindOneById(s.T().Context(), "user")
+	dbUser, err := user.FindOneById("user")
 	s.NoError(err)
 	s.Require().NotNil(dbUser)
 	s.Require().Len(dbUser.Roles(), 1)
@@ -1493,7 +1493,7 @@ func TestDistroCopySuite(t *testing.T) {
 func (s *distroCopySuite) SetupTest() {
 	s.NoError(db.ClearCollections(distro.Collection, user.Collection))
 	s.NoError(getMockDistrosdata())
-	_, err := user.GetOrCreateUser(s.T().Context(), "user", "user", "", "token", "", nil)
+	_, err := user.GetOrCreateUser("user", "user", "", "token", "", nil)
 	s.NoError(err)
 	s.rm = makeCopyDistro()
 }

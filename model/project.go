@@ -1197,7 +1197,7 @@ func (p PluginCommandConf) RunOnVariant(variant string) bool {
 	return len(p.Variants) == 0 || utility.StringSliceContains(p.Variants, variant)
 }
 
-// GetDisplayName returns the display name of the plugin command. If none is
+// GetDisplayName returns the  display name of the plugin command. If none is
 // defined, it returns the command's identifier.
 func (p PluginCommandConf) GetDisplayName() string {
 	if p.DisplayName != "" {

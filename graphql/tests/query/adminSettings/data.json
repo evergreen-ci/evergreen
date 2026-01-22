@@ -282,11 +282,6 @@
       "url": "https://fws.example.com"
     },
     {
-      "_id": "graphite",
-      "ci_optimization_token": "",
-      "server_url": ""
-    },
-    {
       "_id": "cedar",
       "db_name": "cedar",
       "db_url": "mongodb://localhost:27017/cedar"

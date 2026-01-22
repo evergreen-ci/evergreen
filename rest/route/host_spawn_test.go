@@ -112,7 +112,7 @@ func TestHostPostHandler(t *testing.T) {
 			assert.Equal(t, rh.options.InstanceType, *dbHost.InstanceType)
 		},
 		"AdminOnlyDistroCannotBeSpawnedByNonAdmin": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
-			assert.False(t, u.HasDistroCreatePermission(ctx))
+			assert.False(t, u.HasDistroCreatePermission())
 
 			d.AdminOnly = true
 			require.NoError(t, d.ReplaceOne(ctx))
@@ -128,7 +128,7 @@ func TestHostPostHandler(t *testing.T) {
 				Scope:       "superuser_scope",
 				Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
 			}
-			require.NoError(t, env.RoleManager().UpdateRole(ctx, createDistroRole))
+			require.NoError(t, env.RoleManager().UpdateRole(createDistroRole))
 			require.NoError(t, u.AddRole(ctx, createDistroRole.ID))
 
 			superuserScope := gimlet.Scope{
@@ -137,9 +137,9 @@ func TestHostPostHandler(t *testing.T) {
 				Type:      evergreen.SuperUserResourceType,
 				Resources: []string{evergreen.SuperUserPermissionsID},
 			}
-			require.NoError(t, env.RoleManager().AddScope(ctx, superuserScope))
+			require.NoError(t, env.RoleManager().AddScope(superuserScope))
 
-			assert.True(t, u.HasDistroCreatePermission(ctx))
+			assert.True(t, u.HasDistroCreatePermission())
 
 			resp := rh.Run(ctx)
 			require.NotZero(t, resp)

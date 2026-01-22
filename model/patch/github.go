@@ -214,7 +214,7 @@ func (g *githubIntent) SetProcessed(ctx context.Context) error {
 
 // updateOne updates one patch intent.
 func updateOneIntent(ctx context.Context, query any, update any) error {
-	return db.Update(
+	return db.UpdateContext(
 		ctx,
 		IntentCollection,
 		query,

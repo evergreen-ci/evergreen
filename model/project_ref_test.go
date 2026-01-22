@@ -867,7 +867,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, mergedRef.DoesTrackPushEvents())
 
-	userFromDB, err := user.FindOneById(t.Context(), "me")
+	userFromDB, err := user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
@@ -973,7 +973,7 @@ func TestAttachToRepo(t *testing.T) {
 	require.NotNil(t, repoRef)
 	assert.True(t, repoRef.DoesTrackPushEvents())
 
-	u, err = user.FindOneById(t.Context(), "me")
+	u, err = user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
@@ -1089,7 +1089,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubPRTriggerAliases)
 			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
-			dbUser, err = user.FindOneById(t.Context(), "me")
+			dbUser, err = user.FindOneByIdContext(t.Context(), "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
 			hasPermission, err := UserHasRepoViewPermission(t.Context(), dbUser, pRefFromDB.RepoRefId)
@@ -2498,7 +2498,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc.CommitQueue.Enabled = utility.TruePtr()
-	_, err = db.Replace(t.Context(), ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc)
+	_, err = db.ReplaceContext(t.Context(), ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc)
 	require.NoError(err)
 
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "main")
@@ -3064,7 +3064,7 @@ func TestContainerSecretCache(t *testing.T) {
 		},
 		"DeleteNoopsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			assert.NoError(t, c.Delete(ctx, "external_id"), "should not for nonexistent project ref")
-			assert.True(t, adb.ResultsNotFound(db.FindOneQ(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pRef)))
+			assert.True(t, adb.ResultsNotFound(db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pRef)))
 		},
 		"DeleteNoopsWithoutMatchingContainerSecretExternalID": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			require.NoError(t, pRef.Insert(t.Context()))
@@ -3190,10 +3190,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 
 	rm := env.RoleManager()
-	scope, err := rm.FindScopeForResources(t.Context(), evergreen.ProjectResourceType, p.Id)
+	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)
 	assert.NotNil(scope)
-	role, err := rm.FindRoleWithPermissions(t.Context(), evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
+	role, err := rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
@@ -3201,7 +3201,7 @@ func TestAddPermissions(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(role)
-	dbUser, err := user.FindOneById(t.Context(), u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 	projectId := p.Id
@@ -3217,10 +3217,10 @@ func TestAddPermissions(t *testing.T) {
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 	assert.Equal(projectId, p.Id)
 
-	scope, err = rm.FindScopeForResources(t.Context(), evergreen.ProjectResourceType, p.Id)
+	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)
 	assert.NotNil(scope)
-	role, err = rm.FindRoleWithPermissions(t.Context(), evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
+	role, err = rm.FindRoleWithPermissions(evergreen.ProjectResourceType, []string{p.Id}, map[string]int{
 		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
 		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
 		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
@@ -3228,7 +3228,7 @@ func TestAddPermissions(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(role)
-	dbUser, err = user.FindOneById(t.Context(), u.Id)
+	dbUser, err = user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }
@@ -3245,13 +3245,13 @@ func TestUpdateAdminRoles(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"proj"},
 	}
-	require.NoError(t, rm.AddScope(t.Context(), adminScope))
+	require.NoError(t, rm.AddScope(adminScope))
 	adminRole := gimlet.Role{
 		ID:          "admin",
 		Scope:       evergreen.AllProjectsScope,
 		Permissions: adminPermissions,
 	}
-	require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
+	require.NoError(t, rm.UpdateRole(adminRole))
 	oldAdmin := user.DBUser{
 		Id:          "oldAdmin",
 		SystemRoles: []string{"admin"},
@@ -3269,10 +3269,10 @@ func TestUpdateAdminRoles(t *testing.T) {
 	modified, err := p.UpdateAdminRoles(t.Context(), []string{newAdmin.Id}, []string{oldAdmin.Id})
 	assert.NoError(t, err)
 	assert.True(t, modified)
-	oldAdminFromDB, err := user.FindOneById(t.Context(), oldAdmin.Id)
+	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())
-	newAdminFromDB, err := user.FindOneById(t.Context(), newAdmin.Id)
+	newAdminFromDB, err := user.FindOneByIdContext(t.Context(), newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
@@ -3310,22 +3310,22 @@ func TestUpdateAdminRolesError(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"proj"},
 	}
-	require.NoError(t, rm.AddScope(t.Context(), adminScope))
+	require.NoError(t, rm.AddScope(adminScope))
 	adminRole := gimlet.Role{
 		ID:          "admin",
 		Scope:       evergreen.AllProjectsScope,
 		Permissions: adminPermissions,
 	}
-	require.NoError(t, rm.UpdateRole(t.Context(), adminRole))
+	require.NoError(t, rm.UpdateRole(adminRole))
 
 	// check that the existing users have been added and removed while returning an error
 	modified, err = p.UpdateAdminRoles(t.Context(), []string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
 	assert.Error(t, err)
 	assert.True(t, modified)
-	oldAdminFromDB, err := user.FindOneById(t.Context(), oldAdmin.Id)
+	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())
-	newAdminFromDB, err := user.FindOneById(t.Context(), newAdmin.Id)
+	newAdminFromDB, err := user.FindOneByIdContext(t.Context(), newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
@@ -3719,7 +3719,7 @@ func TestPointers(t *testing.T) {
 		PtrBool   *bool              `bson:"my_bool"`
 		PtrStruct *WorkstationConfig `bson:"config"`
 	}{}
-	assert.NoError(t, db.FindOneQ(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
+	assert.NoError(t, db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
 	assert.Equal(t, ref.MyString, *pointerRef.PtrString)
 	assert.False(t, utility.FromBoolTPtr(pointerRef.PtrBool))
 	assert.NotNil(t, pointerRef.PtrStruct)
@@ -4236,7 +4236,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Scope:       wrongProjectScopeId,
 				Permissions: map[string]int{evergreen.PermissionProjectSettings: 20},
 			}
-			require.NoError(t, roleManager.UpdateRole(t.Context(), wrongProjectRole))
+			require.NoError(t, roleManager.UpdateRole(wrongProjectRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongProjectRole.ID))
 			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
@@ -4249,7 +4249,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Scope:       projectScopeId,
 				Permissions: map[string]int{evergreen.PermissionTasks: 30},
 			}
-			require.NoError(t, roleManager.UpdateRole(t.Context(), wrongPermissionRole))
+			require.NoError(t, roleManager.UpdateRole(wrongPermissionRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongPermissionRole.ID))
 			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
@@ -4262,7 +4262,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Scope:       projectScopeId,
 				Permissions: map[string]int{evergreen.PermissionProjectSettings: 20},
 			}
-			require.NoError(t, roleManager.UpdateRole(t.Context(), viewBranchRole))
+			require.NoError(t, roleManager.UpdateRole(viewBranchRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), viewBranchRole.ID))
 			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
@@ -4288,13 +4288,13 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{pRef.Id},
 			}
-			assert.NoError(t, roleManager.AddScope(t.Context(), projectScope))
+			assert.NoError(t, roleManager.AddScope(projectScope))
 			wrongProjectScope := gimlet.Scope{
 				ID:        wrongProjectScopeId,
 				Type:      evergreen.ProjectResourceType,
 				Resources: []string{wrongRef.Id},
 			}
-			assert.NoError(t, roleManager.AddScope(t.Context(), wrongProjectScope))
+			assert.NoError(t, roleManager.AddScope(wrongProjectScope))
 
 			usr := &user.DBUser{Id: "usr"}
 			assert.NoError(t, usr.Insert(t.Context()))

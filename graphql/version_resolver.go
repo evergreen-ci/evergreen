@@ -520,7 +520,7 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 		return apiUser, nil
 	}
 
-	author, err := user.FindOneById(ctx, authorId)
+	author, err := user.FindOneByIdContext(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}

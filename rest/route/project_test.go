@@ -98,13 +98,13 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		},
 	}
 	roleManager := s.env.RoleManager()
-	s.NoError(roleManager.UpdateRole(ctx, projectAdminRole))
+	s.NoError(roleManager.UpdateRole(projectAdminRole))
 	adminScope := gimlet.Scope{
 		ID:        "project_scope",
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"dimoxinil", "other_project", "branch_project"},
 	}
-	s.NoError(roleManager.AddScope(ctx, adminScope))
+	s.NoError(roleManager.AddScope(adminScope))
 }
 
 func (s *ProjectPatchByIDSuite) TearDownTest() {
@@ -797,28 +797,22 @@ func TestProjectGetSuite(t *testing.T) {
 func (s *ProjectGetSuite) SetupSuite() {
 	pRefs := []serviceModel.ProjectRef{
 		{
-			Id:         "projectA",
-			Identifier: "projectA",
+			Id: "projectA",
 		},
 		{
-			Id:         "projectB",
-			Identifier: "projectB",
+			Id: "projectB",
 		},
 		{
-			Id:         "projectC",
-			Identifier: "projectC",
+			Id: "projectC",
 		},
 		{
-			Id:         "projectD",
-			Identifier: "projectD",
+			Id: "projectD",
 		},
 		{
-			Id:         "projectE",
-			Identifier: "projectE",
+			Id: "projectE",
 		},
 		{
-			Id:         "projectF",
-			Identifier: "projectF",
+			Id: "projectF",
 		},
 	}
 	for _, pRef := range pRefs {

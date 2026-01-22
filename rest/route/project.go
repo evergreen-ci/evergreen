@@ -31,13 +31,12 @@ import (
 )
 
 type projectGetHandler struct {
-	key        string
-	limit      int
-	user       *user.DBUser
-	url        string
-	ownerName  string
-	repoName   string
-	activeOnly bool
+	key       string
+	limit     int
+	user      *user.DBUser
+	url       string
+	ownerName string
+	repoName  string
 }
 
 func makeFetchProjectsRoute() gimlet.RouteHandler {
@@ -51,11 +50,10 @@ func makeFetchProjectsRoute() gimlet.RouteHandler {
 //	@Tags			projects
 //	@Router			/projects [get]
 //	@Security		Api-User || Api-Key
-//	@Param			start_at	query	string	false	"The project identifier to start at in the pagination"
-//	@Param			limit		query	int		false	"The number of projects to be returned per page of pagination. Defaults to 100"
+//	@Param			start_at	query	string	false	"The identifier of the host to start at in the pagination"
+//	@Param			limit		query	int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Param			owner_name	query	string	false	"Filter projects by owner name (GitHub organization)"
 //	@Param			repo_name	query	string	false	"Filter projects by repository name"
-//	@Param			active		query	bool	false	"If true, only return projects that are currently enabled"
 //	@Success		200			{array}	model.APIProjectRef
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
 	return &projectGetHandler{}
@@ -70,7 +68,6 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.key = vals.Get("start_at")
 	p.ownerName = vals.Get("owner_name")
 	p.repoName = vals.Get("repo_name")
-	p.activeOnly = vals.Get("active") == "true"
 
 	var err error
 	p.limit, err = getLimit(vals)
@@ -82,7 +79,7 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projects, err := dbModel.FindNonHiddenProjects(ctx, p.key, p.limit+1, 1, p.ownerName, p.repoName, p.activeOnly)
+	projects, err := dbModel.FindNonHiddenProjects(ctx, p.key, p.limit+1, 1, p.ownerName, p.repoName)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -105,7 +102,7 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.url,
-				Key:             projects[p.limit].Identifier,
+				Key:             projects[p.limit].Id,
 				Limit:           p.limit,
 			},
 		})
@@ -465,9 +462,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if h.originalProject.Restricted != mergedProjectRef.Restricted {
 		if mergedProjectRef.IsRestricted() {
-			err = mergedProjectRef.MakeRestricted(ctx)
+			err = mergedProjectRef.MakeRestricted()
 		} else {
-			err = mergedProjectRef.MakeUnrestricted(ctx)
+			err = mergedProjectRef.MakeUnrestricted()
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
@@ -476,7 +473,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// if owner/repo has changed and the project is attached to repo, update scope and repo accordingly
 	if h.newProjectRef.UseRepoSettings() && h.ownerRepoChanged() {
-		if err = h.newProjectRef.RemoveFromRepoScope(ctx); err != nil {
+		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project from old repo scope"))
 		}
 		if err = h.newProjectRef.AddToRepoScope(ctx, h.user); err != nil { // will re-add using the new owner/repo
@@ -1037,7 +1034,7 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 	user := MustHaveUser(ctx)
 	priority := utility.FromInt64Ptr(h.opts.Priority)
 	// Check for a valid priority and perform the update.
-	if ok := validPriority(ctx, priority, h.projectId, user); !ok {
+	if ok := validPriority(priority, h.projectId, user); !ok {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
 				"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

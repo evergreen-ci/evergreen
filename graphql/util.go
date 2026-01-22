@@ -180,7 +180,7 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 
 // userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
 // users from modifying other users' patches.
-func userCanModifyPatch(ctx context.Context, u *user.DBUser, patch patch.Patch) bool {
+func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
 	if u == nil {
 		return false
 	}
@@ -197,7 +197,7 @@ func userCanModifyPatch(ctx context.Context, u *user.DBUser, patch patch.Patch) 
 		Permission:    evergreen.PermissionAdminSettings,
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
-	if u.HasPermission(ctx, permissions) {
+	if u.HasPermission(permissions) {
 		return true
 	}
 
@@ -208,7 +208,7 @@ func userCanModifyPatch(ctx context.Context, u *user.DBUser, patch patch.Patch) 
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	}
-	if u.HasPermission(ctx, permissions) {
+	if u.HasPermission(permissions) {
 		return true
 	}
 
@@ -219,7 +219,7 @@ func userCanModifyPatch(ctx context.Context, u *user.DBUser, patch patch.Patch) 
 		Permission:    evergreen.PermissionPatches,
 		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
 	}
-	return u.HasPermission(ctx, permissions)
+	return u.HasPermission(permissions)
 }
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
@@ -871,13 +871,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task '%s': %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
-
-	// Only allow debug spawn host if the host is being spawned by a task.
-	if utility.FromBoolPtr(spawnHostInput.IsDebug) && !utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
-		return nil, InputValidationError.Send(ctx, "Debug spawn hosts can only be spawned by a task.")
-	}
-	options.IsDebug = utility.FromBoolPtr(spawnHostInput.IsDebug)
-
 	return options, nil
 }
 
@@ -1055,34 +1048,34 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 	return len(hosts), nil
 }
 
-func userHasDistroPermission(ctx context.Context, u *user.DBUser, distroId string, requiredLevel int) bool {
+func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      distroId,
 		ResourceType:  evergreen.DistroResourceType,
 		Permission:    evergreen.PermissionDistroSettings,
 		RequiredLevel: requiredLevel,
 	}
-	return u.HasPermission(ctx, opts)
+	return u.HasPermission(opts)
 }
 
-func userHasHostPermission(ctx context.Context, u *user.DBUser, distroId string, requiredLevel int, startedBy string) bool {
+func userHasHostPermission(u *user.DBUser, distroId string, requiredLevel int, startedBy string) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      distroId,
 		ResourceType:  evergreen.DistroResourceType,
 		Permission:    evergreen.PermissionHosts,
 		RequiredLevel: requiredLevel,
 	}
-	return u.Username() == startedBy || u.HasPermission(ctx, opts)
+	return u.Username() == startedBy || u.HasPermission(opts)
 }
 
-func userHasProjectSettingsPermission(ctx context.Context, u *user.DBUser, projectId string, requiredLevel int) bool {
+func userHasProjectSettingsPermission(u *user.DBUser, projectId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: requiredLevel,
 	}
-	return u.HasPermission(ctx, opts)
+	return u.HasPermission(opts)
 }
 
 func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
@@ -1308,7 +1301,7 @@ func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) bool {
 		Permission:    evergreen.PermissionLogs,
 		RequiredLevel: evergreen.LogsView.Value,
 	}
-	return authUser.HasPermission(ctx, permissions)
+	return authUser.HasPermission(permissions)
 }
 
 func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requiredLevel int) (bool, error) {
@@ -1319,7 +1312,7 @@ func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requir
 		Permission:    evergreen.PermissionAnnotations,
 		RequiredLevel: requiredLevel,
 	}
-	if authUser.HasPermission(ctx, permissions) {
+	if authUser.HasPermission(permissions) {
 		return true, nil
 	}
 	return isPatchAuthorForTask(ctx, obj)
@@ -1371,7 +1364,7 @@ func setSingleTaskPriority(ctx context.Context, url string, taskID string, prior
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksAdmin.Value,
 		}
-		isTaskAdmin := authUser.HasPermission(ctx, requiredPermission)
+		isTaskAdmin := authUser.HasPermission(requiredPermission)
 		if !isTaskAdmin {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
 		}

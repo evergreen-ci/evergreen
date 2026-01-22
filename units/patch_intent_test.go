@@ -1588,14 +1588,14 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"childProj"},
 	}
-	s.Require().NoError(roleManager.AddScope(s.ctx, childProjScope))
+	s.Require().NoError(roleManager.AddScope(childProjScope))
 
 	childProjRole := gimlet.Role{
 		ID:          "childProj_patcher",
 		Scope:       childProjScope.ID,
 		Permissions: gimlet.Permissions{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
 	}
-	s.Require().NoError(roleManager.UpdateRole(s.ctx, childProjRole))
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
 
 	githubUser := &user.DBUser{Id: evergreen.GithubPatchUser}
 	s.Require().NoError(githubUser.AddRole(s.ctx, childProjRole.ID))
@@ -1675,14 +1675,14 @@ func (s *PatchIntentUnitsSuite) TestTriggerAliasWithDownstreamRevision() {
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"childProj"},
 	}
-	s.Require().NoError(roleManager.AddScope(s.ctx, childProjScope))
+	s.Require().NoError(roleManager.AddScope(childProjScope))
 
 	childProjRole := gimlet.Role{
 		ID:          "childProj_patcher2",
 		Scope:       childProjScope.ID,
 		Permissions: gimlet.Permissions{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
 	}
-	s.Require().NoError(roleManager.UpdateRole(s.ctx, childProjRole))
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
 
 	githubUser := &user.DBUser{Id: evergreen.GithubPatchUser}
 	s.Require().NoError(githubUser.AddRole(s.ctx, childProjRole.ID))
@@ -1760,14 +1760,14 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"childProj"},
 	}
-	s.Require().NoError(roleManager.AddScope(s.ctx, childProjScope))
+	s.Require().NoError(roleManager.AddScope(childProjScope))
 
 	childProjRole := gimlet.Role{
 		ID:          "childProj_patcher3",
 		Scope:       childProjScope.ID,
 		Permissions: gimlet.Permissions{evergreen.PermissionPatches: evergreen.PatchSubmit.Value},
 	}
-	s.Require().NoError(roleManager.UpdateRole(s.ctx, childProjRole))
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
 
 	githubUser := &user.DBUser{Id: evergreen.GithubPatchUser}
 	s.Require().NoError(githubUser.AddRole(s.ctx, childProjRole.ID))
@@ -1829,14 +1829,14 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithInadequatePermissio
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"childProj"},
 	}
-	s.Require().NoError(roleManager.AddScope(s.ctx, childProjScope))
+	s.Require().NoError(roleManager.AddScope(childProjScope))
 
 	childProjRole := gimlet.Role{
 		ID:          "childProj_viewer",
 		Scope:       childProjScope.ID,
 		Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
 	}
-	s.Require().NoError(roleManager.UpdateRole(s.ctx, childProjRole))
+	s.Require().NoError(roleManager.UpdateRole(childProjRole))
 
 	testUser := &user.DBUser{
 		Id: "test-user-no-permissions",

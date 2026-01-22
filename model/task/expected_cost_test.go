@@ -165,23 +165,21 @@ func TestComputeCostPredictionsInParallel(t *testing.T) {
 	assert.Contains(t, predictions, "task2")
 }
 
-func TestComputePredictedCostsForTasks(t *testing.T) {
+func TestSetPredictedCostsForTasks(t *testing.T) {
 	ctx := context.Background()
 
-	predictions, err := ComputePredictedCostsForTasks(ctx, Tasks{})
+	err := SetPredictedCostsForTasks(ctx, Tasks{})
 	require.NoError(t, err)
-	assert.Empty(t, predictions)
 
 	task := &Task{Id: "task1", Activated: false}
-	predictions, err = ComputePredictedCostsForTasks(ctx, Tasks{task})
+	err = SetPredictedCostsForTasks(ctx, Tasks{task})
 	require.NoError(t, err)
-	assert.Empty(t, predictions)
+	assert.True(t, task.PredictedTaskCost.IsZero())
 
 	task = &Task{Id: "task1", DisplayName: "test", BuildVariant: "bv", Project: "proj", Activated: true}
-	predictions, err = ComputePredictedCostsForTasks(ctx, Tasks{task})
+	err = SetPredictedCostsForTasks(ctx, Tasks{task})
 	require.NoError(t, err)
-	assert.Contains(t, predictions, "task1")
-	assert.True(t, predictions["task1"].IsZero()) // No historical data
+	assert.True(t, task.PredictedTaskCost.IsZero())
 }
 
 func TestPredictedTaskCostSetCorrectly(t *testing.T) {
