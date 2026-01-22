@@ -872,6 +872,42 @@
           }
         }
       }
+    },
+    {
+      "query_file": "variants_omit_inactive.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": ["evergreen_version2"]
+            },
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version4",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version3",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version2",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version2_build",
+                    "activated": true,
+                    "displayName": "02 Ubuntu 16.04"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }
