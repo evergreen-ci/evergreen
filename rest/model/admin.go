@@ -3263,13 +3263,6 @@ type APIS3CostConfig struct {
 
 func (a *APIS3CostConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
-	case *evergreen.S3CostConfig:
-		if err := a.Upload.BuildFromService(v.Upload); err != nil {
-			return errors.Wrap(err, "building upload config")
-		}
-		if err := a.Storage.BuildFromService(v.Storage); err != nil {
-			return errors.Wrap(err, "building storage config")
-		}
 	case evergreen.S3CostConfig:
 		if err := a.Upload.BuildFromService(v.Upload); err != nil {
 			return errors.Wrap(err, "building upload config")
