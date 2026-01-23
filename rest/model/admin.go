@@ -3209,9 +3209,10 @@ func (a *APIAWSAccountRoleMapping) ToService() evergreen.AWSAccountRoleMapping {
 }
 
 type APICostConfig struct {
-	FinanceFormula      *float64 `json:"finance_formula"`
-	SavingsPlanDiscount *float64 `json:"savings_plan_discount"`
-	OnDemandDiscount    *float64 `json:"on_demand_discount"`
+	FinanceFormula      *float64         `json:"finance_formula"`
+	SavingsPlanDiscount *float64         `json:"savings_plan_discount"`
+	OnDemandDiscount    *float64         `json:"on_demand_discount"`
+	S3Cost              *APIS3CostConfig `json:"s3_cost"`
 }
 
 func (a *APICostConfig) BuildFromService(h any) error {
@@ -3220,10 +3221,18 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
 		a.OnDemandDiscount = &v.OnDemandDiscount
+		a.S3Cost = &APIS3CostConfig{}
+		if err := a.S3Cost.BuildFromService(v.S3Cost); err != nil {
+			return errors.Wrap(err, "building S3 cost config")
+		}
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
 		a.OnDemandDiscount = &v.OnDemandDiscount
+		a.S3Cost = &APIS3CostConfig{}
+		if err := a.S3Cost.BuildFromService(v.S3Cost); err != nil {
+			return errors.Wrap(err, "building S3 cost config")
+		}
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3231,9 +3240,96 @@ func (a *APICostConfig) BuildFromService(h any) error {
 }
 
 func (a *APICostConfig) ToService() (any, error) {
+	s3Cost := evergreen.S3CostConfig{}
+	if a.S3Cost != nil {
+		s3CostInterface, err := a.S3Cost.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting S3 cost config")
+		}
+		s3Cost = s3CostInterface.(evergreen.S3CostConfig)
+	}
 	return evergreen.CostConfig{
 		FinanceFormula:      utility.FromFloat64Ptr(a.FinanceFormula),
 		SavingsPlanDiscount: utility.FromFloat64Ptr(a.SavingsPlanDiscount),
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
+		S3Cost:              s3Cost,
+	}, nil
+}
+
+type APIS3CostConfig struct {
+	Upload  APIS3UploadCostConfig  `json:"upload"`
+	Storage APIS3StorageCostConfig `json:"storage"`
+}
+
+func (a *APIS3CostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.S3CostConfig:
+		if err := a.Upload.BuildFromService(v.Upload); err != nil {
+			return errors.Wrap(err, "building upload config")
+		}
+		if err := a.Storage.BuildFromService(v.Storage); err != nil {
+			return errors.Wrap(err, "building storage config")
+		}
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+	return nil
+}
+
+func (a *APIS3CostConfig) ToService() (any, error) {
+	upload, err := a.Upload.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting upload config")
+	}
+	storage, err := a.Storage.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting storage config")
+	}
+	return evergreen.S3CostConfig{
+		Upload:  upload.(evergreen.S3UploadCostConfig),
+		Storage: storage.(evergreen.S3StorageCostConfig),
+	}, nil
+}
+
+type APIS3UploadCostConfig struct {
+	UploadCostDiscount float64 `json:"upload_cost_discount"`
+}
+
+func (a *APIS3UploadCostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.S3UploadCostConfig:
+		a.UploadCostDiscount = v.UploadCostDiscount
+		return nil
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+}
+
+func (a *APIS3UploadCostConfig) ToService() (any, error) {
+	return evergreen.S3UploadCostConfig{
+		UploadCostDiscount: a.UploadCostDiscount,
+	}, nil
+}
+
+type APIS3StorageCostConfig struct {
+	StandardStorageCostDiscount float64 `json:"standard_storage_cost_discount"`
+	IAStorageCostDiscount       float64 `json:"i_a_storage_cost_discount"`
+}
+
+func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.S3StorageCostConfig:
+		a.StandardStorageCostDiscount = v.StandardStorageCostDiscount
+		a.IAStorageCostDiscount = v.IAStorageCostDiscount
+		return nil
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+}
+
+func (a *APIS3StorageCostConfig) ToService() (any, error) {
+	return evergreen.S3StorageCostConfig{
+		StandardStorageCostDiscount: a.StandardStorageCostDiscount,
+		IAStorageCostDiscount:       a.IAStorageCostDiscount,
 	}, nil
 }
