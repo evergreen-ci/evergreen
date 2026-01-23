@@ -27,7 +27,7 @@ func makeSelectTestsHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Select tests
-//	@Description	Return a subset of tests to run for a given task. This endpoint is not yet ready. Please do not use it.
+//	@Description	Return a subset of tests to run for a given task.
 //	@Tags			select
 //	@Router			/select/tests [post]
 //	@Param			{object}	body	model.SelectTestsRequest	true	"Select tests request"

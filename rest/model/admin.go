@@ -25,6 +25,7 @@ func NewConfigModel() *APIAdminSettings {
 		Expansions:          map[string]string{},
 		Cost:                &APICostConfig{},
 		FWS:                 &APIFWSConfig{},
+		Graphite:            &APIGraphiteConfig{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
 		Jira:                &APIJiraConfig{},
@@ -74,6 +75,7 @@ type APIAdminSettings struct {
 	Expansions              map[string]string             `json:"expansions,omitempty"`
 	Cost                    *APICostConfig                `json:"cost,omitempty"`
 	FWS                     *APIFWSConfig                 `json:"fws,omitempty"`
+	Graphite                *APIGraphiteConfig            `json:"graphite,omitempty"`
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
@@ -2268,6 +2270,8 @@ type APIServiceFlags struct {
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
 	LegacyUIAdminPageDisabled       bool `json:"legacy_ui_admin_page_disabled"`
 	DebugSpawnHostDisabled          bool `json:"debug_spawn_host_disabled"`
+	S3LifecycleSyncDisabled         bool `json:"s3_lifecycle_sync_disabled"`
+	UseGitForGitHubFilesDisabled    bool `json:"use_git_for_github_files_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2659,6 +2663,29 @@ func (a *APIFWSConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIGraphiteConfig struct {
+	CIOptimizationToken *string `json:"ci_optimization_token"`
+	ServerURL           *string `json:"server_url"`
+}
+
+func (a *APIGraphiteConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.GraphiteConfig:
+		a.CIOptimizationToken = utility.ToStringPtr(v.CIOptimizationToken)
+		a.ServerURL = utility.ToStringPtr(v.ServerURL)
+	default:
+		return errors.Errorf("programmatic error: expected Graphite config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIGraphiteConfig) ToService() (interface{}, error) {
+	return evergreen.GraphiteConfig{
+		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
+		ServerURL:           utility.FromStringPtr(a.ServerURL),
+	}, nil
+}
+
 // BuildFromService builds a model from the service layer
 func (as *APIServiceFlags) BuildFromService(h any) error {
 	switch v := h.(type) {
@@ -2700,6 +2727,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
 		as.LegacyUIAdminPageDisabled = v.LegacyUIAdminPageDisabled
 		as.DebugSpawnHostDisabled = v.DebugSpawnHostDisabled
+		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
+		as.UseGitForGitHubFilesDisabled = v.UseGitForGitHubFilesDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2746,6 +2775,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
 		LegacyUIAdminPageDisabled:       as.LegacyUIAdminPageDisabled,
 		DebugSpawnHostDisabled:          as.DebugSpawnHostDisabled,
+		S3LifecycleSyncDisabled:         as.S3LifecycleSyncDisabled,
+		UseGitForGitHubFilesDisabled:    as.UseGitForGitHubFilesDisabled,
 	}, nil
 }
 

@@ -277,7 +277,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.AllProjectsScope,
 		Name:      "all projects",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"mci", "happyAbyssinian", "grumpyCat", "spruce", "evergreen", "repo_sandbox", "project_sandbox"},
+		Resources: []string{"mci", "happyAbyssinian", "grumpyCat", "spruce", "evergreen", "repo_sandbox", "project_sandbox", "sandbox_no_child_versions", "child_no_versions"},
 	}
 	err = roleManager.AddScope(t.Context(), allProjectScope)
 	require.NoError(t, err)

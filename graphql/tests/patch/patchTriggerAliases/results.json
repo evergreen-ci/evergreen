@@ -21,6 +21,18 @@
           }
         }
       }
+    },
+    {
+      "query_file": "child_project_no_versions.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "id": "5e4ff3abe3c3317e352062e5",
+            "githash": "abc123def456",
+            "patchTriggerAliases": []
+          }
+        }
+      }
     }
   ]
 }

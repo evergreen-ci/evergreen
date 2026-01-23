@@ -829,7 +829,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
 			config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
 		}
-		if settings.ServiceFlags.StaticAPIKeysDisabled {
+		if !settings.ServiceFlags.StaticAPIKeysDisabled {
 			config.APIKey = usr.GetAPIKey()
 		}
 	}
@@ -1065,6 +1065,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		Limit:                limit,
 		MaxOrder:             maxOrderOpt,
 		MinOrder:             minOrderOpt,
+		OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
 		Requesters:           requesters,
 		Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
 		Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
@@ -1260,9 +1261,6 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
-		// Use injest time rather than create time to ensure task history page is sorted in order of when the tasks
-		// were actually created.
-		t.CreateTime = t.IngestTime
 		apiTask := &restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -325,6 +326,9 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 // CreateCollections ensures that all the given collections are created,
 // returning an error immediately if creating any one of them fails.
 func CreateCollections(collections ...string) error {
+	if !testing.Testing() {
+		panic("CreateCollections should only be called in testing")
+	}
 	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
@@ -348,6 +352,9 @@ func CreateCollections(collections ...string) error {
 
 // Clear removes all documents from a specified collection.
 func Clear(collection string) error {
+	if !testing.Testing() {
+		panic("Clear should only be called in testing")
+	}
 	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
@@ -362,6 +369,9 @@ func Clear(collection string) error {
 // ClearCollections clears all documents from all the specified collections,
 // returning an error immediately if clearing any one of them fails.
 func ClearCollections(collections ...string) error {
+	if !testing.Testing() {
+		panic("ClearCollections should only be called in testing")
+	}
 	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
@@ -378,12 +388,18 @@ func ClearCollections(collections ...string) error {
 }
 
 func ClearGridCollections(fsPrefix string) error {
+	if !testing.Testing() {
+		panic("CreateGridCollections should only be called in testing")
+	}
 	return ClearCollections(fmt.Sprintf("%s.files", fsPrefix), fmt.Sprintf("%s.chunks", fsPrefix))
 }
 
 // DropCollections drops the specified collections, returning an error
 // immediately if dropping any one of them fails.
 func DropCollections(collections ...string) error {
+	if !testing.Testing() {
+		panic("DropCollections should only be called in testing")
+	}
 	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
@@ -400,6 +416,9 @@ func DropCollections(collections ...string) error {
 // EnsureIndex takes in a collection and ensures that the index is created if it
 // does not already exist.
 func EnsureIndex(collection string, index mongo.IndexModel) error {
+	if !testing.Testing() {
+		panic("EnsureIndex should only be called in testing")
+	}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()

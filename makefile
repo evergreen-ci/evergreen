@@ -2,10 +2,10 @@
 name := evergreen
 buildDir := bin
 nodeDir := public
-packages := $(name) agent agent-command agent-executor agent-globals agent-util agent-internal agent-internal-client agent-internal-redactor agent-internal-taskoutput agent-internal-testutil operations cloud cloud-userdata
+packages := $(name) agent agent-command agent-executor agent-globals agent-util agent-taskexec agent-internal agent-internal-client agent-internal-redactor agent-internal-taskoutput agent-internal-testutil operations cloud cloud-userdata
 packages += db util units graphql thirdparty thirdparty-docker auth scheduler model validator service repotracker mock
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
-packages += model-commitqueue model-cache model-githubapp model-hoststat model-cost
+packages += model-commitqueue model-cache model-githubapp model-hoststat model-cost model-s3lifecycle
 packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
 packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil model-testresult-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
@@ -407,6 +407,12 @@ configure-mongod:mongodb/.get-mongodb mongodb/.get-mongosh
 	@echo "configured mongod"
 # end mongodb targets
 
+# Installs a newer version of git from source than most distros have available.
+install-git:
+	curl $(curlRetryOpts) -LO https://github.com/git/git/archive/refs/tags/v2.52.0.tar.gz
+	tar -xzf v2.52.0.tar.gz
+	cd git-2.52.0 && $(MAKE) configure && ./configure --prefix=$(CURDIR)/$(buildDir)/git && $(MAKE) all && $(MAKE) install
+phony += install-git
 
 # configure special (and) phony targets
 .FORCE:

@@ -826,6 +826,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
 	}
+
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
 		fileContents, err := os.ReadFile(opts.RemotePath)

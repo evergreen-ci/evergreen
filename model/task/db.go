@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -2760,37 +2761,37 @@ func enableDisabledTasks(ctx context.Context, taskIDs []string) error {
 	return err
 }
 
-// SetPredictedCostsForTasks sets predicted costs on task objects in memory.
-func SetPredictedCostsForTasks(ctx context.Context, tasks Tasks) error {
+// ComputePredictedCostsForTasks computes predicted costs for activated tasks
+func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string]cost.Cost, error) {
 	if len(tasks) == 0 {
-		return nil
+		return map[string]cost.Cost{}, nil
 	}
 
 	activatedTasks := make([]Task, 0, len(tasks))
-	taskPtrMap := make(map[string]*Task) // Map task ID to original pointer for updates
 	for _, t := range tasks {
 		if t.Activated {
 			activatedTasks = append(activatedTasks, *t)
-			taskPtrMap[t.Id] = t
 		}
 	}
 
 	if len(activatedTasks) == 0 {
-		return nil
+		return map[string]cost.Cost{}, nil
 	}
 
-	predictions, err := computeCostPredictionsInParallel(ctx, activatedTasks)
+	// Use background context to avoid MongoDB session races in parallel queries.
+	// The input ctx may have a transaction session which is not thread-safe.
+	bgCtx := context.Background()
+	predictions, err := computeCostPredictionsInParallel(bgCtx, activatedTasks)
 	if err != nil {
-		return errors.Wrap(err, "computing cost predictions")
+		return nil, errors.Wrap(err, "computing cost predictions")
 	}
 
-	for _, t := range activatedTasks {
-		prediction := predictions[t.Id]
-		taskPtr := taskPtrMap[t.Id]
-		taskPtr.SetPredictedCost(prediction.PredictedCost)
+	result := make(map[string]cost.Cost, len(predictions))
+	for taskID, prediction := range predictions {
+		result[taskID] = prediction.PredictedCost
 	}
 
-	return nil
+	return result, nil
 }
 
 // taskVariantKey represents a unique combination of project, variant, and task name for batching cost predictions
@@ -3312,7 +3313,8 @@ func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant
 	}
 
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
-	dbCtx, cancel := context.WithCancel(ctx)
+	// Use a fresh context to avoid sharing MongoDB sessions across goroutines.
+	dbCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(TaskHistoricalDataIndex))
 	if err != nil {
