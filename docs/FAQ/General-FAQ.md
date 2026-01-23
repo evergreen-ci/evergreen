@@ -30,8 +30,6 @@ This is most likely because your repo was cloned with a specified depth and the 
 
 # Graphite FAQ
 
-## Why is Evergreen not running CI tests on my Graphite PR?
-
 **Q**: Why doesn't Evergreen run CI tests on my Graphite PR immediately? 
 
 **A**: Evergreen doesn't run CI tests on your Graphite PR immediately if that PR is being automatically
