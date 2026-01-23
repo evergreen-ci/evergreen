@@ -130,7 +130,7 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
 		require.NoError(t, err)
 
-		assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+		assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
 	})
 	t.Run("ReturnsFileForBranchName", func(t *testing.T) {
 		const branch = "main"
@@ -142,7 +142,7 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
 		require.NoError(t, err)
 
-		assert.Equal(t, string(comparisonFileContent), gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+		assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
 	})
 	t.Run("ReturnsFileNotFoundForNonexistentFile", func(t *testing.T) {
 		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")

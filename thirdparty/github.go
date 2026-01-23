@@ -501,8 +501,8 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // kim: NOTE: callers must decide if useGit is set depending on whether it's a
 // one-off file (probably fine if it's a little slow) or whether it's retrieving
 // many files (need to defer until worktrees are set up).
-func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) (string, error) {
-	var gitFile string
+func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
+	var gitFile []byte
 	var gitErr error
 	if useGit {
 		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path)
@@ -518,14 +518,14 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, gh
 
 	ghFile, err := GetGithubFile(ctx, owner, repo, path, ref, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	ghFileContent, err := base64.StdEncoding.DecodeString(*ghFile.Content)
 	if err != nil {
-		return "", errors.Wrap(err, "decoding GitHub file content")
+		return nil, errors.Wrap(err, "decoding GitHub file content")
 	}
 
-	if useGit && gitErr == nil && gitFile != string(ghFileContent) {
+	if useGit && gitErr == nil && !bytes.Equal(gitFile, ghFileContent) {
 		// Compare whether the file content retrieved via git matches the
 		// content retrieved via the GitHub API. Since git is experimental, it's
 		// not trusted to return the correct data currently.
@@ -540,7 +540,7 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, gh
 	}
 
 	// Always return the GitHub API file since git is experimental.
-	return string(ghFileContent), nil
+	return ghFileContent, nil
 }
 
 // GetGithubFile returns a struct that contains the contents of files within
