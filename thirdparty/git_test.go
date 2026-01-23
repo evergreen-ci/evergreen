@@ -2,6 +2,8 @@ package thirdparty
 
 import (
 	"encoding/base64"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -146,5 +148,51 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
 		assert.Error(t, err)
 		assert.True(t, IsFileNotFound(err))
+	})
+}
+
+func TestValidateFileIsWithinDirectory(t *testing.T) {
+	const parentDir = "/tmp/dir"
+
+	t.Run("RelativePathAllowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("RelativePathAllowedWithRedundantSeparators", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src//main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("FilePathWithTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "../etc/passwd")
+		assert.Error(t, err)
+	})
+
+	t.Run("AbsolutePathDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "/absolute/path/to/file")
+		assert.Error(t, err)
+	})
+
+	t.Run("FilePathWithMixedTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/../etc/../../passwd")
+		assert.Error(t, err)
+	})
+}
+
+func TestValidateFileIsNotSymlink(t *testing.T) {
+	t.Run("DoesNotErrorForRegularFile", func(t *testing.T) {
+		const fileName = "file.txt"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, fileName), []byte("hello world"), 0644))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.NoError(t, validateFileIsNotSymlink(tmpDir, fileName))
+	})
+	t.Run("ErrorsForSymlink", func(t *testing.T) {
+		const fileName = "symlink"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.Symlink("/etc/passwd", filepath.Join(tmpDir, fileName)))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.Error(t, validateFileIsNotSymlink(tmpDir, fileName))
 	})
 }
