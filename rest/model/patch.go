@@ -176,7 +176,25 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
-		return apiPatch.buildChildPatches(ctx, p)
+		err := apiPatch.buildChildPatches(ctx, p)
+		if err != nil {
+			return err
+		}
+		if p.IsParent() && len(p.Triggers.ChildPatches) > 0 {
+			childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
+			if err != nil {
+				return errors.Wrap(err, "getting child patches for time calculations")
+			}
+			for _, childPatch := range childPatches {
+				if !childPatch.StartTime.IsZero() && (apiPatch.StartTime == nil || childPatch.StartTime.Before(*apiPatch.StartTime)) {
+					apiPatch.StartTime = ToTimePtr(childPatch.StartTime)
+				}
+				if !childPatch.FinishTime.IsZero() && (apiPatch.FinishTime == nil || childPatch.FinishTime.After(*apiPatch.FinishTime)) {
+					apiPatch.FinishTime = ToTimePtr(childPatch.FinishTime)
+				}
+			}
+		}
+		return nil
 	}
 	return nil
 }
