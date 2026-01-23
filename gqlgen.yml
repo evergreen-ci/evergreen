@@ -779,10 +779,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
   RuntimeEnvironmentConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
-  S3CostConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
-  S3CostConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
+  SageConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISageConfig
+  SageConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISageConfig
   S3Credentials:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
   S3CredentialsInput:

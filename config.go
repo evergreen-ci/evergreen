@@ -125,6 +125,7 @@ type Settings struct {
 	Tracer                  TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
 	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                      UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	Sage                    SageConfig                `yaml:"sage" bson:"sage" json:"sage" id:"sage"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }

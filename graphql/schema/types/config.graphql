@@ -108,6 +108,7 @@ input AdminSettingsInput {
   tracer: TracerSettingsInput
   triggers: TriggerConfigInput
   ui: UIConfigInput
+  sage: SageConfigInput
 }
 
 type AdminSettings {
@@ -164,6 +165,7 @@ type AdminSettings {
   tracer: TracerSettings
   triggers: TriggerConfig
   ui: UIConfig
+  sage: SageConfig
 }
 
 """
