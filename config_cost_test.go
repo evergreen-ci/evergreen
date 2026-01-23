@@ -1,9 +1,7 @@
 package evergreen
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,13 +179,10 @@ func TestCostConfigIsConfigured(t *testing.T) {
 }
 
 func TestCostConfigSetAndGet(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	t.Run("SetAndGetFinanceFields", func(t *testing.T) {
-		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		defer func() {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		}()
 
 		original := CostConfig{
@@ -195,10 +190,10 @@ func TestCostConfigSetAndGet(t *testing.T) {
 			SavingsPlanDiscount: 0.3,
 			OnDemandDiscount:    0.2,
 		}
-		require.NoError(t, original.Set(ctx))
+		require.NoError(t, original.Set(t.Context()))
 
 		retrieved := CostConfig{}
-		require.NoError(t, retrieved.Get(ctx))
+		require.NoError(t, retrieved.Get(t.Context()))
 
 		assert.Equal(t, original.FinanceFormula, retrieved.FinanceFormula)
 		assert.Equal(t, original.SavingsPlanDiscount, retrieved.SavingsPlanDiscount)
