@@ -3312,15 +3312,15 @@ func (a *APIS3UploadCostConfig) ToService() (any, error) {
 }
 
 type APIS3StorageCostConfig struct {
-	StandardStorageCostDiscount         float64 `json:"standard_storage_cost_discount"`
-	InfrequentAccessStorageCostDiscount float64 `json:"infrequent_access_storage_cost_discount"`
+	StandardStorageCostDiscount float64 `json:"standard_storage_cost_discount"`
+	IAStorageCostDiscount       float64 `json:"i_a_storage_cost_discount"`
 }
 
 func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.S3StorageCostConfig:
 		a.StandardStorageCostDiscount = v.StandardStorageCostDiscount
-		a.InfrequentAccessStorageCostDiscount = v.InfrequentAccessStorageCostDiscount
+		a.IAStorageCostDiscount = v.IAStorageCostDiscount
 		return nil
 	default:
 		return errors.Errorf("incorrect type %T", v)
@@ -3329,7 +3329,7 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 
 func (a *APIS3StorageCostConfig) ToService() (any, error) {
 	return evergreen.S3StorageCostConfig{
-		StandardStorageCostDiscount:         a.StandardStorageCostDiscount,
-		InfrequentAccessStorageCostDiscount: a.InfrequentAccessStorageCostDiscount,
+		StandardStorageCostDiscount: a.StandardStorageCostDiscount,
+		IAStorageCostDiscount:       a.IAStorageCostDiscount,
 	}, nil
 }

@@ -210,12 +210,12 @@ type S3UploadCostConfig {
 
 input S3StorageCostConfigInput {
     standardStorageCostDiscount: Float
-    infrequentAccessStorageCostDiscount: Float
+    iAStorageCostDiscount: Float
 }
 
 type S3StorageCostConfig {
     standardStorageCostDiscount: Float
-    infrequentAccessStorageCostDiscount: Float
+    iAStorageCostDiscount: Float
 }
 
 input S3CostConfigInput {

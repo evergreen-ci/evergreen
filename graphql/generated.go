@@ -1659,8 +1659,8 @@ type ComplexityRoot struct {
 	}
 
 	S3StorageCostConfig struct {
-		InfrequentAccessStorageCostDiscount func(childComplexity int) int
-		StandardStorageCostDiscount         func(childComplexity int) int
+		IAStorageCostDiscount       func(childComplexity int) int
+		StandardStorageCostDiscount func(childComplexity int) int
 	}
 
 	S3UploadCostConfig struct {
@@ -9623,12 +9623,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.S3Credentials.Secret(childComplexity), true
 
-	case "S3StorageCostConfig.infrequentAccessStorageCostDiscount":
-		if e.complexity.S3StorageCostConfig.InfrequentAccessStorageCostDiscount == nil {
+	case "S3StorageCostConfig.iAStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.IAStorageCostDiscount == nil {
 			break
 		}
 
-		return e.complexity.S3StorageCostConfig.InfrequentAccessStorageCostDiscount(childComplexity), true
+		return e.complexity.S3StorageCostConfig.IAStorageCostDiscount(childComplexity), true
 	case "S3StorageCostConfig.standardStorageCostDiscount":
 		if e.complexity.S3StorageCostConfig.StandardStorageCostDiscount == nil {
 			break
@@ -56323,8 +56323,8 @@ func (ec *executionContext) fieldContext_S3CostConfig_storage(_ context.Context,
 			switch field.Name {
 			case "standardStorageCostDiscount":
 				return ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount(ctx, field)
-			case "infrequentAccessStorageCostDiscount":
-				return ec.fieldContext_S3StorageCostConfig_infrequentAccessStorageCostDiscount(ctx, field)
+			case "iAStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type S3StorageCostConfig", field.Name)
 		},
@@ -56461,14 +56461,14 @@ func (ec *executionContext) fieldContext_S3StorageCostConfig_standardStorageCost
 	return fc, nil
 }
 
-func (ec *executionContext) _S3StorageCostConfig_infrequentAccessStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _S3StorageCostConfig_iAStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_S3StorageCostConfig_infrequentAccessStorageCostDiscount,
+		ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount,
 		func(ctx context.Context) (any, error) {
-			return obj.InfrequentAccessStorageCostDiscount, nil
+			return obj.IAStorageCostDiscount, nil
 		},
 		nil,
 		ec.marshalOFloat2float64,
@@ -56477,7 +56477,7 @@ func (ec *executionContext) _S3StorageCostConfig_infrequentAccessStorageCostDisc
 	)
 }
 
-func (ec *executionContext) fieldContext_S3StorageCostConfig_infrequentAccessStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_S3StorageCostConfig_iAStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "S3StorageCostConfig",
 		Field:      field,
@@ -83802,7 +83802,7 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"standardStorageCostDiscount", "infrequentAccessStorageCostDiscount"}
+	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83816,13 +83816,13 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 				return it, err
 			}
 			it.StandardStorageCostDiscount = data
-		case "infrequentAccessStorageCostDiscount":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("infrequentAccessStorageCostDiscount"))
+		case "iAStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iAStorageCostDiscount"))
 			data, err := ec.unmarshalOFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.InfrequentAccessStorageCostDiscount = data
+			it.IAStorageCostDiscount = data
 		}
 	}
 
@@ -100059,8 +100059,8 @@ func (ec *executionContext) _S3StorageCostConfig(ctx context.Context, sel ast.Se
 			out.Values[i] = graphql.MarshalString("S3StorageCostConfig")
 		case "standardStorageCostDiscount":
 			out.Values[i] = ec._S3StorageCostConfig_standardStorageCostDiscount(ctx, field, obj)
-		case "infrequentAccessStorageCostDiscount":
-			out.Values[i] = ec._S3StorageCostConfig_infrequentAccessStorageCostDiscount(ctx, field, obj)
+		case "iAStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_iAStorageCostDiscount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

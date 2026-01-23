@@ -74,8 +74,8 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 		c := CostConfig{
 			S3Cost: S3CostConfig{
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         0.0,
-					InfrequentAccessStorageCostDiscount: 0.5,
+					StandardStorageCostDiscount: 0.0,
+					IAStorageCostDiscount:       0.5,
 				},
 			},
 		}
@@ -96,17 +96,17 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
-	t.Run("InvalidS3InfrequentAccessStorageCostDiscount", func(t *testing.T) {
+	t.Run("InvalidS3IAStorageCostDiscount", func(t *testing.T) {
 		c := CostConfig{
 			S3Cost: S3CostConfig{
 				Storage: S3StorageCostConfig{
-					InfrequentAccessStorageCostDiscount: -0.1,
+					IAStorageCostDiscount: -0.1,
 				},
 			},
 		}
 		assert.Error(t, c.ValidateAndDefault())
 
-		c.S3Cost.Storage.InfrequentAccessStorageCostDiscount = 1.5
+		c.S3Cost.Storage.IAStorageCostDiscount = 1.5
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
@@ -161,8 +161,8 @@ func TestCostConfigIsConfigured(t *testing.T) {
 			S3Cost: S3CostConfig{
 				Upload: S3UploadCostConfig{UploadCostDiscount: 0.1},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         0.2,
-					InfrequentAccessStorageCostDiscount: 0.3,
+					StandardStorageCostDiscount: 0.2,
+					IAStorageCostDiscount:       0.3,
 				},
 			},
 		}
@@ -206,59 +206,59 @@ func TestCostConfigSetAndGet(t *testing.T) {
 	})
 
 	t.Run("SetAndGetS3CostWithZeroValues", func(t *testing.T) {
-		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		defer func() {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		}()
 
 		original := CostConfig{
 			S3Cost: S3CostConfig{
 				Upload: S3UploadCostConfig{UploadCostDiscount: 0.0},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         0.0,
-					InfrequentAccessStorageCostDiscount: 0.0,
+					StandardStorageCostDiscount: 0.0,
+					IAStorageCostDiscount:       0.0,
 				},
 			},
 		}
-		require.NoError(t, original.Set(ctx))
+		require.NoError(t, original.Set(t.Context()))
 
 		retrieved := CostConfig{}
-		require.NoError(t, retrieved.Get(ctx))
+		require.NoError(t, retrieved.Get(t.Context()))
 
 		assert.Equal(t, 0.0, retrieved.S3Cost.Upload.UploadCostDiscount)
 		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
+		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.IAStorageCostDiscount)
 	})
 
 	t.Run("SetAndGetS3CostWithNonZeroValues", func(t *testing.T) {
-		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		defer func() {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		}()
 
 		original := CostConfig{
 			S3Cost: S3CostConfig{
 				Upload: S3UploadCostConfig{UploadCostDiscount: 0.1},
 				Storage: S3StorageCostConfig{
-					StandardStorageCostDiscount:         0.2,
-					InfrequentAccessStorageCostDiscount: 0.3,
+					StandardStorageCostDiscount: 0.2,
+					IAStorageCostDiscount:       0.3,
 				},
 			},
 		}
-		require.NoError(t, original.Set(ctx))
+		require.NoError(t, original.Set(t.Context()))
 
 		retrieved := CostConfig{}
-		require.NoError(t, retrieved.Get(ctx))
+		require.NoError(t, retrieved.Get(t.Context()))
 
 		assert.Equal(t, 0.1, retrieved.S3Cost.Upload.UploadCostDiscount)
 		assert.Equal(t, 0.2, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-		assert.Equal(t, 0.3, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
+		assert.Equal(t, 0.3, retrieved.S3Cost.Storage.IAStorageCostDiscount)
 	})
 
 	t.Run("SetAndGetMixedFinanceAndS3Fields", func(t *testing.T) {
-		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		defer func() {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		}()
 
 		original := CostConfig{
@@ -272,10 +272,10 @@ func TestCostConfigSetAndGet(t *testing.T) {
 				},
 			},
 		}
-		require.NoError(t, original.Set(ctx))
+		require.NoError(t, original.Set(t.Context()))
 
 		retrieved := CostConfig{}
-		require.NoError(t, retrieved.Get(ctx))
+		require.NoError(t, retrieved.Get(t.Context()))
 
 		assert.Equal(t, original.FinanceFormula, retrieved.FinanceFormula)
 		assert.Equal(t, original.SavingsPlanDiscount, retrieved.SavingsPlanDiscount)
@@ -283,6 +283,6 @@ func TestCostConfigSetAndGet(t *testing.T) {
 
 		assert.Equal(t, 0.1, retrieved.S3Cost.Upload.UploadCostDiscount)
 		assert.Equal(t, 0.2, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
-		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.InfrequentAccessStorageCostDiscount)
+		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.IAStorageCostDiscount)
 	})
 }
