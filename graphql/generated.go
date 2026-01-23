@@ -417,6 +417,7 @@ type ComplexityRoot struct {
 	CostConfig struct {
 		FinanceFormula      func(childComplexity int) int
 		OnDemandDiscount    func(childComplexity int) int
+		S3Cost              func(childComplexity int) int
 		SavingsPlanDiscount func(childComplexity int) int
 	}
 
@@ -1646,10 +1647,24 @@ type ComplexityRoot struct {
 		BaseURL func(childComplexity int) int
 	}
 
+	S3CostConfig struct {
+		Storage func(childComplexity int) int
+		Upload  func(childComplexity int) int
+	}
+
 	S3Credentials struct {
 		Bucket func(childComplexity int) int
 		Key    func(childComplexity int) int
 		Secret func(childComplexity int) int
+	}
+
+	S3StorageCostConfig struct {
+		InfrequentAccessStorageCostDiscount func(childComplexity int) int
+		StandardStorageCostDiscount         func(childComplexity int) int
+	}
+
+	S3UploadCostConfig struct {
+		UploadCostDiscount func(childComplexity int) int
 	}
 
 	SESConfig struct {
@@ -4091,6 +4106,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CostConfig.OnDemandDiscount(childComplexity), true
+	case "CostConfig.s3Cost":
+		if e.complexity.CostConfig.S3Cost == nil {
+			break
+		}
+
+		return e.complexity.CostConfig.S3Cost(childComplexity), true
 	case "CostConfig.savingsPlanDiscount":
 		if e.complexity.CostConfig.SavingsPlanDiscount == nil {
 			break
@@ -9570,6 +9591,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RuntimeEnvironmentConfig.BaseURL(childComplexity), true
 
+	case "S3CostConfig.storage":
+		if e.complexity.S3CostConfig.Storage == nil {
+			break
+		}
+
+		return e.complexity.S3CostConfig.Storage(childComplexity), true
+	case "S3CostConfig.upload":
+		if e.complexity.S3CostConfig.Upload == nil {
+			break
+		}
+
+		return e.complexity.S3CostConfig.Upload(childComplexity), true
+
 	case "S3Credentials.bucket":
 		if e.complexity.S3Credentials.Bucket == nil {
 			break
@@ -9588,6 +9622,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.S3Credentials.Secret(childComplexity), true
+
+	case "S3StorageCostConfig.infrequentAccessStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.InfrequentAccessStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.InfrequentAccessStorageCostDiscount(childComplexity), true
+	case "S3StorageCostConfig.standardStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.StandardStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.StandardStorageCostDiscount(childComplexity), true
+
+	case "S3UploadCostConfig.uploadCostDiscount":
+		if e.complexity.S3UploadCostConfig.UploadCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3UploadCostConfig.UploadCostDiscount(childComplexity), true
 
 	case "SESConfig.senderAddress":
 		if e.complexity.SESConfig.SenderAddress == nil {
@@ -12880,7 +12934,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputResourceLimitsInput,
 		ec.unmarshalInputRestartAdminTasksOptions,
 		ec.unmarshalInputRuntimeEnvironmentConfigInput,
+		ec.unmarshalInputS3CostConfigInput,
 		ec.unmarshalInputS3CredentialsInput,
+		ec.unmarshalInputS3StorageCostConfigInput,
+		ec.unmarshalInputS3UploadCostConfigInput,
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSSHConfigInput,
 		ec.unmarshalInputSSHKeyPairInput,
@@ -18454,6 +18511,8 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 				return ec.fieldContext_CostConfig_savingsPlanDiscount(ctx, field)
 			case "onDemandDiscount":
 				return ec.fieldContext_CostConfig_onDemandDiscount(ctx, field)
+			case "s3Cost":
+				return ec.fieldContext_CostConfig_s3Cost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostConfig", field.Name)
 		},
@@ -24079,6 +24138,41 @@ func (ec *executionContext) fieldContext_CostConfig_onDemandDiscount(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostConfig_s3Cost(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostConfig_s3Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3Cost, nil
+		},
+		nil,
+		ec.marshalOS3CostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostConfig_s3Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "upload":
+				return ec.fieldContext_S3CostConfig_upload(ctx, field)
+			case "storage":
+				return ec.fieldContext_S3CostConfig_storage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3CostConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -56170,6 +56264,74 @@ func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_apiKey(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _S3CostConfig_upload(ctx context.Context, field graphql.CollectedField, obj *model.APIS3CostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3CostConfig_upload,
+		func(ctx context.Context) (any, error) {
+			return obj.Upload, nil
+		},
+		nil,
+		ec.marshalOS3UploadCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3CostConfig_upload(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "uploadCostDiscount":
+				return ec.fieldContext_S3UploadCostConfig_uploadCostDiscount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3UploadCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3CostConfig_storage(ctx context.Context, field graphql.CollectedField, obj *model.APIS3CostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3CostConfig_storage,
+		func(ctx context.Context) (any, error) {
+			return obj.Storage, nil
+		},
+		nil,
+		ec.marshalOS3StorageCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3CostConfig_storage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "standardStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount(ctx, field)
+			case "infrequentAccessStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_infrequentAccessStorageCostDiscount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3StorageCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _S3Credentials_key(ctx context.Context, field graphql.CollectedField, obj *model.APIS3Credentials) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56265,6 +56427,93 @@ func (ec *executionContext) fieldContext_S3Credentials_bucket(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_standardStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.StandardStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_standardStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_infrequentAccessStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_infrequentAccessStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.InfrequentAccessStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_infrequentAccessStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3UploadCostConfig_uploadCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3UploadCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3UploadCostConfig_uploadCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.UploadCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3UploadCostConfig_uploadCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3UploadCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -77790,7 +78039,7 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount"}
+	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77818,6 +78067,13 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.OnDemandDiscount = data
+		case "s3Cost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3Cost"))
+			data, err := ec.unmarshalOS3CostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3Cost = data
 		}
 	}
 
@@ -83447,6 +83703,40 @@ func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputS3CostConfigInput(ctx context.Context, obj any) (model.APIS3CostConfig, error) {
+	var it model.APIS3CostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"upload", "storage"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "upload":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upload"))
+			data, err := ec.unmarshalOS3UploadCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Upload = data
+		case "storage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storage"))
+			data, err := ec.unmarshalOS3StorageCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Storage = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputS3CredentialsInput(ctx context.Context, obj any) (model.APIS3Credentials, error) {
 	var it model.APIS3Credentials
 	asMap := map[string]any{}
@@ -83499,6 +83789,67 @@ func (ec *executionContext) unmarshalInputS3CredentialsInput(ctx context.Context
 				return it, err
 			}
 			it.Bucket = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.Context, obj any) (model.APIS3StorageCostConfig, error) {
+	var it model.APIS3StorageCostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"standardStorageCostDiscount", "infrequentAccessStorageCostDiscount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "standardStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("standardStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StandardStorageCostDiscount = data
+		case "infrequentAccessStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("infrequentAccessStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InfrequentAccessStorageCostDiscount = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputS3UploadCostConfigInput(ctx context.Context, obj any) (model.APIS3UploadCostConfig, error) {
+	var it model.APIS3UploadCostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"uploadCostDiscount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "uploadCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uploadCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UploadCostDiscount = data
 		}
 	}
 
@@ -88734,6 +89085,8 @@ func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._CostConfig_savingsPlanDiscount(ctx, field, obj)
 		case "onDemandDiscount":
 			out.Values[i] = ec._CostConfig_onDemandDiscount(ctx, field, obj)
+		case "s3Cost":
+			out.Values[i] = ec._CostConfig_s3Cost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99615,6 +99968,44 @@ func (ec *executionContext) _RuntimeEnvironmentConfig(ctx context.Context, sel a
 	return out
 }
 
+var s3CostConfigImplementors = []string{"S3CostConfig"}
+
+func (ec *executionContext) _S3CostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3CostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3CostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3CostConfig")
+		case "upload":
+			out.Values[i] = ec._S3CostConfig_upload(ctx, field, obj)
+		case "storage":
+			out.Values[i] = ec._S3CostConfig_storage(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var s3CredentialsImplementors = []string{"S3Credentials"}
 
 func (ec *executionContext) _S3Credentials(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3Credentials) graphql.Marshaler {
@@ -99632,6 +100023,80 @@ func (ec *executionContext) _S3Credentials(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._S3Credentials_secret(ctx, field, obj)
 		case "bucket":
 			out.Values[i] = ec._S3Credentials_bucket(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var s3StorageCostConfigImplementors = []string{"S3StorageCostConfig"}
+
+func (ec *executionContext) _S3StorageCostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3StorageCostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3StorageCostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3StorageCostConfig")
+		case "standardStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_standardStorageCostDiscount(ctx, field, obj)
+		case "infrequentAccessStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_infrequentAccessStorageCostDiscount(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var s3UploadCostConfigImplementors = []string{"S3UploadCostConfig"}
+
+func (ec *executionContext) _S3UploadCostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3UploadCostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3UploadCostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3UploadCostConfig")
+		case "uploadCostDiscount":
+			out.Values[i] = ec._S3UploadCostConfig_uploadCostDiscount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -116095,12 +116560,45 @@ func (ec *executionContext) unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOS3CostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIS3CostConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._S3CostConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOS3CostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx context.Context, v any) (*model.APIS3CostConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputS3CostConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOS3Credentials2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3Credentials(ctx context.Context, sel ast.SelectionSet, v model.APIS3Credentials) graphql.Marshaler {
 	return ec._S3Credentials(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOS3CredentialsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3Credentials(ctx context.Context, v any) (model.APIS3Credentials, error) {
 	res, err := ec.unmarshalInputS3CredentialsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOS3StorageCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx context.Context, sel ast.SelectionSet, v model.APIS3StorageCostConfig) graphql.Marshaler {
+	return ec._S3StorageCostConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOS3StorageCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx context.Context, v any) (model.APIS3StorageCostConfig, error) {
+	res, err := ec.unmarshalInputS3StorageCostConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOS3UploadCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx context.Context, sel ast.SelectionSet, v model.APIS3UploadCostConfig) graphql.Marshaler {
+	return ec._S3UploadCostConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOS3UploadCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx context.Context, v any) (model.APIS3UploadCostConfig, error) {
+	res, err := ec.unmarshalInputS3UploadCostConfigInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

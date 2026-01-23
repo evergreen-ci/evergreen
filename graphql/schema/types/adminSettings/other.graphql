@@ -190,10 +190,40 @@ input CostConfigInput {
   financeFormula: Float
   savingsPlanDiscount: Float
   onDemandDiscount: Float
+  s3Cost: S3CostConfigInput
 }
 
 type CostConfig {
   financeFormula: Float
   savingsPlanDiscount: Float
   onDemandDiscount: Float
+  s3Cost: S3CostConfig
+}
+
+input S3UploadCostConfigInput {
+    uploadCostDiscount: Float
+}
+
+type S3UploadCostConfig {
+    uploadCostDiscount: Float
+}
+
+input S3StorageCostConfigInput {
+    standardStorageCostDiscount: Float
+    infrequentAccessStorageCostDiscount: Float
+}
+
+type S3StorageCostConfig {
+    standardStorageCostDiscount: Float
+    infrequentAccessStorageCostDiscount: Float
+}
+
+input S3CostConfigInput {
+    upload: S3UploadCostConfigInput
+    storage: S3StorageCostConfigInput
+}
+
+type S3CostConfig {
+    upload: S3UploadCostConfig
+    storage: S3StorageCostConfig
 }
