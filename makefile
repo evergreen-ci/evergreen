@@ -407,6 +407,12 @@ configure-mongod:mongodb/.get-mongodb mongodb/.get-mongosh
 	@echo "configured mongod"
 # end mongodb targets
 
+# Installs a newer version of git from source than most distros have available.
+install-git:
+	curl $(curlRetryOpts) -LO https://github.com/git/git/archive/refs/tags/v2.52.0.tar.gz
+	tar -xzf v2.52.0.tar.gz
+	cd git-2.52.0 && $(MAKE) configure && ./configure --prefix=$(CURDIR)/$(buildDir)/git && $(MAKE) all && $(MAKE) install
+phony += install-git
 
 # configure special (and) phony targets
 .FORCE:

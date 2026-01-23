@@ -71,6 +71,20 @@ variables:
       - func: setup-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
+  - &run-go-test-suite-with-mongodb-and-git
+    # runs a make target above, but only on systems that have a
+    # running mongod started for testing and a newer version of git.
+    name: test
+    must_have_test_results: true
+    commands:
+      - func: get-project-and-modules
+      - func: setup-credentials
+      - func: setup-mongodb
+      # Install newer version of git (v2.49+) because a newer flag (--revision) is needed for minimal git clones.
+      - func: run-make
+        vars: { target: "install-git" }
+      - func: run-make
+        vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb-useast
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
@@ -197,6 +211,8 @@ functions:
     params:
       working_dir: evergreen
       binary: make
+      # If a different version of git was installed, prepend git to the PATH.
+      add_to_path: ["${workdir}/evergreen/bin/git/bin"]
       args: ["${make_args|}", "${target}"]
       include_expansions_in_env:
         - GOROOT
@@ -520,7 +536,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-evergreen
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite-with-mongodb-and-git
     tags: ["db", "test"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
