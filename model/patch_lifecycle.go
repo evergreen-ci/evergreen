@@ -246,7 +246,6 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	}
 	opts.RemotePath = path
 	opts.PatchOpts.env = env
-	// kim: TODO: determine if this usage is heavily used or not.
 	projectFileBytes, err := getFileForPatchDiff(ctx, *opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching remote configuration file")
@@ -295,8 +294,6 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return project, patchConfig, nil
 	}
 
-	// kim: NOTE: getLoadProjectOptsForPatch and getPatchedProjectYAML are okay
-	// to use git since they
 	projectRef, opts, err := getLoadProjectOptsForPatch(ctx, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
@@ -438,8 +435,6 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 		if renamedFilePath != "" {
 			opts.RemotePath = renamedFilePath
 			if projectConfig == "" {
-				// kim: NOTE: this is called in retrieveFile so it's going to be
-				// called a lot.
 				renamedProjectConfig, err = getFileForPatchDiff(ctx, opts)
 				if err != nil {
 					return nil, errors.Wrapf(err, "retrieving renamed file '%s'", renamedFilePath)
@@ -966,9 +961,6 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 
 // prefetchAutoUpdateModuleRevisions fetches the latest revisions for modules with auto_update set
 func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, projectRef *ProjectRef, opts *GetProjectOpts) (map[string]string, error) {
-	// kim: NOTE: this calls getPatchedProjectYAMF but it's also called
-	// immediately after prefetchAutoUpdateModuleRevisions, which is a little
-	// wasteful.
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting patched project file as YAML")

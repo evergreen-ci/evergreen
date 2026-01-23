@@ -498,9 +498,6 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // Since git is experimental, this function will always return the resulting
 // file from the GitHub API, regardless of whether useGit is true or false.
 // Setting useGit to true will be slower since it retrieves the file twice.
-// kim: NOTE: callers must decide if useGit is set depending on whether it's a
-// one-off file (probably fine if it's a little slow) or whether it's retrieving
-// many files (need to defer until worktrees are set up).
 func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
 	var gitFile []byte
 	var gitErr error

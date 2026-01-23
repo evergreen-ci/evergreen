@@ -665,7 +665,6 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"read_from":   localOpts.ReadFileFrom,
 		"module":      include.Module,
 	})
-	// kim: NOTE: both of these calls boil down to retrieveFile.
 	if include.Module != "" {
 		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
@@ -690,8 +689,6 @@ type yamlTuple struct {
 // and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-// kim: NOTE: LoadProjectInto processes the includes, so all the other calls to
-// fetch GitHub files except this one are just loading singular files.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
 	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.ProjectIDOtelAttribute, projectID),
@@ -855,7 +852,6 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
-// kim: TODO: look into callers to verify if it's used for includes.
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
@@ -895,16 +891,6 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
 		return fileContents, nil
-		// kim: TODO: remove
-		// configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
-		// if err != nil {
-		//     return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
-		// }
-		// fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-		// if err != nil {
-		//     return nil, errors.Wrapf(err, "decoding config file for project '%s'", opts.Identifier)
-		// }
-		// return fileContents, nil
 	}
 }
 
@@ -990,15 +976,11 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	if opts.Ref == nil {
 		return nil, errors.New("project not passed in")
 	}
-	// kim: TODO: remove
-	// var projectFileBytes []byte
 	ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
-	// kim: TODO: have to figure out if the caller is getting multiple files
-	// here to prevent this from running on large includes.
 	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
@@ -1009,25 +991,6 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 				opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		}
 	}
-	// kim: TODO: remove
-	// githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
-	//     opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
-	// if err != nil {
-	//     // if the project file doesn't exist, but our patch includes a project file,
-	//     // we try to apply the diff and proceed.
-	//     if !(opts.PatchOpts.patch.ConfigChanged(opts.RemotePath) && thirdparty.IsFileNotFound(err)) {
-	//         // return an error if the github error is network/auth-related or we aren't patching the config
-	//         return nil, errors.Wrapf(err, "getting GitHub file at '%s/%s'@%s: %s", opts.Ref.Owner,
-	//             opts.Ref.Repo, opts.RemotePath, opts.Revision)
-	//     }
-	// } else {
-	//     // we successfully got the project file in base64, so we decode it
-	//     projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
-	//     if err != nil {
-	//         return nil, errors.Wrapf(err, "decoding GitHub file at '%s/%s'@%s: %s", opts.Ref.Owner,
-	//             opts.Ref.Repo, opts.RemotePath, opts.Revision)
-	//     }
-	// }
 	return projectFileBytes, nil
 }
 
@@ -1055,8 +1018,6 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 	ctx, cancel := context.WithTimeout(ctx, fetchProjectFilesTimeout)
 	defer cancel()
 
-	// kim: NOTE: this is safe to use git since it's loading one file, not all
-	// includes.
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {
 		return ProjectInfo{}, err

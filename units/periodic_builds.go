@@ -165,15 +165,6 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 	if err != nil {
 		return errors.Wrap(err, "getting config file from GitHub")
 	}
-	// kim: TODO: remove
-	// configFile, err := thirdparty.GetGithubFile(ctx, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision, ghAppAuth)
-	// if err != nil {
-	//     return errors.Wrap(err, "getting config file from GitHub")
-	// }
-	// configBytes, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	// if err != nil {
-	//     return errors.Wrap(err, "decoding config file")
-	// }
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{
 		Ref:          j.project,

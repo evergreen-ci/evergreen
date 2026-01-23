@@ -3275,17 +3275,6 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
-	// kim: TODO: remove
-	// configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
-	// if err != nil {
-	//     return "", errors.Wrapf(err,
-	//         "fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
-	// }
-	// fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	// if err != nil {
-	//     return "", errors.Wrapf(err,
-	//         "unable to spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
-	// }
 
 	return string(fileContents), nil
 }
