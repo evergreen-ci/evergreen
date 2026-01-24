@@ -93,6 +93,7 @@ type patchParams struct {
 	PatchAuthor                        string
 	IncludeModules                     bool
 	LocalModuleIncludes                []patch.LocalModuleInclude
+	UsePathFilters                     bool
 }
 
 type patchSubmission struct {
@@ -120,6 +121,7 @@ type patchSubmission struct {
 	githubAuthor                       string
 	patchAuthor                        string
 	localModuleIncludes                []patch.LocalModuleInclude
+	usePathFilters                     bool
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -148,6 +150,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		githubAuthor:                       p.GithubAuthor,
 		patchAuthor:                        p.PatchAuthor,
 		localModuleIncludes:                p.LocalModuleIncludes,
+		usePathFilters:                     p.UsePathFilters,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)

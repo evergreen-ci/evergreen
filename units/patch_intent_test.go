@@ -2226,6 +2226,141 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 			expectedBuildVariants:   1,
 			expectedTasks:           1,
 		},
+		{
+			name: "CLIPatchWithUsePathFiltersTrue",
+			patchDoc: &patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Project: s.project,
+				Author:  s.user,
+				Githash: s.hash,
+				Patches: []patch.ModulePatch{
+					{
+						PatchSet: patch.PatchSet{
+							Summary: []thirdparty.Summary{
+								{Name: "src/main.go", Additions: 5, Deletions: 2},
+							},
+						},
+					},
+				},
+				VariantsTasks: []patch.VariantTasks{
+					{Variant: "frontend", Tasks: []string{"frontend-test"}},
+					{Variant: "backend", Tasks: []string{"backend-test"}},
+				},
+				BuildVariants:  []string{"frontend", "backend"},
+				Tasks:          []string{"frontend-test", "backend-test"},
+				UsePathFilters: true,
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				BuildVariants: model.BuildVariants{
+					{Name: "frontend", Paths: []string{"frontend/**"}},
+					{Name: "backend", Paths: []string{"src/**"}},
+				},
+			},
+			expectedIgnoredVariants: []string{"frontend"},
+			expectedVariantsTasks:   1,
+			expectedBuildVariants:   1,
+			expectedTasks:           1,
+			expectedVariantNames:    []string{"backend"},
+			expectedTaskNames:       []string{"backend-test"},
+		},
+		{
+			name: "CLIPatchWithUsePathFiltersFalse",
+			patchDoc: &patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Project: s.project,
+				Author:  s.user,
+				Githash: s.hash,
+				Patches: []patch.ModulePatch{
+					{
+						PatchSet: patch.PatchSet{
+							Summary: []thirdparty.Summary{
+								{Name: "src/main.go", Additions: 5, Deletions: 2},
+							},
+						},
+					},
+				},
+				VariantsTasks: []patch.VariantTasks{
+					{Variant: "frontend", Tasks: []string{"frontend-test"}},
+					{Variant: "backend", Tasks: []string{"backend-test"}},
+				},
+				BuildVariants:  []string{"frontend", "backend"},
+				Tasks:          []string{"frontend-test", "backend-test"},
+				UsePathFilters: false,
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				BuildVariants: model.BuildVariants{
+					{Name: "frontend", Paths: []string{"frontend/**"}},
+					{Name: "backend", Paths: []string{"src/**"}},
+				},
+			},
+			expectedIgnoredVariants: []string{},
+			expectedVariantsTasks:   2,
+			expectedBuildVariants:   2,
+			expectedTasks:           2,
+		},
+		{
+			name: "CLIPatchWithUsePathFiltersTrueAllVariantsMatch",
+			patchDoc: &patch.Patch{
+				Id:      mgobson.NewObjectId(),
+				Project: s.project,
+				Author:  s.user,
+				Githash: s.hash,
+				Patches: []patch.ModulePatch{
+					{
+						PatchSet: patch.PatchSet{
+							Summary: []thirdparty.Summary{
+								{Name: "shared/utils.go", Additions: 3, Deletions: 1},
+							},
+						},
+					},
+				},
+				VariantsTasks: []patch.VariantTasks{
+					{Variant: "frontend", Tasks: []string{"frontend-test"}},
+					{Variant: "backend", Tasks: []string{"backend-test"}},
+				},
+				BuildVariants:  []string{"frontend", "backend"},
+				Tasks:          []string{"frontend-test", "backend-test"},
+				UsePathFilters: true,
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				BuildVariants: model.BuildVariants{
+					{Name: "frontend", Paths: []string{"frontend/**", "shared/**"}},
+					{Name: "backend", Paths: []string{"src/**", "shared/**"}},
+				},
+			},
+			expectedIgnoredVariants: []string{},
+			expectedVariantsTasks:   2,
+			expectedBuildVariants:   2,
+			expectedTasks:           2,
+		},
+		{
+			name: "CLIPatchWithUsePathFiltersTrueNoChangedFiles",
+			patchDoc: &patch.Patch{
+				Id:             mgobson.NewObjectId(),
+				Project:        s.project,
+				Author:         s.user,
+				Githash:        s.hash,
+				UsePathFilters: true,
+				VariantsTasks: []patch.VariantTasks{
+					{Variant: "variant1", Tasks: []string{"task1"}},
+				},
+				BuildVariants: []string{"variant1"},
+				Tasks:         []string{"task1"},
+			},
+			project: &model.Project{
+				Identifier: s.project,
+				BuildVariants: model.BuildVariants{
+					{Name: "variant1", Paths: []string{"src/**"}},
+				},
+			},
+			expectedIgnoredVariants: []string{},
+			expectedVariantsTasks:   1,
+			expectedBuildVariants:   1,
+			expectedTasks:           1,
+		},
 	}
 
 	for _, tc := range testCases {

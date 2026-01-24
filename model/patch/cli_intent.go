@@ -108,6 +108,9 @@ type cliIntent struct {
 
 	// LocalModuleIncludes is only used to include local module changes
 	LocalModuleIncludes []LocalModuleInclude `bson:"local_module_includes,omitempty"`
+
+	// UsePathFilters indicates whether to enable path filters for build variants
+	UsePathFilters bool `bson:"use_path_filters,omitempty"`
 }
 
 // BSON fields for the patches
@@ -208,6 +211,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		Patches:                                 []ModulePatch{},
 		GitInfo:                                 c.GitInfo,
 		LocalModuleIncludes:                     c.LocalModuleIncludes,
+		UsePathFilters:                          c.UsePathFilters,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -247,6 +251,7 @@ type CLIIntentParams struct {
 	RepeatFailed                       bool
 	RepeatPatchId                      string
 	LocalModuleIncludes                []LocalModuleInclude
+	UsePathFilters                     bool
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -298,6 +303,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		RepeatFailed:                            params.RepeatFailed,
 		RepeatPatchId:                           params.RepeatPatchId,
 		LocalModuleIncludes:                     params.LocalModuleIncludes,
+		UsePathFilters:                          params.UsePathFilters,
 	}, nil
 }
 

@@ -334,3 +334,47 @@ func (s *CliIntentSuite) TestNewPatch() {
 	s.Equal(s.alias, patchDoc.Alias)
 	s.Zero(patchDoc.GithubPatchData)
 }
+
+func (s *CliIntentSuite) TestNewPatchWithUsePathFilters() {
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:           s.user,
+		Project:        s.projectID,
+		BaseGitHash:    s.hash,
+		Module:         s.module,
+		PatchContent:   s.patchContent,
+		Description:    s.description,
+		Finalize:       true,
+		Variants:       s.variants,
+		Tasks:          s.tasks,
+		Alias:          s.alias,
+		UsePathFilters: true,
+	})
+	s.NoError(err)
+	s.NotNil(intent)
+
+	patchDoc := intent.NewPatch()
+	s.NotNil(patchDoc)
+	s.True(patchDoc.UsePathFilters)
+}
+
+func (s *CliIntentSuite) TestNewPatchWithoutUsePathFilters() {
+	intent, err := NewCliIntent(CLIIntentParams{
+		User:           s.user,
+		Project:        s.projectID,
+		BaseGitHash:    s.hash,
+		Module:         s.module,
+		PatchContent:   s.patchContent,
+		Description:    s.description,
+		Finalize:       true,
+		Variants:       s.variants,
+		Tasks:          s.tasks,
+		Alias:          s.alias,
+		UsePathFilters: false,
+	})
+	s.NoError(err)
+	s.NotNil(intent)
+
+	patchDoc := intent.NewPatch()
+	s.NotNil(patchDoc)
+	s.False(patchDoc.UsePathFilters)
+}

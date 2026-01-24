@@ -120,6 +120,7 @@ type patchData struct {
 	GithubAuthor                       string                     `json:"github_author"`
 	PatchAuthor                        string                     `json:"patch_author"`
 	LocalModuleIncludes                []patch.LocalModuleInclude `json:"local_module_includes"`
+	UsePathFilters                     bool                       `json:"use_path_filters"`
 }
 
 // submitPatch creates the Patch document, adds the patched project config to it,
@@ -200,6 +201,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RepeatFailed:                       data.RepeatFailed,
 		RepeatPatchId:                      data.RepeatPatchId,
 		LocalModuleIncludes:                data.LocalModuleIncludes,
+		UsePathFilters:                     data.UsePathFilters,
 	})
 
 	if err != nil {

@@ -29,6 +29,7 @@ const (
 	repeatPatchIdFlag                    = "repeat-patch"
 	includeModulesFlag                   = "include-modules"
 	autoDescriptionFlag                  = "auto-description"
+	usePathFiltersFlagName               = "use-path-filters"
 	testSelectionIncludeVariantsFlagName = "test-selection-include-variants"
 	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
 	testSelectionExcludeVariantsFlagName = "test-selection-exclude-variants"
@@ -103,6 +104,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 				Name:  testSelectionExcludeTasksFlagName,
 				Usage: "regex task names that should have test selection disabled (overrides included tasks)",
 			},
+			cli.BoolFlag{
+				Name:  usePathFiltersFlagName,
+				Usage: "enable path filters for build variants (filters out variants based on changed files)",
+			},
 		))
 }
 
@@ -163,6 +168,7 @@ func Patch() cli.Command {
 				RepeatDefinition:                   c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
 				RepeatFailed:                       c.Bool(repeatFailedDefinitionFlag),
 				IncludeModules:                     c.Bool(includeModulesFlag),
+				UsePathFilters:                     c.Bool(usePathFiltersFlagName),
 			}
 
 			var err error
@@ -433,19 +439,20 @@ func PatchFile() cli.Command {
 				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			params := &patchParams{
-				Project:          c.String(projectFlagName),
-				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				Alias:            c.String(patchAliasFlagName),
-				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
-				Description:      c.String(patchDescriptionFlagName),
-				AutoDescription:  c.Bool(autoDescriptionFlag),
-				ShowSummary:      c.Bool(patchVerboseFlagName),
-				Large:            c.Bool(largeFlagName),
-				PatchAuthor:      c.String(patchAuthorFlag),
-				RepeatPatchId:    c.String(repeatPatchIdFlag),
-				RepeatDefinition: c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
-				RepeatFailed:     c.Bool(repeatFailedDefinitionFlag),
+				Project:           c.String(projectFlagName),
+				Variants:          utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				Alias:             c.String(patchAliasFlagName),
+				SkipConfirm:       c.Bool(skipConfirmFlagName) || outputJSON,
+				Description:       c.String(patchDescriptionFlagName),
+				AutoDescription:   c.Bool(autoDescriptionFlag),
+				ShowSummary:       c.Bool(patchVerboseFlagName),
+				Large:             c.Bool(largeFlagName),
+				PatchAuthor:       c.String(patchAuthorFlag),
+				RepeatPatchId:     c.String(repeatPatchIdFlag),
+				RepeatDefinition:  c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
+				UsePathFilters:    c.Bool(usePathFiltersFlagName),
 			}
 			var err error
 			diffPath := c.String(diffPathFlagName)
