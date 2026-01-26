@@ -226,6 +226,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
 	assert.Equal(testSettings.Tracer.CollectorInternalEndpoint, *apiSettings.Tracer.CollectorInternalEndpoint)
 	assert.Equal(testSettings.GitHubCheckRun.CheckRunLimit, *apiSettings.GitHubCheckRun.CheckRunLimit)
+	assert.Equal(testSettings.Sage.BaseURL, utility.FromStringPtr(apiSettings.Sage.BaseURL))
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
@@ -339,6 +340,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
 	assert.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, dbSettings.Tracer.CollectorInternalEndpoint)
 	assert.EqualValues(testSettings.GitHubCheckRun.CheckRunLimit, dbSettings.GitHubCheckRun.CheckRunLimit)
+	assert.EqualValues(testSettings.Sage.BaseURL, dbSettings.Sage.BaseURL)
 }
 
 func TestRestart(t *testing.T) {
