@@ -238,10 +238,13 @@ func ParseGitVersion(version string) (string, error) {
 
 // GetGitHubFileFromGit retrieves a single file's contents from GitHub using
 // git. Ref must be a commit hash or branch.
-func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) (string, error) {
+func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) ([]byte, error) {
+	ctx, span := tracer.Start(ctx, "GetGitHubFileFromGit")
+	defer span.End()
+
 	dir, err := gitCloneMinimal(ctx, owner, repo, ref)
 	if err != nil {
-		return "", errors.Wrap(err, "git cloning repository")
+		return nil, errors.Wrap(err, "git cloning repository")
 	}
 	defer func() {
 		grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
@@ -265,7 +268,7 @@ const gitOperationTimeout = 15 * time.Second
 // has no file content. Callers are expected to clean up the returned git
 // directory when it is no longer needed.
 func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
-	ctx, span := tracer.Start(ctx, "git-clone-minimal", trace.WithAttributes(
+	ctx, span := tracer.Start(ctx, "gitCloneMinimal", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 		attribute.String(githubRefAttribute, revision),
@@ -339,8 +342,8 @@ const gitErrorFileNotFound = "did not match any file(s) known to git"
 // gitRestoreFile restores a git file within the given git directory and returns
 // its contents. Callers are assumed to have already cloned the repo into dir
 // and HEAD is assumed to be already pointing to the desired revision.
-func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) (string, error) {
-	ctx, span := tracer.Start(ctx, "git-restore", trace.WithAttributes(
+func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) ([]byte, error) {
+	ctx, span := tracer.Start(ctx, "gitRestoreFile", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 		attribute.String(githubRefAttribute, revision),
@@ -352,7 +355,7 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	// access files outside the git repo. The requested file could be
 	// user-provided (e.g. an include file), which is not trusted.
 	if err := validateFileIsWithinDirectory(dir, fileName); err != nil {
-		return "", errors.Wrapf(err, "validating file path '%s' is within git repo directory", fileName)
+		return nil, errors.Wrapf(err, "validating file path '%s' is within git repo directory", fileName)
 	}
 
 	// Limit how long this can spend restoring the file to prevent this from
@@ -376,7 +379,7 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 		if strings.Contains(stderr.String(), gitErrorFileNotFound) {
 			// To mirror GetGithubFile's behavior, return a FileNotFoundError if
 			// the file doesn't exist in the repo at the given revision.
-			return "", FileNotFoundError{filepath: fileName}
+			return nil, FileNotFoundError{filepath: fileName}
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "git restore failed",
@@ -388,21 +391,21 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 			"stderr":    stderr.String(),
 			"file_name": fileName,
 		}))
-		return "", errors.Wrapf(err, "restoring file '%s'", fileName)
+		return nil, errors.Wrapf(err, "restoring file '%s'", fileName)
 	}
 
 	// Validate that the restored file is not a symlink to prevent attempts to
 	// access a different file in the file system (e.g. a file in the git repo
 	// that symlinks to `~/.ssh/id_rsa`).
 	if err := validateFileIsNotSymlink(dir, fileName); err != nil {
-		return "", errors.Wrapf(err, "validating file '%s' is not a symlink", fileName)
+		return nil, errors.Wrapf(err, "validating file '%s' is not a symlink", fileName)
 	}
 
 	contents, err := os.ReadFile(filepath.Join(dir, fileName))
 	if err != nil {
-		return "", errors.Wrapf(err, "reading restored file '%s'", fileName)
+		return nil, errors.Wrapf(err, "reading restored file '%s'", fileName)
 	}
-	return string(contents), nil
+	return contents, nil
 }
 
 // validateFileIsWithinDirectory ensures that the given file path is

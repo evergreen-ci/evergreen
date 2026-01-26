@@ -3,6 +3,7 @@ package thirdparty
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -488,6 +489,55 @@ func parseGithubErrorResponse(resp *github.Response) error {
 		return APIRequestError{StatusCode: resp.StatusCode, Message: string(respBody)}
 	}
 	return requestError
+}
+
+// GetGitHubFileContent returns the contents of a file within a GitHub
+// repository. If useGit is specified, it will attempt to retrieve the file
+// using git first to compare with the GitHub API file.
+//
+// Since git is experimental, this function will always return the resulting
+// file from the GitHub API, regardless of whether useGit is true or false.
+// Setting useGit to true will be slower since it retrieves the file twice.
+func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
+	var gitFile []byte
+	var gitErr error
+	if useGit {
+		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path)
+		grip.Warning(message.WrapError(gitErr, message.Fields{
+			"message": "could not retrieve GitHub file using git",
+			"ticket":  "DEVPROD-26143",
+			"owner":   owner,
+			"repo":    repo,
+			"ref":     ref,
+			"path":    path,
+		}))
+	}
+
+	ghFile, err := GetGithubFile(ctx, owner, repo, path, ref, ghAppAuth)
+	if err != nil {
+		return nil, err
+	}
+	ghFileContent, err := base64.StdEncoding.DecodeString(*ghFile.Content)
+	if err != nil {
+		return nil, errors.Wrap(err, "decoding GitHub file content")
+	}
+
+	if useGit && gitErr == nil && !bytes.Equal(gitFile, ghFileContent) {
+		// Compare whether the file content retrieved via git matches the
+		// content retrieved via the GitHub API. Since git is experimental, it's
+		// not trusted to return the correct data currently.
+		grip.Warning(message.Fields{
+			"message": "GitHub file content retrieved via git does not exactly match the content retrieved via GitHub API",
+			"ticket":  "DEVPROD-26143",
+			"owner":   owner,
+			"repo":    repo,
+			"ref":     ref,
+			"path":    path,
+		})
+	}
+
+	// Always return the GitHub API file since git is experimental.
+	return ghFileContent, nil
 }
 
 // GetGithubFile returns a struct that contains the contents of files within

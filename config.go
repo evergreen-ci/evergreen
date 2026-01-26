@@ -33,7 +33,7 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-01-22"
+	ClientVersion = "2026-01-26"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
@@ -125,6 +125,7 @@ type Settings struct {
 	Tracer                  TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
 	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                      UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	Sage                    SageConfig                `yaml:"sage" bson:"sage" json:"sage" id:"sage"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }

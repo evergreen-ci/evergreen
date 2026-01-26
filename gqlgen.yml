@@ -779,10 +779,26 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
   RuntimeEnvironmentConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
+  SageConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISageConfig
+  SageConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISageConfig
+  S3CostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
+  S3CostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
   S3Credentials:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
   S3CredentialsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
+  S3StorageCostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3StorageCostConfig
+  S3StorageCostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3StorageCostConfig
+  S3UploadCostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
+  S3UploadCostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
   SchedulerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
   SchedulerConfigInput:
