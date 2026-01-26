@@ -15,6 +15,8 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mgobson "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestMostRecentByUserAndProject(t *testing.T) {
@@ -77,6 +79,8 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	assert.Equal(t, p.Id, previousPatch.Id)
 }
 func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"EmptyRequestersList": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
@@ -216,6 +220,7 @@ func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
 }
 func TestByPatchNameStatusesMergeQueuePaginatedCombined(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
 
 	now := time.Now()
 	for i := 0; i < 10; i++ {
@@ -297,6 +302,7 @@ func TestByPatchNameStatusesMergeQueuePaginatedCombined(t *testing.T) {
 
 func TestByPatchNameStatusesMergeQueuePaginatedResults(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
 
 	now := time.Now()
 	for i := 0; i < 10; i++ {
@@ -389,6 +395,7 @@ func TestByPatchNameStatusesMergeQueuePaginatedResults(t *testing.T) {
 
 func TestByPatchNameStatusesMergeQueuePaginatedCount(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
 
 	now := time.Now()
 	for i := 0; i < 10; i++ {

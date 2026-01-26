@@ -80,10 +80,16 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 
 	// Fetch count only if requested
 	count := 0
-	if queriedCount && len(apiPatches) == patchesInput.Limit {
-		count, err = patch.ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch count for project '%s': %s", utility.FromStringPtr(opts.Project), err.Error()))
+	if queriedCount {
+		// Optimization: if we fetched patches and got fewer than the limit, we know the total count
+		if queriedPatches && len(apiPatches) < patchesInput.Limit {
+			count = len(apiPatches)
+		} else {
+			// Either we didn't fetch patches (only count requested) or we hit the limit (might be more)
+			count, err = patch.ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch count for project '%s': %s", utility.FromStringPtr(opts.Project), err.Error()))
+			}
 		}
 	}
 
