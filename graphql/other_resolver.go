@@ -2,16 +2,10 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
-
-// S3Cost is the resolver for the s3Cost field.
-func (r *costConfigResolver) S3Cost(ctx context.Context, obj *model.APICostConfig) (*S3CostConfig, error) {
-	panic(fmt.Errorf("not implemented: S3Cost - s3Cost"))
-}
 
 // CustomFields is the resolver for the customFields field.
 func (r *jiraNotificationsConfigResolver) CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig) ([]*JiraNotificationsProjectEntry, error) {
@@ -59,11 +53,6 @@ func (r *jiraNotificationsConfigResolver) CustomFields(ctx context.Context, obj 
 	return entries, nil
 }
 
-// S3Cost is the resolver for the s3Cost field.
-func (r *costConfigInputResolver) S3Cost(ctx context.Context, obj *model.APICostConfig, data *S3CostConfigInput) error {
-	panic(fmt.Errorf("not implemented: S3Cost - s3Cost"))
-}
-
 // CustomFields is the resolver for the customFields field.
 func (r *jiraNotificationsConfigInputResolver) CustomFields(ctx context.Context, obj *model.APIJIRANotificationsConfig, data []*JiraNotificationsProjectEntryInput) error {
 	if obj == nil {
@@ -86,23 +75,15 @@ func (r *jiraNotificationsConfigInputResolver) CustomFields(ctx context.Context,
 	return nil
 }
 
-// CostConfig returns CostConfigResolver implementation.
-func (r *Resolver) CostConfig() CostConfigResolver { return &costConfigResolver{r} }
-
 // JiraNotificationsConfig returns JiraNotificationsConfigResolver implementation.
 func (r *Resolver) JiraNotificationsConfig() JiraNotificationsConfigResolver {
 	return &jiraNotificationsConfigResolver{r}
 }
-
-// CostConfigInput returns CostConfigInputResolver implementation.
-func (r *Resolver) CostConfigInput() CostConfigInputResolver { return &costConfigInputResolver{r} }
 
 // JiraNotificationsConfigInput returns JiraNotificationsConfigInputResolver implementation.
 func (r *Resolver) JiraNotificationsConfigInput() JiraNotificationsConfigInputResolver {
 	return &jiraNotificationsConfigInputResolver{r}
 }
 
-type costConfigResolver struct{ *Resolver }
 type jiraNotificationsConfigResolver struct{ *Resolver }
-type costConfigInputResolver struct{ *Resolver }
 type jiraNotificationsConfigInputResolver struct{ *Resolver }

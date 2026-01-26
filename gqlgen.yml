@@ -787,6 +787,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
   S3CredentialsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
+  S3CostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
+  S3CostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
   S3StorageCostConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3StorageCostConfig
   S3StorageCostConfigInput:
