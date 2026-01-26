@@ -513,7 +513,7 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, gh
 		}))
 	}
 
-	ghFile, err := GetGithubFile(ctx, owner, repo, path, ref, nil)
+	ghFile, err := GetGithubFile(ctx, owner, repo, path, ref, ghAppAuth)
 	if err != nil {
 		return nil, err
 	}
