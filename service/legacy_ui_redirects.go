@@ -82,6 +82,11 @@ func (uis *UIServer) legacyUserSettingsPage(w http.ResponseWriter, r *http.Reque
 	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
 }
 
+func (uis *UIServer) reidrectUserPreferencesCLIPage(w http.ResponseWriter, r *http.Request) {
+	newUILink := fmt.Sprintf("%s/preferences/cli", uis.Settings.Ui.UIv2Url)
+	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
+}
+
 func (uis *UIServer) legacyNotificationsPage(w http.ResponseWriter, r *http.Request) {
 	newUILink := fmt.Sprintf("%s/preferences/notifications", uis.Settings.Ui.UIv2Url)
 	http.Redirect(w, r, newUILink, http.StatusPermanentRedirect)
