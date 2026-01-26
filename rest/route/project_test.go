@@ -98,13 +98,13 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		},
 	}
 	roleManager := s.env.RoleManager()
-	s.NoError(roleManager.UpdateRole(projectAdminRole))
+	s.NoError(roleManager.UpdateRole(ctx, projectAdminRole))
 	adminScope := gimlet.Scope{
 		ID:        "project_scope",
 		Type:      evergreen.ProjectResourceType,
 		Resources: []string{"dimoxinil", "other_project", "branch_project"},
 	}
-	s.NoError(roleManager.AddScope(adminScope))
+	s.NoError(roleManager.AddScope(ctx, adminScope))
 }
 
 func (s *ProjectPatchByIDSuite) TearDownTest() {
@@ -557,6 +557,27 @@ func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {
 	s.False(*pRef.TestSelection.DefaultEnabled)
 }
 
+func (s *ProjectPatchByIDSuite) TestRunEveryMainlineCommit() {
+	ctx := s.T().Context()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
+	jsonBody := []byte(`{"enabled": true, "run_every_mainline_commit": true, "run_every_mainline_commit_limit": 5}`)
+	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.rm.(*projectIDPatchHandler).user)
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Require().Equal(http.StatusOK, resp.Status())
+
+	pRef, err := data.FindProjectById(s.T().Context(), "dimoxinil", false, false)
+	s.NoError(err)
+	s.True(pRef.RunEveryMainlineCommit)
+	s.Equal(5, pRef.RunEveryMainlineCommitLimit)
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for PUT /rest/v2/projects/{project_id}
@@ -756,6 +777,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Admins, utility.FromStringPtrSlice(projectRef.Admins))
 	s.Equal(cachedProject.NotifyOnBuildFailure, projectRef.NotifyOnBuildFailure)
 	s.Equal(cachedProject.DisabledStatsCache, projectRef.DisabledStatsCache)
+	s.Equal(cachedProject.DebugSpawnHostsDisabled, projectRef.DebugSpawnHostsDisabled)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -775,22 +797,28 @@ func TestProjectGetSuite(t *testing.T) {
 func (s *ProjectGetSuite) SetupSuite() {
 	pRefs := []serviceModel.ProjectRef{
 		{
-			Id: "projectA",
+			Id:         "projectA",
+			Identifier: "projectA",
 		},
 		{
-			Id: "projectB",
+			Id:         "projectB",
+			Identifier: "projectB",
 		},
 		{
-			Id: "projectC",
+			Id:         "projectC",
+			Identifier: "projectC",
 		},
 		{
-			Id: "projectD",
+			Id:         "projectD",
+			Identifier: "projectD",
 		},
 		{
-			Id: "projectE",
+			Id:         "projectE",
+			Identifier: "projectE",
 		},
 		{
-			Id: "projectF",
+			Id:         "projectF",
+			Identifier: "projectF",
 		},
 	}
 	for _, pRef := range pRefs {
@@ -935,11 +963,12 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		CommitQueue: serviceModel.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 		},
-		Hidden:               utility.FalsePtr(),
-		PatchingDisabled:     utility.FalsePtr(),
-		Admins:               []string{"langdon.alger"},
-		NotifyOnBuildFailure: utility.FalsePtr(),
-		DisabledStatsCache:   utility.TruePtr(),
+		Hidden:                  utility.FalsePtr(),
+		PatchingDisabled:        utility.FalsePtr(),
+		Admins:                  []string{"langdon.alger"},
+		NotifyOnBuildFailure:    utility.FalsePtr(),
+		DisabledStatsCache:      utility.TruePtr(),
+		DebugSpawnHostsDisabled: utility.TruePtr(),
 	}
 }
 

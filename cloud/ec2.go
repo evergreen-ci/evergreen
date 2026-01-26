@@ -591,7 +591,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 
 	if noExpiration {
 		var userTimeZone string
-		u, err := user.FindOneByIdContext(ctx, h.StartedBy)
+		u, err := user.FindOneById(ctx, h.StartedBy)
 		if err != nil {
 			return errors.Wrapf(err, "finding owner '%s' for host '%s'", h.StartedBy, h.Id)
 		}
@@ -868,15 +868,26 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
 	}
 
-	if h.NoExpiration {
-		// Clean up remaining DNS records for unexpirable hosts.
-		grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
+	// Any host that has been unexpirable will have been given a DNS name, which we need to clean up.
+	if h.PersistentDNSName != "" {
+		dnsName := h.PersistentDNSName
+		err := deleteHostPersistentDNSName(ctx, m.env, h, m.client)
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not delete host's persistent DNS name",
 			"op":         "delete",
 			"dashboard":  "evergreen sleep schedule health",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,
+			"dns_name":   dnsName,
 		}))
+		grip.InfoWhen(err == nil, message.Fields{
+			"message":    "deleted host's persistent DNS name",
+			"op":         "delete",
+			"dashboard":  "evergreen sleep schedule health",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"dns_name":   dnsName,
+		})
 	}
 
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{

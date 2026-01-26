@@ -50,7 +50,7 @@ func AssignUnusedIPAddress(ctx context.Context, hostTag string) (*IPAddress, err
 // tag is not set to the expected IP address's host ID, this will return an
 // error.
 func (a *IPAddress) UnsetHostTag(ctx context.Context) error {
-	if err := db.UpdateContext(ctx, IPAddressCollection, bson.M{
+	if err := db.Update(ctx, IPAddressCollection, bson.M{
 		ipAddressIDKey:      a.ID,
 		ipAddressHostTagKey: a.HostTag,
 	}, bson.M{
@@ -71,7 +71,7 @@ func IPAddressUnsetHostTags(ctx context.Context, ids ...string) error {
 		return nil
 	}
 
-	_, err := db.UpdateAllContext(ctx, IPAddressCollection, bson.M{
+	_, err := db.UpdateAll(ctx, IPAddressCollection, bson.M{
 		ipAddressIDKey: bson.M{"$in": ids},
 	}, bson.M{
 		"$unset": bson.M{ipAddressHostTagKey: 1},
@@ -83,7 +83,7 @@ func IPAddressUnsetHostTags(ctx context.Context, ids ...string) error {
 // allocation ID.
 func FindIPAddressByAllocationID(ctx context.Context, allocationID string) (*IPAddress, error) {
 	ipAddr := &IPAddress{}
-	err := db.FindOneQContext(ctx, IPAddressCollection, db.Query(bson.M{
+	err := db.FindOneQ(ctx, IPAddressCollection, db.Query(bson.M{
 		ipAddressAllocationIDKey: allocationID,
 	}), ipAddr)
 	if adb.ResultsNotFound(err) {

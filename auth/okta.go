@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -38,14 +39,18 @@ func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) 
 		PutHTTPClient: utility.PutHTTPClient,
 		ExternalCache: &usercache.ExternalOptions{
 			PutUserGetToken: user.PutLoginCache,
-			GetUserByToken:  func(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) },
-			ClearUserToken: func(u gimlet.User, all bool) error {
-				if all {
-					return user.ClearAllLoginCaches()
-				}
-				return user.ClearLoginCache(u)
+			GetUserByToken: func(ctx context.Context, token string) (gimlet.User, bool, error) {
+				return user.GetLoginCache(ctx, token, expireAfter)
 			},
-			GetUserByID:     func(id string) (gimlet.User, bool, error) { return getUserByIdWithExpiration(id, expireAfter) },
+			ClearUserToken: func(ctx context.Context, u gimlet.User, all bool) error {
+				if all {
+					return user.ClearAllLoginCaches(ctx)
+				}
+				return user.ClearLoginCache(ctx, u)
+			},
+			GetUserByID: func(ctx context.Context, id string) (gimlet.User, bool, error) {
+				return getUserByIdWithExpiration(ctx, id, expireAfter)
+			},
 			GetOrCreateUser: getOrCreateUser,
 		},
 	}

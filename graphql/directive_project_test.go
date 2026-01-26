@@ -38,7 +38,7 @@ func TestRequireProjectAccess(t *testing.T) {
 	config := New("/graphql")
 	require.NotNil(t, config)
 
-	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -193,7 +193,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NotNil(t, config)
 	obj := any(map[string]any{"taskId": task.Id})
 
-	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -323,7 +323,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NotNil(t, config)
 	obj := any(map[string]any{"taskId": task.Id})
 
-	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -417,7 +417,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NotNil(t, config)
 	obj := any(map[string]any{"patchId": patch.Id.Hex()})
 
-	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -505,7 +505,7 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 	require.NotNil(t, config)
 	obj := any(map[string]any{"projectId": project.Id})
 
-	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 

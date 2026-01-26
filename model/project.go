@@ -1142,6 +1142,26 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 			// this looks like "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 			expansions.Put("github_head_branch", p.GithubMergeData.HeadBranch)
 		}
+		if v.IsChild() {
+			expansions.Put("parent_patch_id", v.ParentPatchID)
+			parentPatch, err := patch.FindOneId(ctx, v.ParentPatchID)
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding parent version '%s'", v.ParentPatchID)
+			}
+			var parentRef *ProjectRef
+			if parentPatch != nil {
+				parentRef, err = FindBranchProjectRef(ctx, parentPatch.Project)
+				if err != nil {
+					return nil, errors.Wrap(err, "finding project ref")
+				}
+			}
+
+			if parentRef != nil {
+				expansions.Put("parent_github_org", parentRef.Owner)
+				expansions.Put("parent_github_repo", parentRef.Repo)
+				expansions.Put("parent_github_branch", parentRef.Branch)
+			}
+		}
 	} else {
 		expansions.Put("is_patch", "")
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
@@ -1177,7 +1197,7 @@ func (p PluginCommandConf) RunOnVariant(variant string) bool {
 	return len(p.Variants) == 0 || utility.StringSliceContains(p.Variants, variant)
 }
 
-// GetDisplayName returns the  display name of the plugin command. If none is
+// GetDisplayName returns the display name of the plugin command. If none is
 // defined, it returns the command's identifier.
 func (p PluginCommandConf) GetDisplayName() string {
 	if p.DisplayName != "" {
@@ -1251,8 +1271,6 @@ func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project,
 		return nil, errors.Errorf("version '%s' not found", versionStr)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-	defer cancel()
 	env := evergreen.GetEnvironment()
 
 	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver, false)
@@ -1291,7 +1309,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 // project configurations. If the preGeneration flag is set, this will retrieve
 // a cached version of this version's parser project from before it was modified by
 // generate.tasks, which is required for child patches.
-func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
+func FindLatestVersionWithValidProject(ctx context.Context, projectId string, preGeneration bool) (*Version, *Project, *ParserProject, error) {
 	const retryCount = 5
 	if projectId == "" {
 		return nil, nil, nil, errors.New("cannot pass empty projectId to FindLatestVersionWithValidParserProject")
@@ -1300,12 +1318,9 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 	var project *Project
 	var pp *ParserProject
 
-	// TODO: ZACKARY PASS CONTEXT
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-	defer cancel()
 	for i := 0; i < retryCount; i++ {
 		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {

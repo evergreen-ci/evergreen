@@ -33,7 +33,7 @@ var (
 // set to true if the value isn't empty.
 func (c *DBCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	item := cacheItem{}
-	err := db.FindOneQContext(ctx, collection,
+	err := db.FindOneQ(ctx, collection,
 		db.Query(bson.M{IDKey: key}),
 		&item,
 	)

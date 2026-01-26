@@ -44,7 +44,7 @@ func TestFindProject(t *testing.T) {
 			projRef := &ProjectRef{
 				Id: "",
 			}
-			version, project, pp, err := FindLatestVersionWithValidProject(projRef.Id, false)
+			version, project, pp, err := FindLatestVersionWithValidProject(t.Context(), projRef.Id, false)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
 			So(pp, ShouldBeNil)
@@ -73,7 +73,7 @@ func TestFindProject(t *testing.T) {
 			}
 			require.NoError(t, pp.Insert(t.Context()))
 			require.NoError(t, v.Insert(t.Context()), "failed to insert test version: %v", v)
-			_, _, _, err := FindLatestVersionWithValidProject(p.Id, false)
+			_, _, _, err := FindLatestVersionWithValidProject(t.Context(), p.Id, false)
 			So(err, ShouldBeNil)
 
 		})
@@ -105,7 +105,7 @@ func TestFindProject(t *testing.T) {
 			So(badVersion.Insert(t.Context()), ShouldBeNil)
 			So(goodVersion.Insert(t.Context()), ShouldBeNil)
 			So(pp.Insert(t.Context()), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", false)
+			v, p, pp, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "good_version")
@@ -131,7 +131,7 @@ func TestFindProject(t *testing.T) {
 			So(pp.Insert(t.Context()), ShouldBeNil)
 			pp.Id = "pre_generation_good_version"
 			So(pp.Insert(t.Context()), ShouldBeNil)
-			v, p, pp, err := FindLatestVersionWithValidProject("project_test", true)
+			v, p, pp, err := FindLatestVersionWithValidProject(t.Context(), "project_test", true)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
 			So(pp.Id, ShouldEqual, "pre_generation_good_version")
@@ -140,7 +140,7 @@ func TestFindProject(t *testing.T) {
 		})
 		Convey("error if no version exists", func() {
 			So(db.ClearCollections(VersionCollection, ParserProjectCollection), ShouldBeNil)
-			_, _, _, err := FindLatestVersionWithValidProject("project_test", false)
+			_, _, _, err := FindLatestVersionWithValidProject(t.Context(), "project_test", false)
 			So(err, ShouldNotBeNil)
 		})
 	})
@@ -570,6 +570,78 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal(upstreamTask.Status, expansions.Get("trigger_status"))
 	assert.Equal(upstreamTask.Version, expansions.Get("trigger_version"))
 	assert.Equal(upstreamProject.Branch, expansions.Get("trigger_branch"))
+}
+
+func TestPopulateExpansionsChildPatch(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	require.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
+
+	h := host.Host{
+		Id: "h",
+		Distro: distro.Distro{
+			Id:      "d1",
+			WorkDir: "/home/evg",
+		},
+	}
+
+	projectRef := &ProjectRef{
+		Id:         "mci",
+		Identifier: "mci-favorite",
+		Owner:      "my_org",
+		Repo:       "my_repo",
+	}
+	require.NoError(projectRef.Insert(t.Context()))
+
+	// Create parent patch and project
+	parentRef := &ProjectRef{
+		Id:         "parentProject",
+		Identifier: "parent project",
+		Owner:      "parent_org",
+		Repo:       "parent_repo",
+		Branch:     "parent_branch",
+	}
+	require.NoError(parentRef.Insert(t.Context()))
+
+	parentPatch := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: "parentProject",
+	}
+	require.NoError(parentPatch.Insert(t.Context()))
+
+	// Create child version with parent patch ID
+	childVersion := &Version{
+		Id:            "childVersion",
+		Branch:        "childBranch",
+		Author:        "childAuthor",
+		Requester:     evergreen.PatchVersionRequester,
+		ParentPatchID: parentPatch.Id.Hex(),
+	}
+	require.NoError(childVersion.Insert(t.Context()))
+	childPatch := &patch.Patch{
+		Version: childVersion.Id,
+	}
+	require.NoError(childPatch.Insert(t.Context()))
+
+	taskDoc := &task.Task{
+		Id:           "t1",
+		DisplayName:  "test task",
+		Version:      childVersion.Id,
+		Execution:    0,
+		BuildId:      "b1",
+		BuildVariant: "bv1",
+		Revision:     "abc123",
+		Project:      "mci",
+	}
+
+	expansions, err := PopulateExpansions(t.Context(), taskDoc, &h, "")
+	require.NoError(err)
+
+	assert.Equal(childVersion.ParentPatchID, expansions.Get("parent_patch_id"))
+	assert.Equal(parentRef.Owner, expansions.Get("parent_github_org"))
+	assert.Equal(parentRef.Repo, expansions.Get("parent_github_repo"))
+	assert.Equal(parentRef.Branch, expansions.Get("parent_github_branch"))
 }
 
 type projectSuite struct {
@@ -1594,11 +1666,13 @@ func TestFindProjectsSuite(t *testing.T) {
 		s.Require().NoError(db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, fakeparameter.Collection))
 
 		projectWithVars := &ProjectRef{
-			Id: projectId,
+			Id:         projectId,
+			Identifier: projectId,
 		}
 		projects := []*ProjectRef{
 			{
 				Id:          "projectA",
+				Identifier:  "projectA",
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1607,6 +1681,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectB",
+				Identifier:  "projectB",
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1615,6 +1690,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectC",
+				Identifier:  "projectC",
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
@@ -1649,17 +1725,38 @@ func TestFindProjectsSuite(t *testing.T) {
 				Branch:      "main",
 			},
 			{
-				Id: "projectD",
+				Id:         "projectD",
+				Identifier: "projectD",
 			},
 			{
-				Id: "projectE",
+				Id:         "projectE",
+				Identifier: "projectE",
 			},
 			{
-				Id: "projectF",
+				Id:         "projectF",
+				Identifier: "projectF",
 			},
 			{
 				Id:     "projectF-hidden",
 				Hidden: utility.TruePtr(),
+			},
+			{
+				Id:          "507f1f77bcf86cd799439011",
+				Identifier:  "id-1",
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "test-repo",
+				Branch:      "main",
+			},
+			{
+				Id:          "507f1f77bcf86cd799439012",
+				Identifier:  "id-2",
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "test-repo",
+				Branch:      "main",
 			},
 			projectWithVars,
 		}
@@ -1733,67 +1830,67 @@ func (s *FindProjectsSuite) TearDownSuite() {
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 7)
+	s.Len(projects, 8)
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
-	s.Len(projects, 7)
+	s.Len(projects, 8)
 }
 
 func (s *FindProjectsSuite) TestFetchExactNumber() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1, "", "", false)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1, "", "", false)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1, "", "", false)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1, "", "", false)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1, "", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1, "", "", false)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFilterByOwnerName() {
 	// Test filtering by owner "evergreen-ci" - should return projectA and projectB
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "", false)
 	s.NoError(err)
 	s.Require().Len(projects, 2)
 	// Results should be sorted by ID, so projectA comes first
@@ -1805,7 +1902,7 @@ func (s *FindProjectsSuite) TestFilterByOwnerName() {
 
 func (s *FindProjectsSuite) TestFilterByRepoName() {
 	// Test filtering by repo "mongo" - should return projectC
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "mongo")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "mongo", false)
 	s.NoError(err)
 	s.Require().Len(projects, 1)
 	s.Equal("projectC", projects[0].Id)
@@ -1814,7 +1911,7 @@ func (s *FindProjectsSuite) TestFilterByRepoName() {
 
 func (s *FindProjectsSuite) TestFilterByOwnerAndRepo() {
 	// Test filtering by both owner "evergreen-ci" and repo "evergreen" - should return projectB
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "evergreen")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "evergreen-ci", "evergreen", false)
 	s.NoError(err)
 	s.Require().Len(projects, 1)
 	s.Equal("projectB", projects[0].Id)
@@ -1824,9 +1921,53 @@ func (s *FindProjectsSuite) TestFilterByOwnerAndRepo() {
 
 func (s *FindProjectsSuite) TestFilterNoMatches() {
 	// Test filtering with non-existent owner/repo combination
-	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "nonexistent", "repo")
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "nonexistent", "repo", false)
 	s.NoError(err)
 	s.Empty(projects)
+}
+
+func (s *FindProjectsSuite) TestFetchByIdentifierAsc() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "id-1", 10, 1, "", "", false)
+	s.NoError(err)
+	s.Require().Len(projects, 9)
+	s.Equal("id-1", projects[0].Identifier)
+	s.Equal("id-2", projects[1].Identifier)
+}
+
+func (s *FindProjectsSuite) TestFetchByIdentifierDesc() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectF", 10, -1, "", "", false)
+	s.NoError(err)
+	s.Require().Len(projects, 8)
+	s.Equal("projectE", projects[0].Identifier)
+	s.Equal("projectD", projects[1].Identifier)
+}
+
+func (s *FindProjectsSuite) TestFilterByActiveOnly() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", false)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Len(projects, 9)
+
+	projects, err = FindNonHiddenProjects(s.T().Context(), "", 10, 1, "", "", true)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Require().Len(projects, 5)
+
+	for _, p := range projects {
+		s.True(p.Enabled, "project %s should be enabled", p.Identifier)
+	}
+}
+
+func (s *FindProjectsSuite) TestFilterByActiveWithOwnerAndRepo() {
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 10, 1, "mongodb", "test-repo", true)
+	s.NoError(err)
+	s.NotNil(projects)
+	s.Require().Len(projects, 2)
+	for _, p := range projects {
+		s.True(p.Enabled)
+		s.Equal("mongodb", p.Owner)
+		s.Equal("test-repo", p.Repo)
+	}
 }
 
 func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {

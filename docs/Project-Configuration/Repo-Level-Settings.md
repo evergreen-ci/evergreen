@@ -8,7 +8,7 @@ Once a project is attached, any undefined fields will default to the repo's fiel
 
 ![repo_sidebar.png](../images/repo_sidebar.png)
 
-An attached branch project is only read-only on the legacy UI, since this UI hasn't been extended to handle values inherited from the repo project, so to use the legacy UI or opt back out of the feature, the project will need to be detached. Additionally, changing owner or repo for a branch project will result in it inheriting values from a different repo value, so there is a new operation "Move to New Repo".
+Changing the owner or repo for a branch project will result in it inheriting values from a different repo value, so there is a new operation "Move to New Repo".
 
 ![detach_from_repo.png](../images/detach_from_repo.png)
 

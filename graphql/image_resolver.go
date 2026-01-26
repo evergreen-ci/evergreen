@@ -21,7 +21,7 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': %s", imageID, err.Error()))
 	}
 
-	userHasDistroCreatePermission := usr.HasDistroCreatePermission()
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission(ctx)
 
 	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {

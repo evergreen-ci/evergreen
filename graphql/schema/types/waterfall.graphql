@@ -5,6 +5,7 @@ input WaterfallOptions {
   minOrder: Int
   "Return versions with an order lower than maxOrder. Used for paginating forward."
   maxOrder: Int
+  omitInactiveBuilds: Boolean
   projectIdentifier: String!
     @requireProjectAccess(permission: TASKS, access: VIEW)
   requesters: [String!]

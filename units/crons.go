@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	adb "github.com/mongodb/anser/db"
@@ -1230,22 +1229,11 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
 }
 
-func logGithubAPILimit() amboy.QueueOperation {
+// PopulateGithubAPILimitJob enqueues a job to log GitHub API rate limit
+// information.
+func PopulateGithubAPILimitJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		limit, err := thirdparty.CheckGithubAPILimit(ctx)
-		if err != nil {
-			return errors.Wrap(err, "checking GitHub API rate limit")
-		}
-
-		grip.Info(message.Fields{
-			"message":           "GitHub API rate limit",
-			"remaining":         limit.Core.Remaining,
-			"limit":             limit.Core.Limit,
-			"reset":             limit.Core.Reset.Time,
-			"minutes_remaining": time.Until(limit.Core.Reset.Time).Minutes(),
-			"percentage":        float32(limit.Core.Remaining) / float32(limit.Core.Limit),
-		})
-
-		return nil
+		ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+		return amboy.EnqueueUniqueJob(ctx, queue, NewGitHubAPILimitJob(ts))
 	}
 }

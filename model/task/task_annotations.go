@@ -50,7 +50,7 @@ func MoveSuspectedIssueToIssue(ctx context.Context, taskId string, taskExecution
 	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(annotations.SuspectedIssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
-	if err := db.UpdateContext(
+	if err := db.Update(
 		ctx,
 		annotations.Collection,
 		q,
@@ -193,7 +193,7 @@ func PatchAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDis
 		return nil
 	}
 
-	if err = db.UpdateContext(
+	if err = db.Update(
 		ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(a.TaskId, a.TaskExecution),

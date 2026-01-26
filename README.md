@@ -54,8 +54,4 @@ Possible Targets:
 - run `make dist` to compile binaries for all supported systems and create a
   _dist_ tarball with all artifacts.
 - run `make local-evergreen` to start a local Evergreen. You will need a mongod
-  running, listening on 27017. Log in at http://localhost:9090/login with user
-  `admin` and password `password`. Visiting http://localhost:9090/ should show
-  redirect you the waterfall on the new UI. The new UI is available at
-  https://github.com/evergreen-ci/ui. You need to run the UI server separately
-  in order to view the new UI.
+  running, listening on 27017. To run the UI locally, see [Spruce's README](https://github.com/evergreen-ci/ui/tree/main/apps/spruce#running-locally).

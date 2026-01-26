@@ -57,6 +57,8 @@ var (
 	VersionProjectStorageMethodKey              = bsonutil.MustHaveTag(Version{}, "ProjectStorageMethod")
 	VersionPreGenerationProjectStorageMethodKey = bsonutil.MustHaveTag(Version{}, "PreGenerationProjectStorageMethod")
 	VersionGitTagsTagKey                        = bsonutil.MustHaveTag(GitTag{}, "Tag")
+	VersionCostKey                              = bsonutil.MustHaveTag(Version{}, "Cost")
+	VersionPredictedCostKey                     = bsonutil.MustHaveTag(Version{}, "PredictedCost")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -293,7 +295,7 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 // VersionFindOne returns a version matching the query.
 func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	version := &Version{}
-	err := db.FindOneQContext(ctx, VersionCollection, query, version)
+	err := db.FindOneQ(ctx, VersionCollection, query, version)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -314,7 +316,7 @@ func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
 func VersionFindOneIdWithBuildVariants(ctx context.Context, id string) (*Version, error) {
 	q := VersionById(id)
 	v := &Version{}
-	err := db.FindOneQContext(ctx, VersionCollection, q, v)
+	err := db.FindOneQ(ctx, VersionCollection, q, v)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -335,7 +337,7 @@ func VersionCount(ctx context.Context, query db.Q) (int, error) {
 
 // UpdateOne updates one version.
 func VersionUpdateOne(ctx context.Context, query any, update any) error {
-	return db.UpdateContext(
+	return db.Update(
 		ctx,
 		VersionCollection,
 		query,
@@ -344,7 +346,7 @@ func VersionUpdateOne(ctx context.Context, query any, update any) error {
 }
 
 func ActivateVersions(ctx context.Context, versionIds []string) error {
-	_, err := db.UpdateAllContext(
+	_, err := db.UpdateAll(
 		ctx,
 		VersionCollection,
 		bson.M{
@@ -389,7 +391,7 @@ func AddGitTag(ctx context.Context, versionId string, tag GitTag) error {
 // It filters by owner and repo to limit the scope of the operation so we don't accidentally
 // remove same-named tags from other repositories.
 func RemoveGitTagFromVersions(ctx context.Context, owner, repo string, tag GitTag) error {
-	_, err := db.UpdateAllContext(
+	_, err := db.UpdateAll(
 		ctx,
 		VersionCollection,
 		bson.M{

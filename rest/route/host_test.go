@@ -950,12 +950,12 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 	}
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	rm := env.RoleManager()
-	require.NoError(t, rm.AddScope(gimlet.Scope{
+	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
 		ID:        "root",
 		Resources: []string{windowsDistro.Id},
 		Type:      evergreen.DistroResourceType,
 	}))
-	require.NoError(t, rm.UpdateRole(gimlet.Role{
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{
 		ID:    "root",
 		Scope: "root",
 		Permissions: gimlet.Permissions{

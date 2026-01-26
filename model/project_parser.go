@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -29,16 +30,12 @@ const TranslateProjectError = "error translating project"
 const TranslateProjectConfigError = "unmarshalling project config from YAML"
 const EmptyConfigurationError = "received empty configuration file"
 
-// DefaultParserProjectAccessTimeout is the default timeout for accessing a
-// parser project. In general, the context timeout should prefer to be inherited
-// from a higher-level context (e.g. a REST request's context), so this timeout
-// should only be used as a last resort if the context cannot be easily passed
-// to the place where the parser project is accessed.
-const DefaultParserProjectAccessTimeout = 60 * time.Second
-
 // MaxConfigSetPriority represents the highest value for a task's priority a user can set in theit
 // config YAML.
 const MaxConfigSetPriority = 50
+
+// priorityBypassProjects is a list of projects that can set task priorities above MaxConfigSetPriority.
+var priorityBypassProjects = []string{"mongo-release"}
 
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
@@ -687,10 +684,10 @@ type yamlTuple struct {
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
+// and sets the project's ID field to projectID. Tags are evaluated. Returns the intermediate step.
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
-func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, identifier string, project *Project) (*ParserProject, error) {
+func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
 	unmarshalStrict := false
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
@@ -698,6 +695,10 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	intermediateProject, err := createIntermediateProject(data, unmarshalStrict)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
+	}
+
+	if !slices.Contains(priorityBypassProjects, projectID) {
+		capParserPriorities(intermediateProject)
 	}
 
 	if len(intermediateProject.Include) > 0 {
@@ -723,7 +724,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 			go func() {
 				defer wg.Done()
 				for include := range includesToProcess {
-					processIntermediateProjectIncludes(ctx, identifier, intermediateProject, include, outputYAMLs, opts)
+					processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts)
 				}
 			}()
 		}
@@ -772,7 +773,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 	if p != nil {
 		*project = *p
 	}
-	project.Identifier = identifier
+	project.Identifier = projectID
 
 	// Remove includes once the project is translated since translate project saves number of includes.
 	// Intermediate project is used to save parser project as a YAML so removing the includes verifies that
@@ -790,17 +791,18 @@ const (
 )
 
 type GetProjectOpts struct {
-	Ref                 *ProjectRef
-	PatchOpts           *PatchOpts
-	LocalModules        map[string]string
-	RemotePath          string
-	Revision            string
-	ReadFileFrom        string
-	Identifier          string
-	UnmarshalStrict     bool
-	LocalModuleIncludes []patch.LocalModuleInclude
-	ReferencePatchID    string
-	ReferenceManifestID string
+	Ref                       *ProjectRef
+	PatchOpts                 *PatchOpts
+	LocalModules              map[string]string
+	RemotePath                string
+	Revision                  string
+	ReadFileFrom              string
+	Identifier                string
+	UnmarshalStrict           bool
+	LocalModuleIncludes       []patch.LocalModuleInclude
+	ReferencePatchID          string
+	ReferenceManifestID       string
+	AutoUpdateModuleRevisions map[string]string
 }
 
 type PatchOpts struct {
@@ -824,6 +826,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
 	}
+
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
 		fileContents, err := os.ReadFile(opts.RemotePath)
@@ -848,7 +851,12 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	default:
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
+			"project_id": opts.Ref.Id,
+		}))
+		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
@@ -898,15 +906,22 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
 
 	}
+	pRef := *opts.Ref
+	pRef.Owner = repoOwner
+	pRef.Repo = repoName
 	moduleOpts := GetProjectOpts{
-		Ref: &ProjectRef{
-			Owner: repoOwner,
-			Repo:  repoName,
-		},
+		Ref:          &pRef,
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
+	}
+
+	if opts.AutoUpdateModuleRevisions != nil {
+		if revision, ok := opts.AutoUpdateModuleRevisions[include.Module]; ok {
+			moduleOpts.Revision = revision
+			return retrieveFile(ctx, moduleOpts)
+		}
 	}
 
 	// If a reference manifest is provided, use the module revision from the manifest.
@@ -936,8 +951,13 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		return nil, errors.New("project not passed in")
 	}
 	var projectFileBytes []byte
+	ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
+		"project_id": opts.Ref.Id,
+	}))
 	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
-		opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.
@@ -1019,7 +1039,25 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
+
 	return &p, nil
+}
+
+// capParserPriorities caps all priority values in the parser project at MaxConfigSetPriority.
+// It caps priorities for both tasks and build variant tasks.
+func capParserPriorities(p *ParserProject) {
+	for i := range p.Tasks {
+		if p.Tasks[i].Priority > MaxConfigSetPriority {
+			p.Tasks[i].Priority = MaxConfigSetPriority
+		}
+	}
+	for i := range p.BuildVariants {
+		for j := range p.BuildVariants[i].Tasks {
+			if p.BuildVariants[i].Tasks[j].Priority > MaxConfigSetPriority {
+				p.BuildVariants[i].Tasks[j].Priority = MaxConfigSetPriority
+			}
+		}
+	}
 }
 
 // TranslateProject converts our intermediate project representation into
@@ -1473,9 +1511,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
-	}
-	if res.Priority > MaxConfigSetPriority {
-		res.Priority = MaxConfigSetPriority
 	}
 	if res.Patchable == nil {
 		res.Patchable = pt.Patchable

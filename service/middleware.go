@@ -118,7 +118,7 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Invalid MCP request", http.StatusBadRequest)
 			return
 		}
-		user, err := user.FindOneByIdContext(r.Context(), userId)
+		user, err := user.FindOneById(r.Context(), userId)
 		if err != nil {
 			grip.Error(message.Fields{
 				"message": "Error finding user in request",
@@ -234,7 +234,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksView.Value,
 			}
-			if !usr.HasPermission(opts) {
+			if !usr.HasPermission(r.Context(), opts) {
 				uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized for this action"))
 				return
 			}
@@ -318,7 +318,7 @@ func (uis *UIServer) loadProjectContext(rw http.ResponseWriter, r *http.Request)
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksView.Value,
 		}
-		if !dbUser.HasPermission(opts) {
+		if !dbUser.HasPermission(r.Context(), opts) {
 			projectId = ""
 		}
 	}
@@ -333,7 +333,7 @@ func (uis *UIServer) loadProjectContext(rw http.ResponseWriter, r *http.Request)
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksView.Value,
 			}
-			if dbUser.HasPermission(opts) {
+			if dbUser.HasPermission(r.Context(), opts) {
 				projectId = p.Id
 				break
 			}

@@ -7,6 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	"github.com/evergreen-ci/evergreen/agent/executor"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -39,119 +41,66 @@ type runCommandsOptions struct {
 }
 
 // runCommandsInBlock runs all the commands listed in a block (e.g. pre, post).
-func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBlock commandBlock) (err error) {
-	if cmdBlock.commands == nil {
-		return nil
-	}
-
-	var taskLogger grip.Journaler
-	var execLogger grip.Journaler
+func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBlock commandBlock) error {
+	var taskLogger, execLogger grip.Journaler
 	if tc.logger != nil {
 		taskLogger = tc.logger.Task()
 		execLogger = tc.logger.Execution()
 	} else {
 		// In the case of teardown group, it's not guaranteed that the agent has
-		// previously set up a valid logger set up, so use the fallback default
-		// logger if necessary.
+		// previously set up a valid logger, so use the fallback default logger.
 		taskLogger = grip.GetDefaultJournaler()
 		execLogger = grip.GetDefaultJournaler()
 	}
 
-	blockCtx, blockCancel := context.WithCancel(ctx)
-	defer blockCancel()
-	if cmdBlock.timeoutKind != "" && cmdBlock.getTimeout != nil {
-		// Start the block timeout, if any.
-		timeoutOpts := timeoutWatcherOptions{
-			tc:                    tc,
-			kind:                  cmdBlock.timeoutKind,
-			getTimeout:            cmdBlock.getTimeout,
-			canMarkTimeoutFailure: cmdBlock.canFailTask,
-		}
-		go a.startTimeoutWatcher(blockCtx, blockCancel, timeoutOpts)
+	deps := executor.BlockExecutorDeps{
+		JasperManager: a.jasper,
+		Tracer:        a.tracer,
+		TaskLogger:    taskLogger,
+		ExecLogger:    execLogger,
+		TaskConfig:    tc.taskConfig,
 
-		if cmdBlock.canTimeOutHeartbeat {
-			execLogger.Infof("Setting heartbeat timeout to type '%s'.", cmdBlock.timeoutKind)
+		StartTimeoutWatcher: func(ctx context.Context, cancel context.CancelFunc, kind globals.TimeoutType, getTimeout func() time.Duration, canMarkFailure bool) {
+			opts := timeoutWatcherOptions{
+				tc:                    tc,
+				kind:                  kind,
+				getTimeout:            getTimeout,
+				canMarkTimeoutFailure: canMarkFailure,
+			}
+			a.startTimeoutWatcher(ctx, cancel, opts)
+		},
+		SetHeartbeatTimeout: func(startAt time.Time, getTimeout func() time.Duration, kind globals.TimeoutType) {
 			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
-				startAt:    time.Now(),
-				getTimeout: cmdBlock.getTimeout,
-				kind:       cmdBlock.timeoutKind,
+				startAt:    startAt,
+				getTimeout: getTimeout,
+				kind:       kind,
 			})
-			defer func() {
-				execLogger.Infof("Resetting heartbeat timeout from type '%s' back to default.", cmdBlock.timeoutKind)
-				tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
-			}()
-		}
+		},
+		ResetHeartbeatTimeout: func() {
+			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
+		},
+		HandlePanic: func(panicErr error, originalErr error, op string) error {
+			return a.logPanic(tc, panicErr, originalErr, op)
+		},
+		RunCommandOrFunc: func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error {
+			opts := runCommandsOptions{
+				block:       block,
+				canFailTask: canFailTask,
+			}
+			return a.runCommandOrFunc(ctx, tc, commandInfo, cmds, opts)
+		},
 	}
 
-	defer func() {
-		op := fmt.Sprintf("running commands for block '%s'", cmdBlock.block)
-		pErr := recovery.HandlePanicWithError(recover(), nil, op)
-		if pErr == nil {
-			return
-		}
-		err = a.logPanic(tc, pErr, err, op)
-	}()
-
-	legacyBlockName := a.blockToLegacyName(cmdBlock.block)
-	taskLogger.Infof("Running %s commands.", legacyBlockName)
-	start := time.Now()
-	defer func() {
-		if err != nil {
-			taskLogger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
-		}
-		taskLogger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
-	}()
-
-	commands := cmdBlock.commands.List()
-	for i, commandInfo := range commands {
-		if err := blockCtx.Err(); err != nil {
-			return errors.Wrap(err, "canceled while running commands")
-		}
-		blockInfo := command.BlockInfo{
-			Block:     cmdBlock.block,
-			CmdNum:    i + 1,
-			TotalCmds: len(commands),
-		}
-		cmds, err := command.Render(commandInfo, &tc.taskConfig.Project, blockInfo)
-		if err != nil {
-			return errors.Wrapf(err, "rendering command '%s'", commandInfo.Command)
-		}
-		runCmdOpts := runCommandsOptions{
-			block:       cmdBlock.block,
-			canFailTask: cmdBlock.canFailTask,
-		}
-		if err = a.runCommandOrFunc(blockCtx, tc, commandInfo, cmds, runCmdOpts); err != nil {
-			return errors.WithStack(err)
-		}
+	execCmdBlock := executor.CommandBlock{
+		Block:               cmdBlock.block,
+		Commands:            cmdBlock.commands,
+		TimeoutKind:         cmdBlock.timeoutKind,
+		GetTimeout:          cmdBlock.getTimeout,
+		CanTimeOutHeartbeat: cmdBlock.canTimeOutHeartbeat,
+		CanFailTask:         cmdBlock.canFailTask,
 	}
 
-	return errors.WithStack(err)
-}
-
-// blockToLegacyName converts the name of a command block to the name it has
-// historically been referred to as in the task logs. The legacy name should not
-// be used anymore except where it is currently still needed.
-func (a *Agent) blockToLegacyName(block command.BlockType) string {
-	switch block {
-	case command.PreBlock:
-		return "pre-task"
-	case command.MainTaskBlock:
-		return "task"
-	case command.PostBlock:
-		return "post-task"
-	case command.TaskTimeoutBlock:
-		return "task-timeout"
-	case command.SetupGroupBlock:
-		return "setup-group"
-	case command.SetupTaskBlock:
-		return "setup-task"
-	case command.TeardownTaskBlock:
-		return "teardown-task"
-	case command.TeardownGroupBlock:
-		return "teardown-group"
-	default:
-		return string(block)
-	}
+	return executor.RunCommandsInBlock(ctx, deps, execCmdBlock)
 }
 
 // runCommandOrFunc initializes and then executes a list of commands, which can
@@ -162,7 +111,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 	var functionSpan trace.Span
 	if commandInfo.Function != "" {
-		ctx, functionSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
+		ctx, functionSpan = a.tracer.Start(ctx, commandInfo.Function, trace.WithAttributes(
 			attribute.String(functionNameAttribute, commandInfo.Function),
 		))
 		defer functionSpan.End()

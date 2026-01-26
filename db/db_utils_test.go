@@ -43,7 +43,7 @@ func TestDBUtils(t *testing.T) {
 			So(Insert(t.Context(), collection, in), ShouldBeNil)
 
 			out := &insertableStruct{}
-			err := FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
+			err := FindOneQ(t.Context(), collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, in)
 
@@ -118,7 +118,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 1)
 
 			out := &insertableStruct{}
-			err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
+			err = FindOneQ(t.Context(), collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, inTwo)
 
@@ -158,7 +158,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 1)
 
 			out := &insertableStruct{}
-			err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
+			err = FindOneQ(t.Context(), collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, inTwo)
 		})
@@ -240,7 +240,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 2)
 
 			// update the second
-			err = UpdateContext(
+			err = Update(
 				t.Context(),
 				collection,
 				bson.M{
@@ -255,7 +255,7 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			out := &insertableStruct{}
-			err = FindOneQContext(t.Context(), collection, Query(bson.M{"field_one": "2"}), out)
+			err = FindOneQ(t.Context(), collection, Query(bson.M{"field_one": "2"}), out)
 			So(err, ShouldBeNil)
 			So(out.FieldTwo, ShouldEqual, 3)
 
@@ -288,7 +288,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 3)
 
 			// update the first and third
-			_, err = UpdateAllContext(
+			_, err = UpdateAll(
 				t.Context(),
 				collection,
 				bson.M{
@@ -332,7 +332,7 @@ func TestDBUtils(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				out := &insertableStruct{}
-				err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
+				err = FindOneQ(t.Context(), collection, Query(bson.M{}), out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 
@@ -362,7 +362,7 @@ func TestDBUtils(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				out := &insertableStruct{}
-				err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
+				err = FindOneQ(t.Context(), collection, Query(bson.M{}), out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 			})

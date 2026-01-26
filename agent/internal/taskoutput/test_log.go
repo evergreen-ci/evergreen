@@ -59,6 +59,8 @@ func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handle
 		dir:    dir,
 		logger: logger,
 	}
+	// This flag exists to improve the performance of test log ingestion.
+	handlerOpts.redactorOpts.PreloadRedactions = true
 	h.createSender = func(ctx context.Context, logPath string, sequence int) (send.Sender, error) {
 		evgSender, err := task.NewTestLogSender(ctx, *handlerOpts.tsk, task.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
@@ -67,8 +69,6 @@ func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handle
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
-		// This flag exists to improve the performance of test log ingestion.
-		handlerOpts.redactorOpts.PreloadRedactions = true
 		return redactor.NewRedactingSender(evgSender, handlerOpts.redactorOpts), nil
 	}
 

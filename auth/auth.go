@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -174,12 +175,12 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 	http.SetCookie(w, authTokenCookie)
 }
 
-func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
-	return user.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
+func getOrCreateUser(ctx context.Context, u gimlet.User) (gimlet.User, error) {
+	return user.GetOrCreateUser(ctx, u.Username(), u.DisplayName(), u.Email(), u.GetAccessToken(), u.GetRefreshToken(), u.Roles())
 }
 
-func getUserByID(id string) (gimlet.User, error) {
-	u, err := user.FindOneById(id)
+func getUserByID(ctx context.Context, id string) (gimlet.User, error) {
+	u, err := user.FindOneById(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +193,8 @@ func getUserByID(id string) (gimlet.User, error) {
 // getUserWithExpiration returns a user by id and a boolean. True indicates the user is valid. False
 // indicates that the user has expired. An error is returned if the user does not exist or if there
 // is an error retrieving the user.
-func getUserByIdWithExpiration(id string, expireAfter time.Duration) (gimlet.User, bool, error) {
-	u, err := user.FindOneById(id)
+func getUserByIdWithExpiration(ctx context.Context, id string, expireAfter time.Duration) (gimlet.User, bool, error) {
+	u, err := user.FindOneById(ctx, id)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "problem getting user from cache")
 	}

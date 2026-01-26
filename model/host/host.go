@@ -183,6 +183,9 @@ type Host struct {
 
 	// SleepSchedule stores host sleep schedule information.
 	SleepSchedule SleepScheduleInfo `bson:"sleep_schedule,omitempty" json:"sleep_schedule"`
+
+	// IsDebug is true if the host is a debug spawn host.
+	IsDebug bool `bson:"is_debug" json:"is_debug"`
 }
 
 type Tag struct {
@@ -816,9 +819,9 @@ func (h *Host) NeedsPortBindings() bool {
 }
 
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
-func CanUpdateSpawnHost(h *Host, usr *user.DBUser) bool {
+func CanUpdateSpawnHost(ctx context.Context, h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
-		return usr.HasPermission(gimlet.PermissionOpts{
+		return usr.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      h.Distro.Id,
 			ResourceType:  evergreen.DistroResourceType,
 			Permission:    evergreen.PermissionHosts,
@@ -854,6 +857,11 @@ func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) erro
 
 	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
 }
+
+// eventLoggingTimeout is the timeout for logging host events. This ensures
+// that event logging has sufficient time to complete even if the parent context
+// is about to expire.
+const eventLoggingTimeout = 5 * time.Second
 
 // setStatusAndFields sets the status as well as any of the other given fields.
 // Accepts fields to query in addition to host status.
@@ -918,7 +926,9 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		return err
 	}
 
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed",
 		"host_id":    h.Id,
@@ -961,7 +971,9 @@ func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, 
 		return errors.WithStack(err)
 	}
 
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed atomically",
 		"host_id":    h.Id,
@@ -1032,10 +1044,6 @@ func (h *Host) SetRunning(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostRunning, user, "")
 }
 
-func (h *Host) SetTerminated(ctx context.Context, user, reason string) error {
-	return h.SetStatus(ctx, evergreen.HostTerminated, user, reason)
-}
-
 func (h *Host) SetStopping(ctx context.Context, user string) error {
 	return h.SetStatus(ctx, evergreen.HostStopping, user, "")
 }
@@ -1076,7 +1084,9 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 		return errors.Wrap(err, "setting host status to stopped")
 	}
 
-	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostStopped, user, "")
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, evergreen.HostStopped, user, "")
 	grip.Info(message.Fields{
 		"message":    "host stopped",
 		"host_id":    h.Id,
@@ -1873,7 +1883,9 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+	defer cancel()
+	event.LogHostRunningTaskCleared(eventCtx, h.Id, h.RunningTask, h.RunningTaskExecution)
 	grip.Info(message.Fields{
 		"message":         "cleared host running task and set last task",
 		"host_id":         h.Id,
@@ -1913,7 +1925,9 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 	}
 
 	if hadRunningTask {
-		event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
+		eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
+		defer cancel()
+		event.LogHostRunningTaskCleared(eventCtx, h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
 			"message":        "cleared host running task",
 			"host_id":        h.Id,
@@ -1927,9 +1941,10 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 	return nil
 }
 
-// ClearRunningTaskWithContext unsets the running task on the log. It does not
-// log an event for clearing the task.
-func (h *Host) ClearRunningTaskWithContext(ctx context.Context, env evergreen.Environment) error {
+// ClearRunningTaskWithEnv unsets the running task on the log. It does not
+// log an event for clearing the task. It uses the provided environment to
+// perform the database operation.
+func (h *Host) ClearRunningTaskWithEnv(ctx context.Context, env evergreen.Environment) error {
 	doUpdate := func(update bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, h.Id, update)
 		return err
@@ -1969,9 +1984,9 @@ func (h *Host) clearRunningTaskWithFunc(doUpdate func(update bson.M) error) erro
 	return nil
 }
 
-// UpdateRunningTaskWithContext updates the running task for the host. It does
+// UpdateRunningTask updates the running task for the host. It does
 // not log an event for task assignment.
-func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.Environment, t *task.Task) error {
+func (h *Host) UpdateRunningTask(ctx context.Context, env evergreen.Environment, t *task.Task) error {
 	if t == nil {
 		return errors.New("received nil task, cannot update")
 	}
@@ -2209,20 +2224,16 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 	return err
 }
 
+// Insert inserts the host in to the database.
 func (h *Host) Insert(ctx context.Context) error {
-	if err := InsertOne(ctx, h); err != nil {
-		return errors.Wrap(err, "inserting host")
-	}
-	return nil
+	return InsertOne(ctx, h, evergreen.GetEnvironment())
 }
 
-// InsertWithContext is the same as Insert but accepts a context for the
-// operation.
-func (h *Host) InsertWithContext(ctx context.Context, env evergreen.Environment) error {
-	if _, err := env.DB().Collection(Collection).InsertOne(ctx, h); err != nil {
-		return errors.Wrap(err, "inserting host")
-	}
-	return nil
+// InsertWithEnv inserts the host into the given environment's database.
+// This is useful for transactions where the same client must be used for all
+// operations.
+func (h *Host) InsertWithEnv(ctx context.Context, env evergreen.Environment) error {
+	return InsertOne(ctx, h, env)
 }
 
 // Remove removes the host document from the DB.

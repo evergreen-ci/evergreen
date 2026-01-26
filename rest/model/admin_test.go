@@ -118,6 +118,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, apiSettings.ContainerPools.Pools[0].MaxContainers)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Port, apiSettings.ContainerPools.Pools[0].Port)
 	assert.EqualValues(testSettings.FWS.URL, utility.FromStringPtr(apiSettings.FWS.URL))
+	assert.EqualValues(testSettings.Graphite.CIOptimizationToken, utility.FromStringPtr(apiSettings.Graphite.CIOptimizationToken))
+	assert.EqualValues(testSettings.Graphite.ServerURL, utility.FromStringPtr(apiSettings.Graphite.ServerURL))
 	assert.Equal(testSettings.HostJasper.BinaryName, utility.FromStringPtr(apiSettings.HostJasper.BinaryName))
 	assert.Equal(testSettings.HostJasper.DownloadFileName, utility.FromStringPtr(apiSettings.HostJasper.DownloadFileName))
 	assert.Equal(testSettings.HostJasper.Port, apiSettings.HostJasper.Port)
@@ -201,6 +203,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, apiSettings.ServiceFlags.ElasticIPsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.UseGitForGitHubFilesDisabled, apiSettings.ServiceFlags.UseGitForGitHubFilesDisabled)
 	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, apiSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
 	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, apiSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
@@ -266,6 +269,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, dbSettings.ContainerPools.Pools[0].MaxContainers)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Port, dbSettings.ContainerPools.Pools[0].Port)
 	assert.EqualValues(testSettings.FWS.URL, dbSettings.FWS.URL)
+	assert.EqualValues(testSettings.Graphite.CIOptimizationToken, dbSettings.Graphite.CIOptimizationToken)
+	assert.EqualValues(testSettings.Graphite.ServerURL, dbSettings.Graphite.ServerURL)
 	assert.EqualValues(testSettings.HostInit.HostThrottle, dbSettings.HostInit.HostThrottle)
 	assert.EqualValues(testSettings.Jira.PersonalAccessToken, dbSettings.Jira.PersonalAccessToken)
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, dbSettings.LoggerConfig.DefaultLevel)
@@ -311,6 +316,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, apiSettings.ServiceFlags.ElasticIPsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.UseGitForGitHubFilesDisabled, apiSettings.ServiceFlags.UseGitForGitHubFilesDisabled)
 	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
 	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
@@ -550,4 +556,261 @@ func TestAPIOverride(t *testing.T) {
 		}
 	})
 
+}
+
+func TestAPIS3UploadCostConfig(t *testing.T) {
+	t.Run("BuildFromService", func(t *testing.T) {
+		t.Run("WithZeroValue", func(t *testing.T) {
+			svc := evergreen.S3UploadCostConfig{
+				UploadCostDiscount: 0.0,
+			}
+			api := APIS3UploadCostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.0, api.UploadCostDiscount)
+		})
+
+		t.Run("WithNonZeroValue", func(t *testing.T) {
+			svc := evergreen.S3UploadCostConfig{
+				UploadCostDiscount: 0.25,
+			}
+			api := APIS3UploadCostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.25, api.UploadCostDiscount)
+		})
+	})
+
+	t.Run("ToService", func(t *testing.T) {
+		t.Run("RoundTrip", func(t *testing.T) {
+			api := APIS3UploadCostConfig{
+				UploadCostDiscount: 0.3,
+			}
+			svcInterface, err := api.ToService()
+			assert.NoError(t, err)
+			svc := svcInterface.(evergreen.S3UploadCostConfig)
+			assert.Equal(t, 0.3, svc.UploadCostDiscount)
+		})
+	})
+}
+
+func TestAPIS3StorageCostConfig(t *testing.T) {
+	t.Run("BuildFromService", func(t *testing.T) {
+		t.Run("WithMixedValues", func(t *testing.T) {
+			svc := evergreen.S3StorageCostConfig{
+				StandardStorageCostDiscount: 0.1,
+				IAStorageCostDiscount:       0.0,
+			}
+			api := APIS3StorageCostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.1, api.StandardStorageCostDiscount)
+			assert.Equal(t, 0.0, api.IAStorageCostDiscount)
+		})
+
+		t.Run("WithAllValues", func(t *testing.T) {
+			svc := evergreen.S3StorageCostConfig{
+				StandardStorageCostDiscount: 0.2,
+				IAStorageCostDiscount:       0.4,
+			}
+			api := APIS3StorageCostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.2, api.StandardStorageCostDiscount)
+			assert.Equal(t, 0.4, api.IAStorageCostDiscount)
+		})
+	})
+
+	t.Run("ToService", func(t *testing.T) {
+		t.Run("RoundTrip", func(t *testing.T) {
+			api := APIS3StorageCostConfig{
+				StandardStorageCostDiscount: 0.25,
+				IAStorageCostDiscount:       0.35,
+			}
+			svcInterface, err := api.ToService()
+			assert.NoError(t, err)
+			svc := svcInterface.(evergreen.S3StorageCostConfig)
+			assert.Equal(t, 0.25, svc.StandardStorageCostDiscount)
+			assert.Equal(t, 0.35, svc.IAStorageCostDiscount)
+		})
+	})
+}
+
+func TestAPIS3CostConfig(t *testing.T) {
+	t.Run("BuildFromService", func(t *testing.T) {
+		t.Run("WithEmptyConfig", func(t *testing.T) {
+			svc := evergreen.S3CostConfig{}
+			api := APIS3CostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.0, api.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.0, api.Storage.StandardStorageCostDiscount)
+			assert.Equal(t, 0.0, api.Storage.IAStorageCostDiscount)
+		})
+
+		t.Run("WithUploadOnly", func(t *testing.T) {
+			svc := evergreen.S3CostConfig{
+				Upload: evergreen.S3UploadCostConfig{
+					UploadCostDiscount: 0.1,
+				},
+			}
+			api := APIS3CostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.1, api.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.0, api.Storage.StandardStorageCostDiscount)
+		})
+
+		t.Run("WithStorageOnly", func(t *testing.T) {
+			svc := evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					StandardStorageCostDiscount: 0.2,
+				},
+			}
+			api := APIS3CostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.0, api.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.2, api.Storage.StandardStorageCostDiscount)
+		})
+
+		t.Run("WithAllFields", func(t *testing.T) {
+			svc := evergreen.S3CostConfig{
+				Upload: evergreen.S3UploadCostConfig{
+					UploadCostDiscount: 0.1,
+				},
+				Storage: evergreen.S3StorageCostConfig{
+					StandardStorageCostDiscount: 0.2,
+					IAStorageCostDiscount:       0.3,
+				},
+			}
+			api := APIS3CostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			assert.Equal(t, 0.1, api.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.2, api.Storage.StandardStorageCostDiscount)
+			assert.Equal(t, 0.3, api.Storage.IAStorageCostDiscount)
+		})
+	})
+
+	t.Run("ToService", func(t *testing.T) {
+		t.Run("RoundTrip", func(t *testing.T) {
+			api := APIS3CostConfig{
+				Upload: APIS3UploadCostConfig{
+					UploadCostDiscount: 0.1,
+				},
+				Storage: APIS3StorageCostConfig{
+					StandardStorageCostDiscount: 0.2,
+					IAStorageCostDiscount:       0.3,
+				},
+			}
+			svcInterface, err := api.ToService()
+			assert.NoError(t, err)
+			svc := svcInterface.(evergreen.S3CostConfig)
+			assert.Equal(t, 0.1, svc.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.2, svc.Storage.StandardStorageCostDiscount)
+			assert.Equal(t, 0.3, svc.Storage.IAStorageCostDiscount)
+		})
+	})
+}
+
+func TestAPICostConfigWithS3Cost(t *testing.T) {
+	t.Run("BuildFromService", func(t *testing.T) {
+		t.Run("WithS3Cost", func(t *testing.T) {
+			formula := 0.5
+			savingsPlan := 0.3
+			onDemand := 0.2
+			upload := 0.1
+			standard := 0.15
+			infrequent := 0.25
+
+			svc := evergreen.CostConfig{
+				FinanceFormula:      formula,
+				SavingsPlanDiscount: savingsPlan,
+				OnDemandDiscount:    onDemand,
+				S3Cost: evergreen.S3CostConfig{
+					Upload: evergreen.S3UploadCostConfig{
+						UploadCostDiscount: upload,
+					},
+					Storage: evergreen.S3StorageCostConfig{
+						StandardStorageCostDiscount: standard,
+						IAStorageCostDiscount:       infrequent,
+					},
+				},
+			}
+
+			api := APICostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			require.NotNil(t, api.FinanceFormula)
+			assert.Equal(t, 0.5, *api.FinanceFormula)
+			require.NotNil(t, api.SavingsPlanDiscount)
+			assert.Equal(t, 0.3, *api.SavingsPlanDiscount)
+			require.NotNil(t, api.OnDemandDiscount)
+			assert.Equal(t, 0.2, *api.OnDemandDiscount)
+			require.NotNil(t, api.S3Cost)
+			assert.Equal(t, 0.1, api.S3Cost.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.15, api.S3Cost.Storage.StandardStorageCostDiscount)
+			assert.Equal(t, 0.25, api.S3Cost.Storage.IAStorageCostDiscount)
+		})
+
+		t.Run("WithPointer", func(t *testing.T) {
+			formula := 0.5
+			upload := 0.1
+			svc := &evergreen.CostConfig{
+				FinanceFormula: formula,
+				S3Cost: evergreen.S3CostConfig{
+					Upload: evergreen.S3UploadCostConfig{
+						UploadCostDiscount: upload,
+					},
+				},
+			}
+
+			api := APICostConfig{}
+			assert.NoError(t, api.BuildFromService(svc))
+			require.NotNil(t, api.FinanceFormula)
+			assert.Equal(t, 0.5, *api.FinanceFormula)
+			require.NotNil(t, api.S3Cost)
+			assert.Equal(t, 0.1, api.S3Cost.Upload.UploadCostDiscount)
+		})
+	})
+
+	t.Run("ToService", func(t *testing.T) {
+		t.Run("RoundTripWithS3Cost", func(t *testing.T) {
+			formula := 0.5
+			savingsPlan := 0.3
+			onDemand := 0.2
+			upload := 0.1
+			standard := 0.15
+
+			api := APICostConfig{
+				FinanceFormula:      &formula,
+				SavingsPlanDiscount: &savingsPlan,
+				OnDemandDiscount:    &onDemand,
+				S3Cost: &APIS3CostConfig{
+					Upload: APIS3UploadCostConfig{
+						UploadCostDiscount: upload,
+					},
+					Storage: APIS3StorageCostConfig{
+						StandardStorageCostDiscount: standard,
+					},
+				},
+			}
+
+			svcInterface, err := api.ToService()
+			assert.NoError(t, err)
+			svc := svcInterface.(evergreen.CostConfig)
+			assert.Equal(t, 0.5, svc.FinanceFormula)
+			assert.Equal(t, 0.3, svc.SavingsPlanDiscount)
+			assert.Equal(t, 0.2, svc.OnDemandDiscount)
+			assert.Equal(t, 0.1, svc.S3Cost.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.15, svc.S3Cost.Storage.StandardStorageCostDiscount)
+		})
+
+		t.Run("WithNilS3Cost", func(t *testing.T) {
+			formula := 0.5
+			api := APICostConfig{
+				FinanceFormula: &formula,
+				S3Cost:         nil,
+			}
+
+			svcInterface, err := api.ToService()
+			assert.NoError(t, err)
+			svc := svcInterface.(evergreen.CostConfig)
+			assert.Equal(t, 0.5, svc.FinanceFormula)
+			assert.Equal(t, 0.0, svc.S3Cost.Upload.UploadCostDiscount)
+			assert.Equal(t, 0.0, svc.S3Cost.Storage.StandardStorageCostDiscount)
+		})
+	})
 }

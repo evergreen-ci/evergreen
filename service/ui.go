@@ -70,12 +70,13 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 		CookieStore: cookieStore,
 		jiraHandler: thirdparty.NewJiraHandler(*settings.Jira.Export()),
 		umconf: gimlet.UserMiddlewareConfiguration{
-			HeaderKeyName:  evergreen.APIKeyHeader,
-			HeaderUserName: evergreen.APIUserHeader,
-			CookieName:     evergreen.AuthTokenCookie,
-			CookieTTL:      365 * 24 * time.Hour,
-			CookiePath:     "/",
-			CookieDomain:   settings.Ui.LoginDomain,
+			HeaderKeyName:                   evergreen.APIKeyHeader,
+			HeaderUserName:                  evergreen.APIUserHeader,
+			CookieName:                      evergreen.AuthTokenCookie,
+			CookieTTL:                       365 * 24 * time.Hour,
+			CookiePath:                      "/",
+			CookieDomain:                    settings.Ui.LoginDomain,
+			StaticKeysDisabledForHumanUsers: settings.ServiceFlags.StaticAPIKeysDisabled,
 		},
 		hostCache: make(map[string]hostCacheItem),
 	}
@@ -260,6 +261,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.legacyUserSettingsPage).Get()
 	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.legacyNotificationsPage).Get()
+	app.AddRoute("/preferences/cli").Wrap(needsLogin, needsContext).Handler(uis.reidrectUserPreferencesCLIPage).Get()
 
 	// Task stats
 	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get()

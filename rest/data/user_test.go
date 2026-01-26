@@ -44,7 +44,7 @@ func (s *DBUserConnectorSuite) SetupTest() {
 }
 
 func (s *DBUserConnectorSuite) getNotificationSettings(ctx context.Context, index int) *user.NotificationPreferences {
-	found, err := user.FindOneByIdContext(ctx, s.users[index].Id)
+	found, err := user.FindOneById(ctx, s.users[index].Id)
 	s.NoError(err)
 	s.Require().NotNil(found)
 

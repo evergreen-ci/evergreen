@@ -324,6 +324,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubUser
   GitTag:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGitTag
+  GraphiteConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
+  GraphiteConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGraphiteConfig
   GroupedTaskStatusCount:
     model: github.com/evergreen-ci/evergreen/model/task.GroupedTaskStatusCount
   HomeVolumeSettings:
@@ -775,10 +779,22 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
   RuntimeEnvironmentConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
+  S3CostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
+  S3CostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
   S3Credentials:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
   S3CredentialsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3Credentials
+  S3StorageCostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3StorageCostConfig
+  S3StorageCostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3StorageCostConfig
+  S3UploadCostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
+  S3UploadCostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
   SchedulerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
   SchedulerConfigInput:
@@ -905,8 +921,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskContainerCreationOpts:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPodTaskContainerCreationOptions
-  TaskCost:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskCost
+  Cost:
+    model: github.com/evergreen-ci/evergreen/model/cost.Cost
   TaskEndDetail:
     model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
   TaskEventLogData:
@@ -982,6 +998,8 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  UserServiceFlags:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
   UserSettingsInput:

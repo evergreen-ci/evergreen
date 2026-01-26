@@ -1858,6 +1858,30 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 	return nil, nil
 }
 
+func (c *communicatorImpl) SendPanicReport(ctx context.Context, details *model.PanicReport) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "/panic",
+	}
+	resp, err := c.request(ctx, info, details)
+	if err != nil {
+		return errors.Wrap(err, "sending panic report to Evergreen")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return util.RespErrorf(resp, "sending panic report to Evergreen")
+	}
+
+	return nil
+}
+
 func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.ClientOption) (*oauth2.Token, string, error) {
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
@@ -1868,14 +1892,10 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	opts = append(opts,
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
+		dex.WithFallbackToStdOut(true),
+		dex.WithFlow("device"),
+		dex.WithNoBrowser(doNotUseBrowser),
 	)
-
-	if doNotUseBrowser {
-		opts = append(opts,
-			dex.WithNoBrowser(true),
-			dex.WithFlow("device"),
-		)
-	}
 
 	// The Dex client logs using logrus. The client doesn't
 	// have any way to turn off debug logs within it's API.
@@ -1938,8 +1958,8 @@ type tokenLoaderWithoutRefresh struct {
 	dex.TokenLoader
 }
 
-func (t *tokenLoaderWithoutRefresh) LoadToken(_ string) (*oauth2.Token, error) {
-	token, err := t.TokenLoader.LoadToken("")
+func (t *tokenLoaderWithoutRefresh) LoadToken(path string) (*oauth2.Token, error) {
+	token, err := t.TokenLoader.LoadToken(path)
 	if err != nil {
 		return nil, err
 	}
