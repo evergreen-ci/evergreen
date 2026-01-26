@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -16,6 +17,8 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // AuthorDisplayName is the resolver for the authorDisplayName field.
@@ -123,33 +126,68 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 		return res, nil
 	}
 
-	// Batch fetch all relevant tasks in one query
+	// Build $or conditions for the aggregation pipeline
 	var orQueries []bson.M
 	for _, k := range queryKeys {
 		orQueries = append(orQueries, bson.M{
 			task.ProjectKey:      k.Project,
 			task.BuildVariantKey: k.BuildVariant,
 			task.DisplayNameKey:  k.DisplayName,
-			task.StatusKey:       evergreen.TaskSucceeded,
+			task.GenerateTaskKey: true,                   // Only include actual generator tasks
+			task.StatusKey:       evergreen.TaskSucceeded, // Only successful tasks have reliable estimation data
 		})
 	}
-	query := db.Query(bson.M{"$or": orQueries}).Sort([]string{"-" + task.FinishTimeKey})
-	dbTasks, err := task.FindAll(ctx, query)
+
+	// Time filter: limit to recent tasks for performance. 30 days provides
+	// sufficient history for accurate estimates while keeping result sets manageable.
+	const generatedTaskLookbackDays = 30
+	lookbackTime := time.Now().Add(-generatedTaskLookbackDays * 24 * time.Hour)
+
+	// Use aggregation to get only the most recent task per (project, build_variant, display_name)
+	// This avoids loading all matching tasks into memory
+	pipeline := mongo.Pipeline{
+		bson.D{{Key: "$match", Value: bson.M{
+			"$and": []bson.M{
+				{"$or": orQueries},
+				{task.FinishTimeKey: bson.M{"$gte": lookbackTime}},
+			},
+		}}},
+		bson.D{{Key: "$sort", Value: bson.M{task.FinishTimeKey: -1}}},
+		bson.D{{Key: "$group", Value: bson.M{
+			"_id": bson.M{
+				task.ProjectKey:      "$" + task.ProjectKey,
+				task.BuildVariantKey: "$" + task.BuildVariantKey,
+				task.DisplayNameKey:  "$" + task.DisplayNameKey,
+			},
+			"task": bson.M{"$first": "$$ROOT"},
+		}}},
+		bson.D{{Key: "$replaceRoot", Value: bson.M{"newRoot": "$task"}}},
+	}
+
+	// Hint to use TaskHistoricalDataIndex (project, build_variant, display_name, status, finish_time)
+	opts := options.Aggregate().SetHint(task.TaskHistoricalDataIndex)
+
+	cursor, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Aggregate(ctx, pipeline, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting generated tasks: %s", err.Error()))
 	}
+	var dbTasks []task.Task
+	if err = cursor.All(ctx, &dbTasks); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("decoding generated tasks: %s", err.Error()))
+	}
 
-	// Use map for quick lookup of tasks by composite key, favoring most recent (sorted query)
+	// Build map for quick lookup by composite key.
+	// Use index-based iteration to get stable pointers to slice elements,
+	// avoiding the subtle bug of storing pointers to a loop variable.
 	taskMap := make(map[taskQueryKey]*task.Task)
-	for _, t := range dbTasks {
+	for i := range dbTasks {
+		t := &dbTasks[i]
 		k := taskQueryKey{
 			Project:      t.Project,
 			BuildVariant: t.BuildVariant,
 			DisplayName:  t.DisplayName,
 		}
-		if _, exists := taskMap[k]; !exists {
-			taskMap[k] = &t
-		}
+		taskMap[k] = t
 	}
 
 	for _, k := range queryKeys {
