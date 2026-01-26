@@ -1501,10 +1501,14 @@ group and each individual task. Tasks in a task group will not run the `pre`
 and `post` blocks in the YAML file; instead, the tasks will run the task group's
 setup and teardown blocks.
 
-Note: Because task directory is not removed between tasks, if git.get_project is
+Because task directory is not removed between tasks, if git.get_project is
 used for the task group and/or if any manual clones are shared between the tasks,
 they should be done in `setup_group` rather than `setup_task` in order to save
 resources and avoid conflicts.
+
+It is **not** recommended to use task groups only for the sake of organization,
+because this different task directory clean-up behavior can cause confusion if not
+explicitly desired. To organize tasks logically without using task groups, consider [display tasks](#display-tasks).
 
 ```yaml
 task_groups:
