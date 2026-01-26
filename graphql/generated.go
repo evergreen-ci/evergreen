@@ -81425,6 +81425,9 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
+	if _, present := asMap["countLimit"]; !present {
+		asMap["countLimit"] = 10000
+	}
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 0
 	}
@@ -81441,13 +81444,20 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap["statuses"] = []any{}
 	}
 
-	fieldsInOrder := [...]string{"limit", "onlyMergeQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
+	fieldsInOrder := [...]string{"countLimit", "limit", "onlyMergeQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "countLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("countLimit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CountLimit = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalNInt2int(ctx, v)

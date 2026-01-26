@@ -359,6 +359,7 @@ type Patches struct {
 // PatchesInput is the input value to the patches field for the User and Project types.
 // Based on the information in PatchesInput, we return a list of Patches for either an individual user or a project.
 type PatchesInput struct {
+	CountLimit     *int     `json:"countLimit,omitempty"`
 	Limit          int      `json:"limit"`
 	OnlyMergeQueue *bool    `json:"onlyMergeQueue,omitempty"`
 	IncludeHidden  *bool    `json:"includeHidden,omitempty"`

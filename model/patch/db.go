@@ -2,6 +2,7 @@ package patch
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,6 +17,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -137,6 +140,7 @@ func ByGithash(githash string) db.Q {
 
 type ByPatchNameStatusesMergeQueuePaginatedOptions struct {
 	Author         *string
+	CountLimit     int
 	IncludeHidden  *bool
 	Limit          int
 	OnlyMergeQueue *bool
@@ -179,10 +183,9 @@ var requesterExpression = bson.M{
 	},
 }
 
-func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]Patch, int, error) {
-	if opts.Project != nil && opts.Author != nil {
-		return nil, 0, errors.New("can't set both project and author")
-	}
+// buildPatchFilterPipeline constructs the common filtering pipeline for patch queries.
+// Returns the pipeline stages and a boolean indicating if we're filtering for merge queue only.
+func buildPatchFilterPipeline(opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]bson.M, bool) {
 	pipeline := []bson.M{}
 	match := bson.M{}
 
@@ -203,6 +206,29 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 	if opts.Project != nil {
 		match[ProjectKey] = utility.FromStringPtr(opts.Project)
 	}
+
+	// Validate requesters and check if we're only filtering for merge queue patches.
+	validatedRequesters := []string{}
+	for _, requester := range opts.Requesters {
+		if evergreen.IsPatchRequester(requester) {
+			validatedRequesters = append(validatedRequesters, requester)
+		}
+	}
+	onlyMergeQueue := len(validatedRequesters) == 1 && validatedRequesters[0] == evergreen.GithubMergeRequester
+
+	// This filter matches the logic in IsMergeQueuePatch() and results in significantly fewer documents being retrieved from the db.
+	if onlyMergeQueue {
+		match["$or"] = []bson.M{
+			{
+				bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): bson.M{
+					"$exists": true,
+					"$ne":     "",
+				},
+			},
+			{AliasKey: evergreen.CommitQueueAlias},
+		}
+	}
+
 	pipeline = append(pipeline, bson.M{"$match": match})
 
 	sortStage := bson.M{
@@ -213,66 +239,104 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 
 	pipeline = append(pipeline, sortStage)
 
-	if len(opts.Requesters) > 0 || utility.FromBoolPtr(opts.OnlyMergeQueue) {
-		matchRequesterStage := bson.M{}
-		validatedRequesters := []string{}
-		for _, requester := range opts.Requesters {
-			if evergreen.IsPatchRequester(requester) {
-				validatedRequesters = append(validatedRequesters, requester)
-			}
-		}
-		requesterMatch := bson.M{"$in": validatedRequesters}
-		// Conditionally add the merge queue requester filter if the user is explicitly filtering on it.
-		// This is only used on the project patches page when we want to conditionally only show merge queue patches.
-		if utility.FromBoolPtr(opts.OnlyMergeQueue) {
-			requesterMatch = bson.M{"$eq": evergreen.GithubMergeRequester}
-		}
+	// Apply requester filtering using the computed requester expression.
+	// Skip this step if we're only filtering for merge queue patches since we already applied the optimization above.
+	if len(validatedRequesters) > 0 && !onlyMergeQueue {
 		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
-		matchRequesterStage["requester"] = requesterMatch
-		pipeline = append(pipeline, bson.M{"$match": matchRequesterStage})
+		pipeline = append(pipeline, bson.M{"$match": bson.M{"requester": bson.M{"$in": validatedRequesters}}})
 	}
 
-	resultPipeline := pipeline
+	return pipeline, onlyMergeQueue
+}
+
+// ByPatchNameStatusesMergeQueuePaginatedResults returns a page of patches matching the filter criteria.
+func ByPatchNameStatusesMergeQueuePaginatedResults(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]Patch, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ByPatchNameStatusesMergeQueuePaginatedResults")})
+
+	if opts.Project != nil && opts.Author != nil {
+		return nil, errors.New("can't set both project and author")
+	}
+
+	pipeline, onlyMergeQueue := buildPatchFilterPipeline(opts)
+
+	// Exclude large patch diff data to avoid exceeding MongoDB's 16MB document limit.
+	pipeline = append(pipeline, bson.M{"$project": ExcludePatchDiff})
+
 	if opts.Page > 0 {
-		skipStage := bson.M{
-			"$skip": opts.Page * opts.Limit,
-		}
-		resultPipeline = append(resultPipeline, skipStage)
+		pipeline = append(pipeline, bson.M{"$skip": opts.Page * opts.Limit})
 	}
 	if opts.Limit > 0 {
-		limitStage := bson.M{
-			"$limit": opts.Limit,
-		}
-		resultPipeline = append(resultPipeline, limitStage)
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+	}
+
+	env := evergreen.GetEnvironment()
+
+	var aggregateOpts *options.AggregateOptions
+	if onlyMergeQueue {
+		aggregateOpts = options.Aggregate().SetHint("branch_1_create_time_-1")
+	}
+
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, aggregateOpts)
+	if err != nil {
+		return nil, err
 	}
 
 	results := []Patch{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, resultPipeline)
-	if err != nil {
-		return nil, 0, err
-	}
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	// Will be used to get the total count of the filtered patches
-	countPipeline := append(pipeline, bson.M{"$count": "count"})
+	return results, nil
+}
+
+// ByPatchNameStatusesMergeQueuePaginatedCount returns the count of patches matching the filter criteria.
+// An upper threshold is set since the precise document count doesn't really matter.
+func ByPatchNameStatusesMergeQueuePaginatedCount(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) (int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ByPatchNameStatusesMergeQueuePaginatedCount")})
+
+	if opts.Project != nil && opts.Author != nil {
+		return 0, errors.New("can't set both project and author")
+	}
+
+	if opts.CountLimit <= 0 {
+		opts.CountLimit = 10000
+	}
+
+	pipeline, onlyMergeQueue := buildPatchFilterPipeline(opts)
+
+	// For performance, use $limit instead of $count to avoid scanning all matching documents.
+	pipeline = append(pipeline, bson.M{"$limit": opts.CountLimit})
+	pipeline = append(pipeline, bson.M{"$count": "count"})
+
+	env := evergreen.GetEnvironment()
+
+	var aggregateOpts *options.AggregateOptions
+	if onlyMergeQueue {
+		aggregateOpts = options.Aggregate().SetHint("branch_1_create_time_-1")
+	}
+
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, aggregateOpts)
+	if err != nil {
+		return 0, err
+	}
+
 	type countResult struct {
 		Count int `bson:"count"`
 	}
 	countResults := []countResult{}
-	cursor, err = env.DB().Collection(Collection).Aggregate(ctx, countPipeline)
-	if err != nil {
-		return nil, 0, err
-	}
 	if err = cursor.All(ctx, &countResults); err != nil {
-		return nil, 0, err
+		return 0, err
 	}
+
 	if len(countResults) == 0 {
-		return results, 0, nil
+		return 0, nil
 	}
-	return results, countResults[0].Count, nil
+
+	if countResults[0].Count == opts.CountLimit {
+		return math.MaxInt32, nil
+	}
+
+	return countResults[0].Count, nil
 }
 
 // ByUserPaginated produces a query that returns patches by the given user

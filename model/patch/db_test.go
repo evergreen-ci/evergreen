@@ -3,6 +3,7 @@ package patch
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -81,75 +82,103 @@ func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
 			opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
 				Requesters: []string{},
+				CountLimit: 10000,
 			}
 
-			patches, count, err := ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+			patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+			assert.NoError(t, err)
+			require.Len(t, patches, 3)
+
+			count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, 3, count)
-			require.Len(t, patches, 3)
 		},
 		"GithubPRRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
 				Requesters: []string{evergreen.GithubPRRequester},
+				CountLimit: 10000,
 			}
-			patches, count, err := ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+			patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, count)
 			require.Len(t, patches, 1)
 			assert.Equal(t, "GH PR Patch", patches[0].Description)
+
+			count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
 		},
 		"GithubMergeRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
 				Requesters: []string{evergreen.GithubMergeRequester},
+				CountLimit: 10000,
 			}
-			patches, count, err := ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+			patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, count)
 			require.Len(t, patches, 1)
 			assert.Equal(t, "GH Merge Patch", patches[0].Description)
+
+			count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
 		},
 		"PatchVersionRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
 				Requesters: []string{evergreen.PatchVersionRequester},
+				CountLimit: 10000,
 			}
-			patches, count, err := ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+			patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, count)
 			require.Len(t, patches, 1)
 			assert.Equal(t, "Patch Request Patch", patches[0].Description)
+
+			count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
 		},
 		"MultipleRequesters": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
 				Requesters: []string{evergreen.PatchVersionRequester, evergreen.GithubMergeRequester},
+				CountLimit: 10000,
 			}
-			patches, count, err := ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+			patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 2, count)
 			require.Len(t, patches, 2)
 			assert.Equal(t, "GH Merge Patch", patches[0].Description)
 			assert.Equal(t, "Patch Request Patch", patches[1].Description)
+
+			count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+			assert.NoError(t, err)
+			assert.Equal(t, 2, count)
 		},
 		"NoRequestersList": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
-				Project: utility.ToStringPtr("evergreen"),
+				Project:    utility.ToStringPtr("evergreen"),
+				CountLimit: 10000,
 			}
-			patches, count, err := ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+			patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+			assert.NoError(t, err)
+			require.Len(t, patches, 3)
+
+			count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, 3, count)
-			require.Len(t, patches, 3)
 
 			opts = ByPatchNameStatusesMergeQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
 				Requesters: []string{},
+				CountLimit: 10000,
 			}
-			patches, count, err = ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+			patches, err = ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+			assert.NoError(t, err)
+			require.Len(t, patches, 3)
+
+			count, err = ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, 3, count)
-			require.Len(t, patches, 3)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -185,7 +214,7 @@ func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
 		})
 	}
 }
-func TestByPatchNameStatusesMergeQueuePaginated(t *testing.T) {
+func TestByPatchNameStatusesMergeQueuePaginatedCombined(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 
 	now := time.Now()
@@ -206,48 +235,233 @@ func TestByPatchNameStatusesMergeQueuePaginated(t *testing.T) {
 		assert.NoError(t, patch.Insert(t.Context()))
 	}
 	opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
-		Project: utility.ToStringPtr("evergreen"),
+		Project:    utility.ToStringPtr("evergreen"),
+		CountLimit: 10000,
 	}
 	ctx := context.TODO()
-	patches, count, err := ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+	patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+	assert.NoError(t, err)
+	assert.Len(t, patches, 10)
+
+	count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
-	assert.Len(t, patches, 10)
 
 	// Test pagination
 	opts = ByPatchNameStatusesMergeQueuePaginatedOptions{
-		Project: utility.ToStringPtr("evergreen"),
-		Limit:   5,
-		Page:    0,
+		Project:    utility.ToStringPtr("evergreen"),
+		Limit:      5,
+		Page:       0,
+		CountLimit: 10000,
 	}
-	patches, count, err = ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+	patches, err = ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
 	assert.NoError(t, err)
-	assert.Equal(t, 10, count)
 	assert.Len(t, patches, 5)
 	assert.Equal(t, "patch 0", patches[0].Description)
 
-	opts = ByPatchNameStatusesMergeQueuePaginatedOptions{
-		Project: utility.ToStringPtr("evergreen"),
-		Limit:   5,
-		Page:    1,
-	}
-	patches, count, err = ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+	count, err = ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
+
+	opts = ByPatchNameStatusesMergeQueuePaginatedOptions{
+		Project:    utility.ToStringPtr("evergreen"),
+		Limit:      5,
+		Page:       1,
+		CountLimit: 10000,
+	}
+	patches, err = ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+	assert.NoError(t, err)
 	assert.Len(t, patches, 5)
 	assert.Equal(t, "patch 5", patches[0].Description)
 
-	opts = ByPatchNameStatusesMergeQueuePaginatedOptions{
-		Project:        utility.ToStringPtr("evergreen"),
-		OnlyMergeQueue: utility.TruePtr(),
-	}
-	patches, count, err = ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
+	count, err = ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
 	assert.NoError(t, err)
-	assert.Equal(t, 5, count)
+	assert.Equal(t, 10, count)
+
+	opts = ByPatchNameStatusesMergeQueuePaginatedOptions{
+		Project:    utility.ToStringPtr("evergreen"),
+		Requesters: []string{evergreen.GithubMergeRequester},
+		CountLimit: 10000,
+	}
+	patches, err = ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+	assert.NoError(t, err)
 	assert.Len(t, patches, 5)
 	for _, patch := range patches {
 		assert.True(t, evergreen.IsGithubMergeQueueRequester(patch.GetRequester()))
 	}
+
+	count, err = ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, count)
+}
+
+func TestByPatchNameStatusesMergeQueuePaginatedResults(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	now := time.Now()
+	for i := 0; i < 10; i++ {
+		isCommitQueue := i%2 == 0
+		createTime := time.Duration(i) * time.Minute
+
+		patch := Patch{
+			Id:          bson.NewObjectId(),
+			Project:     "evergreen",
+			CreateTime:  now.Add(-createTime),
+			Description: fmt.Sprintf("patch %d", i),
+		}
+		if isCommitQueue {
+			patch.Alias = evergreen.CommitQueueAlias
+			patch.GithubMergeData.HeadSHA = "head_sha_value"
+		}
+		assert.NoError(t, patch.Insert(t.Context()))
+	}
+
+	ctx := context.TODO()
+
+	t.Run("ReturnsAllPatches", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project: utility.ToStringPtr("evergreen"),
+		}
+		patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+		assert.NoError(t, err)
+		assert.Len(t, patches, 10)
+	})
+
+	t.Run("Pagination", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project: utility.ToStringPtr("evergreen"),
+			Limit:   5,
+			Page:    0,
+		}
+		patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+		assert.NoError(t, err)
+		assert.Len(t, patches, 5)
+		assert.Equal(t, "patch 0", patches[0].Description)
+
+		opts.Page = 1
+		patches, err = ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+		assert.NoError(t, err)
+		assert.Len(t, patches, 5)
+		assert.Equal(t, "patch 5", patches[0].Description)
+	})
+
+	t.Run("FiltersMergeQueuePatches", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project:    utility.ToStringPtr("evergreen"),
+			Requesters: []string{evergreen.GithubMergeRequester},
+		}
+		patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+		assert.NoError(t, err)
+		assert.Len(t, patches, 5)
+		for _, patch := range patches {
+			assert.True(t, evergreen.IsGithubMergeQueueRequester(patch.GetRequester()))
+		}
+	})
+
+	t.Run("ExcludesPatchDiff", func(t *testing.T) {
+		// Insert a patch with large diff data
+		patchWithDiff := Patch{
+			Id:          bson.NewObjectId(),
+			Project:     "evergreen",
+			CreateTime:  now,
+			Description: "patch with diff",
+			Patches: []ModulePatch{
+				{
+					PatchSet: PatchSet{
+						Patch: "large diff content here",
+					},
+				},
+			},
+		}
+		assert.NoError(t, patchWithDiff.Insert(t.Context()))
+
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project:   utility.ToStringPtr("evergreen"),
+			PatchName: "patch with diff",
+		}
+		patches, err := ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+		assert.NoError(t, err)
+		require.Len(t, patches, 1)
+		// Verify that the diff data was excluded
+		assert.Empty(t, patches[0].Patches[0].PatchSet.Patch)
+	})
+}
+
+func TestByPatchNameStatusesMergeQueuePaginatedCount(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	now := time.Now()
+	for i := 0; i < 10; i++ {
+		isCommitQueue := i%2 == 0
+		createTime := time.Duration(i) * time.Minute
+
+		patch := Patch{
+			Id:          bson.NewObjectId(),
+			Project:     "evergreen",
+			CreateTime:  now.Add(-createTime),
+			Description: fmt.Sprintf("patch %d", i),
+		}
+		if isCommitQueue {
+			patch.Alias = evergreen.CommitQueueAlias
+			patch.GithubMergeData.HeadSHA = "head_sha_value"
+		}
+		assert.NoError(t, patch.Insert(t.Context()))
+	}
+
+	ctx := context.TODO()
+
+	t.Run("CountsAllPatches", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project:    utility.ToStringPtr("evergreen"),
+			CountLimit: 10000,
+		}
+		count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 10, count)
+	})
+
+	t.Run("CountsMergeQueuePatches", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project:    utility.ToStringPtr("evergreen"),
+			Requesters: []string{evergreen.GithubMergeRequester},
+			CountLimit: 10000,
+		}
+		count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 5, count)
+	})
+
+	t.Run("CountsWithPatchNameFilter", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project:    utility.ToStringPtr("evergreen"),
+			PatchName:  "patch 5",
+			CountLimit: 10000,
+		}
+		count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("ReturnsZeroForNoMatches", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project:    utility.ToStringPtr("nonexistent"),
+			PatchName:  "nonexistent patch",
+			CountLimit: 10000,
+		}
+		count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("ReturnsMaxInt32WhenHittingLimit", func(t *testing.T) {
+		opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
+			Project:    utility.ToStringPtr("evergreen"),
+			CountLimit: 5, // Set limit lower than actual count
+		}
+		count, err := ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+		assert.NoError(t, err)
+		assert.Equal(t, math.MaxInt32, count)
+	})
 }
 
 func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {

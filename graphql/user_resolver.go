@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -20,20 +21,50 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		Limit:         patchesInput.Limit,
 		IncludeHidden: patchesInput.IncludeHidden,
 		Requesters:    patchesInput.Requesters,
-	}
-	patches, count, err := patch.ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patches for user '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
+		CountLimit:    utility.FromIntPtr(patchesInput.CountLimit),
 	}
 
-	apiPatches := []*restModel.APIPatch{}
-	for _, p := range patches {
-		apiPatch := restModel.APIPatch{}
-		if err = apiPatch.BuildFromService(ctx, p, nil); err != nil { // Injecting DB info into APIPatch is handled by the resolvers.
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch to APIPatch for patch '%s': %s", p.Id, err.Error()))
+	// Check which fields are requested in the query
+	selectedFields := graphql.CollectAllFields(ctx)
+	queriedPatches := false
+	queriedCount := false
+	for _, field := range selectedFields {
+		if field == "patches" {
+			queriedPatches = true
 		}
-		apiPatches = append(apiPatches, &apiPatch)
+		if field == "filteredPatchCount" {
+			queriedCount = true
+		}
 	}
+
+	// Fetch patches only if requested
+	var err error
+	apiPatches := []*restModel.APIPatch{}
+	if queriedPatches {
+		patches, err := patch.ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patches for user '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
+		}
+
+		// Build API patches
+		for _, p := range patches {
+			apiPatch := restModel.APIPatch{}
+			if err = apiPatch.BuildFromService(ctx, p, nil); err != nil { // Injecting DB info into APIPatch is handled by the resolvers.
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch to APIPatch for patch '%s': %s", p.Id, err.Error()))
+			}
+			apiPatches = append(apiPatches, &apiPatch)
+		}
+	}
+
+	// Only fetch count if requested and the number of patches returned is not below limit
+	count := 0
+	if queriedCount && len(apiPatches) == patchesInput.Limit {
+		count, err = patch.ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch count for user '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
+		}
+	}
+
 	return &Patches{Patches: apiPatches, FilteredPatchCount: count}, nil
 }
 
