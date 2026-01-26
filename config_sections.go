@@ -45,6 +45,7 @@ func NewConfigSections() ConfigSections {
 		&RepoTrackerConfig{},
 		&ReleaseModeConfig{},
 		&RuntimeEnvironmentsConfig{},
+		&SageConfig{},
 		&SchedulerConfig{},
 		&ServiceFlags{},
 		&SingleTaskDistroConfig{},

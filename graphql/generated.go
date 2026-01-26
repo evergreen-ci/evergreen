@@ -205,6 +205,7 @@ type ComplexityRoot struct {
 		RepoTracker             func(childComplexity int) int
 		RuntimeEnvironments     func(childComplexity int) int
 		SSH                     func(childComplexity int) int
+		Sage                    func(childComplexity int) int
 		Scheduler               func(childComplexity int) int
 		ServiceFlags            func(childComplexity int) int
 		ShutdownWaitSeconds     func(childComplexity int) int
@@ -1679,6 +1680,10 @@ type ComplexityRoot struct {
 	SSHKeyPair struct {
 		Name      func(childComplexity int) int
 		SecretARN func(childComplexity int) int
+	}
+
+	SageConfig struct {
+		BaseURL func(childComplexity int) int
 	}
 
 	SaveDistroPayload struct {
@@ -3293,6 +3298,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.SSH(childComplexity), true
+	case "AdminSettings.sage":
+		if e.complexity.AdminSettings.Sage == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Sage(childComplexity), true
 	case "AdminSettings.scheduler":
 		if e.complexity.AdminSettings.Scheduler == nil {
 			break
@@ -9676,6 +9687,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SSHKeyPair.SecretARN(childComplexity), true
 
+	case "SageConfig.baseUrl":
+		if e.complexity.SageConfig.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.SageConfig.BaseURL(childComplexity), true
+
 	case "SaveDistroPayload.distro":
 		if e.complexity.SaveDistroPayload.Distro == nil {
 			break
@@ -12941,6 +12959,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSSHConfigInput,
 		ec.unmarshalInputSSHKeyPairInput,
+		ec.unmarshalInputSageConfigInput,
 		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSchedulerConfigInput,
@@ -20105,6 +20124,39 @@ func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, fie
 				return ec.fieldContext_UIConfig_stagingEnvironment(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_sage(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_sage,
+		func(ctx context.Context) (any, error) {
+			return obj.Sage, nil
+		},
+		nil,
+		ec.marshalOSageConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_sage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "baseUrl":
+				return ec.fieldContext_SageConfig_baseUrl(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SageConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -36699,6 +36751,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			case "ui":
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "sage":
+				return ec.fieldContext_AdminSettings_sage(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -50859,6 +50913,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			case "ui":
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "sage":
+				return ec.fieldContext_AdminSettings_sage(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -56692,6 +56748,35 @@ func (ec *executionContext) _SSHKeyPair_secretARN(ctx context.Context, field gra
 func (ec *executionContext) fieldContext_SSHKeyPair_secretARN(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SSHKeyPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SageConfig_baseUrl(ctx context.Context, field graphql.CollectedField, obj *model.APISageConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SageConfig_baseUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.BaseURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SageConfig_baseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SageConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -76337,7 +76422,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76770,6 +76855,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Ui = data
+		case "sage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sage"))
+			data, err := ec.unmarshalOSageConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sage = data
 		}
 	}
 
@@ -83985,6 +84077,33 @@ func (ec *executionContext) unmarshalInputSSHKeyPairInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSageConfigInput(ctx context.Context, obj any) (model.APISageConfig, error) {
+	var it model.APISageConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"baseUrl"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "baseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSaveAdminSettingsInput(ctx context.Context, obj any) (SaveAdminSettingsInput, error) {
 	var it SaveAdminSettingsInput
 	asMap := map[string]any{}
@@ -87741,6 +87860,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_triggers(ctx, field, obj)
 		case "ui":
 			out.Values[i] = ec._AdminSettings_ui(ctx, field, obj)
+		case "sage":
+			out.Values[i] = ec._AdminSettings_sage(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -100209,6 +100330,42 @@ func (ec *executionContext) _SSHKeyPair(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._SSHKeyPair_name(ctx, field, obj)
 		case "secretARN":
 			out.Values[i] = ec._SSHKeyPair_secretARN(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sageConfigImplementors = []string{"SageConfig"}
+
+func (ec *executionContext) _SageConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISageConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sageConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SageConfig")
+		case "baseUrl":
+			out.Values[i] = ec._SageConfig_baseUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -116633,6 +116790,21 @@ func (ec *executionContext) marshalOSSHKeyPair2githubᚗcomᚋevergreenᚑciᚋe
 func (ec *executionContext) unmarshalOSSHKeyPairInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISSHKeyPair(ctx context.Context, v any) (model.APISSHKeyPair, error) {
 	res, err := ec.unmarshalInputSSHKeyPairInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSageConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISageConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SageConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSageConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx context.Context, v any) (*model.APISageConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSageConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOSchedulerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISchedulerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISchedulerConfig) graphql.Marshaler {
