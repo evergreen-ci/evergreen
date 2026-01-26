@@ -186,10 +186,10 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 				return errors.Wrap(err, "getting child patches for time calculations")
 			}
 			for _, childPatch := range childPatches {
-				if !childPatch.StartTime.IsZero() && (apiPatch.StartTime == nil || childPatch.StartTime.Before(*apiPatch.StartTime)) {
+				if !childPatch.StartTime.IsZero() && childPatch.StartTime.Before(utility.FromTimePtr(apiPatch.StartTime)) {
 					apiPatch.StartTime = ToTimePtr(childPatch.StartTime)
 				}
-				if !childPatch.FinishTime.IsZero() && (apiPatch.FinishTime == nil || childPatch.FinishTime.After(*apiPatch.FinishTime)) {
+				if !childPatch.FinishTime.IsZero() && childPatch.FinishTime.After(utility.FromTimePtr(apiPatch.FinishTime)) {
 					apiPatch.FinishTime = ToTimePtr(childPatch.FinishTime)
 				}
 			}

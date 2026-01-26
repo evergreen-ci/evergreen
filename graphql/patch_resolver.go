@@ -306,10 +306,10 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting child patches for patch '%s': %s", patchID, err.Error()))
 		}
 		for _, childPatch := range childPatches {
-			if !childPatch.StartTime.IsZero() && (startTime == nil || childPatch.StartTime.Before(*startTime)) {
+			if !childPatch.StartTime.IsZero() && childPatch.StartTime.Before(utility.FromTimePtr(startTime)) {
 				startTime = &childPatch.StartTime
 			}
-			if !childPatch.FinishTime.IsZero() && (finishTime == nil || childPatch.FinishTime.After(*finishTime)) {
+			if !childPatch.FinishTime.IsZero() && childPatch.FinishTime.After(utility.FromTimePtr(finishTime)) {
 				finishTime = &childPatch.FinishTime
 			}
 		}
