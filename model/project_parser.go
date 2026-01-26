@@ -666,6 +666,9 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"module":      include.Module,
 	})
 	if include.Module != "" {
+		// kim: TODO: figure out if/how AutoUpdateModuleRevisions is set. I
+		// can't see it ever being set in any code path because localOpts
+		// doesn't set it.
 		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
@@ -810,6 +813,44 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	return nil
 }
 
+// setupMinimalGitClonesForIncludes sets up minimal git clones for includes in
+// the parser project.
+func setupMinimalGitClonesForIncludes(ctx context.Context, modules ModuleList, includes []parserInclude, referenceManifestID string, autoUpdateModuleRevisions map[string]string) (projDir string, moduleDirs []string, err error) {
+	includedModuleNames := map[string]struct{}{}
+	var includesProjectFiles bool
+	for _, include := range includes {
+		if include.Module != "" {
+			includedModuleNames[include.Module] = struct{}{}
+		} else {
+			includesProjectFiles = true
+		}
+	}
+
+	if includesProjectFiles {
+		// kim: TODO: figure out how to set up git clone for main project repo.
+	}
+
+	for modName := range includedModuleNames {
+		mod, err := GetModuleByName(modules, modName)
+		if err != nil {
+			return "", nil, errors.Wrapf(err, "getting module for module name '%s'", modName)
+		}
+		repoOwner, repoName, err := mod.GetOwnerAndRepo()
+		if err != nil {
+			return "", nil, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
+		}
+		// kim: TODO: resolve AutoUpdateModuleRevisions and ReferenceManifestID
+		// to determine which revision to use.
+		revision, err := getRevisionForModule(ctx, nil, "???", *mod, modName)
+		if err != nil {
+			return "", nil, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
+		}
+		// kim: TODO: figure out how to set up git clone for module repo.
+	}
+
+	return "", []string{}, errors.New("kim: TODO: implement")
+}
+
 const (
 	ReadFromGithub    = "github"
 	ReadFromLocal     = "local"
@@ -938,35 +979,44 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	moduleOpts := GetProjectOpts{
 		Ref:          &pRef,
 		RemotePath:   opts.RemotePath,
-		Revision:     module.Branch,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
 	}
+	// kim: NOTE: double-check that this is equivalent to how it resolve the
+	// module before the refactor.
+	moduleOpts.Revision, err = getRevisionForModule(ctx, opts.AutoUpdateModuleRevisions, opts.ReferenceManifestID, *module, include.Module)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting revision for module '%s'", include.Module)
+	}
 
-	if opts.AutoUpdateModuleRevisions != nil {
-		if revision, ok := opts.AutoUpdateModuleRevisions[include.Module]; ok {
-			moduleOpts.Revision = revision
-			return retrieveFile(ctx, moduleOpts)
+	return retrieveFile(ctx, moduleOpts)
+}
+
+// getRevisionForModule returns the revision or branch to use for the given
+// module include.
+func getRevisionForModule(ctx context.Context, autoUpdateModuleRevisions map[string]string, mfstID string, mod Module, modName string) (string, error) {
+	if autoUpdateModuleRevisions != nil {
+		if revision, ok := autoUpdateModuleRevisions[modName]; ok {
+			return revision, nil
 		}
 	}
 
-	// If a reference manifest is provided, use the module revision from the manifest.
-	if opts.ReferenceManifestID != "" {
-		m, err := manifest.FindOne(ctx, manifest.ById(opts.ReferenceManifestID))
+	if mfstID != "" {
+		m, err := manifest.FindOne(ctx, manifest.ById(mfstID))
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
+			return "", errors.Wrapf(err, "finding manifest to reference '%s'", mfstID)
 		}
 		// Sometimes the manifest might be nil, in which case we don't want to set the revision.
 		if m != nil {
 			for name, mod := range m.Modules {
-				if name == include.Module {
-					moduleOpts.Revision = mod.Revision
-					break
+				if name == modName {
+					return mod.Revision, nil
 				}
 			}
 		}
 	}
-	return retrieveFile(ctx, moduleOpts)
+
+	return mod.Branch, nil
 }
 
 func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
