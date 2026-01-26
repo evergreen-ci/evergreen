@@ -67,6 +67,8 @@ type taskContext struct {
 	// metadata tag payload, which can be appended to the final list of failure
 	// metadata tags in the end task response.
 	addMetadataTagResp *triggerAddMetadataTagResp
+	// timeoutProcessInfo stores PID information collected during timeout
+	timeoutProcessInfo *apimodels.TimeoutProcessInfo
 	sync.RWMutex
 }
 

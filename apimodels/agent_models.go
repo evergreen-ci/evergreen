@@ -70,14 +70,15 @@ type TaskEndDetail struct {
 	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
 	// OtherFailingCommands contains information about commands that failed
 	// while the task was running but did not cause the task to fail.
-	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands,omitempty"`
-	TimedOut             bool             `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
-	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
-	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
-	OOMTracker           *OOMTrackerInfo  `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
-	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules"`
-	TraceID              string           `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
-	DiskDevices          []string         `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
+	OtherFailingCommands []FailingCommand    `bson:"other_failing_commands,omitempty" json:"other_failing_commands,omitempty"`
+	TimedOut             bool                `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
+	TimeoutType          string              `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
+	TimeoutDuration      time.Duration       `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
+	OOMTracker           *OOMTrackerInfo     `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
+	TimeoutProcessInfo   *TimeoutProcessInfo `bson:"timeout_processes,omitempty" json:"timeout_processes,omitempty"`
+	Modules              ModuleCloneInfo     `bson:"modules,omitempty" json:"modules"`
+	TraceID              string              `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
+	DiskDevices          []string            `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.
@@ -89,6 +90,14 @@ type FailingCommand struct {
 type OOMTrackerInfo struct {
 	Detected bool  `bson:"detected" json:"detected"`
 	Pids     []int `bson:"pids" json:"pids"`
+}
+
+// TimeoutProcessInfo contains process information collected when a task times out
+type TimeoutProcessInfo struct {
+	CurrentCommand    string    `bson:"current_command,omitempty" json:"current_command,omitempty"`
+	CurrentCommandPID int       `bson:"current_command_pid,omitempty" json:"current_command_pid,omitempty"`
+	RunningPIDs       []int     `bson:"running_pids,omitempty" json:"running_pids,omitempty"`
+	Timestamp         time.Time `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
 }
 
 type LogInfo struct {
