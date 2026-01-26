@@ -450,6 +450,16 @@ type RestartAdminTasksPayload struct {
 	NumRestartedTasks int `json:"numRestartedTasks"`
 }
 
+type S3CostConfig struct {
+	Upload  *model.APIS3UploadCostConfig  `json:"upload,omitempty"`
+	Storage *model.APIS3StorageCostConfig `json:"storage,omitempty"`
+}
+
+type S3CostConfigInput struct {
+	Upload  *model.APIS3UploadCostConfig  `json:"upload,omitempty"`
+	Storage *model.APIS3StorageCostConfig `json:"storage,omitempty"`
+}
+
 type SaveAdminSettingsInput struct {
 	AdminSettings *model.APIAdminSettings `json:"adminSettings"`
 }
