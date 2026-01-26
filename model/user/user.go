@@ -448,16 +448,16 @@ func (u *DBUser) HasPermission(ctx context.Context, opts gimlet.PermissionOpts) 
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(ctx, u.Roles())
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(errors.Is(context.Canceled, err), message.Fields{
 			"message": "error getting roles",
-		}))
+		})
 		return false
 	}
 	roles, err = roleManager.FilterForResource(ctx, roles, opts.Resource, opts.ResourceType)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(errors.Is(context.Canceled, err), message.Fields{
 			"message": "error filtering resources",
-		}))
+		})
 		return false
 	}
 	for _, role := range roles {
