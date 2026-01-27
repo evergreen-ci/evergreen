@@ -893,32 +893,42 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 		// were created.
 		for ownerAndRepo, dir := range dirs.clonesForOwnerRepo {
 			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
-				"message": "could not clean up git clone directory after failing to set up git directories",
-				"owner":   ownerAndRepo.owner,
-				"repo":    ownerAndRepo.repo,
-				"dir":     dir,
-				"ticket":  "DEVPROD-26143",
+				"message":    "could not clean up git clone directory after failing to set up git directories",
+				"owner":      ownerAndRepo.owner,
+				"repo":       ownerAndRepo.repo,
+				"project_id": opts.Identifier,
+				"dir":        dir,
+				"ticket":     "DEVPROD-26143",
 			}))
 		}
 	}()
 
 	if includesProjectFiles {
 		ownerAndRepo := newGitOwnerAndRepo(opts.Ref.Owner, opts.Ref.Repo)
-		// kim: NOTE: I never see ref be empty in HC, so it seems safe to assume
-		// it'll be non-empty here.
-		dir, err := thirdparty.GitCloneMinimal(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision)
+		cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, ownerAndRepo, opts.Revision, numWorkers)
+		if cloneDir != "" {
+			dirs.clonesForOwnerRepo[ownerAndRepo] = cloneDir
+		}
+		if len(worktreeDirs) > 0 {
+			dirs.worktreesForOwnerRepo[ownerAndRepo] = worktreeDirs
+		}
 		if err != nil {
-			return dirs, errors.Wrapf(err, "cloning project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
+			return dirs, errors.Wrap(err, "setting up git clone and worktrees for project includes")
 		}
-		dirs.clonesForOwnerRepo[ownerAndRepo] = dir
 
-		for i := range numWorkers {
-			worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
-			if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
-				return dirs, errors.Wrapf(err, "creating worktree for project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
-			}
-			dirs.worktreesForOwnerRepo[ownerAndRepo] = append(dirs.worktreesForOwnerRepo[ownerAndRepo], worktreeDir)
-		}
+		// dir, err := thirdparty.GitCloneMinimal(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision)
+		// if err != nil {
+		//     return dirs, errors.Wrapf(err, "cloning project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
+		// }
+		// dirs.clonesForOwnerRepo[ownerAndRepo] = dir
+		//
+		// for i := range numWorkers {
+		//     worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
+		//     if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
+		//         return dirs, errors.Wrapf(err, "creating worktree for project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
+		//     }
+		//     dirs.worktreesForOwnerRepo[ownerAndRepo] = append(dirs.worktreesForOwnerRepo[ownerAndRepo], worktreeDir)
+		// }
 	}
 
 	for modName := range includedModuleNames {
@@ -936,27 +946,71 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 		}
 
 		ownerAndRepo := newGitOwnerAndRepo(repoOwner, repoName)
+		if _, ok := dirs.clonesForOwnerRepo[ownerAndRepo]; ok {
+			grip.Warning(message.Fields{
+				"message":    "trying to make multiple git clones of the same repo, skipping duplicate clone",
+				"project_id": opts.Identifier,
+				"owner":      repoOwner,
+				"repo":       repoName,
+				"revision":   revision,
+				"module":     modName,
+			})
+			continue
+		}
+
 		// kim: NOTE: this can be parallelized since they're independent repos
 		// and independent directories. Git cloning is slow so it might be
 		// important.
 		// kim: NOTE: I never see ref be empty in HC, so it seems safe to assume
 		// it'll be non-empty here.
-		dir, err := thirdparty.GitCloneMinimal(ctx, repoOwner, repoName, revision)
-		if err != nil {
-			return dirs, errors.Wrapf(err, "cloning module repo for module '%s'", mod.Name)
+		// dir, err := thirdparty.GitCloneMinimal(ctx, repoOwner, repoName, revision)
+		// if err != nil {
+		//     return dirs, errors.Wrapf(err, "cloning module repo for module '%s'", mod.Name)
+		// }
+		// dirs.clonesForOwnerRepo[ownerAndRepo] = dir
+		//
+		// for i := range numWorkers {
+		//     worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
+		//     if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
+		//         return dirs, errors.Wrapf(err, "creating worktree for included module '%s'", modName)
+		//     }
+		//     dirs.worktreesForOwnerRepo[ownerAndRepo] = append(dirs.worktreesForOwnerRepo[ownerAndRepo], worktreeDir)
+		// }
+		cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, ownerAndRepo, revision, numWorkers)
+		if cloneDir != "" {
+			dirs.clonesForOwnerRepo[ownerAndRepo] = cloneDir
 		}
-		dirs.clonesForOwnerRepo[ownerAndRepo] = dir
-
-		for i := range numWorkers {
-			worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
-			if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
-				return dirs, errors.Wrapf(err, "creating worktree for module repo '%s/%s' for includes", repoOwner, repoName)
-			}
-			dirs.worktreesForOwnerRepo[ownerAndRepo] = append(dirs.worktreesForOwnerRepo[ownerAndRepo], worktreeDir)
+		if len(worktreeDirs) > 0 {
+			dirs.worktreesForOwnerRepo[ownerAndRepo] = worktreeDirs
+		}
+		if err != nil {
+			return dirs, errors.Wrapf(err, "setting up git clone and worktrees for module '%s'", modName)
 		}
 	}
 
 	return dirs, nil
+}
+
+func gitCloneAndCreateWorktrees(ctx context.Context, ownerAndRepo gitOwnerAndRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
+	// kim: NOTE: this can be parallelized since they're independent repos
+	// and independent directories. Git cloning is slow so it might be
+	// important.
+	// kim: NOTE: I never see ref be empty in HC, so it seems safe to assume
+	// it'll be non-empty here.
+	dir, err := thirdparty.GitCloneMinimal(ctx, ownerAndRepo.owner, ownerAndRepo.repo, revision)
+	if err != nil {
+		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerAndRepo.owner, ownerAndRepo.repo, revision)
+	}
+
+	for i := range numWorktrees {
+		worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
+		if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
+			return dir, worktreeDirs, errors.Wrapf(err, "creating git worktree for repo '%s/%s'", ownerAndRepo.owner, ownerAndRepo.repo)
+		}
+		worktreeDirs = append(worktreeDirs, worktreeDir)
+	}
+
+	return dir, worktreeDirs, nil
 }
 
 const (
