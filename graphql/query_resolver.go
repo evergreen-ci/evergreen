@@ -783,6 +783,41 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	return apiSamples, nil
 }
 
+// CursorAPIKeyStatus is the resolver for the cursorAPIKeyStatus field.
+func (r *queryResolver) CursorAPIKeyStatus(ctx context.Context) (*CursorAPIKeyStatus, error) {
+	usr := mustHaveUser(ctx)
+
+	sageConfig := &evergreen.SageConfig{}
+	if err := sageConfig.Get(ctx); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
+	}
+	if sageConfig.BaseURL == "" {
+		// Return a default response indicating the feature is not configured
+		return &CursorAPIKeyStatus{
+			KeyConfigured: false,
+			KeyLastFour:   nil,
+		}, nil
+	}
+
+	sageClient := thirdparty.NewSageClient(sageConfig.BaseURL)
+	defer sageClient.Close()
+
+	result, err := sageClient.GetCursorAPIKeyStatus(ctx, usr.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Cursor API key status: %s", err.Error()))
+	}
+
+	var keyLastFour *string
+	if result.KeyLastFour != "" {
+		keyLastFour = &result.KeyLastFour
+	}
+
+	return &CursorAPIKeyStatus{
+		KeyConfigured: result.HasKey,
+		KeyLastFour:   keyLastFour,
+	}, nil
+}
+
 // MyPublicKeys is the resolver for the myPublicKeys field.
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
 	publicKeys := getMyPublicKeys(ctx)

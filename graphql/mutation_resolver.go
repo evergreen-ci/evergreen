@@ -27,6 +27,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -1220,6 +1221,31 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	return myPublicKeys, nil
 }
 
+// DeleteCursorAPIKey is the resolver for the deleteCursorAPIKey field.
+func (r *mutationResolver) DeleteCursorAPIKey(ctx context.Context) (*DeleteCursorAPIKeyPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	sageConfig := &evergreen.SageConfig{}
+	if err := sageConfig.Get(ctx); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
+	}
+	if sageConfig.BaseURL == "" {
+		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
+	}
+
+	sageClient := thirdparty.NewSageClient(sageConfig.BaseURL)
+	defer sageClient.Close()
+
+	result, err := sageClient.DeleteCursorAPIKey(ctx, usr.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting Cursor API key: %s", err.Error()))
+	}
+
+	return &DeleteCursorAPIKeyPayload{
+		Success: result.Success,
+	}, nil
+}
+
 // DeleteSubscriptions is the resolver for the deleteSubscriptions field.
 func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error) {
 	usr := mustHaveUser(ctx)
@@ -1336,6 +1362,37 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving subscription: %s", err.Error()))
 	}
 	return true, nil
+}
+
+// SetCursorAPIKey is the resolver for the setCursorAPIKey field.
+func (r *mutationResolver) SetCursorAPIKey(ctx context.Context, apiKey string) (*SetCursorAPIKeyPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	sageConfig := &evergreen.SageConfig{}
+	if err := sageConfig.Get(ctx); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
+	}
+	if sageConfig.BaseURL == "" {
+		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
+	}
+
+	sageClient := thirdparty.NewSageClient(sageConfig.BaseURL)
+	defer sageClient.Close()
+
+	result, err := sageClient.SetCursorAPIKey(ctx, usr.Id, apiKey)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting Cursor API key: %s", err.Error()))
+	}
+
+	var keyLastFour *string
+	if result.KeyLastFour != "" {
+		keyLastFour = &result.KeyLastFour
+	}
+
+	return &SetCursorAPIKeyPayload{
+		Success:     result.Success,
+		KeyLastFour: keyLastFour,
+	}, nil
 }
 
 // UpdateBetaFeatures is the resolver for the updateBetaFeatures field.

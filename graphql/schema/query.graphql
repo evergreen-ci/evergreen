@@ -81,8 +81,9 @@ type Query {
   ): [TaskTestResultSample!]
 
   # user
+  cursorAPIKeyStatus: CursorAPIKeyStatus!
   myPublicKeys: [PublicKey!]!
-  user(userId: String): User! 
+  user(userId: String): User!
   userConfig: UserConfig
 
   # mainline commits
