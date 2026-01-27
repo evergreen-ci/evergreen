@@ -133,12 +133,20 @@ func notificationEmail() cli.Command {
 				return errors.New("must specify at least one recipient for the email notification")
 			}
 
+			if subject == "" {
+				return errors.New("must specify a subject for the email notification")
+			}
+
 			if bodyFile != "" {
 				content, err := os.ReadFile(bodyFile)
 				if err != nil {
 					return errors.Wrapf(err, "reading email body from file '%s'", bodyFile)
 				}
 				body = string(content)
+			}
+
+			if body == "" {
+				return errors.New("must specify a body for the email notification")
 			}
 
 			apiEmail := &model.APIEmail{

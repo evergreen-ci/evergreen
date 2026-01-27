@@ -64,26 +64,37 @@ func TestNotificationEmailCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "email_body.txt")
 	require.NoError(t, os.WriteFile(testFile, []byte("Test Email Body"), 0644))
+	emptyTestFile := filepath.Join(tmpDir, "empty_email_body.txt")
+	require.NoError(t, os.WriteFile(emptyTestFile, []byte{}, 0644))
 
 	for testName, testCase := range map[string]struct {
 		args      []string
-		bodyFile  string
 		body      string
 		expectErr bool
 		expected  *restmodel.APIEmail
 	}{
 		"FailsWithMissingBodyFile": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", "nonexistent.txt"},
-			bodyFile:  "nonexistent.txt",
 			expectErr: true,
 		},
 		"FailsWithMissingRecipients": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--body", "Test body"},
 			expectErr: true,
 		},
+		"FailsWithMissingSubject": {
+			args:      []string{"notify", "email", "--recipients", "test@example.com", "--body", "Test body"},
+			expectErr: true,
+		},
+		"FailsWithMissingBody": {
+			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com"},
+			expectErr: true,
+		},
+		"FailsWithEmptyFileBody": {
+			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", emptyTestFile},
+			expectErr: true,
+		},
 		"SucceedsWithValidBodyFile": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", testFile},
-			bodyFile:  testFile,
 			expectErr: false,
 			expected: &restmodel.APIEmail{
 				Subject:    utility.ToStringPtr("Test Subject"),
