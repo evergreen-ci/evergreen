@@ -143,6 +143,13 @@ func getEC2BlockDeviceMappings(ctx context.Context) ([]host.VolumeAttachment, er
 		if err != nil {
 			continue
 		}
+		// Only include valid EBS volume IDs (which start with "vol-").
+		// The EC2 metadata API can return device names like "sda1" for certain
+		// block device mapping entries (e.g., "ami", "root"), which are not
+		// actual EBS volume IDs and should not be tagged.
+		if !strings.HasPrefix(volumeID, "vol-") {
+			continue
+		}
 		volumes = append(volumes, host.VolumeAttachment{
 			VolumeID:   volumeID,
 			DeviceName: deviceName,

@@ -261,6 +261,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.legacyUserSettingsPage).Get()
 	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.legacyNotificationsPage).Get()
+	app.AddRoute("/preferences/cli").Wrap(needsLogin, needsContext).Handler(uis.reidrectUserPreferencesCLIPage).Get()
 
 	// Task stats
 	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.legacyWaterfallPage).Get()

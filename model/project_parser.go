@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"reflect"
@@ -23,6 +22,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -652,6 +653,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
 		ReferencePatchID:    projectOpts.ReferencePatchID,
 		ReferenceManifestID: projectOpts.ReferenceManifestID,
+		IsIncludedFile:      true,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -688,6 +690,19 @@ type yamlTuple struct {
 // If reading from a version config, LoadProjectInfoForVersion should be used to persist the resulting parser project.
 // opts is used to look up files on github if the main parser project has an Include.
 func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, projectID string, project *Project) (*ParserProject, error) {
+	attrs := []attribute.KeyValue{
+		attribute.String(evergreen.ProjectIDOtelAttribute, projectID),
+	}
+	if opts != nil && opts.Ref != nil {
+		attrs = append(attrs,
+			attribute.String(evergreen.ProjectOrgOtelAttribute, opts.Ref.Owner),
+			attribute.String(evergreen.ProjectRepoOtelAttribute, opts.Ref.Repo),
+			attribute.String(evergreen.ProjectIdentifierOtelAttribute, opts.Ref.Identifier),
+		)
+	}
+	ctx, span := tracer.Start(ctx, "LoadProjectInto", trace.WithAttributes(attrs...))
+	defer span.End()
+
 	unmarshalStrict := false
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
@@ -702,69 +717,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	if len(intermediateProject.Include) > 0 {
-		if opts == nil {
-			err = errors.New("trying to open include files with empty options")
-			return nil, errors.Wrapf(err, LoadProjectError)
-		}
-
-		wg := sync.WaitGroup{}
-		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
-		includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
-
-		for _, path := range intermediateProject.Include {
-			includesToProcess <- path
-		}
-		close(includesToProcess)
-
-		// Be polite. Don't make more than 10 concurrent requests to GitHub.
-		const maxWorkers = 10
-		workers := util.Min(maxWorkers, len(intermediateProject.Include))
-		for i := 0; i < workers; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for include := range includesToProcess {
-					processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts)
-				}
-			}()
-		}
-
-		// This order is deliberate:
-		// 1. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
-		// 2. Close `outputYAMLs` so that the later `range` statement over it will stop after it's drained.
-		wg.Wait()
-		close(outputYAMLs)
-
-		yamlMap := map[string][]byte{}
-		catcher := grip.NewBasicCatcher()
-		for elem := range outputYAMLs {
-			catcher.Add(elem.err)
-			if thirdparty.IsFileNotFound(errors.Cause(elem.err)) {
-				return intermediateProject, errors.Wrap(elem.err, "getting includes")
-			}
-			if elem.yaml != nil {
-				yamlMap[elem.name] = elem.yaml
-			}
-		}
-
-		if catcher.HasErrors() {
-			return intermediateProject, errors.Wrap(catcher.Resolve(), "getting includes")
-		}
-
-		// We promise to iterate over includes in the order they are defined.
-		for _, path := range intermediateProject.Include {
-			if _, ok := yamlMap[path.FileName]; !ok {
-				return intermediateProject, errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
-			}
-			add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
-			if err != nil {
-				// Return intermediateProject even if we run into issues to show merge progress.
-				return intermediateProject, errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
-			}
-			if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
-				// Return intermediateProject even if we run into issues to show merge progress.
-				return intermediateProject, errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
-			}
+		if err := mergeIncludes(ctx, projectID, intermediateProject, opts); err != nil {
+			return nil, errors.Wrap(err, "merging included files")
 		}
 	}
 
@@ -781,6 +735,79 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	intermediateProject.Include = nil
 
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+}
+
+// mergeIncludes merges all included files into the intermediateProject.
+func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, opts *GetProjectOpts) error {
+	ctx, span := tracer.Start(ctx, "mergeIncludes")
+	defer span.End()
+
+	if opts == nil {
+		err := errors.New("trying to open include files with empty options")
+		return errors.Wrapf(err, LoadProjectError)
+	}
+
+	wg := sync.WaitGroup{}
+	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
+	includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
+
+	for _, path := range intermediateProject.Include {
+		includesToProcess <- path
+	}
+	close(includesToProcess)
+
+	// Be polite. Don't make more than 10 concurrent requests to GitHub.
+	const maxWorkers = 10
+	workers := util.Min(maxWorkers, len(intermediateProject.Include))
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for include := range includesToProcess {
+				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts)
+			}
+		}()
+	}
+
+	// This order is deliberate:
+	// 1. Wait for the workers, since sending on a `nil` `outputYAMLs` would panic.
+	// 2. Close `outputYAMLs` so that the later `range` statement over it will stop after it's drained.
+	wg.Wait()
+	close(outputYAMLs)
+
+	yamlMap := map[string][]byte{}
+	catcher := grip.NewBasicCatcher()
+	for elem := range outputYAMLs {
+		catcher.Add(elem.err)
+		if thirdparty.IsFileNotFound(errors.Cause(elem.err)) {
+			return errors.Wrap(elem.err, "getting includes")
+		}
+		if elem.yaml != nil {
+			yamlMap[elem.name] = elem.yaml
+		}
+	}
+
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "getting includes")
+	}
+
+	// We promise to iterate over includes in the order they are defined.
+	for _, path := range intermediateProject.Include {
+		if _, ok := yamlMap[path.FileName]; !ok {
+			return errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
+		}
+		add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
+		if err != nil {
+			// Return intermediateProject even if we run into issues to show merge progress.
+			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
+		}
+		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
+			// Return intermediateProject even if we run into issues to show merge progress.
+			return errors.Wrapf(err, "%s: merging file '%s'", LoadProjectError, path.FileName)
+		}
+	}
+
+	return nil
 }
 
 const (
@@ -803,6 +830,9 @@ type GetProjectOpts struct {
 	ReferencePatchID          string
 	ReferenceManifestID       string
 	AutoUpdateModuleRevisions map[string]string
+	// IsIncludedFile indicates whether the file being retrieved is an included
+	// YAML file.
+	IsIncludedFile bool
 }
 
 type PatchOpts struct {
@@ -856,13 +886,9 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
+		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
 		if err != nil {
-			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
-		}
-		fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-		if err != nil {
-			return nil, errors.Wrapf(err, "decoding config file for project '%s'", opts.Identifier)
+			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
 		return fileContents, nil
 	}
@@ -950,14 +976,12 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	if opts.Ref == nil {
 		return nil, errors.New("project not passed in")
 	}
-	var projectFileBytes []byte
 	ghAppAuth, err := opts.Ref.GetGitHubAppAuthForAPI(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
-	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
-		opts.Ref.Repo, opts.RemotePath, opts.Revision, ghAppAuth)
+	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.
@@ -966,15 +990,22 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 			return nil, errors.Wrapf(err, "getting GitHub file at '%s/%s'@%s: %s", opts.Ref.Owner,
 				opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		}
-	} else {
-		// we successfully got the project file in base64, so we decode it
-		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
-		if err != nil {
-			return nil, errors.Wrapf(err, "decoding GitHub file at '%s/%s'@%s: %s", opts.Ref.Owner,
-				opts.Ref.Repo, opts.RemotePath, opts.Revision)
-		}
 	}
 	return projectFileBytes, nil
+}
+
+// IsGitUsageForGitHubFileEnabled returns whether the experimental feature to
+// use git to retrieve files from GitHub is enabled. If the feature flag can't
+// be retrieved, it defaults to false (i.e. git usage is disabled).
+func IsGitUsageForGitHubFileEnabled(ctx context.Context) bool {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not get service flags, falling back to assuming that using git is disabled",
+		}))
+		return false
+	}
+	return !flags.UseGitForGitHubFilesDisabled
 }
 
 // fetchProjectFilesTimeout is the maximum timeout to fetch project
