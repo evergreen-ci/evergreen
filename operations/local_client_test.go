@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -17,6 +18,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
 )
+
+func getHomeEnvVar() string {
+	if runtime.GOOS == "windows" {
+		return "USERPROFILE"
+	}
+	return "HOME"
+}
 
 func TestGetDaemonDir(t *testing.T) {
 	dir, err := getDaemonDir()
@@ -34,10 +42,11 @@ func TestGetDaemonURL(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
-	origHome := os.Getenv("HOME")
-	err = os.Setenv("HOME", tempDir)
+	homeEnvVar := getHomeEnvVar()
+	origHome := os.Getenv(homeEnvVar)
+	err = os.Setenv(homeEnvVar, tempDir)
 	require.NoError(t, err)
-	defer os.Setenv("HOME", origHome)
+	defer os.Setenv(homeEnvVar, origHome)
 
 	daemonDir := filepath.Join(tempDir, ".evergreen-local")
 	err = os.MkdirAll(daemonDir, 0755)
@@ -201,10 +210,11 @@ func TestWriteDaemonInfo(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
-	origHome := os.Getenv("HOME")
-	err = os.Setenv("HOME", tempDir)
+	homeEnvVar := getHomeEnvVar()
+	origHome := os.Getenv(homeEnvVar)
+	err = os.Setenv(homeEnvVar, tempDir)
 	require.NoError(t, err)
-	defer os.Setenv("HOME", origHome)
+	defer os.Setenv(homeEnvVar, origHome)
 
 	daemon := newLocalDaemonREST(9090)
 	err = daemon.writeDaemonInfo()
@@ -270,10 +280,11 @@ func TestSelectTaskCmd(t *testing.T) {
 		require.NoError(t, err)
 		defer os.RemoveAll(tempDir)
 
-		origHome := os.Getenv("HOME")
-		err = os.Setenv("HOME", tempDir)
+		homeEnvVar := getHomeEnvVar()
+		origHome := os.Getenv(homeEnvVar)
+		err = os.Setenv(homeEnvVar, tempDir)
 		require.NoError(t, err)
-		defer os.Setenv("HOME", origHome)
+		defer os.Setenv(homeEnvVar, origHome)
 
 		daemonDir := filepath.Join(tempDir, ".evergreen-local")
 		err = os.MkdirAll(daemonDir, 0755)
