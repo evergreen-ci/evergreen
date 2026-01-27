@@ -44,13 +44,12 @@ You may allow PR testing to be possible for untracked branches (i.e. branches wi
 To create PR patches for any Github PR for a repo, ensure:
 
 1. If a repo project hasn't been created yet, do so now by clicking "Attach to Current Repo" on the general settings page of an existing project that exists for the same repo.
-2. At the repo level, ensure a config file path is set  (PRs for untracked branches will use this file). 
+2. At the repo level, ensure a config file path is set (PRs for untracked branches will use this file).
 3. At the repo level, ensure that PR aliases are defined, and PR testing is enabled.
 4. If you require project variables for your tasks, ensure these are set up at the repo level.
    1. By default, PRs running on untracked branches will not have `project`, `project_id`, and `project_identifier` [default expansions](./Project-Configuration-Files#default-expansions) set. If they are needed,
-            you can set them as project variables at the repo level.
+      you can set them as project variables at the repo level.
 5. If there is a **tracked branch** (i.e. a project exists for it already) that you'd like to now use the repo settings, ensure that you attach your existing project to the new repo and default any settings to use the repo that you'd like. (Otherwise, it will continue to use the branch project settings.)
-
 
 ![repo_pr_testing.png](../images/repo_pr_testing.png)
 
