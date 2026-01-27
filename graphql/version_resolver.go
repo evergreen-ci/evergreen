@@ -156,9 +156,9 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 
 	for _, link := range pRef.ExternalLinks {
 		if utility.StringSliceContains(link.Requesters, utility.FromStringPtr(obj.Requester)) {
-			// replace {version_id} with the actual version id
+			// Replace {version_id} with the actual version ID.
 			formattedURL := strings.Replace(link.URLTemplate, "{version_id}", utility.FromStringPtr(obj.Id), -1)
-			// replace {revision} with the actual revision
+			// Replace {revision} with the actual revision.
 			formattedURL = strings.Replace(formattedURL, "{revision}", utility.FromStringPtr(obj.Revision), -1)
 			externalLinks = append(externalLinks, &ExternalLinkForMetadata{
 				URL:         formattedURL,
