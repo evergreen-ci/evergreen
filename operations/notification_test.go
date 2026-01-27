@@ -17,20 +17,19 @@ import (
 func TestNotificationSlackCommand(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		args      []string
-		expectErr bool
+		expectErr string
 		expected  *restmodel.APISlack
 	}{
 		"FailsWithMissingTarget": {
 			args:      []string{"notify", "slack", "--msg", "Test message"},
-			expectErr: true,
+			expectErr: "must specify a target",
 		},
 		"FailsWithMissingMessage": {
 			args:      []string{"notify", "slack", "--target", "channel"},
-			expectErr: true,
+			expectErr: "must specify a message",
 		},
 		"SucceedsWithValidInput": {
-			args:      []string{"notify", "slack", "--target", "channel", "--msg", "Test message"},
-			expectErr: false,
+			args: []string{"notify", "slack", "--target", "channel", "--msg", "Test message"},
 			expected: &restmodel.APISlack{
 				Target: utility.ToStringPtr("channel"),
 				Msg:    utility.ToStringPtr("Test message"),
@@ -49,8 +48,8 @@ func TestNotificationSlackCommand(t *testing.T) {
 			ctx := cli.NewContext(app, set, nil)
 			err := Notification().Run(ctx)
 
-			if testCase.expectErr {
-				assert.Error(t, err)
+			if testCase.expectErr != "" {
+				assert.ErrorContains(t, err, testCase.expectErr)
 				return
 			}
 
@@ -70,36 +69,35 @@ func TestNotificationEmailCommand(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		args      []string
 		body      string
-		expectErr bool
+		expectErr string
 		expected  *restmodel.APIEmail
 	}{
 		"FailsWithMissingBodyFile": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", "nonexistent.txt"},
-			expectErr: true,
+			expectErr: "no such file",
 		},
 		"FailsWithMissingRecipients": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--body", "Test body"},
-			expectErr: true,
+			expectErr: "at least one recipient",
 		},
 		"FailsWithMissingSubject": {
 			args:      []string{"notify", "email", "--recipients", "test@example.com", "--body", "Test body"},
-			expectErr: true,
+			expectErr: "must specify a subject",
 		},
 		"FailsWithMissingBody": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com"},
-			expectErr: true,
+			expectErr: "must specify a body",
 		},
 		"FailsWithEmptyFileBody": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", emptyTestFile},
-			expectErr: true,
+			expectErr: "must specify a body",
 		},
 		"FailsWithInlineBodyAndBodyFile": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--body", "Inline Email Body", "--bodyFile", emptyTestFile},
-			expectErr: true,
+			expectErr: "only one of (body | bodyFile) can be set",
 		},
 		"SucceedsWithValidBodyFile": {
-			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", testFile},
-			expectErr: false,
+			args: []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", testFile},
 			expected: &restmodel.APIEmail{
 				Subject:    utility.ToStringPtr("Test Subject"),
 				Recipients: []string{"test@example.com"},
@@ -107,9 +105,8 @@ func TestNotificationEmailCommand(t *testing.T) {
 			},
 		},
 		"SucceedsWithInlineBody": {
-			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--body", "Inline Email Body"},
-			body:      "Inline Email Body",
-			expectErr: false,
+			args: []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--body", "Inline Email Body"},
+			body: "Inline Email Body",
 			expected: &restmodel.APIEmail{
 				Subject:    utility.ToStringPtr("Test Subject"),
 				Recipients: []string{"test@example.com"},
@@ -128,8 +125,8 @@ func TestNotificationEmailCommand(t *testing.T) {
 
 			ctx := cli.NewContext(app, set, nil)
 			err := Notification().Run(ctx)
-			if testCase.expectErr {
-				assert.Error(t, err)
+			if testCase.expectErr != "" {
+				assert.ErrorContains(t, err, testCase.expectErr)
 				return
 			}
 
