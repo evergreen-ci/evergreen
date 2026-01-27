@@ -83,6 +83,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskOutput:         h.settings.Buckets.Credentials,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
+		PSLoggingDisabled:  h.settings.ServiceFlags.PSLoggingDisabled,
 	}
 
 	if h.settings.Tracer.Enabled {

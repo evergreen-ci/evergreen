@@ -42,6 +42,7 @@ type ServiceFlags struct {
 	DebugSpawnHostDisabled          bool `bson:"debug_spawn_host_disabled" json:"debug_spawn_host_disabled"`
 	S3LifecycleSyncDisabled         bool `bson:"s3_lifecycle_sync_disabled" json:"s3_lifecycle_sync_disabled"`
 	UseGitForGitHubFilesDisabled    bool `bson:"use_git_for_github_files_disabled" json:"use_git_for_github_files_disabled"`
+	PSLoggingDisabled               bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -100,6 +101,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			debugSpawnHostDisabledKey:          c.DebugSpawnHostDisabled,
 			s3LifecycleSyncDisabledKey:         c.S3LifecycleSyncDisabled,
 			useGitForGitHubFilesDisabledKey:    c.UseGitForGitHubFilesDisabled,
+			psLoggingDisabledKey:               c.PSLoggingDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

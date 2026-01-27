@@ -557,13 +557,13 @@ Parameters:
 **Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
-within an allotted time, set the key `exec_timeout_secs` on the overall project
-or on a specific task to set the maximum allowed length of execution time. Exec timeout only
+within an allotted time, set the key `exec_timeout_secs` on the overall project,
+on a specific task, or on a specific task within a build variant to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours, and cannot be set above 24 hours.
-`exec_timeout_secs` can only be set on the project or on a task as seen in below example.
-It cannot be set on functions or build variant tasks.
+`exec_timeout_secs` can be set on the project, on a task, or on a task within a build variant as seen in below example.
+It cannot be set on functions.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).
 
@@ -594,16 +594,24 @@ buildvariants:
       - localtestdistro
     tasks:
       - name: compile
+      - name: test
+        exec_timeout_secs: 30 ## override the project and task level exec_timeout_secs for this variant's test task
 
 tasks:
-  name: compile
-  commands:
-    - command: shell.exec
-      timeout_secs: 10 ## override the project level timeout_secs defined above and force this command to fail if it stays "idle" for 10 seconds or more
-      exec_timeout_secs: 20 ## will override the project level exec_timeout_secs defined above for this task
-      params:
-        script: |
-          sleep 1000
+  - name: compile
+    commands:
+      - command: shell.exec
+        timeout_secs: 10 ## override the project level timeout_secs defined above and force this command to fail if it stays "idle" for 10 seconds or more
+        params:
+          script: |
+            sleep 1000
+  - name: test
+    exec_timeout_secs: 20 ## will override the project level exec_timeout_secs defined above for this task
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "running tests"
 ```
 
 ### Controlling When Tasks and Variants Run
@@ -1145,6 +1153,66 @@ To disable the OOM tracker, add the following to the top-level of your yaml.
 
 ```yaml
 oom_tracker: false
+```
+
+### Process Diagnostics: ps
+
+By default, Evergreen logs process information every 60 seconds during task execution using the `ps` command. This default behavior will be deprecated soon, and process logging will become opt-in (disabled by default unless explicitly configured).
+
+You can customize the process logging command by setting the `ps` field at the project, task, or build variant task level. There is currently no option to opt out, but once default ps logging is deprecated, you will be able to disable process logging, by either not setting it anywhere (the default) or by setting `ps` to an empty string. When enabled, the specified command runs every 60 seconds.
+
+The `ps` field can be set at three levels (priority: build variant task > task > project):
+
+**Project level** (applies to all tasks unless overridden):
+
+```yaml
+ps: "ps -o pid" # Enable for all tasks
+
+tasks:
+  - name: my_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Running with ps logging"
+```
+
+**Task level** (overrides project setting):
+
+```yaml
+tasks:
+  - name: task_with_custom_ps
+    ps: "ps -o pid,tty,time,comm,args" # Custom ps command for this task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Running with custom ps"
+
+  - name: task_without_ps
+    ps: "" # Explicitly disable ps logging
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "No ps logging"
+```
+
+**Build variant task level** (highest priority, overrides task and project):
+
+```yaml
+ps: "ps -o pid" # Project default
+
+tasks:
+  - name: my_task
+    ps: "ps -o pid,tty" # Task default
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Task execution"
+
+buildvariants:
+  - name: ubuntu2204
+    tasks:
+      - name: my_task
+        ps: "ps -o pid,tty,time" # Overrides both project and task settings
 ```
 
 ### Matrix Variant Definition
