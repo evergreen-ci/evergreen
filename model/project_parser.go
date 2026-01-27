@@ -759,6 +759,16 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	}
 	close(includesToProcess)
 
+	if readFromRequiresGitHub(opts.ReadFileFrom) {
+		// kim: TODO: use the returned result for includes
+		// kim: NOTE: I verified that ReferenceManifestID and
+		// AutoUpdateModuleRevisions are passed through opts and not modified
+		// while being passed down to retrieveFileForModule.
+		// kim: NOTE: should probably do this in a follow-up PR because the
+		// logic is quite complicated.
+		setupMinimalGitClonesForIncludes(ctx, intermediateProject.Modules, intermediateProject.Include, opts)
+	}
+
 	// Be polite. Don't make more than 10 concurrent requests to GitHub.
 	const maxWorkers = 10
 	workers := util.Min(maxWorkers, len(intermediateProject.Include))
@@ -813,9 +823,26 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	return nil
 }
 
-// setupMinimalGitClonesForIncludes sets up minimal git clones for includes in
-// the parser project.
-func setupMinimalGitClonesForIncludes(ctx context.Context, modules ModuleList, includes []parserInclude, referenceManifestID string, autoUpdateModuleRevisions map[string]string) (projDir string, moduleDirs []string, err error) {
+// setupMinimalGitClonesForIncludes sets up minimal git clones for included
+// YAML files.
+// kim: TODO: unit test this.
+// kim: TODO: set up worktrees: 1 worktree per worker per git clone. Could be a
+// lot of worktrees if the modules are really mixed and have, say, 50 includes
+// with 50 different repos. The performance really relies on only including from
+// a few repos, which is reasonable since the biggest include users (mms, mongo)
+// rarely use module includes.
+func setupMinimalGitClonesForIncludes(ctx context.Context, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) (projDir string, moduleDirs map[string]string, err error) {
+	if !readFromRequiresGitHub(opts.ReadFileFrom) {
+		return "", nil, nil
+	}
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "getting service flags")
+	}
+	if flags.UseGitForGitHubFilesDisabled {
+		return "", nil, nil
+	}
+
 	includedModuleNames := map[string]struct{}{}
 	var includesProjectFiles bool
 	for _, include := range includes {
@@ -826,8 +853,42 @@ func setupMinimalGitClonesForIncludes(ctx context.Context, modules ModuleList, i
 		}
 	}
 
+	defer func() {
+		if err == nil {
+			return
+		}
+		// If this function errored, clean up any git clone directories that
+		// were created.
+		if projDir != "" {
+			grip.Warning(message.WrapError(os.RemoveAll(projDir), message.Fields{
+				"message":    "could not clean up git clone directory after failing to set up minimal git clones",
+				"owner":      opts.Ref.Owner,
+				"repo":       opts.Ref.Repo,
+				"revision":   opts.Revision,
+				"project_id": opts.Ref.Id,
+				"dir":        projDir,
+				"ticket":     "DEVPROD-26143",
+			}))
+		}
+
+		for moduleName, moduleDir := range moduleDirs {
+			grip.Warning(message.WrapError(os.RemoveAll(moduleDir), message.Fields{
+				"message":    "could not clean up git clone directory after failing to set up minimal git clones",
+				"module":     moduleName,
+				"project_id": opts.Ref.Id,
+				"dir":        projDir,
+				"ticket":     "DEVPROD-26143",
+			}))
+		}
+	}()
+
 	if includesProjectFiles {
 		// kim: TODO: figure out how to set up git clone for main project repo.
+		projDir, err = thirdparty.GitCloneMinimal(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision)
+		if err != nil {
+			return "", nil, errors.Wrapf(err, "cloning project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
+		}
+		// kim: TOOD: set up N worktrees
 	}
 
 	for modName := range includedModuleNames {
@@ -839,16 +900,23 @@ func setupMinimalGitClonesForIncludes(ctx context.Context, modules ModuleList, i
 		if err != nil {
 			return "", nil, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
 		}
-		// kim: TODO: resolve AutoUpdateModuleRevisions and ReferenceManifestID
-		// to determine which revision to use.
-		revision, err := getRevisionForModule(ctx, nil, "???", *mod, modName)
+		revision, err := getRevisionForModule(ctx, opts.AutoUpdateModuleRevisions, opts.ReferenceManifestID, *mod, modName)
 		if err != nil {
 			return "", nil, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
 		}
+		// kim: NOTE: this can be parallelized since they're independent repos
+		// and independent directories. Git cloning is slow so it might be
+		// important.
+		dir, err := thirdparty.GitCloneMinimal(ctx, repoOwner, repoName, revision)
+		if err != nil {
+			return "", nil, errors.Wrapf(err, "cloning module repo for module '%s'", mod.Name)
+		}
+		// kim: TOOD: set up N worktrees
+		moduleDirs[modName] = dir
 		// kim: TODO: figure out how to set up git clone for module repo.
 	}
 
-	return "", []string{}, errors.New("kim: TODO: implement")
+	return projDir, moduleDirs, nil
 }
 
 const (
@@ -857,6 +925,12 @@ const (
 	ReadFromPatch     = "patch"
 	ReadFromPatchDiff = "patch_diff"
 )
+
+// readFromRequiresGitHub returns true if the readFrom option requires
+// retrieving a file from GitHub.
+func readFromRequiresGitHub(readFrom string) bool {
+	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
+}
 
 type GetProjectOpts struct {
 	Ref                       *ProjectRef

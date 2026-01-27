@@ -242,7 +242,7 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) ([
 	ctx, span := tracer.Start(ctx, "GetGitHubFileFromGit")
 	defer span.End()
 
-	dir, err := gitCloneMinimal(ctx, owner, repo, ref)
+	dir, err := GitCloneMinimal(ctx, owner, repo, ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "git cloning repository")
 	}
@@ -263,11 +263,11 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) ([
 
 const gitOperationTimeout = 15 * time.Second
 
-// gitCloneMinimal performs a minimal git clone of a repository using the GitHub
+// GitCloneMinimal performs a minimal git clone of a repository using the GitHub
 // app. The minimal clone contains only git metadata for the one revision and
 // has no file content. Callers are expected to clean up the returned git
 // directory when it is no longer needed.
-func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
+func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
 	ctx, span := tracer.Start(ctx, "gitCloneMinimal", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
