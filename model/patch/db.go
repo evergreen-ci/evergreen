@@ -185,7 +185,8 @@ var requesterExpression = bson.M{
 
 // buildPatchFilterPipeline constructs the common filtering pipeline for patch queries.
 // Returns the pipeline stages and a boolean indicating if we're filtering for merge queue only.
-func buildPatchFilterPipeline(opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]bson.M, bool) {
+// If includeSort is false, the sort stage is omitted (useful for count queries where order doesn't matter).
+func buildPatchFilterPipeline(opts ByPatchNameStatusesMergeQueuePaginatedOptions, includeSort bool) ([]bson.M, bool) {
 	pipeline := []bson.M{}
 	match := bson.M{}
 
@@ -231,13 +232,14 @@ func buildPatchFilterPipeline(opts ByPatchNameStatusesMergeQueuePaginatedOptions
 
 	pipeline = append(pipeline, bson.M{"$match": match})
 
-	sortStage := bson.M{
-		"$sort": bson.M{
-			CreateTimeKey: -1,
-		},
+	if includeSort {
+		sortStage := bson.M{
+			"$sort": bson.M{
+				CreateTimeKey: -1,
+			},
+		}
+		pipeline = append(pipeline, sortStage)
 	}
-
-	pipeline = append(pipeline, sortStage)
 
 	// Apply requester filtering using the computed requester expression.
 	// Skip this step if we're only filtering for merge queue patches since we already applied the optimization above.
@@ -257,7 +259,7 @@ func ByPatchNameStatusesMergeQueuePaginatedResults(ctx context.Context, opts ByP
 		return nil, errors.New("can't set both project and author")
 	}
 
-	pipeline, onlyMergeQueue := buildPatchFilterPipeline(opts)
+	pipeline, onlyMergeQueue := buildPatchFilterPipeline(opts, true)
 
 	// Exclude large patch diff data to avoid exceeding MongoDB's 16MB document limit.
 	pipeline = append(pipeline, bson.M{"$project": ExcludePatchDiff})
@@ -302,7 +304,7 @@ func ByPatchNameStatusesMergeQueuePaginatedCount(ctx context.Context, opts ByPat
 		opts.CountLimit = 10000
 	}
 
-	pipeline, onlyMergeQueue := buildPatchFilterPipeline(opts)
+	pipeline, onlyMergeQueue := buildPatchFilterPipeline(opts, false)
 
 	// For performance, use $limit instead of $count to avoid scanning all matching documents.
 	pipeline = append(pipeline, bson.M{"$limit": opts.CountLimit})
