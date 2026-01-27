@@ -93,7 +93,7 @@
         {
           "display_name": "A link to somewhere",
           "requesters": ["gitter_request", "github_pull_request"],
-          "url_template": "https://a-fake-url-for-{version_id}.com/{version_id}"
+          "url_template": "https://revision-is-{revision}.com/version-is-{version_id}"
         }
       ]
     }
