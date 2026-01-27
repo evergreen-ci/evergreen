@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -339,7 +340,51 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	return &apiVersion, nil
 }
 
+// FilteredPatchCount is the resolver for the filteredPatchCount field.
+func (r *patchesResolver) FilteredPatchCount(ctx context.Context, obj *Patches) (int, error) {
+	fc := graphql.GetFieldContext(ctx)
+	opts, err := buildOptionsFromParentArgs(ctx, fc)
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := patch.ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch count: %s", err.Error()))
+	}
+	return count, nil
+}
+
+// Patches is the resolver for the patches field.
+func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restModel.APIPatch, error) {
+	fc := graphql.GetFieldContext(ctx)
+	opts, err := buildOptionsFromParentArgs(ctx, fc)
+	if err != nil {
+		return nil, err
+	}
+
+	patches, err := patch.ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches: %s", err.Error()))
+	}
+
+	apiPatches := []*restModel.APIPatch{}
+	for _, p := range patches {
+		apiPatch := restModel.APIPatch{}
+		if err := apiPatch.BuildFromService(ctx, p, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
+		}
+		apiPatches = append(apiPatches, &apiPatch)
+	}
+
+	return apiPatches, nil
+}
+
 // Patch returns PatchResolver implementation.
 func (r *Resolver) Patch() PatchResolver { return &patchResolver{r} }
 
+// Patches returns PatchesResolver implementation.
+func (r *Resolver) Patches() PatchesResolver { return &patchesResolver{r} }
+
 type patchResolver struct{ *Resolver }
+type patchesResolver struct{ *Resolver }

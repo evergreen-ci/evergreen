@@ -61,6 +61,7 @@ type ResolverRoot interface {
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
+	Patches() PatchesResolver
 	Permissions() PermissionsResolver
 	Pod() PodResolver
 	PodEventLogData() PodEventLogDataResolver
@@ -2558,6 +2559,10 @@ type PatchResolver interface {
 	User(ctx context.Context, obj *model.APIPatch) (*model.APIDBUser, error)
 
 	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
+}
+type PatchesResolver interface {
+	FilteredPatchCount(ctx context.Context, obj *Patches) (int, error)
+	Patches(ctx context.Context, obj *Patches) ([]*model.APIPatch, error)
 }
 type PermissionsResolver interface {
 	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
@@ -45040,7 +45045,7 @@ func (ec *executionContext) _Patches_filteredPatchCount(ctx context.Context, fie
 		field,
 		ec.fieldContext_Patches_filteredPatchCount,
 		func(ctx context.Context) (any, error) {
-			return obj.FilteredPatchCount, nil
+			return ec.resolvers.Patches().FilteredPatchCount(ctx, obj)
 		},
 		nil,
 		ec.marshalNInt2int,
@@ -45053,8 +45058,8 @@ func (ec *executionContext) fieldContext_Patches_filteredPatchCount(_ context.Co
 	fc = &graphql.FieldContext{
 		Object:     "Patches",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
@@ -45069,7 +45074,7 @@ func (ec *executionContext) _Patches_patches(ctx context.Context, field graphql.
 		field,
 		ec.fieldContext_Patches_patches,
 		func(ctx context.Context) (any, error) {
-			return obj.Patches, nil
+			return ec.resolvers.Patches().Patches(ctx, obj)
 		},
 		nil,
 		ec.marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ,
@@ -45082,8 +45087,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 	fc = &graphql.FieldContext{
 		Object:     "Patches",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -96149,15 +96154,77 @@ func (ec *executionContext) _Patches(ctx context.Context, sel ast.SelectionSet, 
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Patches")
 		case "filteredPatchCount":
-			out.Values[i] = ec._Patches_filteredPatchCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patches_filteredPatchCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patches":
-			out.Values[i] = ec._Patches_patches(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patches_patches(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
