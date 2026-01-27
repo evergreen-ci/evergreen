@@ -855,9 +855,9 @@ func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, worke
 	return worktrees[workerNum]
 }
 
-// setupGitIncludeDirs sets up minimal git clones and worktrees in preparation
-// for loading included YAML files.
-// kim: TODO: unit test this.
+// setupGitIncludeDirs sets up git clones and worktrees in preparation for
+// retrieving included YAML files using git. numWorkers determines how many
+// worktrees are created for each included repo.
 func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
 	if !readFromRequiresGitHub(opts.ReadFileFrom) {
 		return nil, nil
@@ -870,14 +870,9 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 		return nil, nil
 	}
 
-	includedModuleNames := map[string]struct{}{}
-	var includesProjectFiles bool
-	for _, include := range includes {
-		if include.Module != "" {
-			includedModuleNames[include.Module] = struct{}{}
-		} else {
-			includesProjectFiles = true
-		}
+	dirs = &gitIncludeDirs{
+		clonesForOwnerRepo:    make(map[gitOwnerAndRepo]string),
+		worktreesForOwnerRepo: make(map[gitOwnerAndRepo][]string),
 	}
 
 	defer func() {
@@ -898,17 +893,39 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 		}
 	}()
 
+	includedModuleNames := map[string]struct{}{}
+	var includesProjectFiles bool
+	for _, include := range includes {
+		if include.Module != "" {
+			includedModuleNames[include.Module] = struct{}{}
+		} else {
+			includesProjectFiles = true
+		}
+	}
+
+	type gitInput struct {
+		ownerAndRepo gitOwnerAndRepo
+		revision     string
+	}
+	type gitOutput struct {
+		ownerAndRepo gitOwnerAndRepo
+		cloneDir     string
+		worktreeDirs []string
+		err          error
+	}
+
+	// Creating git clones is slow, so parallelizing the git clones speeds up
+	// the setup.
+	wg := sync.WaitGroup{}
+	reposToProcess := make(chan gitInput, len(includedModuleNames)+1)
+	output := make(chan gitOutput, len(includedModuleNames)+1)
+
 	if includesProjectFiles {
+		wg.Add(1)
 		ownerAndRepo := newGitOwnerAndRepo(opts.Ref.Owner, opts.Ref.Repo)
-		cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, ownerAndRepo, opts.Revision, numWorkers)
-		if cloneDir != "" {
-			dirs.clonesForOwnerRepo[ownerAndRepo] = cloneDir
-		}
-		if len(worktreeDirs) > 0 {
-			dirs.worktreesForOwnerRepo[ownerAndRepo] = worktreeDirs
-		}
-		if err != nil {
-			return dirs, errors.Wrap(err, "setting up git clone and worktrees for project includes")
+		reposToProcess <- gitInput{
+			ownerAndRepo: ownerAndRepo,
+			revision:     opts.Revision,
 		}
 	}
 
@@ -939,15 +956,43 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 			continue
 		}
 
-		cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, ownerAndRepo, revision, numWorkers)
-		if cloneDir != "" {
-			dirs.clonesForOwnerRepo[ownerAndRepo] = cloneDir
+		wg.Add(1)
+		reposToProcess <- gitInput{
+			ownerAndRepo: ownerAndRepo,
+			revision:     revision,
 		}
-		if len(worktreeDirs) > 0 {
-			dirs.worktreesForOwnerRepo[ownerAndRepo] = worktreeDirs
+	}
+
+	close(reposToProcess)
+
+	numGitWorkers := util.Min(numWorkers, len(reposToProcess))
+	for range numGitWorkers {
+		go func() {
+			defer wg.Done()
+			for repoData := range reposToProcess {
+				cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, repoData.ownerAndRepo, repoData.revision, numWorkers)
+				output <- gitOutput{
+					ownerAndRepo: repoData.ownerAndRepo,
+					cloneDir:     cloneDir,
+					worktreeDirs: worktreeDirs,
+					err:          err,
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(output)
+
+	for out := range output {
+		if out.cloneDir != "" {
+			dirs.clonesForOwnerRepo[out.ownerAndRepo] = out.cloneDir
 		}
-		if err != nil {
-			return dirs, errors.Wrapf(err, "setting up git clone and worktrees for module '%s'", modName)
+		if out.worktreeDirs != nil {
+			dirs.worktreesForOwnerRepo[out.ownerAndRepo] = out.worktreeDirs
+		}
+		if out.err != nil {
+			return dirs, errors.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerAndRepo.owner, out.ownerAndRepo.repo)
 		}
 	}
 
@@ -955,11 +1000,6 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 }
 
 func gitCloneAndCreateWorktrees(ctx context.Context, ownerAndRepo gitOwnerAndRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
-	// kim: NOTE: this can be parallelized since they're independent repos
-	// and independent directories. Git cloning is slow so it might be
-	// important.
-	// kim: NOTE: I never see ref be empty in HC, so it seems safe to assume
-	// it'll be non-empty here.
 	dir, err := thirdparty.GitCloneMinimal(ctx, ownerAndRepo.owner, ownerAndRepo.repo, revision)
 	if err != nil {
 		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerAndRepo.owner, ownerAndRepo.repo, revision)
