@@ -64,6 +64,10 @@ const (
 	graphiteKind = "GITHUB_ACTIONS"
 )
 
+var (
+	githubWebhookTimeoutCause = errors.New("Reached GitHub webhook timeout limit")
+)
+
 // skipCILabels are a set of labels which will skip creating PR patch if part of
 // the PR title or description.
 var skipCILabels = []string{"[skip ci]", "[skip-ci]"}
@@ -141,7 +145,7 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	// GitHub occasionally aborts requests early before we are able to complete the full operation
 	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom timeout without cancel.
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), githubWebhookTimeout)
+	ctx, cancel := context.WithTimeoutCause(context.WithoutCancel(ctx), githubWebhookTimeout, githubWebhookTimeoutCause)
 	defer cancel()
 
 	switch event := gh.event.(type) {
