@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -979,6 +980,13 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			RunningPIDs:       runningPIDs,
 			Timestamp:         time.Now(),
 		}
+		pidStrings := make([]string, len(runningPIDs))
+		for i, n := range runningPIDs {
+			pidStrings[i] = strconv.Itoa(n)
+		}
+		delimitedPids := strings.Join(pidStrings, ",")
+		tc.taskConfig.NewExpansions.Put("timed_out_command_pid", strconv.Itoa(currentCmdPID))
+		tc.taskConfig.NewExpansions.Put("timed_out_pids", delimitedPids)
 	}
 }
 
