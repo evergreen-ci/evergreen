@@ -337,6 +337,48 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
+// GitCreateWorktree creates a new git worktree in worktreeDir based on dir. It
+// does not perform a checkout. Callers are assumed to have already cloned the
+// repo into dir and HEAD is assumed to be already pointing to the desired
+// revision.
+func GitCreateWorktree(ctx context.Context, dir, worktreeDir string) error {
+	ctx, span := tracer.Start(ctx, "gitCreateWorktree")
+	defer span.End()
+
+	// Limit how long this can spend creating the worktree to prevent this from
+	// running too long. This is an experimental feature and should not
+	// meaningfully impact performance while it's being tested out.
+	// Realistically, if it took more than this long to create a worktree,
+	// it would be too slow to be usable.
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "worktree", "add",
+		"--no-checkout",
+		"--detach",
+		worktreeDir)
+	cmd.Dir = dir
+	var (
+		stdout strings.Builder
+		stderr strings.Builder
+	)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":      "git worktree add failed",
+			"ticket":       "DEVPROD-26143",
+			"worktree_dir": worktreeDir,
+			"stdout":       stdout.String(),
+			"stderr":       stderr.String(),
+		}))
+		return errors.Wrapf(err, "creating git worktree '%s'", worktreeDir)
+	}
+
+	return nil
+}
+
 const gitErrorFileNotFound = "did not match any file(s) known to git"
 
 // gitRestoreFile restores a git file within the given git directory and returns

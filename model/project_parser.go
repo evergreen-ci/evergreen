@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -759,6 +760,10 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	}
 	close(includesToProcess)
 
+	// Be polite. Don't make more than 10 concurrent requests to GitHub.
+	const maxWorkers = 10
+	workers := util.Min(maxWorkers, len(intermediateProject.Include))
+
 	if readFromRequiresGitHub(opts.ReadFileFrom) {
 		// kim: TODO: use the returned result for includes
 		// kim: NOTE: I verified that ReferenceManifestID and
@@ -766,12 +771,9 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		// while being passed down to retrieveFileForModule.
 		// kim: NOTE: should probably do this in a follow-up PR because the
 		// logic is quite complicated.
-		setupMinimalGitClonesForIncludes(ctx, intermediateProject.Modules, intermediateProject.Include, opts)
+		setupGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
 	}
 
-	// Be polite. Don't make more than 10 concurrent requests to GitHub.
-	const maxWorkers = 10
-	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
@@ -823,24 +825,54 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	return nil
 }
 
-// setupMinimalGitClonesForIncludes sets up minimal git clones for included
-// YAML files.
+type gitIncludeDirs struct {
+	// clonesForOwnerRepo maps a git owner/repo to the directory where its
+	// git clone is located.
+	clonesForOwnerRepo map[gitOwnerAndRepo]string
+	// worktreesForOwnerRepo maps a gitOwnerAndRepo to the list of worktree
+	// directories created for a given git clone for an owner/repo.
+	worktreesForOwnerRepo map[gitOwnerAndRepo][]string
+}
+
+type gitOwnerAndRepo struct {
+	owner string
+	repo  string
+}
+
+func newGitOwnerAndRepo(owner, repo string) gitOwnerAndRepo {
+	return gitOwnerAndRepo{
+		owner: owner,
+		repo:  repo,
+	}
+}
+
+func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, workerNum int) string {
+	ownerRepo := newGitOwnerAndRepo(owner, repo)
+	worktrees := d.worktreesForOwnerRepo[ownerRepo]
+	if len(worktrees) < workerNum {
+		return ""
+	}
+	return worktrees[workerNum]
+}
+
+// setupGitIncludeDirs sets up minimal git clones and worktrees in preparation
+// for loading included YAML files.
 // kim: TODO: unit test this.
 // kim: TODO: set up worktrees: 1 worktree per worker per git clone. Could be a
 // lot of worktrees if the modules are really mixed and have, say, 50 includes
 // with 50 different repos. The performance really relies on only including from
 // a few repos, which is reasonable since the biggest include users (mms, mongo)
 // rarely use module includes.
-func setupMinimalGitClonesForIncludes(ctx context.Context, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) (projDir string, moduleDirs map[string]string, err error) {
+func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
 	if !readFromRequiresGitHub(opts.ReadFileFrom) {
-		return "", nil, nil
+		return nil, nil
 	}
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "getting service flags")
+		return nil, errors.Wrap(err, "getting service flags")
 	}
 	if flags.UseGitForGitHubFilesDisabled {
-		return "", nil, nil
+		return nil, nil
 	}
 
 	includedModuleNames := map[string]struct{}{}
@@ -859,64 +891,72 @@ func setupMinimalGitClonesForIncludes(ctx context.Context, modules ModuleList, i
 		}
 		// If this function errored, clean up any git clone directories that
 		// were created.
-		if projDir != "" {
-			grip.Warning(message.WrapError(os.RemoveAll(projDir), message.Fields{
-				"message":    "could not clean up git clone directory after failing to set up minimal git clones",
-				"owner":      opts.Ref.Owner,
-				"repo":       opts.Ref.Repo,
-				"revision":   opts.Revision,
-				"project_id": opts.Ref.Id,
-				"dir":        projDir,
-				"ticket":     "DEVPROD-26143",
-			}))
-		}
-
-		for moduleName, moduleDir := range moduleDirs {
-			grip.Warning(message.WrapError(os.RemoveAll(moduleDir), message.Fields{
-				"message":    "could not clean up git clone directory after failing to set up minimal git clones",
-				"module":     moduleName,
-				"project_id": opts.Ref.Id,
-				"dir":        projDir,
-				"ticket":     "DEVPROD-26143",
+		for ownerAndRepo, dir := range dirs.clonesForOwnerRepo {
+			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
+				"message": "could not clean up git clone directory after failing to set up git directories",
+				"owner":   ownerAndRepo.owner,
+				"repo":    ownerAndRepo.repo,
+				"dir":     dir,
+				"ticket":  "DEVPROD-26143",
 			}))
 		}
 	}()
 
 	if includesProjectFiles {
-		// kim: TODO: figure out how to set up git clone for main project repo.
-		projDir, err = thirdparty.GitCloneMinimal(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision)
+		ownerAndRepo := newGitOwnerAndRepo(opts.Ref.Owner, opts.Ref.Repo)
+		// kim: NOTE: I never see ref be empty in HC, so it seems safe to assume
+		// it'll be non-empty here.
+		dir, err := thirdparty.GitCloneMinimal(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision)
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "cloning project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
+			return dirs, errors.Wrapf(err, "cloning project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
 		}
-		// kim: TOOD: set up N worktrees
+		dirs.clonesForOwnerRepo[ownerAndRepo] = dir
+
+		for i := range numWorkers {
+			worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
+			if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
+				return dirs, errors.Wrapf(err, "creating worktree for project repo '%s/%s' for includes", opts.Ref.Owner, opts.Ref.Repo)
+			}
+			dirs.worktreesForOwnerRepo[ownerAndRepo] = append(dirs.worktreesForOwnerRepo[ownerAndRepo], worktreeDir)
+		}
 	}
 
 	for modName := range includedModuleNames {
 		mod, err := GetModuleByName(modules, modName)
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "getting module for module name '%s'", modName)
+			return dirs, errors.Wrapf(err, "getting module for module name '%s'", modName)
 		}
 		repoOwner, repoName, err := mod.GetOwnerAndRepo()
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
+			return dirs, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
 		}
 		revision, err := getRevisionForModule(ctx, opts.AutoUpdateModuleRevisions, opts.ReferenceManifestID, *mod, modName)
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
+			return dirs, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
 		}
+
+		ownerAndRepo := newGitOwnerAndRepo(repoOwner, repoName)
 		// kim: NOTE: this can be parallelized since they're independent repos
 		// and independent directories. Git cloning is slow so it might be
 		// important.
+		// kim: NOTE: I never see ref be empty in HC, so it seems safe to assume
+		// it'll be non-empty here.
 		dir, err := thirdparty.GitCloneMinimal(ctx, repoOwner, repoName, revision)
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "cloning module repo for module '%s'", mod.Name)
+			return dirs, errors.Wrapf(err, "cloning module repo for module '%s'", mod.Name)
 		}
-		// kim: TOOD: set up N worktrees
-		moduleDirs[modName] = dir
-		// kim: TODO: figure out how to set up git clone for module repo.
+		dirs.clonesForOwnerRepo[ownerAndRepo] = dir
+
+		for i := range numWorkers {
+			worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
+			if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
+				return dirs, errors.Wrapf(err, "creating worktree for module repo '%s/%s' for includes", repoOwner, repoName)
+			}
+			dirs.worktreesForOwnerRepo[ownerAndRepo] = append(dirs.worktreesForOwnerRepo[ownerAndRepo], worktreeDir)
+		}
 	}
 
-	return projDir, moduleDirs, nil
+	return dirs, nil
 }
 
 const (
