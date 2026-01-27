@@ -75,7 +75,7 @@ type TaskEndDetail struct {
 	TimeoutType          string              `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
 	TimeoutDuration      time.Duration       `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
 	OOMTracker           *OOMTrackerInfo     `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
-	TimeoutProcessInfo   *TimeoutProcessInfo `bson:"timeout_processes,omitempty" json:"timeout_processes,omitempty"`
+	TimeoutProcessInfo   *TimeoutProcessInfo `bson:"timeout_processes,omitempty" json:"timeout_processes"`
 	Modules              ModuleCloneInfo     `bson:"modules,omitempty" json:"modules"`
 	TraceID              string              `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string            `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`

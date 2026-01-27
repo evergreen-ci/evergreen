@@ -908,14 +908,11 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 		// already logged the error, and the timeout commands cannot cause the
 		// task to fail since the task has already timed out.
 		_ = a.runCommandsInBlock(ctx, tc, *timeout)
-	} else {
-		// Run default timeout handler when no custom timeout is defined
-		a.runDefaultTimeoutHandler(ctx, tc)
 	}
 }
 
 // runDefaultTimeoutHandler extracts and logs PIDs of running processes when a task times out.
-func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext) {
+func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	pidCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -975,8 +972,8 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext) {
 	} else {
 		tc.logger.Execution().Info("No running processes found during timeout")
 	}
-	if tc.timeoutProcessInfo == nil {
-		tc.timeoutProcessInfo = &apimodels.TimeoutProcessInfo{
+	if detail.TimeoutProcessInfo == nil {
+		detail.TimeoutProcessInfo = &apimodels.TimeoutProcessInfo{
 			CurrentCommand:    currentCmdName,
 			CurrentCommandPID: currentCmdPID,
 			RunningPIDs:       runningPIDs,
@@ -1103,6 +1100,9 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 // such as timeout and post, then sends the final end task response.
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
+	if detail.TimedOut {
+		a.runDefaultTimeoutHandler(ctx, tc, detail)
+	}
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
@@ -1363,9 +1363,8 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	}
 
 	detail := &apimodels.TaskEndDetail{
-		TraceID:            tc.traceID,
-		DiskDevices:        tc.diskDevices,
-		TimeoutProcessInfo: tc.timeoutProcessInfo,
+		TraceID:     tc.traceID,
+		DiskDevices: tc.diskDevices,
 	}
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
