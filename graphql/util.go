@@ -1393,13 +1393,13 @@ func setSingleTaskPriority(ctx context.Context, url string, taskID string, prior
 }
 
 // buildOptionsFromParentArgs builds patch query options from the parent resolver's args
-func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (patch.ByPatchNameStatusesMergeQueuePaginatedOptions, error) {
+func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (patch.ProjectOrUserPatchesOptions, error) {
 	patchesInput, ok := fc.Parent.Args["patchesInput"].(PatchesInput)
 	if !ok {
-		return patch.ByPatchNameStatusesMergeQueuePaginatedOptions{}, InternalServerError.Send(ctx, "failed to get patchesInput from parent args")
+		return patch.ProjectOrUserPatchesOptions{}, InternalServerError.Send(ctx, "failed to get patchesInput from parent args")
 	}
 
-	opts := patch.ByPatchNameStatusesMergeQueuePaginatedOptions{
+	opts := patch.ProjectOrUserPatchesOptions{
 		PatchName:     patchesInput.PatchName,
 		Statuses:      patchesInput.Statuses,
 		Page:          patchesInput.Page,

@@ -138,7 +138,7 @@ func ByGithash(githash string) db.Q {
 	return db.Query(bson.M{bsonutil.GetDottedKeyName(githubPatchDataKey, headHashKey): githash})
 }
 
-type ByPatchNameStatusesMergeQueuePaginatedOptions struct {
+type ProjectOrUserPatchesOptions struct {
 	Author         *string
 	CountLimit     int
 	IncludeHidden  *bool
@@ -186,7 +186,7 @@ var requesterExpression = bson.M{
 // buildPatchFilterPipeline constructs the common filtering pipeline for patch queries.
 // Returns the pipeline stages and a boolean indicating if we're filtering for merge queue only.
 // If includeSort is false, the sort stage is omitted (useful for count queries where order doesn't matter).
-func buildPatchFilterPipeline(opts ByPatchNameStatusesMergeQueuePaginatedOptions, includeSort bool) ([]bson.M, bool) {
+func buildPatchFilterPipeline(opts ProjectOrUserPatchesOptions, includeSort bool) ([]bson.M, bool) {
 	pipeline := []bson.M{}
 	match := bson.M{}
 
@@ -251,9 +251,9 @@ func buildPatchFilterPipeline(opts ByPatchNameStatusesMergeQueuePaginatedOptions
 	return pipeline, onlyMergeQueue
 }
 
-// ByPatchNameStatusesMergeQueuePaginatedResults returns a page of patches matching the filter criteria.
-func ByPatchNameStatusesMergeQueuePaginatedResults(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]Patch, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ByPatchNameStatusesMergeQueuePaginatedResults")})
+// ProjectOrUserPatchesPage returns a page of patches matching the filter criteria.
+func ProjectOrUserPatchesPage(ctx context.Context, opts ProjectOrUserPatchesOptions) ([]Patch, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ProjectOrUserPatchesPage")})
 
 	if opts.Project != nil && opts.Author != nil {
 		return nil, errors.New("can't set both project and author")
@@ -291,10 +291,10 @@ func ByPatchNameStatusesMergeQueuePaginatedResults(ctx context.Context, opts ByP
 	return results, nil
 }
 
-// ByPatchNameStatusesMergeQueuePaginatedCount returns the count of patches matching the filter criteria.
+// ProjectOrUserPatchesCount returns the count of patches matching the filter criteria.
 // An upper threshold is set since the precise document count doesn't really matter.
-func ByPatchNameStatusesMergeQueuePaginatedCount(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) (int, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ByPatchNameStatusesMergeQueuePaginatedCount")})
+func ProjectOrUserPatchesCount(ctx context.Context, opts ProjectOrUserPatchesOptions) (int, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ProjectOrUserPatchesCount")})
 
 	if opts.Project != nil && opts.Author != nil {
 		return 0, errors.New("can't set both project and author")

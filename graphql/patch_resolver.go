@@ -348,7 +348,7 @@ func (r *patchesResolver) FilteredPatchCount(ctx context.Context, obj *Patches) 
 		return 0, err
 	}
 
-	count, err := patch.ByPatchNameStatusesMergeQueuePaginatedCount(ctx, opts)
+	count, err := patch.ProjectOrUserPatchesCount(ctx, opts)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch count: %s", err.Error()))
 	}
@@ -363,7 +363,7 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 		return nil, err
 	}
 
-	patches, err := patch.ByPatchNameStatusesMergeQueuePaginatedResults(ctx, opts)
+	patches, err := patch.ProjectOrUserPatchesPage(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches: %s", err.Error()))
 	}
