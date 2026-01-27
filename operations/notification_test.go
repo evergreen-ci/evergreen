@@ -93,6 +93,10 @@ func TestNotificationEmailCommand(t *testing.T) {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", emptyTestFile},
 			expectErr: true,
 		},
+		"FailsWithInlineBodyAndBodyFile": {
+			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--body", "Inline Email Body", "--bodyFile", emptyTestFile},
+			expectErr: true,
+		},
 		"SucceedsWithValidBodyFile": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", testFile},
 			expectErr: false,
