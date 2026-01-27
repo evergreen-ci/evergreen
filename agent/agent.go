@@ -916,35 +916,37 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 	pidCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	tc.logger.Task().Info("Running default timeout handler to collect process information")
+	tc.logger.Execution().Info("Running default timeout handler to collect process information")
 
 	var currentCmdPID int
 	var currentCmdName string
 	if currentCmd := tc.getCurrentCommand(); currentCmd != nil {
 		currentCmdName = currentCmd.FullDisplayName()
-		tc.logger.Task().Infof("Current command at timeout: %s", currentCmdName)
+		tc.logger.Execution().Infof("Current command at timeout: %s", currentCmdName)
 	}
 
-	var runningPIDs []jasper.ProcessInfo
+	var runningPIDs []int
 	var processDetails []string
 
 	if a.jasper != nil {
 		procs, err := a.jasper.List(pidCtx, options.Running)
 		if err != nil {
-			tc.logger.Task().Error(errors.Wrap(err, "listing running processes during timeout"))
+			tc.logger.Execution().Error(errors.Wrap(err, "listing running processes during timeout"))
 		} else {
-			tc.logger.Task().Infof("Found %d running processes managed by Jasper", len(procs))
+			tc.logger.Execution().Infof("Found %d running processes managed by Jasper", len(procs))
 
 			for _, proc := range procs {
 				info := proc.Info(pidCtx)
 				if info.PID > 0 {
-					runningPIDs = append(runningPIDs, info)
+					runningPIDs = append(runningPIDs, info.PID)
+
 					detail := fmt.Sprintf("PID %d: ID=%s, Running=%v",
 						info.PID, info.ID, info.IsRunning)
 
 					if tags := proc.GetTags(); len(tags) > 0 {
 						detail += fmt.Sprintf(", Tags=%v", tags)
 					}
+
 					processDetails = append(processDetails, detail)
 
 					if currentCmd := tc.getCurrentCommand(); currentCmd != nil && info.IsRunning {
@@ -955,17 +957,20 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 		}
 	}
 	if len(runningPIDs) > 0 {
-		tc.logger.Task().Infof("Process PIDs at timeout: %v", runningPIDs)
-		tc.logger.Task().Info("Detailed process information:")
+		tc.logger.Execution().Infof("Process PIDs at timeout: %v", runningPIDs)
+		tc.logger.Execution().Info("Detailed process information:")
 		for _, detail := range processDetails {
-			tc.logger.Task().Info(detail)
+			tc.logger.Execution().Info(detail)
 		}
+
 		if currentCmdPID > 0 {
-			tc.logger.Task().Infof("Suspected current command PID: %d", currentCmdPID)
+			tc.logger.Execution().Infof("Suspected current command PID: %d", currentCmdPID)
 		}
-		tc.logger.Task().Infof("Default timeout handler collected %d process PIDs for debugging", len(runningPIDs))
+
+		tc.logger.Task().Infof("Default timeout handler collected %d process PIDs for debugging. "+
+			"These PIDs can be used as starting points for hang analysis.", len(runningPIDs))
 	} else {
-		tc.logger.Task().Info("No running processes found during timeout")
+		tc.logger.Execution().Info("No running processes found during timeout")
 	}
 	if detail.TimeoutProcessInfo == nil {
 		detail.TimeoutProcessInfo = &apimodels.TimeoutProcessInfo{

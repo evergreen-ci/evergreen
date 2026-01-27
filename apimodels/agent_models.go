@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -95,10 +94,10 @@ type OOMTrackerInfo struct {
 
 // TimeoutProcessInfo contains process information collected when a task times out
 type TimeoutProcessInfo struct {
-	CurrentCommand    string               `bson:"current_command,omitempty" json:"current_command,omitempty"`
-	CurrentCommandPID int                  `bson:"current_command_pid,omitempty" json:"current_command_pid,omitempty"`
-	RunningPIDs       []jasper.ProcessInfo `bson:"running_pids,omitempty" json:"running_pids,omitempty"`
-	Timestamp         time.Time            `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
+	CurrentCommand    string    `bson:"current_command,omitempty" json:"current_command,omitempty"`
+	CurrentCommandPID int       `bson:"current_command_pid,omitempty" json:"current_command_pid,omitempty"`
+	RunningPIDs       []int     `bson:"running_pids,omitempty" json:"running_pids,omitempty"`
+	Timestamp         time.Time `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
 }
 
 type LogInfo struct {
