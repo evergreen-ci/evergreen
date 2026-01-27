@@ -1244,7 +1244,7 @@ func (gh *githubHookApi) handleCreatedGitTag(ctx context.Context, event *github.
 func (gh *githubHookApi) handleDeletedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
 	err := model.RemoveGitTagFromVersions(ctx, owner, repo, tag)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "removing tag from versions",
 			"ref":     event.GetRef(),
