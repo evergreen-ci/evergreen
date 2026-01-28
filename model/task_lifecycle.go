@@ -1665,8 +1665,14 @@ func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (patc
 			}
 			if parentPatch != nil {
 				event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
+				if err = p.SetChildrenCompletedTime(ctx, parentPatch.FinishTime); err != nil {
+					return psu, errors.Wrapf(err, "setting finish time for patch '%s'", p.Id.Hex())
+				}
 			} else {
 				event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
+				if err = p.SetChildrenCompletedTime(ctx, p.FinishTime); err != nil {
+					return psu, errors.Wrapf(err, "setting finish time for patch '%s'", p.Id.Hex())
+				}
 			}
 			psu.patchFamilyFinishedCollectiveStatus = collectiveStatus
 		}

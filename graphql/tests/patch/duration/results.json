@@ -23,6 +23,30 @@
           }
         }
       }
+    },
+    {
+      "query_file": "parent_makespan.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "makespan": "22m 0s"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "parent_time_taken.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "duration": {
+              "timeTaken": "50m 0s"
+            }
+          }
+        }
+      }
     }
   ]
 }

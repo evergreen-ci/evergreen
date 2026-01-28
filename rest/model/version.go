@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -134,6 +135,27 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 	if !v.PredictedCost.IsZero() {
 		predictedCost := v.PredictedCost
 		apiVersion.PredictedCost = &predictedCost
+	}
+
+	if apiVersion.IsPatchRequester() {
+		p, err := patch.FindOneId(ctx, v.Id)
+		if err != nil || p == nil {
+			return
+		}
+		if p.IsParent() && len(p.Triggers.ChildPatches) > 0 {
+			childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
+			if err != nil {
+				return
+			}
+			for _, childPatch := range childPatches {
+				if !childPatch.StartTime.IsZero() && childPatch.StartTime.Before(utility.FromTimePtr(apiVersion.StartTime)) {
+					apiVersion.StartTime = ToTimePtr(childPatch.StartTime)
+				}
+				if !childPatch.FinishTime.IsZero() && childPatch.FinishTime.After(utility.FromTimePtr(apiVersion.FinishTime)) {
+					apiVersion.FinishTime = ToTimePtr(childPatch.FinishTime)
+				}
+			}
+		}
 	}
 }
 
