@@ -816,26 +816,26 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 type gitIncludeDirs struct {
 	// clonesForOwnerRepo maps a git owner/repo to the directory where its
 	// git clone is located.
-	clonesForOwnerRepo map[gitOwnerAndRepo]string
-	// worktreesForOwnerRepo maps a gitOwnerAndRepo to the list of worktree
-	// directories created for a given git clone for an owner/repo.
-	worktreesForOwnerRepo map[gitOwnerAndRepo][]string
+	clonesForOwnerRepo map[gitOwnerRepo]string
+	// worktreesForOwnerRepo maps a git owner/repo to the list of available
+	// worktree directories.
+	worktreesForOwnerRepo map[gitOwnerRepo][]string
 }
 
-type gitOwnerAndRepo struct {
+type gitOwnerRepo struct {
 	owner string
 	repo  string
 }
 
-func newGitOwnerAndRepo(owner, repo string) gitOwnerAndRepo {
-	return gitOwnerAndRepo{
+func newGitOwnerRepo(owner, repo string) gitOwnerRepo {
+	return gitOwnerRepo{
 		owner: owner,
 		repo:  repo,
 	}
 }
 
 func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, workerNum int) string {
-	ownerRepo := newGitOwnerAndRepo(owner, repo)
+	ownerRepo := newGitOwnerRepo(owner, repo)
 	worktrees := d.worktreesForOwnerRepo[ownerRepo]
 	if len(worktrees) < workerNum {
 		return ""
@@ -844,8 +844,8 @@ func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, worke
 }
 
 // setupParallelGitIncludeDirs sets up git clones and worktrees in preparation
-// for retrieving included YAML files using git. numWorkers determines how many
-// worktrees are created for each included repo.
+// for retrieving included YAML files using git. numWorkers determines how
+// many worktrees are created for each included repo.
 // This is primarily a performance optimization. If using git to retrieve
 // included files from GitHub, repeating the same git setup for every single
 // included file is expensive and slow.
@@ -873,8 +873,8 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 	defer span.End()
 
 	dirs = &gitIncludeDirs{
-		clonesForOwnerRepo:    make(map[gitOwnerAndRepo]string),
-		worktreesForOwnerRepo: make(map[gitOwnerAndRepo][]string),
+		clonesForOwnerRepo:    make(map[gitOwnerRepo]string),
+		worktreesForOwnerRepo: make(map[gitOwnerRepo][]string),
 	}
 
 	defer func() {
@@ -883,11 +883,11 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		}
 		// If this function errored, clean up any intermediate git clone
 		// directories and worktrees that were created.
-		for ownerAndRepo, dir := range dirs.clonesForOwnerRepo {
+		for ownerRepo, dir := range dirs.clonesForOwnerRepo {
 			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
 				"message":            "could not clean up git clone directory after failing to set up git directories",
-				"owner":              ownerAndRepo.owner,
-				"repo":               ownerAndRepo.repo,
+				"owner":              ownerRepo.owner,
+				"repo":               ownerRepo.repo,
 				"project_id":         opts.Ref.Id,
 				"project_identifier": opts.Ref.Identifier,
 				"dir":                dir,
@@ -907,11 +907,11 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 	}
 
 	type gitInput struct {
-		ownerAndRepo gitOwnerAndRepo
-		revision     string
+		ownerRepo gitOwnerRepo
+		revision  string
 	}
 	type gitOutput struct {
-		ownerAndRepo gitOwnerAndRepo
+		ownerRepo    gitOwnerRepo
 		cloneDir     string
 		worktreeDirs []string
 		err          error
@@ -923,10 +923,10 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 	output := make(chan gitOutput, len(includedModuleNames)+1)
 
 	if includesProjectFiles {
-		ownerAndRepo := newGitOwnerAndRepo(opts.Ref.Owner, opts.Ref.Repo)
+		ownerRepo := newGitOwnerRepo(opts.Ref.Owner, opts.Ref.Repo)
 		reposToProcess <- gitInput{
-			ownerAndRepo: ownerAndRepo,
-			revision:     opts.Revision,
+			ownerRepo: ownerRepo,
+			revision:  opts.Revision,
 		}
 	}
 
@@ -944,8 +944,8 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			return dirs, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
 		}
 
-		ownerAndRepo := newGitOwnerAndRepo(repoOwner, repoName)
-		if _, ok := dirs.clonesForOwnerRepo[ownerAndRepo]; ok {
+		ownerRepo := newGitOwnerRepo(repoOwner, repoName)
+		if _, ok := dirs.clonesForOwnerRepo[ownerRepo]; ok {
 			// When including files, there should not be any duplicate repos
 			// defined in the modules, and the modules should not use the exact
 			// same repo as the project itself. If this is ever hit, it's a bug.
@@ -962,8 +962,8 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		}
 
 		reposToProcess <- gitInput{
-			ownerAndRepo: ownerAndRepo,
-			revision:     revision,
+			ownerRepo: ownerRepo,
+			revision:  revision,
 		}
 	}
 
@@ -977,9 +977,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		go func() {
 			defer wg.Done()
 			for repoData := range reposToProcess {
-				cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, repoData.ownerAndRepo, repoData.revision, numWorkers)
+				cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, repoData.ownerRepo, repoData.revision, numWorkers)
 				output <- gitOutput{
-					ownerAndRepo: repoData.ownerAndRepo,
+					ownerRepo:    repoData.ownerRepo,
 					cloneDir:     cloneDir,
 					worktreeDirs: worktreeDirs,
 					err:          err,
@@ -993,29 +993,29 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 
 	for out := range output {
 		if out.cloneDir != "" {
-			dirs.clonesForOwnerRepo[out.ownerAndRepo] = out.cloneDir
+			dirs.clonesForOwnerRepo[out.ownerRepo] = out.cloneDir
 		}
 		if out.worktreeDirs != nil {
-			dirs.worktreesForOwnerRepo[out.ownerAndRepo] = out.worktreeDirs
+			dirs.worktreesForOwnerRepo[out.ownerRepo] = out.worktreeDirs
 		}
 		if out.err != nil {
-			return dirs, errors.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerAndRepo.owner, out.ownerAndRepo.repo)
+			return dirs, errors.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerRepo.owner, out.ownerRepo.repo)
 		}
 	}
 
 	return dirs, nil
 }
 
-func gitCloneAndCreateWorktrees(ctx context.Context, ownerAndRepo gitOwnerAndRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
-	dir, err := thirdparty.GitCloneMinimal(ctx, ownerAndRepo.owner, ownerAndRepo.repo, revision)
+func gitCloneAndCreateWorktrees(ctx context.Context, ownerRepo gitOwnerRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
+	dir, err := thirdparty.GitCloneMinimal(ctx, ownerRepo.owner, ownerRepo.repo, revision)
 	if err != nil {
-		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerAndRepo.owner, ownerAndRepo.repo, revision)
+		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerRepo.owner, ownerRepo.repo, revision)
 	}
 
 	for i := range numWorktrees {
 		worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
 		if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
-			return dir, worktreeDirs, errors.Wrapf(err, "creating git worktree for repo '%s/%s'", ownerAndRepo.owner, ownerAndRepo.repo)
+			return dir, worktreeDirs, errors.Wrapf(err, "creating git worktree for repo '%s/%s'", ownerRepo.owner, ownerRepo.repo)
 		}
 		worktreeDirs = append(worktreeDirs, worktreeDir)
 	}
@@ -1160,8 +1160,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
 	}
-	// kim: NOTE: double-check that this is equivalent to how it resolves the
-	// module before the refactor.
 	moduleOpts.Revision, err = getRevisionForRemoteModule(ctx, *module, include.Module, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting revision for module '%s'", include.Module)
