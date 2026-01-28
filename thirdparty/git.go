@@ -257,7 +257,7 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) ([
 		}))
 	}()
 
-	fileContent, err := gitRestoreFile(ctx, owner, repo, ref, dir, file)
+	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, file)
 	return fileContent, errors.Wrap(err, "restoring git file")
 }
 
@@ -311,10 +311,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 		repoURL,
 		tmpDir,
 	)
-	var (
-		stdout strings.Builder
-		stderr strings.Builder
-	)
+	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -342,7 +339,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 // repo into dir and HEAD is assumed to be already pointing to the desired
 // revision.
 func GitCreateWorktree(ctx context.Context, dir, worktreeDir string) error {
-	ctx, span := tracer.Start(ctx, "gitCreateWorktree")
+	ctx, span := tracer.Start(ctx, "GitCreateWorktree")
 	defer span.End()
 
 	// Limit how long this can spend creating the worktree to prevent this from
@@ -358,10 +355,7 @@ func GitCreateWorktree(ctx context.Context, dir, worktreeDir string) error {
 		"--detach",
 		worktreeDir)
 	cmd.Dir = dir
-	var (
-		stdout strings.Builder
-		stderr strings.Builder
-	)
+	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -381,11 +375,11 @@ func GitCreateWorktree(ctx context.Context, dir, worktreeDir string) error {
 
 const gitErrorFileNotFound = "did not match any file(s) known to git"
 
-// gitRestoreFile restores a git file within the given git directory and returns
+// GitRestoreFile restores a git file within the given git directory and returns
 // its contents. Callers are assumed to have already cloned the repo into dir
 // and HEAD is assumed to be already pointing to the desired revision.
-func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) ([]byte, error) {
-	ctx, span := tracer.Start(ctx, "gitRestoreFile", trace.WithAttributes(
+func GitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) ([]byte, error) {
+	ctx, span := tracer.Start(ctx, "GitRestoreFile", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 		attribute.String(githubRefAttribute, revision),
@@ -410,10 +404,7 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 
 	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", fileName)
 	cmd.Dir = dir
-	var (
-		stdout strings.Builder
-		stderr strings.Builder
-	)
+	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
