@@ -411,7 +411,6 @@ type VersionBuildStatus struct {
 	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
 	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
-	Ignored          bool                  `bson:"ignored,omitempty" json:"ignored,omitempty"`
 	ActivationStatus `bson:",inline"`
 }
 

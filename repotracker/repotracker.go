@@ -943,9 +943,16 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		activateVariantAt := time.Now()
+		// If the build variant is ignored, override the default activation to be the zero time
+		// (i.e. don't activate, unless batchtime or cron overrides this behavior below).
+		ignoreBuildVariant := !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
+		if ignoreBuildVariant {
+			activateVariantAt = utility.ZeroTime
+		}
+
 		taskStatuses := []model.BatchTimeTaskStatus{}
 		if evergreen.ShouldConsiderBatchtime(v.Requester) {
-			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, v.CreateTime, time.Now())
+			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, ignoreBuildVariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
@@ -974,7 +981,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			BuildId:        b.Id,
 			DisplayName:    b.DisplayName,
 			BatchTimeTasks: taskStatuses,
-			Ignored:        !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles),
 			ActivationStatus: model.ActivationStatus{
 				ActivateAt: activateVariantAt,
 				Activated:  false,

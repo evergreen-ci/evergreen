@@ -1985,6 +1985,14 @@ buildvariants:
   - "go.mod"
   tasks:
   - name: backend_test
+- name: frontend-special-cron
+  # this variant is never ignored on mainline due to cron, despite path filtering.
+  cron: 0 0 * * *
+  paths:
+  - "frontend/**"
+  - "shared/**"
+  tasks:
+  - name: frontend_test
 - name: non_docs
   display_name: Non-Documentation
   run_on: d
@@ -2042,7 +2050,7 @@ tasks:
 
 			ignoredVariants := []string{}
 			for _, bv := range v.BuildVariants {
-				if bv.Ignored {
+				if utility.IsZeroTime(bv.ActivateAt) { // This should be set if the variant is ignored due to path filtering.
 					ignoredVariants = append(ignoredVariants, bv.BuildVariant)
 					if bv.BuildVariant == "frontend" { // Ensure that the task that overrides activation is given an activation time.
 						require.Len(t, bv.BatchTimeTasks, 1)
