@@ -811,6 +811,8 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	return nil
 }
 
+// gitIncludeDirs contains information about git clone and worktree directories
+// that can be used when including YAML files.
 type gitIncludeDirs struct {
 	// clonesForOwnerRepo maps a git owner/repo to the directory where its
 	// git clone is located.
