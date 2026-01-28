@@ -100,14 +100,14 @@ User is returned by the user query.
 It contains information about a user's id, name, email, and permissions.
 """
 type User {
-  betaFeatures: BetaFeatures!
-  displayName: String!
-  emailAddress: String!
-  parsleyFilters: [ParsleyFilter!]!
-  parsleySettings: ParsleySettings!
-  patches(patchesInput: PatchesInput!): Patches! # user patches
-  permissions: Permissions!
-  settings: UserSettings!
+  betaFeatures: BetaFeatures
+  displayName: String
+  emailAddress: String
+  parsleyFilters: [ParsleyFilter!]
+  parsleySettings: ParsleySettings
+  patches(patchesInput: PatchesInput!): Patches # user patches
+  permissions: Permissions
+  settings: UserSettings
   subscriptions: [GeneralSubscription!]
   userId: String!
 }

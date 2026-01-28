@@ -26,6 +26,8 @@ type APIVersion struct {
 	ProjectIdentifier *string `json:"project_identifier"`
 	// Author of the version
 	Author *string `json:"author"`
+	// Author ID is the Evergreen user ID associated with the version.
+	AuthorID *string `json:"author_id"`
 	// Email of the author of the version
 	AuthorEmail *string `json:"author_email"`
 	// Message left with the commit
@@ -77,6 +79,7 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 	apiVersion.FinishTime = ToTimePtr(v.FinishTime)
 	apiVersion.Revision = utility.ToStringPtr(v.Revision)
 	apiVersion.Author = utility.ToStringPtr(v.Author)
+	apiVersion.AuthorID = utility.ToStringPtr(v.AuthorID)
 	apiVersion.AuthorEmail = utility.ToStringPtr(v.AuthorEmail)
 	apiVersion.Message = utility.ToStringPtr(v.Message)
 	apiVersion.Status = utility.ToStringPtr(v.Status)
