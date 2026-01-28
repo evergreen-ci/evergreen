@@ -1006,6 +1006,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 	return dirs, nil
 }
 
+// gitCloneAndCreateWorktrees performs a minimal git clone of the specified repo
+// for the specific revision. Once the git clone is finished, it creates git
+// worktrees under the clone directory based on numWorktrees.
 func gitCloneAndCreateWorktrees(ctx context.Context, ownerRepo gitOwnerRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
 	dir, err := thirdparty.GitCloneMinimal(ctx, ownerRepo.owner, ownerRepo.repo, revision)
 	if err != nil {
