@@ -427,7 +427,7 @@ type ComplexityRoot struct {
 		SavingsPlanRate func(childComplexity int) int
 	}
 
-	CursorAPIKeyStatus struct {
+	CursorSettings struct {
 		KeyConfigured func(childComplexity int) int
 		KeyLastFour   func(childComplexity int) int
 	}
@@ -1506,7 +1506,7 @@ type ComplexityRoot struct {
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
 		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
 		ClientConfig             func(childComplexity int) int
-		CursorAPIKeyStatus       func(childComplexity int) int
+		CursorSettings           func(childComplexity int) int
 		Distro                   func(childComplexity int, distroID string) int
 		DistroEvents             func(childComplexity int, opts DistroEventsInput) int
 		DistroTaskQueue          func(childComplexity int, distroID string) int
@@ -2650,7 +2650,7 @@ type QueryResolver interface {
 	Task(ctx context.Context, taskID string, execution *int) (*model.APITask, error)
 	TaskAllExecutions(ctx context.Context, taskID string) ([]*model.APITask, error)
 	TaskTestSample(ctx context.Context, versionID string, taskIds []string, filters []*TestFilter) ([]*TaskTestResultSample, error)
-	CursorAPIKeyStatus(ctx context.Context) (*CursorAPIKeyStatus, error)
+	CursorSettings(ctx context.Context) (*CursorSettings, error)
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
@@ -4163,18 +4163,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CostData.SavingsPlanRate(childComplexity), true
 
-	case "CursorAPIKeyStatus.keyConfigured":
-		if e.complexity.CursorAPIKeyStatus.KeyConfigured == nil {
+	case "CursorSettings.keyConfigured":
+		if e.complexity.CursorSettings.KeyConfigured == nil {
 			break
 		}
 
-		return e.complexity.CursorAPIKeyStatus.KeyConfigured(childComplexity), true
-	case "CursorAPIKeyStatus.keyLastFour":
-		if e.complexity.CursorAPIKeyStatus.KeyLastFour == nil {
+		return e.complexity.CursorSettings.KeyConfigured(childComplexity), true
+	case "CursorSettings.keyLastFour":
+		if e.complexity.CursorSettings.KeyLastFour == nil {
 			break
 		}
 
-		return e.complexity.CursorAPIKeyStatus.KeyLastFour(childComplexity), true
+		return e.complexity.CursorSettings.KeyLastFour(childComplexity), true
 
 	case "DeleteCursorAPIKeyPayload.success":
 		if e.complexity.DeleteCursorAPIKeyPayload.Success == nil {
@@ -8816,12 +8816,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ClientConfig(childComplexity), true
-	case "Query.cursorAPIKeyStatus":
-		if e.complexity.Query.CursorAPIKeyStatus == nil {
+	case "Query.cursorSettings":
+		if e.complexity.Query.CursorSettings == nil {
 			break
 		}
 
-		return e.complexity.Query.CursorAPIKeyStatus(childComplexity), true
+		return e.complexity.Query.CursorSettings(childComplexity), true
 	case "Query.distro":
 		if e.complexity.Query.Distro == nil {
 			break
@@ -13185,7 +13185,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/cursor_api_key.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/pod.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -13211,7 +13211,6 @@ var sources = []*ast.Source{
 	{Name: "schema/types/adminSettings/web.graphql", Input: sourceData("schema/types/adminSettings/web.graphql"), BuiltIn: false},
 	{Name: "schema/types/annotation.graphql", Input: sourceData("schema/types/annotation.graphql"), BuiltIn: false},
 	{Name: "schema/types/config.graphql", Input: sourceData("schema/types/config.graphql"), BuiltIn: false},
-	{Name: "schema/types/cursor_api_key.graphql", Input: sourceData("schema/types/cursor_api_key.graphql"), BuiltIn: false},
 	{Name: "schema/types/distro.graphql", Input: sourceData("schema/types/distro.graphql"), BuiltIn: false},
 	{Name: "schema/types/host.graphql", Input: sourceData("schema/types/host.graphql"), BuiltIn: false},
 	{Name: "schema/types/image.graphql", Input: sourceData("schema/types/image.graphql"), BuiltIn: false},
@@ -24376,12 +24375,12 @@ func (ec *executionContext) fieldContext_CostData_savingsPlanRate(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _CursorAPIKeyStatus_keyConfigured(ctx context.Context, field graphql.CollectedField, obj *CursorAPIKeyStatus) (ret graphql.Marshaler) {
+func (ec *executionContext) _CursorSettings_keyConfigured(ctx context.Context, field graphql.CollectedField, obj *CursorSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_CursorAPIKeyStatus_keyConfigured,
+		ec.fieldContext_CursorSettings_keyConfigured,
 		func(ctx context.Context) (any, error) {
 			return obj.KeyConfigured, nil
 		},
@@ -24392,9 +24391,9 @@ func (ec *executionContext) _CursorAPIKeyStatus_keyConfigured(ctx context.Contex
 	)
 }
 
-func (ec *executionContext) fieldContext_CursorAPIKeyStatus_keyConfigured(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CursorSettings_keyConfigured(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CursorAPIKeyStatus",
+		Object:     "CursorSettings",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -24405,12 +24404,12 @@ func (ec *executionContext) fieldContext_CursorAPIKeyStatus_keyConfigured(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _CursorAPIKeyStatus_keyLastFour(ctx context.Context, field graphql.CollectedField, obj *CursorAPIKeyStatus) (ret graphql.Marshaler) {
+func (ec *executionContext) _CursorSettings_keyLastFour(ctx context.Context, field graphql.CollectedField, obj *CursorSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_CursorAPIKeyStatus_keyLastFour,
+		ec.fieldContext_CursorSettings_keyLastFour,
 		func(ctx context.Context) (any, error) {
 			return obj.KeyLastFour, nil
 		},
@@ -24421,9 +24420,9 @@ func (ec *executionContext) _CursorAPIKeyStatus_keyLastFour(ctx context.Context,
 	)
 }
 
-func (ec *executionContext) fieldContext_CursorAPIKeyStatus_keyLastFour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CursorSettings_keyLastFour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CursorAPIKeyStatus",
+		Object:     "CursorSettings",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -53325,23 +53324,23 @@ func (ec *executionContext) fieldContext_Query_taskTestSample(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_cursorAPIKeyStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_cursorSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Query_cursorAPIKeyStatus,
+		ec.fieldContext_Query_cursorSettings,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().CursorAPIKeyStatus(ctx)
+			return ec.resolvers.Query().CursorSettings(ctx)
 		},
 		nil,
-		ec.marshalNCursorAPIKeyStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorAPIKeyStatus,
+		ec.marshalNCursorSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_cursorAPIKeyStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_cursorSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -53350,11 +53349,11 @@ func (ec *executionContext) fieldContext_Query_cursorAPIKeyStatus(_ context.Cont
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "keyConfigured":
-				return ec.fieldContext_CursorAPIKeyStatus_keyConfigured(ctx, field)
+				return ec.fieldContext_CursorSettings_keyConfigured(ctx, field)
 			case "keyLastFour":
-				return ec.fieldContext_CursorAPIKeyStatus_keyLastFour(ctx, field)
+				return ec.fieldContext_CursorSettings_keyLastFour(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CursorAPIKeyStatus", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CursorSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -89617,24 +89616,24 @@ func (ec *executionContext) _CostData(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var cursorAPIKeyStatusImplementors = []string{"CursorAPIKeyStatus"}
+var cursorSettingsImplementors = []string{"CursorSettings"}
 
-func (ec *executionContext) _CursorAPIKeyStatus(ctx context.Context, sel ast.SelectionSet, obj *CursorAPIKeyStatus) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, cursorAPIKeyStatusImplementors)
+func (ec *executionContext) _CursorSettings(ctx context.Context, sel ast.SelectionSet, obj *CursorSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cursorSettingsImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("CursorAPIKeyStatus")
+			out.Values[i] = graphql.MarshalString("CursorSettings")
 		case "keyConfigured":
-			out.Values[i] = ec._CursorAPIKeyStatus_keyConfigured(ctx, field, obj)
+			out.Values[i] = ec._CursorSettings_keyConfigured(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "keyLastFour":
-			out.Values[i] = ec._CursorAPIKeyStatus_keyLastFour(ctx, field, obj)
+			out.Values[i] = ec._CursorSettings_keyLastFour(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99383,7 +99382,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "cursorAPIKeyStatus":
+		case "cursorSettings":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -99392,7 +99391,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_cursorAPIKeyStatus(ctx, field)
+				res = ec._Query_cursorSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -108604,23 +108603,23 @@ func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋevergree
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCursorAPIKeyStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorAPIKeyStatus(ctx context.Context, sel ast.SelectionSet, v CursorAPIKeyStatus) graphql.Marshaler {
-	return ec._CursorAPIKeyStatus(ctx, sel, &v)
+func (ec *executionContext) unmarshalNCursorParams2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorParams(ctx context.Context, v any) (*CursorParams, error) {
+	res, err := ec.unmarshalInputCursorParams(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCursorAPIKeyStatus2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorAPIKeyStatus(ctx context.Context, sel ast.SelectionSet, v *CursorAPIKeyStatus) graphql.Marshaler {
+func (ec *executionContext) marshalNCursorSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings(ctx context.Context, sel ast.SelectionSet, v CursorSettings) graphql.Marshaler {
+	return ec._CursorSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCursorSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings(ctx context.Context, sel ast.SelectionSet, v *CursorSettings) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._CursorAPIKeyStatus(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNCursorParams2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorParams(ctx context.Context, v any) (*CursorParams, error) {
-	res, err := ec.unmarshalInputCursorParams(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	return ec._CursorSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNDeactivateStepbackTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx context.Context, v any) (DeactivateStepbackTaskInput, error) {

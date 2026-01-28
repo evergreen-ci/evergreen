@@ -76,18 +76,16 @@ type CreateDistroInput struct {
 	SingleTaskDistro *bool  `json:"singleTaskDistro,omitempty"`
 }
 
-// CursorAPIKeyStatus represents the status of a user's Cursor API key stored in Sage.
-type CursorAPIKeyStatus struct {
-	// keyConfigured indicates whether the user has a Cursor API key configured.
-	KeyConfigured bool `json:"keyConfigured"`
-	// keyLastFour is the last four characters of the API key, if configured.
-	KeyLastFour *string `json:"keyLastFour,omitempty"`
-}
-
 type CursorParams struct {
 	CursorID      string               `json:"cursorId"`
 	Direction     TaskHistoryDirection `json:"direction"`
 	IncludeCursor bool                 `json:"includeCursor"`
+}
+
+// CursorSettings represents the status of a user's Cursor API key stored in Sage.
+type CursorSettings struct {
+	KeyConfigured bool    `json:"keyConfigured"`
+	KeyLastFour   *string `json:"keyLastFour,omitempty"`
 }
 
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
@@ -105,7 +103,6 @@ type DefaultSectionToRepoInput struct {
 
 // DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
 type DeleteCursorAPIKeyPayload struct {
-	// success indicates whether the operation was successful.
 	Success bool `json:"success"`
 }
 
@@ -482,9 +479,7 @@ type SaveDistroPayload struct {
 
 // SetCursorAPIKeyPayload is the response from setting a Cursor API key.
 type SetCursorAPIKeyPayload struct {
-	// success indicates whether the operation was successful.
-	Success bool `json:"success"`
-	// keyLastFour is the last four characters of the stored API key.
+	Success     bool    `json:"success"`
 	KeyLastFour *string `json:"keyLastFour,omitempty"`
 }
 

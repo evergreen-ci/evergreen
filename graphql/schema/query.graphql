@@ -81,7 +81,7 @@ type Query {
   ): [TaskTestResultSample!]
 
   # user
-  cursorAPIKeyStatus: CursorAPIKeyStatus!
+  cursorSettings: CursorSettings!
   myPublicKeys: [PublicKey!]!
   user(userId: String): User!
   userConfig: UserConfig

@@ -19,11 +19,14 @@ type SageClient struct {
 }
 
 // NewSageClient creates a new Sage API client.
-func NewSageClient(baseURL string) *SageClient {
+func NewSageClient(baseURL string) (*SageClient, error) {
+	if baseURL == "" {
+		return nil, errors.New("Sage base URL is not configured")
+	}
 	return &SageClient{
 		httpClient: utility.GetHTTPClient(),
 		baseURL:    baseURL,
-	}
+	}, nil
 }
 
 // Close releases resources used by the client.
@@ -50,10 +53,6 @@ type CursorAPIKeyStatusResponse struct {
 
 // SetCursorAPIKey submits a user's Cursor API key to Sage.
 func (c *SageClient) SetCursorAPIKey(ctx context.Context, userID, apiKey string) (*SetCursorAPIKeyResponse, error) {
-	if c.baseURL == "" {
-		return nil, errors.New("Sage base URL is not configured")
-	}
-
 	requestBody := map[string]string{
 		"apiKey": apiKey,
 	}
@@ -96,10 +95,6 @@ func (c *SageClient) SetCursorAPIKey(ctx context.Context, userID, apiKey string)
 
 // DeleteCursorAPIKey removes a user's Cursor API key from Sage.
 func (c *SageClient) DeleteCursorAPIKey(ctx context.Context, userID string) (*DeleteCursorAPIKeyResponse, error) {
-	if c.baseURL == "" {
-		return nil, errors.New("Sage base URL is not configured")
-	}
-
 	url := fmt.Sprintf("%s/pr-bot/user/cursor-key", c.baseURL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 	if err != nil {
@@ -133,10 +128,6 @@ func (c *SageClient) DeleteCursorAPIKey(ctx context.Context, userID string) (*De
 
 // GetCursorAPIKeyStatus retrieves the status of a user's Cursor API key from Sage.
 func (c *SageClient) GetCursorAPIKeyStatus(ctx context.Context, userID string) (*CursorAPIKeyStatusResponse, error) {
-	if c.baseURL == "" {
-		return nil, errors.New("Sage base URL is not configured")
-	}
-
 	url := fmt.Sprintf("%s/pr-bot/user/cursor-key", c.baseURL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

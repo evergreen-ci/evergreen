@@ -783,23 +783,23 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	return apiSamples, nil
 }
 
-// CursorAPIKeyStatus is the resolver for the cursorAPIKeyStatus field.
-func (r *queryResolver) CursorAPIKeyStatus(ctx context.Context) (*CursorAPIKeyStatus, error) {
+// CursorSettings is the resolver for the cursorSettings field.
+func (r *queryResolver) CursorSettings(ctx context.Context) (*CursorSettings, error) {
 	usr := mustHaveUser(ctx)
 
 	sageConfig := &evergreen.SageConfig{}
 	if err := sageConfig.Get(ctx); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
 	}
-	if sageConfig.BaseURL == "" {
+
+	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
+	if err != nil {
 		// Return a default response indicating the feature is not configured
-		return &CursorAPIKeyStatus{
+		return &CursorSettings{
 			KeyConfigured: false,
 			KeyLastFour:   nil,
 		}, nil
 	}
-
-	sageClient := thirdparty.NewSageClient(sageConfig.BaseURL)
 	defer sageClient.Close()
 
 	result, err := sageClient.GetCursorAPIKeyStatus(ctx, usr.Id)
@@ -807,14 +807,9 @@ func (r *queryResolver) CursorAPIKeyStatus(ctx context.Context) (*CursorAPIKeySt
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Cursor API key status: %s", err.Error()))
 	}
 
-	var keyLastFour *string
-	if result.KeyLastFour != "" {
-		keyLastFour = &result.KeyLastFour
-	}
-
-	return &CursorAPIKeyStatus{
+	return &CursorSettings{
 		KeyConfigured: result.HasKey,
-		KeyLastFour:   keyLastFour,
+		KeyLastFour:   utility.ToStringPtr(result.KeyLastFour),
 	}, nil
 }
 

@@ -1229,11 +1229,11 @@ func (r *mutationResolver) DeleteCursorAPIKey(ctx context.Context) (*DeleteCurso
 	if err := sageConfig.Get(ctx); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
 	}
-	if sageConfig.BaseURL == "" {
+
+	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
+	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
 	}
-
-	sageClient := thirdparty.NewSageClient(sageConfig.BaseURL)
 	defer sageClient.Close()
 
 	result, err := sageClient.DeleteCursorAPIKey(ctx, usr.Id)
@@ -1372,11 +1372,11 @@ func (r *mutationResolver) SetCursorAPIKey(ctx context.Context, apiKey string) (
 	if err := sageConfig.Get(ctx); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
 	}
-	if sageConfig.BaseURL == "" {
+
+	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
+	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
 	}
-
-	sageClient := thirdparty.NewSageClient(sageConfig.BaseURL)
 	defer sageClient.Close()
 
 	result, err := sageClient.SetCursorAPIKey(ctx, usr.Id, apiKey)
@@ -1384,14 +1384,9 @@ func (r *mutationResolver) SetCursorAPIKey(ctx context.Context, apiKey string) (
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting Cursor API key: %s", err.Error()))
 	}
 
-	var keyLastFour *string
-	if result.KeyLastFour != "" {
-		keyLastFour = &result.KeyLastFour
-	}
-
 	return &SetCursorAPIKeyPayload{
 		Success:     result.Success,
-		KeyLastFour: keyLastFour,
+		KeyLastFour: utility.ToStringPtr(result.KeyLastFour),
 	}, nil
 }
 
