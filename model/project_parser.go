@@ -752,16 +752,6 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	const maxWorkers = 10
 	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 
-	if readFromRequiresGitHub(opts.ReadFileFrom) {
-		// kim: TODO: use the returned result for includes
-		// kim: NOTE: I verified that ReferenceManifestID and
-		// AutoUpdateModuleRevisions are passed through opts and not modified
-		// while being passed down to retrieveFileForModule.
-		// kim: NOTE: should probably do this in a follow-up PR because the
-		// logic is quite complicated.
-		setupGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
-	}
-
 	wg := sync.WaitGroup{}
 	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 	includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
