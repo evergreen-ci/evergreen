@@ -103,11 +103,13 @@ type Mutation {
   addFavoriteProject(opts: AddFavoriteProjectInput!): Project!
   clearMySubscriptions: Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  deleteCursorAPIKey: DeleteCursorAPIKeyPayload!
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
   removeFavoriteProject(opts: RemoveFavoriteProjectInput!): Project!
   removePublicKey(keyName: String!): [PublicKey!]!
   resetAPIKey: UserConfig
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  setCursorAPIKey(apiKey: String!): SetCursorAPIKeyPayload!
   updateBetaFeatures(opts: UpdateBetaFeaturesInput!): UpdateBetaFeaturesPayload
   updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
   updatePublicKey(
