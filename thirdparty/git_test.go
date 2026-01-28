@@ -3,7 +3,9 @@ package thirdparty
 import (
 	"encoding/base64"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -148,6 +150,45 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
 		assert.Error(t, err)
 		assert.True(t, IsFileNotFound(err))
+	})
+}
+
+func TestGitCreateWorktree(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	const (
+		owner = "evergreen-ci"
+		repo  = "sample"
+		rev   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+	)
+
+	t.Run("Succeeds", func(t *testing.T) {
+		dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.RemoveAll(dir))
+		}()
+
+		worktreeDir := filepath.Join(dir, "worktree")
+		require.NoError(t, GitCreateWorktree(t.Context(), dir, worktreeDir))
+		require.NoError(t, err)
+		assert.True(t, utility.FileExists(worktreeDir))
+
+		dotGitDir := filepath.Join(worktreeDir, ".git")
+		assert.True(t, utility.FileExists(dotGitDir), ".git directory should exist in worktree")
+
+		var stdout, stderr strings.Builder
+		cmd := exec.CommandContext(t.Context(), "git", "rev-parse", "HEAD")
+		cmd.Dir = worktreeDir
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		require.NoError(t, cmd.Run(), "git rev-parse failed: '%s'", stderr.String())
+		assert.Equal(t, rev, strings.TrimSpace(stdout.String()), "worktree should be at the same revision as the git clone directory")
+	})
+	t.Run("FailsWithoutGitDirectory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		assert.Error(t, GitCreateWorktree(t.Context(), tmpDir, "worktree"))
 	})
 }
 

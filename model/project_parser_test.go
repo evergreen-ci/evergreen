@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -3170,4 +3171,168 @@ func TestCapParserPriorities(t *testing.T) {
 		assert.Equal(t, int64(MaxConfigSetPriority), p.BuildVariants[1].Tasks[0].Priority)
 		assert.Equal(t, int64(MaxConfigSetPriority-5), p.BuildVariants[2].Tasks[0].Priority)
 	})
+}
+
+func TestSetupGitIncludeDirs(t *testing.T) {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings)
+
+	cleanupDirs := func(t *testing.T, dirs *gitIncludeDirs) {
+		if dirs == nil {
+			return
+		}
+		for _, dir := range dirs.clonesForOwnerRepo {
+			assert.NoError(t, os.RemoveAll(dir))
+		}
+	}
+
+	flags, err := evergreen.GetServiceFlags(t.Context())
+	require.NoError(t, err)
+	originalEnableGitIncludes := flags.UseGitForGitHubFilesDisabled
+	flags.UseGitForGitHubFilesDisabled = false
+	defer func() {
+		flags.UseGitForGitHubFilesDisabled = originalEnableGitIncludes
+		assert.NoError(t, evergreen.SetServiceFlags(t.Context(), *flags))
+	}()
+	require.NoError(t, evergreen.SetServiceFlags(t.Context(), *flags))
+
+	for tName, tCase := range map[string]func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts){
+		"SucceedsWithGitRestoredIncludeFilesFromRepoAndModules": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
+			numWorkers := len(includes)
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
+			assert.NoError(t, err)
+			require.NotZero(t, dirs)
+			defer cleanupDirs(t, dirs)
+
+			assert.Len(t, dirs.clonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
+			for _, dir := range dirs.clonesForOwnerRepo {
+				assert.True(t, utility.FileExists(dir))
+			}
+			for _, worktreeDirs := range dirs.worktreesForOwnerRepo {
+				assert.Len(t, worktreeDirs, numWorkers)
+				for _, worktreeDir := range worktreeDirs {
+					assert.True(t, utility.FileExists(worktreeDir))
+				}
+			}
+
+			for _, include := range includes {
+				var owner, repo, revision string
+				if include.Module == "" {
+					owner = opts.Ref.Owner
+					repo = opts.Ref.Repo
+					revision = opts.Revision
+				} else {
+					mod, err := GetModuleByName(modules, include.Module)
+					require.NoError(t, err)
+					owner = mod.Owner
+					repo = mod.Repo
+					revision, err = getRevisionForRemoteModule(t.Context(), *mod, include.Module, *opts)
+					require.NoError(t, err)
+				}
+
+				worktreeDir := dirs.getWorktreeForOwnerRepoWorker(owner, repo, 0)
+
+				fileContent, err := thirdparty.GitRestoreFile(t.Context(), owner, repo, revision, worktreeDir, include.FileName)
+				require.NoError(t, err)
+				require.NotEmpty(t, fileContent)
+
+				comparisonFile, err := thirdparty.GetGithubFile(t.Context(), owner, repo, include.FileName, revision, nil)
+				require.NoError(t, err)
+				require.NotZero(t, comparisonFile)
+				comparisonFileContent, err := base64.StdEncoding.DecodeString(*comparisonFile.Content)
+				require.NoError(t, err)
+				assert.Equal(t, comparisonFileContent, fileContent, "git restored file for include should exactly match file retrieved from GitHub API")
+			}
+		},
+		"SucceedsWithFewerWorkersThanIncludeFiles": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
+			const numWorkers = 1
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
+			assert.NoError(t, err)
+			require.NotZero(t, dirs)
+
+			assert.Len(t, dirs.clonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
+			for _, dir := range dirs.clonesForOwnerRepo {
+				assert.True(t, utility.FileExists(dir))
+			}
+			for _, worktreeDirs := range dirs.worktreesForOwnerRepo {
+				assert.Len(t, worktreeDirs, numWorkers)
+				for _, worktreeDir := range worktreeDirs {
+					assert.True(t, utility.FileExists(worktreeDir))
+				}
+			}
+		},
+		"NoopsIfReadingFromLocal": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
+			opts.ReadFileFrom = ReadFromLocal
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
+			require.NoError(t, err)
+			assert.Zero(t, dirs)
+		},
+		"CleansUpDirectoriesOnError": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
+			includes[len(includes)-1].Module = "nonexistent_module"
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
+			assert.Error(t, err)
+			require.NotZero(t, dirs)
+			defer cleanupDirs(t, dirs)
+
+			for _, dir := range dirs.clonesForOwnerRepo {
+				assert.False(t, utility.FileExists(dir), "directory '%s' should have been cleaned up when git setup errors", dir)
+			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			modules := ModuleList{
+				{
+					Name:   "sample",
+					Owner:  "evergreen-ci",
+					Repo:   "sample",
+					Branch: "main",
+				},
+				{
+					Name:   "commit-queue-sandbox",
+					Owner:  "evergreen-ci",
+					Repo:   "commit-queue-sandbox",
+					Branch: "main",
+				},
+				{
+					Name:   "merge-queue-sandbox",
+					Owner:  "evergreen-ci",
+					Repo:   "github-merge-queue-sandbox",
+					Branch: "main",
+				},
+			}
+			includes := []parserInclude{
+				{
+					FileName: "config_test/evg_settings.yml",
+				},
+				{
+					FileName: "config_test/evg_settings_with_3rd_party_defaults.yml",
+				},
+				{
+					FileName: "evergreen.yml",
+					Module:   "sample",
+				},
+				{
+					FileName: "evergreen.yml",
+					Module:   "commit-queue-sandbox",
+				},
+				{
+					FileName: "commit-queue-include-yaml.yaml",
+					Module:   "merge-queue-sandbox",
+				},
+			}
+			opts := &GetProjectOpts{
+				Ref: &ProjectRef{
+					Id:         "evergreen",
+					Identifier: "evergreen",
+					Owner:      "evergreen-ci",
+					Repo:       "evergreen",
+					Branch:     "main",
+					RemotePath: "self-tests.yml",
+				},
+				ReadFileFrom: ReadFromGithub,
+				Revision:     "0503cb25b87dee6a09a74c42c99e314d55edf36b",
+			}
+			tCase(t, modules, includes, opts)
+		})
+	}
 }
