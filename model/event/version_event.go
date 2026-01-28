@@ -43,17 +43,16 @@ func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 		initialBackoff = 100 * time.Millisecond
 	)
 
-	var lastErr error
+	var err error
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		eventCtx, cancel := context.WithTimeout(context.Background(), contextTimeout)
-		err := event.Log(eventCtx)
+		err = event.Log(eventCtx)
 		cancel()
 
 		if err == nil {
 			return
 		}
 
-		lastErr = err
 		if attempt < maxRetries-1 {
 			time.Sleep(initialBackoff * time.Duration(1<<attempt))
 		}
@@ -67,7 +66,7 @@ func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 	for k, v := range logFields {
 		fields[k] = v
 	}
-	grip.Error(message.WrapError(lastErr, fields))
+	grip.Error(message.WrapError(err, fields))
 }
 
 func LogVersionStateChangeEvent(ctx context.Context, id, newStatus string) {
