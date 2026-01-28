@@ -3230,7 +3230,7 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 					require.NoError(t, err)
 					owner = mod.Owner
 					repo = mod.Repo
-					revision, err = getRevisionForModule(t.Context(), *mod, include.Module, *opts)
+					revision, err = getRevisionForRemoteModule(t.Context(), *mod, include.Module, *opts)
 					require.NoError(t, err)
 				}
 
@@ -3330,7 +3330,6 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 					Branch:     "main",
 					RemotePath: "self-tests.yml",
 				},
-				Identifier:   "evergreen",
 				ReadFileFrom: ReadFromGithub,
 				Revision:     "0503cb25b87dee6a09a74c42c99e314d55edf36b",
 			}

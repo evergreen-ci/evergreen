@@ -848,7 +848,7 @@ func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, worke
 // included files from GitHub, repeating the same git setup for every single
 // included file is expensive and slow.
 func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
-	if !readFromRequiresGitHub(opts.ReadFileFrom) {
+	if !readFromRemoteSource(opts.ReadFileFrom) {
 		return nil, nil
 	}
 	flags, err := evergreen.GetServiceFlags(ctx)
@@ -858,9 +858,13 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 	if flags.UseGitForGitHubFilesDisabled {
 		return nil, nil
 	}
+	if opts.Ref == nil {
+		return nil, errors.New("project ref cannot be nil when including files from remote sources")
+	}
 
 	ctx, span := tracer.Start(ctx, "setupGitIncludeDirs", trace.WithAttributes(
-		attribute.String(evergreen.ProjectIDOtelAttribute, opts.Identifier),
+		attribute.String(evergreen.ProjectIDOtelAttribute, opts.Ref.Id),
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, opts.Ref.Identifier),
 		attribute.String(evergreen.ProjectOrgOtelAttribute, opts.Ref.Owner),
 		attribute.String(evergreen.ProjectRepoOtelAttribute, opts.Ref.Repo),
 	))
@@ -879,12 +883,13 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		// directories and worktrees that were created.
 		for ownerAndRepo, dir := range dirs.clonesForOwnerRepo {
 			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
-				"message":    "could not clean up git clone directory after failing to set up git directories",
-				"owner":      ownerAndRepo.owner,
-				"repo":       ownerAndRepo.repo,
-				"project_id": opts.Identifier,
-				"dir":        dir,
-				"ticket":     "DEVPROD-26143",
+				"message":            "could not clean up git clone directory after failing to set up git directories",
+				"owner":              ownerAndRepo.owner,
+				"repo":               ownerAndRepo.repo,
+				"project_id":         opts.Ref.Id,
+				"project_identifier": opts.Ref.Identifier,
+				"dir":                dir,
+				"ticket":             "DEVPROD-26143",
 			}))
 		}
 	}()
@@ -932,7 +937,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
 		}
-		revision, err := getRevisionForModule(ctx, *mod, modName, *opts)
+		revision, err := getRevisionForRemoteModule(ctx, *mod, modName, *opts)
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
 		}
@@ -943,12 +948,13 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			// defined in the modules, and the modules should not use the exact
 			// same repo as the project itself. If this is ever hit, it's a bug.
 			grip.Warning(message.Fields{
-				"message":    "trying to make multiple git clones of the same repo, skipping duplicate repo",
-				"project_id": opts.Identifier,
-				"owner":      repoOwner,
-				"repo":       repoName,
-				"revision":   revision,
-				"module":     modName,
+				"message":            "trying to make multiple git clones of the same repo, skipping duplicate repo",
+				"project_id":         opts.Ref.Id,
+				"project_identifier": opts.Ref.Identifier,
+				"owner":              repoOwner,
+				"repo":               repoName,
+				"revision":           revision,
+				"module":             modName,
 			})
 			continue
 		}
@@ -1022,9 +1028,9 @@ const (
 	ReadFromPatchDiff = "patch_diff"
 )
 
-// readFromRequiresGitHub returns true if the readFrom option requires
-// retrieving a file from GitHub.
-func readFromRequiresGitHub(readFrom string) bool {
+// readFromRemoteSource returns true if the readFrom option requires
+// retrieving a file from a remote source (i.e. GitHub).
+func readFromRemoteSource(readFrom string) bool {
 	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
 }
 
@@ -1099,7 +1105,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}))
 		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
 		if err != nil {
-			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
+			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Ref.Id, opts.Revision)
 		}
 		return fileContents, nil
 	}
@@ -1154,7 +1160,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	}
 	// kim: NOTE: double-check that this is equivalent to how it resolves the
 	// module before the refactor.
-	moduleOpts.Revision, err = getRevisionForModule(ctx, *module, include.Module, opts)
+	moduleOpts.Revision, err = getRevisionForRemoteModule(ctx, *module, include.Module, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting revision for module '%s'", include.Module)
 	}
@@ -1162,9 +1168,10 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	return retrieveFile(ctx, moduleOpts)
 }
 
-// getRevisionForModule returns the revision or branch to use for the given
-// module include.
-func getRevisionForModule(ctx context.Context, mod Module, modName string, opts GetProjectOpts) (string, error) {
+// getRevisionForRemoteModule returns the revision or branch to use for the
+// given module include. This only works if retrieving files from a remote
+// source (e.g. GitHub); it will not handle includes from local modules.
+func getRevisionForRemoteModule(ctx context.Context, mod Module, modName string, opts GetProjectOpts) (string, error) {
 	if opts.AutoUpdateModuleRevisions != nil {
 		if revision, ok := opts.AutoUpdateModuleRevisions[modName]; ok {
 			return revision, nil
