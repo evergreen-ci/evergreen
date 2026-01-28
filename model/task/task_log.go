@@ -97,7 +97,7 @@ func NewTaskLogSender(ctx context.Context, task Task, senderOpts EvergreenSender
 }
 
 // AppendTaskLogs appends log lines to the specified task log for the given task run.
-func AppendTaskLogs(ctx context.Context, task Task, logType TaskLogType, lines []log.LogLine) error {
+func AppendTaskLogs(ctx context.Context, task *Task, logType TaskLogType, lines []log.LogLine) error {
 	output, ok := task.GetTaskOutputSafe()
 	if !ok {
 		// We know there task cannot have task output, likely because
@@ -114,7 +114,26 @@ func AppendTaskLogs(ctx context.Context, task Task, logType TaskLogType, lines [
 		return errors.Wrap(err, "getting log service")
 	}
 
-	return svc.Append(ctx, getLogName(task, logType, output.TaskLogs.ID()), 0, lines)
+	var chunkSize int64
+	for _, line := range lines {
+		chunkSize += int64(len(fmt.Sprintf("%d %d %s", line.Priority, line.Timestamp, line.Data)))
+		if line.Data == "" || line.Data[len(line.Data)-1] != '\n' {
+			chunkSize++ // Account for newline
+		}
+	}
+
+	if err := svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines); err != nil {
+		return err
+	}
+
+	putRequests := CalculatePutRequestsWithContext(
+		S3BucketTypeSmall,
+		S3UploadMethodPut,
+		chunkSize,
+	)
+	task.S3Usage.IncrementPutRequests(putRequests)
+
+	return nil
 }
 
 // getTaskLogs returns task logs belonging to the specified task run.
