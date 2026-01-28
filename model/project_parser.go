@@ -748,10 +748,6 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		return errors.Wrapf(err, LoadProjectError)
 	}
 
-	// Be polite. Don't make more than 10 concurrent requests to GitHub.
-	const maxWorkers = 10
-	workers := util.Min(maxWorkers, len(intermediateProject.Include))
-
 	wg := sync.WaitGroup{}
 	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 	includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
@@ -761,6 +757,9 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	}
 	close(includesToProcess)
 
+	// Be polite. Don't make more than 10 concurrent requests to GitHub.
+	const maxWorkers = 10
+	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
@@ -842,10 +841,13 @@ func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, worke
 	return worktrees[workerNum]
 }
 
-// setupGitIncludeDirs sets up git clones and worktrees in preparation for
-// retrieving included YAML files using git. numWorkers determines how many
+// setupParallelGitIncludeDirs sets up git clones and worktrees in preparation
+// for retrieving included YAML files using git. numWorkers determines how many
 // worktrees are created for each included repo.
-func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
+// This is primarily a performance optimization. If using git to retrieve
+// included files from GitHub, repeating the same git setup for every single
+// included file is expensive and slow.
+func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
 	if !readFromRequiresGitHub(opts.ReadFileFrom) {
 		return nil, nil
 	}
@@ -908,8 +910,8 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 		err          error
 	}
 
-	// Creating git clones is slow, so parallelizing the git clones speeds up
-	// the setup.
+	// Creating git clones is slow, so for better performance, parallelize the
+	// git clones.
 	reposToProcess := make(chan gitInput, len(includedModuleNames)+1)
 	output := make(chan gitOutput, len(includedModuleNames)+1)
 
@@ -937,6 +939,9 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 
 		ownerAndRepo := newGitOwnerAndRepo(repoOwner, repoName)
 		if _, ok := dirs.clonesForOwnerRepo[ownerAndRepo]; ok {
+			// When including files, there should not be any duplicate repos
+			// defined in the modules, and the modules should not use the exact
+			// same repo as the project itself. If this is ever hit, it's a bug.
 			grip.Warning(message.Fields{
 				"message":    "trying to make multiple git clones of the same repo, skipping duplicate repo",
 				"project_id": opts.Identifier,

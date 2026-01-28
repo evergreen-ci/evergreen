@@ -3204,7 +3204,7 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts){
 		"SucceedsWithGitRestoredIncludeFilesFromRepoAndModules": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
 			numWorkers := len(includes)
-			dirs, err := setupGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
 			assert.NoError(t, err)
 			require.NotZero(t, dirs)
 
@@ -3250,7 +3250,7 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 		},
 		"SucceedsWithFewerWorkersThanIncludeFiles": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
 			const numWorkers = 1
-			dirs, err := setupGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
 			assert.NoError(t, err)
 			require.NotZero(t, dirs)
 
@@ -3267,13 +3267,13 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 		},
 		"NoopsIfReadingFromLocal": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
 			opts.ReadFileFrom = ReadFromLocal
-			dirs, err := setupGitIncludeDirs(t.Context(), modules, includes, 1, opts)
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
 			require.NoError(t, err)
 			assert.Zero(t, dirs)
 		},
 		"CleansUpDirectoriesOnError": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
 			includes[len(includes)-1].Module = "nonexistent_module"
-			dirs, err := setupGitIncludeDirs(t.Context(), modules, includes, 1, opts)
+			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
 			assert.Error(t, err)
 			require.NotZero(t, dirs)
 			defer cleanupDirs(t, dirs)
