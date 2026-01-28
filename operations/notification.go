@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"os"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -39,6 +40,10 @@ func notificationSlack() cli.Command {
 				Usage: "message to send",
 			},
 		},
+		Before: mergeBeforeFuncs(
+			requireStringFlag(targetFlagName),
+			requireStringFlag(msgFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(ConfFlagName)
 			target := c.String(targetFlagName)
@@ -47,7 +52,7 @@ func notificationSlack() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			apiSlack := model.APISlack{
+			apiSlack := &model.APISlack{
 				Target: utility.ToStringPtr(target),
 				Msg:    utility.ToStringPtr(msg),
 			}
@@ -62,7 +67,7 @@ func notificationSlack() cli.Command {
 			}
 			defer client.Close()
 
-			if err := client.SendNotification(ctx, "slack", apiSlack); err != nil {
+			if err := client.SendSlackNotification(ctx, apiSlack); err != nil {
 				return errors.Wrap(err, "sending Slack notification")
 			}
 
@@ -74,6 +79,7 @@ func notificationSlack() cli.Command {
 func notificationEmail() cli.Command {
 	const (
 		bodyFlagName       = "body"
+		bodyFileFlagName   = "bodyFile"
 		fromFlagName       = "from"
 		recipientsFlagName = "recipients"
 		subjectFlagName    = "subject"
@@ -100,17 +106,40 @@ func notificationEmail() cli.Command {
 				Usage: "body of message",
 				Value: "",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(bodyFileFlagName, "B"),
+				Usage: "file containing body of the message",
+				Value: "",
+			},
 		},
+		Before: mergeBeforeFuncs(
+			mutuallyExclusiveArgs(true, bodyFlagName, bodyFileFlagName),
+			requireStringFlag(subjectFlagName),
+			requireStringSliceFlag(recipientsFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(ConfFlagName)
 			recipients := c.StringSlice(recipientsFlagName)
 			body := c.String(bodyFlagName)
+			bodyFile := c.String(bodyFileFlagName)
 			subject := c.String(subjectFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			apiEmail := model.APIEmail{
+			if bodyFile != "" {
+				content, err := os.ReadFile(bodyFile)
+				if err != nil {
+					return errors.Wrapf(err, "reading email body from file '%s'", bodyFile)
+				}
+				body = string(content)
+
+				if body == "" {
+					return errors.New("the given body file has no content")
+				}
+			}
+
+			apiEmail := &model.APIEmail{
 				Subject:    utility.ToStringPtr(subject),
 				Recipients: recipients,
 				Body:       utility.ToStringPtr(body),
@@ -126,7 +155,7 @@ func notificationEmail() cli.Command {
 			}
 			defer client.Close()
 
-			if err := client.SendNotification(ctx, "email", apiEmail); err != nil {
+			if err := client.SendEmailNotification(ctx, apiEmail); err != nil {
 				return errors.Wrap(err, "sending email notification")
 			}
 
