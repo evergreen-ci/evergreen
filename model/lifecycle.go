@@ -1708,7 +1708,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 		if !activateVariant {
 			activateVariantAt, err = creationInfo.ProjectRef.GetActivationTimeForVariant(ctx,
-				creationInfo.Project.FindBuildVariant(pair.Variant), creationInfo.Version.CreateTime, time.Now())
+				creationInfo.Project.FindBuildVariant(pair.Variant), false, creationInfo.Version.CreateTime, time.Now())
 			batchTimeCatcher.Wrapf(err, "getting activation time for variant '%s'", pair.Variant)
 		}
 		for taskName, id := range batchTimeTasksToIds {

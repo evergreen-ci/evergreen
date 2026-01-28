@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -102,8 +103,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 	projectID := "test-project"
 	now := time.Now()
 
-	// Create a version with both ignored and non-ignored build variants
-	// This simulates build variants that were ignored due to path filtering
+	// Create a version with both ignored and non-ignored build variants.
+	// This simulates build variants that were ignored due to path filtering, i.e. activate time is zero.
 	version := Version{
 		Id:                  "version-with-ignored-variants",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -113,9 +114,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 		RevisionOrderNumber: 1,
 		BuildVariants: []VersionBuildStatus{
 			{
-				BuildVariant: "normal-variant",
+				BuildVariant: "normal-variant", // i.e. this variant doesn't have path filtering behavior.
 				BuildId:      "build-1",
-				Ignored:      false, // This variant matched the changed files
 				ActivationStatus: ActivationStatus{
 					Activated:  false,
 					ActivateAt: now.Add(-5 * time.Minute), // Elapsed
@@ -134,29 +134,19 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 			{
 				BuildVariant: "path-filtered-variant",
 				BuildId:      "build-2",
-				Ignored:      true, // This variant was ignored due to path filtering (changed files didn't match)
 				ActivationStatus: ActivationStatus{
 					Activated:  false,
-					ActivateAt: now.Add(-5 * time.Minute), // Elapsed but should be ignored
+					ActivateAt: utility.ZeroTime, // This should be respected and prevent general activation
 				},
 				BatchTimeTasks: []BatchTimeTaskStatus{
 					{
-						TaskName: "path-filtered-task",
+						TaskName: "cron-task",
 						TaskId:   "task-2",
 						ActivationStatus: ActivationStatus{
 							Activated:  false,
-							ActivateAt: now.Add(-5 * time.Minute), // Elapsed but should be ignored
+							ActivateAt: now.Add(-5 * time.Minute), // This should still be respected
 						},
 					},
-				},
-			},
-			{
-				BuildVariant: "another-normal-variant",
-				BuildId:      "build-3",
-				Ignored:      false, // This variant also matched the changed files
-				ActivationStatus: ActivationStatus{
-					Activated:  false,
-					ActivateAt: now.Add(-3 * time.Minute), // Elapsed
 				},
 			},
 		},
@@ -181,12 +171,12 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 
 	// Verify that only non-ignored build variants were activated
 	for _, bv := range updatedVersion.BuildVariants {
-		if bv.Ignored {
+		if bv.DisplayName == "path-filtered-variant" {
 			// Build variants ignored due to path filtering should remain unactivated
 			require.False(bv.Activated, "Path-filtered build variant %s should not be activated", bv.BuildVariant)
-			// Tasks in path-filtered build variants should also remain unactivated
+			// Tasks in path-filtered build variants should be activated, i.e. respect cron/batchtime behavior
 			for _, task := range bv.BatchTimeTasks {
-				require.False(task.Activated, "Task %s in path-filtered build variant %s should not be activated", task.TaskName, bv.BuildVariant)
+				require.False(task.Activated, "Task %s in path-filtered build variant %s should be activated", task.TaskName, bv.BuildVariant)
 			}
 		} else {
 			// Build variants that matched the changed files should be activated if their time has elapsed
