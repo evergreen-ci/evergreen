@@ -109,18 +109,14 @@ func (c *SageClient) DeleteCursorAPIKey(ctx context.Context, userID string) (*De
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading response body")
-	}
-
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("Sage API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result DeleteCursorAPIKeyResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling response")
+	if err := utility.ReadJSON(resp.Body, &result); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response")
 	}
 
 	return &result, nil
@@ -142,18 +138,14 @@ func (c *SageClient) GetCursorAPIKeyStatus(ctx context.Context, userID string) (
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading response body")
-	}
-
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("Sage API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result CursorAPIKeyStatusResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling response")
+	if err := utility.ReadJSON(resp.Body, &result); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response")
 	}
 
 	return &result, nil

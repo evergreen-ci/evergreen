@@ -794,7 +794,8 @@ func (r *queryResolver) CursorSettings(ctx context.Context) (*CursorSettings, er
 
 	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
 	if err != nil {
-		// Return a default response indicating the feature is not configured
+		// Return a default response indicating the feature is not configured.
+		// NewSageClient returns an error when the base URL is empty.
 		return &CursorSettings{
 			KeyConfigured: false,
 			KeyLastFour:   nil,
