@@ -626,6 +626,17 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 
 	// GetExpansionsAndVars does not include build variant expansions or project
 	// parameters, so load them from the project.
+	// If PSLoggingDisabled is false, default to "ps" command.
+	if !a.opts.SetupData.PSLoggingDisabled {
+		opts.expansionsAndVars.Expansions.Put("ps", "ps")
+	}
+	// Project and task settings can override the default.
+	if opts.project.Ps != "" {
+		opts.expansionsAndVars.Expansions.Put("ps", opts.project.Ps)
+	}
+	if projectTask := opts.project.FindProjectTask(opts.task.DisplayName); projectTask != nil && projectTask.Ps != "" {
+		opts.expansionsAndVars.Expansions.Put("ps", projectTask.Ps)
+	}
 	for _, bv := range opts.project.BuildVariants {
 		if bv.Name == opts.task.BuildVariant {
 			opts.expansionsAndVars.Expansions.Update(bv.Expansions)
@@ -774,7 +785,9 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		globals.DefaultStatsInterval,
 		"uptime",
 		"df -h",
-		"${ps|ps}",
+		// The empty fallback is needed to make ps opt-in so that if thee ps expansion is not set,
+		// it expands to an empty string which can be filtered out.
+		"${ps|}",
 	)
 	// Running the `df` command on Unix systems displays inode
 	// statistics without the `-i` flag by default. However, we need

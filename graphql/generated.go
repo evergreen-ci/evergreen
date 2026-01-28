@@ -69,6 +69,7 @@ type ResolverRoot interface {
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
 	RepoSettings() RepoSettingsResolver
+	ServiceFlags() ServiceFlagsResolver
 	SleepSchedule() SleepScheduleResolver
 	SpruceConfig() SpruceConfigResolver
 	SubscriberWrapper() SubscriberWrapperResolver
@@ -87,6 +88,7 @@ type ResolverRoot interface {
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
+	ServiceFlagsInput() ServiceFlagsInputResolver
 	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
@@ -1753,6 +1755,7 @@ type ComplexityRoot struct {
 		MonitorDisabled                 func(childComplexity int) int
 		PodAllocatorDisabled            func(childComplexity int) int
 		PodInitDisabled                 func(childComplexity int) int
+		PsLoggingDisabled               func(childComplexity int) int
 		ReleaseModeDisabled             func(childComplexity int) int
 		RepotrackerDisabled             func(childComplexity int) int
 		S3LifecycleSyncDisabled         func(childComplexity int) int
@@ -2652,6 +2655,9 @@ type RepoSettingsResolver interface {
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 }
+type ServiceFlagsResolver interface {
+	PsLoggingDisabled(ctx context.Context, obj *model.APIServiceFlags) (*bool, error)
+}
 type SleepScheduleResolver interface {
 	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo) ([]int, error)
 }
@@ -2801,6 +2807,9 @@ type ProjectSettingsInputResolver interface {
 }
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
+}
+type ServiceFlagsInputResolver interface {
+	PsLoggingDisabled(ctx context.Context, obj *model.APIServiceFlags, data *bool) error
 }
 type SleepScheduleInputResolver interface {
 	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo, data []int) error
@@ -10005,6 +10014,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.PodInitDisabled(childComplexity), true
+	case "ServiceFlags.psLoggingDisabled":
+		if e.complexity.ServiceFlags.PsLoggingDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.PsLoggingDisabled(childComplexity), true
 	case "ServiceFlags.releaseModeDisabled":
 		if e.complexity.ServiceFlags.ReleaseModeDisabled == nil {
 			break
@@ -19662,6 +19677,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
 			case "s3LifecycleSyncDisabled":
 				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
+			case "psLoggingDisabled":
+				return ec.fieldContext_ServiceFlags_psLoggingDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
 		},
@@ -58765,6 +58782,35 @@ func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _ServiceFlags_psLoggingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_psLoggingDisabled,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ServiceFlags().PsLoggingDisabled(ctx, obj)
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_psLoggingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SetLastRevisionPayload_mergeBaseRevision(ctx context.Context, field graphql.CollectedField, obj *SetLastRevisionPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -84396,7 +84442,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84669,6 +84715,15 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.S3LifecycleSyncDisabled = data
+		case "psLoggingDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("psLoggingDisabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ServiceFlagsInput().PsLoggingDisabled(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -100727,6 +100782,39 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
 		case "s3LifecycleSyncDisabled":
 			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
+		case "psLoggingDisabled":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ServiceFlags_psLoggingDisabled(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
