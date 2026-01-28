@@ -748,15 +748,6 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		return errors.Wrapf(err, LoadProjectError)
 	}
 
-	wg := sync.WaitGroup{}
-	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
-	includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
-
-	for _, path := range intermediateProject.Include {
-		includesToProcess <- path
-	}
-	close(includesToProcess)
-
 	// Be polite. Don't make more than 10 concurrent requests to GitHub.
 	const maxWorkers = 10
 	workers := util.Min(maxWorkers, len(intermediateProject.Include))
@@ -770,6 +761,15 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		// logic is quite complicated.
 		setupGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
 	}
+
+	wg := sync.WaitGroup{}
+	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
+	includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
+
+	for _, path := range intermediateProject.Include {
+		includesToProcess <- path
+	}
+	close(includesToProcess)
 
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
@@ -867,6 +867,13 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 		return nil, nil
 	}
 
+	ctx, span := tracer.Start(ctx, "setupGitIncludeDirs", trace.WithAttributes(
+		attribute.String(evergreen.ProjectIDOtelAttribute, opts.Identifier),
+		attribute.String(evergreen.ProjectOrgOtelAttribute, opts.Ref.Owner),
+		attribute.String(evergreen.ProjectRepoOtelAttribute, opts.Ref.Repo),
+	))
+	defer span.End()
+
 	dirs = &gitIncludeDirs{
 		clonesForOwnerRepo:    make(map[gitOwnerAndRepo]string),
 		worktreesForOwnerRepo: make(map[gitOwnerAndRepo][]string),
@@ -913,12 +920,10 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 
 	// Creating git clones is slow, so parallelizing the git clones speeds up
 	// the setup.
-	wg := sync.WaitGroup{}
 	reposToProcess := make(chan gitInput, len(includedModuleNames)+1)
 	output := make(chan gitOutput, len(includedModuleNames)+1)
 
 	if includesProjectFiles {
-		wg.Add(1)
 		ownerAndRepo := newGitOwnerAndRepo(opts.Ref.Owner, opts.Ref.Repo)
 		reposToProcess <- gitInput{
 			ownerAndRepo: ownerAndRepo,
@@ -953,7 +958,6 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 			continue
 		}
 
-		wg.Add(1)
 		reposToProcess <- gitInput{
 			ownerAndRepo: ownerAndRepo,
 			revision:     revision,
@@ -962,8 +966,11 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 
 	close(reposToProcess)
 
+	wg := sync.WaitGroup{}
+
 	numGitWorkers := util.Min(numWorkers, len(reposToProcess))
 	for range numGitWorkers {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for repoData := range reposToProcess {
@@ -1172,7 +1179,7 @@ func getRevisionForModule(ctx context.Context, mod Module, modName string, opts 
 	if opts.ReferenceManifestID != "" {
 		m, err := manifest.FindOne(ctx, manifest.ById(opts.ReferenceManifestID))
 		if err != nil {
-			return "", errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
+			return "", errors.Wrapf(err, "finding reference manifest '%s'", opts.ReferenceManifestID)
 		}
 		// Sometimes the manifest might be nil, in which case we don't want to set the revision.
 		if m != nil {
