@@ -943,11 +943,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 
 		// Determine if this build variant should be ignored due to path filtering.
+		// Even if the variant is ignored, we should continue to check batchtime / cron / activation for tasks, since that should take precedent.
 		ignoreBuildVariant := !buildvariant.ChangedFilesMatchPaths(metadata.ChangedFiles)
 
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
-		if evergreen.ShouldConsiderBatchtime(v.Requester) && !ignoreBuildVariant {
+		if evergreen.ShouldConsiderBatchtime(v.Requester) {
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
