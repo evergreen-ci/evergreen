@@ -40,18 +40,14 @@ func notificationSlack() cli.Command {
 				Usage: "message to send",
 			},
 		},
+		Before: mergeBeforeFuncs(
+			requireStringFlag(targetFlagName),
+			requireStringFlag(msgFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(ConfFlagName)
 			target := c.String(targetFlagName)
 			msg := c.String(msgFlagName)
-
-			if target == "" {
-				return errors.New("must specify a target for the Slack notification")
-			}
-
-			if msg == "" {
-				return errors.New("must specify a message for the Slack notification")
-			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -117,7 +113,9 @@ func notificationEmail() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			mutuallyExclusiveArgs(false, bodyFlagName, bodyFileFlagName),
+			mutuallyExclusiveArgs(true, bodyFlagName, bodyFileFlagName),
+			requireStringFlag(subjectFlagName),
+			requireStringSliceFlag(recipientsFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(ConfFlagName)
@@ -129,24 +127,16 @@ func notificationEmail() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			if len(recipients) == 0 {
-				return errors.New("must specify at least one recipient for the email notification")
-			}
-
-			if subject == "" {
-				return errors.New("must specify a subject for the email notification")
-			}
-
 			if bodyFile != "" {
 				content, err := os.ReadFile(bodyFile)
 				if err != nil {
 					return errors.Wrapf(err, "reading email body from file '%s'", bodyFile)
 				}
 				body = string(content)
-			}
 
-			if body == "" {
-				return errors.New("must specify a body for the email notification")
+				if body == "" {
+					return errors.New("the given body file has no content")
+				}
 			}
 
 			apiEmail := &model.APIEmail{

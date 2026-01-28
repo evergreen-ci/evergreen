@@ -22,11 +22,11 @@ func TestNotificationSlackCommand(t *testing.T) {
 	}{
 		"FailsWithMissingTarget": {
 			args:      []string{"notify", "slack", "--msg", "Test message"},
-			expectErr: "must specify a target",
+			expectErr: "--target",
 		},
 		"FailsWithMissingMessage": {
 			args:      []string{"notify", "slack", "--target", "channel"},
-			expectErr: "must specify a message",
+			expectErr: "--msg",
 		},
 		"SucceedsWithValidInput": {
 			args: []string{"notify", "slack", "--target", "channel", "--msg", "Test message"},
@@ -78,19 +78,19 @@ func TestNotificationEmailCommand(t *testing.T) {
 		},
 		"FailsWithMissingRecipients": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--body", "Test body"},
-			expectErr: "at least one recipient",
+			expectErr: "--recipients",
 		},
 		"FailsWithMissingSubject": {
 			args:      []string{"notify", "email", "--recipients", "test@example.com", "--body", "Test body"},
-			expectErr: "must specify a subject",
+			expectErr: "--subject",
 		},
 		"FailsWithMissingBody": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com"},
-			expectErr: "must specify a body",
+			expectErr: "body | bodyFile",
 		},
 		"FailsWithEmptyFileBody": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", emptyTestFile},
-			expectErr: "must specify a body",
+			expectErr: "the given body file has no content",
 		},
 		"FailsWithInlineBodyAndBodyFile": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--body", "Inline Email Body", "--bodyFile", emptyTestFile},
