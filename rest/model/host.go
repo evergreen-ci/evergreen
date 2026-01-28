@@ -80,6 +80,7 @@ type HostRequestOptions struct {
 	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
 	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
 	UseOAuth             bool       `json:"use_oauth" yaml:"use_oauth"`
+	IsDebug              bool       `json:"is_debug" yaml:"is_debug"`
 }
 
 type DistroInfo struct {

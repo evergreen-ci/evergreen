@@ -80,7 +80,7 @@ var (
 // FindOne gets one AlertRecord for the given query.
 func FindOne(ctx context.Context, query db.Q) (*AlertRecord, error) {
 	alertRec := &AlertRecord{}
-	err := db.FindOneQContext(ctx, Collection, query, alertRec)
+	err := db.FindOneQ(ctx, Collection, query, alertRec)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

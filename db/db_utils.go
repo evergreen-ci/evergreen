@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -24,12 +25,8 @@ var (
 )
 
 type SessionFactory interface {
-	// GetSession uses the global environment's context to get a session and database.
-	GetSession() (db.Session, db.Database, error)
-	// GetContextSession uses the provided context to get a session and database.
-	// This is needed for operations that need control over the passed-in context.
-	// TODO DEVPROD-11824 Use this method instead of GetSession.
-	GetContextSession(ctx context.Context) (db.Session, db.Database, error)
+	// GetSession uses the provided context to get a session and database.
+	GetSession(ctx context.Context) (db.Session, db.Database, error)
 }
 
 type shimFactoryImpl struct {
@@ -46,29 +43,14 @@ func GetGlobalSessionFactory() SessionFactory {
 	}
 }
 
-// GetSession creates a database connection using the global environment's
-// session (and context through the session).
-func (s *shimFactoryImpl) GetSession() (db.Session, db.Database, error) {
-	if s.env == nil {
-		return nil, nil, errors.New("undefined environment")
-	}
-
-	session := s.env.Session()
-	if session == nil {
-		return nil, nil, errors.New("session is not defined")
-	}
-
-	return session, session.DB(s.db), nil
-}
-
-// GetContextSession creates a database session and connection that uses the associated
+// GetSession creates a database session and connection that uses the associated
 // context in its operations.
-func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db.Database, error) {
+func (s *shimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Database, error) {
 	if s.env == nil {
 		return nil, nil, errors.New("undefined environment")
 	}
 
-	session := s.env.ContextSession(ctx)
+	session := s.env.Session(ctx)
 	if session == nil {
 		return nil, nil, errors.New("context session is not defined")
 	}
@@ -79,6 +61,16 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 // Insert inserts the specified item into the specified collection.
 func Insert(ctx context.Context, collection string, item any) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertOne(ctx,
+		item,
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting document")
+}
+
+// InsertWithEnv inserts the specified item into the specified collection
+// using the given environment's database. This is useful for transactions
+// where the same client must be used for all operations.
+func InsertWithEnv(ctx context.Context, env evergreen.Environment, collection string, item any) error {
+	_, err := env.DB().Collection(collection).InsertOne(ctx,
 		item,
 	)
 	return errors.Wrapf(errors.WithStack(err), "inserting document")
@@ -124,22 +116,7 @@ func RemoveAll(ctx context.Context, collection string, query any) error {
 }
 
 // Update updates one matching document in the collection.
-// DEPRECATED (DEVPROD-15398): This is only here to support a cache
-// with Gimlet, use UpdateContext instead.
-func Update(collection string, query any, update any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Update(query, update)
-}
-
-// UpdateContext updates one matching document in the collection.
-func UpdateContext(ctx context.Context, collection string, query any, update any) error {
+func Update(ctx context.Context, collection string, query any, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
 		update,
@@ -154,10 +131,10 @@ func UpdateContext(ctx context.Context, collection string, query any, update any
 	return nil
 }
 
-// ReplaceContext replaces one matching document in the collection. If a matching
+// Replace replaces one matching document in the collection. If a matching
 // document is not found, it will be upserted. It returns the upserted ID if
 // one was created.
-func ReplaceContext(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
+func Replace(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
 		query,
 		replacement,
@@ -170,8 +147,8 @@ func ReplaceContext(ctx context.Context, collection string, query any, replaceme
 	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
 }
 
-// UpdateAllContext updates all matching documents in the collection.
-func UpdateAllContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+// UpdateAll updates all matching documents in the collection.
+func UpdateAll(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
 		query,
 		update,
@@ -183,8 +160,8 @@ func UpdateAllContext(ctx context.Context, collection string, query any, update 
 	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
-// UpdateIdContext updates one _id-matching document in the collection.
-func UpdateIdContext(ctx context.Context, collection string, id, update any) error {
+// UpdateId updates one _id-matching document in the collection.
+func UpdateId(ctx context.Context, collection string, id, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		bson.D{{Key: "_id", Value: id}},
 		update,
@@ -197,21 +174,6 @@ func UpdateIdContext(ctx context.Context, collection string, id, update any) err
 	}
 
 	return nil
-}
-
-// UpdateAll updates all matching documents in the collection.
-// DEPRECATED (DEVPROD-15398): This is only here to support a cache
-// with Gimlet, use UpdateAllContext instead.
-func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return nil, err
-	}
-	defer session.Close()
-
-	return db.C(collection).UpdateAll(query, update)
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
@@ -240,22 +202,14 @@ func Count(ctx context.Context, collection string, query any) (int, error) {
 
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
-// DEPRECATED (DEVPROD-15398): This is only here to support a cache
-// with Gimlet, use FindOneQContext instead.
-func FindOneQ(collection string, q Q, out any) error {
-	return FindOneQContext(context.Background(), collection, q, out)
-}
-
-// FindOneQContext runs a Q query against the given collection, applying the results to "out."
-// Only reads one document from the DB.
-func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
+func FindOneQ(ctx context.Context, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -279,7 +233,7 @@ func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -308,7 +262,7 @@ func RemoveAllQ(ctx context.Context, collection string, q Q) error {
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
 func FindAndModify(ctx context.Context, collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
 
@@ -352,7 +306,7 @@ func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, err
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
 func Aggregate(ctx context.Context, collection string, pipeline any, out any) error {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(err)
@@ -372,7 +326,10 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 // CreateCollections ensures that all the given collections are created,
 // returning an error immediately if creating any one of them fails.
 func CreateCollections(collections ...string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	if !testing.Testing() {
+		panic("CreateCollections should only be called in testing")
+	}
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -388,16 +345,17 @@ func CreateCollections(collections ...string) error {
 		if mongoErr, ok := errors.Cause(err).(mongo.CommandError); ok && mongoErr.HasErrorCode(namespaceExistsErrCode) {
 			continue
 		}
-		if err != nil {
-			return errors.Wrapf(err, "creating collection '%s'", collection)
-		}
+		return errors.Wrapf(err, "creating collection '%s'", collection)
 	}
 	return nil
 }
 
 // Clear removes all documents from a specified collection.
 func Clear(collection string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	if !testing.Testing() {
+		panic("Clear should only be called in testing")
+	}
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -411,7 +369,10 @@ func Clear(collection string) error {
 // ClearCollections clears all documents from all the specified collections,
 // returning an error immediately if clearing any one of them fails.
 func ClearCollections(collections ...string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	if !testing.Testing() {
+		panic("ClearCollections should only be called in testing")
+	}
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -427,13 +388,19 @@ func ClearCollections(collections ...string) error {
 }
 
 func ClearGridCollections(fsPrefix string) error {
+	if !testing.Testing() {
+		panic("CreateGridCollections should only be called in testing")
+	}
 	return ClearCollections(fmt.Sprintf("%s.files", fsPrefix), fmt.Sprintf("%s.chunks", fsPrefix))
 }
 
 // DropCollections drops the specified collections, returning an error
 // immediately if dropping any one of them fails.
 func DropCollections(collections ...string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	if !testing.Testing() {
+		panic("DropCollections should only be called in testing")
+	}
+	session, db, err := GetGlobalSessionFactory().GetSession(context.Background())
 	if err != nil {
 		return err
 	}
@@ -449,6 +416,9 @@ func DropCollections(collections ...string) error {
 // EnsureIndex takes in a collection and ensures that the index is created if it
 // does not already exist.
 func EnsureIndex(collection string, index mongo.IndexModel) error {
+	if !testing.Testing() {
+		panic("EnsureIndex should only be called in testing")
+	}
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()

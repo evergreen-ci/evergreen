@@ -204,6 +204,11 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		ConfigDir: "cfg_dir",
+		Cost: evergreen.CostConfig{
+			FinanceFormula:      0.5,
+			SavingsPlanDiscount: 0.3,
+			OnDemandDiscount:    0.1,
+		},
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
 				{
@@ -218,6 +223,10 @@ func MockConfig() *evergreen.Settings {
 		Expansions: map[string]string{"k2": "v2"},
 		FWS: evergreen.FWSConfig{
 			URL: "fws_url",
+		},
+		Graphite: evergreen.GraphiteConfig{
+			CIOptimizationToken: "graphite_token",
+			ServerURL:           "https://graphite.example.com",
 		},
 		GithubPRCreatorOrg:  "org",
 		GithubWebhookSecret: "secret",
@@ -403,6 +412,8 @@ func MockConfig() *evergreen.Settings {
 			ElasticIPsDisabled:              true,
 			ReleaseModeDisabled:             true,
 			LegacyUIAdminPageDisabled:       true,
+			DebugSpawnHostDisabled:          true,
+			UseGitForGitHubFilesDisabled:    true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{
@@ -470,6 +481,9 @@ func MockConfig() *evergreen.Settings {
 		},
 		GitHubCheckRun: evergreen.GitHubCheckRunConfig{
 			CheckRunLimit: 0,
+		},
+		Sage: evergreen.SageConfig{
+			BaseURL: "https://sage.example.com",
 		},
 		ShutdownWaitSeconds: 15,
 	}

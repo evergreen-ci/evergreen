@@ -226,8 +226,10 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		}
 	}
 
-	if execUser := conf.Distro.ExecUser; execUser != "" {
-		cmd.SudoAs(execUser)
+	if conf.Distro != nil {
+		if execUser := conf.Distro.ExecUser; execUser != "" {
+			cmd.SudoAs(execUser)
+		}
 	}
 
 	err = cmd.Run(ctx)

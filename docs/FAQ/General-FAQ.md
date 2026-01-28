@@ -18,7 +18,7 @@ Some Caveats to be aware of:
 ## What is the difference between cron, batchtime, and periodic build?
 
 - **Batchtime**: Delays activating a task on an existing mainline version until a specified time has passed since it's last run.
-- **Cron**: Activates a task on an existing mainline version at a specified time or interval.
+- **Cron**: Activates a task on an existing mainline version at a specified time or interval. All cron schedules run in UTC timezone regardless of your local timezone.
 - **Periodic Builds**: Creates a new version that runs at a specified time or interval, regardless if the project has had any commits.
 
 For more on their differences and examples, see [controlling when tasks run](Project-Configuration/Controlling-when-tasks-run).
@@ -39,6 +39,12 @@ tests while it's
 rebasing](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci).
 Once Graphite finishes rebasing (which may happen automatically or may require manual intervention), the CI tests will
 run.
+
+Another reason Evergreen would not run CI tests on your Graphite PR is if the CI optimization is on. CI optimization
+allows us to only run CI on certain PRs on the stack. For more information on CI optimization, please refer to the
+[Graphite documentation](https://graphite.com/docs/stacking-and-ci). The default optimization rule for `10gen/mongo` and
+`10gen/mms` is to only run CI on the top and bottom PRs in the stack. To add or edit optimization rules, please reach out
+to the Graphite support in `#ext-graphite-mongodb`.
 
 If you're unsure about the state of your stacked PR, please check the PR in the Graphite UI instead of GitHub. The
 Graphite UI can provide helpful warnings/errors and advice on how to fix them. If you find that your PR is still having

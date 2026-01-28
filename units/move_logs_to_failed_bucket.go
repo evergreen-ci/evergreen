@@ -18,7 +18,7 @@ import (
 
 const (
 	moveLogsToFailedBucketJobName     = "move-logs-to-failed-bucket"
-	fetchTimeout                      = 3 * time.Minute
+	fetchTimeout                      = 10 * time.Minute
 	moveLogsToFailedBucketMaxAttempts = 3
 )
 

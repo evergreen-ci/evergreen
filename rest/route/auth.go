@@ -41,5 +41,5 @@ func (h *authPermissionGetHandler) Run(ctx context.Context) gimlet.Responder {
 		Permission:    h.permission,
 		RequiredLevel: h.requiredLevel,
 	}
-	return gimlet.NewTextResponse(u.HasPermission(opts))
+	return gimlet.NewTextResponse(u.HasPermission(ctx, opts))
 }

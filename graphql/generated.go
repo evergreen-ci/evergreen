@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -183,6 +184,7 @@ type ComplexityRoot struct {
 		GithubOrgs              func(childComplexity int) int
 		GithubPRCreatorOrg      func(childComplexity int) int
 		GithubWebhookSecret     func(childComplexity int) int
+		Graphite                func(childComplexity int) int
 		HostInit                func(childComplexity int) int
 		HostJasper              func(childComplexity int) int
 		JIRANotifications       func(childComplexity int) int
@@ -203,6 +205,7 @@ type ComplexityRoot struct {
 		RepoTracker             func(childComplexity int) int
 		RuntimeEnvironments     func(childComplexity int) int
 		SSH                     func(childComplexity int) int
+		Sage                    func(childComplexity int) int
 		Scheduler               func(childComplexity int) int
 		ServiceFlags            func(childComplexity int) int
 		ShutdownWaitSeconds     func(childComplexity int) int
@@ -407,9 +410,15 @@ type ComplexityRoot struct {
 		Name     func(childComplexity int) int
 	}
 
+	Cost struct {
+		AdjustedEC2Cost func(childComplexity int) int
+		OnDemandEC2Cost func(childComplexity int) int
+	}
+
 	CostConfig struct {
 		FinanceFormula      func(childComplexity int) int
 		OnDemandDiscount    func(childComplexity int) int
+		S3Cost              func(childComplexity int) int
 		SavingsPlanDiscount func(childComplexity int) int
 	}
 
@@ -671,6 +680,11 @@ type ComplexityRoot struct {
 	GithubUser struct {
 		LastKnownAs func(childComplexity int) int
 		UID         func(childComplexity int) int
+	}
+
+	GraphiteConfig struct {
+		CIOptimizationToken func(childComplexity int) int
+		ServerURL           func(childComplexity int) int
 	}
 
 	GroupedBuildVariant struct {
@@ -1338,6 +1352,7 @@ type ComplexityRoot struct {
 		CommitQueue                        func(childComplexity int) int
 		ContainerSizeDefinitions           func(childComplexity int) int
 		DeactivatePrevious                 func(childComplexity int) int
+		DebugSpawnHostsDisabled            func(childComplexity int) int
 		DisabledStatsCache                 func(childComplexity int) int
 		DispatchingDisabled                func(childComplexity int) int
 		DisplayName                        func(childComplexity int) int
@@ -1545,6 +1560,7 @@ type ComplexityRoot struct {
 		CommitQueue                        func(childComplexity int) int
 		ContainerSizeDefinitions           func(childComplexity int) int
 		DeactivatePrevious                 func(childComplexity int) int
+		DebugSpawnHostsDisabled            func(childComplexity int) int
 		DisabledStatsCache                 func(childComplexity int) int
 		DispatchingDisabled                func(childComplexity int) int
 		DisplayName                        func(childComplexity int) int
@@ -1632,10 +1648,24 @@ type ComplexityRoot struct {
 		BaseURL func(childComplexity int) int
 	}
 
+	S3CostConfig struct {
+		Storage func(childComplexity int) int
+		Upload  func(childComplexity int) int
+	}
+
 	S3Credentials struct {
 		Bucket func(childComplexity int) int
 		Key    func(childComplexity int) int
 		Secret func(childComplexity int) int
+	}
+
+	S3StorageCostConfig struct {
+		IAStorageCostDiscount       func(childComplexity int) int
+		StandardStorageCostDiscount func(childComplexity int) int
+	}
+
+	S3UploadCostConfig struct {
+		UploadCostDiscount func(childComplexity int) int
 	}
 
 	SESConfig struct {
@@ -1650,6 +1680,10 @@ type ComplexityRoot struct {
 	SSHKeyPair struct {
 		Name      func(childComplexity int) int
 		SecretARN func(childComplexity int) int
+	}
+
+	SageConfig struct {
+		BaseURL func(childComplexity int) int
 	}
 
 	SaveDistroPayload struct {
@@ -1704,6 +1738,7 @@ type ComplexityRoot struct {
 		CacheStatsJobDisabled           func(childComplexity int) int
 		CheckBlockedTasksDisabled       func(childComplexity int) int
 		CloudCleanupDisabled            func(childComplexity int) int
+		DebugSpawnHostDisabled          func(childComplexity int) int
 		DegradedModeDisabled            func(childComplexity int) int
 		ElasticIPsDisabled              func(childComplexity int) int
 		EmailNotificationsDisabled      func(childComplexity int) int
@@ -1720,6 +1755,7 @@ type ComplexityRoot struct {
 		PodInitDisabled                 func(childComplexity int) int
 		ReleaseModeDisabled             func(childComplexity int) int
 		RepotrackerDisabled             func(childComplexity int) int
+		S3LifecycleSyncDisabled         func(childComplexity int) int
 		SchedulerDisabled               func(childComplexity int) int
 		SlackNotificationsDisabled      func(childComplexity int) int
 		SleepScheduleDisabled           func(childComplexity int) int
@@ -1729,6 +1765,7 @@ type ComplexityRoot struct {
 		TaskLoggingDisabled             func(childComplexity int) int
 		TaskReliabilityDisabled         func(childComplexity int) int
 		UnrecognizedPodCleanupDisabled  func(childComplexity int) int
+		UseGitForGitHubFilesDisabled    func(childComplexity int) int
 		WebhookNotificationsDisabled    func(childComplexity int) int
 	}
 
@@ -1804,6 +1841,7 @@ type ComplexityRoot struct {
 		Jira             func(childComplexity int) int
 		Providers        func(childComplexity int) int
 		SecretFields     func(childComplexity int) int
+		ServiceFlags     func(childComplexity int) int
 		SingleTaskDistro func(childComplexity int) int
 		Slack            func(childComplexity int) int
 		Spawnhost        func(childComplexity int) int
@@ -1935,11 +1973,6 @@ type ComplexityRoot struct {
 		MemoryMB   func(childComplexity int) int
 		Os         func(childComplexity int) int
 		WorkingDir func(childComplexity int) int
-	}
-
-	TaskCost struct {
-		AdjustedCost func(childComplexity int) int
-		OnDemandCost func(childComplexity int) int
 	}
 
 	TaskEndDetail struct {
@@ -2219,6 +2252,10 @@ type ComplexityRoot struct {
 		User             func(childComplexity int) int
 	}
 
+	UserServiceFlags struct {
+		JWTTokenForCLIDisabled func(childComplexity int) int
+	}
+
 	UserSettings struct {
 		DateFormat       func(childComplexity int) int
 		GithubUser       func(childComplexity int) int
@@ -2260,6 +2297,7 @@ type ComplexityRoot struct {
 		Order                    func(childComplexity int) int
 		Parameters               func(childComplexity int) int
 		Patch                    func(childComplexity int) int
+		PredictedCost            func(childComplexity int) int
 		PreviousVersion          func(childComplexity int) int
 		Project                  func(childComplexity int) int
 		ProjectIdentifier        func(childComplexity int) int
@@ -3134,6 +3172,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.GithubWebhookSecret(childComplexity), true
+	case "AdminSettings.graphite":
+		if e.complexity.AdminSettings.Graphite == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Graphite(childComplexity), true
 	case "AdminSettings.hostInit":
 		if e.complexity.AdminSettings.HostInit == nil {
 			break
@@ -3254,6 +3298,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.SSH(childComplexity), true
+	case "AdminSettings.sage":
+		if e.complexity.AdminSettings.Sage == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Sage(childComplexity), true
 	case "AdminSettings.scheduler":
 		if e.complexity.AdminSettings.Scheduler == nil {
 			break
@@ -4042,6 +4092,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ContainerResources.Name(childComplexity), true
 
+	case "Cost.adjustedEC2Cost":
+		if e.complexity.Cost.AdjustedEC2Cost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedEC2Cost(childComplexity), true
+	case "Cost.onDemandEC2Cost":
+		if e.complexity.Cost.OnDemandEC2Cost == nil {
+			break
+		}
+
+		return e.complexity.Cost.OnDemandEC2Cost(childComplexity), true
+
 	case "CostConfig.financeFormula":
 		if e.complexity.CostConfig.FinanceFormula == nil {
 			break
@@ -4054,6 +4117,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CostConfig.OnDemandDiscount(childComplexity), true
+	case "CostConfig.s3Cost":
+		if e.complexity.CostConfig.S3Cost == nil {
+			break
+		}
+
+		return e.complexity.CostConfig.S3Cost(childComplexity), true
 	case "CostConfig.savingsPlanDiscount":
 		if e.complexity.CostConfig.SavingsPlanDiscount == nil {
 			break
@@ -5008,6 +5077,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GithubUser.UID(childComplexity), true
+
+	case "GraphiteConfig.ciOptimizationToken":
+		if e.complexity.GraphiteConfig.CIOptimizationToken == nil {
+			break
+		}
+
+		return e.complexity.GraphiteConfig.CIOptimizationToken(childComplexity), true
+	case "GraphiteConfig.serverUrl":
+		if e.complexity.GraphiteConfig.ServerURL == nil {
+			break
+		}
+
+		return e.complexity.GraphiteConfig.ServerURL(childComplexity), true
 
 	case "GroupedBuildVariant.displayName":
 		if e.complexity.GroupedBuildVariant.DisplayName == nil {
@@ -8027,6 +8109,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.DeactivatePrevious(childComplexity), true
+	case "Project.debugSpawnHostsDisabled":
+		if e.complexity.Project.DebugSpawnHostsDisabled == nil {
+			break
+		}
+
+		return e.complexity.Project.DebugSpawnHostsDisabled(childComplexity), true
 	case "Project.disabledStatsCache":
 		if e.complexity.Project.DisabledStatsCache == nil {
 			break
@@ -9133,6 +9221,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.DeactivatePrevious(childComplexity), true
+	case "RepoRef.debugSpawnHostsDisabled":
+		if e.complexity.RepoRef.DebugSpawnHostsDisabled == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.DebugSpawnHostsDisabled(childComplexity), true
 	case "RepoRef.disabledStatsCache":
 		if e.complexity.RepoRef.DisabledStatsCache == nil {
 			break
@@ -9508,6 +9602,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RuntimeEnvironmentConfig.BaseURL(childComplexity), true
 
+	case "S3CostConfig.storage":
+		if e.complexity.S3CostConfig.Storage == nil {
+			break
+		}
+
+		return e.complexity.S3CostConfig.Storage(childComplexity), true
+	case "S3CostConfig.upload":
+		if e.complexity.S3CostConfig.Upload == nil {
+			break
+		}
+
+		return e.complexity.S3CostConfig.Upload(childComplexity), true
+
 	case "S3Credentials.bucket":
 		if e.complexity.S3Credentials.Bucket == nil {
 			break
@@ -9526,6 +9633,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.S3Credentials.Secret(childComplexity), true
+
+	case "S3StorageCostConfig.iAStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.IAStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.IAStorageCostDiscount(childComplexity), true
+	case "S3StorageCostConfig.standardStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.StandardStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.StandardStorageCostDiscount(childComplexity), true
+
+	case "S3UploadCostConfig.uploadCostDiscount":
+		if e.complexity.S3UploadCostConfig.UploadCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3UploadCostConfig.UploadCostDiscount(childComplexity), true
 
 	case "SESConfig.senderAddress":
 		if e.complexity.SESConfig.SenderAddress == nil {
@@ -9559,6 +9686,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SSHKeyPair.SecretARN(childComplexity), true
+
+	case "SageConfig.baseUrl":
+		if e.complexity.SageConfig.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.SageConfig.BaseURL(childComplexity), true
 
 	case "SaveDistroPayload.distro":
 		if e.complexity.SaveDistroPayload.Distro == nil {
@@ -9781,6 +9915,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.CloudCleanupDisabled(childComplexity), true
+	case "ServiceFlags.debugSpawnHostDisabled":
+		if e.complexity.ServiceFlags.DebugSpawnHostDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.DebugSpawnHostDisabled(childComplexity), true
 	case "ServiceFlags.degradedModeDisabled":
 		if e.complexity.ServiceFlags.DegradedModeDisabled == nil {
 			break
@@ -9877,6 +10017,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.RepotrackerDisabled(childComplexity), true
+	case "ServiceFlags.s3LifecycleSyncDisabled":
+		if e.complexity.ServiceFlags.S3LifecycleSyncDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.S3LifecycleSyncDisabled(childComplexity), true
 	case "ServiceFlags.schedulerDisabled":
 		if e.complexity.ServiceFlags.SchedulerDisabled == nil {
 			break
@@ -9931,6 +10077,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.UnrecognizedPodCleanupDisabled(childComplexity), true
+	case "ServiceFlags.useGitForGitHubFilesDisabled":
+		if e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled(childComplexity), true
 	case "ServiceFlags.webhookNotificationsDisabled":
 		if e.complexity.ServiceFlags.WebhookNotificationsDisabled == nil {
 			break
@@ -10194,6 +10346,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SpruceConfig.SecretFields(childComplexity), true
+	case "SpruceConfig.serviceFlags":
+		if e.complexity.SpruceConfig.ServiceFlags == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.ServiceFlags(childComplexity), true
 	case "SpruceConfig.singleTaskDistro":
 		if e.complexity.SpruceConfig.SingleTaskDistro == nil {
 			break
@@ -10849,19 +11007,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskContainerCreationOpts.WorkingDir(childComplexity), true
-
-	case "TaskCost.adjustedCost":
-		if e.complexity.TaskCost.AdjustedCost == nil {
-			break
-		}
-
-		return e.complexity.TaskCost.AdjustedCost(childComplexity), true
-	case "TaskCost.onDemandCost":
-		if e.complexity.TaskCost.OnDemandCost == nil {
-			break
-		}
-
-		return e.complexity.TaskCost.OnDemandCost(childComplexity), true
 
 	case "TaskEndDetail.description":
 		if e.complexity.TaskEndDetail.Description == nil {
@@ -11969,6 +12114,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserConfig.User(childComplexity), true
 
+	case "UserServiceFlags.jwtTokenForCLIDisabled":
+		if e.complexity.UserServiceFlags.JWTTokenForCLIDisabled == nil {
+			break
+		}
+
+		return e.complexity.UserServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
+
 	case "UserSettings.dateFormat":
 		if e.complexity.UserSettings.DateFormat == nil {
 			break
@@ -12185,6 +12337,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.Patch(childComplexity), true
+	case "Version.predictedCost":
+		if e.complexity.Version.PredictedCost == nil {
+			break
+		}
+
+		return e.complexity.Version.PredictedCost(childComplexity), true
 	case "Version.previousVersion":
 		if e.complexity.Version.PreviousVersion == nil {
 			break
@@ -12731,6 +12889,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput,
 		ec.unmarshalInputGithubAppAuthInput,
 		ec.unmarshalInputGithubUserInput,
+		ec.unmarshalInputGraphiteConfigInput,
 		ec.unmarshalInputHomeVolumeSettingsInput,
 		ec.unmarshalInputHostAllocatorSettingsInput,
 		ec.unmarshalInputHostEventsInput,
@@ -12793,10 +12952,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputResourceLimitsInput,
 		ec.unmarshalInputRestartAdminTasksOptions,
 		ec.unmarshalInputRuntimeEnvironmentConfigInput,
+		ec.unmarshalInputS3CostConfigInput,
 		ec.unmarshalInputS3CredentialsInput,
+		ec.unmarshalInputS3StorageCostConfigInput,
+		ec.unmarshalInputS3UploadCostConfigInput,
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSSHConfigInput,
 		ec.unmarshalInputSSHKeyPairInput,
+		ec.unmarshalInputSageConfigInput,
 		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSchedulerConfigInput,
@@ -18367,6 +18530,8 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 				return ec.fieldContext_CostConfig_savingsPlanDiscount(ctx, field)
 			case "onDemandDiscount":
 				return ec.fieldContext_CostConfig_onDemandDiscount(ctx, field)
+			case "s3Cost":
+				return ec.fieldContext_CostConfig_s3Cost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostConfig", field.Name)
 		},
@@ -18489,6 +18654,41 @@ func (ec *executionContext) fieldContext_AdminSettings_fws(_ context.Context, fi
 				return ec.fieldContext_FWSConfig_url(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type FWSConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_graphite(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_graphite,
+		func(ctx context.Context) (any, error) {
+			return obj.Graphite, nil
+		},
+		nil,
+		ec.marshalOGraphiteConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_graphite(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ciOptimizationToken":
+				return ec.fieldContext_GraphiteConfig_ciOptimizationToken(ctx, field)
+			case "serverUrl":
+				return ec.fieldContext_GraphiteConfig_serverUrl(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GraphiteConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -19430,6 +19630,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_backgroundReauthDisabled(ctx, field)
 			case "cloudCleanupDisabled":
 				return ec.fieldContext_ServiceFlags_cloudCleanupDisabled(ctx, field)
+			case "debugSpawnHostDisabled":
+				return ec.fieldContext_ServiceFlags_debugSpawnHostDisabled(ctx, field)
 			case "sleepScheduleDisabled":
 				return ec.fieldContext_ServiceFlags_sleepScheduleDisabled(ctx, field)
 			case "staticAPIKeysDisabled":
@@ -19442,6 +19644,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_degradedModeDisabled(ctx, field)
 			case "elasticIPsDisabled":
 				return ec.fieldContext_ServiceFlags_elasticIPsDisabled(ctx, field)
+			case "useGitForGitHubFilesDisabled":
+				return ec.fieldContext_ServiceFlags_useGitForGitHubFilesDisabled(ctx, field)
 			case "releaseModeDisabled":
 				return ec.fieldContext_ServiceFlags_releaseModeDisabled(ctx, field)
 			case "eventProcessingDisabled":
@@ -19456,6 +19660,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_webhookNotificationsDisabled(ctx, field)
 			case "githubStatusAPIDisabled":
 				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
+			case "s3LifecycleSyncDisabled":
+				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
 		},
@@ -19918,6 +20124,39 @@ func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, fie
 				return ec.fieldContext_UIConfig_stagingEnvironment(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_sage(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_sage,
+		func(ctx context.Context) (any, error) {
+			return obj.Sage, nil
+		},
+		nil,
+		ec.marshalOSageConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_sage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "baseUrl":
+				return ec.fieldContext_SageConfig_baseUrl(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SageConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -23811,6 +24050,64 @@ func (ec *executionContext) fieldContext_ContainerResources_memoryMb(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Cost_onDemandEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_onDemandEC2Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.OnDemandEC2Cost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_onDemandEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedEC2Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedEC2Cost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CostConfig_financeFormula(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23893,6 +24190,41 @@ func (ec *executionContext) fieldContext_CostConfig_onDemandDiscount(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostConfig_s3Cost(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostConfig_s3Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3Cost, nil
+		},
+		nil,
+		ec.marshalOS3CostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostConfig_s3Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "upload":
+				return ec.fieldContext_S3CostConfig_upload(ctx, field)
+			case "storage":
+				return ec.fieldContext_S3CostConfig_storage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3CostConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -28545,6 +28877,77 @@ func (ec *executionContext) fieldContext_GithubUser_uid(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _GraphiteConfig_ciOptimizationToken(ctx context.Context, field graphql.CollectedField, obj *model.APIGraphiteConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GraphiteConfig_ciOptimizationToken,
+		func(ctx context.Context) (any, error) {
+			return obj.CIOptimizationToken, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GraphiteConfig_ciOptimizationToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GraphiteConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GraphiteConfig_serverUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIGraphiteConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GraphiteConfig_serverUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.ServerURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GraphiteConfig_serverUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GraphiteConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GroupedBuildVariant_displayName(ctx context.Context, field graphql.CollectedField, obj *GroupedBuildVariant) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -28989,6 +29392,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -29174,6 +29579,8 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_RepoRef_spawnHostScriptPath(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_RepoRef_debugSpawnHostsDisabled(ctx, field)
 			case "stepbackDisabled":
 				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
@@ -35253,6 +35660,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -35366,6 +35775,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -36264,6 +36675,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_expansions(ctx, field)
 			case "fws":
 				return ec.fieldContext_AdminSettings_fws(ctx, field)
+			case "graphite":
+				return ec.fieldContext_AdminSettings_graphite(ctx, field)
 			case "githubCheckRun":
 				return ec.fieldContext_AdminSettings_githubCheckRun(ctx, field)
 			case "githubOrgs":
@@ -36338,6 +36751,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			case "ui":
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "sage":
+				return ec.fieldContext_AdminSettings_sage(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -36984,6 +37399,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37131,6 +37548,8 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37278,6 +37697,8 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37425,6 +37846,8 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -37740,6 +38163,8 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -40119,6 +40544,8 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -40383,6 +40810,8 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -40905,6 +41334,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -43659,6 +44090,8 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -44126,6 +44559,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -47004,6 +47439,35 @@ func (ec *executionContext) fieldContext_Project_deactivatePrevious(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_debugSpawnHostsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_debugSpawnHostsDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostsDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_debugSpawnHostsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_disabledStatsCache(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49235,6 +49699,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -49708,6 +50174,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -50369,6 +50837,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_expansions(ctx, field)
 			case "fws":
 				return ec.fieldContext_AdminSettings_fws(ctx, field)
+			case "graphite":
+				return ec.fieldContext_AdminSettings_graphite(ctx, field)
 			case "githubCheckRun":
 				return ec.fieldContext_AdminSettings_githubCheckRun(ctx, field)
 			case "githubOrgs":
@@ -50443,6 +50913,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			case "ui":
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "sage":
+				return ec.fieldContext_AdminSettings_sage(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -50639,6 +51111,8 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_providers(ctx, field)
 			case "secretFields":
 				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
+			case "serviceFlags":
+				return ec.fieldContext_SpruceConfig_serviceFlags(ctx, field)
 			case "singleTaskDistro":
 				return ec.fieldContext_SpruceConfig_singleTaskDistro(ctx, field)
 			case "slack":
@@ -51515,6 +51989,8 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -53116,6 +53592,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -54636,6 +55114,35 @@ func (ec *executionContext) fieldContext_RepoRef_spawnHostScriptPath(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_debugSpawnHostsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoRef_debugSpawnHostsDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostsDisabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2ᚖbool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_debugSpawnHostsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_stepbackDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55161,6 +55668,8 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_restricted(ctx, field)
 			case "spawnHostScriptPath":
 				return ec.fieldContext_RepoRef_spawnHostScriptPath(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_RepoRef_debugSpawnHostsDisabled(ctx, field)
 			case "stepbackDisabled":
 				return ec.fieldContext_RepoRef_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
@@ -55811,6 +56320,74 @@ func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_apiKey(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _S3CostConfig_upload(ctx context.Context, field graphql.CollectedField, obj *model.APIS3CostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3CostConfig_upload,
+		func(ctx context.Context) (any, error) {
+			return obj.Upload, nil
+		},
+		nil,
+		ec.marshalOS3UploadCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3CostConfig_upload(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "uploadCostDiscount":
+				return ec.fieldContext_S3UploadCostConfig_uploadCostDiscount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3UploadCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3CostConfig_storage(ctx context.Context, field graphql.CollectedField, obj *model.APIS3CostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3CostConfig_storage,
+		func(ctx context.Context) (any, error) {
+			return obj.Storage, nil
+		},
+		nil,
+		ec.marshalOS3StorageCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3CostConfig_storage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "standardStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount(ctx, field)
+			case "iAStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3StorageCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _S3Credentials_key(ctx context.Context, field graphql.CollectedField, obj *model.APIS3Credentials) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55906,6 +56483,93 @@ func (ec *executionContext) fieldContext_S3Credentials_bucket(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_standardStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.StandardStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_standardStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_iAStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.IAStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_iAStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3UploadCostConfig_uploadCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3UploadCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3UploadCostConfig_uploadCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.UploadCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3UploadCostConfig_uploadCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3UploadCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -56084,6 +56748,35 @@ func (ec *executionContext) _SSHKeyPair_secretARN(ctx context.Context, field gra
 func (ec *executionContext) fieldContext_SSHKeyPair_secretARN(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SSHKeyPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SageConfig_baseUrl(ctx context.Context, field graphql.CollectedField, obj *model.APISageConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SageConfig_baseUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.BaseURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SageConfig_baseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SageConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -57608,6 +58301,35 @@ func (ec *executionContext) fieldContext_ServiceFlags_cloudCleanupDisabled(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _ServiceFlags_debugSpawnHostDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_debugSpawnHostDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_debugSpawnHostDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ServiceFlags_sleepScheduleDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57770,6 +58492,35 @@ func (ec *executionContext) _ServiceFlags_elasticIPsDisabled(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_elasticIPsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlags_useGitForGitHubFilesDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_useGitForGitHubFilesDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.UseGitForGitHubFilesDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_useGitForGitHubFilesDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServiceFlags",
 		Field:      field,
@@ -57973,6 +58724,35 @@ func (ec *executionContext) _ServiceFlags_githubStatusAPIDisabled(ctx context.Co
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_githubStatusAPIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlags_s3LifecycleSyncDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.S3LifecycleSyncDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServiceFlags",
 		Field:      field,
@@ -59247,6 +60027,39 @@ func (ec *executionContext) fieldContext_SpruceConfig_secretFields(_ context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpruceConfig_serviceFlags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SpruceConfig_serviceFlags,
+		func(ctx context.Context) (any, error) {
+			return obj.ServiceFlags, nil
+		},
+		nil,
+		ec.marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "jwtTokenForCLIDisabled":
+				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
 		},
 	}
 	return fc, nil
@@ -62285,6 +63098,8 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -62820,7 +63635,7 @@ func (ec *executionContext) _Task_taskCost(ctx context.Context, field graphql.Co
 			return obj.TaskCost, nil
 		},
 		nil,
-		ec.marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost,
+		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
 		true,
 		false,
 	)
@@ -62834,12 +63649,12 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandCost":
-				return ec.fieldContext_TaskCost_onDemandCost(ctx, field)
-			case "adjustedCost":
-				return ec.fieldContext_TaskCost_adjustedCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
+			case "adjustedEC2Cost":
+				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskCost", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -62855,7 +63670,7 @@ func (ec *executionContext) _Task_predictedTaskCost(ctx context.Context, field g
 			return obj.PredictedTaskCost, nil
 		},
 		nil,
-		ec.marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost,
+		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
 		true,
 		false,
 	)
@@ -62869,12 +63684,12 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandCost":
-				return ec.fieldContext_TaskCost_onDemandCost(ctx, field)
-			case "adjustedCost":
-				return ec.fieldContext_TaskCost_adjustedCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
+			case "adjustedEC2Cost":
+				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskCost", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -63161,6 +63976,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -63372,64 +64189,6 @@ func (ec *executionContext) fieldContext_TaskContainerCreationOpts_workingDir(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskCost_onDemandCost(ctx context.Context, field graphql.CollectedField, obj *model.APITaskCost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TaskCost_onDemandCost,
-		func(ctx context.Context) (any, error) {
-			return obj.OnDemandCost, nil
-		},
-		nil,
-		ec.marshalOFloat2ᚖfloat64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TaskCost_onDemandCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskCost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskCost_adjustedCost(ctx context.Context, field graphql.CollectedField, obj *model.APITaskCost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TaskCost_adjustedCost,
-		func(ctx context.Context) (any, error) {
-			return obj.AdjustedCost, nil
-		},
-		nil,
-		ec.marshalOFloat2ᚖfloat64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TaskCost_adjustedCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskCost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -68695,6 +69454,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -69318,6 +70079,35 @@ func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.JWTTokenForCLIDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserSettings_githubUser(ctx context.Context, field graphql.CollectedField, obj *model.APIUserSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -69920,6 +70710,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -70160,6 +70952,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -70764,6 +71558,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -70871,6 +71667,8 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_containerSizeDefinitions(ctx, field)
 			case "deactivatePrevious":
 				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+			case "debugSpawnHostsDisabled":
+				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
 				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
@@ -71475,6 +72273,41 @@ func (ec *executionContext) fieldContext_Version_waterfallBuilds(_ context.Conte
 				return ec.fieldContext_WaterfallBuild_tasks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallBuild", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_predictedCost(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_predictedCost,
+		func(ctx context.Context) (any, error) {
+			return obj.PredictedCost, nil
+		},
+		nil,
+		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
+			case "adjustedEC2Cost":
+				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
 	}
 	return fc, nil
@@ -72326,6 +73159,8 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -73117,6 +73952,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_inactiveVersions(_ con
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -73230,6 +74067,8 @@ func (ec *executionContext) fieldContext_WaterfallVersion_version(_ context.Cont
 				return ec.fieldContext_Version_warnings(ctx, field)
 			case "waterfallBuilds":
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
+			case "predictedCost":
+				return ec.fieldContext_Version_predictedCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
@@ -75583,7 +76422,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75716,6 +76555,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.FWS = data
+		case "graphite":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphite"))
+			data, err := ec.unmarshalOGraphiteConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Graphite = data
 		case "githubCheckRun":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubCheckRun"))
 			data, err := ec.unmarshalOGitHubCheckRunConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubCheckRunConfig(ctx, v)
@@ -76009,6 +76855,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Ui = data
+		case "sage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sage"))
+			data, err := ec.unmarshalOSageConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sage = data
 		}
 	}
 
@@ -77278,7 +78131,7 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount"}
+	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77306,6 +78159,13 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.OnDemandDiscount = data
+		case "s3Cost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3Cost"))
+			data, err := ec.unmarshalOS3CostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3Cost = data
 		}
 	}
 
@@ -79017,6 +79877,57 @@ func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.LastKnownAs = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputGraphiteConfigInput(ctx context.Context, obj any) (model.APIGraphiteConfig, error) {
+	var it model.APIGraphiteConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"ciOptimizationToken", "serverUrl"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "ciOptimizationToken":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ciOptimizationToken"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.CIOptimizationToken = data
+			} else if tmp == nil {
+				it.CIOptimizationToken = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "serverUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServerURL = data
 		}
 	}
 
@@ -81389,7 +82300,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81459,6 +82370,13 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.DeactivatePrevious = data
+		case "debugSpawnHostsDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHostsDisabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHostsDisabled = data
 		case "disabledStatsCache":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledStatsCache"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -82224,7 +83142,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82469,6 +83387,13 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.SpawnHostScriptPath = data
+		case "debugSpawnHostsDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHostsDisabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHostsDisabled = data
 		case "stepbackDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stepbackDisabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -82870,6 +83795,40 @@ func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputS3CostConfigInput(ctx context.Context, obj any) (model.APIS3CostConfig, error) {
+	var it model.APIS3CostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"upload", "storage"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "upload":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upload"))
+			data, err := ec.unmarshalOS3UploadCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Upload = data
+		case "storage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storage"))
+			data, err := ec.unmarshalOS3StorageCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Storage = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputS3CredentialsInput(ctx context.Context, obj any) (model.APIS3Credentials, error) {
 	var it model.APIS3Credentials
 	asMap := map[string]any{}
@@ -82922,6 +83881,67 @@ func (ec *executionContext) unmarshalInputS3CredentialsInput(ctx context.Context
 				return it, err
 			}
 			it.Bucket = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.Context, obj any) (model.APIS3StorageCostConfig, error) {
+	var it model.APIS3StorageCostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "standardStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("standardStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StandardStorageCostDiscount = data
+		case "iAStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iAStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IAStorageCostDiscount = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputS3UploadCostConfigInput(ctx context.Context, obj any) (model.APIS3UploadCostConfig, error) {
+	var it model.APIS3UploadCostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"uploadCostDiscount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "uploadCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uploadCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UploadCostDiscount = data
 		}
 	}
 
@@ -83051,6 +84071,33 @@ func (ec *executionContext) unmarshalInputSSHKeyPairInput(ctx context.Context, o
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSageConfigInput(ctx context.Context, obj any) (model.APISageConfig, error) {
+	var it model.APISageConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"baseUrl"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "baseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
 		}
 	}
 
@@ -83349,7 +84396,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83510,6 +84557,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.CloudCleanupDisabled = data
+		case "debugSpawnHostDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHostDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHostDisabled = data
 		case "sleepScheduleDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sleepScheduleDisabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -83552,6 +84606,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.ElasticIPsDisabled = data
+		case "useGitForGitHubFilesDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useGitForGitHubFilesDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UseGitForGitHubFilesDisabled = data
 		case "releaseModeDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("releaseModeDisabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -83601,6 +84662,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.GithubStatusAPIDisabled = data
+		case "s3LifecycleSyncDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3LifecycleSyncDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3LifecycleSyncDisabled = data
 		}
 	}
 
@@ -83989,7 +85057,7 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "sleepSchedule", "spawnHostsStartedByTask", "taskId", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId", "useOAuth"}
+	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "sleepSchedule", "spawnHostsStartedByTask", "taskId", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId", "useOAuth", "isDebug"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84115,6 +85183,13 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 				return it, err
 			}
 			it.UseOAuth = data
+		case "isDebug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isDebug"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsDebug = data
 		}
 	}
 
@@ -85849,7 +86924,7 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"date", "limit", "minOrder", "maxOrder", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskCaseSensitive", "variants", "variantCaseSensitive"}
+	fieldsInOrder := [...]string{"date", "limit", "minOrder", "maxOrder", "omitInactiveBuilds", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "taskCaseSensitive", "variants", "variantCaseSensitive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85884,6 +86959,13 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.MaxOrder = data
+		case "omitInactiveBuilds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("omitInactiveBuilds"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OmitInactiveBuilds = data
 		case "projectIdentifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
@@ -86702,6 +87784,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_expansions(ctx, field, obj)
 		case "fws":
 			out.Values[i] = ec._AdminSettings_fws(ctx, field, obj)
+		case "graphite":
+			out.Values[i] = ec._AdminSettings_graphite(ctx, field, obj)
 		case "githubCheckRun":
 			out.Values[i] = ec._AdminSettings_githubCheckRun(ctx, field, obj)
 		case "githubOrgs":
@@ -86776,6 +87860,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_triggers(ctx, field, obj)
 		case "ui":
 			out.Values[i] = ec._AdminSettings_ui(ctx, field, obj)
+		case "sage":
+			out.Values[i] = ec._AdminSettings_sage(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -88065,6 +89151,44 @@ func (ec *executionContext) _ContainerResources(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var costImplementors = []string{"Cost"}
+
+func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj *cost.Cost) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, costImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Cost")
+		case "onDemandEC2Cost":
+			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
+		case "adjustedEC2Cost":
+			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var costConfigImplementors = []string{"CostConfig"}
 
 func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APICostConfig) graphql.Marshaler {
@@ -88082,6 +89206,8 @@ func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._CostConfig_savingsPlanDiscount(ctx, field, obj)
 		case "onDemandDiscount":
 			out.Values[i] = ec._CostConfig_onDemandDiscount(ctx, field, obj)
+		case "s3Cost":
+			out.Values[i] = ec._CostConfig_s3Cost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -89957,6 +91083,44 @@ func (ec *executionContext) _GithubUser(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._GithubUser_lastKnownAs(ctx, field, obj)
 		case "uid":
 			out.Values[i] = ec._GithubUser_uid(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var graphiteConfigImplementors = []string{"GraphiteConfig"}
+
+func (ec *executionContext) _GraphiteConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIGraphiteConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, graphiteConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GraphiteConfig")
+		case "ciOptimizationToken":
+			out.Values[i] = ec._GraphiteConfig_ciOptimizationToken(ctx, field, obj)
+		case "serverUrl":
+			out.Values[i] = ec._GraphiteConfig_serverUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -95949,6 +97113,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_containerSizeDefinitions(ctx, field, obj)
 		case "deactivatePrevious":
 			out.Values[i] = ec._Project_deactivatePrevious(ctx, field, obj)
+		case "debugSpawnHostsDisabled":
+			out.Values[i] = ec._Project_debugSpawnHostsDisabled(ctx, field, obj)
 		case "disabledStatsCache":
 			out.Values[i] = ec._Project_disabledStatsCache(ctx, field, obj)
 		case "dispatchingDisabled":
@@ -98342,6 +99508,11 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "debugSpawnHostsDisabled":
+			out.Values[i] = ec._RepoRef_debugSpawnHostsDisabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "stepbackDisabled":
 			out.Values[i] = ec._RepoRef_stepbackDisabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -98918,6 +100089,44 @@ func (ec *executionContext) _RuntimeEnvironmentConfig(ctx context.Context, sel a
 	return out
 }
 
+var s3CostConfigImplementors = []string{"S3CostConfig"}
+
+func (ec *executionContext) _S3CostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3CostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3CostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3CostConfig")
+		case "upload":
+			out.Values[i] = ec._S3CostConfig_upload(ctx, field, obj)
+		case "storage":
+			out.Values[i] = ec._S3CostConfig_storage(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var s3CredentialsImplementors = []string{"S3Credentials"}
 
 func (ec *executionContext) _S3Credentials(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3Credentials) graphql.Marshaler {
@@ -98935,6 +100144,80 @@ func (ec *executionContext) _S3Credentials(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._S3Credentials_secret(ctx, field, obj)
 		case "bucket":
 			out.Values[i] = ec._S3Credentials_bucket(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var s3StorageCostConfigImplementors = []string{"S3StorageCostConfig"}
+
+func (ec *executionContext) _S3StorageCostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3StorageCostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3StorageCostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3StorageCostConfig")
+		case "standardStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_standardStorageCostDiscount(ctx, field, obj)
+		case "iAStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_iAStorageCostDiscount(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var s3UploadCostConfigImplementors = []string{"S3UploadCostConfig"}
+
+func (ec *executionContext) _S3UploadCostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3UploadCostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3UploadCostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3UploadCostConfig")
+		case "uploadCostDiscount":
+			out.Values[i] = ec._S3UploadCostConfig_uploadCostDiscount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99047,6 +100330,42 @@ func (ec *executionContext) _SSHKeyPair(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._SSHKeyPair_name(ctx, field, obj)
 		case "secretARN":
 			out.Values[i] = ec._SSHKeyPair_secretARN(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sageConfigImplementors = []string{"SageConfig"}
+
+func (ec *executionContext) _SageConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISageConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sageConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SageConfig")
+		case "baseUrl":
+			out.Values[i] = ec._SageConfig_baseUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99376,6 +100695,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_backgroundReauthDisabled(ctx, field, obj)
 		case "cloudCleanupDisabled":
 			out.Values[i] = ec._ServiceFlags_cloudCleanupDisabled(ctx, field, obj)
+		case "debugSpawnHostDisabled":
+			out.Values[i] = ec._ServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
 		case "sleepScheduleDisabled":
 			out.Values[i] = ec._ServiceFlags_sleepScheduleDisabled(ctx, field, obj)
 		case "staticAPIKeysDisabled":
@@ -99388,6 +100709,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_degradedModeDisabled(ctx, field, obj)
 		case "elasticIPsDisabled":
 			out.Values[i] = ec._ServiceFlags_elasticIPsDisabled(ctx, field, obj)
+		case "useGitForGitHubFilesDisabled":
+			out.Values[i] = ec._ServiceFlags_useGitForGitHubFilesDisabled(ctx, field, obj)
 		case "releaseModeDisabled":
 			out.Values[i] = ec._ServiceFlags_releaseModeDisabled(ctx, field, obj)
 		case "eventProcessingDisabled":
@@ -99402,6 +100725,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_webhookNotificationsDisabled(ctx, field, obj)
 		case "githubStatusAPIDisabled":
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
+		case "s3LifecycleSyncDisabled":
+			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99974,6 +101299,11 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "serviceFlags":
+			out.Values[i] = ec._SpruceConfig_serviceFlags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "singleTaskDistro":
 			out.Values[i] = ec._SpruceConfig_singleTaskDistro(ctx, field, obj)
 		case "slack":
@@ -101825,44 +103155,6 @@ func (ec *executionContext) _TaskContainerCreationOpts(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var taskCostImplementors = []string{"TaskCost"}
-
-func (ec *executionContext) _TaskCost(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskCost) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, taskCostImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("TaskCost")
-		case "onDemandCost":
-			out.Values[i] = ec._TaskCost_onDemandCost(ctx, field, obj)
-		case "adjustedCost":
-			out.Values[i] = ec._TaskCost_adjustedCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -103996,6 +105288,42 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var userServiceFlagsImplementors = []string{"UserServiceFlags"}
+
+func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.SelectionSet, obj *model.APIServiceFlags) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userServiceFlagsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserServiceFlags")
+		case "jwtTokenForCLIDisabled":
+			out.Values[i] = ec._UserServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var userSettingsImplementors = []string{"UserSettings"}
 
 func (ec *executionContext) _UserSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APIUserSettings) graphql.Marshaler {
@@ -104939,6 +106267,8 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "predictedCost":
+			out.Values[i] = ec._Version_predictedCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -111863,6 +113193,16 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._User(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UserServiceFlags(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
 	return ec._UserSettings(ctx, sel, &v)
 }
@@ -113081,6 +114421,13 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 	return res, nil
 }
 
+func (ec *executionContext) marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost(ctx context.Context, sel ast.SelectionSet, v *cost.Cost) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Cost(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOCostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APICostConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -113786,6 +115133,21 @@ func (ec *executionContext) unmarshalOGithubUserInput2ᚖgithubᚗcomᚋevergree
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputGithubUserInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOGraphiteConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIGraphiteConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GraphiteConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGraphiteConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGraphiteConfig(ctx context.Context, v any) (*model.APIGraphiteConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGraphiteConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -115355,12 +116717,45 @@ func (ec *executionContext) unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOS3CostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIS3CostConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._S3CostConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOS3CostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx context.Context, v any) (*model.APIS3CostConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputS3CostConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOS3Credentials2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3Credentials(ctx context.Context, sel ast.SelectionSet, v model.APIS3Credentials) graphql.Marshaler {
 	return ec._S3Credentials(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOS3CredentialsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3Credentials(ctx context.Context, v any) (model.APIS3Credentials, error) {
 	res, err := ec.unmarshalInputS3CredentialsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOS3StorageCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx context.Context, sel ast.SelectionSet, v model.APIS3StorageCostConfig) graphql.Marshaler {
+	return ec._S3StorageCostConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOS3StorageCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx context.Context, v any) (model.APIS3StorageCostConfig, error) {
+	res, err := ec.unmarshalInputS3StorageCostConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOS3UploadCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx context.Context, sel ast.SelectionSet, v model.APIS3UploadCostConfig) graphql.Marshaler {
+	return ec._S3UploadCostConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOS3UploadCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx context.Context, v any) (model.APIS3UploadCostConfig, error) {
+	res, err := ec.unmarshalInputS3UploadCostConfigInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -115395,6 +116790,21 @@ func (ec *executionContext) marshalOSSHKeyPair2githubᚗcomᚋevergreenᚑciᚋe
 func (ec *executionContext) unmarshalOSSHKeyPairInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISSHKeyPair(ctx context.Context, v any) (model.APISSHKeyPair, error) {
 	res, err := ec.unmarshalInputSSHKeyPairInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSageConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISageConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SageConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSageConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx context.Context, v any) (*model.APISageConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSageConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOSchedulerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISchedulerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISchedulerConfig) graphql.Marshaler {
@@ -115863,13 +117273,6 @@ func (ec *executionContext) marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 func (ec *executionContext) unmarshalOTaskAnnotationSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotationSettings(ctx context.Context, v any) (model.APITaskAnnotationSettings, error) {
 	res, err := ec.unmarshalInputTaskAnnotationSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOTaskCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskCost(ctx context.Context, sel ast.SelectionSet, v *model.APITaskCost) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._TaskCost(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskCountOptions(ctx context.Context, v any) (*TaskCountOptions, error) {

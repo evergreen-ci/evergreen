@@ -172,7 +172,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if b.Priority != nil {
 		priority := *b.Priority
-		if ok := validPriority(priority, foundBuild.Project, user); !ok {
+		if ok := validPriority(ctx, priority, foundBuild.Project, user); !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

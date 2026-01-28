@@ -34,6 +34,10 @@ mutation {
       }
       testSelection: { url: "https://test-selection.example.com" }
       fws: { url: "https://fws.example.com" }
+      graphite: {
+        ciOptimizationToken: "graphite_test_token"
+        serverUrl: "https://graphite.example.com"
+      }
       cedar: { dbUrl: "mongodb://localhost:27017", dbName: "cedar" }
     }
   ) {
@@ -69,6 +73,9 @@ mutation {
     }
     fws {
       url
+    }
+    graphite {
+      serverUrl
     }
     cedar {
       dbName

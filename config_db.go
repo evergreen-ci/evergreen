@@ -94,6 +94,9 @@ var (
 	elasticIPsDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "ElasticIPsDisabled")
 	releaseModeDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "ReleaseModeDisabled")
 	legacyUIAdminPageDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIAdminPageDisabled")
+	debugSpawnHostDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "DebugSpawnHostDisabled")
+	s3LifecycleSyncDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
+	useGitForGitHubFilesDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "UseGitForGitHubFilesDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
@@ -121,6 +124,10 @@ var (
 
 	// SingleTaskDistro Keys
 	ProjectTasksPairsKey = bsonutil.MustHaveTag(SingleTaskDistroConfig{}, "ProjectTasksPairs")
+
+	// GraphiteConfig keys
+	graphiteCIOptimizationTokenKey = bsonutil.MustHaveTag(GraphiteConfig{}, "CIOptimizationToken")
+	graphiteServerURLKey           = bsonutil.MustHaveTag(GraphiteConfig{}, "ServerURL")
 )
 
 func byId(id string) bson.M {

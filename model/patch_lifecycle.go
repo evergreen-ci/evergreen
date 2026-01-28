@@ -609,7 +609,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		authorEmail = p.GitInfo.Email
 	}
 	if p.Author != "" {
-		u, err := user.FindOneByIdContext(ctx, p.Author)
+		u, err := user.FindOneById(ctx, p.Author)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting user")
 		}
@@ -767,6 +767,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 
+	predictions, err := task.ComputePredictedCostsForTasks(ctx, tasksToInsert)
+	if err != nil {
+		return nil, errors.Wrapf(err, "computing predicted costs for tasks in version '%s'", patchVersion.Id)
+	}
+
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
 	session, err := mongoClient.StartSession()
@@ -788,17 +793,15 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			}
 		}
 		if mfst != nil {
-			if err = mfst.InsertWithContext(ctx); err != nil {
+			if err = mfst.Insert(ctx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}
 		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
 		}
-		if err = task.SetPredictedCostsForTasks(ctx, tasksToInsert); err != nil {
-			return nil, errors.Wrapf(err, "computing predicted costs for tasks in version '%s'", patchVersion.Id)
-		}
-		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
+
+		if err = tasksToInsert.InsertUnorderedWithPredictions(ctx, predictions); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
 		if err = p.SetFinalized(ctx, patchVersion.Id); err != nil {
@@ -811,6 +814,36 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	if err != nil {
 		return nil, errors.Wrap(err, "finalizing patch")
 	}
+
+	// Update aggregate costs after transaction commits. We use a goroutine with
+	// retry logic to handle MongoDB transaction propagation delays.
+	go func(versionID string) {
+		bgCtx := context.Background()
+		const maxRetries = 5
+		const baseBackoffMilliseconds = 100
+
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			if attempt > 0 {
+				backoffMilliseconds := baseBackoffMilliseconds << uint(attempt-1)
+				backoff := time.Duration(backoffMilliseconds) * time.Millisecond
+				time.Sleep(backoff)
+			}
+
+			v, err := VersionFindOneId(bgCtx, versionID)
+			if err != nil || v == nil {
+				break
+			}
+
+			if err := v.UpdateAggregateTaskCosts(bgCtx); err != nil {
+				break
+			}
+
+			// Check if costs were actually updated (not zero)
+			if !v.PredictedCost.IsZero() || !v.Cost.IsZero() {
+				break
+			}
+		}
+	}(patchVersion.Id)
 
 	if p.IsParent() {
 		// finalize child patches or subscribe on parent outcome based on parentStatus
@@ -911,7 +944,58 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 			patch: p,
 		},
 	}
+
+	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":  "failed to pre-fetch auto-update module revisions",
+			"patch_id": p.Id.Hex(),
+			"project":  p.Project,
+		}))
+	} else if len(autoUpdateRevisions) > 0 {
+		opts.AutoUpdateModuleRevisions = autoUpdateRevisions
+	}
+
 	return projectRef, &opts, nil
+}
+
+// prefetchAutoUpdateModuleRevisions fetches the latest revisions for modules with auto_update set
+func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, projectRef *ProjectRef, opts *GetProjectOpts) (map[string]string, error) {
+	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting patched project file as YAML")
+	}
+	type modules struct {
+		Modules []Module `yaml:"modules"`
+	}
+	var projectModulesOnly modules
+	if err := yaml.Unmarshal(projectFileBytes, &projectModulesOnly); err != nil {
+		return nil, errors.Wrap(err, "parsing modules from project YAML")
+	}
+
+	if len(projectModulesOnly.Modules) == 0 {
+		return nil, nil
+	}
+
+	autoUpdateRevisions := make(map[string]string)
+	for _, module := range projectModulesOnly.Modules {
+		if module.AutoUpdate {
+			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.Githash)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":     "failed to get revision for module",
+					"module_name": module.Name,
+					"patch_id":    p.Id.Hex(),
+				}))
+				continue
+			}
+			if mfstModule != nil {
+				autoUpdateRevisions[module.Name] = mfstModule.Revision
+			}
+		}
+	}
+
+	return autoUpdateRevisions, nil
 }
 
 func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string) error {

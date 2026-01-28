@@ -205,6 +205,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settings.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settings.ServiceFlags.ElasticIPsDisabled)
+	s.EqualValues(testSettings.ServiceFlags.UseGitForGitHubFilesDisabled, settings.ServiceFlags.UseGitForGitHubFilesDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settings.SleepSchedule.PermanentlyExemptHosts)
@@ -383,7 +384,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 	// get the changes with the /admin/events route
 	ctx = context.Background()
 	route := makeFetchAdminEvents()
-	request, err = http.NewRequest(http.MethodGet, "/admin/events?limit=10&ts=2026-01-02T15%3A04%3A05Z", nil)
+	request, err = http.NewRequest(http.MethodGet, "/admin/events?limit=10&ts=3026-01-02T15%3A04%3A05Z", nil)
 	s.NoError(err)
 	s.NoError(route.Parse(ctx, request))
 	response := route.Run(ctx)

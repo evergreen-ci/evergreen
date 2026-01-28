@@ -21,12 +21,14 @@ input ServiceFlagsInput {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
+  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean
@@ -34,6 +36,7 @@ input ServiceFlagsInput {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
+  s3LifecycleSyncDisabled: Boolean
 }
 
 type ServiceFlags {
@@ -59,12 +62,14 @@ type ServiceFlags {
   unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
+  debugSpawnHostDisabled: Boolean
   sleepScheduleDisabled: Boolean
   staticAPIKeysDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
+  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean
@@ -72,4 +77,10 @@ type ServiceFlags {
   emailNotificationsDisabled: Boolean
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
+  s3LifecycleSyncDisabled: Boolean
+}
+
+# UserServiceFlags are service flags that users have permission to view.
+type UserServiceFlags {
+  jwtTokenForCLIDisabled: Boolean
 }
