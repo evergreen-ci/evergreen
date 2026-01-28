@@ -586,7 +586,7 @@ func setupTaskLogData(ctx context.Context, data json.RawMessage) error {
 			return errors.New("task missing task output info")
 		}
 
-		if err := task.AppendTaskLogs(ctx, *tsk, taskLog.LogType, taskLog.Lines); err != nil {
+		if err := task.AppendTaskLogs(ctx, tsk, taskLog.LogType, taskLog.Lines); err != nil {
 			return errors.Wrap(err, "appending task log lines")
 		}
 	}
