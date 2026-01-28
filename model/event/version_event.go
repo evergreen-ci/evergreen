@@ -34,6 +34,7 @@ type VersionEventData struct {
 
 // logEventWithRetry attempts to log an event with a detached context and retries on failure.
 // This ensures that event logging is not affected by parent context cancellation.
+// The logFields parameter contains contextual information (e.g. version_id, status) that will be included in the error log if all retry attempts fail.
 func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 	const (
 		maxRetries     = 3
@@ -41,6 +42,7 @@ func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 		initialBackoff = 100 * time.Millisecond
 	)
 
+	var lastErr error
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		eventCtx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 		err := event.Log(eventCtx)
@@ -50,20 +52,21 @@ func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 			return
 		}
 
-		fields := message.Fields{
-			"message": "error logging event",
-			"source":  "event-log-fail",
-			"attempt": attempt + 1,
-		}
-		for k, v := range logFields {
-			fields[k] = v
-		}
-		grip.Error(message.WrapError(err, fields))
-
+		lastErr = err
 		if attempt < maxRetries-1 {
 			time.Sleep(initialBackoff * time.Duration(1<<attempt))
 		}
 	}
+
+	fields := message.Fields{
+		"message": "error logging event after all retries",
+		"source":  "event-log-fail",
+		"retries": maxRetries,
+	}
+	for k, v := range logFields {
+		fields[k] = v
+	}
+	grip.Error(message.WrapError(lastErr, fields))
 }
 
 func LogVersionStateChangeEvent(ctx context.Context, id, newStatus string) {
