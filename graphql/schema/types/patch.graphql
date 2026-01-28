@@ -12,6 +12,7 @@ PatchesInput is the input value to the patches field for the User and Project ty
 Based on the information in PatchesInput, we return a list of Patches for either an individual user or a project.
 """
 input PatchesInput {
+  countLimit: Int = 10000
   limit: Int! = 0
   onlyMergeQueue: Boolean
   includeHidden: Boolean = false

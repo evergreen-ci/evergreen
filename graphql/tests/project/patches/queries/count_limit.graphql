@@ -1,0 +1,16 @@
+{
+  project(projectIdentifier: "spruce") {
+    patches(
+      patchesInput: {
+        page: 0
+        limit: 10
+        countLimit: 3
+      }
+    ) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}

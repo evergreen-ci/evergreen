@@ -243,6 +243,38 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "count_limit.graphql",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e8"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9"
+                }
+              ],
+              "filteredPatchCount": 2147483647
+            }
+          }
+        }
+      }
     }
   ]
 }
