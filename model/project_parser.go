@@ -667,9 +667,6 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"module":      include.Module,
 	})
 	if include.Module != "" {
-		// kim: TODO: figure out if/how AutoUpdateModuleRevisions is set. I
-		// can't see it ever being set in any code path because localOpts
-		// doesn't set it.
 		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
@@ -938,7 +935,7 @@ func setupGitIncludeDirs(ctx context.Context, modules ModuleList, includes []par
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
 		}
-		revision, err := getRevisionForModule(ctx, opts.AutoUpdateModuleRevisions, opts.ReferenceManifestID, *mod, modName)
+		revision, err := getRevisionForModule(ctx, *mod, modName, *opts)
 		if err != nil {
 			return dirs, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
 		}
@@ -1153,9 +1150,9 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
 	}
-	// kim: NOTE: double-check that this is equivalent to how it resolve the
+	// kim: NOTE: double-check that this is equivalent to how it resolves the
 	// module before the refactor.
-	moduleOpts.Revision, err = getRevisionForModule(ctx, opts.AutoUpdateModuleRevisions, opts.ReferenceManifestID, *module, include.Module)
+	moduleOpts.Revision, err = getRevisionForModule(ctx, *module, include.Module, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting revision for module '%s'", include.Module)
 	}
@@ -1165,17 +1162,17 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 
 // getRevisionForModule returns the revision or branch to use for the given
 // module include.
-func getRevisionForModule(ctx context.Context, autoUpdateModuleRevisions map[string]string, mfstID string, mod Module, modName string) (string, error) {
-	if autoUpdateModuleRevisions != nil {
-		if revision, ok := autoUpdateModuleRevisions[modName]; ok {
+func getRevisionForModule(ctx context.Context, mod Module, modName string, opts GetProjectOpts) (string, error) {
+	if opts.AutoUpdateModuleRevisions != nil {
+		if revision, ok := opts.AutoUpdateModuleRevisions[modName]; ok {
 			return revision, nil
 		}
 	}
 
-	if mfstID != "" {
-		m, err := manifest.FindOne(ctx, manifest.ById(mfstID))
+	if opts.ReferenceManifestID != "" {
+		m, err := manifest.FindOne(ctx, manifest.ById(opts.ReferenceManifestID))
 		if err != nil {
-			return "", errors.Wrapf(err, "finding manifest to reference '%s'", mfstID)
+			return "", errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
 		}
 		// Sometimes the manifest might be nil, in which case we don't want to set the revision.
 		if m != nil {
