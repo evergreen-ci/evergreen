@@ -34,7 +34,8 @@ type VersionEventData struct {
 
 // logEventWithRetry attempts to log an event with a detached context and retries on failure.
 // This ensures that event logging is not affected by parent context cancellation.
-// The logFields parameter contains contextual information (e.g. version_id, status) that will be included in the error log if all retry attempts fail.
+// The logFields parameter contains contextual information (e.g. version_id, status) that will
+// be included in the error log if all retry attempts fail.
 func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 	const (
 		maxRetries     = 3
