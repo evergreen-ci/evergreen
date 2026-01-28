@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -3178,10 +3177,6 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
 
-	defer func() {
-		assert.NoError(t, db.ClearCollections(manifest.Collection))
-	}()
-
 	cleanupDirs := func(t *testing.T, dirs *gitIncludeDirs) {
 		if dirs == nil {
 			return
@@ -3207,6 +3202,7 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
 			assert.NoError(t, err)
 			require.NotZero(t, dirs)
+			defer cleanupDirs(t, dirs)
 
 			assert.Len(t, dirs.clonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
 			for _, dir := range dirs.clonesForOwnerRepo {
@@ -3307,6 +3303,9 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 			includes := []parserInclude{
 				{
 					FileName: "config_test/evg_settings.yml",
+				},
+				{
+					FileName: "config_test/evg_settings_with_3rd_party_defaults.yml",
 				},
 				{
 					FileName: "evergreen.yml",
