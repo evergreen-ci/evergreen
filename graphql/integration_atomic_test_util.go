@@ -532,7 +532,7 @@ func setupDBIndexes() error {
 	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: task.TaskHistoricalDataIndex}); err != nil {
 		return errors.Wrap(err, "setting up task historical data index")
 	}
-	if err := db.EnsureIndex(patch.Collection, mongo.IndexModel{Keys: bson.D{{Key: patch.ProjectKey, Value: 1}, {Key: patch.CreateTimeKey, Value: -1}}}); err != nil {
+	if err := db.EnsureIndex(patch.Collection, mongo.IndexModel{Keys: patch.ProjectCreateTimeIndex}); err != nil {
 		return errors.Wrap(err, "setting up patch collection indexes")
 	}
 	return nil

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	mgobson "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -79,7 +78,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	assert.Equal(t, p.Id, previousPatch.Id)
 }
 func TestProjectOrUserPatchesRequestersOption(t *testing.T) {
-	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"EmptyRequestersList": func(ctx context.Context, t *testing.T) {
@@ -220,7 +219,7 @@ func TestProjectOrUserPatchesRequestersOption(t *testing.T) {
 }
 func TestProjectOrUserPatchesCombined(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
 	for i := 0; i < 10; i++ {
@@ -302,7 +301,7 @@ func TestProjectOrUserPatchesCombined(t *testing.T) {
 
 func TestProjectOrUserPatchesResults(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
 	for i := 0; i < 10; i++ {
@@ -395,7 +394,7 @@ func TestProjectOrUserPatchesResults(t *testing.T) {
 
 func TestProjectOrUserPatchesCount(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: mgobson.D{{Key: ProjectKey, Value: 1}, {Key: CreateTimeKey, Value: -1}}}))
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: ProjectCreateTimeIndex}))
 
 	now := time.Now()
 	for i := 0; i < 10; i++ {

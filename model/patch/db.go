@@ -77,6 +77,14 @@ var (
 	githubMergeGroupHeadSHAKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
 )
 
+// ProjectCreateTimeIndex is a partial index used to speed up finding GitHub Merge Queue patches
+var (
+	ProjectCreateTimeIndex = bson.D{
+		{Key: ProjectKey, Value: 1},
+		{Key: CreateTimeKey, Value: -1},
+	}
+)
+
 // Query Validation
 
 // IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
@@ -209,13 +217,13 @@ func buildPatchFilterPipeline(opts ProjectOrUserPatchesOptions, includeSort bool
 	}
 
 	// Validate requesters and check if we're only filtering for merge queue patches.
-	validatedRequesters := []string{}
+	patchRequesters := []string{}
 	for _, requester := range opts.Requesters {
 		if evergreen.IsPatchRequester(requester) {
-			validatedRequesters = append(validatedRequesters, requester)
+			patchRequesters = append(patchRequesters, requester)
 		}
 	}
-	onlyMergeQueue := len(validatedRequesters) == 1 && validatedRequesters[0] == evergreen.GithubMergeRequester
+	onlyMergeQueue := len(patchRequesters) == 1 && patchRequesters[0] == evergreen.GithubMergeRequester
 
 	// This filter matches the logic in IsMergeQueuePatch() and results in significantly fewer documents being retrieved from the db.
 	if onlyMergeQueue {
@@ -243,9 +251,9 @@ func buildPatchFilterPipeline(opts ProjectOrUserPatchesOptions, includeSort bool
 
 	// Apply requester filtering using the computed requester expression.
 	// Skip this step if we're only filtering for merge queue patches since we already applied the optimization above.
-	if len(validatedRequesters) > 0 && !onlyMergeQueue {
+	if len(patchRequesters) > 0 && !onlyMergeQueue {
 		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
-		pipeline = append(pipeline, bson.M{"$match": bson.M{"requester": bson.M{"$in": validatedRequesters}}})
+		pipeline = append(pipeline, bson.M{"$match": bson.M{"requester": bson.M{"$in": patchRequesters}}})
 	}
 
 	return pipeline, onlyMergeQueue
@@ -253,7 +261,7 @@ func buildPatchFilterPipeline(opts ProjectOrUserPatchesOptions, includeSort bool
 
 // ProjectOrUserPatchesPage returns a page of patches matching the filter criteria.
 func ProjectOrUserPatchesPage(ctx context.Context, opts ProjectOrUserPatchesOptions) ([]Patch, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ProjectOrUserPatchesPage")})
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ProjectOrUserPatchesPage")})
 
 	if opts.Project != nil && opts.Author != nil {
 		return nil, errors.New("can't set both project and author")
@@ -275,7 +283,7 @@ func ProjectOrUserPatchesPage(ctx context.Context, opts ProjectOrUserPatchesOpti
 
 	var aggregateOpts *options.AggregateOptions
 	if onlyMergeQueue {
-		aggregateOpts = options.Aggregate().SetHint("branch_1_create_time_-1")
+		aggregateOpts = options.Aggregate().SetHint(ProjectCreateTimeIndex)
 	}
 
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, aggregateOpts)
@@ -294,13 +302,13 @@ func ProjectOrUserPatchesPage(ctx context.Context, opts ProjectOrUserPatchesOpti
 // ProjectOrUserPatchesCount returns the count of patches matching the filter criteria.
 // An upper threshold is set since the precise document count doesn't really matter.
 func ProjectOrUserPatchesCount(ctx context.Context, opts ProjectOrUserPatchesOptions) (int, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ProjectOrUserPatchesCount")})
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "ProjectOrUserPatchesCount")})
 
 	if opts.Project != nil && opts.Author != nil {
 		return 0, errors.New("can't set both project and author")
 	}
 
-	if opts.CountLimit <= 0 {
+	if opts.CountLimit <= 0 || opts.CountLimit > 10000 {
 		opts.CountLimit = 10000
 	}
 
@@ -314,7 +322,7 @@ func ProjectOrUserPatchesCount(ctx context.Context, opts ProjectOrUserPatchesOpt
 
 	var aggregateOpts *options.AggregateOptions
 	if onlyMergeQueue {
-		aggregateOpts = options.Aggregate().SetHint("branch_1_create_time_-1")
+		aggregateOpts = options.Aggregate().SetHint(ProjectCreateTimeIndex)
 	}
 
 	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, aggregateOpts)
@@ -335,6 +343,7 @@ func ProjectOrUserPatchesCount(ctx context.Context, opts ProjectOrUserPatchesOpt
 	}
 
 	if countResults[0].Count == opts.CountLimit {
+		// Indicate that we've maxed out at our count limit
 		return math.MaxInt32, nil
 	}
 
