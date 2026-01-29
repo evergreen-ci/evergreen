@@ -4169,47 +4169,79 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 }
 
 func TestGetActivationTimeWithPathFiltering(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection))
-	projectRef := &ProjectRef{
-		Owner:      "mongodb",
-		Repo:       "mci",
-		Branch:     "main",
-		Enabled:    true,
-		Id:         "ident",
-		Identifier: "identifier",
+	setup := func(t *testing.T) (*ProjectRef, time.Time) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection))
+		projectRef := &ProjectRef{
+			Owner:      "mongodb",
+			Repo:       "mci",
+			Branch:     "main",
+			Enabled:    true,
+			Id:         "ident",
+			Identifier: "identifier",
+		}
+		require.NoError(t, projectRef.Insert(t.Context()))
+		versionCreatedAt := time.Now().Add(-1 * time.Minute)
+		return projectRef, versionCreatedAt
 	}
-	assert.NoError(t, projectRef.Insert(t.Context()))
-	versionCreatedAt := time.Now().Add(-1 * time.Minute)
 
-	// If the variant paths are filtered and no cron/batchtime/activation is set, the activation time should be zero
-	activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &BuildVariant{Name: "bv"}, true, time.Now(), time.Now())
-	assert.NoError(t, err)
-	assert.True(t, utility.IsZeroTime(activationTime))
+	t.Run("PathFilteredNoCronBatchtimeActivation", func(t *testing.T) {
+		projectRef, _ := setup(t)
+		// If the variant paths are filtered and no cron/batchtime/activation is set, the activation time should be zero
+		activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &BuildVariant{Name: "bv"}, true, time.Now(), time.Now())
+		assert.NoError(t, err)
+		assert.True(t, utility.IsZeroTime(activationTime))
+	})
 
-	// If the variant paths are filtered but cron/batchtime/activation is set, the activation time should be non-zero
-	bv := BuildVariant{
-		Name:          "bv",
-		CronBatchTime: "@daily",
-	}
-	activationTime, err = projectRef.GetActivationTimeForVariant(t.Context(), &bv, true, versionCreatedAt, time.Now())
-	assert.NoError(t, err)
-	assert.False(t, utility.IsZeroTime(activationTime))
+	t.Run("PathFilteredWithCron", func(t *testing.T) {
+		projectRef, versionCreatedAt := setup(t)
+		// If the variant paths are filtered but cron is set, the activation time should be non-zero
+		bv := BuildVariant{
+			Name:          "bv",
+			CronBatchTime: "@daily",
+		}
+		activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &bv, true, versionCreatedAt, time.Now())
+		assert.NoError(t, err)
+		assert.False(t, utility.IsZeroTime(activationTime))
+	})
 
-	bv = BuildVariant{
-		Name:      "bv",
-		BatchTime: utility.ToIntPtr(10),
-	}
-	activationTime, err = projectRef.GetActivationTimeForVariant(t.Context(), &bv, true, versionCreatedAt, time.Now())
-	assert.NoError(t, err)
-	assert.False(t, utility.IsZeroTime(activationTime))
+	t.Run("PathFilteredWithBatchtime", func(t *testing.T) {
+		projectRef, versionCreatedAt := setup(t)
+		// If the variant paths are filtered but batchtime is set, the activation time should be non-zero
+		bv := BuildVariant{
+			Name:      "bv",
+			BatchTime: utility.ToIntPtr(10),
+		}
+		activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &bv, true, versionCreatedAt, time.Now())
+		assert.NoError(t, err)
+		assert.False(t, utility.IsZeroTime(activationTime))
+	})
 
-	bv = BuildVariant{
-		Name:     "bv",
-		Activate: utility.TruePtr(),
-	}
-	activationTime, err = projectRef.GetActivationTimeForVariant(t.Context(), &bv, true, versionCreatedAt, time.Now())
-	assert.NoError(t, err)
-	assert.False(t, utility.IsZeroTime(activationTime))
+	t.Run("PathFilteredWithActivate", func(t *testing.T) {
+		projectRef, versionCreatedAt := setup(t)
+		// If the variant paths are filtered but activate is set, the activation time should be non-zero
+		bv := BuildVariant{
+			Name:     "bv",
+			Activate: utility.TruePtr(),
+		}
+		activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &bv, true, versionCreatedAt, time.Now())
+		assert.NoError(t, err)
+		assert.False(t, utility.IsZeroTime(activationTime))
+	})
+
+	t.Run("PathFilteredWithBatchtimeAndActivate", func(t *testing.T) {
+		projectRef, versionCreatedAt := setup(t)
+		// If the variant has both batchtime and activate set, the activation time should be non-zero
+		bv := BuildVariant{
+			Name:      "bv",
+			BatchTime: utility.ToIntPtr(10),
+			Activate:  utility.TruePtr(),
+		}
+		activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &bv, true, versionCreatedAt, time.Now())
+		assert.NoError(t, err)
+		assert.False(t, utility.IsZeroTime(activationTime))
+		// When activate is true, the activation time should be the version creation time
+		assert.Equal(t, versionCreatedAt, activationTime)
+	})
 }
 
 func TestActivationTimeWithDuplicate(t *testing.T) {
