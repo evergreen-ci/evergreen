@@ -46,6 +46,7 @@ type Project struct {
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
+	Ps                 string                     `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
@@ -136,6 +137,8 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// Ps is the command to run for process diagnostics.
+	Ps *string `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -213,6 +216,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
+	}
+	if bvt.Ps == nil && pt.Ps != "" {
+		bvt.Ps = &pt.Ps
 	}
 
 	// Build variant level settings are lower priority than project task level
@@ -740,6 +746,7 @@ type ProjectTask struct {
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Ps                string                    `yaml:"ps,omitempty" bson:"ps,omitempty"`
 }
 
 const (
