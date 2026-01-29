@@ -176,7 +176,7 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 
 // StepNext executes the current step and advances to the next
 func (e *LocalExecutor) StepNext(ctx context.Context) error {
-	if e.debugState.CurrentStepIndex >= len(e.debugState.CommandList) {
+	if !e.debugState.HasMoreSteps() {
 		return errors.New("no more steps to execute")
 	}
 	return e.stepNext(ctx)
@@ -187,7 +187,7 @@ func (e *LocalExecutor) StepNext(ctx context.Context) error {
 // by leveraging the metadata in CommandList to directly target the specific
 // block and command that needs to be executed.
 func (e *LocalExecutor) stepNext(ctx context.Context) error {
-	if e.debugState.CurrentStepIndex >= len(e.debugState.CommandList) {
+	if !e.debugState.HasMoreSteps() {
 		return errors.New("no more steps to execute")
 	}
 
