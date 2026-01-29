@@ -109,3 +109,11 @@ type GraphiteConfig {
   ciOptimizationToken: String @requireAdmin
   serverUrl: String
 }
+
+input SageConfigInput {
+  baseUrl: String
+}
+
+type SageConfig {
+  baseUrl: String
+}

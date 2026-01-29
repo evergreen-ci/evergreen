@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -470,80 +469,6 @@ type DuplicateVersionsID struct {
 type DuplicateVersions struct {
 	ID       DuplicateVersionsID `bson:"_id"`
 	Versions []Version           `bson:"versions"`
-}
-
-func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version, error) {
-	v, err := VersionFindOne(ctx, VersionById(versionId))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	} else if v == nil {
-		return nil, errors.Errorf("version '%s' not found", versionId)
-	}
-
-	// Versions in the same push event, assuming that no two push events happen at the exact same time
-	// Never want more than 2N+1 versions, so make sure we add a limit
-
-	siblingVersions, err := VersionFind(ctx, db.Query(
-		bson.M{
-			VersionRevisionOrderNumberKey: v.RevisionOrderNumber,
-			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-			VersionIdentifierKey: v.Identifier,
-		}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N+1))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	versionIndex := -1
-	for i := 0; i < len(siblingVersions); i++ {
-		if siblingVersions[i].Id == v.Id {
-			versionIndex = i
-		}
-	}
-
-	numSiblings := len(siblingVersions) - 1
-	versions := siblingVersions
-
-	if versionIndex < N {
-		// There are less than N later versions from the same push event
-		// N subsequent versions plus the specified one
-		subsequentVersions, err := VersionFind(ctx,
-			//TODO encapsulate this query in version pkg
-			db.Query(bson.M{
-				VersionRevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
-				VersionRequesterKey: bson.M{
-					"$in": evergreen.SystemVersionRequesterTypes,
-				},
-				VersionIdentifierKey: v.Identifier,
-			}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N-versionIndex))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-
-		// Reverse the second array so we have the versions ordered "newest one first"
-		for i := 0; i < len(subsequentVersions)/2; i++ {
-			subsequentVersions[i], subsequentVersions[len(subsequentVersions)-1-i] = subsequentVersions[len(subsequentVersions)-1-i], subsequentVersions[i]
-		}
-
-		versions = append(subsequentVersions, versions...)
-	}
-
-	if numSiblings-versionIndex < N {
-		previousVersions, err := VersionFind(ctx, db.Query(bson.M{
-			VersionRevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
-			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-			VersionIdentifierKey: v.Identifier,
-		}).Sort([]string{fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)}).Limit(N))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		versions = append(versions, previousVersions...)
-	}
-
-	return versions, nil
 }
 
 // GetMostRecentWaterfallVersion returns the most recent version, activated or unactivated, on the waterfall.

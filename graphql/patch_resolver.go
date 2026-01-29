@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -311,6 +312,14 @@ func (r *patchResolver) Time(ctx context.Context, obj *restModel.APIPatch) (*Pat
 
 // User is the resolver for the user field.
 func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIDBUser, error) {
+	// If only userId is requested, we can return it without a database call.
+	requestedFields := graphql.CollectAllFields(ctx)
+	if len(requestedFields) == 1 && requestedFields[0] == "userId" {
+		return &restModel.APIDBUser{
+			UserID: obj.Author,
+		}, nil
+	}
+
 	authorId := utility.FromStringPtr(obj.Author)
 	currentUser := mustHaveUser(ctx)
 	if currentUser.Id == authorId {
@@ -323,8 +332,11 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
+	// This is most likely a reaped user, so just return their ID
 	if author == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", authorId))
+		return &restModel.APIDBUser{
+			UserID: obj.Author,
+		}, nil
 	}
 
 	apiUser := &restModel.APIDBUser{}
@@ -350,7 +362,51 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	return &apiVersion, nil
 }
 
+// FilteredPatchCount is the resolver for the filteredPatchCount field.
+func (r *patchesResolver) FilteredPatchCount(ctx context.Context, obj *Patches) (int, error) {
+	fc := graphql.GetFieldContext(ctx)
+	opts, err := buildOptionsFromParentArgs(ctx, fc)
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := patch.ProjectOrUserPatchesCount(ctx, opts)
+	if err != nil {
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch count: %s", err.Error()))
+	}
+	return count, nil
+}
+
+// Patches is the resolver for the patches field.
+func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restModel.APIPatch, error) {
+	fc := graphql.GetFieldContext(ctx)
+	opts, err := buildOptionsFromParentArgs(ctx, fc)
+	if err != nil {
+		return nil, err
+	}
+
+	patches, err := patch.ProjectOrUserPatchesPage(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches: %s", err.Error()))
+	}
+
+	apiPatches := []*restModel.APIPatch{}
+	for _, p := range patches {
+		apiPatch := restModel.APIPatch{}
+		if err := apiPatch.BuildFromService(ctx, p, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
+		}
+		apiPatches = append(apiPatches, &apiPatch)
+	}
+
+	return apiPatches, nil
+}
+
 // Patch returns PatchResolver implementation.
 func (r *Resolver) Patch() PatchResolver { return &patchResolver{r} }
 
+// Patches returns PatchesResolver implementation.
+func (r *Resolver) Patches() PatchesResolver { return &patchesResolver{r} }
+
 type patchResolver struct{ *Resolver }
+type patchesResolver struct{ *Resolver }

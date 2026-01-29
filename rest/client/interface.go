@@ -101,7 +101,8 @@ type Communicator interface {
 	GetSubscriptions(context.Context) ([]event.Subscription, error)
 
 	// Notifications
-	SendNotification(ctx context.Context, notificationType string, data any) error
+	SendSlackNotification(ctx context.Context, data *restmodel.APISlack) error
+	SendEmailNotification(ctx context.Context, data *restmodel.APIEmail) error
 
 	// GetManifestByTask returns the manifest corresponding to the given task
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)

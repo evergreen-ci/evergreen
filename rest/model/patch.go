@@ -206,7 +206,7 @@ func (apiPatch *APIPatch) GetIdentifier(ctx context.Context) {
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
 		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(apiPatch.ProjectId))
 
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 			"message":  "could not get identifier for project",
 			"project":  apiPatch.ProjectId,
 			"patch_id": utility.FromStringPtr(apiPatch.Id),

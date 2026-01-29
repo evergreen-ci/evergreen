@@ -413,7 +413,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		// to fetching or loading a config.
 		_, apiReqErr := errors.Cause(err).(thirdparty.APIRequestError)
 		_, ymlFmtErr := errors.Cause(err).(thirdparty.YAMLFormatError)
-		_, noFileErr := errors.Cause(err).(thirdparty.FileNotFoundError)
+		noFileErr := thirdparty.IsFileNotFound(err)
 		parsingErr := strings.Contains(err.Error(), model.TranslateProjectError) || strings.Contains(err.Error(), model.LoadProjectError)
 		configErr := strings.Contains(err.Error(), model.TranslateProjectConfigError) || strings.Contains(err.Error(), model.MergeProjectConfigError)
 		if apiReqErr || noFileErr || ymlFmtErr || parsingErr || configErr {

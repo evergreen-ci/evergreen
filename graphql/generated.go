@@ -61,6 +61,7 @@ type ResolverRoot interface {
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
 	Patch() PatchResolver
+	Patches() PatchesResolver
 	Permissions() PermissionsResolver
 	Pod() PodResolver
 	PodEventLogData() PodEventLogDataResolver
@@ -205,6 +206,7 @@ type ComplexityRoot struct {
 		RepoTracker             func(childComplexity int) int
 		RuntimeEnvironments     func(childComplexity int) int
 		SSH                     func(childComplexity int) int
+		Sage                    func(childComplexity int) int
 		Scheduler               func(childComplexity int) int
 		ServiceFlags            func(childComplexity int) int
 		ShutdownWaitSeconds     func(childComplexity int) int
@@ -417,6 +419,7 @@ type ComplexityRoot struct {
 	CostConfig struct {
 		FinanceFormula      func(childComplexity int) int
 		OnDemandDiscount    func(childComplexity int) int
+		S3Cost              func(childComplexity int) int
 		SavingsPlanDiscount func(childComplexity int) int
 	}
 
@@ -1646,10 +1649,24 @@ type ComplexityRoot struct {
 		BaseURL func(childComplexity int) int
 	}
 
+	S3CostConfig struct {
+		Storage func(childComplexity int) int
+		Upload  func(childComplexity int) int
+	}
+
 	S3Credentials struct {
 		Bucket func(childComplexity int) int
 		Key    func(childComplexity int) int
 		Secret func(childComplexity int) int
+	}
+
+	S3StorageCostConfig struct {
+		IAStorageCostDiscount       func(childComplexity int) int
+		StandardStorageCostDiscount func(childComplexity int) int
+	}
+
+	S3UploadCostConfig struct {
+		UploadCostDiscount func(childComplexity int) int
 	}
 
 	SESConfig struct {
@@ -1664,6 +1681,10 @@ type ComplexityRoot struct {
 	SSHKeyPair struct {
 		Name      func(childComplexity int) int
 		SecretARN func(childComplexity int) int
+	}
+
+	SageConfig struct {
+		BaseURL func(childComplexity int) int
 	}
 
 	SaveDistroPayload struct {
@@ -2539,6 +2560,10 @@ type PatchResolver interface {
 
 	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
 }
+type PatchesResolver interface {
+	FilteredPatchCount(ctx context.Context, obj *Patches) (int, error)
+	Patches(ctx context.Context, obj *Patches) ([]*model.APIPatch, error)
+}
 type PermissionsResolver interface {
 	CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error)
 	CanCreateProject(ctx context.Context, obj *Permissions) (bool, error)
@@ -3278,6 +3303,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.SSH(childComplexity), true
+	case "AdminSettings.sage":
+		if e.complexity.AdminSettings.Sage == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Sage(childComplexity), true
 	case "AdminSettings.scheduler":
 		if e.complexity.AdminSettings.Scheduler == nil {
 			break
@@ -4091,6 +4122,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CostConfig.OnDemandDiscount(childComplexity), true
+	case "CostConfig.s3Cost":
+		if e.complexity.CostConfig.S3Cost == nil {
+			break
+		}
+
+		return e.complexity.CostConfig.S3Cost(childComplexity), true
 	case "CostConfig.savingsPlanDiscount":
 		if e.complexity.CostConfig.SavingsPlanDiscount == nil {
 			break
@@ -9570,6 +9607,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RuntimeEnvironmentConfig.BaseURL(childComplexity), true
 
+	case "S3CostConfig.storage":
+		if e.complexity.S3CostConfig.Storage == nil {
+			break
+		}
+
+		return e.complexity.S3CostConfig.Storage(childComplexity), true
+	case "S3CostConfig.upload":
+		if e.complexity.S3CostConfig.Upload == nil {
+			break
+		}
+
+		return e.complexity.S3CostConfig.Upload(childComplexity), true
+
 	case "S3Credentials.bucket":
 		if e.complexity.S3Credentials.Bucket == nil {
 			break
@@ -9588,6 +9638,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.S3Credentials.Secret(childComplexity), true
+
+	case "S3StorageCostConfig.iAStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.IAStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.IAStorageCostDiscount(childComplexity), true
+	case "S3StorageCostConfig.standardStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.StandardStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.StandardStorageCostDiscount(childComplexity), true
+
+	case "S3UploadCostConfig.uploadCostDiscount":
+		if e.complexity.S3UploadCostConfig.UploadCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3UploadCostConfig.UploadCostDiscount(childComplexity), true
 
 	case "SESConfig.senderAddress":
 		if e.complexity.SESConfig.SenderAddress == nil {
@@ -9621,6 +9691,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SSHKeyPair.SecretARN(childComplexity), true
+
+	case "SageConfig.baseUrl":
+		if e.complexity.SageConfig.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.SageConfig.BaseURL(childComplexity), true
 
 	case "SaveDistroPayload.distro":
 		if e.complexity.SaveDistroPayload.Distro == nil {
@@ -12880,10 +12957,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputResourceLimitsInput,
 		ec.unmarshalInputRestartAdminTasksOptions,
 		ec.unmarshalInputRuntimeEnvironmentConfigInput,
+		ec.unmarshalInputS3CostConfigInput,
 		ec.unmarshalInputS3CredentialsInput,
+		ec.unmarshalInputS3StorageCostConfigInput,
+		ec.unmarshalInputS3UploadCostConfigInput,
 		ec.unmarshalInputSESConfigInput,
 		ec.unmarshalInputSSHConfigInput,
 		ec.unmarshalInputSSHKeyPairInput,
+		ec.unmarshalInputSageConfigInput,
 		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSchedulerConfigInput,
@@ -18454,6 +18535,8 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 				return ec.fieldContext_CostConfig_savingsPlanDiscount(ctx, field)
 			case "onDemandDiscount":
 				return ec.fieldContext_CostConfig_onDemandDiscount(ctx, field)
+			case "s3Cost":
+				return ec.fieldContext_CostConfig_s3Cost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostConfig", field.Name)
 		},
@@ -20046,6 +20129,39 @@ func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, fie
 				return ec.fieldContext_UIConfig_stagingEnvironment(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_sage(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_sage,
+		func(ctx context.Context) (any, error) {
+			return obj.Sage, nil
+		},
+		nil,
+		ec.marshalOSageConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_sage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "baseUrl":
+				return ec.fieldContext_SageConfig_baseUrl(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SageConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -24079,6 +24195,41 @@ func (ec *executionContext) fieldContext_CostConfig_onDemandDiscount(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostConfig_s3Cost(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostConfig_s3Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3Cost, nil
+		},
+		nil,
+		ec.marshalOS3CostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostConfig_s3Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "upload":
+				return ec.fieldContext_S3CostConfig_upload(ctx, field)
+			case "storage":
+				return ec.fieldContext_S3CostConfig_storage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3CostConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -36605,6 +36756,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			case "ui":
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "sage":
+				return ec.fieldContext_AdminSettings_sage(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -44892,7 +45045,7 @@ func (ec *executionContext) _Patches_filteredPatchCount(ctx context.Context, fie
 		field,
 		ec.fieldContext_Patches_filteredPatchCount,
 		func(ctx context.Context) (any, error) {
-			return obj.FilteredPatchCount, nil
+			return ec.resolvers.Patches().FilteredPatchCount(ctx, obj)
 		},
 		nil,
 		ec.marshalNInt2int,
@@ -44905,8 +45058,8 @@ func (ec *executionContext) fieldContext_Patches_filteredPatchCount(_ context.Co
 	fc = &graphql.FieldContext{
 		Object:     "Patches",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
@@ -44921,7 +45074,7 @@ func (ec *executionContext) _Patches_patches(ctx context.Context, field graphql.
 		field,
 		ec.fieldContext_Patches_patches,
 		func(ctx context.Context) (any, error) {
-			return obj.Patches, nil
+			return ec.resolvers.Patches().Patches(ctx, obj)
 		},
 		nil,
 		ec.marshalNPatch2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ,
@@ -44934,8 +45087,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 	fc = &graphql.FieldContext{
 		Object:     "Patches",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -50765,6 +50918,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_triggers(ctx, field)
 			case "ui":
 				return ec.fieldContext_AdminSettings_ui(ctx, field)
+			case "sage":
+				return ec.fieldContext_AdminSettings_sage(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
 		},
@@ -56170,6 +56325,74 @@ func (ec *executionContext) fieldContext_RuntimeEnvironmentConfig_apiKey(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _S3CostConfig_upload(ctx context.Context, field graphql.CollectedField, obj *model.APIS3CostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3CostConfig_upload,
+		func(ctx context.Context) (any, error) {
+			return obj.Upload, nil
+		},
+		nil,
+		ec.marshalOS3UploadCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3CostConfig_upload(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "uploadCostDiscount":
+				return ec.fieldContext_S3UploadCostConfig_uploadCostDiscount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3UploadCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3CostConfig_storage(ctx context.Context, field graphql.CollectedField, obj *model.APIS3CostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3CostConfig_storage,
+		func(ctx context.Context) (any, error) {
+			return obj.Storage, nil
+		},
+		nil,
+		ec.marshalOS3StorageCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3CostConfig_storage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "standardStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount(ctx, field)
+			case "iAStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3StorageCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _S3Credentials_key(ctx context.Context, field graphql.CollectedField, obj *model.APIS3Credentials) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56265,6 +56488,93 @@ func (ec *executionContext) fieldContext_S3Credentials_bucket(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_standardStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.StandardStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_standardStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_iAStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.IAStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_iAStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3UploadCostConfig_uploadCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3UploadCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3UploadCostConfig_uploadCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.UploadCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3UploadCostConfig_uploadCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3UploadCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -56443,6 +56753,35 @@ func (ec *executionContext) _SSHKeyPair_secretARN(ctx context.Context, field gra
 func (ec *executionContext) fieldContext_SSHKeyPair_secretARN(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SSHKeyPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SageConfig_baseUrl(ctx context.Context, field graphql.CollectedField, obj *model.APISageConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SageConfig_baseUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.BaseURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SageConfig_baseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SageConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -69168,9 +69507,9 @@ func (ec *executionContext) _User_betaFeatures(ctx context.Context, field graphq
 			return obj.BetaFeatures, nil
 		},
 		nil,
-		ec.marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures,
+		ec.marshalOBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69203,9 +69542,9 @@ func (ec *executionContext) _User_displayName(ctx context.Context, field graphql
 			return obj.DisplayName, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69232,9 +69571,9 @@ func (ec *executionContext) _User_emailAddress(ctx context.Context, field graphq
 			return obj.EmailAddress, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69261,9 +69600,9 @@ func (ec *executionContext) _User_parsleyFilters(ctx context.Context, field grap
 			return obj.ParsleyFilters, nil
 		},
 		nil,
-		ec.marshalNParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ,
+		ec.marshalOParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69300,9 +69639,9 @@ func (ec *executionContext) _User_parsleySettings(ctx context.Context, field gra
 			return obj.ParsleySettings, nil
 		},
 		nil,
-		ec.marshalNParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings,
+		ec.marshalOParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69336,9 +69675,9 @@ func (ec *executionContext) _User_patches(ctx context.Context, field graphql.Col
 			return ec.resolvers.User().Patches(ctx, obj, fc.Args["patchesInput"].(PatchesInput))
 		},
 		nil,
-		ec.marshalNPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches,
+		ec.marshalOPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69382,9 +69721,9 @@ func (ec *executionContext) _User_permissions(ctx context.Context, field graphql
 			return ec.resolvers.User().Permissions(ctx, obj)
 		},
 		nil,
-		ec.marshalNPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions,
+		ec.marshalOPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -69427,9 +69766,9 @@ func (ec *executionContext) _User_settings(ctx context.Context, field graphql.Co
 			return obj.Settings, nil
 		},
 		nil,
-		ec.marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings,
+		ec.marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -76088,7 +76427,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76521,6 +76860,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Ui = data
+		case "sage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sage"))
+			data, err := ec.unmarshalOSageConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sage = data
 		}
 	}
 
@@ -77790,7 +78136,7 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount"}
+	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77818,6 +78164,13 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.OnDemandDiscount = data
+		case "s3Cost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3Cost"))
+			data, err := ec.unmarshalOS3CostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3Cost = data
 		}
 	}
 
@@ -81425,6 +81778,9 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
+	if _, present := asMap["countLimit"]; !present {
+		asMap["countLimit"] = 10000
+	}
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 0
 	}
@@ -81441,13 +81797,20 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap["statuses"] = []any{}
 	}
 
-	fieldsInOrder := [...]string{"limit", "onlyMergeQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
+	fieldsInOrder := [...]string{"countLimit", "limit", "onlyMergeQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "countLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("countLimit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CountLimit = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -83447,6 +83810,40 @@ func (ec *executionContext) unmarshalInputRuntimeEnvironmentConfigInput(ctx cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputS3CostConfigInput(ctx context.Context, obj any) (model.APIS3CostConfig, error) {
+	var it model.APIS3CostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"upload", "storage"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "upload":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upload"))
+			data, err := ec.unmarshalOS3UploadCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Upload = data
+		case "storage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storage"))
+			data, err := ec.unmarshalOS3StorageCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Storage = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputS3CredentialsInput(ctx context.Context, obj any) (model.APIS3Credentials, error) {
 	var it model.APIS3Credentials
 	asMap := map[string]any{}
@@ -83499,6 +83896,67 @@ func (ec *executionContext) unmarshalInputS3CredentialsInput(ctx context.Context
 				return it, err
 			}
 			it.Bucket = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.Context, obj any) (model.APIS3StorageCostConfig, error) {
+	var it model.APIS3StorageCostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "standardStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("standardStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StandardStorageCostDiscount = data
+		case "iAStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iAStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IAStorageCostDiscount = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputS3UploadCostConfigInput(ctx context.Context, obj any) (model.APIS3UploadCostConfig, error) {
+	var it model.APIS3UploadCostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"uploadCostDiscount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "uploadCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uploadCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UploadCostDiscount = data
 		}
 	}
 
@@ -83628,6 +84086,33 @@ func (ec *executionContext) unmarshalInputSSHKeyPairInput(ctx context.Context, o
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSageConfigInput(ctx context.Context, obj any) (model.APISageConfig, error) {
+	var it model.APISageConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"baseUrl"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "baseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
 		}
 	}
 
@@ -87390,6 +87875,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_triggers(ctx, field, obj)
 		case "ui":
 			out.Values[i] = ec._AdminSettings_ui(ctx, field, obj)
+		case "sage":
+			out.Values[i] = ec._AdminSettings_sage(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -88734,6 +89221,8 @@ func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._CostConfig_savingsPlanDiscount(ctx, field, obj)
 		case "onDemandDiscount":
 			out.Values[i] = ec._CostConfig_onDemandDiscount(ctx, field, obj)
+		case "s3Cost":
+			out.Values[i] = ec._CostConfig_s3Cost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -95665,15 +96154,77 @@ func (ec *executionContext) _Patches(ctx context.Context, sel ast.SelectionSet, 
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Patches")
 		case "filteredPatchCount":
-			out.Values[i] = ec._Patches_filteredPatchCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patches_filteredPatchCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patches":
-			out.Values[i] = ec._Patches_patches(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patches_patches(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99615,6 +100166,44 @@ func (ec *executionContext) _RuntimeEnvironmentConfig(ctx context.Context, sel a
 	return out
 }
 
+var s3CostConfigImplementors = []string{"S3CostConfig"}
+
+func (ec *executionContext) _S3CostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3CostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3CostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3CostConfig")
+		case "upload":
+			out.Values[i] = ec._S3CostConfig_upload(ctx, field, obj)
+		case "storage":
+			out.Values[i] = ec._S3CostConfig_storage(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var s3CredentialsImplementors = []string{"S3Credentials"}
 
 func (ec *executionContext) _S3Credentials(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3Credentials) graphql.Marshaler {
@@ -99632,6 +100221,80 @@ func (ec *executionContext) _S3Credentials(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._S3Credentials_secret(ctx, field, obj)
 		case "bucket":
 			out.Values[i] = ec._S3Credentials_bucket(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var s3StorageCostConfigImplementors = []string{"S3StorageCostConfig"}
+
+func (ec *executionContext) _S3StorageCostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3StorageCostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3StorageCostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3StorageCostConfig")
+		case "standardStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_standardStorageCostDiscount(ctx, field, obj)
+		case "iAStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_iAStorageCostDiscount(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var s3UploadCostConfigImplementors = []string{"S3UploadCostConfig"}
+
+func (ec *executionContext) _S3UploadCostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIS3UploadCostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3UploadCostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3UploadCostConfig")
+		case "uploadCostDiscount":
+			out.Values[i] = ec._S3UploadCostConfig_uploadCostDiscount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99744,6 +100407,42 @@ func (ec *executionContext) _SSHKeyPair(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._SSHKeyPair_name(ctx, field, obj)
 		case "secretARN":
 			out.Values[i] = ec._SSHKeyPair_secretARN(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sageConfigImplementors = []string{"SageConfig"}
+
+func (ec *executionContext) _SageConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISageConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sageConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SageConfig")
+		case "baseUrl":
+			out.Values[i] = ec._SageConfig_baseUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -104436,42 +105135,24 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = graphql.MarshalString("User")
 		case "betaFeatures":
 			out.Values[i] = ec._User_betaFeatures(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "displayName":
 			out.Values[i] = ec._User_displayName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "emailAddress":
 			out.Values[i] = ec._User_emailAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "parsleyFilters":
 			out.Values[i] = ec._User_parsleyFilters(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "parsleySettings":
 			out.Values[i] = ec._User_parsleySettings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "patches":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._User_patches(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -104498,16 +105179,13 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "permissions":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._User_permissions(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -104533,9 +105211,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "settings":
 			out.Values[i] = ec._User_settings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "subscriptions":
 			field := field
 
@@ -110383,57 +111058,9 @@ func (ec *executionContext) marshalNParsleyFilter2githubᚗcomᚋevergreenᚑci�
 	return ec._ParsleyFilter(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIParsleyFilter) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, v any) (model.APIParsleyFilter, error) {
 	res, err := ec.unmarshalInputParsleyFilterInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v model.APIParsleySettings) graphql.Marshaler {
-	return ec._ParsleySettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalNParsleySettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, v any) (*model.APIParsleySettings, error) {
@@ -110593,20 +111220,6 @@ func (ec *executionContext) marshalNPeriodicBuild2githubᚗcomᚋevergreenᚑci�
 func (ec *executionContext) unmarshalNPeriodicBuildInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinition(ctx context.Context, v any) (model.APIPeriodicBuildDefinition, error) {
 	res, err := ec.unmarshalInputPeriodicBuildInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v Permissions) graphql.Marshaler {
-	return ec._Permissions(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v *Permissions) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Permissions(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPlannerSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPlannerSettings(ctx context.Context, sel ast.SelectionSet, v model.APIPlannerSettings) graphql.Marshaler {
@@ -112581,10 +113194,6 @@ func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreen
 	return ec._UserServiceFlags(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
-	return ec._UserSettings(ctx, sel, &v)
-}
-
 func (ec *executionContext) marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
 	return ec._VariantTask(ctx, sel, &v)
 }
@@ -113442,6 +114051,10 @@ func (ec *executionContext) marshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑci
 	_ = ctx
 	res := graphql.MarshalString(string(*v))
 	return res
+}
+
+func (ec *executionContext) marshalOBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v model.APIBetaFeatures) graphql.Marshaler {
+	return ec._BetaFeatures(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v *model.APIBetaFeatures) graphql.Marshaler {
@@ -115453,6 +116066,10 @@ func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋeverg
 	return res, nil
 }
 
+func (ec *executionContext) marshalOParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v model.APIParsleySettings) graphql.Marshaler {
+	return ec._ParsleySettings(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalOParsleySettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v *model.APIParsleySettings) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -115600,6 +116217,13 @@ func (ec *executionContext) unmarshalOPatchTriggerAliasInput2ᚕgithubᚗcomᚋe
 	return res, nil
 }
 
+func (ec *executionContext) marshalOPatches2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPatches(ctx context.Context, sel ast.SelectionSet, v *Patches) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Patches(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOPeriodicBuild2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPeriodicBuildDefinitionᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPeriodicBuildDefinition) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -115663,6 +116287,13 @@ func (ec *executionContext) unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋeverg
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPermissions(ctx context.Context, sel ast.SelectionSet, v *Permissions) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Permissions(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPersistentDNSConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPersistentDNSConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIPersistentDNSConfig) graphql.Marshaler {
@@ -116095,12 +116726,45 @@ func (ec *executionContext) unmarshalORuntimeEnvironmentConfigInput2ᚖgithubᚗ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOS3CostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIS3CostConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._S3CostConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOS3CostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3CostConfig(ctx context.Context, v any) (*model.APIS3CostConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputS3CostConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOS3Credentials2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3Credentials(ctx context.Context, sel ast.SelectionSet, v model.APIS3Credentials) graphql.Marshaler {
 	return ec._S3Credentials(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOS3CredentialsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3Credentials(ctx context.Context, v any) (model.APIS3Credentials, error) {
 	res, err := ec.unmarshalInputS3CredentialsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOS3StorageCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx context.Context, sel ast.SelectionSet, v model.APIS3StorageCostConfig) graphql.Marshaler {
+	return ec._S3StorageCostConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOS3StorageCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3StorageCostConfig(ctx context.Context, v any) (model.APIS3StorageCostConfig, error) {
+	res, err := ec.unmarshalInputS3StorageCostConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOS3UploadCostConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx context.Context, sel ast.SelectionSet, v model.APIS3UploadCostConfig) graphql.Marshaler {
+	return ec._S3UploadCostConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOS3UploadCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx context.Context, v any) (model.APIS3UploadCostConfig, error) {
+	res, err := ec.unmarshalInputS3UploadCostConfigInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -116135,6 +116799,21 @@ func (ec *executionContext) marshalOSSHKeyPair2githubᚗcomᚋevergreenᚑciᚋe
 func (ec *executionContext) unmarshalOSSHKeyPairInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISSHKeyPair(ctx context.Context, v any) (model.APISSHKeyPair, error) {
 	res, err := ec.unmarshalInputSSHKeyPairInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSageConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISageConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SageConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSageConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISageConfig(ctx context.Context, v any) (*model.APISageConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSageConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOSchedulerConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISchedulerConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISchedulerConfig) graphql.Marshaler {
@@ -116975,6 +117654,10 @@ func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._UserConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
+	return ec._UserSettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, v any) (*model.APIUserSettings, error) {
