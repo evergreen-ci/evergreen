@@ -53334,9 +53334,9 @@ func (ec *executionContext) _Query_cursorSettings(ctx context.Context, field gra
 			return ec.resolvers.Query().CursorSettings(ctx)
 		},
 		nil,
-		ec.marshalNCursorSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings,
+		ec.marshalOCursorSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -99385,16 +99385,13 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		case "cursorSettings":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Query_cursorSettings(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -108608,20 +108605,6 @@ func (ec *executionContext) unmarshalNCursorParams2ᚖgithubᚗcomᚋevergreen�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCursorSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings(ctx context.Context, sel ast.SelectionSet, v CursorSettings) graphql.Marshaler {
-	return ec._CursorSettings(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNCursorSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings(ctx context.Context, sel ast.SelectionSet, v *CursorSettings) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._CursorSettings(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNDeactivateStepbackTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx context.Context, v any) (DeactivateStepbackTaskInput, error) {
 	res, err := ec.unmarshalInputDeactivateStepbackTaskInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -114996,6 +114979,13 @@ func (ec *executionContext) marshalOCostData2githubᚗcomᚋevergreenᚑciᚋeve
 func (ec *executionContext) unmarshalOCostDataInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICostData(ctx context.Context, v any) (model.APICostData, error) {
 	res, err := ec.unmarshalInputCostDataInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCursorSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorSettings(ctx context.Context, sel ast.SelectionSet, v *CursorSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CursorSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalODeleteGithubAppCredentialsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsPayload(ctx context.Context, sel ast.SelectionSet, v *DeleteGithubAppCredentialsPayload) graphql.Marshaler {
