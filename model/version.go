@@ -2,13 +2,13 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,8 +17,20 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+)
+
+const (
+	taskCollection       = "tasks"
+	oldTaskCollection    = "old_tasks"
+	taskVersionKey       = "version"
+	taskDisplayOnlyKey   = "display_only"
+	taskCostKey          = "cost"
+	taskPredictedCostKey = "predicted_cost"
+	taskOnDemandCostKey  = "on_demand_ec2_cost"
+	taskAdjustedCostKey  = "adjusted_ec2_cost"
 )
 
 type Version struct {
@@ -105,6 +117,11 @@ type Version struct {
 	// PreGenerationProjectStorageMethod describes how the cached parser project from before it was modified
 	// by generate.tasks for this version is stored. If this is empty, the default storage method is StorageMethodDB.
 	PreGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"pre_generation_storage_method" json:"pre_generation_storage_method,omitempty"`
+
+	// Cost stores the aggregated actual cost (on-demand and adjusted components) of all execution tasks in the version.
+	Cost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
+	// PredictedCost stores the aggregated predicted cost derived from tasks' predicted_cost.
+	PredictedCost cost.Cost `bson:"predicted_cost,omitempty" json:"predicted_cost,omitempty"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
@@ -217,6 +234,11 @@ func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified 
 	v.Status = newStatus
 	if evergreen.IsFinishedVersionStatus(newStatus) {
 		v.FinishTime = time.Now()
+		if modified {
+			if aggErr := v.UpdateAggregateTaskCosts(ctx); aggErr != nil {
+				grip.Error(errors.Wrapf(aggErr, "aggregating task costs for finished version '%s'", v.Id))
+			}
+		}
 	}
 
 	return modified, nil
@@ -315,6 +337,73 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 	return v.BuildVariants, nil
 }
 
+// UpdateAggregateTaskCosts aggregates the actual and predicted costs from all execution tasks
+// in the version and updates the version's Cost and PredictedCost fields in the database.
+func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
+	env := evergreen.GetEnvironment()
+	tasksColl := env.DB().Collection(taskCollection)
+
+	match := bson.M{
+		taskVersionKey: v.Id,
+		taskDisplayOnlyKey: bson.M{
+			"$ne": true,
+		},
+	}
+
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$unionWith": bson.M{
+			"coll": oldTaskCollection,
+			"pipeline": []bson.M{
+				{"$match": match},
+			},
+		}},
+		{"$group": bson.M{
+			"_id":                nil,
+			"total_on_demand":    bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
+			"total_adjusted":     bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
+			"expected_on_demand": bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
+			"expected_adjusted":  bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
+		}},
+	}
+
+	cursor, err := tasksColl.Aggregate(ctx, pipeline)
+	if err != nil {
+		return errors.Wrap(err, "aggregating task costs for version")
+	}
+
+	var results []struct {
+		TotalOnDemand     float64 `bson:"total_on_demand"`
+		TotalAdjusted     float64 `bson:"total_adjusted"`
+		PredictedOnDemand float64 `bson:"expected_on_demand"`
+		PredictedAdjusted float64 `bson:"expected_adjusted"`
+	}
+	if err = cursor.All(ctx, &results); err != nil {
+		return errors.Wrap(err, "reading aggregated task cost results")
+	}
+
+	var total, predicted cost.Cost
+	if len(results) > 0 {
+		total.OnDemandEC2Cost = results[0].TotalOnDemand
+		total.AdjustedEC2Cost = results[0].TotalAdjusted
+		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
+		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
+	}
+
+	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{
+			VersionCostKey:          total,
+			VersionPredictedCostKey: predicted,
+		},
+	}); err != nil {
+		return errors.Wrap(err, "updating version aggregated task costs")
+	}
+
+	v.Cost = total
+	v.PredictedCost = predicted
+	return nil
+}
+
 // VersionBuildStatus stores metadata relating to each build
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
@@ -380,80 +469,6 @@ type DuplicateVersionsID struct {
 type DuplicateVersions struct {
 	ID       DuplicateVersionsID `bson:"_id"`
 	Versions []Version           `bson:"versions"`
-}
-
-func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version, error) {
-	v, err := VersionFindOne(ctx, VersionById(versionId))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	} else if v == nil {
-		return nil, errors.Errorf("version '%s' not found", versionId)
-	}
-
-	// Versions in the same push event, assuming that no two push events happen at the exact same time
-	// Never want more than 2N+1 versions, so make sure we add a limit
-
-	siblingVersions, err := VersionFind(ctx, db.Query(
-		bson.M{
-			VersionRevisionOrderNumberKey: v.RevisionOrderNumber,
-			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-			VersionIdentifierKey: v.Identifier,
-		}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N+1))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	versionIndex := -1
-	for i := 0; i < len(siblingVersions); i++ {
-		if siblingVersions[i].Id == v.Id {
-			versionIndex = i
-		}
-	}
-
-	numSiblings := len(siblingVersions) - 1
-	versions := siblingVersions
-
-	if versionIndex < N {
-		// There are less than N later versions from the same push event
-		// N subsequent versions plus the specified one
-		subsequentVersions, err := VersionFind(ctx,
-			//TODO encapsulate this query in version pkg
-			db.Query(bson.M{
-				VersionRevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
-				VersionRequesterKey: bson.M{
-					"$in": evergreen.SystemVersionRequesterTypes,
-				},
-				VersionIdentifierKey: v.Identifier,
-			}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N-versionIndex))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-
-		// Reverse the second array so we have the versions ordered "newest one first"
-		for i := 0; i < len(subsequentVersions)/2; i++ {
-			subsequentVersions[i], subsequentVersions[len(subsequentVersions)-1-i] = subsequentVersions[len(subsequentVersions)-1-i], subsequentVersions[i]
-		}
-
-		versions = append(subsequentVersions, versions...)
-	}
-
-	if numSiblings-versionIndex < N {
-		previousVersions, err := VersionFind(ctx, db.Query(bson.M{
-			VersionRevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
-			VersionRequesterKey: bson.M{
-				"$in": evergreen.SystemVersionRequesterTypes,
-			},
-			VersionIdentifierKey: v.Identifier,
-		}).Sort([]string{fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)}).Limit(N))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		versions = append(versions, previousVersions...)
-	}
-
-	return versions, nil
 }
 
 // GetMostRecentWaterfallVersion returns the most recent version, activated or unactivated, on the waterfall.
@@ -810,7 +825,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			}
 		}
 
-		mfstModule, err := getManifestModule(ctx, v, projectRef, module)
+		mfstModule, err := getManifestModule(ctx, projectRef, module, v.Requester, v.Revision)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
@@ -821,7 +836,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	return newManifest, nil
 }
 
-func getManifestModule(ctx context.Context, v *Version, projectRef *ProjectRef, module Module) (*manifest.Module, error) {
+func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Module, requester, revision string) (*manifest.Module, error) {
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
@@ -836,10 +851,10 @@ func getManifestModule(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
 		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
 		// Otherwise, retrieve the module's commit from the time of the patch creation.
-		if !evergreen.IsPatchRequester(v.Requester) && v.Requester != evergreen.AdHocRequester {
-			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, v.Revision)
+		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester {
+			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, revision)
 			if err != nil {
-				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", revision, projectRef.Owner, projectRef.Repo)
 			}
 			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
 				return nil, errors.New("malformed GitHub commit response")

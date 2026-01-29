@@ -1,9 +1,15 @@
 package thirdparty
 
 import (
+	"encoding/base64"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -105,4 +111,129 @@ func TestParseGitVersionString(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expected.expectedVersion, parsedVersion)
 	}
+}
+
+func TestGetGitHubFileFromGit(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	const (
+		owner = "evergreen-ci"
+		repo  = "sample"
+		rev   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+		file  = "README.md"
+	)
+	t.Run("RestoresSameFileAsGitHubAPI", func(t *testing.T) {
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, file)
+		require.NoError(t, err)
+
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
+
+		assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileForBranchName", func(t *testing.T) {
+		const branch = "main"
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, branch, file)
+		require.NoError(t, err)
+
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, branch, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
+
+		assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileNotFoundForNonexistentFile", func(t *testing.T) {
+		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
+		assert.Error(t, err)
+		assert.True(t, IsFileNotFound(err))
+	})
+}
+
+func TestGitCreateWorktree(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	const (
+		owner = "evergreen-ci"
+		repo  = "sample"
+		rev   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+	)
+
+	t.Run("Succeeds", func(t *testing.T) {
+		dir, err := GitCloneMinimal(t.Context(), owner, repo, rev)
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, os.RemoveAll(dir))
+		}()
+
+		worktreeDir := filepath.Join(dir, "worktree")
+		require.NoError(t, GitCreateWorktree(t.Context(), dir, worktreeDir))
+		require.NoError(t, err)
+		assert.True(t, utility.FileExists(worktreeDir))
+
+		dotGitDir := filepath.Join(worktreeDir, ".git")
+		assert.True(t, utility.FileExists(dotGitDir), ".git directory should exist in worktree")
+
+		var stdout, stderr strings.Builder
+		cmd := exec.CommandContext(t.Context(), "git", "rev-parse", "HEAD")
+		cmd.Dir = worktreeDir
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		require.NoError(t, cmd.Run(), "git rev-parse failed: '%s'", stderr.String())
+		assert.Equal(t, rev, strings.TrimSpace(stdout.String()), "worktree should be at the same revision as the git clone directory")
+	})
+	t.Run("FailsWithoutGitDirectory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		assert.Error(t, GitCreateWorktree(t.Context(), tmpDir, "worktree"))
+	})
+}
+
+func TestValidateFileIsWithinDirectory(t *testing.T) {
+	const parentDir = "/tmp/dir"
+
+	t.Run("RelativePathAllowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("RelativePathAllowedWithRedundantSeparators", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src//main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("FilePathWithTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "../etc/passwd")
+		assert.Error(t, err)
+	})
+
+	t.Run("AbsolutePathDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "/absolute/path/to/file")
+		assert.Error(t, err)
+	})
+
+	t.Run("FilePathWithMixedTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/../etc/../../passwd")
+		assert.Error(t, err)
+	})
+}
+
+func TestValidateFileIsNotSymlink(t *testing.T) {
+	t.Run("DoesNotErrorForRegularFile", func(t *testing.T) {
+		const fileName = "file.txt"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, fileName), []byte("hello world"), 0644))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.NoError(t, validateFileIsNotSymlink(tmpDir, fileName))
+	})
+	t.Run("ErrorsForSymlink", func(t *testing.T) {
+		const fileName = "symlink"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.Symlink("/etc/passwd", filepath.Join(tmpDir, fileName)))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.Error(t, validateFileIsNotSymlink(tmpDir, fileName))
+	})
 }

@@ -988,7 +988,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		So(h2.Insert(ctx), ShouldBeNil)
 		So(h3.Insert(ctx), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
-			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
+			So(h.UpdateRunningTask(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ctx, ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
@@ -997,10 +997,10 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should error out", func() {
-			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{}), ShouldNotBeNil)
+			So(h.UpdateRunningTask(ctx, env, &task.Task{}), ShouldNotBeNil)
 		})
 		Convey("updating the running task on a starting user data host should succeed", func() {
-			So(h2.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
+			So(h2.UpdateRunningTask(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ctx, ById(h2.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
@@ -1009,7 +1009,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating a running task on a decommissioned host should error", func() {
-			So(h3.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldNotBeNil)
+			So(h3.UpdateRunningTask(ctx, env, &task.Task{Id: newTaskId}), ShouldNotBeNil)
 		})
 	})
 }
@@ -5348,12 +5348,12 @@ func TestFindHostsSuite(t *testing.T) {
 		}
 		s.NoError(root.Insert(t.Context()))
 		rm := evergreen.GetEnvironment().RoleManager()
-		s.NoError(rm.AddScope(gimlet.Scope{
+		s.NoError(rm.AddScope(ctx, gimlet.Scope{
 			ID:        "root",
 			Resources: []string{"distro2", "distro5"},
 			Type:      evergreen.DistroResourceType,
 		}))
-		s.NoError(rm.UpdateRole(gimlet.Role{
+		s.NoError(rm.UpdateRole(ctx, gimlet.Role{
 			ID:    "root",
 			Scope: "root",
 			Permissions: gimlet.Permissions{

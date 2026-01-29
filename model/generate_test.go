@@ -1478,11 +1478,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	alreadyDefinedTask := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
 	s.True(alreadyDefinedTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(alreadyDefinedTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
@@ -1568,11 +1568,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	depTask := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
 	s.True(depTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
@@ -1676,11 +1676,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	depTask := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
 	s.True(depTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
@@ -1783,11 +1783,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	depTask := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
 	s.True(depTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQ(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
@@ -2478,5 +2478,167 @@ func TestAddDependencies(t *testing.T) {
 	assert.Len(t, t2.DependsOn, 2)
 	for _, dep := range t2.DependsOn {
 		assert.Equal(t, task.AllStatuses, dep.Status)
+	}
+}
+
+func TestTaskGroupActivation(t *testing.T) {
+	// Test that activate: false on a task group reference properly
+	// expands to all tasks within the group.
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ExpandsTaskGroupWithActivateFalse": func(t *testing.T) {
+			g := GeneratedProject{
+				Task: &task.Task{},
+				BuildVariants: []parserBV{
+					{
+						Name: "variant1",
+						Tasks: []parserBVTaskUnit{
+							{
+								Name:     "my-task-group",
+								Activate: utility.FalsePtr(),
+							},
+						},
+					},
+				},
+				Tasks: []parserTask{
+					{Name: "task1"},
+					{Name: "task2"},
+					{Name: "task3"},
+				},
+				TaskGroups: []parserTaskGroup{
+					{
+						Name:  "my-task-group",
+						Tasks: []string{"task1", "task2", "task3"},
+					},
+				},
+			}
+
+			activationInfo := g.findTasksAndVariantsWithSpecificActivations(evergreen.RepotrackerVersionRequester)
+
+			// Verify that all individual tasks in the group are marked as having specific activation
+			require.Contains(t, activationInfo.activationTasks, "variant1")
+			tasksWithSpecificActivation := activationInfo.activationTasks["variant1"]
+			assert.ElementsMatch(t, []string{"task1", "task2", "task3"}, tasksWithSpecificActivation,
+				"all tasks in the group should be marked with specific activation")
+
+			// Verify individual task activation checks work correctly
+			assert.True(t, activationInfo.taskHasSpecificActivation("variant1", "task1"))
+			assert.True(t, activationInfo.taskHasSpecificActivation("variant1", "task2"))
+			assert.True(t, activationInfo.taskHasSpecificActivation("variant1", "task3"))
+		},
+		"ExpandsTaskGroupWithBatchTime": func(t *testing.T) {
+			batchTime := 60
+			g := GeneratedProject{
+				Task: &task.Task{},
+				BuildVariants: []parserBV{
+					{
+						Name: "variant1",
+						Tasks: []parserBVTaskUnit{
+							{
+								Name:      "my-task-group",
+								BatchTime: &batchTime,
+							},
+						},
+					},
+				},
+				Tasks: []parserTask{
+					{Name: "task1"},
+					{Name: "task2"},
+				},
+				TaskGroups: []parserTaskGroup{
+					{
+						Name:  "my-task-group",
+						Tasks: []string{"task1", "task2"},
+					},
+				},
+			}
+
+			activationInfo := g.findTasksAndVariantsWithSpecificActivations(evergreen.RepotrackerVersionRequester)
+
+			// Verify that all individual tasks in the group are marked as having specific activation
+			require.Contains(t, activationInfo.activationTasks, "variant1")
+			tasksWithSpecificActivation := activationInfo.activationTasks["variant1"]
+			assert.ElementsMatch(t, []string{"task1", "task2"}, tasksWithSpecificActivation,
+				"all tasks in the group should be marked with specific activation")
+		},
+		"ExpandsTaskGroupInStepback": func(t *testing.T) {
+			g := GeneratedProject{
+				Task: &task.Task{
+					ActivatedBy: evergreen.StepbackTaskActivator,
+					GeneratedTasksToActivate: map[string][]string{
+						"variant1": {"task2"}, // Only task2 should be activated via stepback
+					},
+				},
+				BuildVariants: []parserBV{
+					{
+						Name: "variant1",
+						Tasks: []parserBVTaskUnit{
+							{
+								Name:     "my-task-group",
+								Activate: utility.FalsePtr(),
+							},
+						},
+					},
+				},
+				Tasks: []parserTask{
+					{Name: "task1"},
+					{Name: "task2"},
+					{Name: "task3"},
+				},
+				TaskGroups: []parserTaskGroup{
+					{
+						Name:  "my-task-group",
+						Tasks: []string{"task1", "task2", "task3"},
+					},
+				},
+			}
+
+			activationInfo := g.findTasksAndVariantsWithSpecificActivations(evergreen.RepotrackerVersionRequester)
+
+			// Verify stepback info contains all tasks from the group
+			require.Contains(t, activationInfo.stepbackTasks, "variant1")
+			stepbackTasks := activationInfo.stepbackTasks["variant1"]
+			require.Len(t, stepbackTasks, 3, "all tasks in the group should have stepback info")
+
+			// Verify only task2 should be activated (it's in GeneratedTasksToActivate)
+			for _, st := range stepbackTasks {
+				if st.task == "task2" {
+					assert.True(t, st.activate, "task2 should be activated via stepback")
+				} else {
+					assert.False(t, st.activate, "task1 and task3 should not be activated")
+				}
+			}
+		},
+		"DoesNotExpandRegularTask": func(t *testing.T) {
+			g := GeneratedProject{
+				Task: &task.Task{},
+				BuildVariants: []parserBV{
+					{
+						Name: "variant1",
+						Tasks: []parserBVTaskUnit{
+							{
+								Name:     "regular-task",
+								Activate: utility.FalsePtr(),
+							},
+						},
+					},
+				},
+				Tasks: []parserTask{
+					{Name: "regular-task"},
+				},
+				TaskGroups: []parserTaskGroup{},
+			}
+
+			activationInfo := g.findTasksAndVariantsWithSpecificActivations(evergreen.RepotrackerVersionRequester)
+
+			// Verify the regular task (not a group) is handled correctly
+			require.Contains(t, activationInfo.activationTasks, "variant1")
+			tasksWithSpecificActivation := activationInfo.activationTasks["variant1"]
+			assert.Equal(t, []string{"regular-task"}, tasksWithSpecificActivation,
+				"regular task should be in the list as-is, not expanded")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tCase(t)
+		})
 	}
 }

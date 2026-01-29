@@ -70,6 +70,7 @@ input AdminSettingsInput {
   domainName: String
   expansions: StringMap
   fws: FWSConfigInput
+  graphite: GraphiteConfigInput
   githubCheckRun: GitHubCheckRunConfigInput
   githubOrgs: [String!]
   githubPRCreatorOrg: String
@@ -107,6 +108,7 @@ input AdminSettingsInput {
   tracer: TracerSettingsInput
   triggers: TriggerConfigInput
   ui: UIConfigInput
+  sage: SageConfigInput
 }
 
 type AdminSettings {
@@ -125,6 +127,7 @@ type AdminSettings {
   domainName: String
   expansions: StringMap
   fws: FWSConfig
+  graphite: GraphiteConfig
   githubCheckRun: GitHubCheckRunConfig
   githubOrgs: [String!]
   githubPRCreatorOrg: String
@@ -162,6 +165,7 @@ type AdminSettings {
   tracer: TracerSettings
   triggers: TriggerConfig
   ui: UIConfig
+  sage: SageConfig
 }
 
 """
@@ -176,6 +180,7 @@ type SpruceConfig {
   jira: JiraConfig
   providers: CloudProviderConfig
   secretFields: [String!]!
+  serviceFlags: UserServiceFlags!
   singleTaskDistro: SingleTaskDistroConfig
   slack: SlackConfig
   spawnHost: SpawnHostConfig!

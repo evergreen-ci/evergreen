@@ -23,8 +23,8 @@
             "startTime": "2020-12-22T17:04:51.38-05:00",
             "user": {
               "userId": "admin_user",
-              "displayName": "Admin User",
-              "emailAddress": "admin_user@mongodb.com"
+              "displayName": "Fake User",
+              "emailAddress": "fake.user@mongodb.com"
             }
           }
         }

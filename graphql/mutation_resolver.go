@@ -27,6 +27,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -365,7 +366,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 	}
 
 	for _, p := range patches {
-		if !userCanModifyPatch(user, p) {
+		if !userCanModifyPatch(ctx, user, p) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change visibility of patch '%s'", p.Id))
 		}
 		err = p.SetPatchVisibility(ctx, hidden)
@@ -701,7 +702,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", spawnHost.HostID))
 	}
 
-	if !host.CanUpdateSpawnHost(h, usr) {
+	if !host.CanUpdateSpawnHost(ctx, h, usr) {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", spawnHost.HostID))
 	}
 
@@ -832,7 +833,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	}
 
 	// Only admins can spawn admin-only distros.
-	if !usr.HasDistroCreatePermission() {
+	if !usr.HasDistroCreatePermission(ctx) {
 		if d.AdminOnly {
 			// Admin-only distros can only be spawned by distro admins.
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to spawn host in admin-only distro '%s'", options.DistroID))
@@ -931,7 +932,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
 
-	if !host.CanUpdateSpawnHost(h, usr) {
+	if !host.CanUpdateSpawnHost(ctx, h, usr) {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", hostID))
 	}
 
@@ -1220,6 +1221,31 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	return myPublicKeys, nil
 }
 
+// DeleteCursorAPIKey is the resolver for the deleteCursorAPIKey field.
+func (r *mutationResolver) DeleteCursorAPIKey(ctx context.Context) (*DeleteCursorAPIKeyPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	sageConfig := &evergreen.SageConfig{}
+	if err := sageConfig.Get(ctx); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
+	}
+
+	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
+	}
+	defer sageClient.Close()
+
+	result, err := sageClient.DeleteCursorAPIKey(ctx, usr.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting Cursor API key: %s", err.Error()))
+	}
+
+	return &DeleteCursorAPIKeyPayload{
+		Success: result.Success,
+	}, nil
+}
+
 // DeleteSubscriptions is the resolver for the deleteSubscriptions field.
 func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error) {
 	usr := mustHaveUser(ctx)
@@ -1270,6 +1296,13 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 // ResetAPIKey is the resolver for the resetAPIKey field.
 func (r *mutationResolver) ResetAPIKey(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+	if !usr.OnlyAPI && settings.ServiceFlags.StaticAPIKeysDisabled {
+		return nil, Forbidden.Send(ctx, "static API keys are disabled")
+	}
 	newKey := utility.RandomString()
 	if err := usr.UpdateAPIKey(ctx, newKey); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating user API key: %s", err.Error()))
@@ -1329,6 +1362,32 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving subscription: %s", err.Error()))
 	}
 	return true, nil
+}
+
+// SetCursorAPIKey is the resolver for the setCursorAPIKey field.
+func (r *mutationResolver) SetCursorAPIKey(ctx context.Context, apiKey string) (*SetCursorAPIKeyPayload, error) {
+	usr := mustHaveUser(ctx)
+
+	sageConfig := &evergreen.SageConfig{}
+	if err := sageConfig.Get(ctx); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
+	}
+
+	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
+	}
+	defer sageClient.Close()
+
+	result, err := sageClient.SetCursorAPIKey(ctx, usr.Id, apiKey)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting Cursor API key: %s", err.Error()))
+	}
+
+	return &SetCursorAPIKeyPayload{
+		Success:     result.Success,
+		KeyLastFour: utility.ToStringPtr(result.KeyLastFour),
+	}, nil
 }
 
 // UpdateBetaFeatures is the resolver for the updateBetaFeatures field.

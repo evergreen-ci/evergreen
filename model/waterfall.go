@@ -50,6 +50,7 @@ type WaterfallOptions struct {
 	Limit                int      `bson:"-" json:"-"`
 	MaxOrder             int      `bson:"-" json:"-"`
 	MinOrder             int      `bson:"-" json:"-"`
+	OmitInactiveBuilds   bool     `bson:"-" json:"-"`
 	Requesters           []string `bson:"-" json:"-"`
 	Statuses             []string `bson:"-" json:"-"`
 	Tasks                []string `bson:"-" json:"-"`
@@ -99,7 +100,7 @@ func getBuildDisplayNames(match bson.M) bson.M {
 
 // This pipeline matches on versions that have a build with an ID or display name that matches variants
 // It checks if the version with order number versionSearchCutoff is old enough to require a join with the builds collection in order to obtain build variant display names.
-func getBuildVariantFilterPipeline(ctx context.Context, variants []string, caseSensitive bool, match bson.M, projectId string, versionSearchCutoff int) ([]bson.M, error) {
+func getBuildVariantFilterPipeline(ctx context.Context, variants []string, caseSensitive bool, match bson.M, projectId string, versionSearchCutoff int, omitInactiveBuilds bool) ([]bson.M, error) {
 	pipeline := []bson.M{}
 	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
 	pipeline = append(pipeline, bson.M{"$match": match})
@@ -137,12 +138,18 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, caseS
 		}
 	}
 
+	buildsElemMatch := bson.M{
+		"$or": buildVariantMatch,
+	}
+
+	if omitInactiveBuilds {
+		buildsElemMatch[VersionBuildStatusActivatedKey] = true
+	}
+
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{
 			VersionBuildVariantsKey: bson.M{
-				"$elemMatch": bson.M{
-					"$or": buildVariantMatch,
-				},
+				"$elemMatch": buildsElemMatch,
 			},
 		},
 	})
@@ -309,7 +316,7 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 			versionSearchCutoff = mostRecentVersion.RevisionOrderNumber - MaxWaterfallVersionLimit
 		}
 
-		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, opts.VariantCaseSensitive, match, projectId, versionSearchCutoff)
+		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, opts.VariantCaseSensitive, match, projectId, versionSearchCutoff, opts.OmitInactiveBuilds)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating build variant filter pipeline")
 		}

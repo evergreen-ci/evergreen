@@ -35,6 +35,9 @@ type Mock struct {
 	GetRecentVersionsResult   []restmodel.APIVersion
 	GetBuildsForVersionResult []restmodel.APIBuild
 	GetTasksForBuildResult    []restmodel.APITask
+
+	SendSlackNotificationData *model.APISlack
+	SendEmailNotificationData *model.APIEmail
 }
 
 func (c *Mock) Close() {}
@@ -247,7 +250,13 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 	}, nil
 }
 
-func (c *Mock) SendNotification(_ context.Context, _ string, _ any) error {
+func (c *Mock) SendSlackNotification(_ context.Context, data *model.APISlack) error {
+	c.SendSlackNotificationData = data
+	return nil
+}
+
+func (c *Mock) SendEmailNotification(_ context.Context, data *model.APIEmail) error {
+	c.SendEmailNotificationData = data
 	return nil
 }
 

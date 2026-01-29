@@ -6,6 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -25,6 +27,8 @@ type APIVersion struct {
 	ProjectIdentifier *string `json:"project_identifier"`
 	// Author of the version
 	Author *string `json:"author"`
+	// Author ID is the Evergreen user ID associated with the version.
+	AuthorID *string `json:"author_id"`
 	// Email of the author of the version
 	AuthorEmail *string `json:"author_email"`
 	// Message left with the commit
@@ -52,6 +56,10 @@ type APIVersion struct {
 	GitTags []APIGitTag `json:"git_tags"`
 	// Indicates if the version was ignored due to only making changes to ignored files.
 	Ignored *bool `json:"ignored"`
+	// Aggregated actual cost of all tasks in the version
+	Cost *cost.Cost `json:"cost,omitempty"`
+	// Aggregated predicted cost of all tasks in the version
+	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
 }
 
 type APIGitTag struct {
@@ -72,6 +80,7 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 	apiVersion.FinishTime = ToTimePtr(v.FinishTime)
 	apiVersion.Revision = utility.ToStringPtr(v.Revision)
 	apiVersion.Author = utility.ToStringPtr(v.Author)
+	apiVersion.AuthorID = utility.ToStringPtr(v.AuthorID)
 	apiVersion.AuthorEmail = utility.ToStringPtr(v.AuthorEmail)
 	apiVersion.Message = utility.ToStringPtr(v.Message)
 	apiVersion.Status = utility.ToStringPtr(v.Status)
@@ -119,6 +128,36 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 		identifier, err := model.GetIdentifierForProject(ctx, v.Identifier)
 		if err == nil {
 			apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
+		}
+	}
+
+	if !v.Cost.IsZero() {
+		versionCost := v.Cost
+		apiVersion.Cost = &versionCost
+	}
+	if !v.PredictedCost.IsZero() {
+		predictedCost := v.PredictedCost
+		apiVersion.PredictedCost = &predictedCost
+	}
+
+	if apiVersion.IsPatchRequester() {
+		p, err := patch.FindOneId(ctx, v.Id)
+		if err != nil || p == nil {
+			return
+		}
+		if p.IsParent() && len(p.Triggers.ChildPatches) > 0 {
+			childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
+			if err != nil {
+				return
+			}
+			for _, childPatch := range childPatches {
+				if !childPatch.StartTime.IsZero() && childPatch.StartTime.Before(utility.FromTimePtr(apiVersion.StartTime)) {
+					apiVersion.StartTime = ToTimePtr(childPatch.StartTime)
+				}
+				if !childPatch.FinishTime.IsZero() && childPatch.FinishTime.After(utility.FromTimePtr(apiVersion.FinishTime)) {
+					apiVersion.FinishTime = ToTimePtr(childPatch.FinishTime)
+				}
+			}
 		}
 	}
 }

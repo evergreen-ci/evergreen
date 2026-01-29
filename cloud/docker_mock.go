@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
@@ -63,21 +64,21 @@ func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, *host.Ho
 	return nil
 }
 
-func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error) {
+func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*container.InspectResponse, error) {
 	if c.failGet {
 		return nil, errors.New("failed to inspect container")
 	}
 
-	container := &types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
+	cntr := &container.InspectResponse{
+		ContainerJSONBase: &container.ContainerJSONBase{
 			ID:    c.generateContainerID(),
-			State: &types.ContainerState{Running: true},
+			State: &container.State{Running: true},
 		},
 		Config: &container.Config{
 			ExposedPorts: nat.PortSet{"22/tcp": {}},
 		},
-		NetworkSettings: &types.NetworkSettings{
-			NetworkSettingsBase: types.NetworkSettingsBase{
+		NetworkSettings: &container.NetworkSettings{
+			NetworkSettingsBase: container.NetworkSettingsBase{
 				Ports: nat.PortMap{
 					"22/tcp": []nat.PortBinding{
 						{
@@ -91,17 +92,17 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	}
 
 	if !c.hasOpenPorts {
-		container.NetworkSettings = &types.NetworkSettings{}
+		cntr.NetworkSettings = &container.NetworkSettings{}
 	}
 
-	return container, nil
+	return cntr, nil
 }
 
-func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]container.Summary, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}
-	container := types.Container{
+	cntr := container.Summary{
 		ID: "container-1",
 		Ports: []types.Port{
 			{PublicPort: 5000},
@@ -111,7 +112,7 @@ func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.
 			"/container-1",
 		},
 	}
-	return []types.Container{container}, nil
+	return []container.Summary{cntr}, nil
 }
 
 func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) error {
@@ -121,22 +122,22 @@ func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) 
 	return nil
 }
 
-func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]types.ImageSummary, error) {
+func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]image.Summary, error) {
 	if c.failList {
 		return nil, errors.New("failed to list images")
 	}
 	now := time.Now()
-	image1 := types.ImageSummary{
+	image1 := image.Summary{
 		ID:         "image-1",
 		Containers: 2,
 		Created:    now.Unix(),
 	}
-	image2 := types.ImageSummary{
+	image2 := image.Summary{
 		ID:         "image-2",
 		Containers: 2,
 		Created:    now.Add(-10 * time.Minute).Unix(),
 	}
-	return []types.ImageSummary{image1, image2}, nil
+	return []image.Summary{image1, image2}, nil
 }
 
 func (c *dockerClientMock) RemoveImage(context.Context, *host.Host, string) error {

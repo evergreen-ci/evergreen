@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -205,6 +206,12 @@ func (s *ClientSettings) Write(fn string) error {
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 // We want to avoid printing messages if output is requested in a specific format or silenced.
 func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
+	// The version of urfave/cli does not pass a context.Context through to commands.
+	// This makes embedding the mock client difficult, so we use a package-level variable.
+	if testing.Testing() && mockClient != nil {
+		return mockClient, nil
+	}
+
 	options := restCommunicatorOptions{}
 	for _, opt := range opts {
 		opt(&options)
@@ -228,9 +235,9 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	useOAuth, reason := s.shouldUseOAuth(ctx, c)
 	if useOAuth {
-		// If it's expired, print the opt-out message as the
-		// OAuth flow will start.
-		if s.OAuth.Expiry.Before(time.Now()) && printMessages {
+		// If there is no saved token file path,
+		// print the opt-out message as the OAuth flow starts.
+		if s.OAuth.TokenFilePath == "" && printMessages {
 			grip.Info(optOut)
 		}
 		if err := s.SetOAuthToken(ctx); err != nil {
@@ -455,19 +462,28 @@ func (s *ClientSettings) getModule(patchId, moduleName string) (*model.Module, e
 	return module, nil
 }
 
-func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
-	if project, exists := s.ProjectsForDirectory[cwd]; exists {
-		return project
+// resolveProject finds the project for the given directory. Returns the project name
+// and a boolean indicating if it was resolved to the default project (true) or from
+// an explicit directory mapping (false).
+func (s *ClientSettings) resolveProject(cwd string, useRoot bool) (project string, isDefaultProject bool) {
+	if p, exists := s.ProjectsForDirectory[cwd]; exists {
+		return p, false
 	}
 
 	if useRoot {
 		for _, p := range s.Projects {
 			if p.Default {
-				return p.Name
+				return p.Name, true
 			}
 		}
 	}
-	return ""
+	return "", false
+}
+
+// FindDefaultProject returns the project to use for the given directory.
+func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
+	project, _ := s.resolveProject(cwd, useRoot)
+	return project
 }
 
 // getModulePathsForProject returns the map of modules to local paths for the given project.
@@ -633,7 +649,7 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 
 func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
-		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce in to your configuration file at '%s'", s.LoadedFrom)
+		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce at '%s' in to your configuration file at '%s'", s.UIServerHost+"/preferences/cli", s.LoadedFrom)
 	}
 	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,

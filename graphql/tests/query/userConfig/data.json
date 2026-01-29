@@ -1,1 +1,21 @@
-{}
+{
+  "admin": [
+    {
+      "_id": "api",
+      "url": "https://localhost:8443",
+      "corp_url": "https://localhost.corp:8443"
+    },
+    {
+      "_id": "ui",
+      "url": "http://localhost"
+    },
+    {
+      "_id": "auth",
+      "oauth": {
+        "issuer": "example_issuer",
+        "client_id": "example_client_id",
+        "connector_id": "example_connector_id"
+      }
+    }
+  ]
+}

@@ -160,7 +160,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(versionOne, ShouldNotBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
-			u2, err := user.FindOneContext(ctx, user.ById("testUser"))
+			u2, err := user.FindOne(ctx, user.ById("testUser"))
 			So(err, ShouldBeNil)
 			So(u2, ShouldNotBeNil)
 			So(u2.Settings.GithubUser.LastKnownAs, ShouldEqual, "somebody")

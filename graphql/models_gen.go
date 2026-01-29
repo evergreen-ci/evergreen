@@ -82,6 +82,12 @@ type CursorParams struct {
 	IncludeCursor bool                 `json:"includeCursor"`
 }
 
+// CursorSettings represents the status of a user's Cursor API key stored in Sage.
+type CursorSettings struct {
+	KeyConfigured bool    `json:"keyConfigured"`
+	KeyLastFour   *string `json:"keyLastFour,omitempty"`
+}
+
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 type DeactivateStepbackTaskInput struct {
 	ProjectID        string `json:"projectId"`
@@ -93,6 +99,11 @@ type DeactivateStepbackTaskInput struct {
 type DefaultSectionToRepoInput struct {
 	ProjectID string                 `json:"projectId"`
 	Section   ProjectSettingsSection `json:"section"`
+}
+
+// DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
+type DeleteCursorAPIKeyPayload struct {
+	Success bool `json:"success"`
 }
 
 // DeleteDistroInput is the input to the deleteDistro mutation.
@@ -359,6 +370,7 @@ type Patches struct {
 // PatchesInput is the input value to the patches field for the User and Project types.
 // Based on the information in PatchesInput, we return a list of Patches for either an individual user or a project.
 type PatchesInput struct {
+	CountLimit     *int     `json:"countLimit,omitempty"`
 	Limit          int      `json:"limit"`
 	OnlyMergeQueue *bool    `json:"onlyMergeQueue,omitempty"`
 	IncludeHidden  *bool    `json:"includeHidden,omitempty"`
@@ -466,6 +478,12 @@ type SaveDistroPayload struct {
 	HostCount int              `json:"hostCount"`
 }
 
+// SetCursorAPIKeyPayload is the response from setting a Cursor API key.
+type SetCursorAPIKeyPayload struct {
+	Success     bool    `json:"success"`
+	KeyLastFour *string `json:"keyLastFour,omitempty"`
+}
+
 // SetLastRevisionInput is the input to the setLastRevision mutation.
 // It contains information used to fix the repotracker error of a project.
 type SetLastRevisionInput struct {
@@ -503,6 +521,7 @@ type SpawnHostInput struct {
 	UseTaskConfig           *bool                   `json:"useTaskConfig,omitempty"`
 	VolumeID                *string                 `json:"volumeId,omitempty"`
 	UseOAuth                *bool                   `json:"useOAuth,omitempty"`
+	IsDebug                 *bool                   `json:"isDebug,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.
@@ -738,12 +757,13 @@ type WaterfallOptions struct {
 	// Return versions with an order greater than minOrder. Used for paginating backward.
 	MinOrder *int `json:"minOrder,omitempty"`
 	// Return versions with an order lower than maxOrder. Used for paginating forward.
-	MaxOrder          *int     `json:"maxOrder,omitempty"`
-	ProjectIdentifier string   `json:"projectIdentifier"`
-	Requesters        []string `json:"requesters,omitempty"`
-	Revision          *string  `json:"revision,omitempty"`
-	Statuses          []string `json:"statuses,omitempty"`
-	Tasks             []string `json:"tasks,omitempty"`
+	MaxOrder           *int     `json:"maxOrder,omitempty"`
+	OmitInactiveBuilds *bool    `json:"omitInactiveBuilds,omitempty"`
+	ProjectIdentifier  string   `json:"projectIdentifier"`
+	Requesters         []string `json:"requesters,omitempty"`
+	Revision           *string  `json:"revision,omitempty"`
+	Statuses           []string `json:"statuses,omitempty"`
+	Tasks              []string `json:"tasks,omitempty"`
 	// Toggle case sensitivity when matching on task names. Note that if false, performance will be slower.
 	TaskCaseSensitive *bool    `json:"taskCaseSensitive,omitempty"`
 	Variants          []string `json:"variants,omitempty"`

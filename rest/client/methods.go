@@ -1217,15 +1217,15 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	return subs, nil
 }
 
-func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data any) error {
+func (c *communicatorImpl) SendSlackNotification(ctx context.Context, data *model.APISlack) error {
 	info := requestInfo{
 		method: http.MethodPost,
-		path:   "notifications/" + notificationType,
+		path:   "notifications/slack",
 	}
 
 	resp, err := c.request(ctx, info, data)
 	if err != nil {
-		return errors.Wrap(err, "sending request to send notification")
+		return errors.Wrap(err, "sending slack notification request")
 	}
 	defer resp.Body.Close()
 
@@ -1236,7 +1236,32 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 		return util.RespError(resp, VPNError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return util.RespError(resp, "sending notification")
+		return util.RespError(resp, "sending slack notification")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) SendEmailNotification(ctx context.Context, data *model.APIEmail) error {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "notifications/email",
+	}
+
+	resp, err := c.request(ctx, info, data)
+	if err != nil {
+		return errors.Wrap(err, "sending email notification request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return util.RespError(resp, VPNError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return util.RespError(resp, "sending email notification")
 	}
 
 	return nil
@@ -1892,14 +1917,10 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	opts = append(opts,
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
+		dex.WithFallbackToStdOut(true),
+		dex.WithFlow("device"),
+		dex.WithNoBrowser(doNotUseBrowser),
 	)
-
-	if doNotUseBrowser {
-		opts = append(opts,
-			dex.WithNoBrowser(true),
-			dex.WithFlow("device"),
-		)
-	}
 
 	// The Dex client logs using logrus. The client doesn't
 	// have any way to turn off debug logs within it's API.
@@ -1962,8 +1983,8 @@ type tokenLoaderWithoutRefresh struct {
 	dex.TokenLoader
 }
 
-func (t *tokenLoaderWithoutRefresh) LoadToken(_ string) (*oauth2.Token, error) {
-	token, err := t.TokenLoader.LoadToken("")
+func (t *tokenLoaderWithoutRefresh) LoadToken(path string) (*oauth2.Token, error) {
+	token, err := t.TokenLoader.LoadToken(path)
 	if err != nil {
 		return nil, err
 	}

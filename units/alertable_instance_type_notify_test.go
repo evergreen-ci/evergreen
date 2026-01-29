@@ -293,7 +293,7 @@ func (s *alertableInstanceTypeSuite) TestDuplicateEventsAreLoggedAfterRenotifica
 			"alert_time": oldTime,
 		},
 	}
-	res, err := db.UpdateAllContext(s.ctx, alertrecord.Collection, filter, update)
+	res, err := db.UpdateAll(s.ctx, alertrecord.Collection, filter, update)
 	s.NoError(err)
 	s.Equal(2, res.Updated, "should have updated 2 alert records")
 

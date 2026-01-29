@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -2155,18 +2156,16 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestDeactivateDependencies(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
-		{Id: "t0"},
-		{Id: "t1"},
-		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false},
-		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}},
-		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true},
-		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
+		{Id: "t0", Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t1", Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t2", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t0"}}, Activated: false, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t3", DependsOn: []Dependency{{TaskId: "t1"}}, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t4", DependsOn: []Dependency{{TaskId: "t2"}}, Activated: true, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
+		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true, Status: evergreen.TaskUndispatched, DisplayStatusCache: evergreen.TaskWillRun},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
@@ -2184,6 +2183,8 @@ func TestDeactivateDependencies(t *testing.T) {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.False(t, task.Activated)
 			assert.True(t, task.DeactivatedForDependency)
+			assert.Equal(t, evergreen.TaskUnscheduled, task.DisplayStatusCache,
+				"DisplayStatusCache should be updated to 'unscheduled' for deactivated task %s", task.Id)
 		} else {
 			for _, origTask := range tasks {
 				if origTask.Id == task.Id {
@@ -2290,7 +2291,7 @@ func TestActivateTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
-		u, err = user.FindOneContext(ctx, user.ById(u.Id))
+		u, err = user.FindOne(ctx, user.ById(u.Id))
 		require.NoError(t, err)
 		require.NotNil(t, u)
 		assert.Len(t, updatedIDs, u.NumScheduledPatchTasks)
@@ -4750,11 +4751,11 @@ func TestHasResults(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
-				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 
@@ -4955,12 +4956,12 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
 				execTask.Archived = true
-				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.Replace(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 
@@ -5417,9 +5418,9 @@ func TestCalculateOnDemandCost(t *testing.T) {
 		OnDemandDiscount: 0.2,
 	}
 	runtimeHours := runtimeSeconds / 3600.0
-	expectedCost := runtimeHours * distroCost.OnDemandRate * (1 - financeConfig.OnDemandDiscount)
+	predictedCost := runtimeHours * distroCost.OnDemandRate * (1 - financeConfig.OnDemandDiscount)
 	actualCost := CalculateOnDemandCost(runtimeSeconds, distroCost, financeConfig)
-	assert.Equal(t, float32(expectedCost), float32(actualCost))
+	assert.Equal(t, float32(predictedCost), float32(actualCost))
 }
 
 func TestCalculateAdjustedTaskCost(t *testing.T) {
@@ -5436,9 +5437,9 @@ func TestCalculateAdjustedTaskCost(t *testing.T) {
 	runtimeHours := runtimeSeconds / 3600.0
 	savingsPlanPortion := financeConfig.FinanceFormula * distroCost.SavingsPlanRate * financeConfig.SavingsPlanDiscount
 	onDemandPortion := (1 - financeConfig.FinanceFormula) * distroCost.OnDemandRate * (1 - financeConfig.OnDemandDiscount)
-	expectedCost := (savingsPlanPortion + onDemandPortion) * runtimeHours
+	predictedCost := (savingsPlanPortion + onDemandPortion) * runtimeHours
 	actualCost := CalculateAdjustedTaskCost(runtimeSeconds, distroCost, financeConfig)
-	assert.InDelta(t, expectedCost, actualCost, 0.001)
+	assert.InDelta(t, predictedCost, actualCost, 0.001)
 }
 
 func TestCalculateTaskCost(t *testing.T) {
@@ -5455,18 +5456,18 @@ func TestCalculateTaskCost(t *testing.T) {
 	taskCost := CalculateTaskCost(runtimeSeconds, distroCost, financeConfig)
 	expectedOnDemand := CalculateOnDemandCost(runtimeSeconds, distroCost, financeConfig)
 	expectedAdjusted := CalculateAdjustedTaskCost(runtimeSeconds, distroCost, financeConfig)
-	assert.Equal(t, expectedOnDemand, taskCost.OnDemandCost)
-	assert.Equal(t, expectedAdjusted, taskCost.AdjustedCost)
+	assert.Equal(t, expectedOnDemand, taskCost.OnDemandEC2Cost)
+	assert.Equal(t, expectedAdjusted, taskCost.AdjustedEC2Cost)
 	assert.False(t, taskCost.IsZero())
 }
 
 func TestTaskCostIsZero(t *testing.T) {
-	zeroTaskCost := TaskCost{}
+	zeroTaskCost := cost.Cost{}
 	assert.True(t, zeroTaskCost.IsZero())
-	nonZeroOnDemand := TaskCost{OnDemandCost: 0.1}
+	nonZeroOnDemand := cost.Cost{OnDemandEC2Cost: 0.1}
 	assert.False(t, nonZeroOnDemand.IsZero())
-	nonZeroAdjusted := TaskCost{AdjustedCost: 0.1}
+	nonZeroAdjusted := cost.Cost{AdjustedEC2Cost: 0.1}
 	assert.False(t, nonZeroAdjusted.IsZero())
-	nonZeroBoth := TaskCost{OnDemandCost: 0.1, AdjustedCost: 0.2}
+	nonZeroBoth := cost.Cost{OnDemandEC2Cost: 0.1, AdjustedEC2Cost: 0.2}
 	assert.False(t, nonZeroBoth.IsZero())
 }

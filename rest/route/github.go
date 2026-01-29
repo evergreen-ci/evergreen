@@ -1,7 +1,9 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -54,6 +56,16 @@ const (
 
 	// githubWebhookTimeout is the maximum timeout for processing a GitHub webhook.
 	githubWebhookTimeout = 5 * time.Minute
+
+	// graphiteTimeout is the maximum timeout for communicating with Graphite.
+	graphiteTimeout = 10 * time.Second
+
+	// graphiteKind is what we have to pass into the Graphite CI API under current restrictions.
+	graphiteKind = "GITHUB_ACTIONS"
+)
+
+var (
+	githubWebhookTimeoutCause = errors.New("Reached GitHub webhook timeout limit")
 )
 
 // skipCILabels are a set of labels which will skip creating PR patch if part of
@@ -133,13 +145,13 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	// GitHub occasionally aborts requests early before we are able to complete the full operation
 	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom timeout without cancel.
-	newCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), githubWebhookTimeout)
+	ctx, cancel := context.WithTimeoutCause(context.WithoutCancel(ctx), githubWebhookTimeout, githubWebhookTimeoutCause)
 	defer cancel()
 
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.HookID == nil {
@@ -157,7 +169,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.PullRequestEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.Action == nil {
@@ -189,7 +201,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "PR accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(newCtx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
+			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -214,7 +226,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"message":   "pull request closed; aborting patch",
 			})
 
-			if err := data.AbortPatchesFromPullRequest(newCtx, event); err != nil {
+			if err := data.AbortPatchesFromPullRequest(ctx, event); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "GitHub hook",
 					"msg_id":  gh.msgID,
@@ -229,7 +241,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 	case *github.PushEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		grip.Debug(message.Fields{
@@ -242,11 +254,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		})
 		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
 		// to ensure we're up-to-date on the commit the tag is being pushed to.
-		if err := data.TriggerRepotracker(newCtx, gh.queue, gh.msgID, event); err != nil {
+		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 		if isTag(event.GetRef()) {
-			if err := gh.handleGitTag(newCtx, event); err != nil {
+			if err := gh.handleGitTag(ctx, event); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling git tag"))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
@@ -254,30 +266,30 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
-		if err := gh.handleComment(newCtx, event); err != nil {
+		if err := gh.handleComment(ctx, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 	case *github.MergeGroupEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.GetAction() == githubActionChecksRequested {
-			return gh.handleMergeGroupChecksRequested(newCtx, event)
+			return gh.handleMergeGroupChecksRequested(ctx, event)
 		}
 
 	case *github.CheckRunEvent:
 		if event.GetAction() == githubActionRerequested {
-			return gh.handleCheckRunRerequested(newCtx, event)
+			return gh.handleCheckRunRerequested(ctx, event)
 		}
 
 	case *github.CheckSuiteEvent:
 		if event.GetAction() == githubActionRerequested {
-			return gh.handleCheckSuiteRerequested(newCtx, event)
+			return gh.handleCheckSuiteRerequested(ctx, event)
 		}
 	}
 
@@ -656,10 +668,148 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 	return res
 }
 
+// shouldSkipCIForGraphite calls the Graphite CI optimizer endpoint to determine
+// whether to skip creating a patch intent for the PR.
+func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber int, sha, ref, headRef string) (bool, error) {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "getting evergreen settings")
+	}
+	if settings.Graphite.ServerURL == "" || settings.Graphite.CIOptimizationToken == "" {
+		return false, nil
+	}
+
+	optimizerEndpoint := fmt.Sprintf("%s/api/v1/ci/optimizer", settings.Graphite.ServerURL)
+
+	// TODO DEVPROD-26489: Currently the 'kind' is hardcoded to GITHUB_ACTIONS because that is one of the only
+	// CI system that Graphite supports. Once Graphite supports more CI systems, we should
+	// make this dynamic based on the CI system Evergreen is running in, as well as delete the 'run' section.
+	requestBody := map[string]any{
+		"token": settings.Graphite.CIOptimizationToken,
+		"caller": map[string]any{
+			"name":    "evergreen",
+			"version": evergreen.BuildRevision,
+		},
+		"context": map[string]any{
+			"kind": graphiteKind,
+			"repository": map[string]any{
+				"owner": owner,
+				"name":  repo,
+			},
+			"pr":       prNumber,
+			"sha":      sha,
+			"ref":      ref,
+			"head_ref": headRef,
+			"run": map[string]any{
+				"workflow": "required",
+				"job":      "required",
+				"run":      0,
+			},
+		},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		return false, errors.Wrap(err, "marshaling request body")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, graphiteTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, optimizerEndpoint, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		return false, errors.Wrap(err, "creating request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, errors.Wrap(err, "making request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		grip.Warning(message.Fields{
+			"message":  "Invalid authentication. Skipping Graphite checks.",
+			"owner":    owner,
+			"repo":     repo,
+			"pr":       prNumber,
+			"sha":      sha,
+			"ref":      ref,
+			"head_ref": headRef,
+		})
+		return false, errors.New("invalid authentication for Graphite CI optimizer")
+	}
+
+	if resp.StatusCode == http.StatusPaymentRequired {
+		grip.Warning(message.Fields{
+			"message":  "Your Graphite plan does not support the CI Optimizer. Please upgrade your plan to use this feature.",
+			"owner":    owner,
+			"repo":     repo,
+			"pr":       prNumber,
+			"sha":      sha,
+			"ref":      ref,
+			"head_ref": headRef,
+		})
+		return false, errors.New("Graphite plan does not support CI optimizer")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		grip.Warning(message.Fields{
+			"message":      "Response returned a non-200 status. Skipping Graphite checks.",
+			"owner":        owner,
+			"repo":         repo,
+			"pr":           prNumber,
+			"sha":          sha,
+			"ref":          ref,
+			"head_ref":     headRef,
+			"status":       resp.StatusCode,
+			"request_body": string(requestBodyBytes),
+		})
+		return false, errors.Errorf("non-200 response from Graphite CI optimizer: %d", resp.StatusCode)
+	}
+
+	// Parse the response body
+	var responseBodyBytes []byte
+	err = utility.ReadJSON(resp.Body, &responseBodyBytes)
+	if err != nil {
+		return false, errors.Wrap(err, "reading response body")
+	}
+
+	var responseBody struct {
+		Skip bool `json:"skip"`
+	}
+
+	if err = json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
+		return false, errors.Wrap(err, "unmarshaling response body")
+	}
+
+	return responseBody.Skip, nil
+}
+
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy, alias string, prNumber int) error {
 	pr, err := thirdparty.GetGithubPullRequest(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
+	}
+
+	skip, err := shouldSkipCIForGraphite(ctx, owner, repo, prNumber, pr.Head.GetSHA(), pr.Base.GetRef(), pr.Head.GetRef())
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error checking Graphite CI optimizer",
+			"owner":   owner,
+			"repo":    repo,
+			"pr":      prNumber,
+			"sha":     pr.Head.GetSHA(),
+			"ref":     pr.Base.GetRef(),
+			"headRef": pr.Head.GetRef(),
+		}))
+		// Continue on error - don't block PR patch creation.
+	} else if skip {
+		return nil
 	}
 
 	baseBranch := pr.Base.GetRef()
@@ -1098,7 +1248,7 @@ func (gh *githubHookApi) handleCreatedGitTag(ctx context.Context, event *github.
 func (gh *githubHookApi) handleDeletedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
 	err := model.RemoveGitTagFromVersions(ctx, owner, repo, tag)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "removing tag from versions",
 			"ref":     event.GetRef(),

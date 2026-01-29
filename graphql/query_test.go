@@ -3,6 +3,8 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -38,7 +40,7 @@ func getContext(t *testing.T) context.Context {
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
 	ctx := context.Background()
-	usr, err := user.GetOrCreateUser(testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(t.Context(), testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	assert.NotNil(t, usr)
 
@@ -201,4 +203,62 @@ func TestImage(t *testing.T) {
 	res, err := config.Resolvers.Query().Image(ctx, "ubuntu2204")
 	require.NoError(t, err)
 	assert.NotEmpty(t, res)
+}
+
+func TestCursorSettings(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+
+	t.Run("returns default when Sage not configured", func(t *testing.T) {
+		sageConfig := &evergreen.SageConfig{BaseURL: ""}
+		require.NoError(t, sageConfig.Set(ctx))
+
+		res, err := config.Resolvers.Query().CursorSettings(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		assert.False(t, res.KeyConfigured)
+		assert.Nil(t, res.KeyLastFour)
+	})
+
+	t.Run("returns key status when configured", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/pr-bot/user/cursor-key" && r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"hasKey": true, "keyLastFour": "abcd"}`))
+			}
+		}))
+		defer server.Close()
+
+		sageConfig := &evergreen.SageConfig{BaseURL: server.URL}
+		require.NoError(t, sageConfig.Set(ctx))
+
+		res, err := config.Resolvers.Query().CursorSettings(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		assert.True(t, res.KeyConfigured)
+		require.NotNil(t, res.KeyLastFour)
+		assert.Equal(t, "abcd", *res.KeyLastFour)
+	})
+
+	t.Run("returns no key when user has none configured", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/pr-bot/user/cursor-key" && r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"hasKey": false, "keyLastFour": ""}`))
+			}
+		}))
+		defer server.Close()
+
+		sageConfig := &evergreen.SageConfig{BaseURL: server.URL}
+		require.NoError(t, sageConfig.Set(ctx))
+
+		res, err := config.Resolvers.Query().CursorSettings(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		assert.False(t, res.KeyConfigured)
+		require.NotNil(t, res.KeyLastFour)
+		assert.Empty(t, *res.KeyLastFour)
+	})
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -180,7 +181,7 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 
 // userCanModifyPatch checks if a user can make changes to a given patch. This is mainly to prevent
 // users from modifying other users' patches.
-func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
+func userCanModifyPatch(ctx context.Context, u *user.DBUser, patch patch.Patch) bool {
 	if u == nil {
 		return false
 	}
@@ -197,7 +198,7 @@ func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
 		Permission:    evergreen.PermissionAdminSettings,
 		RequiredLevel: evergreen.AdminSettingsEdit.Value,
 	}
-	if u.HasPermission(permissions) {
+	if u.HasPermission(ctx, permissions) {
 		return true
 	}
 
@@ -208,7 +209,7 @@ func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	}
-	if u.HasPermission(permissions) {
+	if u.HasPermission(ctx, permissions) {
 		return true
 	}
 
@@ -219,7 +220,7 @@ func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
 		Permission:    evergreen.PermissionPatches,
 		RequiredLevel: evergreen.PatchSubmitAdmin.Value,
 	}
-	return u.HasPermission(permissions)
+	return u.HasPermission(ctx, permissions)
 }
 
 // getPatchProjectVariantsAndTasksForUI gets the variants and tasks for a project for a patch id
@@ -871,6 +872,13 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task '%s': %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
+
+	// Only allow debug spawn host if the host is being spawned by a task.
+	if utility.FromBoolPtr(spawnHostInput.IsDebug) && !utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
+		return nil, InputValidationError.Send(ctx, "Debug spawn hosts can only be spawned by a task.")
+	}
+	options.IsDebug = utility.FromBoolPtr(spawnHostInput.IsDebug)
+
 	return options, nil
 }
 
@@ -1048,34 +1056,34 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 	return len(hosts), nil
 }
 
-func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
+func userHasDistroPermission(ctx context.Context, u *user.DBUser, distroId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      distroId,
 		ResourceType:  evergreen.DistroResourceType,
 		Permission:    evergreen.PermissionDistroSettings,
 		RequiredLevel: requiredLevel,
 	}
-	return u.HasPermission(opts)
+	return u.HasPermission(ctx, opts)
 }
 
-func userHasHostPermission(u *user.DBUser, distroId string, requiredLevel int, startedBy string) bool {
+func userHasHostPermission(ctx context.Context, u *user.DBUser, distroId string, requiredLevel int, startedBy string) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      distroId,
 		ResourceType:  evergreen.DistroResourceType,
 		Permission:    evergreen.PermissionHosts,
 		RequiredLevel: requiredLevel,
 	}
-	return u.Username() == startedBy || u.HasPermission(opts)
+	return u.Username() == startedBy || u.HasPermission(ctx, opts)
 }
 
-func userHasProjectSettingsPermission(u *user.DBUser, projectId string, requiredLevel int) bool {
+func userHasProjectSettingsPermission(ctx context.Context, u *user.DBUser, projectId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      projectId,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: requiredLevel,
 	}
-	return u.HasPermission(opts)
+	return u.HasPermission(ctx, opts)
 }
 
 func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEvent, error) {
@@ -1301,7 +1309,7 @@ func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) bool {
 		Permission:    evergreen.PermissionLogs,
 		RequiredLevel: evergreen.LogsView.Value,
 	}
-	return authUser.HasPermission(permissions)
+	return authUser.HasPermission(ctx, permissions)
 }
 
 func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requiredLevel int) (bool, error) {
@@ -1312,7 +1320,7 @@ func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requir
 		Permission:    evergreen.PermissionAnnotations,
 		RequiredLevel: requiredLevel,
 	}
-	if authUser.HasPermission(permissions) {
+	if authUser.HasPermission(ctx, permissions) {
 		return true, nil
 	}
 	return isPatchAuthorForTask(ctx, obj)
@@ -1364,7 +1372,7 @@ func setSingleTaskPriority(ctx context.Context, url string, taskID string, prior
 			Permission:    evergreen.PermissionTasks,
 			RequiredLevel: evergreen.TasksAdmin.Value,
 		}
-		isTaskAdmin := authUser.HasPermission(requiredPermission)
+		isTaskAdmin := authUser.HasPermission(ctx, requiredPermission)
 		if !isTaskAdmin {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority))
 		}
@@ -1382,4 +1390,40 @@ func setSingleTaskPriority(ctx context.Context, url string, taskID string, prior
 	}
 	apiTask, err := getAPITaskFromTask(ctx, url, *t)
 	return apiTask, err
+}
+
+// buildOptionsFromParentArgs builds patch query options from the parent resolver's args
+func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (patch.ProjectOrUserPatchesOptions, error) {
+	patchesInput, ok := fc.Parent.Args["patchesInput"].(PatchesInput)
+	if !ok {
+		return patch.ProjectOrUserPatchesOptions{}, InternalServerError.Send(ctx, "failed to get patchesInput from parent args")
+	}
+
+	opts := patch.ProjectOrUserPatchesOptions{
+		PatchName:     patchesInput.PatchName,
+		Statuses:      patchesInput.Statuses,
+		Page:          patchesInput.Page,
+		Limit:         patchesInput.Limit,
+		IncludeHidden: patchesInput.IncludeHidden,
+		Requesters:    patchesInput.Requesters,
+		CountLimit:    utility.FromIntPtr(patchesInput.CountLimit),
+	}
+
+	// Handle merge queue filter
+	if utility.FromBoolPtr(patchesInput.OnlyMergeQueue) {
+		opts.Requesters = []string{evergreen.GithubMergeRequester}
+	}
+
+	// Get the parent object to determine if this is a project or user query
+	// The parent.Parent should be either Project or User resolver
+	if fc.Parent.Parent != nil {
+		switch grandparent := fc.Parent.Parent.Result.(type) {
+		case *restModel.APIProjectRef:
+			opts.Project = grandparent.Id
+		case *restModel.APIDBUser:
+			opts.Author = grandparent.UserID
+		}
+	}
+
+	return opts, nil
 }

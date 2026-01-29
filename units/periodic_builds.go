@@ -2,16 +2,15 @@ package units
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/repotracker"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -157,13 +156,14 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 }
 
 func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.VersionMetadata, configFilePath string) error {
-	configFile, err := thirdparty.GetGithubFile(ctx, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision)
+	ghAppAuth, err := j.project.GetGitHubAppAuthForAPI(ctx)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
+		"project_id": j.project.Id,
+	}))
+	configBytes, err := thirdparty.GetGitHubFileContent(ctx, j.project.Owner, j.project.Repo, metadata.Revision.Revision, configFilePath, ghAppAuth, model.IsGitUsageForGitHubFileEnabled(ctx))
 	if err != nil {
 		return errors.Wrap(err, "getting config file from GitHub")
-	}
-	configBytes, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	if err != nil {
-		return errors.Wrap(err, "decoding config file")
 	}
 	proj := &model.Project{}
 	opts := &model.GetProjectOpts{

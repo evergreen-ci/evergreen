@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/apm"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -32,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-12-17"
+	ClientVersion = "2026-01-29"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-12-17"
+	AgentVersion = "2026-01-29"
 )
 
 const (
@@ -83,6 +84,7 @@ type Settings struct {
 	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
 	GithubWebhookSecret string                  `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret" secret:"true"`
+	Graphite            GraphiteConfig          `yaml:"graphite" bson:"graphite" json:"graphite" id:"graphite"`
 	DisabledGQLQueries  []string                `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
 	HostInit            HostInitConfig          `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	HostJasper          HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
@@ -123,6 +125,7 @@ type Settings struct {
 	Tracer                  TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
 	Triggers                TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                      UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	Sage                    SageConfig                `yaml:"sage" bson:"sage" json:"sage" id:"sage"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -964,4 +967,39 @@ func putSecretValue(ctx context.Context, pm *parameterstore.ParameterManager, na
 		return "", errors.Errorf("parameter record '%s' not found after put", updatedParam.Name)
 	}
 	return record.LastUpdated.String(), nil
+}
+
+// UpdateBucketLifecycle updates the lifecycle configuration for an admin-managed bucket in settings.
+func UpdateBucketLifecycle(ctx context.Context, bucketField string, expirationDays, transitionToIADays, transitionToGlacierDays *int) error {
+	bucketsKey := (&BucketsConfig{}).SectionId()
+	set := bson.M{
+		bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
+	}
+	if expirationDays != nil {
+		set[bsonutil.GetDottedKeyName(bucketField, bucketConfigExpirationDaysKey)] = *expirationDays
+	}
+	if transitionToIADays != nil {
+		set[bsonutil.GetDottedKeyName(bucketField, bucketConfigTransitionToIADaysKey)] = *transitionToIADays
+	}
+	if transitionToGlacierDays != nil {
+		set[bsonutil.GetDottedKeyName(bucketField, bucketConfigTransitionToGlacierDaysKey)] = *transitionToGlacierDays
+	}
+
+	return setConfigSection(ctx, bucketsKey, bson.M{
+		"$set": set,
+		"$unset": bson.M{
+			bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleSyncErrorKey): "",
+		},
+	})
+}
+
+// UpdateBucketLifecycleError records a sync error for an admin-managed bucket in settings.
+func UpdateBucketLifecycleError(ctx context.Context, bucketField string, syncError string) error {
+	bucketsKey := (&BucketsConfig{}).SectionId()
+	return setConfigSection(ctx, bucketsKey, bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleLastSyncedAtKey): time.Now(),
+			bsonutil.GetDottedKeyName(bucketField, bucketConfigLifecycleSyncErrorKey):    syncError,
+		},
+	})
 }

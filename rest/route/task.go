@@ -108,6 +108,15 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	if !foundTask.HasCostPrediction() {
+		predictionResult, err := foundTask.ComputePredictedCostForWeek(ctx)
+		if err != nil {
+			grip.Error(errors.Wrapf(err, "computing predicted cost for task '%s'", tgh.taskID))
+		} else if !predictionResult.PredictedCost.IsZero() {
+			foundTask.SetPredictedCost(predictionResult.PredictedCost)
+		}
+	}
+
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(ctx, foundTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,
@@ -367,7 +376,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 				Permission:    evergreen.PermissionTasks,
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
-			if !tep.user.HasPermission(requiredPermission) {
+			if !tep.user.HasPermission(ctx, requiredPermission) {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					Message: fmt.Sprintf("insufficient privilege to set priority to %d, "+
 						"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),

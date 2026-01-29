@@ -805,6 +805,16 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"duration_secs": time.Since(startPhaseAt).Seconds(),
 	})
 
+	// Add cost attributes to the context for otel tracing
+	if !t.TaskCost.IsZero() {
+		costAttrs := []attribute.KeyValue{
+			attribute.Float64(evergreen.TaskOnDemandCostOtelAttribute, t.TaskCost.OnDemandEC2Cost),
+			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
+		}
+		ctx = utility.ContextWithAppendedAttributes(ctx, costAttrs)
+		span.SetAttributes(costAttrs...)
+	}
+
 	// If the error is from marking the task as finished, we want to
 	// return early as every functionality depends on this succeeding.
 	if err != nil {
@@ -1053,6 +1063,20 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
 	}
+
+	if !v.Cost.IsZero() {
+		attrs = append(attrs,
+			attribute.Float64(evergreen.VersionOnDemandCostOtelAttribute, v.Cost.OnDemandEC2Cost),
+			attribute.Float64(evergreen.VersionAdjustedCostOtelAttribute, v.Cost.AdjustedEC2Cost),
+		)
+	}
+	if !v.PredictedCost.IsZero() {
+		attrs = append(attrs,
+			attribute.Float64(evergreen.VersionPredictedOnDemandCostOtelAttribute, v.PredictedCost.OnDemandEC2Cost),
+			attribute.Float64(evergreen.VersionPredictedAdjustedCostOtelAttribute, v.PredictedCost.AdjustedEC2Cost),
+		)
+	}
+
 	if p != nil && p.IsReconfigured {
 		attrs = append(attrs, attribute.Bool(evergreen.PatchIsReconfiguredOtelAttribute, true))
 	}
@@ -1641,8 +1665,14 @@ func updatePatchStatus(ctx context.Context, p *patch.Patch, status string) (patc
 			}
 			if parentPatch != nil {
 				event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
+				if err = p.SetChildrenCompletedTime(ctx, parentPatch.FinishTime); err != nil {
+					return psu, errors.Wrapf(err, "setting finish time for patch '%s'", p.Id.Hex())
+				}
 			} else {
 				event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
+				if err = p.SetChildrenCompletedTime(ctx, p.FinishTime); err != nil {
+					return psu, errors.Wrapf(err, "setting finish time for patch '%s'", p.Id.Hex())
+				}
 			}
 			psu.patchFamilyFinishedCollectiveStatus = collectiveStatus
 		}

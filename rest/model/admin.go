@@ -25,6 +25,7 @@ func NewConfigModel() *APIAdminSettings {
 		Expansions:          map[string]string{},
 		Cost:                &APICostConfig{},
 		FWS:                 &APIFWSConfig{},
+		Graphite:            &APIGraphiteConfig{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
 		Jira:                &APIJiraConfig{},
@@ -54,6 +55,7 @@ func NewConfigModel() *APIAdminSettings {
 		Spawnhost:           &APISpawnHostConfig{},
 		Tracer:              &APITracerSettings{},
 		GitHubCheckRun:      &APIGitHubCheckRunConfig{},
+		Sage:                &APISageConfig{},
 	}
 }
 
@@ -74,6 +76,7 @@ type APIAdminSettings struct {
 	Expansions              map[string]string             `json:"expansions,omitempty"`
 	Cost                    *APICostConfig                `json:"cost,omitempty"`
 	FWS                     *APIFWSConfig                 `json:"fws,omitempty"`
+	Graphite                *APIGraphiteConfig            `json:"graphite,omitempty"`
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
@@ -114,6 +117,7 @@ type APIAdminSettings struct {
 	Tracer                  *APITracerSettings            `json:"tracer,omitempty"`
 	GitHubCheckRun          *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
 	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds,omitempty"`
+	Sage                    *APISageConfig                `json:"sage,omitempty"`
 }
 
 const (
@@ -229,6 +233,10 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		if err = as.Cedar.BuildFromService(v.Cedar); err != nil {
 			return errors.Wrap(err, "converting cedar config to API model")
 		}
+		as.ServiceFlags = &APIServiceFlags{}
+		if err = as.ServiceFlags.BuildFromService(v.ServiceFlags); err != nil {
+			return errors.Wrap(err, "converting service flags to API model")
+		}
 		as.ReleaseMode = &releaseModeConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
@@ -274,6 +282,13 @@ func (as *APIAdminSettings) ToService() (any, error) {
 	}
 	if as.PerfMonitoringKanopyURL != nil {
 		settings.PerfMonitoringKanopyURL = *as.PerfMonitoringKanopyURL
+	}
+	if as.ServiceFlags != nil {
+		sf, err := as.ServiceFlags.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting service flags to service model")
+		}
+		settings.ServiceFlags = sf.(evergreen.ServiceFlags)
 	}
 
 	apiModelReflect := reflect.ValueOf(*as)
@@ -2257,6 +2272,8 @@ type APIServiceFlags struct {
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
 	LegacyUIAdminPageDisabled       bool `json:"legacy_ui_admin_page_disabled"`
 	DebugSpawnHostDisabled          bool `json:"debug_spawn_host_disabled"`
+	S3LifecycleSyncDisabled         bool `json:"s3_lifecycle_sync_disabled"`
+	UseGitForGitHubFilesDisabled    bool `json:"use_git_for_github_files_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2648,6 +2665,29 @@ func (a *APIFWSConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIGraphiteConfig struct {
+	CIOptimizationToken *string `json:"ci_optimization_token"`
+	ServerURL           *string `json:"server_url"`
+}
+
+func (a *APIGraphiteConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.GraphiteConfig:
+		a.CIOptimizationToken = utility.ToStringPtr(v.CIOptimizationToken)
+		a.ServerURL = utility.ToStringPtr(v.ServerURL)
+	default:
+		return errors.Errorf("programmatic error: expected Graphite config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIGraphiteConfig) ToService() (interface{}, error) {
+	return evergreen.GraphiteConfig{
+		CIOptimizationToken: utility.FromStringPtr(a.CIOptimizationToken),
+		ServerURL:           utility.FromStringPtr(a.ServerURL),
+	}, nil
+}
+
 // BuildFromService builds a model from the service layer
 func (as *APIServiceFlags) BuildFromService(h any) error {
 	switch v := h.(type) {
@@ -2689,6 +2729,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
 		as.LegacyUIAdminPageDisabled = v.LegacyUIAdminPageDisabled
 		as.DebugSpawnHostDisabled = v.DebugSpawnHostDisabled
+		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
+		as.UseGitForGitHubFilesDisabled = v.UseGitForGitHubFilesDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2735,6 +2777,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
 		LegacyUIAdminPageDisabled:       as.LegacyUIAdminPageDisabled,
 		DebugSpawnHostDisabled:          as.DebugSpawnHostDisabled,
+		S3LifecycleSyncDisabled:         as.S3LifecycleSyncDisabled,
+		UseGitForGitHubFilesDisabled:    as.UseGitForGitHubFilesDisabled,
 	}, nil
 }
 
@@ -3167,9 +3211,10 @@ func (a *APIAWSAccountRoleMapping) ToService() evergreen.AWSAccountRoleMapping {
 }
 
 type APICostConfig struct {
-	FinanceFormula      *float64 `json:"finance_formula"`
-	SavingsPlanDiscount *float64 `json:"savings_plan_discount"`
-	OnDemandDiscount    *float64 `json:"on_demand_discount"`
+	FinanceFormula      *float64         `json:"finance_formula"`
+	SavingsPlanDiscount *float64         `json:"savings_plan_discount"`
+	OnDemandDiscount    *float64         `json:"on_demand_discount"`
+	S3Cost              *APIS3CostConfig `json:"s3_cost"`
 }
 
 func (a *APICostConfig) BuildFromService(h any) error {
@@ -3178,10 +3223,18 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
 		a.OnDemandDiscount = &v.OnDemandDiscount
+		a.S3Cost = &APIS3CostConfig{}
+		if err := a.S3Cost.BuildFromService(v.S3Cost); err != nil {
+			return errors.Wrap(err, "building S3 cost config")
+		}
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
 		a.OnDemandDiscount = &v.OnDemandDiscount
+		a.S3Cost = &APIS3CostConfig{}
+		if err := a.S3Cost.BuildFromService(v.S3Cost); err != nil {
+			return errors.Wrap(err, "building S3 cost config")
+		}
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3189,9 +3242,117 @@ func (a *APICostConfig) BuildFromService(h any) error {
 }
 
 func (a *APICostConfig) ToService() (any, error) {
+	s3Cost := evergreen.S3CostConfig{}
+	if a.S3Cost != nil {
+		s3CostInterface, err := a.S3Cost.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting S3 cost config")
+		}
+		s3Cost = s3CostInterface.(evergreen.S3CostConfig)
+	}
 	return evergreen.CostConfig{
 		FinanceFormula:      utility.FromFloat64Ptr(a.FinanceFormula),
 		SavingsPlanDiscount: utility.FromFloat64Ptr(a.SavingsPlanDiscount),
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
+		S3Cost:              s3Cost,
+	}, nil
+}
+
+type APIS3CostConfig struct {
+	Upload  APIS3UploadCostConfig  `json:"upload"`
+	Storage APIS3StorageCostConfig `json:"storage"`
+}
+
+func (a *APIS3CostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.S3CostConfig:
+		if err := a.Upload.BuildFromService(v.Upload); err != nil {
+			return errors.Wrap(err, "building upload config")
+		}
+		if err := a.Storage.BuildFromService(v.Storage); err != nil {
+			return errors.Wrap(err, "building storage config")
+		}
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+	return nil
+}
+
+func (a *APIS3CostConfig) ToService() (any, error) {
+	upload, err := a.Upload.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting upload config")
+	}
+	storage, err := a.Storage.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting storage config")
+	}
+	return evergreen.S3CostConfig{
+		Upload:  upload.(evergreen.S3UploadCostConfig),
+		Storage: storage.(evergreen.S3StorageCostConfig),
+	}, nil
+}
+
+type APIS3UploadCostConfig struct {
+	UploadCostDiscount float64 `json:"upload_cost_discount"`
+}
+
+func (a *APIS3UploadCostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.S3UploadCostConfig:
+		a.UploadCostDiscount = v.UploadCostDiscount
+		return nil
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+}
+
+func (a *APIS3UploadCostConfig) ToService() (any, error) {
+	return evergreen.S3UploadCostConfig{
+		UploadCostDiscount: a.UploadCostDiscount,
+	}, nil
+}
+
+type APIS3StorageCostConfig struct {
+	StandardStorageCostDiscount float64 `json:"standard_storage_cost_discount"`
+	IAStorageCostDiscount       float64 `json:"i_a_storage_cost_discount"`
+}
+
+func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.S3StorageCostConfig:
+		a.StandardStorageCostDiscount = v.StandardStorageCostDiscount
+		a.IAStorageCostDiscount = v.IAStorageCostDiscount
+		return nil
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+}
+
+func (a *APIS3StorageCostConfig) ToService() (any, error) {
+	return evergreen.S3StorageCostConfig{
+		StandardStorageCostDiscount: a.StandardStorageCostDiscount,
+		IAStorageCostDiscount:       a.IAStorageCostDiscount,
+	}, nil
+}
+
+// APISageConfig is the API model for the Sage configuration.
+type APISageConfig struct {
+	BaseURL *string `json:"base_url"`
+}
+
+func (a *APISageConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.SageConfig:
+		a.BaseURL = utility.ToStringPtr(v.BaseURL)
+	default:
+		return errors.Errorf("programmatic error: expected Sage config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISageConfig) ToService() (any, error) {
+	return evergreen.SageConfig{
+		BaseURL: utility.FromStringPtr(a.BaseURL),
 	}, nil
 }

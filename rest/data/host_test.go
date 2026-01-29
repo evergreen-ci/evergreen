@@ -113,12 +113,12 @@ func TestHostConnectorSuite(t *testing.T) {
 		}
 		s.NoError(root.Insert(t.Context()))
 		rm := s.env.RoleManager()
-		s.NoError(rm.AddScope(gimlet.Scope{
+		s.NoError(rm.AddScope(t.Context(), gimlet.Scope{
 			ID:        "root",
 			Resources: []string{"distro2", "distro5"},
 			Type:      evergreen.DistroResourceType,
 		}))
-		s.NoError(rm.UpdateRole(gimlet.Role{
+		s.NoError(rm.UpdateRole(t.Context(), gimlet.Role{
 			ID:    "root",
 			Scope: "root",
 			Permissions: gimlet.Permissions{
@@ -136,7 +136,7 @@ func (s *HostConnectorSuite) SetupTest() {
 }
 
 func (s *HostConnectorSuite) TearDownSuite() {
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	session, _, _ := db.GetGlobalSessionFactory().GetSession(s.T().Context())
 	if session != nil {
 		err := session.DB(testConfig.Database.DB).DropDatabase()
 		if err != nil {
@@ -241,6 +241,18 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			s.Require().Error(err)
 			s.Contains(err.Error(), "not been allowed by admins")
 		},
+		"NonDebugIntentHostHasIsDebugFalse": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			options.IsDebug = false
+			intentHost, err := NewIntentHost(ctx, options, testUser, env)
+			s.NoError(err)
+			s.Require().NotNil(intentHost)
+
+			s.False(intentHost.IsDebug, "IsDebug should be false")
+
+			for _, tag := range intentHost.InstanceTags {
+				s.NotEqual("is_debug", tag.Key, "is_debug tag should not be present")
+			}
+		},
 	} {
 		s.Run(tName, func() {
 			s.Require().NoError(db.ClearCollections(host.Collection))
@@ -262,7 +274,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneByIdContext(s.T().Context(), testUser)
+	u, err := user.FindOneById(s.T().Context(), testUser)
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner(ctx, "host1", u)
@@ -274,7 +286,7 @@ func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneByIdContext(s.T().Context(), testUser)
+	u, err := user.FindOneById(s.T().Context(), testUser)
 	s.NoError(err)
 	s.NotNil(u)
 
@@ -287,7 +299,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneByIdContext(s.T().Context(), "root")
+	u, err := user.FindOneById(s.T().Context(), "root")
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner(ctx, "host2", u)
