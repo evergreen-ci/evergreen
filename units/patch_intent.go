@@ -1138,58 +1138,32 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 }
 
 func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {
-	commit, err := thirdparty.GetCommitEvent(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA)
+	//compare(base_sha...head_sha)
+	summaries, err := thirdparty.GetGithubMergeFileSummaries(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.Githash, patchDoc.GithubMergeData.HeadSHA)
 	if err != nil {
-		return errors.Wrapf(err, "fetching commit '%s' for repo '%s/%s'", patchDoc.GithubMergeData.HeadSHA, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo)
+		grip.Debug(message.WrapError(err, message.Fields{
+			"operation": "get changed files for github merge",
+			"patch_id":  patchDoc.Id.Hex(),
+			"org":       patchDoc.GithubMergeData.Org,
+			"repo":      patchDoc.GithubMergeData.Repo,
+			"base":      patchDoc.Githash,
+			"head":      patchDoc.GithubMergeData.HeadSHA,
+		}))
+		return errors.Wrapf(err, "getting changed files for merge queue patch '%s'", patchDoc.Id.Hex())
 	}
-	patchSets := []patch.ModulePatch{}
-	for _, parent := range commit.Parents {
-		pr, err := thirdparty.GetCommitEvent(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, parent.GetSHA())
-		if err != nil {
-			grip.Info(message.WrapError(err, message.Fields{
-				"message":            "error fetching pull request from commit, skipping changed files",
-				"commit":             parent.SHA,
-				"github_merge_patch": patchDoc.Id.Hex(),
-				"org":                patchDoc.GithubMergeData.Org,
-				"repo":               patchDoc.GithubMergeData.Repo,
-			}))
-			continue
-		}
-		prPatch, err := patch.FindLatestGithubPRPatch(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, pr.)
-		if err != nil {
-			grip.Info(message.WrapError(err, message.Fields{
-				"message":            "error fetching latest patch for PR, skipping changed files",
-				"pr":                 pr.GetNumber(),
-				"github_merge_patch": patchDoc.Id.Hex(),
-				"org":                patchDoc.GithubMergeData.Org,
-				"repo":               patchDoc.GithubMergeData.Repo,
-			}))
-			continue
-		}
-		patchSets = append(patchSets, prPatch.Patches...)
-	}
-	patchDoc.Patches = mergePatchSets(patchSets)
+	grip.Info(message.Fields{
+		"operation": "get changed files for github merge",
+		"patch_id":  patchDoc.Id.Hex(),
+		"files":     summaries,
+	})
+	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+		ModuleName: "",
+		Githash:    patchDoc.Githash,
+		PatchSet: patch.PatchSet{
+			Summary: summaries,
+		},
+	})
 	return nil
-
-}
-
-// mergePatchSets takes in a set of module patches and merges them based on module name.
-func mergePatchSets(patchSets []patch.ModulePatch) []patch.ModulePatch {
-	mergedPatchSets := []patch.ModulePatch{}
-	for _, patchSet := range patchSets {
-		merged := false
-		for i, mergedPatchSet := range mergedPatchSets {
-			if patchSet.ModuleName == mergedPatchSet.ModuleName {
-				mergedPatchSets[i].PatchSet.Summary = append(mergedPatchSet.PatchSet.Summary, patchSet.PatchSet.Summary...)
-				merged = true
-				break
-			}
-		}
-		if !merged {
-			mergedPatchSets = append(mergedPatchSets, patchSet)
-		}
-	}
-	return mergedPatchSets
 }
 
 // makeMergeQueueDescription returns a new description for a merge queue patch using the merge group.
