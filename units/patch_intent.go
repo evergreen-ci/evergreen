@@ -1129,7 +1129,67 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubMQTriggerAliases}
 	}
 
+	// Get changed files to use for variant filtering.
+	if err = j.getChangedFilesForGithubMerge(ctx, patchDoc); err != nil {
+		return errors.Wrap(err, "getting changed files")
+	}
+
 	return nil
+}
+
+func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {
+	commit, err := thirdparty.GetCommitEvent(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadSHA)
+	if err != nil {
+		return errors.Wrapf(err, "fetching commit '%s' for repo '%s/%s'", patchDoc.GithubMergeData.HeadSHA, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo)
+	}
+	patchSets := []patch.ModulePatch{}
+	for _, parent := range commit.Parents {
+		pr, err := thirdparty.GetCommitEvent(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, parent.GetSHA())
+		if err != nil {
+			grip.Info(message.WrapError(err, message.Fields{
+				"message":            "error fetching pull request from commit, skipping changed files",
+				"commit":             parent.SHA,
+				"github_merge_patch": patchDoc.Id.Hex(),
+				"org":                patchDoc.GithubMergeData.Org,
+				"repo":               patchDoc.GithubMergeData.Repo,
+			}))
+			continue
+		}
+		prPatch, err := patch.FindLatestGithubPRPatch(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, pr.)
+		if err != nil {
+			grip.Info(message.WrapError(err, message.Fields{
+				"message":            "error fetching latest patch for PR, skipping changed files",
+				"pr":                 pr.GetNumber(),
+				"github_merge_patch": patchDoc.Id.Hex(),
+				"org":                patchDoc.GithubMergeData.Org,
+				"repo":               patchDoc.GithubMergeData.Repo,
+			}))
+			continue
+		}
+		patchSets = append(patchSets, prPatch.Patches...)
+	}
+	patchDoc.Patches = mergePatchSets(patchSets)
+	return nil
+
+}
+
+// mergePatchSets takes in a set of module patches and merges them based on module name.
+func mergePatchSets(patchSets []patch.ModulePatch) []patch.ModulePatch {
+	mergedPatchSets := []patch.ModulePatch{}
+	for _, patchSet := range patchSets {
+		merged := false
+		for i, mergedPatchSet := range mergedPatchSets {
+			if patchSet.ModuleName == mergedPatchSet.ModuleName {
+				mergedPatchSets[i].PatchSet.Summary = append(mergedPatchSet.PatchSet.Summary, patchSet.PatchSet.Summary...)
+				merged = true
+				break
+			}
+		}
+		if !merged {
+			mergedPatchSets = append(mergedPatchSets, patchSet)
+		}
+	}
+	return mergedPatchSets
 }
 
 // makeMergeQueueDescription returns a new description for a merge queue patch using the merge group.
@@ -1466,13 +1526,18 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, patchedProject *model.Project) []string {
 	ignoredVariants := []string{}
 
-	// Only apply variant filtering for GitHub PR patches
-	if !patchDoc.IsGithubPRPatch() {
+	// Only apply variant filtering for GitHub PR and merge queue patches
+	if !patchDoc.IsGithubPRPatch() && !patchDoc.IsMergeQueuePatch() {
 		return ignoredVariants
 	}
 
 	changedFiles := patchDoc.FilesChanged()
 	if len(changedFiles) == 0 {
+		grip.Info(message.Fields{
+			"patch_id":            patchDoc.Id.Hex(),
+			"changed_files_empty": true,
+			"intent_type":         j.IntentType,
+		})
 		// The changed files might be missing if either the patch has no changes
 		// or the changes are too large to load from GitHub. If the changed
 		// files can't be retrieved, be on the conservative side and don't
