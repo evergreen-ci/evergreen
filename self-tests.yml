@@ -548,7 +548,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-validator
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite-with-mongodb-and-git
     tags: ["db", "test"]
     name: test-model
   - <<: *run-go-test-suite-with-mongodb

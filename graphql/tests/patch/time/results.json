@@ -27,6 +27,19 @@
           }
         }
       }
+    },
+    {
+      "query_file": "parent_time.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "time": {
+              "started": "March 1, 2024, 7:05AM",
+              "finished": "March 1, 2024, 7:40AM"
+            }
+          }
+        }
+      }
     }
   ]
 }

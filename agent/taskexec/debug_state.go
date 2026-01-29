@@ -38,3 +38,8 @@ func NewDebugState() *DebugState {
 		CommandList:      []CommandInfo{},
 	}
 }
+
+// HasMoreSteps returns true if there are more steps to execute
+func (ds *DebugState) HasMoreSteps() bool {
+	return ds.CurrentStepIndex < len(ds.CommandList)
+}
