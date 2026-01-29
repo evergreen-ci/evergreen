@@ -968,8 +968,7 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			tc.logger.Execution().Infof("Suspected current command PID: %d", currentCmdPID)
 		}
 
-		tc.logger.Task().Infof("Default timeout handler collected %d process PIDs for debugging. "+
-			"These PIDs can be used as starting points for hang analysis.", len(runningPIDs))
+		tc.logger.Task().Infof("Default timeout handler collected %d process PIDs for debugging.", len(runningPIDs))
 	} else {
 		tc.logger.Execution().Info("No running processes found during timeout")
 	}
