@@ -111,7 +111,6 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 		"BaseSHA":    mg.GetMergeGroup().GetBaseSHA(),
 		"CalledBy":   caller,
 	})
-	mg.
 	return &githubMergeIntent{
 		DocumentID: msgDeliveryID,
 		MsgID:      msgDeliveryID,
