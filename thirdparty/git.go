@@ -242,7 +242,7 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) ([
 	ctx, span := tracer.Start(ctx, "GetGitHubFileFromGit")
 	defer span.End()
 
-	dir, err := gitCloneMinimal(ctx, owner, repo, ref)
+	dir, err := GitCloneMinimal(ctx, owner, repo, ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "git cloning repository")
 	}
@@ -257,17 +257,17 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) ([
 		}))
 	}()
 
-	fileContent, err := gitRestoreFile(ctx, owner, repo, ref, dir, file)
+	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, file)
 	return fileContent, errors.Wrap(err, "restoring git file")
 }
 
 const gitOperationTimeout = 15 * time.Second
 
-// gitCloneMinimal performs a minimal git clone of a repository using the GitHub
+// GitCloneMinimal performs a minimal git clone of a repository using the GitHub
 // app. The minimal clone contains only git metadata for the one revision and
 // has no file content. Callers are expected to clean up the returned git
 // directory when it is no longer needed.
-func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
+func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string, error) {
 	ctx, span := tracer.Start(ctx, "gitCloneMinimal", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
@@ -311,10 +311,7 @@ func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 		repoURL,
 		tmpDir,
 	)
-	var (
-		stdout strings.Builder
-		stderr strings.Builder
-	)
+	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -337,13 +334,52 @@ func gitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
+// GitCreateWorktree creates a new git worktree in worktreeDir based on gitDir.
+// It does not perform a checkout. Callers are assumed to have already cloned
+// the repo into gitDir and HEAD is assumed to be already pointing to the
+// desired revision.
+func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
+	ctx, span := tracer.Start(ctx, "GitCreateWorktree")
+	defer span.End()
+
+	// Limit how long this can spend creating the worktree to prevent this from
+	// running too long. This is an experimental feature and should not
+	// meaningfully impact performance while it's being tested out.
+	// Realistically, if it took more than this long to create a worktree,
+	// it would be too slow to be usable.
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "worktree", "add",
+		"--no-checkout",
+		"--detach",
+		worktreeDir)
+	cmd.Dir = gitDir
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":      "git worktree add failed",
+			"ticket":       "DEVPROD-26143",
+			"worktree_dir": worktreeDir,
+			"stdout":       stdout.String(),
+			"stderr":       stderr.String(),
+		}))
+		return errors.Wrapf(err, "creating git worktree '%s'", worktreeDir)
+	}
+
+	return nil
+}
+
 const gitErrorFileNotFound = "did not match any file(s) known to git"
 
-// gitRestoreFile restores a git file within the given git directory and returns
+// GitRestoreFile restores a git file within the given git directory and returns
 // its contents. Callers are assumed to have already cloned the repo into dir
 // and HEAD is assumed to be already pointing to the desired revision.
-func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, fileName string) ([]byte, error) {
-	ctx, span := tracer.Start(ctx, "gitRestoreFile", trace.WithAttributes(
+func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, fileName string) ([]byte, error) {
+	ctx, span := tracer.Start(ctx, "GitRestoreFile", trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
 		attribute.String(githubRefAttribute, revision),
@@ -354,7 +390,7 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	// Validate that the file is within the git directory to prevent attempts to
 	// access files outside the git repo. The requested file could be
 	// user-provided (e.g. an include file), which is not trusted.
-	if err := validateFileIsWithinDirectory(dir, fileName); err != nil {
+	if err := validateFileIsWithinDirectory(gitDir, fileName); err != nil {
 		return nil, errors.Wrapf(err, "validating file path '%s' is within git repo directory", fileName)
 	}
 
@@ -367,11 +403,8 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", fileName)
-	cmd.Dir = dir
-	var (
-		stdout strings.Builder
-		stderr strings.Builder
-	)
+	cmd.Dir = gitDir
+	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -397,11 +430,11 @@ func gitRestoreFile(ctx context.Context, owner, repo, revision, dir string, file
 	// Validate that the restored file is not a symlink to prevent attempts to
 	// access a different file in the file system (e.g. a file in the git repo
 	// that symlinks to `~/.ssh/id_rsa`).
-	if err := validateFileIsNotSymlink(dir, fileName); err != nil {
+	if err := validateFileIsNotSymlink(gitDir, fileName); err != nil {
 		return nil, errors.Wrapf(err, "validating file '%s' is not a symlink", fileName)
 	}
 
-	contents, err := os.ReadFile(filepath.Join(dir, fileName))
+	contents, err := os.ReadFile(filepath.Join(gitDir, fileName))
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading restored file '%s'", fileName)
 	}
