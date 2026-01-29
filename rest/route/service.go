@@ -49,6 +49,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requireBackstage := newBackstageMiddleware()
 	createProject := NewCanCreateMiddleware()
 	adminSettings := RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
+	sendNotifications := RequiresSuperUserPermission(evergreen.PermissionNotificationsSend, evergreen.NotificationsSend)
 	createDistro := RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
 	editRoles := RequiresSuperUserPermission(evergreen.PermissionRoleModify, evergreen.RoleModify)
 	viewTasks := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
@@ -179,7 +180,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/keys").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchKeys())
 	app.AddRoute("/keys").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetKey())
 	app.AddRoute("/keys/{key_name}").Version(2).Delete().Wrap(requireUser).RouteHandler(makeDeleteKeys())
-	app.AddRoute("/notifications/{type}").Version(2).Post().Wrap(requireUser).RouteHandler(makeNotification(env))
+	app.AddRoute("/notifications/slack").Version(2).Post().Wrap(requireUser).RouteHandler(makeSlackNotification(env)) // TODO (DEVPROD-25481): add sendNotifications middleware
+	app.AddRoute("/notifications/email").Version(2).Post().Wrap(requireUser, sendNotifications).RouteHandler(makeEmailNotification(env))
 	app.AddRoute("/panic").Version(2).Post().Wrap(requireUser).RouteHandler(makePanicReport())
 	app.AddRoute("/patches/{patch_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchByID())
 	app.AddRoute("/patches/{patch_id}").Version(2).Patch().Wrap(requireUser, submitPatches).RouteHandler(makeChangePatchStatus(env))
