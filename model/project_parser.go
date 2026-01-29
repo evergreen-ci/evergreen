@@ -638,7 +638,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
-	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
+	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts, worktree string) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
@@ -656,6 +656,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
 		IsIncludedFile:            true,
+		Worktree:                  worktree,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -749,6 +750,16 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		return errors.Wrapf(err, LoadProjectError)
 	}
 
+	// Be polite. Don't make more than 10 concurrent requests to GitHub.
+	const maxWorkers = 10
+	workers := util.Min(maxWorkers, len(intermediateProject.Include))
+
+	dirs, err := setupParallelGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
+		"project_id": projectID,
+	}))
+
 	wg := sync.WaitGroup{}
 	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 	includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
@@ -758,15 +769,16 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	}
 	close(includesToProcess)
 
-	// Be polite. Don't make more than 10 concurrent requests to GitHub.
-	const maxWorkers = 10
-	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 	for i := 0; i < workers; i++ {
+		var worktree string
+		if dirs != nil {
+			worktree = dirs.getWorktreeForOwnerRepoWorker(opts.Ref.Owner, opts.Ref.Repo, i)
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for include := range includesToProcess {
-				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts)
+				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, worktree)
 			}
 		}()
 	}
@@ -869,7 +881,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		return nil, errors.New("project ref cannot be nil when including files from remote sources")
 	}
 
-	ctx, span := tracer.Start(ctx, "setupGitIncludeDirs", trace.WithAttributes(
+	ctx, span := tracer.Start(ctx, "setupParallelGitIncludeDirs", trace.WithAttributes(
 		attribute.String(evergreen.ProjectIDOtelAttribute, opts.Ref.Id),
 		attribute.String(evergreen.ProjectIdentifierOtelAttribute, opts.Ref.Identifier),
 		attribute.String(evergreen.ProjectOrgOtelAttribute, opts.Ref.Owner),
@@ -1061,6 +1073,9 @@ type GetProjectOpts struct {
 	// IsIncludedFile indicates whether the file being retrieved is an included
 	// YAML file.
 	IsIncludedFile bool
+	// Worktree is the directory of the git worktree to use when retrieving
+	// files via git. Only set if reading a remote file using git.
+	Worktree string
 }
 
 type PatchOpts struct {
@@ -1114,7 +1129,14 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
+		useGit := IsGitUsageForGitHubFileEnabled(ctx)
+		if opts.IsIncludedFile && opts.Worktree == "" {
+			// TODO (DEVPROD-26851): remove this condition once we have
+			// sufficient confidence that worktrees are set up properly for
+			// included files.
+			useGit = false
+		}
+		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Ref.Id, opts.Revision)
 		}
@@ -1217,7 +1239,13 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
-	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
+	useGit := IsGitUsageForGitHubFileEnabled(ctx)
+	if opts.IsIncludedFile && opts.Worktree == "" {
+		// TODO (DEVPROD-26851): remove this condition once we have sufficient
+		// confidence that worktrees are set up properly for included files.
+		useGit = false
+	}
+	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.

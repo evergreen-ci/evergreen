@@ -3232,7 +3232,7 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 
 				worktreeDir := dirs.getWorktreeForOwnerRepoWorker(owner, repo, 0)
 
-				fileContent, err := thirdparty.GitRestoreFile(t.Context(), owner, repo, revision, worktreeDir, include.FileName)
+				fileContent, err := thirdparty.GetGitHubFileFromGit(t.Context(), owner, repo, revision, include.FileName, worktreeDir)
 				require.NoError(t, err)
 				require.NotEmpty(t, fileContent)
 
