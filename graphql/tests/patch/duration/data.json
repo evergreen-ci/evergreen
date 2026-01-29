@@ -38,20 +38,9 @@
       "finish_time": {
         "$date": "2024-01-15T10:30:00Z"
       },
-      "trigger_aliases": [
-        {
-          "child_patch_id": "9e4ff3abe3c3317e352062e8",
-          "task_specifiers": [],
-          "variant_specifiers": [],
-          "status": "success"
-        },
-        {
-          "child_patch_id": "9e4ff3abe3c3317e352062e9",
-          "task_specifiers": [],
-          "variant_specifiers": [],
-          "status": "success"
-        }
-      ]
+      "triggers": {
+        "child_patches": ["9e4ff3abe3c3317e352062e8", "9e4ff3abe3c3317e352062e9"]
+      }
     },
     {
       "_id": {
@@ -154,6 +143,38 @@
       },
       "version": "9a1f8ab8834b87d7b5d251a5",
       "time_taken": 69532
+    },
+    {
+      "id": "task-for-testing-parent-1",
+      "create_time": {
+        "$date": "2024-01-15T10:05:30Z"
+      },
+      "start_time": {
+        "$date": "2024-01-15T10:07:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-01-15T10:25:00Z"
+      },
+      "version": "9e4ff3abe3c3317e352062e8",
+      "time_taken": {
+        "$numberLong": "1500000000000"
+      }
+    },
+    {
+      "id": "task-for-testing-parent-2",
+      "create_time": {
+        "$date": "2024-01-15T10:05:45Z"
+      },
+      "start_time": {
+        "$date": "2024-01-15T10:08:00Z"
+      },
+      "finish_time": {
+        "$date": "2024-01-15T10:29:00Z"
+      },
+      "version": "9e4ff3abe3c3317e352062e9",
+      "time_taken": {
+        "$numberLong": "1500000000000"
+      }
     },
     {
       "_id": "spruce_generate_lint_5e823e1f28baeaa22ae00823d83e03082cd148ab_20_02_20_20_37_06",

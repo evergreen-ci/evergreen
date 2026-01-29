@@ -38,20 +38,9 @@
       "finish_time": {
         "$date": "2024-03-01T12:30:00Z"
       },
-      "trigger_aliases": [
-        {
-          "child_patch_id": "9e4ff3abe3c3317e352062e8",
-          "task_specifiers": [],
-          "variant_specifiers": [],
-          "status": "success"
-        },
-        {
-          "child_patch_id": "9e4ff3abe3c3317e352062e9",
-          "task_specifiers": [],
-          "variant_specifiers": [],
-          "status": "success"
-        }
-      ]
+      "triggers": {
+        "child_patches": ["9e4ff3abe3c3317e352062e8", "9e4ff3abe3c3317e352062e9"]
+      }
     },
     {
       "_id": {
