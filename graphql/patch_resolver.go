@@ -68,7 +68,18 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 // Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	patchID := utility.FromStringPtr(obj.Id)
-	query := db.Query(task.ByVersion(patchID)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
+	p, err := patch.FindOneId(ctx, patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
+	}
+	versionIDs := []string{patchID}
+	if p.IsParent() {
+		versionIDs = append(versionIDs, p.Triggers.ChildPatches...)
+	}
+	query := db.Query(task.ByVersions(versionIDs)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
 	tasks, err := task.FindAllFirstExecution(ctx, query)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())

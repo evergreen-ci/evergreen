@@ -65,10 +65,11 @@ var (
 	PatchSetSummaryKey = bsonutil.MustHaveTag(PatchSet{}, "Summary")
 
 	// BSON fields for the patch trigger struct
-	TriggerInfoAliasesKey              = bsonutil.MustHaveTag(TriggerInfo{}, "Aliases")
-	TriggerInfoParentPatchKey          = bsonutil.MustHaveTag(TriggerInfo{}, "ParentPatch")
-	TriggerInfoChildPatchesKey         = bsonutil.MustHaveTag(TriggerInfo{}, "ChildPatches")
-	TriggerInfoDownstreamParametersKey = bsonutil.MustHaveTag(TriggerInfo{}, "DownstreamParameters")
+	TriggerInfoAliasesKey               = bsonutil.MustHaveTag(TriggerInfo{}, "Aliases")
+	TriggerInfoParentPatchKey           = bsonutil.MustHaveTag(TriggerInfo{}, "ParentPatch")
+	TriggerInfoChildPatchesKey          = bsonutil.MustHaveTag(TriggerInfo{}, "ChildPatches")
+	TriggerInfoDownstreamParametersKey  = bsonutil.MustHaveTag(TriggerInfo{}, "DownstreamParameters")
+	TriggerInfoChildrenCompletedTimeKey = bsonutil.MustHaveTag(TriggerInfo{}, "ChildrenCompletedTime")
 
 	// BSON fields for thirdparty.Github
 	githubPatchHeadOwnerKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
