@@ -40,15 +40,17 @@ Exceptions to this behavior:
 
 ## How to Use PR Testing for Untracked Branches
 
-You may allow PR testing to be possible for untracked branches (i.e. branches without an explicit project, waterfall, etc). To create PR patches for any Github PR for a repo, ensure
-a config file path is set at the repo level (PRs for untracked branches will use this file). Additionally, at the repo level ensure that PR aliases are defined, and PR testing is enabled.
+You may allow PR testing to be possible for untracked branches (i.e. branches without an explicit project, waterfall, etc). This is required to ensure Graphite behaves as expected across a stack as well.
+To create PR patches for any Github PR for a repo, ensure:
 
-If you are setting this up for the first time and have an existing project, ensure that you attach your existing project to the new repo, copy the Github PR aliases from your project to the repo
-and unset them on the project. You will also need to migrate all project variables from the project to the repo.
-
-By default, PRs running on untracked branches will not have `project`, `project_id`, and `project_identifier` [default expansions](./Project-Configuration-Files#default-expansions) set. If they are needed,
-you can set them as project variables at the repo level.
+1. If a repo project hasn't been created yet, do so now by clicking "Attach to Current Repo" on the general settings page of an existing project that exists for the same repo.
+2. At the repo level, ensure a config file path is set (PRs for untracked branches will use this file).
+3. At the repo level, ensure that PR aliases are defined, and PR testing is enabled.
+4. If you require project variables for your tasks, ensure these are set up at the repo level.
+   1. By default, PRs running on untracked branches will not have `project`, `project_id`, and `project_identifier` [default expansions](./Project-Configuration-Files#default-expansions) set. If they are needed,
+      you can set them as project variables at the repo level.
+5. If there is a **tracked branch** (i.e. a project exists for it already) that you'd like to now use the repo settings, ensure that you attach your existing project to the new repo and default any settings to use the repo that you'd like. (Otherwise, it will continue to use the branch project settings.)
 
 ![repo_pr_testing.png](../images/repo_pr_testing.png)
 
-To explicitly disallow this behavior for any individual branch, either override the PR aliases on the branch project page or set PR testing to Disabled for that branch.
+To explicitly **disallow this behavior for any individual branch**, either override the PR aliases on the branch project page or set PR testing to Disabled for that branch.

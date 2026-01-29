@@ -303,6 +303,7 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		Expiration:            options.Expiration,
 		SleepScheduleOptions:  options.SleepScheduleOptions,
 		UseProjectSetupScript: options.UseProjectSetupScript,
+		IsDebug:               options.IsDebug,
 		ProvisionOptions: &host.ProvisionOptions{
 			TaskId:      options.TaskID,
 			SetupScript: options.SetupScript,

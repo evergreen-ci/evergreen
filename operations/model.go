@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -205,6 +206,12 @@ func (s *ClientSettings) Write(fn string) error {
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 // We want to avoid printing messages if output is requested in a specific format or silenced.
 func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
+	// The version of urfave/cli does not pass a context.Context through to commands.
+	// This makes embedding the mock client difficult, so we use a package-level variable.
+	if testing.Testing() && mockClient != nil {
+		return mockClient, nil
+	}
+
 	options := restCommunicatorOptions{}
 	for _, opt := range opts {
 		opt(&options)
@@ -642,7 +649,7 @@ func (s *ClientSettings) SetAutoUpgradeCLI() {
 
 func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
-		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce in to your configuration file at '%s'", s.LoadedFrom)
+		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce at '%s' in to your configuration file at '%s'", s.UIServerHost+"/preferences/cli", s.LoadedFrom)
 	}
 	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,

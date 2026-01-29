@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -3272,15 +3271,9 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": pRef.Id,
 	}))
-	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch, ghAppAuth)
+	fileContents, err := thirdparty.GetGitHubFileContent(ctx, pRef.Owner, pRef.Repo, pRef.Branch, pRef.SpawnHostScriptPath, ghAppAuth, IsGitUsageForGitHubFileEnabled(ctx))
 	if err != nil {
-		return "", errors.Wrapf(err,
-			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
-	}
-	fileContents, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	if err != nil {
-		return "", errors.Wrapf(err,
-			"unable to spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
+		return "", errors.Wrapf(err, "fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
 
 	return string(fileContents), nil

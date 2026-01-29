@@ -108,6 +108,15 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	if !foundTask.HasCostPrediction() {
+		predictionResult, err := foundTask.ComputePredictedCostForWeek(ctx)
+		if err != nil {
+			grip.Error(errors.Wrapf(err, "computing predicted cost for task '%s'", tgh.taskID))
+		} else if !predictionResult.PredictedCost.IsZero() {
+			foundTask.SetPredictedCost(predictionResult.PredictedCost)
+		}
+	}
+
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(ctx, foundTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,

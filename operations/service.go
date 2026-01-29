@@ -104,6 +104,9 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment, tracer 
 	amboy.IntervalQueueOperation(ctx, populateQueue, time.Hour, utility.RoundPartOfDay(1), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteHourJob()))
 	})
+	amboy.IntervalQueueOperation(ctx, populateQueue, 30*24*time.Hour, utility.RoundPartOfDay(0), opts, func(ctx context.Context, queue amboy.Queue) error {
+		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteMonthJob()))
+	})
 
 	////////////////////////////////////////////////////////////////////////
 	//

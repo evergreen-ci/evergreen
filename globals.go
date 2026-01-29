@@ -303,6 +303,7 @@ const (
 	TagStartTime         = "start-time"
 	TagExpireOn          = "expire-on"
 	TagAllowRemoteAccess = "AllowRemoteAccess"
+	TagIsDebug           = "IsDebug"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"

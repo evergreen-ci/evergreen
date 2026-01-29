@@ -1,9 +1,13 @@
 package thirdparty
 
 import (
+	"encoding/base64"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -105,4 +109,90 @@ func TestParseGitVersionString(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expected.expectedVersion, parsedVersion)
 	}
+}
+
+func TestGetGitHubFileFromGit(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	const (
+		owner = "evergreen-ci"
+		repo  = "sample"
+		rev   = "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+		file  = "README.md"
+	)
+	t.Run("RestoresSameFileAsGitHubAPI", func(t *testing.T) {
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, file)
+		require.NoError(t, err)
+
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
+
+		assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileForBranchName", func(t *testing.T) {
+		const branch = "main"
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, branch, file)
+		require.NoError(t, err)
+
+		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, branch, nil)
+		require.NoError(t, err)
+		comparisonFileContent, err := base64.StdEncoding.DecodeString(utility.FromStringPtr(comparisonFile.Content))
+		require.NoError(t, err)
+
+		assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
+	})
+	t.Run("ReturnsFileNotFoundForNonexistentFile", func(t *testing.T) {
+		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
+		assert.Error(t, err)
+		assert.True(t, IsFileNotFound(err))
+	})
+}
+
+func TestValidateFileIsWithinDirectory(t *testing.T) {
+	const parentDir = "/tmp/dir"
+
+	t.Run("RelativePathAllowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("RelativePathAllowedWithRedundantSeparators", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src//main.go")
+		assert.NoError(t, err)
+	})
+
+	t.Run("FilePathWithTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "../etc/passwd")
+		assert.Error(t, err)
+	})
+
+	t.Run("AbsolutePathDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "/absolute/path/to/file")
+		assert.Error(t, err)
+	})
+
+	t.Run("FilePathWithMixedTraversalDisallowed", func(t *testing.T) {
+		err := validateFileIsWithinDirectory(parentDir, "src/../etc/../../passwd")
+		assert.Error(t, err)
+	})
+}
+
+func TestValidateFileIsNotSymlink(t *testing.T) {
+	t.Run("DoesNotErrorForRegularFile", func(t *testing.T) {
+		const fileName = "file.txt"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, fileName), []byte("hello world"), 0644))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.NoError(t, validateFileIsNotSymlink(tmpDir, fileName))
+	})
+	t.Run("ErrorsForSymlink", func(t *testing.T) {
+		const fileName = "symlink"
+		tmpDir := t.TempDir()
+		require.NoError(t, os.Symlink("/etc/passwd", filepath.Join(tmpDir, fileName)))
+		assert.True(t, utility.FileExists(filepath.Join(tmpDir, fileName)))
+		assert.Error(t, validateFileIsNotSymlink(tmpDir, fileName))
+	})
 }

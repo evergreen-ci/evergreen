@@ -829,7 +829,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 			config.OauthClientID = settings.AuthConfig.OAuth.ClientID
 			config.OauthConnectorID = settings.AuthConfig.OAuth.ConnectorID
 		}
-		if settings.ServiceFlags.StaticAPIKeysDisabled {
+		if !settings.ServiceFlags.StaticAPIKeysDisabled {
 			config.APIKey = usr.GetAPIKey()
 		}
 	}
@@ -1065,6 +1065,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		Limit:                limit,
 		MaxOrder:             maxOrderOpt,
 		MinOrder:             minOrderOpt,
+		OmitInactiveBuilds:   utility.FromBoolPtr(options.OmitInactiveBuilds),
 		Requesters:           requesters,
 		Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
 		Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),

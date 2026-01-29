@@ -46,7 +46,7 @@ func (j *cronsRemoteMonthJob) Run(ctx context.Context) {
 	}
 
 	ops := []amboy.QueueOperation{
-		// Monthly cron jobs will be added here in a future PR.
+		PopulateS3LifecycleSyncAdminBucketsJob(),
 	}
 
 	queue := j.env.RemoteQueue()
