@@ -834,10 +834,14 @@ func newGitOwnerRepo(owner, repo string) gitOwnerRepo {
 	}
 }
 
+// TODO (DEVPROD-26851): use this in follow-up PR.
 func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, workerNum int) string {
 	ownerRepo := newGitOwnerRepo(owner, repo)
 	worktrees := d.worktreesForOwnerRepo[ownerRepo]
 	if len(worktrees) < workerNum {
+		// TODO (DEVPROD-26851): if git usage is enabled and this returns an
+		// empty string, that would be a bug. Make sure to add temporary
+		// monitoring to make sure this works as expected.
 		return ""
 	}
 	return worktrees[workerNum]
@@ -991,6 +995,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 	wg.Wait()
 	close(output)
 
+	catcher := grip.NewBasicCatcher()
 	for out := range output {
 		if out.cloneDir != "" {
 			dirs.clonesForOwnerRepo[out.ownerRepo] = out.cloneDir
@@ -999,11 +1004,11 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			dirs.worktreesForOwnerRepo[out.ownerRepo] = out.worktreeDirs
 		}
 		if out.err != nil {
-			return dirs, errors.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerRepo.owner, out.ownerRepo.repo)
+			catcher.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerRepo.owner, out.ownerRepo.repo)
 		}
 	}
 
-	return dirs, nil
+	return dirs, catcher.Resolve()
 }
 
 // gitCloneAndCreateWorktrees performs a minimal git clone of the specified repo
