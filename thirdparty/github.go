@@ -504,12 +504,13 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 	if useGit {
 		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path, worktree)
 		grip.Warning(message.WrapError(gitErr, message.Fields{
-			"message": "could not retrieve GitHub file using git",
-			"ticket":  "DEVPROD-26143",
-			"owner":   owner,
-			"repo":    repo,
-			"ref":     ref,
-			"path":    path,
+			"message":           "could not retrieve GitHub file using git",
+			"ticket":            "DEVPROD-26143",
+			"owner":             owner,
+			"repo":              repo,
+			"ref":               ref,
+			"is_using_worktree": worktree != "",
+			"path":              path,
 		}))
 	}
 

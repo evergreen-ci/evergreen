@@ -239,9 +239,6 @@ func ParseGitVersion(version string) (string, error) {
 // GetGitHubFileFromGit retrieves a single file's contents from GitHub using
 // git. If a worktree is specified, it will retrieve the file using that
 // preloaded git worktree. Ref must be a commit hash or branch.
-// kim: TODO: add integration tests with worktree.
-// kim: TODO: manually test GetGitHubFileContent and see how it performs with
-// many includes.
 func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file, worktree string) ([]byte, error) {
 	ctx, span := tracer.Start(ctx, "GetGitHubFileFromGit")
 	defer span.End()
@@ -337,8 +334,6 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 			"is_context_error": ctx.Err() != nil,
 		}))
 		catcher := grip.NewBasicCatcher()
-		// kim: TODO: see if this propagates the context error in Splunk
-		// properly (if any).
 		catcher.Add(ctx.Err())
 		catcher.Wrapf(err, "git cloning repo '%s/%s'", owner, repo)
 		catcher.Wrap(os.RemoveAll(tmpDir), "cleaning up temp dir after failed git clone")

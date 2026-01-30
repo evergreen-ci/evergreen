@@ -3173,7 +3173,7 @@ func TestCapParserPriorities(t *testing.T) {
 	})
 }
 
-func TestSetupGitIncludeDirs(t *testing.T) {
+func TestSetupParallelGitIncludeDirs(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
 

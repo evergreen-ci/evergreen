@@ -758,6 +758,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
 		"project_id": projectID,
+		"ticket":     "DEVPROD-26851",
 	}))
 
 	wg := sync.WaitGroup{}
@@ -851,7 +852,7 @@ func newGitOwnerRepo(owner, repo string) gitOwnerRepo {
 func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, workerNum int) string {
 	ownerRepo := newGitOwnerRepo(owner, repo)
 	worktrees := d.worktreesForOwnerRepo[ownerRepo]
-	if len(worktrees) < workerNum {
+	if workerNum >= len(worktrees) {
 		// TODO (DEVPROD-26851): if git usage is enabled and this returns an
 		// empty string, that would be a bug. Make sure to add temporary
 		// monitoring to make sure this works as expected.
