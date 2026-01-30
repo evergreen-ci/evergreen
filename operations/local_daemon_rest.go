@@ -37,6 +37,7 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
 	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
+	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -152,6 +153,32 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	}
 
 	return nil
+}
+
+// handleRunAll runs all remaining steps
+func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	err := d.executor.RunAll(ctx)
+	state := d.executor.GetDebugState()
+
+	response := map[string]interface{}{
+		"success":      err == nil,
+		"current_step": state.CurrentStepIndex,
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+	}
+
+	grip.Error(json.NewEncoder(w).Encode(response))
 }
 
 // handleStepNext executes the next step

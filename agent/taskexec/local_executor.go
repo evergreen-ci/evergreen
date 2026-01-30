@@ -266,6 +266,17 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	return nil
 }
 
+// RunAll executes all steps in a task
+func (e *LocalExecutor) RunAll(ctx context.Context) error {
+	for e.debugState.HasMoreSteps() {
+		if err := e.StepNext(ctx); err != nil {
+			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
+			return nil
+		}
+	}
+	return nil
+}
+
 // GetDebugState returns the current debug state
 func (e *LocalExecutor) GetDebugState() *DebugState {
 	return e.debugState

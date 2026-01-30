@@ -112,6 +112,11 @@ func DaemonCommands() []cli.Command {
 			Usage:  "Execute the next step",
 			Action: stepNextCmd,
 		},
+		{
+			Name:   "run-all",
+			Usage:  "Run all remaining steps",
+			Action: runAllCmd,
+		},
 	}
 }
 
@@ -266,6 +271,23 @@ func stepNextCmd(c *cli.Context) error {
 		fmt.Printf("Step failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
 	}
 
+	return nil
+}
+
+// runAllCmd runs all remaining steps
+func runAllCmd(c *cli.Context) error {
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Running all remaining steps...")
+	resp, err := postJSON(url+"/step/run-all", nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Execution complete (at step %v)\n", resp["current_step"])
 	return nil
 }
 
