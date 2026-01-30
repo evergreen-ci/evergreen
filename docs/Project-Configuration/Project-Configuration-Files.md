@@ -704,6 +704,8 @@ You can control when tasks and build variants run based on which files have chan
 For mainline version, we will not automatically run tasks if they are filtered out, and we will not create PR patches/tasks if filtered out, but instead send a successful status for all required
 checks as well as the base `evergreen` check.
 
+For merge queue filtering, take a look at build variant path filtering.
+
 #### Project-Level File Ignoring
 
 Some commits to your repository don't need to be tested. The obvious
@@ -730,20 +732,28 @@ be automatically scheduled, since `*.md` is ignored. A commit that
 changes both `README.md` and `important_file.cpp` _would_ schedule
 tasks, since only some of the commit's changed files are ignored.
 
+**Ignore is currently not considered for merge queue patches.**
+
 ##### Build Variant Path Filtering
 
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
 changed. This is the opposite of ignoring - it defines what files the variant cares about.
-**Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
-the path filter would have matched it.
 
-Cron, batchtime, and activate true/false will still take precedent over path filtering,
+*Merge queue behavior*: Build variant path filtering is supported for the merge queue. If testing multiple PRs
+in one merge queue patch, we will consider the full set of changed files to determine what tasks to run. 
+For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
+
+
+**Mainline behavior*: Cron, batchtime, and activate true/false will still take precedent over path filtering,
 as those settings are meant to ensure consistent testing, rather than relevant changes.
+
+*Interaction with ignore*: Because ignored files take precedent over build variant path filtering, if a file is ignored, 
+it will not run the variant even if the path filter would have matched it (except in the merge queue, where include is not currently supported).
 
 Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
 be scheduled manually, and their tasks will still be scheduled on
-failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
+failure stepback. 
 
 ```yaml
 buildvariants:
