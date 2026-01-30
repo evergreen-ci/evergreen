@@ -1680,6 +1680,41 @@ func getPullRequestFileSummaries(ctx context.Context, ghClient *githubapp.GitHub
 	return getPatchSummariesFromCommitFiles(files), nil
 }
 
+// GetChangedFilesBetweenCommits gets the summary list of the changed files between the given commits
+func GetChangedFilesBetweenCommits(ctx context.Context, owner, repo, base, head string) ([]Summary, error) {
+	caller := "GetGitHubCompare"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	// compare(base_sha...head_sha)
+	commits, resp, err := githubClient.Repositories.CompareCommits(ctx, owner, repo, base, head, nil) // is nil opts okay?
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		if err != nil {
+			return nil, parseGithubErrorResponse(resp)
+		}
+	} else {
+		errMsg := fmt.Sprintf("nil response from query for comparing commits '%s' and '%s' in '%s/%s' : %v", base, head, owner, repo, err)
+		grip.Error(errMsg)
+		return nil, APIResponseError{errMsg}
+	}
+
+	return getPatchSummariesFromCommitFiles(commits.Files), nil
+}
+
 func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
 	summaries := make([]Summary, 0, len(files))
 	for _, file := range files {
