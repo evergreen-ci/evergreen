@@ -82,5 +82,6 @@ type ServiceFlags {
 
 # UserServiceFlags are service flags that users have permission to view.
 type UserServiceFlags {
+  debugSpawnHostDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
 }

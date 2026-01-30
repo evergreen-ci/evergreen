@@ -2271,6 +2271,7 @@ type ComplexityRoot struct {
 	}
 
 	UserServiceFlags struct {
+		DebugSpawnHostDisabled func(childComplexity int) int
 		JWTTokenForCLIDisabled func(childComplexity int) int
 	}
 
@@ -12195,6 +12196,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserConfig.User(childComplexity), true
 
+	case "UserServiceFlags.debugSpawnHostDisabled":
+		if e.complexity.UserServiceFlags.DebugSpawnHostDisabled == nil {
+			break
+		}
+
+		return e.complexity.UserServiceFlags.DebugSpawnHostDisabled(childComplexity), true
 	case "UserServiceFlags.jwtTokenForCLIDisabled":
 		if e.complexity.UserServiceFlags.JWTTokenForCLIDisabled == nil {
 			break
@@ -60408,6 +60415,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "debugSpawnHostDisabled":
+				return ec.fieldContext_UserServiceFlags_debugSpawnHostDisabled(ctx, field)
 			case "jwtTokenForCLIDisabled":
 				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
 			}
@@ -70426,6 +70435,35 @@ func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserServiceFlags_debugSpawnHostDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserServiceFlags_debugSpawnHostDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserServiceFlags_debugSpawnHostDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -105853,6 +105891,8 @@ func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UserServiceFlags")
+		case "debugSpawnHostDisabled":
+			out.Values[i] = ec._UserServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
 		case "jwtTokenForCLIDisabled":
 			out.Values[i] = ec._UserServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
 		default:
