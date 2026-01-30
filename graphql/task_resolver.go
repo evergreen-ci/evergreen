@@ -396,6 +396,10 @@ func (r *taskResolver) Files(ctx context.Context, obj *restModel.APITask) (*Task
 	fileCount := 0
 
 	if obj.DisplayOnly {
+		if obj.ExecutionTasks == nil {
+			return &emptyTaskFiles, nil
+		}
+
 		execTasks, err := task.Find(ctx, task.ByIds(utility.FromStringPtrSlice(obj.ExecutionTasks)))
 		if err != nil {
 			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
