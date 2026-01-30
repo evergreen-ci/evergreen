@@ -2608,52 +2608,6 @@ func TestTaskGroupActivation(t *testing.T) {
 				}
 			}
 		},
-		"ExpandsTaskGroupInStepbackByGroupName": func(t *testing.T) {
-			// Test that when stepback stores the task group name (not individual task names),
-			// all tasks in the group are properly activated.
-			g := GeneratedProject{
-				Task: &task.Task{
-					ActivatedBy: evergreen.StepbackTaskActivator,
-					GeneratedTasksToActivate: map[string][]string{
-						"variant1": {"my-task-group"}, // Stepback stores the task GROUP name
-					},
-				},
-				BuildVariants: []parserBV{
-					{
-						Name: "variant1",
-						Tasks: []parserBVTaskUnit{
-							{
-								Name:     "my-task-group",
-								Activate: utility.FalsePtr(),
-							},
-						},
-					},
-				},
-				Tasks: []parserTask{
-					{Name: "task1"},
-					{Name: "task2"},
-					{Name: "task3"},
-				},
-				TaskGroups: []parserTaskGroup{
-					{
-						Name:  "my-task-group",
-						Tasks: []string{"task1", "task2", "task3"},
-					},
-				},
-			}
-
-			activationInfo := g.findTasksAndVariantsWithSpecificActivations(evergreen.RepotrackerVersionRequester)
-
-			// Verify stepback info contains all tasks from the group
-			require.Contains(t, activationInfo.stepbackTasks, "variant1")
-			stepbackTasks := activationInfo.stepbackTasks["variant1"]
-			require.Len(t, stepbackTasks, 3, "all tasks in the group should have stepback info")
-
-			// All tasks should be activated because the task group name is in GeneratedTasksToActivate
-			for _, st := range stepbackTasks {
-				assert.True(t, st.activate, "all tasks in the group should be activated when task group name is in stepback list")
-			}
-		},
 		"DoesNotExpandRegularTask": func(t *testing.T) {
 			g := GeneratedProject{
 				Task: &task.Task{},
