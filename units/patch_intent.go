@@ -1138,8 +1138,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 }
 
 func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {
-	//compare(base_sha...head_sha)
-	summaries, err := thirdparty.GetGithubMergeFileSummaries(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.Githash, patchDoc.GithubMergeData.HeadSHA)
+	summaries, err := thirdparty.GetChangedFilesBetweenCommits(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.Githash, patchDoc.GithubMergeData.HeadSHA)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"operation": "get changed files for github merge",
@@ -1433,13 +1432,27 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessageForIgnoredVariants(ctx co
 	for _, variant := range ignoredVariants {
 		// Create a context that includes the variant name
 		variantContext := fmt.Sprintf("%s/%s", thirdparty.GithubStatusDefaultContext, variant)
-		update := NewGithubStatusUpdateJobWithSuccessMessage(
-			variantContext,
-			patchDoc.GithubPatchData.BaseOwner,
-			patchDoc.GithubPatchData.BaseRepo,
-			patchDoc.GithubPatchData.HeadHash,
-			ignoredFilesForVariant,
-		)
+		var update amboy.Job
+		if j.IntentType == patch.GithubIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				variantContext,
+				patchDoc.GithubPatchData.BaseOwner,
+				patchDoc.GithubPatchData.BaseRepo,
+				patchDoc.GithubPatchData.HeadHash,
+				ignoredFilesForVariant,
+			)
+		} else if j.IntentType == patch.GithubMergeIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				variantContext,
+				patchDoc.GithubMergeData.Org,
+				patchDoc.GithubMergeData.Repo,
+				patchDoc.GithubMergeData.HeadSHA,
+				ignoredFilesForVariant,
+			)
+		} else {
+			j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
+			return
+		}
 		update.Run(ctx)
 		j.AddError(update.Error())
 	}
@@ -1450,13 +1463,27 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessageForIgnoredVariants(ctx co
 func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef) {
 	rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
 	for _, rule := range rules {
-		update := NewGithubStatusUpdateJobWithSuccessMessage(
-			rule,
-			patchDoc.GithubPatchData.BaseOwner,
-			patchDoc.GithubPatchData.BaseRepo,
-			patchDoc.GithubPatchData.HeadHash,
-			ignoredFiles,
-		)
+		var update amboy.Job
+		if j.IntentType == patch.GithubIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				rule,
+				patchDoc.GithubPatchData.BaseOwner,
+				patchDoc.GithubPatchData.BaseRepo,
+				patchDoc.GithubPatchData.HeadHash,
+				ignoredFiles,
+			)
+		} else if j.IntentType == patch.GithubMergeIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				rule,
+				patchDoc.GithubMergeData.Org,
+				patchDoc.GithubMergeData.Repo,
+				patchDoc.GithubMergeData.HeadSHA,
+				ignoredFiles,
+			)
+		} else {
+			j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
+			return
+		}
 		update.Run(ctx)
 		j.AddError(update.Error())
 	}

@@ -1680,7 +1680,8 @@ func getPullRequestFileSummaries(ctx context.Context, ghClient *githubapp.GitHub
 	return getPatchSummariesFromCommitFiles(files), nil
 }
 
-func GetGithubMergeFileSummaries(ctx context.Context, owner, repo, base, head string) ([]Summary, error) {
+// GetChangedFilesBetweenCommits gets the summary list of the changed files between the given commits
+func GetChangedFilesBetweenCommits(ctx context.Context, owner, repo, base, head string) ([]Summary, error) {
 	caller := "GetGitHubCompare"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -1697,6 +1698,7 @@ func GetGithubMergeFileSummaries(ctx context.Context, owner, repo, base, head st
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
+	// compare(base_sha...head_sha)
 	commits, resp, err := githubClient.Repositories.CompareCommits(ctx, owner, repo, base, head, nil) // is nil opts okay?
 	if resp != nil {
 		defer resp.Body.Close()
@@ -1705,7 +1707,7 @@ func GetGithubMergeFileSummaries(ctx context.Context, owner, repo, base, head st
 			return nil, parseGithubErrorResponse(resp)
 		}
 	} else {
-		errMsg := fmt.Sprintf("nil response from query for commits in '%s/%s' ref %s : %v", owner, repo, base, err)
+		errMsg := fmt.Sprintf("nil response from query for comparing commits '%s' and '%s' in '%s/%s' : %v", base, head, owner, repo, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
