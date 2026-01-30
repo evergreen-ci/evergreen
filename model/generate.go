@@ -700,8 +700,8 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 						if utility.FromBoolPtr(bvt.Activate) {
 							// If the generated task has "activate: true", we should activate it.
 							info.activate = true
-						// Check both the individual task name and the task group name.
-						// Stepback stores the task group name, so we need to check that too.
+							// Check both the individual task name and the task group name.
+							// Stepback stores the task group name, so we need to check that too.
 						} else if isStepbackTask(g.Task, bv.Name, taskName) || isStepbackTask(g.Task, bv.Name, bvt.Name) {
 							info.activate = true
 						}
