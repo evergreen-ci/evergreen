@@ -27,29 +27,40 @@ For more on their differences and examples, see [controlling when tasks run](Pro
 
 This is most likely because your repo was cloned with a specified depth and the merge base was outside the range of the depth. To fix this, rebase your HEAD to the latest master. If this happens often, we recommend increasing the clone depth in your project's [`git.get_project`](Project-Configuration/Project-Commands#gitget_project) to a more suitable depth.
 
-## Why is Evergreen not running CI tests on my Graphite PR?
+## Graphite FAQ
 
-You may notice that Evergreen doesn't run CI tests on your Graphite PR immediately if that PR is being automatically
+**Q**: Why doesn't Evergreen run CI tests on my Graphite PR immediately?
+
+**A**: Evergreen doesn't run CI tests on your Graphite PR immediately if that PR is being automatically
 rebased by Graphite. You can tell if Graphite is automatically rebasing your PR if the PR base branch is currently named
 `graphite-base/*` or the latest head commit to the PR was on the `graphite-base/*` branch (instead of the downstack
 PR/trunk). Graphite may either be actively rebasing your PR right now (e.g. right after you merge a downstack PR) or it
 may have failed to complete the rebase (e.g. due to a merge conflict).
 Evergreen will not run CI tests while your PR is in this temporary state because [Graphite recommends not running CI
-tests while it's
-rebasing](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci).
+tests while it's rebasing](https://graphite.dev/docs/setup-recommended-ci-settings#ignore-graphite%E2%80%99s-temporary-branches-in-your-ci).
 Once Graphite finishes rebasing (which may happen automatically or may require manual intervention), the CI tests will
 run.
 
-Another reason Evergreen would not run CI tests on your Graphite PR is if the CI optimization is on. CI optimization
+**Q**: Why is Evergreen only running CI tests on the top and bottom PRs in the stack?
+
+**A**: Evergreen may not run CI tests on your Graphite PR is if CI optimization is on, and the default optimization rule
+for `10gen/mongo` and `10gen/mms` is to only run CI on the top and bottom PRs in the stack. . CI optimization
 allows us to only run CI on certain PRs on the stack. For more information on CI optimization, please refer to the
-[Graphite documentation](https://graphite.com/docs/stacking-and-ci). The default optimization rule for `10gen/mongo` and
-`10gen/mms` is to only run CI on the top and bottom PRs in the stack. To add or edit optimization rules, please reach out
+[Graphite documentation](https://graphite.com/docs/stacking-and-ci). To add or edit optimization rules, please reach out
 to the Graphite support in `#ext-graphite-mongodb`.
 
-If you're unsure about the state of your stacked PR, please check the PR in the Graphite UI instead of GitHub. The
-Graphite UI can provide helpful warnings/errors and advice on how to fix them. If you find that your PR is still having
-issues with Graphite's automatic rebasing, please make sure to review [the Graphite
-docs](https://graphite.com/docs/merge-pull-requests) to understand how merging works with Graphite and make sure that
-you're following the intended workflows. Specifically if you merge through the GitHub UI, [automatic
-rebasing](https://graphite.com/docs/merge-pull-requests#automatic-rebasing) for your upstack PRs may not work properly,
+**Q:** Why is Evergreen only running CI tests on the bottom PR in the stack?
+
+**A:** Graphite PRs higher on the stack than the PR that's merging into main won't run CI tests if your project hasn't
+enabled PR testing for untracked branches. To fix this, set up [PR Testing for Untracked
+Branches](https://docs.devprod.prod.corp.mongodb.com/evergreen/Project-Configuration/Repo-Level-Settings#how-to-use-pr-testing-for-untracked-branches).
+This involves creating repo settings, if they don't already exist, since "regular" projects in Evergreen track only a specific branch.
+
+**Q**: How can I check the state of my stacked PRs?
+
+**A**: Please use the Graphite UI for this instead of GitHub, as this UI provides helpful warnings/errors and advice on
+how to fix them. If you find that your PR is still having issues with Graphite's automatic rebasing,
+please make sure to review [the Graphite docs](https://graphite.com/docs/merge-pull-requests) to understand how merging
+works with Graphite and make sure that you're following the intended workflows. Specifically if you merge through the GitHub UI,
+[automatic rebasing](https://graphite.com/docs/merge-pull-requests#automatic-rebasing) for your upstack PRs may not work properly,
 so it's highly recommended that you merge PRs through the Graphite UI rather than GitHub to avoid issues.

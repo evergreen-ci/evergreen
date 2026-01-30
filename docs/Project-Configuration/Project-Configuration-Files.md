@@ -737,7 +737,8 @@ changed. This is the opposite of ignoring - it defines what files the variant ca
 **Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
 the path filter would have matched it.
 
-Note: specifying paths could cause crons to not activate the build variants if the path filter does not match.
+Cron, batchtime, and activate true/false will still take precedent over path filtering,
+as those settings are meant to ensure consistent testing, rather than relevant changes.
 
 Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
@@ -1501,10 +1502,14 @@ group and each individual task. Tasks in a task group will not run the `pre`
 and `post` blocks in the YAML file; instead, the tasks will run the task group's
 setup and teardown blocks.
 
-Note: Because task directory is not removed between tasks, if git.get_project is
+Because task directory is not removed between tasks, if git.get_project is
 used for the task group and/or if any manual clones are shared between the tasks,
 they should be done in `setup_group` rather than `setup_task` in order to save
 resources and avoid conflicts.
+
+It is **not** recommended to use task groups only for the sake of organization,
+because this different task directory clean-up behavior can cause confusion if not
+explicitly desired. To organize tasks logically without using task groups, consider [display tasks](#display-tasks).
 
 ```yaml
 task_groups:

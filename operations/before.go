@@ -147,6 +147,15 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
+func requireStringSliceFlag(name string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		if len(c.StringSlice(name)) == 0 {
+			return errors.Errorf("flag '--%s' was not specified", name)
+		}
+		return nil
+	}
+}
+
 func requireIntValueBetween(name string, min, max int) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		val := c.Int(name)

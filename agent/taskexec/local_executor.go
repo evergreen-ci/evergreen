@@ -174,26 +174,95 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	return nil
 }
 
-// RunAll executes all steps in a task
-func (e *LocalExecutor) RunAll(ctx context.Context) error {
-	for _, block := range e.commandBlocks {
-		e.logger.Infof("Executing block: %s", block.blockType)
+// StepNext executes the current step and advances to the next
+func (e *LocalExecutor) StepNext(ctx context.Context) error {
+	if !e.debugState.HasMoreSteps() {
+		return errors.New("no more steps to execute")
+	}
+	return e.stepNext(ctx)
+}
 
-		cmdBlock := executor.CommandBlock{
-			Block:       block.blockType,
-			Commands:    block.commands,
-			CanFailTask: block.canFailTask,
-		}
-
-		deps := e.createBlockDeps()
-		if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
-			e.logger.Warningf("Block %s failed: %v, continuing", block.blockType, err)
-		} else {
-			e.logger.Infof("Block %s completed successfully", block.blockType)
-		}
+// stepNext executes the current step using RunCommandsInBlock.
+// This implementation uses Direct Block Targeting to avoid unnecessary iteration
+// by leveraging the metadata in CommandList to directly target the specific
+// block and command that needs to be executed.
+func (e *LocalExecutor) stepNext(ctx context.Context) error {
+	if !e.debugState.HasMoreSteps() {
+		return errors.New("no more steps to execute")
 	}
 
-	e.logger.Infof("All blocks executed")
+	targetCmd := e.debugState.CommandList[e.debugState.CurrentStepIndex]
+	targetBlockIdx := targetCmd.BlockIndex
+
+	if targetBlockIdx >= len(e.commandBlocks) {
+		return errors.Errorf("invalid block index %d", targetBlockIdx)
+	}
+
+	// Only process the specific block (i.e. pre, main, post) containing our target command
+	block := e.commandBlocks[targetBlockIdx]
+	cmdBlock := executor.CommandBlock{
+		Block:    block.blockType,
+		Commands: block.commands,
+	}
+	deps := e.createBlockDeps()
+
+	// Track which command within the block we're currently processing
+	// This counter matches the BlockCmdNum field (1-indexed)
+	currentCmdInBlock := 0
+
+	// Use the pre-calculated startIndex for this block
+	// This gives us the global command index offset for commands before this block
+	globalCmdIndex := block.startIndex
+
+	// Flag to track if we've executed our target command
+	executed := false
+
+	// Override the RunCommandOrFunc callback to intercept and execute
+	// only the specific command we're targeting
+	deps.RunCommandOrFunc = func(
+		ctx context.Context,
+		commandInfo model.PluginCommandConf,
+		cmds []command.Command,
+		blockType command.BlockType,
+		canFailTask bool,
+	) error {
+		currentCmdInBlock++
+
+		// Skip commands until we reach the target command in this block
+		// BlockCmdNum is 1-indexed, so we compare directly
+		if currentCmdInBlock != targetCmd.BlockCmdNum {
+			// Update global index for skipped commands
+			globalCmdIndex += len(cmds)
+			return nil
+		}
+
+		// We've found the right command in the block
+		// Now determine which specific expanded command to execute
+		targetIndexWithinExpanded := e.debugState.CurrentStepIndex - globalCmdIndex
+
+		if targetIndexWithinExpanded >= 0 && targetIndexWithinExpanded < len(cmds) {
+			cmd := cmds[targetIndexWithinExpanded]
+			cmd.SetJasperManager(e.jasperManager)
+
+			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
+			if err != nil {
+				e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+				return err
+			}
+
+			e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
+			e.debugState.CurrentStepIndex++
+			executed = true
+		}
+		return nil
+	}
+	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
+		return err
+	}
+	if !executed {
+		return errors.Errorf("failed to execute step %d", e.debugState.CurrentStepIndex)
+	}
+
 	return nil
 }
 
@@ -298,22 +367,52 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof("Preparing task: %s", taskName)
 
-	mainBlock := executorBlock{
+	// Build command blocks array with pre, main, and post blocks
+	var blocks []executorBlock
+
+	if e.project.Pre != nil && len(e.project.Pre.List()) > 0 {
+		blocks = append(blocks, executorBlock{
+			blockType:   command.PreBlock,
+			commands:    e.project.Pre,
+			canFailTask: e.project.PreErrorFailsTask,
+		})
+	}
+	blocks = append(blocks, executorBlock{
 		blockType: command.MainTaskBlock,
 		commands: &model.YAMLCommandSet{
 			MultiCommand: task.Commands,
 		},
-		startIndex:  0,
 		canFailTask: true,
+	})
+	if e.project.Post != nil && len(e.project.Post.List()) > 0 {
+		blocks = append(blocks, executorBlock{
+			blockType:   command.PostBlock,
+			commands:    e.project.Post,
+			canFailTask: e.project.PostErrorFailsTask,
+		})
 	}
-
-	e.commandBlocks = []executorBlock{mainBlock}
+	e.commandBlocks = blocks
 	if err := e.rebuildCommandList(); err != nil {
 		return errors.Wrap(err, "rebuilding command list")
 	}
 
-	if len(e.commandBlocks) > 0 && len(e.debugState.CommandList) > 0 {
-		e.commandBlocks[0].endIndex = len(e.debugState.CommandList) - 1
+	// This variable tracks the starting command index for each execution block,
+	// so we can index it quickly later via the startIndex and endIndex fields.
+	currentIdx := 0
+	for i := range e.commandBlocks {
+		e.commandBlocks[i].startIndex = currentIdx
+		blockCommands := 0
+		for _, cmd := range e.debugState.CommandList {
+			if cmd.BlockIndex == i {
+				blockCommands++
+			}
+		}
+		if blockCommands > 0 {
+			e.commandBlocks[i].endIndex = currentIdx + blockCommands - 1
+			currentIdx += blockCommands
+		} else {
+			e.commandBlocks[i].endIndex = currentIdx - 1
+		}
 	}
 	e.logger.Infof("Task prepared with %d commands in %d blocks",
 		len(e.debugState.CommandList), len(e.commandBlocks))

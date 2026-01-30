@@ -176,7 +176,25 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
-		return apiPatch.buildChildPatches(ctx, p)
+		err := apiPatch.buildChildPatches(ctx, p)
+		if err != nil {
+			return err
+		}
+		if p.IsParent() && len(p.Triggers.ChildPatches) > 0 {
+			childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
+			if err != nil {
+				return errors.Wrap(err, "getting child patches for time calculations")
+			}
+			for _, childPatch := range childPatches {
+				if !childPatch.StartTime.IsZero() && childPatch.StartTime.Before(utility.FromTimePtr(apiPatch.StartTime)) {
+					apiPatch.StartTime = ToTimePtr(childPatch.StartTime)
+				}
+				if !childPatch.FinishTime.IsZero() && childPatch.FinishTime.After(utility.FromTimePtr(apiPatch.FinishTime)) {
+					apiPatch.FinishTime = ToTimePtr(childPatch.FinishTime)
+				}
+			}
+		}
+		return nil
 	}
 	return nil
 }
@@ -188,7 +206,7 @@ func (apiPatch *APIPatch) GetIdentifier(ctx context.Context) {
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
 		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(apiPatch.ProjectId))
 
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 			"message":  "could not get identifier for project",
 			"project":  apiPatch.ProjectId,
 			"patch_id": utility.FromStringPtr(apiPatch.Id),
