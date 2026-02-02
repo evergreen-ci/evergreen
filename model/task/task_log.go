@@ -114,26 +114,10 @@ func AppendTaskLogs(ctx context.Context, task *Task, logType TaskLogType, lines 
 		return errors.Wrap(err, "getting log service")
 	}
 
-	var chunkSize int64
-	for _, line := range lines {
-		chunkSize += int64(len(fmt.Sprintf("%d %d %s", line.Priority, line.Timestamp, line.Data)))
-		if line.Data == "" || line.Data[len(line.Data)-1] != '\n' {
-			chunkSize++ // Account for newline
-		}
-	}
+	// Pass S3Usage through context so Append can track PUT requests before upload
+	ctx = log.WithS3Usage(ctx, &task.S3Usage)
 
-	if err := svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines); err != nil {
-		return err
-	}
-
-	putRequests := CalculatePutRequestsWithContext(
-		S3BucketTypeSmall,
-		S3UploadMethodPut,
-		chunkSize,
-	)
-	task.S3Usage.IncrementPutRequests(putRequests)
-
-	return nil
+	return svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines)
 }
 
 // getTaskLogs returns task logs belonging to the specified task run.
