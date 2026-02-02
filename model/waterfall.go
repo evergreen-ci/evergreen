@@ -255,7 +255,6 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 			"newRoot": bson.M{"$arrayElemAt": bson.A{"$" + versionLookupKey, 0}},
 		},
 	})
-	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -273,7 +272,7 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
 // It performantly applies build variant and requester filters; for task-related filters, see GetActiveVersionsByTaskFilters.
 func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveWaterfallVersions")})
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveWaterfallVersions")})
 
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
@@ -338,7 +337,6 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 	}
-	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -380,7 +378,6 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	pipeline = append(pipeline, bson.M{"$limit": MaxWaterfallVersionLimit})
-	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -395,26 +392,18 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 	return res, nil
 }
 
-// GetVersionBuilds returns a list of builds with populated tasks for a given version.
-func GetVersionBuilds(ctx context.Context, versionId string) ([]WaterfallBuild, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
+// GetVersionBuilds returns a list of builds with populated tasks for the given build IDs.
+func GetVersionBuilds(ctx context.Context, buildIds []string) ([]WaterfallBuild, error) {
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
 
-	version, err := VersionFindOneId(ctx, versionId)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding version")
-	}
-	if version == nil {
-		return nil, errors.Errorf("version '%s' not found", versionId)
-	}
-
-	if len(version.BuildIds) == 0 {
+	if len(buildIds) == 0 {
 		return []WaterfallBuild{}, nil
 	}
 
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				task.BuildIdKey:     bson.M{"$in": version.BuildIds},
+				task.BuildIdKey:     bson.M{"$in": buildIds},
 				task.DisplayOnlyKey: bson.M{"$ne": true},
 			},
 		},

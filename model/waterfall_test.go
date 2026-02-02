@@ -389,7 +389,7 @@ func TestGetVersionBuilds(t *testing.T) {
 		tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, BuildId: "a"}
 		assert.NoError(t, tsk.Insert(t.Context()))
 
-		builds, err := GetVersionBuilds(t.Context(), v.Id)
+		builds, err := GetVersionBuilds(t.Context(), v.BuildIds)
 		assert.NoError(t, err)
 		assert.Len(t, builds, 2)
 
@@ -471,7 +471,7 @@ func TestGetVersionBuilds(t *testing.T) {
 		}
 		assert.NoError(t, regularTask.Insert(t.Context()))
 
-		builds, err := GetVersionBuilds(t.Context(), v.Id)
+		builds, err := GetVersionBuilds(t.Context(), v.BuildIds)
 		assert.NoError(t, err)
 		require.Len(t, builds, 1)
 		assert.Equal(t, "Ubuntu", builds[0].DisplayName)

@@ -121,7 +121,13 @@
       "create_time": {
         "$date": "2020-01-05T12:00:00Z"
       },
-      "builds": ["evergreen_version3_build"]
+      "builds": ["evergreen_version3_build"],
+      "build_variants_status": [
+        {
+          "build_variant": "lint",
+          "build_id": "evergreen_version3_build"
+        }
+      ]
     },
     {
       "_id": "inactive1",
