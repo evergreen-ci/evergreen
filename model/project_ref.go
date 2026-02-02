@@ -2572,10 +2572,11 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 }
 
 // GetActivationTimeForVariant returns the time at which this variant should
-// next be activated. The version create time is used to determine the next
+// next be activated. The variant is not activated if cron/batchtime/activation isn't set for the version
+// and the paths are filtered. The version create time is used to determine the next
 // activation time, except in situations where using the version create time
 // would produce conflicts such as duplicate cron runs.
-func (p *ProjectRef) GetActivationTimeForVariant(ctx context.Context, variant *BuildVariant, versionCreateTime time.Time, now time.Time) (time.Time, error) {
+func (p *ProjectRef) GetActivationTimeForVariant(ctx context.Context, variant *BuildVariant, variantPathsFiltered bool, versionCreateTime time.Time, now time.Time) (time.Time, error) {
 	// if we don't want to activate the build, set batchtime to the zero time
 	if !utility.FromBoolTPtr(variant.Activate) {
 		return utility.ZeroTime, nil
@@ -2600,9 +2601,17 @@ func (p *ProjectRef) GetActivationTimeForVariant(ctx context.Context, variant *B
 		// instead.
 		return GetNextCronTime(now, variant.CronBatchTime)
 	}
-	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
-	if utility.FromBoolPtr(variant.Activate) && variant.BatchTime == nil {
-		return now, nil
+
+	// If the variant doesn't have batchtime, consider higher priority activation statuses before evaluating based on project batchtime.
+	if variant.BatchTime == nil {
+		// If activated explicitly set to true, then we want to just activate now.
+		if utility.FromBoolPtr(variant.Activate) {
+			return now, nil
+		}
+		// If the variant should be ignored due to path filtering, don't activate.
+		if variantPathsFiltered {
+			return utility.ZeroTime, nil
+		}
 	}
 
 	lastActivated, err := VersionFindOne(ctx, VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
