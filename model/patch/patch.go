@@ -212,6 +212,8 @@ type TriggerInfo struct {
 	SameBranchAsParent   bool        `bson:"same_branch_as_parent"`
 	ChildPatches         []string    `bson:"child_patches,omitempty"`
 	DownstreamParameters []Parameter `bson:"downstream_parameters,omitempty"`
+	// ChildrenCompletedTime represents the time all child patches for a parent patch completed.
+	ChildrenCompletedTime time.Time `bson:"children_completed_time"`
 }
 
 type PatchTriggerDefinition struct {
@@ -345,6 +347,20 @@ func (p *Patch) SetDownstreamParameters(ctx context.Context, parameters []Parame
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$push": bson.M{triggersKey: bson.M{"$each": parameters}},
+		},
+	)
+}
+
+// SetChildrenCompletedTime sets a patch's ChildrenCompletedTime.
+func (p *Patch) SetChildrenCompletedTime(ctx context.Context, completedTime time.Time) error {
+	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildrenCompletedTimeKey)
+	return UpdateOne(
+		ctx,
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				triggersKey: completedTime,
+			},
 		},
 	)
 }

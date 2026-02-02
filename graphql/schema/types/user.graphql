@@ -100,14 +100,14 @@ User is returned by the user query.
 It contains information about a user's id, name, email, and permissions.
 """
 type User {
-  betaFeatures: BetaFeatures!
-  displayName: String!
-  emailAddress: String!
-  parsleyFilters: [ParsleyFilter!]!
-  parsleySettings: ParsleySettings!
-  patches(patchesInput: PatchesInput!): Patches! # user patches
-  permissions: Permissions!
-  settings: UserSettings!
+  betaFeatures: BetaFeatures
+  displayName: String
+  emailAddress: String
+  parsleyFilters: [ParsleyFilter!]
+  parsleySettings: ParsleySettings
+  patches(patchesInput: PatchesInput!): Patches # user patches
+  permissions: Permissions
+  settings: UserSettings
   subscriptions: [GeneralSubscription!]
   userId: String!
 }
@@ -192,4 +192,27 @@ type Notifications {
 
 type UseSpruceOptions {
   spruceV1: Boolean
+}
+
+"""
+CursorSettings represents the status of a user's Cursor API key stored in Sage.
+"""
+type CursorSettings {
+  keyConfigured: Boolean!
+  keyLastFour: String
+}
+
+"""
+SetCursorAPIKeyPayload is the response from setting a Cursor API key.
+"""
+type SetCursorAPIKeyPayload {
+  success: Boolean!
+  keyLastFour: String
+}
+
+"""
+DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
+"""
+type DeleteCursorAPIKeyPayload {
+  success: Boolean!
 }
