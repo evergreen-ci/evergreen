@@ -490,6 +490,19 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
+				// Get file info and calculate PUT requests BEFORE upload
+				fileInfo, statErr := os.Stat(fpath)
+				if statErr != nil {
+					return errors.Wrapf(statErr, "getting file info for '%s'", fpath)
+				}
+				fileSize := fileInfo.Size()
+				calculatedPuts := task.CalculatePutRequestsWithContext(
+					task.S3BucketTypeLarge,
+					task.S3UploadMethodPut,
+					fileSize,
+				)
+
+				// Perform the upload
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
@@ -532,16 +545,12 @@ retryLoop:
 					continue retryLoop
 				}
 
-				fileInfo, statErr := os.Stat(fpath)
-				if statErr != nil {
-					return errors.Wrapf(statErr, "getting file info for '%s'", fpath)
-				}
-				fileSize := fileInfo.Size()
-				putRequests := task.CalculatePutRequestsWithContext(
-					task.S3BucketTypeLarge,
-					task.S3UploadMethodPut,
-					fileSize,
-				)
+				// Count retry PUTs: each failed attempt = 1 PUT
+				retryPuts := i - 1
+				totalPutRequests := calculatedPuts + retryPuts
+
+				logger.Task().Infof("S3 upload succeeded: file='%s', size=%d bytes, attempts=%d, total_puts=%d (successful=%d + retry=%d)",
+					filepath.Base(remoteName), fileSize, i, totalPutRequests, calculatedPuts, retryPuts)
 
 				uploadPath := fpath
 				if s3pc.preservePath {
@@ -552,8 +561,9 @@ retryLoop:
 					localPath:   uploadPath,
 					remotePath:  remoteName,
 					fileSize:    fileSize,
-					putRequests: putRequests,
+					putRequests: totalPutRequests,
 				})
+
 			}
 
 			break retryLoop

@@ -102,7 +102,7 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 	}
 	allResults = append(allResults, newResults...)
 
-	if err = uploadParquet(ctx, &conf.Task, conf.TaskOutput, *output, convertToParquet(allResults, info, createdAt), key); err != nil {
+	if err = uploadParquet(ctx, conf.TaskOutput, *output, convertToParquet(allResults, info, createdAt), key); err != nil {
 		return false, errors.Wrap(err, "uploading parquet test results")
 	}
 
@@ -126,7 +126,7 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 	return tr.Stats.FailedCount > 0, nil
 }
 
-func uploadParquet(ctx context.Context, t *task.Task, credentials evergreen.S3Credentials, output task.TaskOutput, results *testresult.ParquetTestResults, key string) error {
+func uploadParquet(ctx context.Context, credentials evergreen.S3Credentials, output task.TaskOutput, results *testresult.ParquetTestResults, key string) error {
 	bucket, err := output.TestResults.GetBucket(ctx, credentials)
 	if err != nil {
 		return err
@@ -140,18 +140,7 @@ func uploadParquet(ctx context.Context, t *task.Task, credentials evergreen.S3Cr
 	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
 	defer pw.Close()
 
-	if err := pw.Write(results); err != nil {
-		return errors.Wrap(err, "writing Parquet test results")
-	}
-
-	putRequests := task.CalculatePutRequestsWithContext(
-		task.S3BucketTypeSmall,
-		task.S3UploadMethodWriter,
-		0,
-	)
-	t.S3Usage.IncrementPutRequests(putRequests)
-
-	return nil
+	return errors.Wrap(pw.Write(results), "writing Parquet test results")
 }
 
 func makeTestResultsInfo(t task.Task, displayTaskInfo *apimodels.DisplayTaskInfo) testresult.TestResultsInfo {
