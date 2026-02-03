@@ -648,52 +648,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	// user-specified.
 	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Parameters)
 
-	// Set PS expansion after all other expansions are merged, so the priority order
-	// is correctly enforced (build variant task > project task > project > build variant expansions > default).
-	a.setPSExpansion(opts)
-
 	return opts, nil
-}
-
-// setPSExpansion sets the ps expansion based on agent setup data, project settings, and task settings.
-// The priority order (from highest to lowest):
-// 1. Build variant task-level PS
-// 2. Project task-level PS
-// 3. Project-level PS
-// 4. Existing ps expansion (from build variant expansions or vars)
-// 5. Default based on PSLoggingDisabled (lowest)
-func (a *Agent) setPSExpansion(opts *taskInfo) {
-	// Check build variant task-level PS (highest priority).
-	bvTask := opts.project.FindBuildVariantTaskUnit(opts.task.BuildVariant, opts.task.DisplayName)
-	if bvTask != nil && bvTask.PS != nil {
-		opts.expansionsAndVars.Expansions.Put(ps, *bvTask.PS)
-		return
-	}
-
-	// Check project task-level PS (second priority).
-	projectTask := opts.project.FindProjectTask(opts.task.DisplayName)
-	if projectTask != nil && projectTask.Ps != nil {
-		opts.expansionsAndVars.Expansions.Put(ps, *projectTask.Ps)
-		return
-	}
-
-	// Check project-level PS (third priority).
-	if opts.project.PS != "" {
-		opts.expansionsAndVars.Expansions.Put(ps, opts.project.PS)
-		return
-	}
-
-	// Check if ps is already set from build variant expansions or vars (fourth priority).
-	if _, exists := opts.expansionsAndVars.Expansions[ps]; exists {
-		return
-	}
-
-	// Apply default based on PSLoggingDisabled (lowest priority).
-	// When PSLoggingDisabled is false, default to "ps".
-	// When PSLoggingDisabled is true, leave ps unset (empty).
-	if !a.opts.SetupData.PSLoggingDisabled {
-		opts.expansionsAndVars.Expansions.Put(ps, ps)
-	}
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
@@ -815,16 +770,20 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	}()
 
-	// set up the system stats collector
+	// Set up the system stats collector.
+	// Build commands list explicitly based on configuration.
+	statsCmds := []string{"uptime", "df -h"}
+
+	// Add ps command if configured in YAML or expansion (for backward compatibility).
+	if psCmd := tc.getPSCommand(); psCmd != "" {
+		statsCmds = append(statsCmds, psCmd)
+	}
+
 	statsCollector := NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
 		globals.DefaultStatsInterval,
-		"uptime",
-		"df -h",
-		// The empty fallback is needed to make ps opt-in so that if the ps expansion is not set,
-		// it expands to an empty string which can be filtered out.
-		"${ps|}",
+		statsCmds...,
 	)
 	// Running the `df` command on Unix systems displays inode
 	// statistics without the `-i` flag by default. However, we need

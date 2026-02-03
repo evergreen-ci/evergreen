@@ -1160,7 +1160,7 @@ oom_tracker: false
 
 ### Process Diagnostics: ps
 
-By default, Evergreen logs process information every 60 seconds during task execution using the `ps` command. This default behavior will be deprecated soon, and process logging will become opt-in (disabled by default unless explicitly configured).
+By default, Evergreen logs process information every 60 seconds during task execution using the ps expansion if defined (in distro settings, project variables, or in the project yaml) or `ps` as the default. This default behavior will be deprecated soon, and process logging will become opt-in (disabled by default unless explicitly configured and will no longer default to the ps expansion or `ps`).
 
 You can customize the process logging command by setting the `ps` field at multiple configuration levels. There is currently no option to opt out, but once default ps logging is deprecated, you will be able to disable process logging, by either not setting it anywhere (the default) or by setting `ps` to an empty string. When enabled, the specified command runs every 60 seconds.
 
@@ -1169,8 +1169,9 @@ The `ps` field follows a priority order (from highest to lowest):
 1. **Build variant task level** - Overrides all other settings
 2. **Project task level** - Overrides project-level and lower settings
 3. **Project level** - Overrides build variant expansions and default
-4. **Build variant expansions** - Can set `ps` as an expansion variable
-5. **Default** - Currently defaults to `"ps"` (will be deprecated to no logging)
+4. **Default** - Currently defaults to the ps expansion or `"ps"` (will be deprecated to no logging)
+
+**Note about distro and build variant expansions:** When the default ps logging behavior is deprecated (in the future), distro, project variable and build variant `ps` expansions will be ignored unless you have an explicit `ps` setting at the project, task, or build variant task level. To use an expansion, it would need to be explicitely referenced with `ps: "${my_custom_ps}"` at the desired level (as outlined above).
 
 **Project level** (overrides build variant expansions and default):
 
@@ -1224,15 +1225,29 @@ tasks:
         params:
           script: echo "Custom ps task"
 
+  - name: task_with_expansion
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Will use a build variant expansion"
+
 buildvariants:
   - name: ubuntu2204
     expansions:
-      ps: "ps aux" # Build variant expansion (lowest priority, only overrides default)
+      my_custom_ps: "ps -o pid,user,comm" # Define custom ps command as expansion
     tasks:
       - name: my_task_1
         ps: "ps -o pid,tty,time" # Build variant task-level: overrides task and project level ps.
       - name: my_task_2 # Uses task-level "ps -o pid,tty,time,comm,args" since there is no build variant task-level override.
       - name: other_task # Uses project-level "ps -o pid" since no task-level or build variant task-level ps is set.
+      - name: task_with_expansion # No ps logging once default logging is deprecated since there is no explicit ps setting.
+
+  - name: rhel
+    expansions:
+      my_custom_ps: "ps aux" # Different ps command for this variant
+    tasks:
+      - name: task_with_expansion
+        ps: "${my_custom_ps}" # Use the custom expansion defined above
 ```
 
 ### Matrix Variant Definition
