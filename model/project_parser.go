@@ -638,7 +638,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
-	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts, worktree string) {
+	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts, dirs *gitIncludeDirs, workerIdx int) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
@@ -656,7 +656,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
 		IsIncludedFile:            true,
-		Worktree:                  worktree,
+		Worktree:                  dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx),
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -669,7 +669,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"module":      include.Module,
 	})
 	if include.Module != "" {
-		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
+		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include, dirs, workerIdx)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
 		yaml, err = retrieveFile(ctx, *localOpts)
@@ -771,15 +771,11 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	close(includesToProcess)
 
 	for i := 0; i < workers; i++ {
-		var worktree string
-		if dirs != nil {
-			worktree = dirs.getWorktreeForOwnerRepoWorker(opts.Ref.Owner, opts.Ref.Repo, i)
-		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for include := range includesToProcess {
-				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, worktree)
+				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, dirs, i)
 			}
 		}()
 	}
@@ -848,14 +844,17 @@ func newGitOwnerRepo(owner, repo string) gitOwnerRepo {
 	}
 }
 
-// TODO (DEVPROD-26851): use this in follow-up PR.
 func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, workerNum int) string {
+	if d == nil {
+		return ""
+	}
+	if d.worktreesForOwnerRepo == nil {
+		return ""
+	}
+
 	ownerRepo := newGitOwnerRepo(owner, repo)
 	worktrees := d.worktreesForOwnerRepo[ownerRepo]
 	if workerNum >= len(worktrees) {
-		// TODO (DEVPROD-26851): if git usage is enabled and this returns an
-		// empty string, that would be a bug. Make sure to add temporary
-		// monitoring to make sure this works as expected.
 		return ""
 	}
 	return worktrees[workerNum]
@@ -912,6 +911,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 				"ticket":             "DEVPROD-26143",
 			}))
 		}
+		// Once dirs has been cleaned up, it's no longer valid to use it, so do
+		// not return it in the result.
+		dirs = nil
 	}()
 
 	includedModuleNames := map[string]struct{}{}
@@ -1074,9 +1076,7 @@ type GetProjectOpts struct {
 	// IsIncludedFile indicates whether the file being retrieved is an included
 	// YAML file.
 	IsIncludedFile bool
-	// Worktree is the directory of the git worktree to use when retrieving
-	// files via git. Only set if reading a remote file using git.
-	Worktree string
+	Worktree       string
 }
 
 type PatchOpts struct {
@@ -1135,6 +1135,14 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			// TODO (DEVPROD-26851): remove this condition once we have
 			// sufficient confidence that worktrees are set up properly for
 			// included files.
+			grip.Warning(message.Fields{
+				"message":   "including file but worktree is not set, will not use git",
+				"owner":     opts.Ref.Owner,
+				"repo":      opts.Ref.Repo,
+				"revision":  opts.Revision,
+				"file_name": opts.RemotePath,
+				"ticket":    "DEVPROD-26851",
+			})
 			useGit = false
 		}
 		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
@@ -1145,7 +1153,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 }
 
-func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude) ([]byte, error) {
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude, dirs *gitIncludeDirs, workerIdx int) ([]byte, error) {
 	// Check if the module has a local change passed in through the CLI or previous patch.
 	if opts.ReferencePatchID != "" {
 		p, err := patch.FindOneId(ctx, opts.ReferencePatchID)
@@ -1181,7 +1189,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	repoOwner, repoName, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
-
 	}
 	pRef := *opts.Ref
 	pRef.Owner = repoOwner
@@ -1191,6 +1198,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		RemotePath:   opts.RemotePath,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
+		Worktree:     dirs.getWorktreeForOwnerRepoWorker(repoOwner, repoName, workerIdx),
 	}
 	moduleOpts.Revision, err = getRevisionForRemoteModule(ctx, *module, include.Module, opts)
 	if err != nil {
@@ -1244,6 +1252,14 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	if opts.IsIncludedFile && opts.Worktree == "" {
 		// TODO (DEVPROD-26851): remove this condition once we have sufficient
 		// confidence that worktrees are set up properly for included files.
+		grip.Warning(message.Fields{
+			"message":   "including file but worktree is not set, will not use git",
+			"owner":     opts.Ref.Owner,
+			"repo":      opts.Ref.Repo,
+			"revision":  opts.Revision,
+			"file_name": opts.RemotePath,
+			"ticket":    "DEVPROD-26851",
+		})
 		useGit = false
 	}
 	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
