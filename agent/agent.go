@@ -37,7 +37,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-const hostAttribute = "evergreen.host"
+const (
+	hostAttribute = "evergreen.host"
+	ps            = "ps"
+)
 
 var (
 	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
@@ -626,17 +629,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 
 	// GetExpansionsAndVars does not include build variant expansions or project
 	// parameters, so load them from the project.
-	// If PSLoggingDisabled is false, default to "ps" command.
-	if !a.opts.SetupData.PSLoggingDisabled {
-		opts.expansionsAndVars.Expansions.Put("ps", "ps")
-	}
-	// Project and task settings can override the default.
-	if opts.project.Ps != "" {
-		opts.expansionsAndVars.Expansions.Put("ps", opts.project.Ps)
-	}
-	if projectTask := opts.project.FindProjectTask(opts.task.DisplayName); projectTask != nil && projectTask.Ps != "" {
-		opts.expansionsAndVars.Expansions.Put("ps", projectTask.Ps)
-	}
+	a.setPSExpansion(opts)
 	for _, bv := range opts.project.BuildVariants {
 		if bv.Name == opts.task.BuildVariant {
 			opts.expansionsAndVars.Expansions.Update(bv.Expansions)
@@ -657,6 +650,22 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Parameters)
 
 	return opts, nil
+}
+
+// setPSExpansion sets the ps expansion based on agent setup data, project settings, and task settings.
+// The priority order is: task settings > project settings > default (if PSLoggingDisabled is false).
+func (a *Agent) setPSExpansion(opts *taskInfo) {
+	// If PSLoggingDisabled is false, default to "ps" command.
+	if !a.opts.SetupData.PSLoggingDisabled {
+		opts.expansionsAndVars.Expansions.Put(ps, ps)
+	}
+	// Project and task settings can override the default.
+	if opts.project.PS != "" {
+		opts.expansionsAndVars.Expansions.Put(ps, opts.project.PS)
+	}
+	if projectTask := opts.project.FindProjectTask(opts.task.DisplayName); projectTask != nil && projectTask.Ps != nil {
+		opts.expansionsAndVars.Expansions.Put(ps, *projectTask.Ps)
+	}
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
@@ -785,7 +794,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		globals.DefaultStatsInterval,
 		"uptime",
 		"df -h",
-		// The empty fallback is needed to make ps opt-in so that if thee ps expansion is not set,
+		// The empty fallback is needed to make ps opt-in so that if the ps expansion is not set,
 		// it expands to an empty string which can be filtered out.
 		"${ps|}",
 	)

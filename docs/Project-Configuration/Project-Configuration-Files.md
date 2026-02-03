@@ -276,7 +276,7 @@ Fields:
   non-module related build variant fields ([context](../decisions/2024-07-18_allow_module_expansions)).
 - `tasks`: a list of tasks to run, referenced either by task name or by tags.
   Tasks listed here can also include other task-level fields, such as
-  `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, and `run_on`.
+  `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, `run_on`, and `ps`.
   We can also [define when a task will run](#controlling-when-tasks-and-variants-run). If there are
   conflicting settings definitions at different levels, the order of priority
   is defined [here](#task-fields-override-hierarchy).
@@ -907,6 +907,8 @@ Every task has some expansions available by default:
   See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
   See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
 - `${otel_trace_id}` is the OTel trace ID this task is running under.
+- `${ps}` is the ps command used for collecting system statistics during task execution.
+  See [Process Diagnostics: ps](#process-diagnostics-ps) for more information.
 - `${requester}` is what triggered the task: `patch`, `github_pr`,
   `github_tag`, `commit`, `trigger`, `github_merge_queue`, or `ad_hoc`
 - `${revision}` is the commit hash of the base commit that a patch's changes

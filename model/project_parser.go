@@ -446,8 +446,8 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// Ps is the command to run for process diagnostics.
-	Ps *string `yaml:"ps,omitempty" bson:"ps,omitempty"`
+	// PS is the command to run for process diagnostics.
+	PS *string `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -1106,7 +1106,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
-		Ps:                 utility.FromStringPtr(pp.Ps),
+		PS:                 utility.FromStringPtr(pp.Ps),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),
@@ -1213,7 +1213,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 			MustHaveResults: pt.MustHaveResults,
-			Ps:              utility.FromStringPtr(pt.Ps),
+			Ps:              pt.Ps,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
@@ -1543,7 +1543,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:  bvt.CronBatchTime,
 		BatchTime:      bvt.BatchTime,
 		Activate:       bvt.Activate,
-		Ps:             bvt.Ps,
+		PS:             bvt.PS,
 		CreateCheckRun: bvt.CreateCheckRun,
 	}
 	res.AllowedRequesters = bvt.AllowedRequesters
@@ -1578,8 +1578,8 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if len(res.RunOn) == 0 {
 		res.RunOn = pt.RunOn
 	}
-	if res.Ps == nil {
-		res.Ps = pt.Ps
+	if res.PS == nil {
+		res.PS = pt.Ps
 	}
 
 	// Build variant level settings are lower priority than project task level
