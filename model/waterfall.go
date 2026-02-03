@@ -403,6 +403,7 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 		task.VersionKey:     versionID,
 		task.BuildIdKey:     bson.M{"$in": buildIds},
 		task.DisplayOnlyKey: bson.M{"$ne": true},
+		task.RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
 	}
 
 	pipeline := []bson.M{
