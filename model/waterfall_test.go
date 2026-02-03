@@ -374,19 +374,19 @@ func TestGetVersionBuilds(t *testing.T) {
 		}
 		assert.NoError(t, b.Insert(t.Context()))
 
-		tsk := task.Task{Id: "t_80", DisplayName: "Task 80", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1"}
+		tsk := task.Task{Id: "t_80", DisplayName: "Task 80", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_79", DisplayName: "Task 79", DisplayStatusCache: evergreen.TaskFailed, BuildId: "b", Version: "v_1"}
+		tsk = task.Task{Id: "t_79", DisplayName: "Task 79", DisplayStatusCache: evergreen.TaskFailed, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_86", DisplayName: "Task 86", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1"}
+		tsk = task.Task{Id: "t_86", DisplayName: "Task 86", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_200", DisplayName: "Task 200", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1"}
+		tsk = task.Task{Id: "t_200", DisplayName: "Task 200", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_45", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1"}
+		tsk = task.Task{Id: "t_45", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_12", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1"}
+		tsk = task.Task{Id: "t_12", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_66", DisplayName: "Task 66", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1"}
+		tsk = task.Task{Id: "t_66", DisplayName: "Task 66", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
 		assert.NoError(t, tsk.Insert(t.Context()))
 
 		builds, err := GetVersionBuilds(t.Context(), v.Id, v.BuildIds)
@@ -441,6 +441,7 @@ func TestGetVersionBuilds(t *testing.T) {
 			Version:            "v_1",
 			DisplayOnly:        true,
 			ExecutionTasks:     []string{"exec_task_1", "exec_task_2"},
+			Requester:          evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(t, displayTask.Insert(t.Context()))
 
@@ -452,6 +453,7 @@ func TestGetVersionBuilds(t *testing.T) {
 			BuildId:            "build_1",
 			Version:            "v_1",
 			DisplayTaskId:      utility.ToStringPtr("display_task"),
+			Requester:          evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(t, execTask1.Insert(t.Context()))
 
@@ -462,6 +464,7 @@ func TestGetVersionBuilds(t *testing.T) {
 			BuildId:            "build_1",
 			Version:            "v_1",
 			DisplayTaskId:      utility.ToStringPtr("display_task"),
+			Requester:          evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(t, execTask2.Insert(t.Context()))
 
@@ -472,6 +475,7 @@ func TestGetVersionBuilds(t *testing.T) {
 			DisplayStatusCache: evergreen.TaskWillRun,
 			BuildId:            "build_1",
 			Version:            "v_1",
+			Requester:          evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(t, regularTask.Insert(t.Context()))
 
