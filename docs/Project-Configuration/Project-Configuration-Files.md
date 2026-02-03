@@ -727,7 +727,7 @@ ignore:
   - "!testdata/sample.txt" ## EXCEPT for changes to this txt file that's part of a test suite
 ```
 
-In the above example, a commit that only changes `README.md` would not
+In the above example, a commit that only changes `README.md` would ~~not~~
 be automatically scheduled, since `*.md` is ignored. A commit that
 changes both `README.md` and `important_file.cpp` _would_ schedule
 tasks, since only some of the commit's changed files are ignored.
@@ -739,21 +739,21 @@ tasks, since only some of the commit's changed files are ignored.
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
 changed. This is the opposite of ignoring - it defines what files the variant cares about.
 
-*Merge queue behavior*: Build variant path filtering is supported for the merge queue. If testing multiple PRs
-in one merge queue patch, we will consider the full set of changed files to determine what tasks to run. 
+_Merge queue behavior_: Build variant path filtering is supported for the merge queue. If testing multiple PRs
+in one merge queue patch, we will consider the full set of changed files to determine what tasks to run.
 For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
 
-**Mainline behavior*: Cron, batchtime, and activate true/false will still take precedent over path filtering,
+_Mainline behavior_: Cron, batchtime, and activate true/false will still take precedent over path filtering,
 as those settings are meant to ensure consistent testing, rather than relevant changes.
 
-*Interaction with ignore*: Because ignored files take precedent over build variant path filtering, if a file is ignored, 
+_Interaction with ignore_: Because ignored files take precedent over build variant path filtering, if a file is ignored,
 it will not run the variant even if the path filter would have matched it (except in the merge queue, where include is not currently supported).
 
 Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
 be scheduled manually, and their tasks will still be scheduled on
-failure stepback. 
+failure stepback.
 
 ```yaml
 buildvariants:
