@@ -70,7 +70,6 @@ type ResolverRoot interface {
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
 	RepoSettings() RepoSettingsResolver
-	ServiceFlags() ServiceFlagsResolver
 	SleepSchedule() SleepScheduleResolver
 	SpruceConfig() SpruceConfigResolver
 	SubscriberWrapper() SubscriberWrapperResolver
@@ -89,7 +88,6 @@ type ResolverRoot interface {
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
-	ServiceFlagsInput() ServiceFlagsInputResolver
 	SleepScheduleInput() SleepScheduleInputResolver
 	SubscriberInput() SubscriberInputResolver
 }
@@ -1766,9 +1764,9 @@ type ComplexityRoot struct {
 		JWTTokenForCLIDisabled          func(childComplexity int) int
 		LargeParserProjectsDisabled     func(childComplexity int) int
 		MonitorDisabled                 func(childComplexity int) int
+		PSLoggingDisabled               func(childComplexity int) int
 		PodAllocatorDisabled            func(childComplexity int) int
 		PodInitDisabled                 func(childComplexity int) int
-		PsLoggingDisabled               func(childComplexity int) int
 		ReleaseModeDisabled             func(childComplexity int) int
 		RepotrackerDisabled             func(childComplexity int) int
 		S3LifecycleSyncDisabled         func(childComplexity int) int
@@ -2681,9 +2679,6 @@ type RepoSettingsResolver interface {
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
 }
-type ServiceFlagsResolver interface {
-	PsLoggingDisabled(ctx context.Context, obj *model.APIServiceFlags) (*bool, error)
-}
 type SleepScheduleResolver interface {
 	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo) ([]int, error)
 }
@@ -2833,9 +2828,6 @@ type ProjectSettingsInputResolver interface {
 }
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
-}
-type ServiceFlagsInputResolver interface {
-	PsLoggingDisabled(ctx context.Context, obj *model.APIServiceFlags, data *bool) error
 }
 type SleepScheduleInputResolver interface {
 	WholeWeekdaysOff(ctx context.Context, obj *host.SleepScheduleInfo, data []int) error
@@ -10071,6 +10063,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.MonitorDisabled(childComplexity), true
+	case "ServiceFlags.psLoggingDisabled":
+		if e.complexity.ServiceFlags.PSLoggingDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.PSLoggingDisabled(childComplexity), true
 	case "ServiceFlags.podAllocatorDisabled":
 		if e.complexity.ServiceFlags.PodAllocatorDisabled == nil {
 			break
@@ -10083,12 +10081,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.PodInitDisabled(childComplexity), true
-	case "ServiceFlags.psLoggingDisabled":
-		if e.complexity.ServiceFlags.PsLoggingDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.PsLoggingDisabled(childComplexity), true
 	case "ServiceFlags.releaseModeDisabled":
 		if e.complexity.ServiceFlags.ReleaseModeDisabled == nil {
 			break
@@ -59083,22 +59075,17 @@ func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ 
 	return fc, nil
 }
 
-<<<<<<< HEAD
 func (ec *executionContext) _ServiceFlags_psLoggingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-=======
-func (ec *executionContext) _SetCursorAPIKeyPayload_success(ctx context.Context, field graphql.CollectedField, obj *SetCursorAPIKeyPayload) (ret graphql.Marshaler) {
->>>>>>> main
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-<<<<<<< HEAD
 		ec.fieldContext_ServiceFlags_psLoggingDisabled,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.ServiceFlags().PsLoggingDisabled(ctx, obj)
+			return obj.PSLoggingDisabled, nil
 		},
 		nil,
-		ec.marshalOBoolean2ᚖbool,
+		ec.marshalOBoolean2bool,
 		true,
 		false,
 	)
@@ -59108,9 +59095,20 @@ func (ec *executionContext) fieldContext_ServiceFlags_psLoggingDisabled(_ contex
 	fc = &graphql.FieldContext{
 		Object:     "ServiceFlags",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-=======
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SetCursorAPIKeyPayload_success(ctx context.Context, field graphql.CollectedField, obj *SetCursorAPIKeyPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
 		ec.fieldContext_SetCursorAPIKeyPayload_success,
 		func(ctx context.Context) (any, error) {
 			return obj.Success, nil
@@ -59128,7 +59126,6 @@ func (ec *executionContext) fieldContext_SetCursorAPIKeyPayload_success(_ contex
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
->>>>>>> main
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
@@ -59136,8 +59133,6 @@ func (ec *executionContext) fieldContext_SetCursorAPIKeyPayload_success(_ contex
 	return fc, nil
 }
 
-<<<<<<< HEAD
-=======
 func (ec *executionContext) _SetCursorAPIKeyPayload_keyLastFour(ctx context.Context, field graphql.CollectedField, obj *SetCursorAPIKeyPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -59167,7 +59162,6 @@ func (ec *executionContext) fieldContext_SetCursorAPIKeyPayload_keyLastFour(_ co
 	return fc, nil
 }
 
->>>>>>> main
 func (ec *executionContext) _SetLastRevisionPayload_mergeBaseRevision(ctx context.Context, field graphql.CollectedField, obj *SetLastRevisionPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -85115,13 +85109,11 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 			it.S3LifecycleSyncDisabled = data
 		case "psLoggingDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("psLoggingDisabled"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.ServiceFlagsInput().PsLoggingDisabled(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.PSLoggingDisabled = data
 		}
 	}
 
@@ -101356,38 +101348,7 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 		case "s3LifecycleSyncDisabled":
 			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
 		case "psLoggingDisabled":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ServiceFlags_psLoggingDisabled(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._ServiceFlags_psLoggingDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
