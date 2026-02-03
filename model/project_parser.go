@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -646,18 +647,19 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
 	localOpts := &GetProjectOpts{
-		Ref:                 projectOpts.Ref,
-		PatchOpts:           projectOpts.PatchOpts,
-		LocalModules:        projectOpts.LocalModules,
-		RemotePath:          include.FileName,
-		Revision:            projectOpts.Revision,
-		ReadFileFrom:        projectOpts.ReadFileFrom,
-		Identifier:          identifier,
-		UnmarshalStrict:     projectOpts.UnmarshalStrict,
-		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
-		ReferencePatchID:    projectOpts.ReferencePatchID,
-		ReferenceManifestID: projectOpts.ReferenceManifestID,
-		IsIncludedFile:      true,
+		Ref:                       projectOpts.Ref,
+		PatchOpts:                 projectOpts.PatchOpts,
+		LocalModules:              projectOpts.LocalModules,
+		RemotePath:                include.FileName,
+		Revision:                  projectOpts.Revision,
+		ReadFileFrom:              projectOpts.ReadFileFrom,
+		Identifier:                identifier,
+		UnmarshalStrict:           projectOpts.UnmarshalStrict,
+		LocalModuleIncludes:       projectOpts.LocalModuleIncludes,
+		ReferencePatchID:          projectOpts.ReferencePatchID,
+		ReferenceManifestID:       projectOpts.ReferenceManifestID,
+		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
+		IsIncludedFile:            true,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -814,12 +816,238 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	return nil
 }
 
+// gitIncludeDirs contains information about git clone and worktree directories
+// that can be used when including YAML files.
+type gitIncludeDirs struct {
+	// clonesForOwnerRepo maps a git owner/repo to the directory where its
+	// git clone is located.
+	clonesForOwnerRepo map[gitOwnerRepo]string
+	// worktreesForOwnerRepo maps a git owner/repo to the list of available
+	// worktree directories.
+	worktreesForOwnerRepo map[gitOwnerRepo][]string
+}
+
+type gitOwnerRepo struct {
+	owner string
+	repo  string
+}
+
+func newGitOwnerRepo(owner, repo string) gitOwnerRepo {
+	return gitOwnerRepo{
+		owner: owner,
+		repo:  repo,
+	}
+}
+
+// TODO (DEVPROD-26851): use this in follow-up PR.
+func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, workerNum int) string {
+	ownerRepo := newGitOwnerRepo(owner, repo)
+	worktrees := d.worktreesForOwnerRepo[ownerRepo]
+	if len(worktrees) < workerNum {
+		// TODO (DEVPROD-26851): if git usage is enabled and this returns an
+		// empty string, that would be a bug. Make sure to add temporary
+		// monitoring to make sure this works as expected.
+		return ""
+	}
+	return worktrees[workerNum]
+}
+
+// setupParallelGitIncludeDirs sets up git clones and worktrees in preparation
+// for retrieving included YAML files using git. numWorkers determines how
+// many worktrees are created for each included repo.
+// This is primarily a performance optimization. If using git to retrieve
+// included files from GitHub, repeating the same git setup for every single
+// included file is expensive and slow.
+func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
+	if !readFromRemoteSource(opts.ReadFileFrom) {
+		return nil, nil
+	}
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+	if flags.UseGitForGitHubFilesDisabled {
+		return nil, nil
+	}
+	if opts.Ref == nil {
+		return nil, errors.New("project ref cannot be nil when including files from remote sources")
+	}
+
+	ctx, span := tracer.Start(ctx, "setupGitIncludeDirs", trace.WithAttributes(
+		attribute.String(evergreen.ProjectIDOtelAttribute, opts.Ref.Id),
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, opts.Ref.Identifier),
+		attribute.String(evergreen.ProjectOrgOtelAttribute, opts.Ref.Owner),
+		attribute.String(evergreen.ProjectRepoOtelAttribute, opts.Ref.Repo),
+	))
+	defer span.End()
+
+	dirs = &gitIncludeDirs{
+		clonesForOwnerRepo:    make(map[gitOwnerRepo]string),
+		worktreesForOwnerRepo: make(map[gitOwnerRepo][]string),
+	}
+
+	defer func() {
+		if err == nil {
+			return
+		}
+		// If this function errored, clean up any intermediate git clone
+		// directories and worktrees that were created.
+		for ownerRepo, dir := range dirs.clonesForOwnerRepo {
+			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
+				"message":            "could not clean up git clone directory after failing to set up git directories",
+				"owner":              ownerRepo.owner,
+				"repo":               ownerRepo.repo,
+				"project_id":         opts.Ref.Id,
+				"project_identifier": opts.Ref.Identifier,
+				"dir":                dir,
+				"ticket":             "DEVPROD-26143",
+			}))
+		}
+	}()
+
+	includedModuleNames := map[string]struct{}{}
+	var includesProjectFiles bool
+	for _, include := range includes {
+		if include.Module != "" {
+			includedModuleNames[include.Module] = struct{}{}
+		} else {
+			includesProjectFiles = true
+		}
+	}
+
+	type gitInput struct {
+		ownerRepo gitOwnerRepo
+		revision  string
+	}
+	type gitOutput struct {
+		ownerRepo    gitOwnerRepo
+		cloneDir     string
+		worktreeDirs []string
+		err          error
+	}
+
+	// Creating git clones is slow, so for better performance, parallelize the
+	// git clones.
+	reposToProcess := make(chan gitInput, len(includedModuleNames)+1)
+	output := make(chan gitOutput, len(includedModuleNames)+1)
+
+	if includesProjectFiles {
+		ownerRepo := newGitOwnerRepo(opts.Ref.Owner, opts.Ref.Repo)
+		reposToProcess <- gitInput{
+			ownerRepo: ownerRepo,
+			revision:  opts.Revision,
+		}
+	}
+
+	for modName := range includedModuleNames {
+		mod, err := GetModuleByName(modules, modName)
+		if err != nil {
+			return dirs, errors.Wrapf(err, "getting module for module name '%s'", modName)
+		}
+		repoOwner, repoName, err := mod.GetOwnerAndRepo()
+		if err != nil {
+			return dirs, errors.Wrapf(err, "getting owner and repo for module '%s'", mod.Name)
+		}
+		revision, err := getRevisionForRemoteModule(ctx, *mod, modName, *opts)
+		if err != nil {
+			return dirs, errors.Wrapf(err, "getting revision for module '%s'", mod.Name)
+		}
+
+		ownerRepo := newGitOwnerRepo(repoOwner, repoName)
+		if _, ok := dirs.clonesForOwnerRepo[ownerRepo]; ok {
+			// When including files, there should not be any duplicate repos
+			// defined in the modules, and the modules should not use the exact
+			// same repo as the project itself. If this is ever hit, it's a bug.
+			grip.Warning(message.Fields{
+				"message":            "trying to make multiple git clones of the same repo, skipping duplicate repo",
+				"project_id":         opts.Ref.Id,
+				"project_identifier": opts.Ref.Identifier,
+				"owner":              repoOwner,
+				"repo":               repoName,
+				"revision":           revision,
+				"module":             modName,
+			})
+			continue
+		}
+
+		reposToProcess <- gitInput{
+			ownerRepo: ownerRepo,
+			revision:  revision,
+		}
+	}
+
+	close(reposToProcess)
+
+	wg := sync.WaitGroup{}
+
+	numGitWorkers := util.Min(numWorkers, len(reposToProcess))
+	for range numGitWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for repoData := range reposToProcess {
+				cloneDir, worktreeDirs, err := gitCloneAndCreateWorktrees(ctx, repoData.ownerRepo, repoData.revision, numWorkers)
+				output <- gitOutput{
+					ownerRepo:    repoData.ownerRepo,
+					cloneDir:     cloneDir,
+					worktreeDirs: worktreeDirs,
+					err:          err,
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(output)
+
+	catcher := grip.NewBasicCatcher()
+	for out := range output {
+		if out.cloneDir != "" {
+			dirs.clonesForOwnerRepo[out.ownerRepo] = out.cloneDir
+		}
+		if out.worktreeDirs != nil {
+			dirs.worktreesForOwnerRepo[out.ownerRepo] = out.worktreeDirs
+		}
+		if out.err != nil {
+			catcher.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerRepo.owner, out.ownerRepo.repo)
+		}
+	}
+
+	return dirs, catcher.Resolve()
+}
+
+// gitCloneAndCreateWorktrees performs a minimal git clone of the specified repo
+// for the specific revision. Once the git clone is finished, it creates git
+// worktrees under the clone directory based on numWorktrees.
+func gitCloneAndCreateWorktrees(ctx context.Context, ownerRepo gitOwnerRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
+	dir, err := thirdparty.GitCloneMinimal(ctx, ownerRepo.owner, ownerRepo.repo, revision)
+	if err != nil {
+		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerRepo.owner, ownerRepo.repo, revision)
+	}
+
+	for i := range numWorktrees {
+		worktreeDir := filepath.Join(dir, fmt.Sprintf("worktree-%d", i))
+		if err := thirdparty.GitCreateWorktree(ctx, dir, worktreeDir); err != nil {
+			return dir, worktreeDirs, errors.Wrapf(err, "creating git worktree for repo '%s/%s'", ownerRepo.owner, ownerRepo.repo)
+		}
+		worktreeDirs = append(worktreeDirs, worktreeDir)
+	}
+
+	return dir, worktreeDirs, nil
+}
+
 const (
 	ReadFromGithub    = "github"
 	ReadFromLocal     = "local"
 	ReadFromPatch     = "patch"
 	ReadFromPatchDiff = "patch_diff"
 )
+
+// readFromRemoteSource returns true if the readFrom option requires
+// retrieving a file from a remote source (i.e. GitHub).
+func readFromRemoteSource(readFrom string) bool {
+	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
+}
 
 type GetProjectOpts struct {
 	Ref                       *ProjectRef
@@ -892,7 +1120,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}))
 		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
 		if err != nil {
-			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
+			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Ref.Id, opts.Revision)
 		}
 		return fileContents, nil
 	}
@@ -942,35 +1170,43 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	moduleOpts := GetProjectOpts{
 		Ref:          &pRef,
 		RemotePath:   opts.RemotePath,
-		Revision:     module.Branch,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
 	}
+	moduleOpts.Revision, err = getRevisionForRemoteModule(ctx, *module, include.Module, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting revision for module '%s'", include.Module)
+	}
 
+	return retrieveFile(ctx, moduleOpts)
+}
+
+// getRevisionForRemoteModule returns the revision or branch to use for the
+// given module include. This only works if retrieving files from a remote
+// source (e.g. GitHub); it will not handle includes from local modules.
+func getRevisionForRemoteModule(ctx context.Context, mod Module, modName string, opts GetProjectOpts) (string, error) {
 	if opts.AutoUpdateModuleRevisions != nil {
-		if revision, ok := opts.AutoUpdateModuleRevisions[include.Module]; ok {
-			moduleOpts.Revision = revision
-			return retrieveFile(ctx, moduleOpts)
+		if revision, ok := opts.AutoUpdateModuleRevisions[modName]; ok {
+			return revision, nil
 		}
 	}
 
-	// If a reference manifest is provided, use the module revision from the manifest.
 	if opts.ReferenceManifestID != "" {
 		m, err := manifest.FindOne(ctx, manifest.ById(opts.ReferenceManifestID))
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
+			return "", errors.Wrapf(err, "finding reference manifest '%s'", opts.ReferenceManifestID)
 		}
 		// Sometimes the manifest might be nil, in which case we don't want to set the revision.
 		if m != nil {
 			for name, mod := range m.Modules {
-				if name == include.Module {
-					moduleOpts.Revision = mod.Revision
-					break
+				if name == modName {
+					return mod.Revision, nil
 				}
 			}
 		}
 	}
-	return retrieveFile(ctx, moduleOpts)
+
+	return mod.Branch, nil
 }
 
 func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, error) {

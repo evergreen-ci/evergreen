@@ -674,6 +674,12 @@ func (b *specificActivationInfo) taskOrVariantHasSpecificActivation(variant, tas
 
 func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
+
+	taskGroupMap := make(map[string]parserTaskGroup)
+	for _, tg := range g.TaskGroups {
+		taskGroupMap[tg.Name] = tg
+	}
+
 	for _, bv := range g.BuildVariants {
 		// Only consider batchtime for mainline builds. A task/BV will have
 		// specific activation if activate is explicitly set to false;
@@ -688,21 +694,42 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		for _, bvt := range bv.Tasks {
 			// If we are doing stepback, we only want to activate specific tasks.
 			if g.Task.ActivatedBy == evergreen.StepbackTaskActivator {
-				info := specificStepbackInfo{task: bvt.Name}
-				if utility.FromBoolPtr(bvt.Activate) {
-					// If the generated task has "activate: true", we should activate it.
-					info.activate = true
-				} else if isStepbackTask(g.Task, bv.Name, bvt.Name) {
-					// If the generated task is one of the ones being stepped back, we should activate it.
-					info.activate = true
+				if tg, isTaskGroup := taskGroupMap[bvt.Name]; isTaskGroup {
+					for _, taskName := range tg.Tasks {
+						info := specificStepbackInfo{task: taskName}
+						if utility.FromBoolPtr(bvt.Activate) {
+							// If the generated task has "activate: true", we should activate it.
+							info.activate = true
+							// Check both the individual task name and the task group name.
+							// Stepback stores the task group name, so we need to check that too.
+						} else if isStepbackTask(g.Task, bv.Name, taskName) || isStepbackTask(g.Task, bv.Name, bvt.Name) {
+							info.activate = true
+						}
+						res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], info)
+					}
+				} else {
+					info := specificStepbackInfo{task: bvt.Name}
+					if utility.FromBoolPtr(bvt.Activate) {
+						info.activate = true
+					} else if isStepbackTask(g.Task, bv.Name, bvt.Name) {
+						info.activate = true
+					}
+					res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], info)
 				}
-				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], info)
 				continue // Don't consider batchtime/activation if we're stepping generated tasks.
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
-				batchTimeTasks = append(batchTimeTasks, bvt.Name)
+				if tg, isTaskGroup := taskGroupMap[bvt.Name]; isTaskGroup {
+					batchTimeTasks = append(batchTimeTasks, tg.Tasks...)
+				} else {
+					batchTimeTasks = append(batchTimeTasks, bvt.Name)
+				}
 			} else if !utility.FromBoolTPtr(bvt.Activate) {
-				batchTimeTasks = append(batchTimeTasks, bvt.Name)
+				if tg, isTaskGroup := taskGroupMap[bvt.Name]; isTaskGroup {
+					batchTimeTasks = append(batchTimeTasks, tg.Tasks...)
+				} else {
+					batchTimeTasks = append(batchTimeTasks, bvt.Name)
+				}
 			}
 		}
 		if len(batchTimeTasks) > 0 {

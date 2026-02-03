@@ -745,7 +745,8 @@ changed. This is the opposite of ignoring - it defines what files the variant ca
 **Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
 the path filter would have matched it.
 
-Note: specifying paths could cause crons to not activate the build variants if the path filter does not match.
+Cron, batchtime, and activate true/false will still take precedent over path filtering,
+as those settings are meant to ensure consistent testing, rather than relevant changes.
 
 Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
