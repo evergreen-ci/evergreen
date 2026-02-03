@@ -131,8 +131,7 @@ func TestCalculatePutRequestsWithContext(t *testing.T) {
 		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 0))
 		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, -100))
 		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, -1*MB))
-		// Small bucket with Writer method returns 1 even for zero size (unknown size case)
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 0))
+		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 0))
 	})
 
 	t.Run("CopyMethod", func(t *testing.T) {

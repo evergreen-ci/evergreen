@@ -25,15 +25,9 @@ const (
 	S3UploadMethodCopy   S3UploadMethod = "copy"
 )
 
-// CalculatePutRequestsWithContext returns the accurate number of S3 PUT API calls
+// CalculatePutRequestsWithContext returns the number of S3 PUT API calls
 // needed to upload a file based on bucket type, upload method, and file size.
 func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMethod, fileSize int64) int {
-	// Small buckets with Writer method always make 1 PUT request regardless of size
-	// (including zero size when size is unknown)
-	if method == S3UploadMethodWriter && bucketType == S3BucketTypeSmall && fileSize >= 0 {
-		return 1
-	}
-
 	if fileSize <= 0 {
 		return 0
 	}
@@ -43,6 +37,10 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 		return 1
 
 	case S3UploadMethodWriter:
+		if bucketType == S3BucketTypeSmall {
+			return 1
+		}
+		// Large bucket Writer uses multipart for all sizes, <= 5MB is simple multipart (3 PUTs)
 		if fileSize <= S3PartSize {
 			return 3
 		}
@@ -50,6 +48,7 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 		return 1 + numParts + 1
 
 	case S3UploadMethodPut:
+		// AWS SDK uses single PUT for < 5MB, multipart for >= 5MB
 		if fileSize < S3PartSize {
 			return 1
 		}

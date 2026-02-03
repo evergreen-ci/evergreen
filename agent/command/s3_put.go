@@ -545,12 +545,8 @@ retryLoop:
 					continue retryLoop
 				}
 
-				// Count retry PUTs: each failed attempt = 1 PUT
-				retryPuts := i - 1
-				totalPutRequests := calculatedPuts + retryPuts
-
-				logger.Task().Infof("S3 upload succeeded: file='%s', size=%d bytes, attempts=%d, total_puts=%d (successful=%d + retry=%d)",
-					filepath.Base(remoteName), fileSize, i, totalPutRequests, calculatedPuts, retryPuts)
+				logger.Task().Infof("S3 upload succeeded: file='%s', size=%d bytes, attempts=%d, total_puts=%d",
+					filepath.Base(remoteName), fileSize, i, calculatedPuts)
 
 				uploadPath := fpath
 				if s3pc.preservePath {
@@ -561,7 +557,7 @@ retryLoop:
 					localPath:   uploadPath,
 					remotePath:  remoteName,
 					fileSize:    fileSize,
-					putRequests: totalPutRequests,
+					putRequests: calculatedPuts,
 				})
 
 			}
