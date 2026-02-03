@@ -65,6 +65,7 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		// If using the whole source directory, skip the unnecessary search for
 		// matching files.
 		filenames = []string{c.SourceDir}
+		logger.Task().Infof("Archiving entire directory: %s", c.SourceDir)
 	} else {
 		files, _, err := findContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 		if err != nil {
@@ -74,6 +75,7 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		filenames = make([]string, len(files))
 		for idx := range files {
 			filenames[idx] = files[idx].path
+			logger.Task().Infof("Adding to archive: %s", filenames[idx])
 		}
 	}
 
@@ -86,6 +88,7 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		"num_files": len(filenames),
 		"message":   "successfully created archive",
 	})
+	logger.Task().Infof("Archive created at: %s", c.Target)
 
 	return nil
 }
