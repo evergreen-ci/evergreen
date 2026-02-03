@@ -622,7 +622,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 		}
 	}
 
-	builds, err := model.GetVersionBuilds(ctx, buildIds)
+	builds, err := model.GetVersionBuilds(ctx, versionID, buildIds)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}

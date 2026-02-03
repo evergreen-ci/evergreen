@@ -374,22 +374,22 @@ func TestGetVersionBuilds(t *testing.T) {
 		}
 		assert.NoError(t, b.Insert(t.Context()))
 
-		tsk := task.Task{Id: "t_80", DisplayName: "Task 80", Status: evergreen.TaskSucceeded, BuildId: "b"}
+		tsk := task.Task{Id: "t_80", DisplayName: "Task 80", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1"}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_79", DisplayName: "Task 79", Status: evergreen.TaskFailed, BuildId: "b"}
+		tsk = task.Task{Id: "t_79", DisplayName: "Task 79", DisplayStatusCache: evergreen.TaskFailed, BuildId: "b", Version: "v_1"}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_86", DisplayName: "Task 86", Status: evergreen.TaskSucceeded, BuildId: "b"}
+		tsk = task.Task{Id: "t_86", DisplayName: "Task 86", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1"}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_200", DisplayName: "Task 200", Status: evergreen.TaskSucceeded, BuildId: "b"}
+		tsk = task.Task{Id: "t_200", DisplayName: "Task 200", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1"}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_45", DisplayName: "Task 12", Status: evergreen.TaskWillRun, BuildId: "a"}
+		tsk = task.Task{Id: "t_45", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1"}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun, BuildId: "a"}
+		tsk = task.Task{Id: "t_12", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1"}
 		assert.NoError(t, tsk.Insert(t.Context()))
-		tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, BuildId: "a"}
+		tsk = task.Task{Id: "t_66", DisplayName: "Task 66", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1"}
 		assert.NoError(t, tsk.Insert(t.Context()))
 
-		builds, err := GetVersionBuilds(t.Context(), v.BuildIds)
+		builds, err := GetVersionBuilds(t.Context(), v.Id, v.BuildIds)
 		assert.NoError(t, err)
 		assert.Len(t, builds, 2)
 
@@ -434,44 +434,48 @@ func TestGetVersionBuilds(t *testing.T) {
 
 		// Display task (should be excluded)
 		displayTask := task.Task{
-			Id:             "display_task",
-			DisplayName:    "Display Task",
-			Status:         evergreen.TaskSucceeded,
-			BuildId:        "build_1",
-			DisplayOnly:    true,
-			ExecutionTasks: []string{"exec_task_1", "exec_task_2"},
+			Id:                 "display_task",
+			DisplayName:        "Display Task",
+			DisplayStatusCache: evergreen.TaskSucceeded,
+			BuildId:            "build_1",
+			Version:            "v_1",
+			DisplayOnly:        true,
+			ExecutionTasks:     []string{"exec_task_1", "exec_task_2"},
 		}
 		assert.NoError(t, displayTask.Insert(t.Context()))
 
 		// Execution tasks (should be included)
 		execTask1 := task.Task{
-			Id:            "exec_task_1",
-			DisplayName:   "Execution Task 1",
-			Status:        evergreen.TaskSucceeded,
-			BuildId:       "build_1",
-			DisplayTaskId: utility.ToStringPtr("display_task"),
+			Id:                 "exec_task_1",
+			DisplayName:        "Execution Task 1",
+			DisplayStatusCache: evergreen.TaskSucceeded,
+			BuildId:            "build_1",
+			Version:            "v_1",
+			DisplayTaskId:      utility.ToStringPtr("display_task"),
 		}
 		assert.NoError(t, execTask1.Insert(t.Context()))
 
 		execTask2 := task.Task{
-			Id:            "exec_task_2",
-			DisplayName:   "Execution Task 2",
-			Status:        evergreen.TaskSucceeded,
-			BuildId:       "build_1",
-			DisplayTaskId: utility.ToStringPtr("display_task"),
+			Id:                 "exec_task_2",
+			DisplayName:        "Execution Task 2",
+			DisplayStatusCache: evergreen.TaskSucceeded,
+			BuildId:            "build_1",
+			Version:            "v_1",
+			DisplayTaskId:      utility.ToStringPtr("display_task"),
 		}
 		assert.NoError(t, execTask2.Insert(t.Context()))
 
 		// Regular task (should be included)
 		regularTask := task.Task{
-			Id:          "regular_task",
-			DisplayName: "Regular Task",
-			Status:      evergreen.TaskWillRun,
-			BuildId:     "build_1",
+			Id:                 "regular_task",
+			DisplayName:        "Regular Task",
+			DisplayStatusCache: evergreen.TaskWillRun,
+			BuildId:            "build_1",
+			Version:            "v_1",
 		}
 		assert.NoError(t, regularTask.Insert(t.Context()))
 
-		builds, err := GetVersionBuilds(t.Context(), v.BuildIds)
+		builds, err := GetVersionBuilds(t.Context(), v.Id, v.BuildIds)
 		assert.NoError(t, err)
 		require.Len(t, builds, 1)
 		assert.Equal(t, "Ubuntu", builds[0].DisplayName)

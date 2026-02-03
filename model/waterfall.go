@@ -27,7 +27,6 @@ type WaterfallTask struct {
 	DisplayName        string `bson:"display_name" json:"display_name"`
 	DisplayStatusCache string `bson:"display_status_cache" json:"display_status_cache"`
 	Execution          int    `bson:"execution" json:"execution"`
-	Status             string `bson:"status" json:"status"`
 }
 
 type WaterfallBuild struct {
@@ -393,27 +392,27 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 }
 
 // GetVersionBuilds returns a list of builds with populated tasks for the given build IDs.
-func GetVersionBuilds(ctx context.Context, buildIds []string) ([]WaterfallBuild, error) {
+func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) ([]WaterfallBuild, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
 
 	if len(buildIds) == 0 {
 		return []WaterfallBuild{}, nil
 	}
 
+	match := bson.M{
+		task.VersionKey:     versionID,
+		task.BuildIdKey:     bson.M{"$in": buildIds},
+		task.DisplayOnlyKey: bson.M{"$ne": true},
+	}
+
 	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				task.BuildIdKey:     bson.M{"$in": buildIds},
-				task.DisplayOnlyKey: bson.M{"$ne": true},
-			},
-		},
+		{"$match": match},
 		{
 			"$project": bson.M{
 				task.IdKey:                 1,
 				task.DisplayNameKey:        1,
 				task.DisplayStatusCacheKey: 1,
 				task.ExecutionKey:          1,
-				task.StatusKey:             1,
 				task.BuildIdKey:            1,
 			},
 		},
@@ -426,7 +425,6 @@ func GetVersionBuilds(ctx context.Context, buildIds []string) ([]WaterfallBuild,
 						"display_name":         "$" + task.DisplayNameKey,
 						"display_status_cache": "$" + task.DisplayStatusCacheKey,
 						"execution":            "$" + task.ExecutionKey,
-						"status":               "$" + task.StatusKey,
 					},
 				},
 			},
