@@ -1162,11 +1162,17 @@ oom_tracker: false
 
 By default, Evergreen logs process information every 60 seconds during task execution using the `ps` command. This default behavior will be deprecated soon, and process logging will become opt-in (disabled by default unless explicitly configured).
 
-You can customize the process logging command by setting the `ps` field at the project, task, or build variant task level. There is currently no option to opt out, but once default ps logging is deprecated, you will be able to disable process logging, by either not setting it anywhere (the default) or by setting `ps` to an empty string. When enabled, the specified command runs every 60 seconds.
+You can customize the process logging command by setting the `ps` field at multiple configuration levels. There is currently no option to opt out, but once default ps logging is deprecated, you will be able to disable process logging, by either not setting it anywhere (the default) or by setting `ps` to an empty string. When enabled, the specified command runs every 60 seconds.
 
-The `ps` field can be set at three levels (priority: build variant task > task > project):
+The `ps` field follows a priority order (from highest to lowest):
 
-**Project level** (applies to all tasks unless overridden):
+1. **Build variant task level** - Overrides all other settings
+2. **Project task level** - Overrides project-level and lower settings
+3. **Project level** - Overrides build variant expansions and default
+4. **Build variant expansions** - Can set `ps` as an expansion variable
+5. **Default** - Currently defaults to `"ps"` (will be deprecated to no logging)
+
+**Project level** (overrides build variant expansions and default):
 
 ```yaml
 ps: "ps -o pid" # Enable for all tasks
@@ -1179,7 +1185,7 @@ tasks:
           script: echo "Running with ps logging"
 ```
 
-**Task level** (overrides project setting):
+**Task level** (overrides project level, build variant expansions, and default):
 
 ```yaml
 tasks:
@@ -1198,24 +1204,35 @@ tasks:
           script: echo "No ps logging"
 ```
 
-**Build variant task level** (highest priority, overrides task and project):
+**Build variant task level** (highest priority, overrides task level, project level, build variant expansions, and default):
 
 ```yaml
-ps: "ps -o pid" # Project default
+ps: "ps -o pid" # Project-level
 
 tasks:
-  - name: my_task
-    ps: "ps -o pid,tty" # Task default
+  - name: my_task_1
+    ps: "ps -o pid,tty,time,comm,args" # Task-level
     commands:
       - command: shell.exec
         params:
           script: echo "Task execution"
 
+  - name: my_task_2
+    ps: "ps -o pid,tty,time,comm,args" # Task-level
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Custom ps task"
+
 buildvariants:
   - name: ubuntu2204
+    expansions:
+      ps: "ps aux" # Build variant expansion (lowest priority, only overrides default)
     tasks:
-      - name: my_task
-        ps: "ps -o pid,tty,time" # Overrides both project and task settings
+      - name: my_task_1
+        ps: "ps -o pid,tty,time" # Build variant task-level: overrides task and project level ps.
+      - name: my_task_2 # Uses task-level "ps -o pid,tty,time,comm,args" since there is no build variant task-level override.
+      - name: other_task # Uses project-level "ps -o pid" since no task-level or build variant task-level ps is set.
 ```
 
 ### Matrix Variant Definition

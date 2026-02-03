@@ -629,7 +629,6 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 
 	// GetExpansionsAndVars does not include build variant expansions or project
 	// parameters, so load them from the project.
-	a.setPSExpansion(opts)
 	for _, bv := range opts.project.BuildVariants {
 		if bv.Name == opts.task.BuildVariant {
 			opts.expansionsAndVars.Expansions.Update(bv.Expansions)
@@ -649,22 +648,51 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	// user-specified.
 	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Parameters)
 
+	// Set PS expansion after all other expansions are merged, so the priority order
+	// is correctly enforced (build variant task > project task > project > build variant expansions > default).
+	a.setPSExpansion(opts)
+
 	return opts, nil
 }
 
 // setPSExpansion sets the ps expansion based on agent setup data, project settings, and task settings.
-// The priority order is: task settings > project settings > default (if PSLoggingDisabled is false).
+// The priority order (from highest to lowest):
+// 1. Build variant task-level PS
+// 2. Project task-level PS
+// 3. Project-level PS
+// 4. Existing ps expansion (from build variant expansions or vars)
+// 5. Default based on PSLoggingDisabled (lowest)
 func (a *Agent) setPSExpansion(opts *taskInfo) {
-	// If PSLoggingDisabled is false, default to "ps" command.
-	if !a.opts.SetupData.PSLoggingDisabled {
-		opts.expansionsAndVars.Expansions.Put(ps, ps)
+	// Check build variant task-level PS (highest priority).
+	bvTask := opts.project.FindBuildVariantTaskUnit(opts.task.BuildVariant, opts.task.DisplayName)
+	if bvTask != nil && bvTask.PS != nil {
+		opts.expansionsAndVars.Expansions.Put(ps, *bvTask.PS)
+		return
 	}
-	// Project and task settings can override the default.
+
+	// Check project task-level PS (second priority).
+	projectTask := opts.project.FindProjectTask(opts.task.DisplayName)
+	if projectTask != nil && projectTask.Ps != nil {
+		opts.expansionsAndVars.Expansions.Put(ps, *projectTask.Ps)
+		return
+	}
+
+	// Check project-level PS (third priority).
 	if opts.project.PS != "" {
 		opts.expansionsAndVars.Expansions.Put(ps, opts.project.PS)
+		return
 	}
-	if projectTask := opts.project.FindProjectTask(opts.task.DisplayName); projectTask != nil && projectTask.Ps != nil {
-		opts.expansionsAndVars.Expansions.Put(ps, *projectTask.Ps)
+
+	// Check if ps is already set from build variant expansions or vars (fourth priority).
+	if _, exists := opts.expansionsAndVars.Expansions[ps]; exists {
+		return
+	}
+
+	// Apply default based on PSLoggingDisabled (lowest priority).
+	// When PSLoggingDisabled is false, default to "ps".
+	// When PSLoggingDisabled is true, leave ps unset (empty).
+	if !a.opts.SetupData.PSLoggingDisabled {
+		opts.expansionsAndVars.Expansions.Put(ps, ps)
 	}
 }
 
