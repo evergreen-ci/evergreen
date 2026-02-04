@@ -1,0 +1,91 @@
+package loaders
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/vikstrous/dataloadgen"
+	"go.mongodb.org/mongo-driver/bson"
+)
+
+type ctxKey string
+
+const loadersKey = ctxKey("dataloaders")
+
+// Loaders wraps data loaders to inject via middleware.
+type Loaders struct {
+	UserLoader *dataloadgen.Loader[string, *restModel.APIDBUser]
+}
+
+// userReader reads users from the database.
+type userReader struct{}
+
+// getUsers implements a batch function that retrieves many users by ID.
+// It returns results in the same order as the input IDs.
+func (u *userReader) getUsers(ctx context.Context, userIDs []string) ([]*restModel.APIDBUser, []error) {
+	// Fetch all users in a single query using $in
+	query := db.Query(bson.M{user.IdKey: bson.M{"$in": userIDs}})
+	users, err := user.Find(ctx, query)
+	if err != nil {
+		// Return the same error for all requested IDs
+		errs := make([]error, len(userIDs))
+		for i := range errs {
+			errs[i] = err
+		}
+		return nil, errs
+	}
+
+	// Create a map for O(1) lookup by user ID
+	userMap := make(map[string]*user.DBUser, len(users))
+	for i := range users {
+		userMap[users[i].Id] = &users[i]
+	}
+
+	// Build results in the same order as input IDs
+	// Return nil for users not found (e.g., reaped users)
+	results := make([]*restModel.APIDBUser, len(userIDs))
+	errs := make([]error, len(userIDs))
+	for i, id := range userIDs {
+		if dbUser, ok := userMap[id]; ok {
+			apiUser := &restModel.APIDBUser{}
+			apiUser.BuildFromService(*dbUser)
+			results[i] = apiUser
+		}
+		// results[i] remains nil if user not found, errs[i] remains nil
+	}
+
+	return results, errs
+}
+
+// NewLoaders instantiates data loaders for the middleware.
+func NewLoaders() *Loaders {
+	ur := &userReader{}
+	return &Loaders{
+		UserLoader: dataloadgen.NewLoader(ur.getUsers, dataloadgen.WithWait(time.Millisecond)),
+	}
+}
+
+// Middleware injects data loaders into the request context.
+func Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		loader := NewLoaders()
+		r = r.WithContext(context.WithValue(r.Context(), loadersKey, loader))
+		next.ServeHTTP(w, r)
+	})
+}
+
+// For returns the dataloader for a given context.
+func For(ctx context.Context) *Loaders {
+	return ctx.Value(loadersKey).(*Loaders)
+}
+
+// GetUser returns a single user by ID efficiently using the dataloader.
+// Returns nil if the user is not found (e.g., reaped users).
+func GetUser(ctx context.Context, userID string) (*restModel.APIDBUser, error) {
+	loaders := For(ctx)
+	return loaders.UserLoader.Load(ctx, userID)
+}
