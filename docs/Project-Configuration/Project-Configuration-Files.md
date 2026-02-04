@@ -743,7 +743,6 @@ _Merge queue behavior_: Build variant path filtering is supported for the merge 
 in one merge queue patch, we will consider the full set of changed files to determine what tasks to run.
 For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
-
 _Mainline behavior_: Cron, batchtime, and activate true/false will still take precedent over path filtering,
 as those settings are meant to ensure consistent testing, rather than relevant changes.
 
@@ -752,8 +751,7 @@ it will not run the variant even if the path filter would have matched it (excep
 
 Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
-be scheduled manually, and their tasks will still be scheduled on
-failure stepback.
+be scheduled manually, and their tasks will still be scheduled on failure stepback.
 
 ```yaml
 buildvariants:
