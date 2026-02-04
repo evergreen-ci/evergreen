@@ -84,7 +84,7 @@ type LocalExecutorOptions struct {
 }
 
 // NewLocalExecutor creates a new local task executor
-func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
+func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExecutor, error) {
 	logger := grip.NewJournaler("evergreen-local")
 
 	expansions := util.Expansions{}
@@ -112,7 +112,7 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		return nil, errors.Wrap(err, "creating jasper manager")
 	}
 
-	executor := &LocalExecutor{
+	localExecutor := &LocalExecutor{
 		workDir:        opts.WorkingDir,
 		expansions:     &expansions,
 		logger:         logger,
@@ -125,11 +125,11 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		opts:           opts,
 	}
 
-	if err := executor.fetchProjectConfig(context.Background(), opts); err != nil {
-		logger.Warningf("Failed to fetch project config from backend: %v", err)
+	if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
+		return nil, errors.Wrap(err, "fetching task config")
 	}
 
-	return executor, nil
+	return localExecutor, nil
 }
 
 // LoadProject loads and parses an Evergreen project configuration from a file
@@ -490,7 +490,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 	return nil
 }
 
-func (e *LocalExecutor) fetchProjectConfig(ctx context.Context, opts LocalExecutorOptions) error {
+func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorOptions) error {
 	taskData := client.TaskData{
 		ID:                 opts.TaskID,
 		OverrideValidation: true,

@@ -110,13 +110,11 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		APIKey:     backendConfig.APIKey,
 	}
 
-	if opts.APIUser != "" && opts.APIKey != "" {
-		grip.Infof("Using backend server: %s for task: %s", opts.ServerURL, opts.TaskID)
-	} else {
-		grip.Info("Running in local-only mode (no client config)")
+	if opts.APIUser == "" || opts.APIKey == "" {
+		http.Error(w, "API user and key are required", http.StatusUnauthorized)
 	}
 
-	executor, err := taskexec.NewLocalExecutor(opts)
+	executor, err := taskexec.NewLocalExecutor(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
