@@ -771,10 +771,9 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	}()
 
 	// Set up the system stats collector.
-	// Build commands list explicitly based on configuration.
 	statsCmds := []string{"uptime", "df -h"}
 
-	// Add ps command if configured in YAML or expansion (for backward compatibility).
+	// Add ps command if configured in YAML or expansion (for backward compatibility) when default ps logging is not disabled.
 	if psCmd := tc.getPSCommand(); psCmd != "" {
 		statsCmds = append(statsCmds, psCmd)
 	}
