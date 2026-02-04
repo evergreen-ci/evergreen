@@ -914,10 +914,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // runDefaultTimeoutHandler extracts and logs PIDs of running processes when a task times out.
 func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	pidCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	tc.logger.Execution().Info("Running default timeout handler to collect process information")
+	tc.logger.Execution().Info("Running default timeout handler to collect process information.")
 
 	var currentCmdPID int
 	var currentCmdName string
@@ -929,31 +926,31 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 	var runningPIDs []int
 	var processDetails []string
 
-	if a.jasper != nil {
-		procs, err := a.jasper.List(pidCtx, options.Running)
-		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "listing running processes during timeout"))
-		} else {
-			tc.logger.Execution().Infof("Found %d running processes managed by Jasper", len(procs))
+	if a.jasper == nil {
+		return
+	}
+	procs, err := a.jasper.List(ctx, options.Running)
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "listing running processes during timeout"))
+		return
+	}
+	tc.logger.Execution().Infof("Found %d running processes managed by Jasper", len(procs))
+	for _, proc := range procs {
+		info := proc.Info(ctx)
+		if info.PID > 0 {
+			runningPIDs = append(runningPIDs, info.PID)
 
-			for _, proc := range procs {
-				info := proc.Info(pidCtx)
-				if info.PID > 0 {
-					runningPIDs = append(runningPIDs, info.PID)
+			detail := fmt.Sprintf("PID %d: ID=%s, Running=%v",
+				info.PID, info.ID, info.IsRunning)
 
-					detail := fmt.Sprintf("PID %d: ID=%s, Running=%v",
-						info.PID, info.ID, info.IsRunning)
+			if tags := proc.GetTags(); len(tags) > 0 {
+				detail += fmt.Sprintf(", Tags=%v", tags)
+			}
 
-					if tags := proc.GetTags(); len(tags) > 0 {
-						detail += fmt.Sprintf(", Tags=%v", tags)
-					}
+			processDetails = append(processDetails, detail)
 
-					processDetails = append(processDetails, detail)
-
-					if currentCmd := tc.getCurrentCommand(); currentCmd != nil && info.IsRunning {
-						currentCmdPID = info.PID
-					}
-				}
+			if currentCmd := tc.getCurrentCommand(); currentCmd != nil && info.IsRunning {
+				currentCmdPID = info.PID
 			}
 		}
 	}
