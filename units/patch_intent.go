@@ -1141,7 +1141,7 @@ func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context
 	summaries, err := thirdparty.GetChangedFilesBetweenCommits(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.Githash, patchDoc.GithubMergeData.HeadSHA)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
-			"operation": "get changed files for github merge",
+			"operation": "getChangedFilesForGithubMerge", // TODO: remove
 			"patch_id":  patchDoc.Id.Hex(),
 			"org":       patchDoc.GithubMergeData.Org,
 			"repo":      patchDoc.GithubMergeData.Repo,
@@ -1151,7 +1151,7 @@ func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context
 		return errors.Wrapf(err, "getting changed files for merge queue patch '%s'", patchDoc.Id.Hex())
 	}
 	grip.Info(message.Fields{
-		"operation": "get changed files for github merge",
+		"operation": "getChangedFilesForGithubMerge", // TODO: remove
 		"patch_id":  patchDoc.Id.Hex(),
 		"files":     summaries,
 	})
@@ -1535,9 +1535,9 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 	changedFiles := patchDoc.FilesChanged()
 	if len(changedFiles) == 0 {
 		grip.Info(message.Fields{
-			"patch_id":            patchDoc.Id.Hex(),
-			"changed_files_empty": true,
-			"intent_type":         j.IntentType,
+			"message":     "patch has no changed files, skip path filtering",
+			"patch_id":    patchDoc.Id.Hex(),
+			"intent_type": j.IntentType,
 		})
 		// The changed files might be missing if either the patch has no changes
 		// or the changes are too large to load from GitHub. If the changed
