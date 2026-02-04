@@ -84,11 +84,11 @@ func (s *ZipCreateSuite) TestErrorsAndNormalizedPath() {
 	var err error
 	s.conf.WorkDir, err = filepath.Abs(filepath.Join("srv", "evergreen"))
 	s.Require().NoError(err)
-	s.cmd.SourceDir = "foo"
+	s.cmd.SourceDir = testutil.GetDirectoryOfFile()
+	s.cmd.Include = []string{"*.go"}
 	s.cmd.Target = "bar"
 
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-	s.Contains(s.cmd.SourceDir, s.conf.WorkDir)
 	s.Contains(s.cmd.Target, s.conf.WorkDir)
 }
 
@@ -111,4 +111,14 @@ func (s *ZipCreateSuite) TestCreateZipOfPackage() {
 	}))
 	s.NotZero(numFiles)
 	s.True(foundThisFile)
+}
+
+func (s *ZipCreateSuite) TestNoFilesMatchingIncludePattern() {
+	s.cmd.Target = filepath.Join(s.targetLocation, "empty.zip")
+	s.cmd.SourceDir = s.targetLocation
+	s.cmd.Include = []string{"*.nonexistent"}
+
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+
+	s.NoFileExists(s.cmd.Target)
 }
