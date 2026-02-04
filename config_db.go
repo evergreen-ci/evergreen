@@ -128,6 +128,9 @@ var (
 	// GraphiteConfig keys
 	graphiteCIOptimizationTokenKey = bsonutil.MustHaveTag(GraphiteConfig{}, "CIOptimizationToken")
 	graphiteServerURLKey           = bsonutil.MustHaveTag(GraphiteConfig{}, "ServerURL")
+
+	// DebugSpawnHostsConfig keys
+	setupScriptKey = bsonutil.MustHaveTag(DebugSpawnHostsConfig{}, "SetupScript")
 )
 
 func byId(id string) bson.M {

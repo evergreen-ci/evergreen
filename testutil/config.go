@@ -219,6 +219,9 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
+		DebugSpawnHosts: evergreen.DebugSpawnHostsConfig{
+			SetupScript: "#!/bin/bash\necho 'test setup script'",
+		},
 		DomainName: "example.com",
 		Expansions: map[string]string{"k2": "v2"},
 		FWS: evergreen.FWSConfig{
