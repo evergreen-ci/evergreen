@@ -16,13 +16,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// LocalBackendConfig represents backend configuration for the local debugger
-type LocalBackendConfig struct {
-	Backend BackendSettings `yaml:"backend"`
-}
+const configPath = ".evergreen-local.yml"
 
-// BackendSettings contains the backend server configuration
-type BackendSettings struct {
+type clientConfig struct {
 	ServerURL string `yaml:"server_url"`
 	TaskID    string `yaml:"task_id"`
 	APIUser   string `yaml:"api_user"`
@@ -60,38 +56,23 @@ func (d *localDaemonREST) Start() error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
 }
 
-// loadBackendConfig loads backend configuration from .evergreen-local.yml
-func (d *localDaemonREST) loadBackendConfig(baseDir string) (*LocalBackendConfig, error) {
-	// Try to find config file in current directory or parent directories
-	configPaths := []string{
-		filepath.Join(baseDir, ".evergreen-local.yml"),
-		filepath.Join(baseDir, ".evergreen-local.yaml"),
-		".evergreen-local.yml",
-		".evergreen-local.yaml",
+func (d *localDaemonREST) loadDebugClientConfig() (*clientConfig, error) {
+	grip.Debugf("Checking for config file: %s", configPath)
+	if _, err := os.Stat(configPath); err != nil {
+		return nil, errors.Wrapf(err, "config file %s does not exist", configPath)
+	}
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading config file %s", configPath)
+	}
+	var config clientConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, errors.Wrapf(err, "parsing config file %s", configPath)
 	}
 
-	for _, configPath := range configPaths {
-		grip.Debugf("Checking for config file: %s", configPath)
-		if _, err := os.Stat(configPath); err == nil {
-			data, err := os.ReadFile(configPath)
-			if err != nil {
-				return nil, errors.Wrapf(err, "reading config file %s", configPath)
-			}
-
-			var config LocalBackendConfig
-			if err := yaml.Unmarshal(data, &config); err != nil {
-				return nil, errors.Wrapf(err, "parsing config file %s", configPath)
-			}
-
-			grip.Infof("Loaded backend configuration from %s (server: %s, task: %s, user: %s)",
-				configPath, config.Backend.ServerURL, config.Backend.TaskID, config.Backend.APIUser)
-			return &config, nil
-		}
-	}
-
-	// No config file found - that's okay, we can run without backend
-	grip.Info("No .evergreen-local.yml found, running without backend connection")
-	return &LocalBackendConfig{}, nil
+	grip.Infof("Loaded cleint configuration from %s (server: %s, task: %s, user: %s)",
+		configPath, config.ServerURL, config.TaskID, config.APIUser)
+	return &config, nil
 }
 
 // handleHealth checks if the daemon is running
@@ -115,30 +96,24 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	workDir := filepath.Dir(req.ConfigPath)
 
-	// Load backend configuration if available
-	grip.Infof("Looking for backend configuration in directory: %s", workDir)
-	backendConfig, err := d.loadBackendConfig(workDir)
+	backendConfig, err := d.loadDebugClientConfig()
 	if err != nil {
-		grip.Warningf("Failed to load backend config: %v", err)
-		// Continue without backend - local execution can still work
-		backendConfig = &LocalBackendConfig{}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	opts := taskexec.LocalExecutorOptions{
 		WorkingDir: workDir,
-		LogLevel:   "info",
-		Timeout:    7200,
-		ServerURL:  backendConfig.Backend.ServerURL,
-		TaskID:     backendConfig.Backend.TaskID,
-		APIUser:    backendConfig.Backend.APIUser,
-		APIKey:     backendConfig.Backend.APIKey,
+		ServerURL:  backendConfig.ServerURL,
+		TaskID:     backendConfig.TaskID,
+		APIUser:    backendConfig.APIUser,
+		APIKey:     backendConfig.APIKey,
 	}
 
-	// Log backend configuration status
 	if opts.APIUser != "" && opts.APIKey != "" {
 		grip.Infof("Using backend server: %s for task: %s", opts.ServerURL, opts.TaskID)
 	} else {
-		grip.Info("Running in local-only mode (no backend configuration)")
+		grip.Info("Running in local-only mode (no client config)")
 	}
 
 	executor, err := taskexec.NewLocalExecutor(opts)

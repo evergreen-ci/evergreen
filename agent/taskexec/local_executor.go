@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -77,16 +76,11 @@ type LocalExecutor struct {
 // LocalExecutorOptions contains configuration for the local executor
 type LocalExecutorOptions struct {
 	WorkingDir string
-	LogFile    string
-	LogLevel   string
-	Timeout    int
 	Expansions map[string]string
-
-	// Backend communication
-	ServerURL string
-	TaskID    string
-	APIUser   string
-	APIKey    string
+	ServerURL  string
+	TaskID     string
+	APIUser    string
+	APIKey     string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -101,7 +95,7 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		expansions.Put(k, v)
 	}
 
-	comm := client.NewAPIUserCommunicator(opts.ServerURL, opts.APIUser, opts.APIKey)
+	comm := client.NewDebugCommunicator(opts.ServerURL, opts.APIUser, opts.APIKey)
 	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{
@@ -386,14 +380,6 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof("Preparing task: %s", taskName)
 
-	// If we have backend configuration, prepare for git.get_project
-	if e.opts.APIUser != "" && e.opts.APIKey != "" {
-		if err := e.prepareForGitGetProject(context.Background()); err != nil {
-			e.logger.Warningf("Failed to prepare for git.get_project: %v", err)
-			// Don't fail - some tasks might not need git.get_project
-		}
-	}
-
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
 
@@ -504,14 +490,16 @@ func (e *LocalExecutor) rebuildCommandList() error {
 	return nil
 }
 
-// fetchProjectConfig fetches project configuration from the backend using API authentication
 func (e *LocalExecutor) fetchProjectConfig(ctx context.Context, opts LocalExecutorOptions) error {
 	taskData := client.TaskData{
 		ID:                 opts.TaskID,
 		OverrideValidation: true,
 	}
+	if opts.TaskID == "" {
+		e.createSyntheticTask("local_task")
+		return nil
+	}
 
-	e.logger.Infof("Fetching project ref for task: %s", taskData.ID)
 	projectRef, err := e.communicator.GetProjectRef(ctx, taskData)
 	if err != nil {
 		return errors.Wrap(err, "getting project ref")
@@ -520,108 +508,50 @@ func (e *LocalExecutor) fetchProjectConfig(ctx context.Context, opts LocalExecut
 		return errors.New("project ref not found")
 	}
 	e.taskConfig.ProjectRef = *projectRef
-	e.logger.Infof("Fetched project ref: id=%s, identifier=%s, owner=%s, repo=%s, branch=%s",
-		projectRef.Id, projectRef.Identifier, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 
-	// Workaround: The API returns different field names than expected, so we might get empty owner/repo
-	// If that happens, use hardcoded values based on the project identifier
-	if e.taskConfig.ProjectRef.Owner == "" || e.taskConfig.ProjectRef.Repo == "" {
-		if projectRef.Identifier == "sandbox" {
-			e.taskConfig.ProjectRef.Owner = "evergreen-ci"
-			e.taskConfig.ProjectRef.Repo = "commit-queue-sandbox"
-			e.taskConfig.ProjectRef.Branch = "main"
-			e.logger.Infof("Applied sandbox project workaround: owner=%s, repo=%s, branch=%s",
-				e.taskConfig.ProjectRef.Owner, e.taskConfig.ProjectRef.Repo, e.taskConfig.ProjectRef.Branch)
-		} else if projectRef.Identifier == "evergreen" || projectRef.Identifier == "evg" {
-			e.taskConfig.ProjectRef.Owner = "evergreen-ci"
-			e.taskConfig.ProjectRef.Repo = "evergreen"
-			e.taskConfig.ProjectRef.Branch = "main"
-			e.logger.Infof("Applied evergreen project workaround: owner=%s, repo=%s, branch=%s",
-				e.taskConfig.ProjectRef.Owner, e.taskConfig.ProjectRef.Repo, e.taskConfig.ProjectRef.Branch)
-		}
-	}
-
-	taskObj, err := e.communicator.GetTask(ctx, taskData)
+	tsk, err := e.communicator.GetTask(ctx, taskData)
 	if err != nil {
-		e.logger.Warningf("Failed to fetch task from backend: %v", err)
-		e.createSyntheticTask("local_task")
-	} else if taskObj != nil {
-		taskObj.Secret = "mock_secret"
-		e.taskConfig.Task = *taskObj
-		e.logger.Infof("Fetched task: %s (revision: %s)", taskObj.Id, taskObj.Revision)
+		e.logger.Errorf("Failed to fetch task from backend: %v", err)
+		return err
 	}
+	if tsk == nil {
+		return errors.Errorf("task '%s' not found", opts.TaskID)
+	}
+	tsk.Secret = "mock_secret"
+	e.taskConfig.Task = *tsk
 
 	project, err := e.communicator.GetProject(ctx, taskData)
 	if err != nil {
-		grip.Warning(message.WrapError(err, "Failed to fetch project from backend, will use local YAML"))
-	} else if project != nil {
-		e.taskConfig.Project = *project
-		e.project = project
-		e.logger.Info("Successfully fetched project configuration from backend")
+		return errors.Wrapf(err, "getting parser project '%s'", tsk.Revision)
 	}
+	if project == nil {
+		return errors.Errorf("project '%s' not found", tsk.Revision)
+	}
+	e.taskConfig.Project = *project
+	e.project = project
 
 	expansionsAndVars, err := e.communicator.GetExpansionsAndVars(ctx, taskData)
 	if err != nil {
-		grip.Debug(message.WrapError(err, "No expansions from backend"))
-	} else if expansionsAndVars != nil {
-		for k, v := range expansionsAndVars.Expansions {
-			e.taskConfig.Expansions.Put(k, v)
-		}
-		for k, v := range expansionsAndVars.Vars {
-			e.taskConfig.Expansions.Put(k, v)
-		}
-		e.logger.Infof("Loaded %d expansions and %d vars from backend",
-			len(expansionsAndVars.Expansions), len(expansionsAndVars.Vars))
+		return errors.Wrapf(err, "getting expansions and vars from task '%s'", tsk.Id)
+	}
+	if expansionsAndVars == nil {
+		return nil
+	}
+	for k, v := range expansionsAndVars.Expansions {
+		e.taskConfig.Expansions.Put(k, v)
+	}
+	for k, v := range expansionsAndVars.Vars {
+		e.taskConfig.Expansions.Put(k, v)
 	}
 	e.taskConfig.NewExpansions = agentutil.NewDynamicExpansions(expansionsAndVars.Expansions)
 	return nil
 }
 
-// createSyntheticTask creates a synthetic task for local YAML execution
 func (e *LocalExecutor) createSyntheticTask(taskName string) {
-	// Generate local task ID (no secret needed for API user auth)
 	taskID := fmt.Sprintf("local_%s_%d", taskName, time.Now().Unix())
-
-	// Create task configuration for local execution
 	e.taskConfig.Task = task.Task{
-		Id:           taskID,
-		Project:      e.taskConfig.ProjectRef.Identifier, // Use project from ProjectRef
-		BuildVariant: "local",
-		DisplayName:  taskName,
-		Revision:     "HEAD", // Will be overridden if fetching from backend
-		Requester:    evergreen.RepotrackerVersionRequester,
+		Id:          taskID,
+		Project:     e.taskConfig.ProjectRef.Identifier,
+		DisplayName: taskName,
 	}
-
-	// If we have a project ref, use its branch as the revision
-	if e.taskConfig.ProjectRef.Branch != "" {
-		e.taskConfig.Task.Revision = e.taskConfig.ProjectRef.Branch
-	}
-
-	e.logger.Infof("Created synthetic task: %s", taskID)
-}
-
-// prepareForGitGetProject ensures all required data is available for git.get_project command
-func (e *LocalExecutor) prepareForGitGetProject(ctx context.Context) error {
-	// Ensure ProjectRef is fully populated
-	if e.taskConfig.ProjectRef.Owner == "" || e.taskConfig.ProjectRef.Repo == "" {
-		return errors.New("ProjectRef must have owner and repo from backend")
-	}
-
-	// Ensure Task has required fields
-	if e.taskConfig.Task.Revision == "" {
-		// Set a default revision if not provided
-		e.taskConfig.Task.Revision = e.taskConfig.ProjectRef.Branch
-	}
-
-	// The communicator should handle authentication transparently
-	// git.get_project will call comm.GetManifest() and comm.CreateInstallationTokenForClone()
-	// These should work with API authentication without code changes
-
-	e.logger.Infof("Prepared for git.get_project: owner=%s, repo=%s, branch=%s, revision=%s",
-		e.taskConfig.ProjectRef.Owner,
-		e.taskConfig.ProjectRef.Repo,
-		e.taskConfig.ProjectRef.Branch,
-		e.taskConfig.Task.Revision)
-
-	return nil
 }

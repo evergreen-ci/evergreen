@@ -8,21 +8,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-// APIUserCommunicator implements Communicator and makes requests to API endpoints
-// using API user authentication instead of task secrets. This is primarily used
-// for the local debugger to communicate with the backend.
-// We export this type so it can be type-asserted in the local executor.
-type APIUserCommunicator struct {
+type debugCommunicator struct {
 	baseCommunicator
 	apiUser string
 	apiKey  string
 }
 
-// NewAPIUserCommunicator returns a Communicator that uses API user authentication
-// for making HTTP REST requests against the API server. This is used by the local
-// debugger to communicate with the backend without requiring task secrets.
-func NewAPIUserCommunicator(serverURL, apiUser, apiKey string) Communicator {
-	c := &APIUserCommunicator{
+// NewDebugCommunicator initializes a communicator that will be used for basic agent routes required
+// for executing tasks in debug mode.
+func NewDebugCommunicator(serverURL, apiUser, apiKey string) Communicator {
+	c := &debugCommunicator{
 		baseCommunicator: newBaseCommunicator(serverURL, map[string]string{
 			evergreen.APIUserHeader: apiUser,
 			evergreen.APIKeyHeader:  apiKey,
@@ -36,14 +31,12 @@ func NewAPIUserCommunicator(serverURL, apiUser, apiKey string) Communicator {
 	return c
 }
 
-// EndTask marks the task as finished with the given status.
-func (c *APIUserCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
-	// For local execution, we don't need to actually end a task on the server
+// EndTask no-ops in debug mode.
+func (c *debugCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
 	return &apimodels.EndTaskResponse{}, nil
 }
 
-// GetNextTask returns a next task response by getting the next task for a given host.
-func (c *APIUserCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
-	// Not needed for local execution
+// GetNextTask no-ops in debug mode.
+func (c *debugCommunicator) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
 	return nil, errors.New("GetNextTask not implemented for API user communicator")
 }
