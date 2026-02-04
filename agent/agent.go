@@ -1097,6 +1097,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
+		// Close the logger before calling EndTask to prevent any subsequent operations
+		// (such as deferred cleanup in runTask) from writing to the task logger after
+		// the server has enqueued the job to move logs to the failed bucket.
+		grip.Error(errors.Wrap(tc.logger.Close(), "closing logger before ending task"))
 	}
 
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
