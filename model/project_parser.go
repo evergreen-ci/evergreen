@@ -763,6 +763,11 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		"ticket":     "DEVPROD-26851",
 	}))
 	defer func() {
+		// This is a best-effort attempt to clean up the temporary git
+		// directories after includes are processed. However, if it errors, it's
+		// not really an issue because the git directories don't use much disk
+		// space and app servers are not long-lived enough for a few leftover
+		// files to cause issues.
 		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
 			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
 			"project_id": projectID,
