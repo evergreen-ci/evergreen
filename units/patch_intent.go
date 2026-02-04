@@ -359,7 +359,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, BuildTasksAndVariantsError)
 	}
 
-	ignoredVariants := j.filterOutIgnoredVariants(patchDoc, patchedProject)
+	ignoredVariants := j.filterOutIgnoredVariants(ctx, patchDoc, patchedProject)
 	// If all variants were filtered out, send success messages and don't create the patch.
 	if len(patchDoc.VariantsTasks) == 0 && len(ignoredVariants) > 0 {
 		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
@@ -1524,12 +1524,31 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 // filterOutIgnoredVariants checks which variants should be ignored based on their path patterns
 // and the changed files in the patch. It removes ignored variants from all relevant patch fields
 // and returns the list of ignored variant names.
-func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, patchedProject *model.Project) []string {
+func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project) []string {
 	ignoredVariants := []string{}
 
 	// Only apply variant filtering for GitHub PR and merge queue patches
 	if !patchDoc.IsGithubPRPatch() && !patchDoc.IsMergeQueuePatch() {
 		return ignoredVariants
+	}
+	if patchDoc.IsMergeQueuePatch() { // TODO: remove this after rollout is complete
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":  "failed to get service flags",
+				"job":      j.ID(),
+				"patch_id": patchDoc.Id.Hex(),
+			}))
+			return ignoredVariants
+		}
+		if flags.MergeQueuePathFilteringDisabled {
+			grip.Info(message.Fields{
+				"message":  "merge queue path filtering is disabled",
+				"patch_id": patchDoc.Id.Hex(),
+				"job":      j.ID(),
+			})
+			return ignoredVariants
+		}
 	}
 
 	changedFiles := patchDoc.FilesChanged()
