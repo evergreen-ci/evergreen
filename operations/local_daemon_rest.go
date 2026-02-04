@@ -13,7 +13,21 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
+
+// LocalBackendConfig represents backend configuration for the local debugger
+type LocalBackendConfig struct {
+	Backend BackendSettings `yaml:"backend"`
+}
+
+// BackendSettings contains the backend server configuration
+type BackendSettings struct {
+	ServerURL string `yaml:"server_url"`
+	TaskID    string `yaml:"task_id"`
+	APIUser   string `yaml:"api_user"`
+	APIKey    string `yaml:"api_key"`
+}
 
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
@@ -46,6 +60,40 @@ func (d *localDaemonREST) Start() error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
 }
 
+// loadBackendConfig loads backend configuration from .evergreen-local.yml
+func (d *localDaemonREST) loadBackendConfig(baseDir string) (*LocalBackendConfig, error) {
+	// Try to find config file in current directory or parent directories
+	configPaths := []string{
+		filepath.Join(baseDir, ".evergreen-local.yml"),
+		filepath.Join(baseDir, ".evergreen-local.yaml"),
+		".evergreen-local.yml",
+		".evergreen-local.yaml",
+	}
+
+	for _, configPath := range configPaths {
+		grip.Debugf("Checking for config file: %s", configPath)
+		if _, err := os.Stat(configPath); err == nil {
+			data, err := os.ReadFile(configPath)
+			if err != nil {
+				return nil, errors.Wrapf(err, "reading config file %s", configPath)
+			}
+
+			var config LocalBackendConfig
+			if err := yaml.Unmarshal(data, &config); err != nil {
+				return nil, errors.Wrapf(err, "parsing config file %s", configPath)
+			}
+
+			grip.Infof("Loaded backend configuration from %s (server: %s, task: %s, user: %s)",
+				configPath, config.Backend.ServerURL, config.Backend.TaskID, config.Backend.APIUser)
+			return &config, nil
+		}
+	}
+
+	// No config file found - that's okay, we can run without backend
+	grip.Info("No .evergreen-local.yml found, running without backend connection")
+	return &LocalBackendConfig{}, nil
+}
+
 // handleHealth checks if the daemon is running
 func (d *localDaemonREST) handleHealth(w http.ResponseWriter, r *http.Request) {
 	grip.Error(json.NewEncoder(w).Encode(map[string]bool{"healthy": true}))
@@ -65,10 +113,32 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	workDir := filepath.Dir(req.ConfigPath)
+
+	// Load backend configuration if available
+	grip.Infof("Looking for backend configuration in directory: %s", workDir)
+	backendConfig, err := d.loadBackendConfig(workDir)
+	if err != nil {
+		grip.Warningf("Failed to load backend config: %v", err)
+		// Continue without backend - local execution can still work
+		backendConfig = &LocalBackendConfig{}
+	}
+
 	opts := taskexec.LocalExecutorOptions{
-		WorkingDir: filepath.Dir(req.ConfigPath),
+		WorkingDir: workDir,
 		LogLevel:   "info",
 		Timeout:    7200,
+		ServerURL:  backendConfig.Backend.ServerURL,
+		TaskID:     backendConfig.Backend.TaskID,
+		APIUser:    backendConfig.Backend.APIUser,
+		APIKey:     backendConfig.Backend.APIKey,
+	}
+
+	// Log backend configuration status
+	if opts.APIUser != "" && opts.APIKey != "" {
+		grip.Infof("Using backend server: %s for task: %s", opts.ServerURL, opts.TaskID)
+	} else {
+		grip.Info("Running in local-only mode (no backend configuration)")
 	}
 
 	executor, err := taskexec.NewLocalExecutor(opts)
@@ -83,7 +153,6 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	workDir := filepath.Dir(req.ConfigPath)
 	if err := executor.SetupWorkingDirectory(workDir); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
