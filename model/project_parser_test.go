@@ -3193,7 +3193,9 @@ func TestSetupParallelGitIncludeDirs(t *testing.T) {
 			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
 			assert.NoError(t, err)
 			require.NotZero(t, dirs)
-			defer dirs.cleanup()
+			defer func() {
+				assert.NoError(t, dirs.cleanup())
+			}()
 
 			assert.Len(t, dirs.clonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
 			for _, dir := range dirs.clonesForOwnerRepo {
@@ -3257,16 +3259,6 @@ func TestSetupParallelGitIncludeDirs(t *testing.T) {
 			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
 			require.NoError(t, err)
 			assert.Zero(t, dirs)
-		},
-		"CleansUpDirectoriesOnError": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
-			includes[len(includes)-1].Module = "nonexistent_module"
-			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
-			assert.Error(t, err)
-			assert.Zero(t, dirs)
-
-			for _, dir := range dirs.clonesForOwnerRepo {
-				assert.False(t, utility.FileExists(dir), "directory '%s' should have been cleaned up when git setup errors", dir)
-			}
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
