@@ -24,7 +24,6 @@ type WaterfallTask {
   displayName: String!
   displayStatusCache: String!
   execution: Int!
-  status: String!
 }
 
 type WaterfallBuild {
