@@ -387,7 +387,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		))
 		defer span.End()
 
-		if err := fetchSourceCmd.Run(ctx); err != nil {
+		if err = fetchSourceCmd.Run(ctx); err != nil {
 			span.SetAttributes(attribute.String(cloneErrorAttribute, err.Error()))
 		}
 
