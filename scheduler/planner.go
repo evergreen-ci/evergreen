@@ -182,8 +182,12 @@ type unitInfo struct {
 	TimeInQueue time.Duration `json:"time_in_queue_ns"`
 	// TotalPriority is the sum of the priority values of all the tasks in the unit.
 	TotalPriority int64 `json:"total_priority"`
+	// MaxPriority is the maximum priority value of any task in the unit.
+	MaxPriority int64 `json:"max_priority"`
 	// NumDependents is the total number of tasks depending on tasks in the unit.
 	NumDependents int64 `json:"num_deps"`
+	// MaxNumDependents is the maximum number of dependents for any task in the unit.
+	MaxNumDependents int64 `json:"max_num_deps"`
 	// ContainsInCommitQueue indicates if the unit contains any tasks that are part of a commit queue version.
 	ContainsInCommitQueue bool `json:"contains_in_commit_queue"`
 	// ContainsInPatch indicates if the unit contains any tasks that are part of a patch.
@@ -240,8 +244,10 @@ func (u *unitInfo) computeRankValue(breakdown *task.SortingValueBreakdown) int64
 	}
 	// Increase the value for the number of dependents, so that
 	// tasks (and units) which block other tasks run before tasks
-	// that don't block other tasks.
-	breakdown.RankValueBreakdown.NumDependentsImpact = int64(u.Settings.GetNumDependentsFactor() * float64(u.NumDependents/unitLength))
+	// that don't block other tasks. Use MaxNumDependents to prioritize
+	// units containing tasks that block many others, even when grouped
+	// with their dependents.
+	breakdown.RankValueBreakdown.NumDependentsImpact = int64(u.Settings.GetNumDependentsFactor() * float64(u.MaxNumDependents))
 
 	// Increase the value for tasks with longer runtimes, given
 	// that most of our workloads have different runtimes, and we
@@ -264,7 +270,9 @@ func (u *unitInfo) computeRankValue(breakdown *task.SortingValueBreakdown) int64
 // statistically analyzing the queue's state.
 func (u *unitInfo) computePriority(breakdown *task.SortingValueBreakdown) int64 {
 	unitLength := breakdown.TaskGroupLength
-	initialPriority := 1 + (u.TotalPriority / unitLength)
+	// Use MaxPriority to ensure high-priority dependency tasks maintain
+	// their precedence even when grouped with lower-priority dependents.
+	initialPriority := 1 + u.MaxPriority
 	breakdown.PriorityBreakdown.InitialPriorityImpact = initialPriority
 	if !u.ContainsNonGroupTasks {
 		// If all tasks in the unit are in a task group then
@@ -314,8 +322,14 @@ func (unit *Unit) info(ctx context.Context) unitInfo {
 		}
 
 		info.TotalPriority += t.Priority
+		if t.Priority > info.MaxPriority {
+			info.MaxPriority = t.Priority
+		}
 		info.ExpectedRuntime += t.FetchExpectedDuration(ctx).Average
 		info.NumDependents += int64(t.NumDependents)
+		if int64(t.NumDependents) > info.MaxNumDependents {
+			info.MaxNumDependents = int64(t.NumDependents)
+		}
 		info.TaskIDs = append(info.TaskIDs, t.Id)
 	}
 
