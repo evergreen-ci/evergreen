@@ -76,6 +76,11 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		return errors.Wrap(err, "finding files to archive")
 	}
 
+	if len(files) == 0 {
+		logger.Task().Warning("No files to archive.")
+		return nil
+	}
+
 	filenames := make([]string, len(files))
 	for idx := range files {
 		filenames[idx] = files[idx].path
@@ -92,7 +97,6 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		"message":   "successfully created archive",
 		"format":    "zip",
 	})
-	logger.Task().Infof("Archive created at: %s", c.Target)
 
 	return nil
 }

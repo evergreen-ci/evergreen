@@ -61,15 +61,22 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 	c.Target = GetWorkingDirectory(conf, c.Target)
 
 	var filenames []string
+	var directoryArchive bool
 	if len(c.Include) == 0 && len(c.ExcludeFiles) == 0 {
 		// If using the whole source directory, skip the unnecessary search for
 		// matching files.
 		filenames = []string{c.SourceDir}
 		logger.Task().Infof("Archiving entire directory: %s", c.SourceDir)
+		directoryArchive = true
 	} else {
 		files, _, err := findContentsToArchive(ctx, c.SourceDir, c.Include, c.ExcludeFiles)
 		if err != nil {
 			return errors.Wrap(err, "finding files to archive")
+		}
+
+		if len(files) == 0 {
+			logger.Task().Warning("No files to archive.")
+			return nil
 		}
 
 		filenames = make([]string, len(files))
@@ -83,12 +90,14 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		return errors.Wrapf(err, "constructing auto archive '%s'", c.Target)
 	}
 
-	logger.Task().Info(message.Fields{
-		"target":    c.Target,
-		"num_files": len(filenames),
-		"message":   "successfully created archive",
-	})
-	logger.Task().Infof("Archive created at: %s", c.Target)
+	fields := message.Fields{
+		"target":  c.Target,
+		"message": "successfully created archive",
+	}
+	if !directoryArchive {
+		fields["num_files"] = len(filenames)
+	}
+	logger.Task().Info(fields)
 
 	return nil
 }
