@@ -518,6 +518,14 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 	if err != nil {
 		return nil, err
 	}
+	grip.WarningWhen(gitErr != nil && err == nil, message.Fields{
+		"message": "GitHub file content could not be retrieved via git but succeeded with GitHub API",
+		"ticket":  "DEVPROD-26143",
+		"owner":   owner,
+		"repo":    repo,
+		"ref":     ref,
+		"path":    path,
+	})
 	ghFileContent, err := base64.StdEncoding.DecodeString(*ghFile.Content)
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding GitHub file content")

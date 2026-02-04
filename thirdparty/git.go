@@ -287,7 +287,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 		return "", errors.Wrap(err, "creating GitHub app installation token")
 	}
 
-	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("git-clone-%s-%s-", owner, repo))
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("git-clone-%s-%s-%s-", owner, repo, revision))
 	if err != nil {
 		return "", errors.Wrap(err, "creating temp dir for git clone")
 	}
