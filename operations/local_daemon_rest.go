@@ -165,8 +165,7 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
-	err := d.executor.RunAll(ctx)
+	err := d.executor.RunAll(r.Context())
 	state := d.executor.GetDebugState()
 
 	response := map[string]interface{}{

@@ -244,11 +244,11 @@ func selectTaskCmd(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Selected task: %s\n", taskName)
+	grip.Infof("Selected task: %s\n", taskName)
 	if variantName != "" {
-		fmt.Printf("Variant: %s\n", variantName)
+		grip.Infof("Variant: %s\n", variantName)
 	}
-	fmt.Printf("Total steps: %v\n", resp["step_count"])
+	grip.Infof("Total steps: %v\n", resp["step_count"])
 
 	return nil
 }
@@ -266,9 +266,9 @@ func stepNextCmd(c *cli.Context) error {
 	}
 
 	if resp["success"].(bool) {
-		fmt.Printf("Step executed successfully (now at step %v)\n", resp["current_step"])
+		grip.Infof("Step executed successfully (now at step %v)\n", resp["current_step"])
 	} else {
-		fmt.Printf("Step failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
+		grip.Infof("Step failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
 	}
 
 	return nil
@@ -281,13 +281,17 @@ func runAllCmd(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Println("Running all remaining steps...")
+	grip.Info("Running all remaining steps...")
 	resp, err := postJSON(url+"/step/run-all", nil)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Execution complete (at step %v)\n", resp["current_step"])
+	if resp["success"].(bool) {
+		grip.Infof("Execution complete (at step %v)\n", resp["current_step"])
+	} else {
+		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
+	}
 	return nil
 }
 

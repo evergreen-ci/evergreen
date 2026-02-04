@@ -271,7 +271,7 @@ func (e *LocalExecutor) RunAll(ctx context.Context) error {
 	for e.debugState.HasMoreSteps() {
 		if err := e.StepNext(ctx); err != nil {
 			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
-			return nil
+			return err
 		}
 	}
 	return nil
