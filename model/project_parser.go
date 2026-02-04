@@ -663,10 +663,12 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 	var yaml []byte
 	var err error
 	grip.Debug(message.Fields{
-		"message":     "retrieving included YAML file",
-		"remote_path": localOpts.RemotePath,
-		"read_from":   localOpts.ReadFileFrom,
-		"module":      include.Module,
+		"message":            "retrieving included YAML file",
+		"project_id":         localOpts.Ref.Id,
+		"project_identifier": localOpts.Ref.Identifier,
+		"remote_path":        localOpts.RemotePath,
+		"read_from":          localOpts.ReadFileFrom,
+		"module":             include.Module,
 	})
 	if include.Module != "" {
 		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include, dirs, workerIdx)
@@ -760,6 +762,13 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		"project_id": projectID,
 		"ticket":     "DEVPROD-26851",
 	}))
+	defer func() {
+		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
+			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
+			"project_id": projectID,
+			"ticket":     "DEVPROD-26851",
+		}))
+	}()
 
 	wg := sync.WaitGroup{}
 	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
@@ -860,6 +869,17 @@ func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, worke
 	return worktrees[workerNum]
 }
 
+func (d *gitIncludeDirs) cleanup() error {
+	if d == nil {
+		return nil
+	}
+	catcher := grip.NewBasicCatcher()
+	for ownerRepo, dir := range d.clonesForOwnerRepo {
+		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory for '%s/%s'", ownerRepo.owner, ownerRepo.repo)
+	}
+	return catcher.Resolve()
+}
+
 // setupParallelGitIncludeDirs sets up git clones and worktrees in preparation
 // for retrieving included YAML files using git. numWorkers determines how
 // many worktrees are created for each included repo.
@@ -900,17 +920,12 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		}
 		// If this function errored, clean up any intermediate git clone
 		// directories and worktrees that were created.
-		for ownerRepo, dir := range dirs.clonesForOwnerRepo {
-			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
-				"message":            "could not clean up git clone directory after failing to set up git directories",
-				"owner":              ownerRepo.owner,
-				"repo":               ownerRepo.repo,
-				"project_id":         opts.Ref.Id,
-				"project_identifier": opts.Ref.Identifier,
-				"dir":                dir,
-				"ticket":             "DEVPROD-26143",
-			}))
-		}
+		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
+			"message":            "could not clean up git clone directory after failing to set up git directories",
+			"project_id":         opts.Ref.Id,
+			"project_identifier": opts.Ref.Identifier,
+			"ticket":             "DEVPROD-26143",
+		}))
 		// Once dirs has been cleaned up, it's no longer valid to use it, so do
 		// not return it in the result.
 		dirs = nil
@@ -968,7 +983,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if _, ok := dirs.clonesForOwnerRepo[ownerRepo]; ok {
 			// When including files, there should not be any duplicate repos
 			// defined in the modules, and the modules should not use the exact
-			// same repo as the project itself. If this is ever hit, it's a bug.
+			// same repo/branch as the project itself. If this is hit, it would
+			// be a sign that some project is relying on DEVPROD-27062 and this
+			// logic would potentially have to account for that edge case.
 			grip.Warning(message.Fields{
 				"message":            "trying to make multiple git clones of the same repo, skipping duplicate repo",
 				"project_id":         opts.Ref.Id,
@@ -977,6 +994,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 				"repo":               repoName,
 				"revision":           revision,
 				"module":             modName,
+				"ticket":             "DEVPROD-26851",
 			})
 			continue
 		}
