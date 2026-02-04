@@ -1225,11 +1225,18 @@ tasks:
         params:
           script: echo "Custom ps task"
 
-  - name: task_with_expansion
+  - name: other_task
     commands:
       - command: shell.exec
         params:
-          script: echo "Will use a build variant expansion"
+          script: echo "Task without explicit ps"
+
+  - name: task_with_expansion
+    ps: "${my_custom_ps}" # Reference expansion defined in build variant
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Task using expansion"
 
 buildvariants:
   - name: ubuntu2204
@@ -1240,14 +1247,7 @@ buildvariants:
         ps: "ps -o pid,tty,time" # Build variant task-level: overrides task and project level ps.
       - name: my_task_2 # Uses task-level "ps -o pid,tty,time,comm,args" since there is no build variant task-level override.
       - name: other_task # Uses project-level "ps -o pid" since no task-level or build variant task-level ps is set.
-      - name: task_with_expansion # No ps logging once default logging is deprecated since there is no explicit ps setting.
-
-  - name: rhel
-    expansions:
-      my_custom_ps: "ps aux" # Different ps command for this variant
-    tasks:
-      - name: task_with_expansion
-        ps: "${my_custom_ps}" # Use the custom expansion defined above
+      - name: task_with_expansion # Uses "ps -o pid,user,comm" from the my_custom_ps expansion defined at task level.
 ```
 
 ### Matrix Variant Definition
