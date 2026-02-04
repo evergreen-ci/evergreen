@@ -1698,7 +1698,9 @@ parameters are available:
 - `omit_generated_tasks` - boolean (default: false). If true and the
   dependency is a generator task (i.e. it generates tasks via the
   [`generate.tasks`](Project-Commands#generatetasks) command), then generated tasks will not be included
-  as dependencies.
+  as dependencies. By default, this is false, which means adding a generator
+  task as a dependency will also add dependencies on all of their generated
+  tasks.
 
 So, for example:
 

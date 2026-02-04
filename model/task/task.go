@@ -4039,7 +4039,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		ctx,
 		bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
-				DependencyTaskIdKey: t.Id,
+				DependencyTaskIdKey:             t.Id,
 				DependencyStatusKey:             status,
 				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
