@@ -1094,7 +1094,9 @@ type GetProjectOpts struct {
 	// IsIncludedFile indicates whether the file being retrieved is an included
 	// YAML file.
 	IsIncludedFile bool
-	Worktree       string
+	// Worktree is the directory of the git worktree to use when retrieving
+	// files via git. Only set if reading a remote file using git.
+	Worktree string
 }
 
 type PatchOpts struct {
