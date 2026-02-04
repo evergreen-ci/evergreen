@@ -16,18 +16,13 @@ type ctxKey string
 
 const loadersKey = ctxKey("dataloaders")
 
-// Loaders wraps data loaders to inject via middleware.
 type Loaders struct {
 	UserLoader *dataloadgen.Loader[string, *restModel.APIDBUser]
 }
 
-// userReader reads users from the database.
 type userReader struct{}
 
-// getUsers implements a batch function that retrieves many users by ID.
-// It returns results in the same order as the input IDs.
 func (u *userReader) getUsers(ctx context.Context, userIDs []string) ([]*restModel.APIDBUser, []error) {
-	// Fetch all users in a single query using $in
 	query := db.Query(bson.M{user.IdKey: bson.M{"$in": userIDs}})
 	users, err := user.Find(ctx, query)
 	if err != nil {
@@ -39,7 +34,6 @@ func (u *userReader) getUsers(ctx context.Context, userIDs []string) ([]*restMod
 		return nil, errs
 	}
 
-	// Create a map for O(1) lookup by user ID
 	userMap := make(map[string]*user.DBUser, len(users))
 	for i := range users {
 		userMap[users[i].Id] = &users[i]
