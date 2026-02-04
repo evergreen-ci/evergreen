@@ -55,6 +55,7 @@ func NewConfigModel() *APIAdminSettings {
 		Spawnhost:           &APISpawnHostConfig{},
 		Tracer:              &APITracerSettings{},
 		GitHubCheckRun:      &APIGitHubCheckRunConfig{},
+		Sage:                &APISageConfig{},
 	}
 }
 
@@ -116,6 +117,7 @@ type APIAdminSettings struct {
 	Tracer                  *APITracerSettings            `json:"tracer,omitempty"`
 	GitHubCheckRun          *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
 	ShutdownWaitSeconds     *int                          `json:"shutdown_wait_seconds,omitempty"`
+	Sage                    *APISageConfig                `json:"sage,omitempty"`
 }
 
 const (
@@ -3331,5 +3333,26 @@ func (a *APIS3StorageCostConfig) ToService() (any, error) {
 	return evergreen.S3StorageCostConfig{
 		StandardStorageCostDiscount: a.StandardStorageCostDiscount,
 		IAStorageCostDiscount:       a.IAStorageCostDiscount,
+	}, nil
+}
+
+// APISageConfig is the API model for the Sage configuration.
+type APISageConfig struct {
+	BaseURL *string `json:"base_url"`
+}
+
+func (a *APISageConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.SageConfig:
+		a.BaseURL = utility.ToStringPtr(v.BaseURL)
+	default:
+		return errors.Errorf("programmatic error: expected Sage config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISageConfig) ToService() (any, error) {
+	return evergreen.SageConfig{
+		BaseURL: utility.FromStringPtr(a.BaseURL),
 	}, nil
 }

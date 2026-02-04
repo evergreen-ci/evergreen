@@ -284,7 +284,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			}
 			nextTaskFromDB, err := task.FindOneId(ctx, item.Id)
 			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem finding task in db",
@@ -390,7 +390,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
 			numHosts, err := host.NumHostsByTaskSpec(ctx, item.Group, item.BuildVariant, item.Project, item.Version)
 			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem running NumHostsByTaskSpec query - returning nil",
@@ -411,7 +411,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				if next := d.tryMarkNextTaskGroupTaskDispatched(ctx, taskGroupUnit); next != nil {
 					nextTaskFromDB, err := task.FindOneId(ctx, next.Id)
 					if err != nil {
-						grip.Warning(message.WrapError(err, message.Fields{
+						grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 							"dispatcher": DAGDispatcher,
 							"function":   "FindNextTask",
 							"message":    "problem finding task in db",
@@ -610,7 +610,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(ctx context.Context, un
 
 		nextTaskFromDB, err := task.FindOneId(ctx, nextTaskQueueItem.Id)
 		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "problem finding task in db",

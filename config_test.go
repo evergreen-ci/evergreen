@@ -946,3 +946,19 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.Error(err)
 	s.Contains(err.Error(), "unrecognized bucket type 'invalid'")
 }
+
+func (s *AdminSuite) TestSageConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := SageConfig{
+		BaseURL: "https://sage.example.com/api",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Sage)
+}

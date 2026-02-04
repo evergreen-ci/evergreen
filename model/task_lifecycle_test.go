@@ -1916,6 +1916,31 @@ func TestUpdatePatchStatus(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, events, "should not log new patch/vesion finished events when the patch is already finished")
 		},
+		"SetsChildrenCompletedTimeWhenParentPatchCompletes": func(t *testing.T, p *patch.Patch) {
+			childPatch := &patch.Patch{
+				Id:         patch.NewId(primitive.NewObjectID().Hex()),
+				Status:     evergreen.VersionSucceeded,
+				FinishTime: time.Now().Add(-time.Hour),
+				Triggers: patch.TriggerInfo{
+					ParentPatch: p.Id.Hex(),
+				},
+			}
+			require.NoError(t, childPatch.Insert(t.Context()))
+			p.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
+			require.NoError(t, p.Insert(t.Context()))
+
+			psu, err := updatePatchStatus(t.Context(), p, evergreen.VersionSucceeded)
+			require.NoError(t, err)
+
+			assert.True(t, psu.patchStatusChanged)
+			assert.True(t, psu.isPatchFamilyDone)
+
+			dbParentPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbParentPatch)
+			assert.NotZero(t, dbParentPatch.Triggers.ChildrenCompletedTime)
+			assert.WithinDuration(t, dbParentPatch.FinishTime, dbParentPatch.Triggers.ChildrenCompletedTime, time.Second)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(patch.Collection, event.EventCollection))

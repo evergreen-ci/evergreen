@@ -64,6 +64,10 @@ const (
 	graphiteKind = "GITHUB_ACTIONS"
 )
 
+var (
+	githubWebhookTimeoutCause = errors.New("Reached GitHub webhook timeout limit")
+)
+
 // skipCILabels are a set of labels which will skip creating PR patch if part of
 // the PR title or description.
 var skipCILabels = []string{"[skip ci]", "[skip-ci]"}
@@ -141,13 +145,13 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	// GitHub occasionally aborts requests early before we are able to complete the full operation
 	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom timeout without cancel.
-	newCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), githubWebhookTimeout)
+	ctx, cancel := context.WithTimeoutCause(context.WithoutCancel(ctx), githubWebhookTimeout, githubWebhookTimeoutCause)
 	defer cancel()
 
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.HookID == nil {
@@ -165,7 +169,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.PullRequestEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.Action == nil {
@@ -197,7 +201,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "PR accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(newCtx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
+			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -222,7 +226,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"message":   "pull request closed; aborting patch",
 			})
 
-			if err := data.AbortPatchesFromPullRequest(newCtx, event); err != nil {
+			if err := data.AbortPatchesFromPullRequest(ctx, event); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "GitHub hook",
 					"msg_id":  gh.msgID,
@@ -237,7 +241,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 	case *github.PushEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		grip.Debug(message.Fields{
@@ -250,11 +254,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		})
 		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
 		// to ensure we're up-to-date on the commit the tag is being pushed to.
-		if err := data.TriggerRepotracker(newCtx, gh.queue, gh.msgID, event); err != nil {
+		if err := data.TriggerRepotracker(ctx, gh.queue, gh.msgID, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "triggering repotracker"))
 		}
 		if isTag(event.GetRef()) {
-			if err := gh.handleGitTag(newCtx, event); err != nil {
+			if err := gh.handleGitTag(ctx, event); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "handling git tag"))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
@@ -262,30 +266,30 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
-		if err := gh.handleComment(newCtx, event); err != nil {
+		if err := gh.handleComment(ctx, event); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 
 	case *github.MergeGroupEvent:
 		fromApp := event.GetInstallation() != nil
-		if gh.shouldSkipWebhook(newCtx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
+		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
 			break
 		}
 		if event.GetAction() == githubActionChecksRequested {
-			return gh.handleMergeGroupChecksRequested(newCtx, event)
+			return gh.handleMergeGroupChecksRequested(ctx, event)
 		}
 
 	case *github.CheckRunEvent:
 		if event.GetAction() == githubActionRerequested {
-			return gh.handleCheckRunRerequested(newCtx, event)
+			return gh.handleCheckRunRerequested(ctx, event)
 		}
 
 	case *github.CheckSuiteEvent:
 		if event.GetAction() == githubActionRerequested {
-			return gh.handleCheckSuiteRerequested(newCtx, event)
+			return gh.handleCheckSuiteRerequested(ctx, event)
 		}
 	}
 
@@ -769,18 +773,12 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	}
 
 	// Parse the response body
-	var responseBodyBytes []byte
-	err = utility.ReadJSON(resp.Body, &responseBodyBytes)
-	if err != nil {
-		return false, errors.Wrap(err, "reading response body")
-	}
-
 	var responseBody struct {
 		Skip bool `json:"skip"`
 	}
 
-	if err = json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
-		return false, errors.Wrap(err, "unmarshaling response body")
+	if err = utility.ReadJSON(resp.Body, &responseBody); err != nil {
+		return false, errors.Wrap(err, "reading response body")
 	}
 
 	return responseBody.Skip, nil
@@ -1244,7 +1242,7 @@ func (gh *githubHookApi) handleCreatedGitTag(ctx context.Context, event *github.
 func (gh *githubHookApi) handleDeletedGitTag(ctx context.Context, event *github.PushEvent, tag model.GitTag, owner, repo string) error {
 	err := model.RemoveGitTagFromVersions(ctx, owner, repo, tag)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.ErrorWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "removing tag from versions",
 			"ref":     event.GetRef(),

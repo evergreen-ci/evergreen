@@ -580,6 +580,12 @@ models:
         resolver: true
       parameters:
         resolver: true
+  Patches:
+    fields:
+      filteredPatchCount:
+        resolver: true
+      patches:
+        resolver: true
   IncludedLocalModule:
     model: github.com/evergreen-ci/evergreen/rest/model.APILocalModuleInclude
   PatchTriggerAlias:
@@ -779,6 +785,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
   RuntimeEnvironmentConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRuntimeEnvironmentsConfig
+  SageConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISageConfig
+  SageConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISageConfig
   S3CostConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3CostConfig
   S3CostConfigInput:

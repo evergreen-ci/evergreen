@@ -482,6 +482,9 @@ func MockConfig() *evergreen.Settings {
 		GitHubCheckRun: evergreen.GitHubCheckRunConfig{
 			CheckRunLimit: 0,
 		},
+		Sage: evergreen.SageConfig{
+			BaseURL: "https://sage.example.com",
+		},
 		ShutdownWaitSeconds: 15,
 	}
 }
