@@ -663,12 +663,10 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 	var yaml []byte
 	var err error
 	grip.Debug(message.Fields{
-		"message":            "retrieving included YAML file",
-		"project_id":         localOpts.Ref.Id,
-		"project_identifier": localOpts.Ref.Identifier,
-		"remote_path":        localOpts.RemotePath,
-		"read_from":          localOpts.ReadFileFrom,
-		"module":             include.Module,
+		"message":     "retrieving included YAML file",
+		"remote_path": localOpts.RemotePath,
+		"read_from":   localOpts.ReadFileFrom,
+		"module":      include.Module,
 	})
 	if include.Module != "" {
 		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include, dirs, workerIdx)
