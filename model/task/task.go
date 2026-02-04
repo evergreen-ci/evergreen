@@ -4039,7 +4039,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		ctx,
 		bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
-				DependencyTaskIdKey:             t.Id,
+				DependencyTaskIdKey: t.Id,
 				DependencyStatusKey:             status,
 				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
@@ -4047,7 +4047,18 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		[]bson.M{
 			{"$set": bson.M{
 				DependsOnKey: bson.M{
-					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
+					"$concatArrays": []any{
+						"$" + DependsOnKey,
+						bson.M{
+							"$filter": bson.M{
+								"input": newDependencies,
+								"as":    "dep",
+								"cond": bson.M{
+									"$ne": []any{"$$dep." + DependencyTaskIdKey, "$" + IdKey},
+								},
+							},
+						},
+					},
 				},
 			}},
 			addDisplayStatusCache,
