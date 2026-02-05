@@ -2265,15 +2265,16 @@ type APIServiceFlags struct {
 	SleepScheduleDisabled          bool `json:"sleep_schedule_disabled"`
 	StaticAPIKeysDisabled          bool `json:"static_api_keys_disabled"`
 	// JWTTokenForCLIDisabled disables the use of OAuth tokens for the CLI.
-	JWTTokenForCLIDisabled          bool `json:"jwt_token_for_cli_disabled"`
-	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
-	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
-	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
-	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
-	LegacyUIAdminPageDisabled       bool `json:"legacy_ui_admin_page_disabled"`
-	DebugSpawnHostDisabled          bool `json:"debug_spawn_host_disabled"`
-	S3LifecycleSyncDisabled         bool `json:"s3_lifecycle_sync_disabled"`
-	UseGitForGitHubFilesDisabled    bool `json:"use_git_for_github_files_disabled"`
+	JWTTokenForCLIDisabled             bool `json:"jwt_token_for_cli_disabled"`
+	SystemFailedTaskRestartDisabled    bool `json:"system_failed_task_restart_disabled"`
+	DegradedModeDisabled               bool `json:"cpu_degraded_mode_disabled"`
+	ElasticIPsDisabled                 bool `json:"elastic_ips_disabled"`
+	ReleaseModeDisabled                bool `json:"release_mode_disabled"`
+	LegacyUIAdminPageDisabled          bool `json:"legacy_ui_admin_page_disabled"`
+	DebugSpawnHostDisabled             bool `json:"debug_spawn_host_disabled"`
+	S3LifecycleSyncDisabled            bool `json:"s3_lifecycle_sync_disabled"`
+	UseGitForGitHubFilesDisabled       bool `json:"use_git_for_github_files_disabled"`
+	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2731,6 +2732,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.DebugSpawnHostDisabled = v.DebugSpawnHostDisabled
 		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
 		as.UseGitForGitHubFilesDisabled = v.UseGitForGitHubFilesDisabled
+		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2740,45 +2742,46 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (any, error) {
 	return evergreen.ServiceFlags{
-		TaskDispatchDisabled:            as.TaskDispatchDisabled,
-		HostInitDisabled:                as.HostInitDisabled,
-		PodInitDisabled:                 as.PodInitDisabled,
-		LargeParserProjectsDisabled:     as.LargeParserProjectsDisabled,
-		MonitorDisabled:                 as.MonitorDisabled,
-		AlertsDisabled:                  as.AlertsDisabled,
-		AgentStartDisabled:              as.AgentStartDisabled,
-		RepotrackerDisabled:             as.RepotrackerDisabled,
-		SchedulerDisabled:               as.SchedulerDisabled,
-		CheckBlockedTasksDisabled:       as.CheckBlockedTasksDisabled,
-		GithubPRTestingDisabled:         as.GithubPRTestingDisabled,
-		CLIUpdatesDisabled:              as.CLIUpdatesDisabled,
-		EventProcessingDisabled:         as.EventProcessingDisabled,
-		JIRANotificationsDisabled:       as.JIRANotificationsDisabled,
-		SlackNotificationsDisabled:      as.SlackNotificationsDisabled,
-		EmailNotificationsDisabled:      as.EmailNotificationsDisabled,
-		WebhookNotificationsDisabled:    as.WebhookNotificationsDisabled,
-		GithubStatusAPIDisabled:         as.GithubStatusAPIDisabled,
-		BackgroundStatsDisabled:         as.BackgroundStatsDisabled,
-		TaskLoggingDisabled:             as.TaskLoggingDisabled,
-		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
-		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
-		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
-		HostAllocatorDisabled:           as.HostAllocatorDisabled,
-		PodAllocatorDisabled:            as.PodAllocatorDisabled,
-		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,
-		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
-		CloudCleanupDisabled:            as.CloudCleanupDisabled,
-		SleepScheduleDisabled:           as.SleepScheduleDisabled,
-		StaticAPIKeysDisabled:           as.StaticAPIKeysDisabled,
-		JWTTokenForCLIDisabled:          as.JWTTokenForCLIDisabled,
-		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
-		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
-		ElasticIPsDisabled:              as.ElasticIPsDisabled,
-		ReleaseModeDisabled:             as.ReleaseModeDisabled,
-		LegacyUIAdminPageDisabled:       as.LegacyUIAdminPageDisabled,
-		DebugSpawnHostDisabled:          as.DebugSpawnHostDisabled,
-		S3LifecycleSyncDisabled:         as.S3LifecycleSyncDisabled,
-		UseGitForGitHubFilesDisabled:    as.UseGitForGitHubFilesDisabled,
+		TaskDispatchDisabled:               as.TaskDispatchDisabled,
+		HostInitDisabled:                   as.HostInitDisabled,
+		PodInitDisabled:                    as.PodInitDisabled,
+		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
+		MonitorDisabled:                    as.MonitorDisabled,
+		AlertsDisabled:                     as.AlertsDisabled,
+		AgentStartDisabled:                 as.AgentStartDisabled,
+		RepotrackerDisabled:                as.RepotrackerDisabled,
+		SchedulerDisabled:                  as.SchedulerDisabled,
+		CheckBlockedTasksDisabled:          as.CheckBlockedTasksDisabled,
+		GithubPRTestingDisabled:            as.GithubPRTestingDisabled,
+		CLIUpdatesDisabled:                 as.CLIUpdatesDisabled,
+		EventProcessingDisabled:            as.EventProcessingDisabled,
+		JIRANotificationsDisabled:          as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:         as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:         as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled:       as.WebhookNotificationsDisabled,
+		GithubStatusAPIDisabled:            as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:            as.BackgroundStatsDisabled,
+		TaskLoggingDisabled:                as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:              as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:         as.CacheStatsEndpointDisabled,
+		TaskReliabilityDisabled:            as.TaskReliabilityDisabled,
+		HostAllocatorDisabled:              as.HostAllocatorDisabled,
+		PodAllocatorDisabled:               as.PodAllocatorDisabled,
+		UnrecognizedPodCleanupDisabled:     as.UnrecognizedPodCleanupDisabled,
+		BackgroundReauthDisabled:           as.BackgroundReauthDisabled,
+		CloudCleanupDisabled:               as.CloudCleanupDisabled,
+		SleepScheduleDisabled:              as.SleepScheduleDisabled,
+		StaticAPIKeysDisabled:              as.StaticAPIKeysDisabled,
+		JWTTokenForCLIDisabled:             as.JWTTokenForCLIDisabled,
+		SystemFailedTaskRestartDisabled:    as.SystemFailedTaskRestartDisabled,
+		CPUDegradedModeDisabled:            as.DegradedModeDisabled,
+		ElasticIPsDisabled:                 as.ElasticIPsDisabled,
+		ReleaseModeDisabled:                as.ReleaseModeDisabled,
+		LegacyUIAdminPageDisabled:          as.LegacyUIAdminPageDisabled,
+		DebugSpawnHostDisabled:             as.DebugSpawnHostDisabled,
+		S3LifecycleSyncDisabled:            as.S3LifecycleSyncDisabled,
+		UseGitForGitHubFilesDisabled:       as.UseGitForGitHubFilesDisabled,
+		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 	}, nil
 }
 
