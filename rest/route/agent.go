@@ -397,7 +397,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		user := gimlet.GetUser(ctx)
 		isUserRequest := user != nil
 		// If from debug session request, filter out admin-only vars if user is not an admin
-		isAdmin := user.HasPermission(ctx, gimlet.PermissionOpts{
+		isAdmin := isUserRequest && user.HasPermission(ctx, gimlet.PermissionOpts{
 			Resource:      pRef.Id,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,
