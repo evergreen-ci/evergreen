@@ -1541,7 +1541,7 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 			}))
 			return ignoredVariants
 		}
-		if flags.MergeQueuePathFilteringDisabled {
+		if flags.UseMergeQueuePathFilteringDisabled {
 			grip.Info(message.Fields{
 				"message":  "merge queue path filtering is disabled",
 				"patch_id": patchDoc.Id.Hex(),
