@@ -784,12 +784,12 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
-		go func() {
+		go func(workerIdx int) {
 			defer wg.Done()
 			for include := range includesToProcess {
-				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, dirs, i)
+				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, dirs, workerIdx)
 			}
-		}()
+		}(i)
 	}
 
 	// This order is deliberate:
