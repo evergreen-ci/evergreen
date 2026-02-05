@@ -773,18 +773,12 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 	}
 
 	// Parse the response body
-	var responseBodyBytes []byte
-	err = utility.ReadJSON(resp.Body, &responseBodyBytes)
-	if err != nil {
-		return false, errors.Wrap(err, "reading response body")
-	}
-
 	var responseBody struct {
 		Skip bool `json:"skip"`
 	}
 
-	if err = json.Unmarshal(responseBodyBytes, &responseBody); err != nil {
-		return false, errors.Wrap(err, "unmarshaling response body")
+	if err = utility.ReadJSON(resp.Body, &responseBody); err != nil {
+		return false, errors.Wrap(err, "reading response body")
 	}
 
 	return responseBody.Skip, nil

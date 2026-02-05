@@ -2,14 +2,18 @@ package taskexec
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
@@ -31,6 +35,10 @@ var noOpCommands = map[string]bool{
 	"s3.put":                                true,
 	"s3Copy.copy":                           true,
 }
+
+// mockSecret is required to make agent request formation validation pass but it's not used in
+// debug sessions so we hard code it to a mock
+const mockSecret = "mock_secret"
 
 // localLoggerProducer implements the LoggerProducer interface for local execution
 type localLoggerProducer struct {
@@ -66,19 +74,21 @@ type LocalExecutor struct {
 	loggerProducer client.LoggerProducer
 	taskConfig     *internal.TaskConfig
 	jasperManager  jasper.Manager
+	opts           LocalExecutorOptions
 }
 
 // LocalExecutorOptions contains configuration for the local executor
 type LocalExecutorOptions struct {
 	WorkingDir string
-	LogFile    string
-	LogLevel   string
-	Timeout    int
 	Expansions map[string]string
+	ServerURL  string
+	TaskID     string
+	APIUser    string
+	APIKey     string
 }
 
 // NewLocalExecutor creates a new local task executor
-func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
+func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExecutor, error) {
 	logger := grip.NewJournaler("evergreen-local")
 
 	expansions := util.Expansions{}
@@ -89,8 +99,8 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		expansions.Put(k, v)
 	}
 
-	// TODO: DEVPROD-24941 Send requests to app server
-	comm := client.NewMock("http://localhost")
+	comm := client.NewDebugCommunicator(opts.ServerURL, opts.APIUser, opts.APIKey)
+	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{
 		logger: logger,
@@ -106,7 +116,7 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		return nil, errors.Wrap(err, "creating jasper manager")
 	}
 
-	return &LocalExecutor{
+	localExecutor := &LocalExecutor{
 		workDir:        opts.WorkingDir,
 		expansions:     &expansions,
 		logger:         logger,
@@ -116,7 +126,14 @@ func NewLocalExecutor(opts LocalExecutorOptions) (*LocalExecutor, error) {
 		taskConfig:     taskConfig,
 		jasperManager:  jasperManager,
 		commandBlocks:  []executorBlock{},
-	}, nil
+		opts:           opts,
+	}
+
+	if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
+		return nil, errors.Wrap(err, "fetching task config")
+	}
+
+	return localExecutor, nil
 }
 
 // LoadProject loads and parses an Evergreen project configuration from a file
@@ -263,6 +280,17 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return errors.Errorf("failed to execute step %d", e.debugState.CurrentStepIndex)
 	}
 
+	return nil
+}
+
+// RunAll executes all steps in a task
+func (e *LocalExecutor) RunAll(ctx context.Context) error {
+	for e.debugState.HasMoreSteps() {
+		if err := e.StepNext(ctx); err != nil {
+			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -475,4 +503,70 @@ func (e *LocalExecutor) rebuildCommandList() error {
 
 	e.logger.Infof("Rebuilt command list with %d total commands", len(e.debugState.CommandList))
 	return nil
+}
+
+func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorOptions) error {
+	taskData := client.TaskData{
+		ID:                 opts.TaskID,
+		OverrideValidation: true,
+	}
+	if opts.TaskID == "" {
+		e.createSyntheticTask("local_task")
+		return nil
+	}
+
+	projectRef, err := e.communicator.GetProjectRef(ctx, taskData)
+	if err != nil {
+		return errors.Wrap(err, "getting project ref")
+	}
+	if projectRef == nil {
+		return errors.New("project ref not found")
+	}
+	e.taskConfig.ProjectRef = *projectRef
+
+	tsk, err := e.communicator.GetTask(ctx, taskData)
+	if err != nil {
+		e.logger.Errorf("Failed to fetch task from backend: %v", err)
+		return err
+	}
+	if tsk == nil {
+		return errors.Errorf("task '%s' not found", opts.TaskID)
+	}
+	tsk.Secret = mockSecret
+	e.taskConfig.Task = *tsk
+
+	project, err := e.communicator.GetProject(ctx, taskData)
+	if err != nil {
+		return errors.Wrapf(err, "getting parser project '%s'", tsk.Revision)
+	}
+	if project == nil {
+		return errors.Errorf("project '%s' not found", tsk.Revision)
+	}
+	e.taskConfig.Project = *project
+	e.project = project
+
+	expansionsAndVars, err := e.communicator.GetExpansionsAndVars(ctx, taskData)
+	if err != nil {
+		return errors.Wrapf(err, "getting expansions and vars from task '%s'", tsk.Id)
+	}
+	if expansionsAndVars == nil {
+		return nil
+	}
+	for k, v := range expansionsAndVars.Expansions {
+		e.taskConfig.Expansions.Put(k, v)
+	}
+	for k, v := range expansionsAndVars.Vars {
+		e.taskConfig.Expansions.Put(k, v)
+	}
+	e.taskConfig.NewExpansions = agentutil.NewDynamicExpansions(expansionsAndVars.Expansions)
+	return nil
+}
+
+func (e *LocalExecutor) createSyntheticTask(taskName string) {
+	taskID := fmt.Sprintf("local_%s_%d", taskName, time.Now().Unix())
+	e.taskConfig.Task = task.Task{
+		Id:          taskID,
+		Project:     e.taskConfig.ProjectRef.Identifier,
+		DisplayName: taskName,
+	}
 }
