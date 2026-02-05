@@ -2399,7 +2399,6 @@ type ComplexityRoot struct {
 		DisplayStatusCache func(childComplexity int) int
 		Execution          func(childComplexity int) int
 		Id                 func(childComplexity int) int
-		Status             func(childComplexity int) int
 	}
 
 	WaterfallVersion struct {
@@ -12802,12 +12801,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.WaterfallTask.Id(childComplexity), true
-	case "WaterfallTask.status":
-		if e.complexity.WaterfallTask.Status == nil {
-			break
-		}
-
-		return e.complexity.WaterfallTask.Status(childComplexity), true
 
 	case "WaterfallVersion.inactiveVersions":
 		if e.complexity.WaterfallVersion.InactiveVersions == nil {
@@ -73778,8 +73771,6 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 				return ec.fieldContext_WaterfallTask_displayStatusCache(ctx, field)
 			case "execution":
 				return ec.fieldContext_WaterfallTask_execution(ctx, field)
-			case "status":
-				return ec.fieldContext_WaterfallTask_status(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallTask", field.Name)
 		},
@@ -74202,35 +74193,6 @@ func (ec *executionContext) fieldContext_WaterfallTask_execution(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallTask_status(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallTask) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallTask_status,
-		func(ctx context.Context) (any, error) {
-			return obj.Status, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallTask_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallTask",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -107345,11 +107307,6 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			}
 		case "execution":
 			out.Values[i] = ec._WaterfallTask_execution(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "status":
-			out.Values[i] = ec._WaterfallTask_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
