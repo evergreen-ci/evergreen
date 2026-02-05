@@ -88,6 +88,7 @@ func (s *ZipCreateSuite) TestErrorsAndNormalizedPath() {
 	s.cmd.Target = "bar"
 
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Contains(s.cmd.SourceDir, s.conf.WorkDir)
 	s.Contains(s.cmd.Target, s.conf.WorkDir)
 }
 
