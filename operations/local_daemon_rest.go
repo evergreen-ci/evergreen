@@ -56,22 +56,23 @@ func (d *localDaemonREST) Start() error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
 }
 
-func (d *localDaemonREST) loadDebugClientConfig() (*clientConfig, error) {
-	grip.Debugf("Checking for config file: %s", configPath)
-	if _, err := os.Stat(configPath); err != nil {
-		return nil, errors.Wrapf(err, "config file %s does not exist", configPath)
+func (d *localDaemonREST) loadDebugClientConfig(workDir string) (*clientConfig, error) {
+	path := filepath.Join(workDir, configPath)
+	grip.Debugf("Checking for config file: %s", path)
+	if _, err := os.Stat(path); err != nil {
+		return nil, errors.Wrapf(err, "config file %s does not exist", path)
 	}
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading config file %s", configPath)
+		return nil, errors.Wrapf(err, "reading config file %s", path)
 	}
 	var config clientConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, errors.Wrapf(err, "parsing config file %s", configPath)
+		return nil, errors.Wrapf(err, "parsing config file %s", path)
 	}
 
 	grip.Infof("Loaded client configuration from %s (server: %s, task: %s, user: %s)",
-		configPath, config.ServerURL, config.TaskID, config.APIUser)
+		path, config.ServerURL, config.TaskID, config.APIUser)
 	return &config, nil
 }
 
@@ -96,7 +97,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	workDir := filepath.Dir(req.ConfigPath)
 
-	backendConfig, err := d.loadDebugClientConfig()
+	backendConfig, err := d.loadDebugClientConfig(workDir)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

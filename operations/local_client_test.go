@@ -155,6 +155,12 @@ func TestHandleLoadConfig(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	configPath := filepath.Join(tempDir, "test.yml")
+	clientConfigPath := filepath.Join(tempDir, ".evergreen-local.yml")
+	clientConfigContent := `
+server_url: "http://localhost.com"
+api_user: mock_user
+api_key: mock_key
+`
 	configContent := `
 tasks:
   - name: test_task
@@ -180,6 +186,8 @@ buildvariants:
       - name: test_task
 `
 	err = os.WriteFile(configPath, []byte(configContent), 0644)
+	require.NoError(t, err)
+	err = os.WriteFile(clientConfigPath, []byte(clientConfigContent), 0644)
 	require.NoError(t, err)
 
 	daemon := newLocalDaemonREST(9090)
