@@ -36,6 +36,8 @@ var noOpCommands = map[string]bool{
 	"s3Copy.copy":                           true,
 }
 
+const mockSecret = "mock_secret"
+
 // localLoggerProducer implements the LoggerProducer interface for local execution
 type localLoggerProducer struct {
 	logger grip.Journaler
@@ -517,7 +519,7 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	if tsk == nil {
 		return errors.Errorf("task '%s' not found", opts.TaskID)
 	}
-	tsk.Secret = "mock_secret"
+	tsk.Secret = mockSecret
 	e.taskConfig.Task = *tsk
 
 	project, err := e.communicator.GetProject(ctx, taskData)

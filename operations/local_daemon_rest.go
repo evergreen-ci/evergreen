@@ -70,7 +70,7 @@ func (d *localDaemonREST) loadDebugClientConfig() (*clientConfig, error) {
 		return nil, errors.Wrapf(err, "parsing config file %s", configPath)
 	}
 
-	grip.Infof("Loaded cleint configuration from %s (server: %s, task: %s, user: %s)",
+	grip.Infof("Loaded client configuration from %s (server: %s, task: %s, user: %s)",
 		configPath, config.ServerURL, config.TaskID, config.APIUser)
 	return &config, nil
 }
@@ -112,6 +112,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	if opts.APIUser == "" || opts.APIKey == "" {
 		http.Error(w, "API user and key are required", http.StatusUnauthorized)
+		return
 	}
 
 	executor, err := taskexec.NewLocalExecutor(r.Context(), opts)
