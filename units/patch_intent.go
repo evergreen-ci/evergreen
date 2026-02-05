@@ -1526,48 +1526,14 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 // and returns the list of ignored variant names.
 func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project) []string {
 	ignoredVariants := []string{}
-
-	// Only apply variant filtering for GitHub PR and merge queue patches
-	if !patchDoc.IsGithubPRPatch() && !patchDoc.IsMergeQueuePatch() {
-		return ignoredVariants
-	}
-	if patchDoc.IsMergeQueuePatch() { // TODO: remove this after rollout is complete
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			grip.Debug(message.WrapError(err, message.Fields{
-				"message":  "failed to get service flags",
-				"job":      j.ID(),
-				"patch_id": patchDoc.Id.Hex(),
-			}))
-			return ignoredVariants
-		}
-		if flags.UseMergeQueuePathFilteringDisabled {
-			grip.Info(message.Fields{
-				"message":  "merge queue path filtering is disabled",
-				"patch_id": patchDoc.Id.Hex(),
-				"job":      j.ID(),
-			})
-			return ignoredVariants
-		}
-	}
-
-	changedFiles := patchDoc.FilesChanged()
-	if len(changedFiles) == 0 {
-		grip.Info(message.Fields{
-			"message":     "patch has no changed files, skip path filtering",
-			"patch_id":    patchDoc.Id.Hex(),
-			"intent_type": j.IntentType,
-		})
-		// The changed files might be missing if either the patch has no changes
-		// or the changes are too large to load from GitHub. If the changed
-		// files can't be retrieved, be on the conservative side and don't
-		// filter out any variants.
+	if j.skipFilteringIgnoredVariants(ctx, patchDoc) {
 		return ignoredVariants
 	}
 
 	filteredVariantsTasks := []patch.VariantTasks{}
 	filteredBuildVariants := []string{}
 
+	changedFiles := patchDoc.FilesChanged()
 	// Check each variant in VariantsTasks to see if it should be ignored
 	for _, vt := range patchDoc.VariantsTasks {
 		bv := patchedProject.FindBuildVariant(vt.Variant)
@@ -1612,4 +1578,44 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 	patchDoc.Tasks = filteredTasks
 
 	return ignoredVariants
+}
+
+// skipFilteringIgnoredVariants verifies that the patch should apply filtering, i.e. there are changed files,
+// this is a PR or merge queue patch, and path filtering for the merge queue is enabled.
+func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context, patchDoc *patch.Patch) bool {
+	if !patchDoc.IsGithubPRPatch() && !patchDoc.IsMergeQueuePatch() {
+		return true
+	}
+	if patchDoc.IsMergeQueuePatch() {
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":  "failed to get service flags",
+				"job":      j.ID(),
+				"patch_id": patchDoc.Id.Hex(),
+			}))
+			return true
+		}
+		if flags.UseMergeQueuePathFilteringDisabled {
+			grip.Info(message.Fields{
+				"message":  "merge queue path filtering is disabled",
+				"patch_id": patchDoc.Id.Hex(),
+				"job":      j.ID(),
+			})
+			return true
+		}
+	}
+	if len(patchDoc.FilesChanged()) == 0 {
+		grip.Info(message.Fields{
+			"message":     "patch has no changed files, skip path filtering",
+			"patch_id":    patchDoc.Id.Hex(),
+			"intent_type": j.IntentType,
+		})
+		// The changed files might be missing if either the patch has no changes
+		// or the changes are too large to load from GitHub. If the changed
+		// files can't be retrieved, be on the conservative side and don't
+		// filter out any variants.
+		return true
+	}
+	return false
 }
