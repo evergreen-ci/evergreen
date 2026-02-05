@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-01-29"
+	ClientVersion = "2026-02-05"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-02-05"
+	AgentVersion = "2026-02-05a"
 )
 
 const (
@@ -75,6 +75,7 @@ type Settings struct {
 	ConfigDir           string                  `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
+	DebugSpawnHosts     DebugSpawnHostsConfig   `yaml:"debug_spawn_hosts" bson:"debug_spawn_hosts" json:"debug_spawn_hosts" id:"debug_spawn_hosts"`
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions" secret:"true"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
