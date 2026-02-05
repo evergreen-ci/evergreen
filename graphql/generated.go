@@ -1742,44 +1742,45 @@ type ComplexityRoot struct {
 	}
 
 	ServiceFlags struct {
-		AgentStartDisabled              func(childComplexity int) int
-		AlertsDisabled                  func(childComplexity int) int
-		BackgroundReauthDisabled        func(childComplexity int) int
-		BackgroundStatsDisabled         func(childComplexity int) int
-		CLIUpdatesDisabled              func(childComplexity int) int
-		CacheStatsEndpointDisabled      func(childComplexity int) int
-		CacheStatsJobDisabled           func(childComplexity int) int
-		CheckBlockedTasksDisabled       func(childComplexity int) int
-		CloudCleanupDisabled            func(childComplexity int) int
-		DebugSpawnHostDisabled          func(childComplexity int) int
-		DegradedModeDisabled            func(childComplexity int) int
-		ElasticIPsDisabled              func(childComplexity int) int
-		EmailNotificationsDisabled      func(childComplexity int) int
-		EventProcessingDisabled         func(childComplexity int) int
-		GithubPRTestingDisabled         func(childComplexity int) int
-		GithubStatusAPIDisabled         func(childComplexity int) int
-		HostAllocatorDisabled           func(childComplexity int) int
-		HostInitDisabled                func(childComplexity int) int
-		JIRANotificationsDisabled       func(childComplexity int) int
-		JWTTokenForCLIDisabled          func(childComplexity int) int
-		LargeParserProjectsDisabled     func(childComplexity int) int
-		MonitorDisabled                 func(childComplexity int) int
-		PodAllocatorDisabled            func(childComplexity int) int
-		PodInitDisabled                 func(childComplexity int) int
-		ReleaseModeDisabled             func(childComplexity int) int
-		RepotrackerDisabled             func(childComplexity int) int
-		S3LifecycleSyncDisabled         func(childComplexity int) int
-		SchedulerDisabled               func(childComplexity int) int
-		SlackNotificationsDisabled      func(childComplexity int) int
-		SleepScheduleDisabled           func(childComplexity int) int
-		StaticAPIKeysDisabled           func(childComplexity int) int
-		SystemFailedTaskRestartDisabled func(childComplexity int) int
-		TaskDispatchDisabled            func(childComplexity int) int
-		TaskLoggingDisabled             func(childComplexity int) int
-		TaskReliabilityDisabled         func(childComplexity int) int
-		UnrecognizedPodCleanupDisabled  func(childComplexity int) int
-		UseGitForGitHubFilesDisabled    func(childComplexity int) int
-		WebhookNotificationsDisabled    func(childComplexity int) int
+		AgentStartDisabled                 func(childComplexity int) int
+		AlertsDisabled                     func(childComplexity int) int
+		BackgroundReauthDisabled           func(childComplexity int) int
+		BackgroundStatsDisabled            func(childComplexity int) int
+		CLIUpdatesDisabled                 func(childComplexity int) int
+		CacheStatsEndpointDisabled         func(childComplexity int) int
+		CacheStatsJobDisabled              func(childComplexity int) int
+		CheckBlockedTasksDisabled          func(childComplexity int) int
+		CloudCleanupDisabled               func(childComplexity int) int
+		DebugSpawnHostDisabled             func(childComplexity int) int
+		DegradedModeDisabled               func(childComplexity int) int
+		ElasticIPsDisabled                 func(childComplexity int) int
+		EmailNotificationsDisabled         func(childComplexity int) int
+		EventProcessingDisabled            func(childComplexity int) int
+		GithubPRTestingDisabled            func(childComplexity int) int
+		GithubStatusAPIDisabled            func(childComplexity int) int
+		HostAllocatorDisabled              func(childComplexity int) int
+		HostInitDisabled                   func(childComplexity int) int
+		JIRANotificationsDisabled          func(childComplexity int) int
+		JWTTokenForCLIDisabled             func(childComplexity int) int
+		LargeParserProjectsDisabled        func(childComplexity int) int
+		MonitorDisabled                    func(childComplexity int) int
+		PodAllocatorDisabled               func(childComplexity int) int
+		PodInitDisabled                    func(childComplexity int) int
+		ReleaseModeDisabled                func(childComplexity int) int
+		RepotrackerDisabled                func(childComplexity int) int
+		S3LifecycleSyncDisabled            func(childComplexity int) int
+		SchedulerDisabled                  func(childComplexity int) int
+		SlackNotificationsDisabled         func(childComplexity int) int
+		SleepScheduleDisabled              func(childComplexity int) int
+		StaticAPIKeysDisabled              func(childComplexity int) int
+		SystemFailedTaskRestartDisabled    func(childComplexity int) int
+		TaskDispatchDisabled               func(childComplexity int) int
+		TaskLoggingDisabled                func(childComplexity int) int
+		TaskReliabilityDisabled            func(childComplexity int) int
+		UnrecognizedPodCleanupDisabled     func(childComplexity int) int
+		UseGitForGitHubFilesDisabled       func(childComplexity int) int
+		UseMergeQueuePathFilteringDisabled func(childComplexity int) int
+		WebhookNotificationsDisabled       func(childComplexity int) int
 	}
 
 	SetCursorAPIKeyPayload struct {
@@ -10151,6 +10152,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled(childComplexity), true
+	case "ServiceFlags.useMergeQueuePathFilteringDisabled":
+		if e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled(childComplexity), true
 	case "ServiceFlags.webhookNotificationsDisabled":
 		if e.complexity.ServiceFlags.WebhookNotificationsDisabled == nil {
 			break
@@ -19754,6 +19761,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
 			case "s3LifecycleSyncDisabled":
 				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
+			case "useMergeQueuePathFilteringDisabled":
+				return ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
 		},
@@ -59059,6 +59068,35 @@ func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _ServiceFlags_useMergeQueuePathFilteringDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.UseMergeQueuePathFilteringDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SetCursorAPIKeyPayload_success(ctx context.Context, field graphql.CollectedField, obj *SetCursorAPIKeyPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -84758,7 +84796,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "useMergeQueuePathFilteringDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85031,6 +85069,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.S3LifecycleSyncDisabled = data
+		case "useMergeQueuePathFilteringDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useMergeQueuePathFilteringDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UseMergeQueuePathFilteringDisabled = data
 		}
 	}
 
@@ -101264,6 +101309,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
 		case "s3LifecycleSyncDisabled":
 			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
+		case "useMergeQueuePathFilteringDisabled":
+			out.Values[i] = ec._ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
