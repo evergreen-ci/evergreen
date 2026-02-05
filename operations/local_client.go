@@ -112,6 +112,11 @@ func DaemonCommands() []cli.Command {
 			Usage:  "Execute the next step",
 			Action: stepNextCmd,
 		},
+		{
+			Name:   "run-all",
+			Usage:  "Run all remaining steps",
+			Action: runAllCmd,
+		},
 	}
 }
 
@@ -239,11 +244,11 @@ func selectTaskCmd(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Selected task: %s\n", taskName)
+	grip.Infof("Selected task: %s\n", taskName)
 	if variantName != "" {
-		fmt.Printf("Variant: %s\n", variantName)
+		grip.Infof("Variant: %s\n", variantName)
 	}
-	fmt.Printf("Total steps: %v\n", resp["step_count"])
+	grip.Infof("Total steps: %v\n", resp["step_count"])
 
 	return nil
 }
@@ -261,11 +266,32 @@ func stepNextCmd(c *cli.Context) error {
 	}
 
 	if resp["success"].(bool) {
-		fmt.Printf("Step executed successfully (now at step %v)\n", resp["current_step"])
+		grip.Infof("Step executed successfully (now at step %v)\n", resp["current_step"])
 	} else {
-		fmt.Printf("Step failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
+		grip.Infof("Step failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
 	}
 
+	return nil
+}
+
+// runAllCmd runs all remaining steps
+func runAllCmd(c *cli.Context) error {
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	grip.Info("Running all remaining steps...")
+	resp, err := postJSON(url+"/step/run-all", nil)
+	if err != nil {
+		return err
+	}
+
+	if resp["success"].(bool) {
+		grip.Infof("Execution complete (at step %v)\n", resp["current_step"])
+	} else {
+		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
+	}
 	return nil
 }
 

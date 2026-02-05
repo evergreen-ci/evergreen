@@ -737,7 +737,10 @@ tasks, since only some of the commit's changed files are ignored.
 ##### Build Variant Path Filtering
 
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
-changed. This is the opposite of ignoring - it defines what files the variant cares about.
+changed. This is the opposite of ignoring -- it defines what files the variant cares about and prevents tasks
+from running if a specified file has not changed. However, this does _not_ mean that the variant will automatically
+be scheduled if a file in a specified path is changed. The tasks must still be manually selected to run through
+manual selection, alias, etc.
 
 _Merge queue behavior_: Build variant path filtering is supported for the merge queue. If testing multiple PRs
 in one merge queue patch, we will consider the full set of changed files to determine what tasks to run.

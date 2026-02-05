@@ -237,25 +237,32 @@ func ParseGitVersion(version string) (string, error) {
 }
 
 // GetGitHubFileFromGit retrieves a single file's contents from GitHub using
-// git. Ref must be a commit hash or branch.
-func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file string) ([]byte, error) {
+// git. If a worktree is specified, it will retrieve the file using that
+// preloaded git worktree. Ref must be a commit hash or branch.
+func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file, worktree string) ([]byte, error) {
 	ctx, span := tracer.Start(ctx, "GetGitHubFileFromGit")
 	defer span.End()
 
-	dir, err := GitCloneMinimal(ctx, owner, repo, ref)
-	if err != nil {
-		return nil, errors.Wrap(err, "git cloning repository")
+	var dir string
+	if worktree == "" {
+		var err error
+		dir, err = GitCloneMinimal(ctx, owner, repo, ref)
+		if err != nil {
+			return nil, errors.Wrap(err, "git cloning repository")
+		}
+		defer func() {
+			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
+				"message": "could not clean up git clone directory",
+				"owner":   owner,
+				"repo":    repo,
+				"ref":     ref,
+				"file":    file,
+				"ticket":  "DEVPROD-26143",
+			}))
+		}()
+	} else {
+		dir = worktree
 	}
-	defer func() {
-		grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
-			"message": "could not clean up git clone directory",
-			"owner":   owner,
-			"repo":    repo,
-			"ref":     ref,
-			"file":    file,
-			"ticket":  "DEVPROD-26143",
-		}))
-	}()
 
 	fileContent, err := GitRestoreFile(ctx, owner, repo, ref, dir, file)
 	return fileContent, errors.Wrap(err, "restoring git file")
@@ -280,7 +287,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 		return "", errors.Wrap(err, "creating GitHub app installation token")
 	}
 
-	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("git-clone-%s-%s-", owner, repo))
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("git-clone-%s-%s-%s-", owner, repo, revision))
 	if err != nil {
 		return "", errors.Wrap(err, "creating temp dir for git clone")
 	}
@@ -317,15 +324,17 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 
 	if err := cmd.Run(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "minimal git clone failed",
-			"ticket":   "DEVPROD-26143",
-			"owner":    owner,
-			"repo":     repo,
-			"revision": revision,
-			"stdout":   stdout.String(),
-			"stderr":   stderr.String(),
+			"message":          "minimal git clone failed",
+			"ticket":           "DEVPROD-26143",
+			"owner":            owner,
+			"repo":             repo,
+			"revision":         revision,
+			"stdout":           stdout.String(),
+			"stderr":           stderr.String(),
+			"is_context_error": ctx.Err() != nil,
 		}))
 		catcher := grip.NewBasicCatcher()
+		catcher.Add(ctx.Err())
 		catcher.Wrapf(err, "git cloning repo '%s/%s'", owner, repo)
 		catcher.Wrap(os.RemoveAll(tmpDir), "cleaning up temp dir after failed git clone")
 		return "", catcher.Resolve()
@@ -360,14 +369,21 @@ func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() != nil {
+			return errors.Wrapf(ctx.Err(), "creating git worktree '%s'", worktreeDir)
+		}
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":      "git worktree add failed",
-			"ticket":       "DEVPROD-26143",
-			"worktree_dir": worktreeDir,
-			"stdout":       stdout.String(),
-			"stderr":       stderr.String(),
+			"message":          "git worktree add failed",
+			"ticket":           "DEVPROD-26143",
+			"worktree_dir":     worktreeDir,
+			"stdout":           stdout.String(),
+			"stderr":           stderr.String(),
+			"is_context_error": ctx.Err() != nil,
 		}))
-		return errors.Wrapf(err, "creating git worktree '%s'", worktreeDir)
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(ctx.Err())
+		catcher.Wrapf(err, "git creating worktree '%s'", worktreeDir)
+		return catcher.Resolve()
 	}
 
 	return nil
@@ -415,16 +431,20 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 			return nil, FileNotFoundError{filepath: fileName}
 		}
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":   "git restore failed",
-			"ticket":    "DEVPROD-26143",
-			"owner":     owner,
-			"repo":      repo,
-			"revision":  revision,
-			"stdout":    stdout.String(),
-			"stderr":    stderr.String(),
-			"file_name": fileName,
+			"message":          "git restore failed",
+			"ticket":           "DEVPROD-26143",
+			"owner":            owner,
+			"repo":             repo,
+			"revision":         revision,
+			"stdout":           stdout.String(),
+			"stderr":           stderr.String(),
+			"file_name":        fileName,
+			"is_context_error": ctx.Err() != nil,
 		}))
-		return nil, errors.Wrapf(err, "restoring file '%s'", fileName)
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(ctx.Err())
+		catcher.Wrapf(err, "git restoring file '%s'", fileName)
+		return nil, catcher.Resolve()
 	}
 
 	// Validate that the restored file is not a symlink to prevent attempts to
