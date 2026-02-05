@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// DebugSpawnHostsConfig holds configuration for debugging spawn hosts.
+// DebugSpawnHostsConfig holds configuration for spawning debug hosts.
 type DebugSpawnHostsConfig struct {
 	SetupScript string `yaml:"setup_script" bson:"setup_script" json:"setup_script"`
 }
