@@ -318,7 +318,8 @@ func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
 	podID := r.Header.Get(evergreen.PodHeader)
-	if h.hostID == "" && podID == "" {
+	userKey := r.Header.Get(evergreen.APIKeyHeader)
+	if h.hostID == "" && podID == "" && userKey == "" {
 		return errors.New("missing both host and pod ID")
 	}
 	return nil
@@ -392,6 +393,23 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		if projectVars.PrivateVars != nil {
 			res.PrivateVars = projectVars.PrivateVars
 		}
+
+		user := gimlet.GetUser(ctx)
+		isUserRequest := user != nil
+		// If from debug session request, filter out admin-only vars if user is not an admin
+		isAdmin := isUserRequest && user.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      pRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+		if isUserRequest && projectVars.AdminOnlyVars != nil && !isAdmin {
+			for adminOnlyVar := range projectVars.AdminOnlyVars {
+				if projectVars.AdminOnlyVars[adminOnlyVar] {
+					delete(res.Vars, adminOnlyVar)
+				}
+			}
+		}
 	}
 
 	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version).WithFields(model.VersionParametersKey))
@@ -454,6 +472,21 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
+	}
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+	// If from debug session request, return minimal response
+	if isUserRequest {
+		redactedProjectRef := map[string]interface{}{
+			"repo":          p.Repo,
+			"branch":        p.Branch,
+			"owner":         p.Owner,
+			"id":            p.Id,
+			"repo_ref_id":   p.RepoRefId,
+			"identifier":    p.Identifier,
+			"testselection": p.TestSelection,
+		}
+		return gimlet.NewJSONResponse(redactedProjectRef)
 	}
 
 	return gimlet.NewJSONResponse(p)
@@ -914,6 +947,12 @@ func (h *fetchTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
+	}
+	// Remove secret if request is coming from debug session
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+	if isUserRequest {
+		t.Secret = ""
 	}
 	return gimlet.NewJSONResponse(t)
 }
