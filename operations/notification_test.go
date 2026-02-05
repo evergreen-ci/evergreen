@@ -74,7 +74,7 @@ func TestNotificationEmailCommand(t *testing.T) {
 	}{
 		"FailsWithMissingBodyFile": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", "nonexistent.txt"},
-			expectErr: "no such file",
+			expectErr: "reading email body from file",
 		},
 		"FailsWithMissingRecipients": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--body", "Test body"},
