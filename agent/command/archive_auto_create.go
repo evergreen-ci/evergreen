@@ -76,7 +76,6 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 
 		if len(files) == 0 {
 			logger.Task().Warning("No files to archive.")
-			return nil
 		}
 
 		filenames = make([]string, len(files))
