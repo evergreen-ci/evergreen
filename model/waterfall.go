@@ -392,6 +392,8 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 }
 
 // GetVersionBuilds returns a list of builds with populated tasks for the given build IDs.
+// Tasks are grouped by display task when applicable - execution tasks are shown under their
+// parent display task, while regular tasks (not part of a display task) are shown individually.
 func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) ([]WaterfallBuild, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
 
@@ -399,11 +401,19 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 		return []WaterfallBuild{}, nil
 	}
 
+	// Match tasks that are either:
+	// 1. Display tasks (DisplayOnly: true)
+	// 2. Regular tasks that are not part of a display task (DisplayTaskId is empty or doesn't exist)
+	// This excludes execution tasks that are part of a display task.
 	match := bson.M{
-		task.VersionKey:     versionID,
-		task.BuildIdKey:     bson.M{"$in": buildIds},
-		task.DisplayOnlyKey: bson.M{"$ne": true},
-		task.RequesterKey:   bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+		task.VersionKey:   versionID,
+		task.BuildIdKey:   bson.M{"$in": buildIds},
+		task.RequesterKey: bson.M{"$in": evergreen.SystemVersionRequesterTypes},
+		"$or": []bson.M{
+			{task.DisplayOnlyKey: true},
+			{task.DisplayTaskIdKey: bson.M{"$exists": false}},
+			{task.DisplayTaskIdKey: ""},
+		},
 	}
 
 	pipeline := []bson.M{
