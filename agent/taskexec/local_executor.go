@@ -36,6 +36,8 @@ var noOpCommands = map[string]bool{
 	"s3Copy.copy":                           true,
 }
 
+// mockSecret is required to make agent request formation validation pass but it's not used in
+// debug sessions so we hard code it to a mock
 const mockSecret = "mock_secret"
 
 // localLoggerProducer implements the LoggerProducer interface for local execution
