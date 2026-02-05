@@ -72,6 +72,7 @@ type APIAdminSettings struct {
 	Cedar                   *APICedarConfig               `json:"cedar,omitempty"`
 	ConfigDir               *string                       `json:"configdir,omitempty"`
 	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
+	DebugSpawnHosts         *APIDebugSpawnHostsConfig     `json:"debug_spawn_hosts,omitempty"`
 	DomainName              *string                       `json:"domain_name,omitempty"`
 	Expansions              map[string]string             `json:"expansions,omitempty"`
 	Cost                    *APICostConfig                `json:"cost,omitempty"`
@@ -204,6 +205,12 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting spawn host config to API model")
 		}
 		as.Spawnhost = &spawnHostConfig
+		debugSpawnHostsConfig := APIDebugSpawnHostsConfig{}
+		err = debugSpawnHostsConfig.BuildFromService(v.DebugSpawnHosts)
+		if err != nil {
+			return errors.Wrap(err, "converting debug spawn hosts config to API model")
+		}
+		as.DebugSpawnHosts = &debugSpawnHostsConfig
 		slackConfig := APISlackConfig{}
 		err = slackConfig.BuildFromService(v.Slack)
 		if err != nil {
@@ -3028,6 +3035,27 @@ func (c *APISpawnHostConfig) ToService() (any, error) {
 		config.SpawnHostsPerUser = *c.SpawnHostsPerUser
 	}
 
+	return config, nil
+}
+
+type APIDebugSpawnHostsConfig struct {
+	SetupScript *string `json:"setup_script"`
+}
+
+func (c *APIDebugSpawnHostsConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.DebugSpawnHostsConfig:
+		c.SetupScript = utility.ToStringPtr(v.SetupScript)
+	default:
+		return errors.Errorf("programmatic error: expected debug spawn hosts config but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APIDebugSpawnHostsConfig) ToService() (any, error) {
+	config := evergreen.DebugSpawnHostsConfig{
+		SetupScript: utility.FromStringPtr(c.SetupScript),
+	}
 	return config, nil
 }
 

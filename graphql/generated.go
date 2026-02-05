@@ -177,6 +177,7 @@ type ComplexityRoot struct {
 		ConfigDir               func(childComplexity int) int
 		ContainerPools          func(childComplexity int) int
 		Cost                    func(childComplexity int) int
+		DebugSpawnHosts         func(childComplexity int) int
 		DisabledGQLQueries      func(childComplexity int) int
 		DomainName              func(childComplexity int) int
 		Expansions              func(childComplexity int) int
@@ -431,6 +432,10 @@ type ComplexityRoot struct {
 	CursorSettings struct {
 		KeyConfigured func(childComplexity int) int
 		KeyLastFour   func(childComplexity int) int
+	}
+
+	DebugSpawnHostsConfig struct {
+		SetupScript func(childComplexity int) int
 	}
 
 	DeleteCursorAPIKeyPayload struct {
@@ -3150,6 +3155,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Cost(childComplexity), true
+	case "AdminSettings.debugSpawnHosts":
+		if e.complexity.AdminSettings.DebugSpawnHosts == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.DebugSpawnHosts(childComplexity), true
 	case "AdminSettings.disabledGQLQueries":
 		if e.complexity.AdminSettings.DisabledGQLQueries == nil {
 			break
@@ -4181,6 +4192,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CursorSettings.KeyLastFour(childComplexity), true
+
+	case "DebugSpawnHostsConfig.setupScript":
+		if e.complexity.DebugSpawnHostsConfig.SetupScript == nil {
+			break
+		}
+
+		return e.complexity.DebugSpawnHostsConfig.SetupScript(childComplexity), true
 
 	case "DeleteCursorAPIKeyPayload.success":
 		if e.complexity.DeleteCursorAPIKeyPayload.Success == nil {
@@ -12953,6 +12971,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputCursorParams,
 		ec.unmarshalInputDeactivateStepbackTaskInput,
+		ec.unmarshalInputDebugSpawnHostsConfigInput,
 		ec.unmarshalInputDefaultSectionToRepoInput,
 		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDeleteGithubAppCredentialsInput,
@@ -18633,6 +18652,39 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 				return ec.fieldContext_CostConfig_s3Cost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_debugSpawnHosts(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_debugSpawnHosts,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHosts, nil
+		},
+		nil,
+		ec.marshalODebugSpawnHostsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_debugSpawnHosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "setupScript":
+				return ec.fieldContext_DebugSpawnHostsConfig_setupScript(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DebugSpawnHostsConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -24437,6 +24489,35 @@ func (ec *executionContext) _CursorSettings_keyLastFour(ctx context.Context, fie
 func (ec *executionContext) fieldContext_CursorSettings_keyLastFour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "CursorSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DebugSpawnHostsConfig_setupScript(ctx context.Context, field graphql.CollectedField, obj *model.APIDebugSpawnHostsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DebugSpawnHostsConfig_setupScript,
+		func(ctx context.Context) (any, error) {
+			return obj.SetupScript, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DebugSpawnHostsConfig_setupScript(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DebugSpawnHostsConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -36855,6 +36936,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_containerPools(ctx, field)
 			case "cost":
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
+			case "debugSpawnHosts":
+				return ec.fieldContext_AdminSettings_debugSpawnHosts(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			case "domainName":
@@ -51097,6 +51180,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_containerPools(ctx, field)
 			case "cost":
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
+			case "debugSpawnHosts":
+				return ec.fieldContext_AdminSettings_debugSpawnHosts(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			case "domainName":
@@ -76812,7 +76897,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76917,6 +77002,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Cost = data
+		case "debugSpawnHosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHosts"))
+			data, err := ec.unmarshalODebugSpawnHostsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHosts = data
 		case "disabledGQLQueries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledGQLQueries"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -78786,6 +78878,33 @@ func (ec *executionContext) unmarshalInputDeactivateStepbackTaskInput(ctx contex
 				return it, err
 			}
 			it.TaskName = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDebugSpawnHostsConfigInput(ctx context.Context, obj any) (model.APIDebugSpawnHostsConfig, error) {
+	var it model.APIDebugSpawnHostsConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"setupScript"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "setupScript":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("setupScript"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SetupScript = data
 		}
 	}
 
@@ -88180,6 +88299,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_containerPools(ctx, field, obj)
 		case "cost":
 			out.Values[i] = ec._AdminSettings_cost(ctx, field, obj)
+		case "debugSpawnHosts":
+			out.Values[i] = ec._AdminSettings_debugSpawnHosts(ctx, field, obj)
 		case "disabledGQLQueries":
 			out.Values[i] = ec._AdminSettings_disabledGQLQueries(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -89694,6 +89815,42 @@ func (ec *executionContext) _CursorSettings(ctx context.Context, sel ast.Selecti
 			}
 		case "keyLastFour":
 			out.Values[i] = ec._CursorSettings_keyLastFour(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var debugSpawnHostsConfigImplementors = []string{"DebugSpawnHostsConfig"}
+
+func (ec *executionContext) _DebugSpawnHostsConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIDebugSpawnHostsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, debugSpawnHostsConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DebugSpawnHostsConfig")
+		case "setupScript":
+			out.Values[i] = ec._DebugSpawnHostsConfig_setupScript(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -115021,6 +115178,21 @@ func (ec *executionContext) marshalOCursorSettings2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._CursorSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalODebugSpawnHostsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIDebugSpawnHostsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DebugSpawnHostsConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalODebugSpawnHostsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig(ctx context.Context, v any) (*model.APIDebugSpawnHostsConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDebugSpawnHostsConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalODeleteGithubAppCredentialsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsPayload(ctx context.Context, sel ast.SelectionSet, v *DeleteGithubAppCredentialsPayload) graphql.Marshaler {
