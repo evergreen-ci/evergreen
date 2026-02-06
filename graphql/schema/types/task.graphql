@@ -98,6 +98,7 @@ type Task {
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
+  generator: Task
   hasTestResults: Boolean!
   hostId: String
   imageId: String!
