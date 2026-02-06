@@ -2231,7 +2231,8 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			j := &patchIntentProcessor{}
-			ignoredVariants := j.filterOutIgnoredVariants(tc.patchDoc, tc.project)
+			ctx := context.Background()
+			ignoredVariants := j.filterOutIgnoredVariants(ctx, tc.patchDoc, tc.project)
 
 			assert.Equal(t, tc.expectedIgnoredVariants, ignoredVariants)
 			assert.Len(t, tc.patchDoc.VariantsTasks, tc.expectedVariantsTasks)
