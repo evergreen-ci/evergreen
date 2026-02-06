@@ -1769,6 +1769,7 @@ type ComplexityRoot struct {
 		JWTTokenForCLIDisabled             func(childComplexity int) int
 		LargeParserProjectsDisabled        func(childComplexity int) int
 		MonitorDisabled                    func(childComplexity int) int
+		PSLoggingDisabled                  func(childComplexity int) int
 		PodAllocatorDisabled               func(childComplexity int) int
 		PodInitDisabled                    func(childComplexity int) int
 		ReleaseModeDisabled                func(childComplexity int) int
@@ -10080,6 +10081,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.MonitorDisabled(childComplexity), true
+	case "ServiceFlags.psLoggingDisabled":
+		if e.complexity.ServiceFlags.PSLoggingDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.PSLoggingDisabled(childComplexity), true
 	case "ServiceFlags.podAllocatorDisabled":
 		if e.complexity.ServiceFlags.PodAllocatorDisabled == nil {
 			break
@@ -19813,6 +19820,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
 			case "s3LifecycleSyncDisabled":
 				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
+			case "psLoggingDisabled":
+				return ec.fieldContext_ServiceFlags_psLoggingDisabled(ctx, field)
 			case "useMergeQueuePathFilteringDisabled":
 				return ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field)
 			}
@@ -59153,6 +59162,35 @@ func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _ServiceFlags_psLoggingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_psLoggingDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.PSLoggingDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_psLoggingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ServiceFlags_useMergeQueuePathFilteringDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -84915,7 +84953,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "useMergeQueuePathFilteringDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85188,6 +85226,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.S3LifecycleSyncDisabled = data
+		case "psLoggingDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("psLoggingDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PSLoggingDisabled = data
 		case "useMergeQueuePathFilteringDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useMergeQueuePathFilteringDisabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -101466,6 +101511,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
 		case "s3LifecycleSyncDisabled":
 			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
+		case "psLoggingDisabled":
+			out.Values[i] = ec._ServiceFlags_psLoggingDisabled(ctx, field, obj)
 		case "useMergeQueuePathFilteringDisabled":
 			out.Values[i] = ec._ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field, obj)
 		default:

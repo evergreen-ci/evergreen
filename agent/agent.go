@@ -39,7 +39,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-const hostAttribute = "evergreen.host"
+const (
+	hostAttribute = "evergreen.host"
+	ps            = "ps"
+)
 
 var (
 	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
@@ -769,14 +772,19 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	}()
 
-	// set up the system stats collector
+	// Set up the system stats collector.
+	statsCmds := []string{"uptime", "df -h"}
+
+	// Add ps command if configured in YAML or expansion (for backward compatibility) when default ps logging is not disabled.
+	if psCmd := tc.getPSCommand(); psCmd != "" {
+		statsCmds = append(statsCmds, psCmd)
+	}
+
 	statsCollector := NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
 		globals.DefaultStatsInterval,
-		"uptime",
-		"df -h",
-		"${ps|ps}",
+		statsCmds...,
 	)
 	// Running the `df` command on Unix systems displays inode
 	// statistics without the `-i` flag by default. However, we need

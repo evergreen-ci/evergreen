@@ -98,6 +98,7 @@ var (
 	s3LifecycleSyncDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
 	useGitForGitHubFilesDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "UseGitForGitHubFilesDisabled")
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
+	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
