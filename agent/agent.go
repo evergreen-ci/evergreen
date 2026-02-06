@@ -942,10 +942,6 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 
 			detail := fmt.Sprintf("PID %d: ID=%s, Running=%v",
 				info.PID, info.ID, info.IsRunning)
-
-			if len(info.Options.Args) > 0 {
-				detail += fmt.Sprintf(", Command=%v", info.Options.Args)
-			}
 			if !info.StartAt.IsZero() {
 				detail += fmt.Sprintf(", StartTime=%s", info.StartAt.Format(time.RFC3339))
 				detail += fmt.Sprintf(", RunningFor=%v", time.Since(info.StartAt))
@@ -958,6 +954,9 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			}
 			if tags := proc.GetTags(); len(tags) > 0 {
 				detail += fmt.Sprintf(", Tags=%v", tags)
+			}
+			if len(info.Options.Args) > 0 {
+				detail += fmt.Sprintf(", Command Args=%v", info.Options.Args)
 			}
 
 			processDetails = append(processDetails, detail)
