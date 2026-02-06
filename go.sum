@@ -177,8 +177,6 @@ github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f h1:sXisMMrOFZVbcl
 github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f/go.mod h1:6j2omnZaHKHv2WkpToHHsl0TK7Wja5GmxcYRvjkpJ2k=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
-github.com/evergreen-ci/pail v0.0.0-20260126143719-5fde9581b720 h1:VodjPQZXAwYnmtSQyGWtH4kj6+INFtUgI380qprGUv4=
-github.com/evergreen-ci/pail v0.0.0-20260126143719-5fde9581b720/go.mod h1:SY1hmP1Mb98iGFcifg7B1m1HYVkzPanprn4RI3DmeeI=
 github.com/evergreen-ci/pail v0.0.0-20260205200523-4c59d67e678a h1:KYK7sw8ag0SMGoDvkEDu/5rSMsUo2a5yTYDguY4i8Bk=
 github.com/evergreen-ci/pail v0.0.0-20260205200523-4c59d67e678a/go.mod h1:SY1hmP1Mb98iGFcifg7B1m1HYVkzPanprn4RI3DmeeI=
 github.com/evergreen-ci/parquet-go v0.0.0-20260116211725-cd13d4127a88 h1:DyLcXo7JENHOHqZ1dStuxF8XNpYLfZsIL3hOuN8XEd4=
