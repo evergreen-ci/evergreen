@@ -656,7 +656,9 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
 		IsIncludedFile:            true,
-		Worktree:                  dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx),
+	}
+	if projectOpts.Ref != nil {
+		localOpts.Worktree = dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx)
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -901,7 +903,8 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		return nil, nil
 	}
 	if opts.Ref == nil {
-		return nil, errors.New("project ref cannot be nil when including files from remote sources")
+		// Ref could be nil when the CLI is loading the project for validation.
+		return nil, nil
 	}
 
 	ctx, span := tracer.Start(ctx, "setupParallelGitIncludeDirs", trace.WithAttributes(
