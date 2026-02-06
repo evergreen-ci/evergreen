@@ -246,8 +246,6 @@ type Task struct {
 	PredictedTaskCost cost.Cost `bson:"predicted_cost,omitempty" json:"predicted_cost,omitempty"`
 	// TaskCost is the actual cost of the task based on runtime and distro cost rates
 	TaskCost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
-	// S3Usage tracks S3 API usage for cost calculation
-	S3Usage S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -2400,7 +2398,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				StatusKey:             detail.Status,
 				TimeTakenKey:          t.TimeTaken,
 				TaskCostKey:           t.TaskCost,
-				S3UsageKey:            t.S3Usage,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
