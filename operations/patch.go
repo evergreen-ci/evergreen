@@ -246,34 +246,71 @@ func Patch() cli.Command {
 			// Initialize module path cache in case these have already been set by the user. We use a cache here
 			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
-			if params.IncludeModules {
-				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache)
-				if err != nil {
-					return err
-				}
-				params.LocalModuleIncludes = localModuleIncludes
-			}
 
-			newPatch, err := params.createPatch(ac, diffData)
-			if err != nil {
-				return errors.Wrapf(err, "creating cli patch")
-			}
-			patchId := newPatch.Id.Hex()
+			// Track which modules the user confirmed for later use
+			confirmedModules := make(map[string]bool)
+
+			// If including modules, ask user and read includes BEFORE creating patch
 			if params.IncludeModules {
-				proj, err := rc.GetPatchedConfig(patchId)
+				// Load local project config to get module list
+				proj, err := loadLocalProjectConfig(params.Path, ref.RemotePath)
 				if err != nil {
-					return err
-				}
-				if proj == nil {
-					return errors.Errorf("project config for '%s' not found", patchId)
+					return errors.Wrap(err, "loading local project config")
 				}
 
+				// Ask user about each module
 				for _, module := range proj.Modules {
 					modulePath, err := params.getModulePath(conf, module.Name, modulePathCache)
 					if err != nil {
 						grip.Error(err)
 						continue
 					}
+
+					// Create a temporary patch object for shouldIncludeModule (it needs patch.Id but won't use it yet)
+					tempPatch := &patch.Patch{}
+					includeModule, err := shouldIncludeModule(params, args, conf, tempPatch, &module, modulePath)
+					if err != nil || !includeModule {
+						continue
+					}
+
+					confirmedModules[module.Name] = true
+				}
+
+				// Read config files ONLY for confirmed modules
+				if len(confirmedModules) > 0 {
+					params.LocalModuleIncludes, err = getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache, confirmedModules)
+					if err != nil {
+						grip.Errorf("Error reading module config files: %s", err)
+					}
+				}
+			}
+
+			// Create patch WITH local module includes
+			newPatch, err := params.createPatch(ac, diffData)
+			if err != nil {
+				return errors.Wrapf(err, "creating cli patch")
+			}
+			patchId := newPatch.Id.Hex()
+			if params.IncludeModules && len(confirmedModules) > 0 {
+				// Load project config again to add module code changes
+				proj, err := loadLocalProjectConfig(params.Path, ref.RemotePath)
+				if err != nil {
+					return errors.Wrap(err, "loading local project config for module diffs")
+				}
+
+				// Add module code changes for modules the user confirmed
+				for _, module := range proj.Modules {
+					// Skip if user didn't confirm this module
+					if !confirmedModules[module.Name] {
+						continue
+					}
+
+					modulePath := modulePathCache[module.Name]
+					if modulePath == "" {
+						continue
+					}
+
+					// Add module code changes (diff/patch)
 					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
 						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
 					}
@@ -553,8 +590,31 @@ func PatchFile() cli.Command {
 	}
 }
 
+// loadLocalProjectConfig loads and parses the local project config file.
+// Returns a simple structure with just the module definitions (no includes resolved).
+func loadLocalProjectConfig(path, remotePath string) (*model.ParserProject, error) {
+	var yml []byte
+	var err error
+	if path != "" {
+		yml, err = os.ReadFile(path)
+	} else {
+		yml, err = os.ReadFile(remotePath)
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading local project config '%s'", remotePath)
+	}
+
+	proj := &model.ParserProject{}
+	if err := util.UnmarshalYAMLWithFallback(yml, proj); err != nil {
+		return nil, errors.Wrap(err, "parsing local project config")
+	}
+
+	return proj, nil
+}
+
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
-func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string) ([]patch.LocalModuleInclude, error) {
+// Only reads includes for modules in the includedModules map.
+func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string, includedModules map[string]bool) ([]patch.LocalModuleInclude, error) {
 	var yml []byte
 	var err error
 	if path != "" {
@@ -588,13 +648,14 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 
 	moduleIncludes := []patch.LocalModuleInclude{}
 	for moduleName, includes := range includesByModule {
-		modulePath, err := params.getModulePath(conf, moduleName, modulePathCache)
-		if err != nil {
-			grip.Error(errors.Wrapf(err, "getting module path for '%s'", moduleName))
+		// Skip modules not in the included set
+		if !includedModules[moduleName] {
 			continue
 		}
 
-		if modulePath == "" {
+		modulePath, ok := modulePathCache[moduleName]
+		if !ok || modulePath == "" {
+			grip.Errorf("Module path not found in cache for '%s'", moduleName)
 			continue
 		}
 

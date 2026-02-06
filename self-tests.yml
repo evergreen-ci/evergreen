@@ -1,3 +1,10 @@
+modules:
+  - name: evergreen
+    owner: evergreen-ci
+    repo: evergreen
+    prefix: ${workdir}/src
+    branch: main
+
 command_type: test
 stepback: true
 ignore:
