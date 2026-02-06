@@ -108,12 +108,13 @@ func PatchSetModule() cli.Command {
 	}
 }
 
-// shouldIncludeModule determines if a module should be included in the patch by showing
-// the user a diff summary and prompting for confirmation. Returns true if the module
-// should be included (both code and configuration), false otherwise.
+// shouldIncludeModule prompts the user to decide whether to include a module in the patch.
+// It displays a diff summary of the module changes and asks for confirmation. When the user
+// confirms, both the module's code changes and configuration files will be included.
+// Returns true if the user confirmed, false otherwise.
 func shouldIncludeModule(params *patchParams, args cli.Args, conf *ClientSettings,
 	p *patch.Patch, module *model.Module, modulePath string) (bool, error) {
-	// If skipping confirmation, always include
+	// If skipping confirmation, always include the module.
 	if params.SkipConfirm {
 		return true, nil
 	}
@@ -132,7 +133,7 @@ func shouldIncludeModule(params *patchParams, args cli.Args, conf *ClientSetting
 		ref = ""
 	}
 
-	// Load git data to show diff summary
+	// Load git data to show diff summary.
 	diffData, err := loadGitData(modulePath, "", module.Branch, ref, "", preserveCommits, args...)
 	if err != nil {
 		return false, err
