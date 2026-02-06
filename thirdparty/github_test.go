@@ -325,6 +325,18 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
 
+	s.Run("TestBranchWithMergedMain", func() {
+		// This test uses the commits found in https://github.com/evergreen-ci/commit-queue-sandbox/pull/802.
+		// The merge base of these commits should be 4139a07 despite the branch being cut from 4aa48dc because
+		// main got merged in to the branch as a merge commit.
+		mainHash := "4139a07"
+		branchHash := "1c413b1"
+		expectedMergeBase := "4139a07"
+		hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "commit-queue-sandbox", mainHash, branchHash, 802)
+		s.NoError(err)
+		s.Equal(expectedMergeBase, hash)
+	})
+
 	// This test should fail, but it triggers the retry logic which in turn
 	// causes the context to expire, so we reset the context with a longer
 	// deadline here
