@@ -897,21 +897,6 @@ buildvariants:
     tasks:
       - name: ".test"
 
-  - name: ubuntu2004-container
-    display_name: Ubuntu 20.04 (Container)
-    run_on:
-      - evg-container
-    expansions:
-      goos: linux
-      goarch: amd64
-      IS_DOCKER: true
-      GOROOT: /usr/local/go
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-8.0.0.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
-      decompress: tar zxvf
-    tasks:
-      - name: ".smoke"
-
   - name: test-config-validation
     display_name: Validate External Configs
     expansions:
