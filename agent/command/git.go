@@ -48,6 +48,7 @@ var (
 	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
+	cloneErrorAttribute   = fmt.Sprintf("%s.error", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -386,7 +387,11 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		))
 		defer span.End()
 
-		return fetchSourceCmd.Run(ctx)
+		if err = fetchSourceCmd.Run(ctx); err != nil {
+			span.SetAttributes(attribute.String(cloneErrorAttribute, err.Error()))
+		}
+
+		return err
 	})
 }
 
@@ -569,6 +574,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			errOutput = strings.ReplaceAll(errOutput, "\n", fmt.Sprintf("\n%s: ", module.Name))
 			logger.Task().Error(fmt.Sprintf("%s: %s", module.Name, errOutput))
 		}
+
+		if err != nil {
+			span.SetAttributes(attribute.String(cloneErrorAttribute, err.Error()))
+		}
+
 		return err
 	})
 }

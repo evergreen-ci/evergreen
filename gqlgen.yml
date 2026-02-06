@@ -186,6 +186,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICostData
   CreateProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  DebugSpawnHostsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDebugSpawnHostsConfig
+  DebugSpawnHostsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDebugSpawnHostsConfig
   DispatcherSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
   DispatcherSettingsInput:

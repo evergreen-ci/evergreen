@@ -80,9 +80,18 @@ func (s *generatedJSONS3Storage) Insert(ctx context.Context, t *Task, files Gene
 
 	for idx, file := range files {
 		r := bytes.NewBufferString(file)
+		fileSize := int64(len(file))
+
 		if err := s.bucket.Put(ctx, s.bucket.Join(t.Id, fmt.Sprint(idx)), r); err != nil {
 			return errors.Wrapf(err, "inserting generated JSON file #%d for task '%s'", idx, t.Id)
 		}
+
+		putRequests := CalculatePutRequestsWithContext(
+			S3BucketTypeLarge,
+			S3UploadMethodPut,
+			fileSize,
+		)
+		t.S3Usage.IncrementPutRequests(putRequests)
 	}
 
 	if err := t.SetGeneratedJSONStorageMethod(ctx, evergreen.ProjectStorageMethodS3); err != nil {

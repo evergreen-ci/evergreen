@@ -642,7 +642,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
-	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
+	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts, dirs *gitIncludeDirs, workerIdx int) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
@@ -660,6 +660,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
 		IsIncludedFile:            true,
+		Worktree:                  dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx),
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -672,7 +673,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"module":      include.Module,
 	})
 	if include.Module != "" {
-		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
+		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include, dirs, workerIdx)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
 		yaml, err = retrieveFile(ctx, *localOpts)
@@ -753,6 +754,29 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		return errors.Wrapf(err, LoadProjectError)
 	}
 
+	// Be polite. Don't make more than 10 concurrent requests to GitHub.
+	const maxWorkers = 10
+	workers := util.Min(maxWorkers, len(intermediateProject.Include))
+
+	dirs, err := setupParallelGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
+		"project_id": projectID,
+		"ticket":     "DEVPROD-26851",
+	}))
+	defer func() {
+		// This is a best-effort attempt to clean up the temporary git
+		// directories after includes are processed. However, if it errors, it's
+		// not really an issue because the git directories don't use much disk
+		// space and app servers are not long-lived enough for a few leftover
+		// files to cause issues.
+		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
+			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
+			"project_id": projectID,
+			"ticket":     "DEVPROD-26851",
+		}))
+	}()
+
 	wg := sync.WaitGroup{}
 	outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
 	includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
@@ -762,17 +786,14 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	}
 	close(includesToProcess)
 
-	// Be polite. Don't make more than 10 concurrent requests to GitHub.
-	const maxWorkers = 10
-	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
-		go func() {
+		go func(workerIdx int) {
 			defer wg.Done()
 			for include := range includesToProcess {
-				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts)
+				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, dirs, workerIdx)
 			}
-		}()
+		}(i)
 	}
 
 	// This order is deliberate:
@@ -839,17 +860,31 @@ func newGitOwnerRepo(owner, repo string) gitOwnerRepo {
 	}
 }
 
-// TODO (DEVPROD-26851): use this in follow-up PR.
 func (d *gitIncludeDirs) getWorktreeForOwnerRepoWorker(owner, repo string, workerNum int) string {
+	if d == nil {
+		return ""
+	}
+	if d.worktreesForOwnerRepo == nil {
+		return ""
+	}
+
 	ownerRepo := newGitOwnerRepo(owner, repo)
 	worktrees := d.worktreesForOwnerRepo[ownerRepo]
-	if len(worktrees) < workerNum {
-		// TODO (DEVPROD-26851): if git usage is enabled and this returns an
-		// empty string, that would be a bug. Make sure to add temporary
-		// monitoring to make sure this works as expected.
+	if workerNum >= len(worktrees) {
 		return ""
 	}
 	return worktrees[workerNum]
+}
+
+func (d *gitIncludeDirs) cleanup() error {
+	if d == nil {
+		return nil
+	}
+	catcher := grip.NewBasicCatcher()
+	for ownerRepo, dir := range d.clonesForOwnerRepo {
+		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory for '%s/%s'", ownerRepo.owner, ownerRepo.repo)
+	}
+	return catcher.Resolve()
 }
 
 // setupParallelGitIncludeDirs sets up git clones and worktrees in preparation
@@ -873,7 +908,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		return nil, errors.New("project ref cannot be nil when including files from remote sources")
 	}
 
-	ctx, span := tracer.Start(ctx, "setupGitIncludeDirs", trace.WithAttributes(
+	ctx, span := tracer.Start(ctx, "setupParallelGitIncludeDirs", trace.WithAttributes(
 		attribute.String(evergreen.ProjectIDOtelAttribute, opts.Ref.Id),
 		attribute.String(evergreen.ProjectIdentifierOtelAttribute, opts.Ref.Identifier),
 		attribute.String(evergreen.ProjectOrgOtelAttribute, opts.Ref.Owner),
@@ -892,17 +927,15 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		}
 		// If this function errored, clean up any intermediate git clone
 		// directories and worktrees that were created.
-		for ownerRepo, dir := range dirs.clonesForOwnerRepo {
-			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
-				"message":            "could not clean up git clone directory after failing to set up git directories",
-				"owner":              ownerRepo.owner,
-				"repo":               ownerRepo.repo,
-				"project_id":         opts.Ref.Id,
-				"project_identifier": opts.Ref.Identifier,
-				"dir":                dir,
-				"ticket":             "DEVPROD-26143",
-			}))
-		}
+		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
+			"message":            "could not clean up git clone directory after failing to set up git directories",
+			"project_id":         opts.Ref.Id,
+			"project_identifier": opts.Ref.Identifier,
+			"ticket":             "DEVPROD-26143",
+		}))
+		// Once dirs has been cleaned up, it's no longer valid to use it, so do
+		// not return it in the result.
+		dirs = nil
 	}()
 
 	includedModuleNames := map[string]struct{}{}
@@ -957,7 +990,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if _, ok := dirs.clonesForOwnerRepo[ownerRepo]; ok {
 			// When including files, there should not be any duplicate repos
 			// defined in the modules, and the modules should not use the exact
-			// same repo as the project itself. If this is ever hit, it's a bug.
+			// same repo/branch as the project itself. If this is hit, it would
+			// be a sign that some project is relying on DEVPROD-27062 and this
+			// logic would potentially have to account for that edge case.
 			grip.Warning(message.Fields{
 				"message":            "trying to make multiple git clones of the same repo, skipping duplicate repo",
 				"project_id":         opts.Ref.Id,
@@ -966,6 +1001,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 				"repo":               repoName,
 				"revision":           revision,
 				"module":             modName,
+				"ticket":             "DEVPROD-26851",
 			})
 			continue
 		}
@@ -1065,6 +1101,9 @@ type GetProjectOpts struct {
 	// IsIncludedFile indicates whether the file being retrieved is an included
 	// YAML file.
 	IsIncludedFile bool
+	// Worktree is the directory of the git worktree to use when retrieving
+	// files via git. Only set if reading a remote file using git.
+	Worktree string
 }
 
 type PatchOpts struct {
@@ -1118,7 +1157,22 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
+		useGit := IsGitUsageForGitHubFileEnabled(ctx)
+		if opts.IsIncludedFile && opts.Worktree == "" {
+			// TODO (DEVPROD-26851): remove this condition once we have
+			// sufficient confidence that worktrees are set up properly for
+			// included files.
+			grip.Warning(message.Fields{
+				"message":   "including file but worktree is not set, will not use git",
+				"owner":     opts.Ref.Owner,
+				"repo":      opts.Ref.Repo,
+				"revision":  opts.Revision,
+				"file_name": opts.RemotePath,
+				"ticket":    "DEVPROD-26851",
+			})
+			useGit = false
+		}
+		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project config file for project '%s' at revision '%s'", opts.Ref.Id, opts.Revision)
 		}
@@ -1126,7 +1180,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 }
 
-func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude) ([]byte, error) {
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude, dirs *gitIncludeDirs, workerIdx int) ([]byte, error) {
 	// Check if the module has a local change passed in through the CLI or previous patch.
 	if opts.ReferencePatchID != "" {
 		p, err := patch.FindOneId(ctx, opts.ReferencePatchID)
@@ -1162,7 +1216,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	repoOwner, repoName, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
-
 	}
 	pRef := *opts.Ref
 	pRef.Owner = repoOwner
@@ -1172,6 +1225,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		RemotePath:   opts.RemotePath,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
+		Worktree:     dirs.getWorktreeForOwnerRepoWorker(repoOwner, repoName, workerIdx),
 	}
 	moduleOpts.Revision, err = getRevisionForRemoteModule(ctx, *module, include.Module, opts)
 	if err != nil {
@@ -1221,7 +1275,21 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
-	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, ghAppAuth, !opts.IsIncludedFile && IsGitUsageForGitHubFileEnabled(ctx))
+	useGit := IsGitUsageForGitHubFileEnabled(ctx)
+	if opts.IsIncludedFile && opts.Worktree == "" {
+		// TODO (DEVPROD-26851): remove this condition once we have sufficient
+		// confidence that worktrees are set up properly for included files.
+		grip.Warning(message.Fields{
+			"message":   "including file but worktree is not set, will not use git",
+			"owner":     opts.Ref.Owner,
+			"repo":      opts.Ref.Repo,
+			"revision":  opts.Revision,
+			"file_name": opts.RemotePath,
+			"ticket":    "DEVPROD-26851",
+		})
+		useGit = false
+	}
+	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.

@@ -38,6 +38,7 @@ input ServiceFlagsInput {
   githubStatusAPIDisabled: Boolean
   s3LifecycleSyncDisabled: Boolean
   psLoggingDisabled: Boolean
+  useMergeQueuePathFilteringDisabled: Boolean
 }
 
 type ServiceFlags {
@@ -80,6 +81,7 @@ type ServiceFlags {
   githubStatusAPIDisabled: Boolean
   s3LifecycleSyncDisabled: Boolean
   psLoggingDisabled: Boolean
+  useMergeQueuePathFilteringDisabled: Boolean
 }
 
 # UserServiceFlags are service flags that users have permission to view.
