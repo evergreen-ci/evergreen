@@ -4466,22 +4466,8 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 }
 
 // MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
-func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings) error {
-	if t.UsesLongRetentionBucket(settings) {
-		return nil
-	}
-	output, ok := t.GetTaskOutputSafe()
-	if !ok {
-		return nil
-	}
-
-	return t.moveLogsByNamesToBucket(ctx, settings, output, nil)
-
-}
-
-// MoveTestAndTaskLogsToFailedBucketWithSourceConfig moves task + test logs to the failed-task bucket
-// using the provided source bucket config instead of the task's current bucket config.
-func (t *Task) MoveTestAndTaskLogsToFailedBucketWithSourceConfig(ctx context.Context, settings *evergreen.Settings, sourceBucketCfg evergreen.BucketConfig) error {
+// using the provided source bucket config
+func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings, sourceBucketCfg evergreen.BucketConfig) error {
 	if t.UsesLongRetentionBucket(settings) {
 		return nil
 	}

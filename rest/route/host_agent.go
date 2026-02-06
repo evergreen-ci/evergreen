@@ -1351,7 +1351,8 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 		// Update the task's bucket config to point to the failed bucket before enqueuing
 		// the move job. This allows the agent to rotate its logger immediately when it
-		// checks the bucket config, preventing cleanup logs from racing with the move job.
+		// checks the bucket config, preventing cleanup logs and other logs after task completion
+		// from racing with the move job.
 		failedCfg := h.env.Settings().Buckets.LogBucketFailedTasks
 		if failedCfg.Name != "" {
 			t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
