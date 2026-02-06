@@ -352,8 +352,8 @@ func (tc *taskContext) getPSCommand() string {
 
 	// Check project task-level PS (second priority).
 	projectTask := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName)
-	if projectTask != nil && projectTask.Ps != nil {
-		ps, _ := tc.taskConfig.Expansions.ExpandString(*projectTask.Ps)
+	if projectTask != nil && projectTask.PS != nil {
+		ps, _ := tc.taskConfig.Expansions.ExpandString(*projectTask.PS)
 		return ps
 	}
 

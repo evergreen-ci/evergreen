@@ -1449,7 +1449,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 			MustHaveResults: pt.MustHaveResults,
-			Ps:              pt.Ps,
+			PS:              pt.Ps,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))

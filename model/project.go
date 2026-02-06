@@ -218,7 +218,7 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 		bvt.Stepback = pt.Stepback
 	}
 	if bvt.PS == nil {
-		bvt.PS = pt.Ps
+		bvt.PS = pt.PS
 	}
 
 	// Build variant level settings are lower priority than project task level
@@ -746,7 +746,7 @@ type ProjectTask struct {
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
-	Ps                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
+	PS                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
 }
 
 const (
