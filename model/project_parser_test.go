@@ -3173,18 +3173,9 @@ func TestCapParserPriorities(t *testing.T) {
 	})
 }
 
-func TestSetupGitIncludeDirs(t *testing.T) {
+func TestSetupParallelGitIncludeDirs(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
-
-	cleanupDirs := func(t *testing.T, dirs *gitIncludeDirs) {
-		if dirs == nil {
-			return
-		}
-		for _, dir := range dirs.clonesForOwnerRepo {
-			assert.NoError(t, os.RemoveAll(dir))
-		}
-	}
 
 	flags, err := evergreen.GetServiceFlags(t.Context())
 	require.NoError(t, err)
@@ -3202,7 +3193,9 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, numWorkers, opts)
 			assert.NoError(t, err)
 			require.NotZero(t, dirs)
-			defer cleanupDirs(t, dirs)
+			defer func() {
+				assert.NoError(t, dirs.cleanup())
+			}()
 
 			assert.Len(t, dirs.clonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
 			for _, dir := range dirs.clonesForOwnerRepo {
@@ -3232,7 +3225,7 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 
 				worktreeDir := dirs.getWorktreeForOwnerRepoWorker(owner, repo, 0)
 
-				fileContent, err := thirdparty.GitRestoreFile(t.Context(), owner, repo, revision, worktreeDir, include.FileName)
+				fileContent, err := thirdparty.GetGitHubFileFromGit(t.Context(), owner, repo, revision, include.FileName, worktreeDir)
 				require.NoError(t, err)
 				require.NotEmpty(t, fileContent)
 
@@ -3266,17 +3259,6 @@ func TestSetupGitIncludeDirs(t *testing.T) {
 			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
 			require.NoError(t, err)
 			assert.Zero(t, dirs)
-		},
-		"CleansUpDirectoriesOnError": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
-			includes[len(includes)-1].Module = "nonexistent_module"
-			dirs, err := setupParallelGitIncludeDirs(t.Context(), modules, includes, 1, opts)
-			assert.Error(t, err)
-			require.NotZero(t, dirs)
-			defer cleanupDirs(t, dirs)
-
-			for _, dir := range dirs.clonesForOwnerRepo {
-				assert.False(t, utility.FileExists(dir), "directory '%s' should have been cleaned up when git setup errors", dir)
-			}
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

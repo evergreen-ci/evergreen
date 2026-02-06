@@ -13,7 +13,17 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
+
+const configPath = ".evergreen-local.yml"
+
+type clientConfig struct {
+	ServerURL string `yaml:"server_url"`
+	TaskID    string `yaml:"task_id"`
+	APIUser   string `yaml:"api_user"`
+	APIKey    string `yaml:"api_key"`
+}
 
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
@@ -37,6 +47,7 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
 	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
+	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -44,6 +55,26 @@ func (d *localDaemonREST) Start() error {
 
 	grip.Infof("Starting REST daemon on port %d", d.port)
 	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
+}
+
+func (d *localDaemonREST) loadDebugClientConfig(workDir string) (*clientConfig, error) {
+	path := filepath.Join(workDir, configPath)
+	grip.Debugf("Checking for config file: %s", path)
+	if _, err := os.Stat(path); err != nil {
+		return nil, errors.Wrapf(err, "config file %s does not exist", path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading config file %s", path)
+	}
+	var config clientConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, errors.Wrapf(err, "parsing config file %s", path)
+	}
+
+	grip.Infof("Loaded client configuration from %s (server: %s, task: %s, user: %s)",
+		path, config.ServerURL, config.TaskID, config.APIUser)
+	return &config, nil
 }
 
 // handleHealth checks if the daemon is running
@@ -65,13 +96,28 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	opts := taskexec.LocalExecutorOptions{
-		WorkingDir: filepath.Dir(req.ConfigPath),
-		LogLevel:   "info",
-		Timeout:    7200,
+	workDir := filepath.Dir(req.ConfigPath)
+
+	backendConfig, err := d.loadDebugClientConfig(workDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	executor, err := taskexec.NewLocalExecutor(opts)
+	opts := taskexec.LocalExecutorOptions{
+		WorkingDir: workDir,
+		ServerURL:  backendConfig.ServerURL,
+		TaskID:     backendConfig.TaskID,
+		APIUser:    backendConfig.APIUser,
+		APIKey:     backendConfig.APIKey,
+	}
+
+	if opts.APIUser == "" || opts.APIKey == "" {
+		http.Error(w, "API user and key are required", http.StatusUnauthorized)
+		return
+	}
+
+	executor, err := taskexec.NewLocalExecutor(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -83,7 +129,6 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	workDir := filepath.Dir(req.ConfigPath)
 	if err := executor.SetupWorkingDirectory(workDir); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -152,6 +197,31 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	}
 
 	return nil
+}
+
+// handleRunAll runs all remaining steps
+func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	err := d.executor.RunAll(r.Context())
+	state := d.executor.GetDebugState()
+
+	response := map[string]interface{}{
+		"success":      err == nil,
+		"current_step": state.CurrentStepIndex,
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+	}
+
+	grip.Error(json.NewEncoder(w).Encode(response))
 }
 
 // handleStepNext executes the next step

@@ -31,7 +31,7 @@ buildvariants:
 		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
 		require.NoError(t, err)
 
-		executor, err := NewLocalExecutor(LocalExecutorOptions{})
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
 		project, err := executor.LoadProject(yamlFile)
@@ -63,7 +63,7 @@ tasks:
 		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
 		require.NoError(t, err)
 
-		executor, err := NewLocalExecutor(LocalExecutorOptions{})
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
 		_, err = executor.LoadProject(yamlFile)
@@ -88,7 +88,7 @@ tasks:
 		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
 		require.NoError(t, err)
 
-		executor, err := NewLocalExecutor(LocalExecutorOptions{})
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
 		_, err = executor.LoadProject(yamlFile)
@@ -100,7 +100,7 @@ tasks:
 	})
 
 	t.Run("ReturnsErrorWhenProjectNotLoaded", func(t *testing.T) {
-		executor, err := NewLocalExecutor(LocalExecutorOptions{})
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
 		err = executor.PrepareTask("any-task")
