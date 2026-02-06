@@ -172,4 +172,6 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 
 ### Evergreen AWS Task Costs
 
-Documentation and management for this data has moved to data/product analytics teams. See [their documentation](https://wiki.corp.mongodb.com/spaces/ADS/pages/385851483/Pipelines+and+Processes#PipelinesandProcesses-Evergreen) for more info.
+Documentation and management for this data can be found in the data/product analytics team documentation. See [their
+documentation](https://wiki.corp.mongodb.com/spaces/ADS/pages/385851483/Pipelines+and+Processes#PipelinesandProcesses-Evergreen)
+for more info.
