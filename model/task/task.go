@@ -4044,7 +4044,21 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		[]bson.M{
 			{"$set": bson.M{
 				DependsOnKey: bson.M{
-					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
+					"$concatArrays": []any{
+						"$" + DependsOnKey,
+						// Add dependencies to this task, but avoid adding a
+						// dependency if it's the task's own ID since that would
+						// create a self-dependency cycle.
+						bson.M{
+							"$filter": bson.M{
+								"input": newDependencies,
+								"as":    "dep",
+								"cond": bson.M{
+									"$ne": []any{"$$dep." + DependencyTaskIdKey, "$" + IdKey},
+								},
+							},
+						},
+					},
 				},
 			}},
 			addDisplayStatusCache,
