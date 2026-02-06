@@ -209,6 +209,39 @@ func (ac *legacyClient) FinalizePatch(patchId string) error {
 	return ac.modifyExisting(patchId, "finalize")
 }
 
+// UpdatePatchModuleConfigs sends local module configuration files to the server for a patch.
+// This allows updating the module includes after the patch has been created.
+func (ac *legacyClient) UpdatePatchModuleConfigs(patchID string, includes []patch.LocalModuleInclude) error {
+	data := struct {
+		LocalModuleIncludes []patch.LocalModuleInclude `json:"local_module_includes"`
+	}{includes}
+
+	rPipe, wPipe := io.Pipe()
+	encoder := json.NewEncoder(wPipe)
+	go func() {
+		grip.Warning(encoder.Encode(data))
+		grip.Warning(wPipe.Close())
+	}()
+	defer rPipe.Close()
+
+	resp, err := ac.post(fmt.Sprintf("patches/%s/local_module_includes", patchID), rPipe)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return newAuthError(resp)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return newVPNError(resp)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return NewAPIError(resp)
+	}
+	return nil
+}
+
 // GetPatches requests a list of the user's patches from the API and returns them as a list
 func (ac *legacyClient) GetPatches(n int) ([]patch.Patch, error) {
 	resp, err := ac.get(fmt.Sprintf("patches/mine?n=%v", n), nil)
