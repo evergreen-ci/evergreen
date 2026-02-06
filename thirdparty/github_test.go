@@ -333,7 +333,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 		// contains 4139a07.
 		mainHash := "4139a07"
 		branchHash := "1c413b1"
-		expectedMergeBase := "4139a07"
+		expectedMergeBase := "4139a07989ec3a5dfd9c3055161f753c61ef90f8"
 		hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "commit-queue-sandbox", mainHash, branchHash, 802)
 		s.NoError(err)
 		s.Equal(expectedMergeBase, hash)
