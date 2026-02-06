@@ -1347,14 +1347,17 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	if details.Status == evergreen.TaskFailed && !t.UsesLongRetentionBucket(h.env.Settings()) {
 		// Capture the current (source) bucket config before updating it, so the move job
 		// knows where to move logs from.
-		sourceBucketCfg := t.TaskOutputInfo.TaskLogs.BucketConfig
+		var sourceBucketCfg evergreen.BucketConfig
+		if t.TaskOutputInfo != nil {
+			sourceBucketCfg = t.TaskOutputInfo.TaskLogs.BucketConfig
+		}
 
 		// Update the task's bucket config to point to the failed bucket before enqueuing
 		// the move job. This allows the agent to rotate its logger immediately when it
 		// checks the bucket config, preventing cleanup logs and other logs after task completion
 		// from racing with the move job.
 		failedCfg := h.env.Settings().Buckets.LogBucketFailedTasks
-		if failedCfg.Name != "" {
+		if failedCfg.Name != "" && t.TaskOutputInfo != nil {
 			t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
 			t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
 		}
