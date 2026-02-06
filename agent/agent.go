@@ -943,6 +943,19 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			detail := fmt.Sprintf("PID %d: ID=%s, Running=%v",
 				info.PID, info.ID, info.IsRunning)
 
+			if len(info.Options.Args) > 0 {
+				detail += fmt.Sprintf(", Command=%v", info.Options.Args)
+			}
+			if !info.StartAt.IsZero() {
+				detail += fmt.Sprintf(", StartTime=%s", info.StartAt.Format(time.RFC3339))
+				detail += fmt.Sprintf(", RunningFor=%v", time.Since(info.StartAt))
+			}
+			if info.Complete {
+				detail += fmt.Sprintf(", Complete=true, ExitCode=%d", info.ExitCode)
+			}
+			if info.Options.WorkingDirectory != "" {
+				detail += fmt.Sprintf(", WorkingDir=%s", info.Options.WorkingDirectory)
+			}
 			if tags := proc.GetTags(); len(tags) > 0 {
 				detail += fmt.Sprintf(", Tags=%v", tags)
 			}
