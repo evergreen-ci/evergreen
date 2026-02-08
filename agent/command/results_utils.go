@@ -2,6 +2,9 @@ package command
 
 import (
 	"context"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -39,24 +42,52 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 }
 
 // sendTestLogsAndResults sends the test logs and test results to backend
-// logging and results services.
+// logging and results services. Test logs are uploaded in parallel using a
+// worker pool for improved performance.
 func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []testlog.TestLog, results []testresult.TestResult) error {
-	logger.Task().Info("Posting test logs...")
-	for _, log := range logs {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, "canceled while sending test logs")
-		}
+	if len(logs) > 0 {
+		logger.Task().Info("Posting test logs...")
 
-		if err := taskoutput.AppendTestLog(ctx, &conf.Task, redactor.RedactionOptions{
+		work := make(chan *testlog.TestLog, len(logs))
+		for i := range logs {
+			work <- &logs[i]
+		}
+		close(work)
+
+		var succeeded int64
+		var wg sync.WaitGroup
+		opts := redactor.RedactionOptions{
 			Expansions:         conf.NewExpansions,
 			Redacted:           conf.Redacted,
 			InternalRedactions: conf.InternalRedactions,
-		}, &log); err != nil {
-			// Continue on error to let the other logs get posted.
-			logger.Task().Error(errors.Wrap(err, "sending test log"))
 		}
+
+		numWorkers := runtime.GOMAXPROCS(0)
+		for i := 0; i < numWorkers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for log := range work {
+					if err := ctx.Err(); err != nil {
+						logger.Task().Warning(errors.Wrap(err, "context canceled while sending test logs"))
+						return
+					}
+					if err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, log); err != nil {
+						logger.Task().Error(errors.Wrap(err, "sending test log"))
+						continue
+					}
+					atomic.AddInt64(&succeeded, 1)
+
+					// Yield to allow other goroutines to run and prevent starvation
+					// in intense log uploading workflows.
+					runtime.Gosched()
+				}
+			}()
+		}
+		wg.Wait()
+
+		logger.Task().Infof("Finished posting test logs (%d of %d succeeded).", succeeded, len(logs))
 	}
-	logger.Task().Info("Finished posting test logs.")
 
 	return sendTestResults(ctx, comm, logger, conf, results)
 }
