@@ -1,11 +1,15 @@
 package taskoutput
 
 import (
+	"context"
 	"encoding/base64"
 	"os"
 	"path"
+	"sync/atomic"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -121,4 +125,74 @@ func TestBatchSpans(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mockTraceClient implements otlptrace.Client for testing.
+type mockTraceClient struct {
+	uploadCount atomic.Int64
+}
+
+func (m *mockTraceClient) Start(ctx context.Context) error { return nil }
+func (m *mockTraceClient) Stop(ctx context.Context) error  { return nil }
+func (m *mockTraceClient) UploadTraces(ctx context.Context, protoSpans []*tracepb.ResourceSpans) error {
+	m.uploadCount.Add(1)
+	return nil
+}
+
+func TestOtelTraceDirectoryHandlerRun(t *testing.T) {
+	t.Run("ProcessesMultipleFiles", func(t *testing.T) {
+		// Create temp directory with multiple trace files.
+		tmpDir := t.TempDir()
+
+		// Copy testdata trace file multiple times.
+		srcData, err := os.ReadFile("./testdata/trace_data.json")
+		require.NoError(t, err)
+
+		numFiles := 5
+		for i := 0; i < numFiles; i++ {
+			err := os.WriteFile(path.Join(tmpDir, "trace"+string(rune('0'+i))+".json"), srcData, 0644)
+			require.NoError(t, err)
+		}
+
+		mockComm := client.NewMock("http://localhost")
+		logger, err := mockComm.GetLoggerProducer(context.Background(), &task.Task{Id: "test"}, nil)
+		require.NoError(t, err)
+
+		mockClient := &mockTraceClient{}
+		handler := &otelTraceDirectoryHandler{
+			dir:         tmpDir,
+			logger:      logger,
+			traceClient: mockClient,
+		}
+
+		err = handler.run(context.Background())
+		assert.NoError(t, err)
+
+		// Verify uploads happened (each file has 7 resource spans, batched).
+		assert.Greater(t, mockClient.uploadCount.Load(), int64(0))
+
+		// Verify all files were removed.
+		files, err := os.ReadDir(tmpDir)
+		require.NoError(t, err)
+		assert.Empty(t, files, "all trace files should be removed after processing")
+	})
+
+	t.Run("HandlesEmptyDirectory", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		mockComm := client.NewMock("http://localhost")
+		logger, err := mockComm.GetLoggerProducer(context.Background(), &task.Task{Id: "test"}, nil)
+		require.NoError(t, err)
+
+		mockClient := &mockTraceClient{}
+		handler := &otelTraceDirectoryHandler{
+			dir:         tmpDir,
+			logger:      logger,
+			traceClient: mockClient,
+		}
+
+		err = handler.run(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), mockClient.uploadCount.Load())
+	})
 }
