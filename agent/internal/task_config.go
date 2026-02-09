@@ -74,6 +74,7 @@ type TaskConfig struct {
 	TaskGroup            *model.TaskGroup
 	CommandCleanups      []CommandCleanup
 	MaxExecTimeoutSecs   int
+	PSLoggingDisabled    bool
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.

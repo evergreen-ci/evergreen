@@ -88,6 +88,7 @@ type ParserProject struct {
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
+	Ps                 *string                    `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	Owner              *string                    `yaml:"owner,omitempty" bson:"owner,omitempty"`
 	Repo               *string                    `yaml:"repo,omitempty" bson:"repo,omitempty"`
 	RemotePath         *string                    `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
@@ -156,6 +157,7 @@ type parserTask struct {
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Ps                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
 }
 
 func (pp *ParserProject) Insert(ctx context.Context) error {
@@ -445,6 +447,8 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// PS is the command to run for process diagnostics.
+	PS *string `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -1409,6 +1413,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
+		PS:                 utility.FromStringPtr(pp.Ps),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),
@@ -1515,6 +1520,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 			MustHaveResults: pt.MustHaveResults,
+			PS:              pt.Ps,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
@@ -1844,6 +1850,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:  bvt.CronBatchTime,
 		BatchTime:      bvt.BatchTime,
 		Activate:       bvt.Activate,
+		PS:             bvt.PS,
 		CreateCheckRun: bvt.CreateCheckRun,
 	}
 	res.AllowedRequesters = bvt.AllowedRequesters
@@ -1877,6 +1884,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.RunOn) == 0 {
 		res.RunOn = pt.RunOn
+	}
+	if res.PS == nil {
+		res.PS = pt.Ps
 	}
 
 	// Build variant level settings are lower priority than project task level
