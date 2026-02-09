@@ -3197,8 +3197,8 @@ func TestSetupParallelGitIncludeDirs(t *testing.T) {
 				assert.NoError(t, dirs.cleanup())
 			}()
 
-			assert.Len(t, dirs.ClonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
-			for _, dir := range dirs.ClonesForOwnerRepo {
+			assert.Len(t, dirs.clonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
+			for _, dir := range dirs.clonesForOwnerRepo {
 				assert.True(t, utility.FileExists(dir))
 			}
 			for _, worktreeDirs := range dirs.worktreesForOwnerRepo {
@@ -3243,8 +3243,8 @@ func TestSetupParallelGitIncludeDirs(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotZero(t, dirs)
 
-			assert.Len(t, dirs.ClonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
-			for _, dir := range dirs.ClonesForOwnerRepo {
+			assert.Len(t, dirs.clonesForOwnerRepo, len(dirs.worktreesForOwnerRepo), "each git clone should have one set of worktrees")
+			for _, dir := range dirs.clonesForOwnerRepo {
 				assert.True(t, utility.FileExists(dir))
 			}
 			for _, worktreeDirs := range dirs.worktreesForOwnerRepo {
