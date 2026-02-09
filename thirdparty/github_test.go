@@ -325,7 +325,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 		Base: &github.PullRequestBranch{
 			Repo: &github.Repository{
 				Owner: &github.User{
-					Name: utility.ToStringPtr("evergreen-ci"),
+					Login: utility.ToStringPtr("evergreen-ci"),
 				},
 				Name: utility.ToStringPtr("evergreen"),
 			},
@@ -350,7 +350,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 			Base: &github.PullRequestBranch{
 				Repo: &github.Repository{
 					Owner: &github.User{
-						Name: utility.ToStringPtr("evergreen-ci"),
+						Login: utility.ToStringPtr("evergreen-ci"),
 					},
 					Name: utility.ToStringPtr("commit-queue-sandbox"),
 				},
@@ -374,7 +374,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 		Base: &github.PullRequestBranch{
 			Repo: &github.Repository{
 				Owner: &github.User{
-					Name: utility.ToStringPtr("evergreen-ci"),
+					Login: utility.ToStringPtr("evergreen-ci"),
 				},
 				Name: utility.ToStringPtr("conifer"),
 			},
