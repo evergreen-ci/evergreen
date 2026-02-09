@@ -922,6 +922,10 @@ Every task has some expansions available by default:
   author name in patches
 - `${task_id}` is the task's unique id
 - `${task_name}` is the name of the task
+- `${timed_out_command_pid}` is the PID of the evergreen command that timed out,
+  if the task has timed out. It is only available in the `timeout` task block.
+- `${timed_out_pids}` is a comma separated list of all PIDs that were running when the task's
+  timeout limit exceeded. It is only available in the `timeout` task block.
 - `${triggered_by_git_tag}` is the name of the tag that triggered this
   version, if applicable
 - `${version_id}` is the id of the task's version
