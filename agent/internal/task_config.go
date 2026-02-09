@@ -264,6 +264,18 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message
 	}
 
+	if opts.ExpansionsAndVars != nil && opts.ExpansionsAndVars.Expansions != nil {
+		expandedModules := make([]string, 0, len(taskConfig.BuildVariant.Modules))
+		for _, moduleName := range taskConfig.BuildVariant.Modules {
+			expanded, err := opts.ExpansionsAndVars.Expansions.ExpandString(moduleName)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to expand module '%s'", moduleName)
+			}
+			expandedModules = append(expandedModules, expanded)
+		}
+		taskConfig.BuildVariant.Modules = expandedModules
+	}
+
 	return taskConfig, nil
 }
 
