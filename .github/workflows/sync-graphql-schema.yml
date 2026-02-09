@@ -19,13 +19,22 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: evergreen-ci
+          repositories: ui
+
       - name: Checkout evergreen repo
         uses: actions/checkout@v4
         with:
           path: evergreen
 
       - name: Clone evergreen-ci/ui repo
-        run: git clone https://x-access-token:${{ secrets.EVERGREEN_UI_TOKEN }}@github.com/evergreen-ci/ui.git ui
+        run: git clone https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/evergreen-ci/ui.git ui
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -72,7 +81,7 @@ jobs:
       - name: Create pull request
         working-directory: ui
         env:
-          GH_TOKEN: ${{ secrets.EVERGREEN_UI_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           COMMIT_SHA="${{ github.sha }}"
           SHORT_SHA="${COMMIT_SHA:0:7}"
