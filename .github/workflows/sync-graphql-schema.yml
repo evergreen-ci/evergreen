@@ -1,6 +1,7 @@
 name: Sync GraphQL Schema to UI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
