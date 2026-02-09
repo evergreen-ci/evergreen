@@ -129,7 +129,7 @@ func (pp *ParserProject) mergeOrderedUnique(toMerge *ParserProject) error {
 // mergeUnique merges fields that are non-lists across multiple project YAML
 // files.
 // These fields can only be defined in one yaml.
-// These fields are: [stepback, batch time, pre/post timeout, pre/post error fails task, OOM tracker, display name, command type, callback/exec timeout, task annotations, build baron]
+// These fields are: [stepback, batch time, pre/post timeout, pre/post error fails task, OOM tracker, ps, display name, command type, callback/exec timeout, task annotations, build baron]
 func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 	catcher := grip.NewBasicCatcher()
 
@@ -167,6 +167,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		catcher.New("OOM tracker can only be defined in one YAML")
 	} else if toMerge.OomTracker != nil {
 		pp.OomTracker = toMerge.OomTracker
+	}
+
+	if pp.Ps != nil && toMerge.Ps != nil {
+		catcher.New("ps can only be defined in one YAML")
+	} else if toMerge.Ps != nil {
+		pp.Ps = toMerge.Ps
 	}
 
 	if pp.DisplayName != nil && toMerge.DisplayName != nil {
