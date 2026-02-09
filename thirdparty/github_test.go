@@ -321,7 +321,18 @@ func (s *githubSuite) TestGetGithubUser() {
 }
 
 func (s *githubSuite) TestGetPullRequestMergeBase() {
-	hash, err := GetPullRequestMergeBase(s.ctx, "evergreen-ci", "evergreen", "", "", 666)
+	evergreen666PR := &github.PullRequest{
+		Base: &github.PullRequestBranch{
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Name: utility.ToStringPtr("evergreen-ci"),
+				},
+				Name: utility.ToStringPtr("evergreen"),
+			},
+		},
+		Number: utility.ToIntPtr(666),
+	}
+	hash, err := GetPullRequestMergeBase(s.ctx, evergreen666PR)
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
 
@@ -334,7 +345,24 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 		mainHash := "4139a07"
 		branchHash := "1c413b1"
 		expectedMergeBase := "4139a07989ec3a5dfd9c3055161f753c61ef90f8"
-		hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "commit-queue-sandbox", mainHash, branchHash, 802)
+
+		commitQueueSandboxPR := &github.PullRequest{
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{
+						Name: utility.ToStringPtr("evergreen-ci"),
+					},
+					Name: utility.ToStringPtr("commit-queue-sandbox"),
+				},
+				SHA: &mainHash,
+			},
+			Head: &github.PullRequestBranch{
+				SHA: &branchHash,
+			},
+			Number: utility.ToIntPtr(802),
+		}
+
+		hash, err = GetPullRequestMergeBase(s.ctx, commitQueueSandboxPR)
 		s.NoError(err)
 		s.Equal(expectedMergeBase, hash)
 	})
@@ -342,11 +370,22 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	// This test should fail, but it triggers the retry logic which in turn
 	// causes the context to expire, so we reset the context with a longer
 	// deadline here
+	coniferPR := &github.PullRequest{
+		Base: &github.PullRequestBranch{
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Name: utility.ToStringPtr("evergreen-ci"),
+				},
+				Name: utility.ToStringPtr("conifer"),
+			},
+		},
+		Number: utility.ToIntPtr(666),
+	}
 	s.cancel()
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	s.Require().NotNil(s.ctx)
 	s.Require().NotNil(s.cancel)
-	hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "conifer", "", "", 666)
+	hash, err = GetPullRequestMergeBase(s.ctx, coniferPR)
 	s.Error(err)
 	s.Empty(hash)
 }
