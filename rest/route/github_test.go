@@ -129,14 +129,13 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.h.event = event
 	s.h.msgID = "1"
 
-	ctx := context.Background()
-	resp := s.h.Run(ctx)
+	resp := s.h.Run(s.T().Context())
 	s.Equal(http.StatusOK, resp.Status())
 	count, err := db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(1, count)
 
-	resp = s.h.Run(ctx)
+	resp = s.h.Run(s.T().Context())
 	s.NotEqual(http.StatusOK, resp.Status())
 	count, err = db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
