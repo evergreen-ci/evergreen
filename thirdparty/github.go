@@ -1456,7 +1456,7 @@ func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 func GetPullRequestMergeBase(ctx context.Context, pr *github.PullRequest) (string, error) {
-	owner := pr.GetBase().GetRepo().GetOwner().GetName()
+	owner := pr.GetBase().GetRepo().GetOwner().GetLogin()
 	repo := pr.GetBase().GetRepo().GetName()
 	baseSHA := pr.GetBase().GetSHA()
 	headSHA := pr.GetHead().GetSHA()
