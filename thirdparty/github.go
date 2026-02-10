@@ -498,18 +498,19 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // Since git is experimental, this function will always return the resulting
 // file from the GitHub API, regardless of whether useGit is true or false.
 // Setting useGit to true will be slower since it retrieves the file twice.
-func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
+func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
 	var gitFile []byte
 	var gitErr error
 	if useGit {
-		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path)
+		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path, worktree)
 		grip.Warning(message.WrapError(gitErr, message.Fields{
-			"message": "could not retrieve GitHub file using git",
-			"ticket":  "DEVPROD-26143",
-			"owner":   owner,
-			"repo":    repo,
-			"ref":     ref,
-			"path":    path,
+			"message":           "could not retrieve GitHub file using git",
+			"ticket":            "DEVPROD-26143",
+			"owner":             owner,
+			"repo":              repo,
+			"ref":               ref,
+			"is_using_worktree": worktree != "",
+			"path":              path,
 		}))
 	}
 
@@ -517,6 +518,14 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, gh
 	if err != nil {
 		return nil, err
 	}
+	grip.WarningWhen(gitErr != nil && err == nil, message.Fields{
+		"message": "GitHub file content could not be retrieved via git but succeeded with GitHub API",
+		"ticket":  "DEVPROD-26143",
+		"owner":   owner,
+		"repo":    repo,
+		"ref":     ref,
+		"path":    path,
+	})
 	ghFileContent, err := base64.StdEncoding.DecodeString(*ghFile.Content)
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding GitHub file content")
@@ -1446,26 +1455,36 @@ func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 }
 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
-// This function will retry up to 5 times, regardless of error response (unless
-// error is the result of hitting an api limit)
-func GetPullRequestMergeBase(ctx context.Context, owner, repo, baseLabel, headLabel string, prNum int) (string, error) {
-	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseLabel, headLabel)
+func GetPullRequestMergeBase(ctx context.Context, pr *github.PullRequest) (string, error) {
+	owner := pr.GetBase().GetRepo().GetOwner().GetLogin()
+	repo := pr.GetBase().GetRepo().GetName()
+	baseSHA := pr.GetBase().GetSHA()
+	headSHA := pr.GetHead().GetSHA()
+	prNum := pr.GetNumber()
+
+	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
 	if err == nil {
 		return mergeBase, nil
 	}
 	grip.Error(message.WrapError(err, message.Fields{
-		"message": "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
-		"owner":   owner,
-		"repo":    repo,
-		"head":    headLabel,
-		"pr_num":  prNum,
-		"base":    baseLabel,
+		"message":    "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
+		"owner":      owner,
+		"repo":       repo,
+		"head":       headSHA,
+		"head_label": pr.GetHead().GetLabel(),
+		"pr_num":     prNum,
+		"base":       baseSHA,
+		"base_label": pr.GetBase().GetLabel(),
 	}))
-	// If GetGithubMergeBaseRevision fails, fallback to the secondary way of determining a PR
-	// merge base via API. A known case where we expect GetGithubMergeBaseRevision to fail is when
-	// trying to find the merge base of a PR based on a private fork that our 10gen GitHub app is not
-	// installed on.
-	caller := "GetPullRequestMergeBase"
+
+	return getPullRequestFallback(ctx, owner, repo, prNum)
+}
+
+// getPullRequestFallback is a secondary way of determining the merge base of a PR via API. A known case where
+// we expect GetGithubMergeBaseRevision to fail is when trying to find the merge base of a PR based on a private fork
+// that our GitHub app is not installed on.
+func getPullRequestFallback(ctx context.Context, owner, repo string, prNum int) (string, error) {
+	caller := "getPullRequestFallback"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),

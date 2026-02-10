@@ -256,6 +256,10 @@
       "server_url": ""
     },
     {
+      "_id": "debug_spawn_hosts",
+      "setup_script": "echo setup"
+    },
+    {
       "_id": "amboy",
       "name": "amboy-config",
       "database": "amboy",

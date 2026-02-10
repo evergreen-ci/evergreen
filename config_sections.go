@@ -31,6 +31,7 @@ func NewConfigSections() ConfigSections {
 		&CloudProviders{},
 		&ContainerPoolsConfig{},
 		&CostConfig{},
+		&DebugSpawnHostsConfig{},
 		&FWSConfig{},
 		&GraphiteConfig{},
 		&HostInitConfig{},

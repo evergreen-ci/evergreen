@@ -605,10 +605,12 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 		} else if s3pc.isMulti() {
 			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(uploadInfo.localPath))
 		}
-		var key, secret, bucket, fileKey string
+
+		bucket := s3pc.Bucket
+		fileKey := remoteFileName
+
+		var key, secret string
 		if s3pc.Visibility == artifact.Signed {
-			bucket = s3pc.Bucket
-			fileKey = remoteFileName
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
 		}
