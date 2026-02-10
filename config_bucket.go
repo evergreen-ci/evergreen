@@ -63,6 +63,7 @@ type BucketConfig struct {
 	DBName            string     `bson:"db_name" json:"db_name" yaml:"db_name"`
 	TestResultsPrefix string     `bson:"test_results_prefix" json:"test_results_prefix" yaml:"test_results_prefix"`
 	RoleARN           string     `bson:"role_arn" json:"role_arn" yaml:"role_arn"`
+	ExternalID        string     `bson:"external_id" json:"external_id" yaml:"external_id"`
 
 	// Lifecycle configuration fields for cost calculation
 	ExpirationDays          *int      `bson:"expiration_days,omitempty" json:"expiration_days,omitempty" yaml:"expiration_days,omitempty"`
