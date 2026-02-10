@@ -401,8 +401,11 @@ include:
 		modulePathCache := map[string]string{
 			"mymodule": moduleDir,
 		}
+		includedModules := map[string]bool{
+			"mymodule": true,
+		}
 
-		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache, includedModules)
 		require.NoError(t, err)
 
 		assert.Len(t, includes, 5)
@@ -435,8 +438,9 @@ include:
 
 		conf := &ClientSettings{}
 		modulePathCache := map[string]string{}
+		includedModules := map[string]bool{}
 
-		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache, includedModules)
 
 		require.NoError(t, err)
 		assert.Len(t, includes, 0)
@@ -491,8 +495,12 @@ include:
 			"module1": module1Dir,
 			"module2": module2Dir,
 		}
+		includedModules := map[string]bool{
+			"module1": true,
+			"module2": true,
+		}
 
-		includes, err := getLocalModuleIncludes(params, conf, multiModuleFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(params, conf, multiModuleFile, "", modulePathCache, includedModules)
 		require.NoError(t, err)
 
 		assert.Len(t, includes, 5)
@@ -556,8 +564,11 @@ include:
 		modulePathCache := map[string]string{
 			"module1": module1Dir,
 		}
+		includedModules := map[string]bool{
+			"module1": true,
+		}
 
-		includes, err := getLocalModuleIncludes(params, conf, partialModuleFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(params, conf, partialModuleFile, "", modulePathCache, includedModules)
 
 		require.NoError(t, err)
 
