@@ -113,7 +113,7 @@ about merge queue behavior. All pull requests must pass the branch protection
 rules before they can be added to the merge queue. This setting is only about
 the behavior once they're in the merge queue.
 
-The temporary branch gets deleted only after the the PR is merged, or if the PR
+The temporary branch gets deleted only after the PR is merged, or if the PR
 fails the check or is removed from the queue.
 
 ## Merge Queue Settings
@@ -235,7 +235,7 @@ via GitHub if needed.
 
 **A:** There is a setting called "Status check timeout" in the branch protection rules
 or rulesets. This setting is the maximum time for a required status check to
-report succcess or failed. This is _not_ the same as the makespan of an
+report success or failed. This is _not_ the same as the makespan of an
 Evergreen version, for two reasons:
 
 1. Makespan does not start until the version starts running, but there is time
