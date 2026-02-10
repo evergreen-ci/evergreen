@@ -1108,10 +1108,11 @@ const (
 	ReadFromPatchDiff = "patch_diff"
 )
 
-// readFromRemoteSource returns true if the readFrom option requires
-// retrieving a file from a remote source (i.e. GitHub).
+// readFromRemoteSource returns true if the readFrom option requires retrieving
+// a file from a remote source (i.e. GitHub). If ReadFileFrom is empty, the
+// default behavior is that it reads from a remote source.
 func readFromRemoteSource(readFrom string) bool {
-	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
+	return utility.StringSliceContains([]string{"", ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
 }
 
 type GetProjectOpts struct {
@@ -1152,6 +1153,9 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
+// retrieveFile retrieves a file from its source location. If no
+// opts.ReadFileFrom is specified, it will default to retrieving the file from
+// GitHub.
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
@@ -1369,6 +1373,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 	}
 
 	config := Project{}
+	// kim: TODO: figure out if GetProjectFromFile always sets opts.ReadFileFrom
 	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrapf(err, "parsing config file for '%s'", opts.Ref.Id)
