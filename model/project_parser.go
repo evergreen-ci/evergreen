@@ -1375,7 +1375,6 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 	}
 
 	config := Project{}
-	// kim: TODO: figure out if GetProjectFromFile always sets opts.ReadFileFrom
 	pp, err := LoadProjectInto(ctx, fileContents, &opts, opts.Ref.Id, &config)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrapf(err, "parsing config file for '%s'", opts.Ref.Id)
