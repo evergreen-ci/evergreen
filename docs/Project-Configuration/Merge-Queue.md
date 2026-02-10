@@ -244,6 +244,17 @@ Evergreen version, for two reasons:
 2. The status checks might be configured to listen for variant statuses, not
    version statuses.
 
+**Q:** How can I make the merge queue work better for flaky tasks?
+
+**A:** In your branch protection rules or rulesets, under
+"[Managing a merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue#managing-a-merge-queue)",
+set "Only merge non-failing pull requests" to **No**. When this setting is disabled,
+if one PR in a merge group fails but another succeeds, GitHub will still merge the
+successful group. This is useful when you have flaky tasks that occasionally fail
+but don't indicate a real problem with the code. Note that this setting only affects
+behavior within the merge queue (i.e. all PRs must still pass branch protection rules
+before they can be added to the queue).
+
 ## Additional Resources
 
 For more information on GitHub's merge queue feature and how to customize its
