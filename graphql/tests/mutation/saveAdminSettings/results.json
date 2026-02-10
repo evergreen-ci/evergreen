@@ -68,6 +68,7 @@
               "taskReliabilityDisabled": true,
               "unrecognizedPodCleanupDisabled": true,
               "useGitForGitHubFilesDisabled": true,
+              "useMergeQueuePathFilteringDisabled": true,
               "webhookNotificationsDisabled": true
             }
           }
@@ -456,6 +457,9 @@
               "financeFormula": 0.01,
               "savingsPlanDiscount": 0.01,
               "onDemandDiscount": 0.01
+            },
+            "debugSpawnHosts": {
+              "setupScript": "echo setup"
             }
           }
         }

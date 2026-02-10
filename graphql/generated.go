@@ -177,6 +177,7 @@ type ComplexityRoot struct {
 		ConfigDir               func(childComplexity int) int
 		ContainerPools          func(childComplexity int) int
 		Cost                    func(childComplexity int) int
+		DebugSpawnHosts         func(childComplexity int) int
 		DisabledGQLQueries      func(childComplexity int) int
 		DomainName              func(childComplexity int) int
 		Expansions              func(childComplexity int) int
@@ -431,6 +432,10 @@ type ComplexityRoot struct {
 	CursorSettings struct {
 		KeyConfigured func(childComplexity int) int
 		KeyLastFour   func(childComplexity int) int
+	}
+
+	DebugSpawnHostsConfig struct {
+		SetupScript func(childComplexity int) int
 	}
 
 	DeleteCursorAPIKeyPayload struct {
@@ -1742,44 +1747,46 @@ type ComplexityRoot struct {
 	}
 
 	ServiceFlags struct {
-		AgentStartDisabled              func(childComplexity int) int
-		AlertsDisabled                  func(childComplexity int) int
-		BackgroundReauthDisabled        func(childComplexity int) int
-		BackgroundStatsDisabled         func(childComplexity int) int
-		CLIUpdatesDisabled              func(childComplexity int) int
-		CacheStatsEndpointDisabled      func(childComplexity int) int
-		CacheStatsJobDisabled           func(childComplexity int) int
-		CheckBlockedTasksDisabled       func(childComplexity int) int
-		CloudCleanupDisabled            func(childComplexity int) int
-		DebugSpawnHostDisabled          func(childComplexity int) int
-		DegradedModeDisabled            func(childComplexity int) int
-		ElasticIPsDisabled              func(childComplexity int) int
-		EmailNotificationsDisabled      func(childComplexity int) int
-		EventProcessingDisabled         func(childComplexity int) int
-		GithubPRTestingDisabled         func(childComplexity int) int
-		GithubStatusAPIDisabled         func(childComplexity int) int
-		HostAllocatorDisabled           func(childComplexity int) int
-		HostInitDisabled                func(childComplexity int) int
-		JIRANotificationsDisabled       func(childComplexity int) int
-		JWTTokenForCLIDisabled          func(childComplexity int) int
-		LargeParserProjectsDisabled     func(childComplexity int) int
-		MonitorDisabled                 func(childComplexity int) int
-		PodAllocatorDisabled            func(childComplexity int) int
-		PodInitDisabled                 func(childComplexity int) int
-		ReleaseModeDisabled             func(childComplexity int) int
-		RepotrackerDisabled             func(childComplexity int) int
-		S3LifecycleSyncDisabled         func(childComplexity int) int
-		SchedulerDisabled               func(childComplexity int) int
-		SlackNotificationsDisabled      func(childComplexity int) int
-		SleepScheduleDisabled           func(childComplexity int) int
-		StaticAPIKeysDisabled           func(childComplexity int) int
-		SystemFailedTaskRestartDisabled func(childComplexity int) int
-		TaskDispatchDisabled            func(childComplexity int) int
-		TaskLoggingDisabled             func(childComplexity int) int
-		TaskReliabilityDisabled         func(childComplexity int) int
-		UnrecognizedPodCleanupDisabled  func(childComplexity int) int
-		UseGitForGitHubFilesDisabled    func(childComplexity int) int
-		WebhookNotificationsDisabled    func(childComplexity int) int
+		AgentStartDisabled                 func(childComplexity int) int
+		AlertsDisabled                     func(childComplexity int) int
+		BackgroundReauthDisabled           func(childComplexity int) int
+		BackgroundStatsDisabled            func(childComplexity int) int
+		CLIUpdatesDisabled                 func(childComplexity int) int
+		CacheStatsEndpointDisabled         func(childComplexity int) int
+		CacheStatsJobDisabled              func(childComplexity int) int
+		CheckBlockedTasksDisabled          func(childComplexity int) int
+		CloudCleanupDisabled               func(childComplexity int) int
+		DebugSpawnHostDisabled             func(childComplexity int) int
+		DegradedModeDisabled               func(childComplexity int) int
+		ElasticIPsDisabled                 func(childComplexity int) int
+		EmailNotificationsDisabled         func(childComplexity int) int
+		EventProcessingDisabled            func(childComplexity int) int
+		GithubPRTestingDisabled            func(childComplexity int) int
+		GithubStatusAPIDisabled            func(childComplexity int) int
+		HostAllocatorDisabled              func(childComplexity int) int
+		HostInitDisabled                   func(childComplexity int) int
+		JIRANotificationsDisabled          func(childComplexity int) int
+		JWTTokenForCLIDisabled             func(childComplexity int) int
+		LargeParserProjectsDisabled        func(childComplexity int) int
+		MonitorDisabled                    func(childComplexity int) int
+		PSLoggingDisabled                  func(childComplexity int) int
+		PodAllocatorDisabled               func(childComplexity int) int
+		PodInitDisabled                    func(childComplexity int) int
+		ReleaseModeDisabled                func(childComplexity int) int
+		RepotrackerDisabled                func(childComplexity int) int
+		S3LifecycleSyncDisabled            func(childComplexity int) int
+		SchedulerDisabled                  func(childComplexity int) int
+		SlackNotificationsDisabled         func(childComplexity int) int
+		SleepScheduleDisabled              func(childComplexity int) int
+		StaticAPIKeysDisabled              func(childComplexity int) int
+		SystemFailedTaskRestartDisabled    func(childComplexity int) int
+		TaskDispatchDisabled               func(childComplexity int) int
+		TaskLoggingDisabled                func(childComplexity int) int
+		TaskReliabilityDisabled            func(childComplexity int) int
+		UnrecognizedPodCleanupDisabled     func(childComplexity int) int
+		UseGitForGitHubFilesDisabled       func(childComplexity int) int
+		UseMergeQueuePathFilteringDisabled func(childComplexity int) int
+		WebhookNotificationsDisabled       func(childComplexity int) int
 	}
 
 	SetCursorAPIKeyPayload struct {
@@ -3149,6 +3156,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Cost(childComplexity), true
+	case "AdminSettings.debugSpawnHosts":
+		if e.complexity.AdminSettings.DebugSpawnHosts == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.DebugSpawnHosts(childComplexity), true
 	case "AdminSettings.disabledGQLQueries":
 		if e.complexity.AdminSettings.DisabledGQLQueries == nil {
 			break
@@ -4180,6 +4193,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CursorSettings.KeyLastFour(childComplexity), true
+
+	case "DebugSpawnHostsConfig.setupScript":
+		if e.complexity.DebugSpawnHostsConfig.SetupScript == nil {
+			break
+		}
+
+		return e.complexity.DebugSpawnHostsConfig.SetupScript(childComplexity), true
 
 	case "DeleteCursorAPIKeyPayload.success":
 		if e.complexity.DeleteCursorAPIKeyPayload.Success == nil {
@@ -10061,6 +10081,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.MonitorDisabled(childComplexity), true
+	case "ServiceFlags.psLoggingDisabled":
+		if e.complexity.ServiceFlags.PSLoggingDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.PSLoggingDisabled(childComplexity), true
 	case "ServiceFlags.podAllocatorDisabled":
 		if e.complexity.ServiceFlags.PodAllocatorDisabled == nil {
 			break
@@ -10151,6 +10177,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled(childComplexity), true
+	case "ServiceFlags.useMergeQueuePathFilteringDisabled":
+		if e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled(childComplexity), true
 	case "ServiceFlags.webhookNotificationsDisabled":
 		if e.complexity.ServiceFlags.WebhookNotificationsDisabled == nil {
 			break
@@ -12946,6 +12978,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputCursorParams,
 		ec.unmarshalInputDeactivateStepbackTaskInput,
+		ec.unmarshalInputDebugSpawnHostsConfigInput,
 		ec.unmarshalInputDefaultSectionToRepoInput,
 		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDeleteGithubAppCredentialsInput,
@@ -18631,6 +18664,39 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_debugSpawnHosts(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_debugSpawnHosts,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHosts, nil
+		},
+		nil,
+		ec.marshalODebugSpawnHostsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_debugSpawnHosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "setupScript":
+				return ec.fieldContext_DebugSpawnHostsConfig_setupScript(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DebugSpawnHostsConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_disabledGQLQueries(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19754,6 +19820,10 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
 			case "s3LifecycleSyncDisabled":
 				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
+			case "psLoggingDisabled":
+				return ec.fieldContext_ServiceFlags_psLoggingDisabled(ctx, field)
+			case "useMergeQueuePathFilteringDisabled":
+				return ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
 		},
@@ -24428,6 +24498,35 @@ func (ec *executionContext) _CursorSettings_keyLastFour(ctx context.Context, fie
 func (ec *executionContext) fieldContext_CursorSettings_keyLastFour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "CursorSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DebugSpawnHostsConfig_setupScript(ctx context.Context, field graphql.CollectedField, obj *model.APIDebugSpawnHostsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DebugSpawnHostsConfig_setupScript,
+		func(ctx context.Context) (any, error) {
+			return obj.SetupScript, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DebugSpawnHostsConfig_setupScript(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DebugSpawnHostsConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -36846,6 +36945,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_containerPools(ctx, field)
 			case "cost":
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
+			case "debugSpawnHosts":
+				return ec.fieldContext_AdminSettings_debugSpawnHosts(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			case "domainName":
@@ -51088,6 +51189,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_containerPools(ctx, field)
 			case "cost":
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
+			case "debugSpawnHosts":
+				return ec.fieldContext_AdminSettings_debugSpawnHosts(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			case "domainName":
@@ -59047,6 +59150,64 @@ func (ec *executionContext) _ServiceFlags_s3LifecycleSyncDisabled(ctx context.Co
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlags_psLoggingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_psLoggingDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.PSLoggingDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_psLoggingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlags_useMergeQueuePathFilteringDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.UseMergeQueuePathFilteringDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServiceFlags",
 		Field:      field,
@@ -76774,7 +76935,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "podLifecycle", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76879,6 +77040,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Cost = data
+		case "debugSpawnHosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHosts"))
+			data, err := ec.unmarshalODebugSpawnHostsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebugSpawnHosts = data
 		case "disabledGQLQueries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledGQLQueries"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -78748,6 +78916,33 @@ func (ec *executionContext) unmarshalInputDeactivateStepbackTaskInput(ctx contex
 				return it, err
 			}
 			it.TaskName = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDebugSpawnHostsConfigInput(ctx context.Context, obj any) (model.APIDebugSpawnHostsConfig, error) {
+	var it model.APIDebugSpawnHostsConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"setupScript"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "setupScript":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("setupScript"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SetupScript = data
 		}
 	}
 
@@ -84758,7 +84953,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85031,6 +85226,20 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.S3LifecycleSyncDisabled = data
+		case "psLoggingDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("psLoggingDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PSLoggingDisabled = data
+		case "useMergeQueuePathFilteringDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useMergeQueuePathFilteringDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UseMergeQueuePathFilteringDisabled = data
 		}
 	}
 
@@ -88135,6 +88344,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_containerPools(ctx, field, obj)
 		case "cost":
 			out.Values[i] = ec._AdminSettings_cost(ctx, field, obj)
+		case "debugSpawnHosts":
+			out.Values[i] = ec._AdminSettings_debugSpawnHosts(ctx, field, obj)
 		case "disabledGQLQueries":
 			out.Values[i] = ec._AdminSettings_disabledGQLQueries(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -89649,6 +89860,42 @@ func (ec *executionContext) _CursorSettings(ctx context.Context, sel ast.Selecti
 			}
 		case "keyLastFour":
 			out.Values[i] = ec._CursorSettings_keyLastFour(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var debugSpawnHostsConfigImplementors = []string{"DebugSpawnHostsConfig"}
+
+func (ec *executionContext) _DebugSpawnHostsConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIDebugSpawnHostsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, debugSpawnHostsConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DebugSpawnHostsConfig")
+		case "setupScript":
+			out.Values[i] = ec._DebugSpawnHostsConfig_setupScript(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -101264,6 +101511,10 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
 		case "s3LifecycleSyncDisabled":
 			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
+		case "psLoggingDisabled":
+			out.Values[i] = ec._ServiceFlags_psLoggingDisabled(ctx, field, obj)
+		case "useMergeQueuePathFilteringDisabled":
+			out.Values[i] = ec._ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -114974,6 +115225,21 @@ func (ec *executionContext) marshalOCursorSettings2ᚖgithubᚗcomᚋevergreen�
 		return graphql.Null
 	}
 	return ec._CursorSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalODebugSpawnHostsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIDebugSpawnHostsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DebugSpawnHostsConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalODebugSpawnHostsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDebugSpawnHostsConfig(ctx context.Context, v any) (*model.APIDebugSpawnHostsConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDebugSpawnHostsConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalODeleteGithubAppCredentialsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsPayload(ctx context.Context, sel ast.SelectionSet, v *DeleteGithubAppCredentialsPayload) graphql.Marshaler {

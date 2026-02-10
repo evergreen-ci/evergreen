@@ -498,18 +498,19 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // Since git is experimental, this function will always return the resulting
 // file from the GitHub API, regardless of whether useGit is true or false.
 // Setting useGit to true will be slower since it retrieves the file twice.
-func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
+func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
 	var gitFile []byte
 	var gitErr error
 	if useGit {
-		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path)
+		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path, worktree)
 		grip.Warning(message.WrapError(gitErr, message.Fields{
-			"message": "could not retrieve GitHub file using git",
-			"ticket":  "DEVPROD-26143",
-			"owner":   owner,
-			"repo":    repo,
-			"ref":     ref,
-			"path":    path,
+			"message":           "could not retrieve GitHub file using git",
+			"ticket":            "DEVPROD-26143",
+			"owner":             owner,
+			"repo":              repo,
+			"ref":               ref,
+			"is_using_worktree": worktree != "",
+			"path":              path,
 		}))
 	}
 
@@ -517,6 +518,14 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path string, gh
 	if err != nil {
 		return nil, err
 	}
+	grip.WarningWhen(gitErr != nil && err == nil, message.Fields{
+		"message": "GitHub file content could not be retrieved via git but succeeded with GitHub API",
+		"ticket":  "DEVPROD-26143",
+		"owner":   owner,
+		"repo":    repo,
+		"ref":     ref,
+		"path":    path,
+	})
 	ghFileContent, err := base64.StdEncoding.DecodeString(*ghFile.Content)
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding GitHub file content")

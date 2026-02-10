@@ -276,7 +276,7 @@ Fields:
   non-module related build variant fields ([context](../decisions/2024-07-18_allow_module_expansions)).
 - `tasks`: a list of tasks to run, referenced either by task name or by tags.
   Tasks listed here can also include other task-level fields, such as
-  `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, and `run_on`.
+  `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, `run_on`, and `ps`.
   We can also [define when a task will run](#controlling-when-tasks-and-variants-run). If there are
   conflicting settings definitions at different levels, the order of priority
   is defined [here](#task-fields-override-hierarchy).
@@ -557,13 +557,13 @@ Parameters:
 **Exec timeout: exec_timeout_secs**
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
-within an allotted time, set the key `exec_timeout_secs` on the overall project
-or on a specific task to set the maximum allowed length of execution time. Exec timeout only
+within an allotted time, set the key `exec_timeout_secs` on the overall project,
+on a specific task, or on a specific task within a build variant to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours, and cannot be set above 24 hours.
-`exec_timeout_secs` can only be set on the project or on a task as seen in below example.
-It cannot be set on functions or build variant tasks.
+`exec_timeout_secs` can be set on the project, on a task, or on a task within a build variant as seen in below example.
+It cannot be set on functions.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).
 
@@ -594,16 +594,24 @@ buildvariants:
       - localtestdistro
     tasks:
       - name: compile
+      - name: test
+        exec_timeout_secs: 30 ## override the project and task level exec_timeout_secs for this variant's test task
 
 tasks:
-  name: compile
-  commands:
-    - command: shell.exec
-      timeout_secs: 10 ## override the project level timeout_secs defined above and force this command to fail if it stays "idle" for 10 seconds or more
-      exec_timeout_secs: 20 ## will override the project level exec_timeout_secs defined above for this task
-      params:
-        script: |
-          sleep 1000
+  - name: compile
+    commands:
+      - command: shell.exec
+        timeout_secs: 10 ## override the project level timeout_secs defined above and force this command to fail if it stays "idle" for 10 seconds or more
+        params:
+          script: |
+            sleep 1000
+  - name: test
+    exec_timeout_secs: 20 ## will override the project level exec_timeout_secs defined above for this task
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            echo "running tests"
 ```
 
 ### Controlling When Tasks and Variants Run
@@ -914,6 +922,10 @@ Every task has some expansions available by default:
   author name in patches
 - `${task_id}` is the task's unique id
 - `${task_name}` is the name of the task
+- `${timed_out_command_pid}` is the PID of the evergreen command that timed out,
+  if the task has timed out. It is only available in the `timeout` task block.
+- `${timed_out_pids}` is a comma separated list of all PIDs that were running when the task's
+  timeout limit exceeded. It is only available in the `timeout` task block.
 - `${triggered_by_git_tag}` is the name of the tag that triggered this
   version, if applicable
 - `${version_id}` is the id of the task's version
@@ -1150,6 +1162,98 @@ To disable the OOM tracker, add the following to the top-level of your yaml.
 
 ```yaml
 oom_tracker: false
+```
+
+### Process Diagnostics: ps
+
+By default, Evergreen logs process information every 60 seconds during task execution using the ps expansion if defined (in distro settings, project variables, or in the project yaml) or `ps` as the default. This default behavior will be deprecated soon, and process logging will become opt-in (disabled by default unless explicitly configured and will no longer default to the ps expansion or `ps`).
+
+You can customize the process logging command by setting the `ps` field at multiple configuration levels. There is currently no option to opt out, but once default ps logging is deprecated, you will be able to disable process logging, by either not setting it anywhere (the default) or by setting `ps` to an empty string. When enabled, the specified command runs every 60 seconds.
+
+The `ps` field follows a priority order (from highest to lowest):
+
+1. **Build variant task level** - Overrides all other settings
+2. **Project task level** - Overrides project-level and lower settings
+3. **Project level** - Overrides build variant expansions and default
+4. **Default** - Currently defaults to the ps expansion or `"ps"` (will be deprecated to no logging)
+
+**Note about distro and build variant expansions:** When the default ps logging behavior is deprecated (in the future), distro, project variable and build variant `ps` expansions will be ignored unless you have an explicit `ps` setting at the project, task, or build variant task level. To use an expansion, it would need to be explicitely referenced with `ps: "${my_custom_ps}"` at the desired level (as outlined above).
+
+**Project level** (overrides build variant expansions and default):
+
+```yaml
+ps: "ps -o pid" # Enable for all tasks
+
+tasks:
+  - name: my_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Running with ps logging"
+```
+
+**Task level** (overrides project level, build variant expansions, and default):
+
+```yaml
+tasks:
+  - name: task_with_custom_ps
+    ps: "ps -o pid,tty,time,comm,args" # Custom ps command for this task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Running with custom ps"
+
+  - name: task_without_ps
+    ps: "" # Explicitly disable ps logging
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "No ps logging"
+```
+
+**Build variant task level** (highest priority, overrides task level, project level, build variant expansions, and default):
+
+```yaml
+ps: "ps -o pid" # Project-level
+
+tasks:
+  - name: my_task_1
+    ps: "ps -o pid,tty,time,comm,args" # Task-level
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Task execution"
+
+  - name: my_task_2
+    ps: "ps -o pid,tty,time,comm,args" # Task-level
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Custom ps task"
+
+  - name: other_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Task without explicit ps"
+
+  - name: task_with_expansion
+    ps: "${my_custom_ps}" # Reference expansion defined in build variant
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "Task using expansion"
+
+buildvariants:
+  - name: ubuntu2204
+    expansions:
+      my_custom_ps: "ps -o pid,user,comm" # Define custom ps command as expansion
+    tasks:
+      - name: my_task_1
+        ps: "ps -o pid,tty,time" # Build variant task-level: overrides task and project level ps.
+      - name: my_task_2 # Uses task-level "ps -o pid,tty,time,comm,args" since there is no build variant task-level override.
+      - name: other_task # Uses project-level "ps -o pid" since no task-level or build variant task-level ps is set.
+      - name: task_with_expansion # Uses "ps -o pid,user,comm" from the my_custom_ps expansion defined at task level.
 ```
 
 ### Matrix Variant Definition
