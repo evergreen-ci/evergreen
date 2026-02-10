@@ -1201,7 +1201,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
 
-	// Only log S3 usage if task actually executed (taskConfig will be nil if setup failed early)
 	if tc.logger != nil && tc.taskConfig != nil {
 		tc.logger.Task().Infof("Task tracked %d S3 PUT requests during execution.", tc.taskConfig.Task.S3Usage.NumPutRequests)
 	}

@@ -101,7 +101,7 @@ func (s *S3Usage) IncrementPutRequests(count int) {
 
 // CalculateUploadMetrics populates file size and PUT requests for each uploaded file.
 // Returns the populated metrics plus aggregate totals.
-// Non-fatal: if any file stat fails, logs a warning and uses zero values for that file.
+// If any file stat fails, logs a warning and uses zero values for that file.
 func CalculateUploadMetrics(
 	logger grip.Journaler,
 	files []FileMetrics,

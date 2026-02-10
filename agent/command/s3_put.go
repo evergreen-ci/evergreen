@@ -483,7 +483,6 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
-				// Perform the upload
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
@@ -547,8 +546,6 @@ retryLoop:
 		return nil
 	}
 
-	logger.Task().Info("Going to calculate S3 put metrics for uploads")
-	// Calculate metrics for all uploaded files
 	uploadedFiles, totalFileSize, totalPutRequests := task.CalculateUploadMetrics(
 		logger.Task(),
 		uploadedFiles,
@@ -556,7 +553,6 @@ retryLoop:
 		task.S3UploadMethodPut,
 	)
 
-	// Log aggregate metrics
 	if s3pc.isMulti() {
 		logger.Task().Infof("Multi-file upload completed: files=%d, total_size=%d bytes, total_puts=%d",
 			len(uploadedFiles), totalFileSize, totalPutRequests)
@@ -565,10 +561,8 @@ retryLoop:
 			totalFileSize, totalPutRequests)
 	}
 
-	// Update task S3 usage
 	conf.Task.S3Usage.IncrementPutRequests(totalPutRequests)
 
-	// Update telemetry
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.Int64("s3_put.total_bytes", totalFileSize),
 		attribute.Int("s3_put.total_put_requests", totalPutRequests),
