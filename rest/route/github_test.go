@@ -115,7 +115,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	doc := &model.ProjectRef{
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
-		Branch:           "105bbb4b34e7da59c42cb93d92954710b1f101ee",
+		Branch:           "main",
 		Enabled:          true,
 		BatchTime:        10,
 		Id:               "ident0",
