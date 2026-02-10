@@ -155,7 +155,7 @@ func TestOtelTraceDirectoryHandlerRun(t *testing.T) {
 		}
 
 		mockComm := client.NewMock("http://localhost")
-		logger, err := mockComm.GetLoggerProducer(context.Background(), &task.Task{Id: "test"}, nil)
+		logger, err := mockComm.GetLoggerProducer(t.Context(), &task.Task{Id: "test"}, nil)
 		require.NoError(t, err)
 
 		mockClient := &mockTraceClient{}
@@ -165,11 +165,11 @@ func TestOtelTraceDirectoryHandlerRun(t *testing.T) {
 			traceClient: mockClient,
 		}
 
-		err = handler.run(context.Background())
+		err = handler.run(t.Context())
 		assert.NoError(t, err)
 
-		// Verify uploads happened (each file has 7 resource spans, batched).
-		assert.Greater(t, mockClient.uploadCount.Load(), int64(0))
+		// Verify uploads happened (5 files were created).
+		assert.Equal(t, mockClient.uploadCount.Load(), int64(5))
 
 		// Verify all files were removed.
 		files, err := os.ReadDir(tmpDir)
@@ -181,7 +181,7 @@ func TestOtelTraceDirectoryHandlerRun(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		mockComm := client.NewMock("http://localhost")
-		logger, err := mockComm.GetLoggerProducer(context.Background(), &task.Task{Id: "test"}, nil)
+		logger, err := mockComm.GetLoggerProducer(t.Context(), &task.Task{Id: "test"}, nil)
 		require.NoError(t, err)
 
 		mockClient := &mockTraceClient{}
@@ -191,8 +191,8 @@ func TestOtelTraceDirectoryHandlerRun(t *testing.T) {
 			traceClient: mockClient,
 		}
 
-		err = handler.run(context.Background())
-		assert.NoError(t, err)
+		err = handler.run(t.Context())
+		require.NoError(t, err)
 		assert.Equal(t, int64(0), mockClient.uploadCount.Load())
 	})
 }
