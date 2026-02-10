@@ -218,6 +218,16 @@ type GithubMergeGroup struct {
 	// together, so there are as many commits as there are PRs in the merge
 	// group. This is only the title of the first commit in the merge group.
 	HeadCommit string `bson:"head_commit"`
+
+	// RemovedFromQueueAt is set when GitHub sends a "destroyed" MergeGroupEvent,
+	// indicating the patch is no longer in the merge queue. This is independent
+	// of the patch's test status - a patch may still be running tests but has
+	// already been removed from the queue.
+	RemovedFromQueueAt time.Time `bson:"removed_from_queue_at,omitempty"`
+	// RemovalReason indicates why the patch was removed from the queue.
+	// Possible values: "merged" (successfully merged), "invalidated" (tests failed),
+	// or "dequeued" (manually removed by user).
+	RemovalReason string `bson:"removal_reason,omitempty"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains

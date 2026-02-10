@@ -75,7 +75,9 @@ var (
 	githubPatchHeadOwnerKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
 
 	// BSON fields for thirdparty.GithubMergeGroup
-	githubMergeGroupHeadSHAKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
+	githubMergeGroupHeadSHAKey            = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
+	githubMergeGroupRemovedFromQueueAtKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovedFromQueueAt")
+	githubMergeGroupRemovalReasonKey      = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovalReason")
 )
 
 // ProjectCreateTimeIndex is a partial index used to speed up finding GitHub Merge Queue patches
@@ -537,4 +539,48 @@ func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]s
 		}
 	}
 	return res, nil
+}
+
+// MarkMergeQueuePatchRemovedFromQueue updates patches matching the given HeadSHA to mark them
+// as removed from the GitHub merge queue.
+func MarkMergeQueuePatchRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) error {
+	if headSHA == "" {
+		return errors.New("headSHA cannot be empty")
+	}
+	if reason == "" {
+		return errors.New("reason cannot be empty")
+	}
+
+	query := bson.M{
+		bsonutil.GetDottedKeyName(githubMergeDataKey, "org"):                      org,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, "repo"):                     repo,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): headSHA,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
+			"$exists": false,
+		},
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): time.Now().UTC().Round(time.Millisecond),
+			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovalReasonKey):      reason,
+		},
+	}
+
+	info, err := UpdateAll(ctx, query, update)
+	if err != nil {
+		return errors.Wrap(err, "updating patches")
+	}
+
+	if info.Updated == 0 {
+		grip.Warning(message.Fields{
+			"message":  "no patches updated when marking merge queue as removed",
+			"org":      org,
+			"repo":     repo,
+			"head_sha": headSHA,
+			"reason":   reason,
+		})
+	}
+
+	return nil
 }
