@@ -1,7 +1,10 @@
 package task
 
 import (
+	"os"
+
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -12,6 +15,14 @@ type S3Usage struct {
 }
 type S3BucketType string
 type S3UploadMethod string
+
+// FileMetrics contains metrics for a single uploaded file.
+type FileMetrics struct {
+	LocalPath   string
+	RemotePath  string
+	FileSize    int64
+	PutRequests int
+}
 
 const (
 	S3PutRequestCost = 0.000005
@@ -86,4 +97,46 @@ func (s *S3Usage) IsZero() bool {
 
 func (s *S3Usage) IncrementPutRequests(count int) {
 	s.NumPutRequests += count
+}
+
+// CalculateUploadMetrics populates file size and PUT requests for each uploaded file.
+// Returns the populated metrics plus aggregate totals.
+// Non-fatal: if any file stat fails, logs a warning and uses zero values for that file.
+func CalculateUploadMetrics(
+	logger grip.Journaler,
+	files []FileMetrics,
+	bucketType S3BucketType,
+	method S3UploadMethod,
+) (populatedFiles []FileMetrics, totalSize int64, totalPuts int) {
+	populatedFiles = make([]FileMetrics, len(files))
+
+	for i, file := range files {
+		fileInfo, err := os.Stat(file.LocalPath)
+		if err != nil {
+			logger.Warningf("Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
+			populatedFiles[i] = FileMetrics{
+				LocalPath:   file.LocalPath,
+				RemotePath:  file.RemotePath,
+				FileSize:    0,
+				PutRequests: 0,
+			}
+			continue
+		}
+
+		fileSize := fileInfo.Size()
+		putRequests := CalculatePutRequestsWithContext(bucketType, method, fileSize)
+		logger.Infof("Calculated metrics for file '%s': size=%d bytes, put_requests=%d", file.LocalPath, fileSize, putRequests)
+
+		populatedFiles[i] = FileMetrics{
+			LocalPath:   file.LocalPath,
+			RemotePath:  file.RemotePath,
+			FileSize:    fileSize,
+			PutRequests: putRequests,
+		}
+
+		totalSize += fileSize
+		totalPuts += putRequests
+	}
+
+	return populatedFiles, totalSize, totalPuts
 }

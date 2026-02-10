@@ -619,6 +619,9 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 		return nil, errors.Wrap(err, "getting task")
 	}
 
+	// Reset S3Usage for this execution to avoid accumulating from previous restarts
+	opts.task.S3Usage = task.S3Usage{}
+
 	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting expansions and variables")

@@ -425,18 +425,18 @@ func TestSignedUrlVisibility(t *testing.T) {
 		file2Info, err := os.Stat(file2)
 		require.NoError(t, err)
 
-		uploadedFiles := []uploadedFileInfo{
+		uploadedFiles := []task.FileMetrics{
 			{
-				localPath:   file1,
-				remotePath:  remoteFile,
-				fileSize:    file1Info.Size(),
-				putRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
+				LocalPath:   file1,
+				RemotePath:  remoteFile,
+				FileSize:    file1Info.Size(),
+				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
 			},
 			{
-				localPath:   file2,
-				remotePath:  remoteFile,
-				fileSize:    file2Info.Size(),
-				putRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
+				LocalPath:   file2,
+				RemotePath:  remoteFile,
+				FileSize:    file2Info.Size(),
+				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
 			},
 		}
 
@@ -496,18 +496,18 @@ func TestContentTypeSaved(t *testing.T) {
 	file2Info, err := os.Stat(file2)
 	require.NoError(t, err)
 
-	uploadedFiles := []uploadedFileInfo{
+	uploadedFiles := []task.FileMetrics{
 		{
-			localPath:   file1,
-			remotePath:  remoteFile,
-			fileSize:    file1Info.Size(),
-			putRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
+			LocalPath:   file1,
+			RemotePath:  remoteFile,
+			FileSize:    file1Info.Size(),
+			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
 		},
 		{
-			localPath:   file2,
-			remotePath:  remoteFile,
-			fileSize:    file2Info.Size(),
-			putRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
+			LocalPath:   file2,
+			RemotePath:  remoteFile,
+			FileSize:    file2Info.Size(),
+			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
 		},
 	}
 

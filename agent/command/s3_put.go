@@ -44,13 +44,6 @@ var (
 	s3PutAssumeRoleARN                 = fmt.Sprintf("%s.assume_role_arn", s3PutAttribute)
 )
 
-type uploadedFileInfo struct {
-	localPath   string
-	remotePath  string
-	fileSize    int64
-	putRequests int
-}
-
 // s3pc is a command to put a resource to an S3 bucket and download it to
 // the local machine.
 type s3put struct {
@@ -419,7 +412,7 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 
 	var (
 		err               error
-		uploadedFiles     []uploadedFileInfo
+		uploadedFiles     []task.FileMetrics
 		filesList         []string
 		skippedFilesCount int
 	)
@@ -468,7 +461,7 @@ retryLoop:
 			}
 
 			// reset to avoid duplicated uploaded references
-			uploadedFiles = []uploadedFileInfo{}
+			uploadedFiles = []task.FileMetrics{}
 			skippedFilesCount = 0
 
 		uploadLoop:
@@ -489,18 +482,6 @@ retryLoop:
 				}
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
-
-				// Get file info and calculate PUT requests BEFORE upload
-				fileInfo, statErr := os.Stat(fpath)
-				if statErr != nil {
-					return errors.Wrapf(statErr, "getting file info for '%s'", fpath)
-				}
-				fileSize := fileInfo.Size()
-				calculatedPuts := task.CalculatePutRequestsWithContext(
-					task.S3BucketTypeLarge,
-					task.S3UploadMethodPut,
-					fileSize,
-				)
 
 				// Perform the upload
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
@@ -545,19 +526,14 @@ retryLoop:
 					continue retryLoop
 				}
 
-				logger.Task().Infof("S3 upload succeeded: file='%s', size=%d bytes, attempts=%d, total_puts=%d",
-					filepath.Base(remoteName), fileSize, i, calculatedPuts)
-
 				uploadPath := fpath
 				if s3pc.preservePath {
 					uploadPath = remoteName
 				}
 
-				uploadedFiles = append(uploadedFiles, uploadedFileInfo{
-					localPath:   uploadPath,
-					remotePath:  remoteName,
-					fileSize:    fileSize,
-					putRequests: calculatedPuts,
+				uploadedFiles = append(uploadedFiles, task.FileMetrics{
+					LocalPath:  uploadPath,
+					RemotePath: remoteName,
 				})
 
 			}
@@ -570,6 +546,34 @@ retryLoop:
 		logger.Task().Info("S3 put uploaded no files")
 		return nil
 	}
+
+	logger.Task().Info("Going to calculate S3 put metrics for uploads")
+	// Calculate metrics for all uploaded files
+	uploadedFiles, totalFileSize, totalPutRequests := task.CalculateUploadMetrics(
+		logger.Task(),
+		uploadedFiles,
+		task.S3BucketTypeLarge,
+		task.S3UploadMethodPut,
+	)
+
+	// Log aggregate metrics
+	if s3pc.isMulti() {
+		logger.Task().Infof("Multi-file upload completed: files=%d, total_size=%d bytes, total_puts=%d",
+			len(uploadedFiles), totalFileSize, totalPutRequests)
+	} else if len(uploadedFiles) > 0 {
+		logger.Task().Infof("Single file upload completed: size=%d bytes, total_puts=%d",
+			totalFileSize, totalPutRequests)
+	}
+
+	// Update task S3 usage
+	conf.Task.S3Usage.IncrementPutRequests(totalPutRequests)
+
+	// Update telemetry
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Int64("s3_put.total_bytes", totalFileSize),
+		attribute.Int("s3_put.total_put_requests", totalPutRequests),
+		attribute.Int("s3_put.file_count", len(uploadedFiles)),
+	)
 
 	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile, conf))
 	if err != nil {
@@ -590,20 +594,18 @@ retryLoop:
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []uploadedFileInfo, remoteFile string, conf *internal.TaskConfig) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []task.FileMetrics, remoteFile string, conf *internal.TaskConfig) error {
 	files := []*artifact.File{}
-	var totalFileSize int64
-	var totalPutRequests int
 
 	for _, uploadInfo := range uploadedFiles {
-		remoteFileName := filepath.ToSlash(uploadInfo.remotePath)
+		remoteFileName := filepath.ToSlash(uploadInfo.RemotePath)
 		fileLink := agentutil.S3DefaultURL(s3pc.Bucket, remoteFileName)
 
 		displayName := s3pc.ResourceDisplayName
 		if displayName == "" {
-			displayName = filepath.Base(uploadInfo.localPath)
+			displayName = filepath.Base(uploadInfo.LocalPath)
 		} else if s3pc.isMulti() {
-			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(uploadInfo.localPath))
+			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(uploadInfo.LocalPath))
 		}
 
 		bucket := s3pc.Bucket
@@ -614,9 +616,6 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
 		}
-
-		totalFileSize += uploadInfo.fileSize
-		totalPutRequests += uploadInfo.putRequests
 
 		files = append(files, &artifact.File{
 			Name:        displayName,
@@ -629,18 +628,10 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 			Bucket:      bucket,
 			FileKey:     fileKey,
 			ContentType: s3pc.ContentType,
-			FileSize:    uploadInfo.fileSize,
-			PutRequests: uploadInfo.putRequests,
+			FileSize:    uploadInfo.FileSize,
+			PutRequests: uploadInfo.PutRequests,
 		})
 	}
-
-	conf.Task.S3Usage.IncrementPutRequests(totalPutRequests)
-
-	trace.SpanFromContext(ctx).SetAttributes(
-		attribute.Int64("s3_put.total_bytes", totalFileSize),
-		attribute.Int("s3_put.total_put_requests", totalPutRequests),
-		attribute.Int("s3_put.file_count", len(files)),
-	)
 
 	err := comm.AttachFiles(ctx, s3pc.taskData, files)
 	if err != nil {
