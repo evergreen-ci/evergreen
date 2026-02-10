@@ -24,6 +24,8 @@ func (js *JiraSuggest) GetTimeout() time.Duration {
 
 // Suggest returns JIRA ticket results based on the test and/or task name.
 func (js *JiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
+	// kim: TODO: verify that this is what's used by the UI to suggest related
+	// Jira tickets. It looks like it is.
 	jql := t.GetJQL(js.BbProj.TicketSearchProjects)
 
 	results, err := js.JiraHandler.JQLSearch(jql, 0, 50)
@@ -159,6 +161,7 @@ func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thir
 	var tickets []thirdparty.JiraTicket
 	var source string
 
+	// kim: NOTE: this looks like what the UI uses to get suggested search results.
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	tickets, source, err = multiSource.Suggest(t)
 	if err != nil {
@@ -191,6 +194,8 @@ func BbGetTask(ctx context.Context, taskId string, executionString string) (*tas
 		return nil, errors.Errorf("no task found for task '%s' and execution %d", taskId, execution)
 	}
 
+	// kim: NOTE: this populates the task's LocalTestResults so it searches for
+	// failing test name(s) instead of failing task name.
 	if err = t.PopulateTestResults(ctx); err != nil {
 		return nil, errors.Wrap(err, "populating test results")
 	}

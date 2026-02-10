@@ -222,6 +222,13 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 // JQLSearch runs the given JQL query against the given jira instance and returns
 // the results in a JiraSearchResults
 func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int) (*JiraSearchResults, error) {
+	// kim: NOTE: this is the main Jira glue logic to execute the JQL search to
+	// populate task annotations UI.
+	// kim: NOTE: the special characters (which were already escaped for Jira
+	// rules) are then query-escaped here. I would imagine that would be
+	// sufficient to fix any escaping issues.
+	// kim: TODO: test out this URL with Postman. See what happens special
+	// characters + query escaping.
 	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/search?jql=%v&startAt=%d&maxResults=%d", jiraHandler.JiraHost(), url.QueryEscape(query), startAt, maxResults)
 	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
 	if err != nil {

@@ -3830,11 +3830,21 @@ const jqlBFQuery = "(project in (%v)) and ( %v ) order by updatedDate desc"
 // name of all of the failed tests.
 // Otherwise we search by the task name.
 func (t *Task) GetJQL(searchProjects []string) string {
+	// kim: NOTE: this builds the query for JQLSearch.
 	var jqlParts []string
 	var jqlClause string
+	// kim: NOTE: in the failed task, both task name search and test name return
+	// results:
+	// https://jira.mongodb.org/browse/CLOUDP-379721?jql=(project%20in%20(CLOUDP))%20and%20(%20text~%22E2E_Local_ATM_GSSAPI_Auth_Part1%22%20)%20order%20by%20updatedDate%20desc
+	// https://jira.mongodb.org/browse/CLOUDP-379150?jql=(project%20in%20(CLOUDP))%20and%20(%20text~%22GSSAPI_Auth.Starting_up_with_GSSAPI_with_LDAP_Authz_with_version_8.0-ent_-_Example__1.2%22%20)%20order%20by%20updatedDate%20desc
 	for _, testResult := range t.LocalTestResults {
+		// kim: NOTE: this is not stored in the DB. However, it is set in
+		// BbGetTask, which populates local test results.
+		// kim: NOTE: the
 		if testResult.Status == evergreen.TestFailedStatus {
-			fileParts := eitherSlash.Split(testResult.TestName, -1)
+			// kim: NOTE: may have to be DisplayTestName?displaytestname?
+			testName := testResult.GetDisplayTestName()
+			fileParts := eitherSlash.Split(testName, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
