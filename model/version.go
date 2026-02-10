@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -818,13 +819,16 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	for _, module := range moduleList {
 		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil {
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
-				// Reuse base manifest module if YAML values match (or are unspecified)
-				refMatches := module.Ref == "" || module.Ref == baseModule.Revision
-				branchMatches := module.Branch == "" || module.Branch == baseModule.Branch
-				if refMatches && branchMatches {
+				// Reuse base if Ref is unspecified or matches base revision
+				if module.Ref == "" || module.Ref == baseModule.Revision {
 					modules[module.Name] = baseModule
 					continue
 				}
+				grip.Info(message.Fields{
+					"message": "using YAML ref for module (differs from base)",
+					"module":  module.Name,
+					"ref":     module.Ref,
+				})
 			}
 		}
 
