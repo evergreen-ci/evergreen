@@ -73,6 +73,10 @@ type TaskLogGetOptions struct {
 
 // NewTaskLogSender returns a new task log sender for the given task run.
 func NewTaskLogSender(ctx context.Context, task *Task, senderOpts EvergreenSenderOptions, logType TaskLogType) (send.Sender, error) {
+	if task == nil {
+		return nil, nil
+	}
+
 	output, ok := task.GetTaskOutputSafe()
 	if !ok {
 		// We know there task cannot have task output, likely because
@@ -99,6 +103,10 @@ func NewTaskLogSender(ctx context.Context, task *Task, senderOpts EvergreenSende
 
 // AppendTaskLogs appends log lines to the specified task log for the given task run.
 func AppendTaskLogs(ctx context.Context, task *Task, logType TaskLogType, lines []log.LogLine) error {
+	if task == nil {
+		return nil
+	}
+
 	output, ok := task.GetTaskOutputSafe()
 	if !ok {
 		// We know there task cannot have task output, likely because
