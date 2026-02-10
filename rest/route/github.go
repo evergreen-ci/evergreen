@@ -194,11 +194,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"msg_id":    gh.msgID,
 				"event":     gh.eventType,
 				"action":    action,
-				"repo":      *event.PullRequest.Base.Repo.FullName,
-				"ref":       *event.PullRequest.Base.Ref,
-				"pr_number": *event.PullRequest.Number,
-				"hash":      *event.PullRequest.Head.SHA,
-				"user":      *event.Sender.Login,
+				"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+				"ref":       event.GetPullRequest().GetBase().GetRef(),
+				"pr_number": event.GetPullRequest().GetNumber(),
+				"hash":      event.GetPullRequest().GetHead().GetSHA(),
+				"user":      event.GetSender().GetLogin(),
 				"message":   "PR accepted, attempting to queue",
 			})
 			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
@@ -206,10 +206,10 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
 					"event":     gh.eventType,
-					"repo":      *event.PullRequest.Base.Repo.FullName,
-					"ref":       *event.PullRequest.Base.Ref,
-					"pr_number": *event.PullRequest.Number,
-					"user":      *event.Sender.Login,
+					"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+					"ref":       event.GetPullRequest().GetBase().GetRef(),
+					"pr_number": event.GetPullRequest().GetNumber(),
+					"user":      event.GetSender().GetLogin(),
 					"message":   "can't add intent",
 				}))
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
@@ -219,9 +219,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"source":    "GitHub hook",
 				"msg_id":    gh.msgID,
 				"event":     gh.eventType,
-				"repo":      *event.PullRequest.Base.Repo.FullName,
-				"pr_number": *event.PullRequest.Number,
-				"user":      *event.Sender.Login,
+				"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+				"pr_number": event.GetPullRequest().GetNumber(),
+				"user":      event.GetSender().GetLogin(),
 				"action":    action,
 				"message":   "pull request closed; aborting patch",
 			})
@@ -231,7 +231,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"source":  "GitHub hook",
 					"msg_id":  gh.msgID,
 					"event":   gh.eventType,
-					"action":  *event.Action,
+					"action":  event.GetAction(),
 					"message": "failed to abort patches",
 				}))
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting patches"))
@@ -589,9 +589,9 @@ func (gh *githubHookApi) getCommentLogWithMessage(event *github.IssueCommentEven
 		"source":    "GitHub hook",
 		"msg_id":    gh.msgID,
 		"event":     gh.eventType,
-		"repo":      *event.Repo.FullName,
-		"pr_number": *event.Issue.Number,
-		"user":      *event.Sender.Login,
+		"repo":      event.GetRepo().GetFullName(),
+		"pr_number": event.GetIssue().GetNumber(),
+		"user":      event.GetSender().GetLogin(),
 		"message":   msg,
 	}
 }
