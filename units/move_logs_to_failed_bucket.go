@@ -29,8 +29,9 @@ func init() {
 }
 
 type moveLogsToFailedBucketJob struct {
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
-	TaskID   string `bson:"task_id"`
+	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
+	TaskID          string                 `bson:"task_id"`
+	SourceBucketCfg evergreen.BucketConfig `bson:"source_bucket_cfg"`
 
 	env evergreen.Environment
 }
@@ -48,10 +49,11 @@ func makeMoveLogsToFailedBucketJob() *moveLogsToFailedBucketJob {
 }
 
 // NewMoveLogsToFailedBucketJob creates a job that moves a task's logs to the failed bucket.
-func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string) amboy.Job {
+func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig) amboy.Job {
 	j := makeMoveLogsToFailedBucketJob()
 	j.env = env
 	j.TaskID = taskID
+	j.SourceBucketCfg = sourceBucketCfg
 	jobID := fmt.Sprintf("%s.%s.%s", moveLogsToFailedBucketJobName, taskID, ts)
 	j.SetID(jobID)
 	j.SetScopes([]string{jobID})
@@ -81,7 +83,10 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 
 	fetchContext, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
-	if err := t.MoveTestAndTaskLogsToFailedBucket(fetchContext, j.env.Settings()); err != nil {
+	// Use the source bucket config captured when the job was created rather than the one on
+	// the task config because that has already been updated to the failed bucket so that future
+	// logs are written there directly.
+	if err := t.MoveTestAndTaskLogsToFailedBucket(fetchContext, j.env.Settings(), j.SourceBucketCfg); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "moving logs to failed bucket",
 			"task_id":   t.Id,

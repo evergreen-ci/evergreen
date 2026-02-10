@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -37,7 +39,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-const hostAttribute = "evergreen.host"
+const (
+	hostAttribute = "evergreen.host"
+	ps            = "ps"
+)
 
 var (
 	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
@@ -767,14 +772,19 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	}()
 
-	// set up the system stats collector
+	// Set up the system stats collector.
+	statsCmds := []string{"uptime", "df -h"}
+
+	// Add ps command if configured in YAML or expansion (for backward compatibility) when default ps logging is not disabled.
+	if psCmd := tc.getPSCommand(); psCmd != "" {
+		statsCmds = append(statsCmds, psCmd)
+	}
+
 	statsCollector := NewSimpleStatsCollector(
 		tc.logger,
 		a.jasper,
 		globals.DefaultStatsInterval,
-		"uptime",
-		"df -h",
-		"${ps|ps}",
+		statsCmds...,
 	)
 	// Running the `df` command on Unix systems displays inode
 	// statistics without the `-i` flag by default. However, we need
@@ -910,6 +920,92 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
+// runDefaultTimeoutHandler extracts and logs PIDs of running processes when a task times out.
+func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
+	tc.logger.Execution().Info("Running default timeout handler to collect process information.")
+
+	var currentCmdPID int
+	var currentCmdName string
+	if currentCmd := tc.getCurrentCommand(); currentCmd != nil {
+		currentCmdName = currentCmd.FullDisplayName()
+		tc.logger.Execution().Infof("Current command at timeout: %s", currentCmdName)
+	}
+
+	var runningPIDs []int
+	var processDetails []string
+
+	if a.jasper == nil {
+		return
+	}
+	procs, err := a.jasper.List(ctx, options.Running)
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "listing running processes during timeout"))
+		return
+	}
+	tc.logger.Execution().Infof("Found %d running processes managed by Jasper", len(procs))
+	for _, proc := range procs {
+		info := proc.Info(ctx)
+		if info.PID > 0 {
+			runningPIDs = append(runningPIDs, info.PID)
+
+			detail := fmt.Sprintf("PID %d: ID=%s, Running=%v",
+				info.PID, info.ID, info.IsRunning)
+			if !info.StartAt.IsZero() {
+				detail += fmt.Sprintf(", StartTime=%s", info.StartAt.Format(time.RFC3339))
+				detail += fmt.Sprintf(", RunningFor=%v", time.Since(info.StartAt))
+			}
+			if info.Complete {
+				detail += fmt.Sprintf(", Complete=true, ExitCode=%d", info.ExitCode)
+			}
+			if info.Options.WorkingDirectory != "" {
+				detail += fmt.Sprintf(", WorkingDir=%s", info.Options.WorkingDirectory)
+			}
+			if tags := proc.GetTags(); len(tags) > 0 {
+				detail += fmt.Sprintf(", Tags=%v", tags)
+			}
+			if len(info.Options.Args) > 0 {
+				detail += fmt.Sprintf(", Command Args=%v", info.Options.Args)
+			}
+
+			processDetails = append(processDetails, detail)
+
+			if currentCmd := tc.getCurrentCommand(); currentCmd != nil && info.IsRunning {
+				currentCmdPID = info.PID
+			}
+		}
+	}
+	if len(runningPIDs) > 0 {
+		tc.logger.Execution().Infof("Process PIDs at timeout: %v", runningPIDs)
+		tc.logger.Execution().Info("Detailed process information:")
+		for _, detail := range processDetails {
+			tc.logger.Execution().Info(detail)
+		}
+
+		if currentCmdPID > 0 {
+			tc.logger.Execution().Infof("Suspected current command PID: %d", currentCmdPID)
+		}
+
+		tc.logger.Task().Infof("Default timeout handler collected %d process PIDs for debugging.", len(runningPIDs))
+	} else {
+		tc.logger.Execution().Info("No running processes found during timeout")
+	}
+	if detail.TimeoutProcessInfo == nil {
+		detail.TimeoutProcessInfo = &apimodels.TimeoutProcessInfo{
+			CurrentCommand:    currentCmdName,
+			CurrentCommandPID: currentCmdPID,
+			RunningPIDs:       runningPIDs,
+			Timestamp:         time.Now(),
+		}
+		pidStrings := make([]string, len(runningPIDs))
+		for i, n := range runningPIDs {
+			pidStrings[i] = strconv.Itoa(n)
+		}
+		delimitedPids := strings.Join(pidStrings, ",")
+		tc.taskConfig.NewExpansions.Put("timed_out_command_pid", strconv.Itoa(currentCmdPID))
+		tc.taskConfig.NewExpansions.Put("timed_out_pids", delimitedPids)
+	}
+}
+
 func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskContext) error {
 	// We run the command cleanups in a defer in case any of the post commands add cleanups.
 	// This will clean up anything added from commands running in pre, main, or post or the
@@ -1028,6 +1124,9 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 // such as timeout and post, then sends the final end task response.
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
+	if detail.TimedOut {
+		a.runDefaultTimeoutHandler(ctx, tc, detail)
+	}
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
