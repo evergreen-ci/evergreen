@@ -3,7 +3,7 @@ type TicketFields {
   assignedTeam: String
   assigneeDisplayName: String
   created: String!
-  failingTasks: [String!]!
+  failingTasks: [String!]
   resolutionName: String
   status: JiraStatus!
   summary: String!

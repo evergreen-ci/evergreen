@@ -68325,9 +68325,9 @@ func (ec *executionContext) _TicketFields_failingTasks(ctx context.Context, fiel
 			return obj.FailingTasks, nil
 		},
 		nil,
-		ec.marshalNString2ᚕstringᚄ,
+		ec.marshalOString2ᚕstringᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -105383,9 +105383,6 @@ func (ec *executionContext) _TicketFields(ctx context.Context, sel ast.Selection
 			}
 		case "failingTasks":
 			out.Values[i] = ec._TicketFields_failingTasks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "resolutionName":
 			field := field
 
