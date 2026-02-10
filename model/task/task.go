@@ -3843,6 +3843,7 @@ func (t *Task) GetJQL(searchProjects []string) string {
 		// kim: NOTE: the
 		if testResult.Status == evergreen.TestFailedStatus {
 			// kim: NOTE: may have to be DisplayTestName?displaytestname?
+			// kim: TODO: test display name in staging
 			testName := testResult.GetDisplayTestName()
 			fileParts := eitherSlash.Split(testName, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
