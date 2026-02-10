@@ -75,6 +75,8 @@ var (
 	githubPatchHeadOwnerKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
 
 	// BSON fields for thirdparty.GithubMergeGroup
+	githubMergeGroupOrgKey                = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "Org")
+	githubMergeGroupRepoKey               = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "Repo")
 	githubMergeGroupHeadSHAKey            = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
 	githubMergeGroupRemovedFromQueueAtKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovedFromQueueAt")
 	githubMergeGroupRemovalReasonKey      = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovalReason")
@@ -541,19 +543,19 @@ func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]s
 	return res, nil
 }
 
-// MarkMergeQueuePatchRemovedFromQueue updates patches matching the given HeadSHA to mark them
-// as removed from the GitHub merge queue.
-func MarkMergeQueuePatchRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) error {
+// MarkMergeQueuePatchesRemovedFromQueue updates patches matching the given HeadSHA to mark them
+// as removed from the GitHub merge queue. Returns the number of patches updated.
+func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) (int, error) {
 	if headSHA == "" {
-		return errors.New("headSHA cannot be empty")
+		return 0, errors.New("headSHA cannot be empty")
 	}
 	if reason == "" {
-		return errors.New("reason cannot be empty")
+		return 0, errors.New("reason cannot be empty")
 	}
 
 	query := bson.M{
-		bsonutil.GetDottedKeyName(githubMergeDataKey, "org"):                      org,
-		bsonutil.GetDottedKeyName(githubMergeDataKey, "repo"):                     repo,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupOrgKey):     org,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRepoKey):    repo,
 		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): headSHA,
 		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
 			"$exists": false,
@@ -569,18 +571,8 @@ func MarkMergeQueuePatchRemovedFromQueue(ctx context.Context, org, repo, headSHA
 
 	info, err := UpdateAll(ctx, query, update)
 	if err != nil {
-		return errors.Wrap(err, "updating patches")
+		return 0, errors.Wrap(err, "updating patches")
 	}
 
-	if info.Updated == 0 {
-		grip.Warning(message.Fields{
-			"message":  "no patches updated when marking merge queue as removed",
-			"org":      org,
-			"repo":     repo,
-			"head_sha": headSHA,
-			"reason":   reason,
-		})
-	}
-
-	return nil
+	return info.Updated, nil
 }
