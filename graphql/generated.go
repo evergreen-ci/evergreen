@@ -2177,6 +2177,7 @@ type ComplexityRoot struct {
 		AssignedTeam        func(childComplexity int) int
 		AssigneeDisplayName func(childComplexity int) int
 		Created             func(childComplexity int) int
+		FailingTasks        func(childComplexity int) int
 		ResolutionName      func(childComplexity int) int
 		Status              func(childComplexity int) int
 		Summary             func(childComplexity int) int
@@ -11820,6 +11821,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TicketFields.Created(childComplexity), true
+	case "TicketFields.failingTasks":
+		if e.complexity.TicketFields.FailingTasks == nil {
+			break
+		}
+
+		return e.complexity.TicketFields.FailingTasks(childComplexity), true
 	case "TicketFields.resolutionName":
 		if e.complexity.TicketFields.ResolutionName == nil {
 			break
@@ -34664,6 +34671,8 @@ func (ec *executionContext) fieldContext_JiraTicket_fields(_ context.Context, fi
 				return ec.fieldContext_TicketFields_assigneeDisplayName(ctx, field)
 			case "created":
 				return ec.fieldContext_TicketFields_created(ctx, field)
+			case "failingTasks":
+				return ec.fieldContext_TicketFields_failingTasks(ctx, field)
 			case "resolutionName":
 				return ec.fieldContext_TicketFields_resolutionName(ctx, field)
 			case "status":
@@ -68294,6 +68303,35 @@ func (ec *executionContext) _TicketFields_created(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_TicketFields_created(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TicketFields",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TicketFields_failingTasks(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TicketFields_failingTasks,
+		func(ctx context.Context) (any, error) {
+			return obj.FailingTasks, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TicketFields_failingTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TicketFields",
 		Field:      field,
@@ -105340,6 +105378,11 @@ func (ec *executionContext) _TicketFields(ctx context.Context, sel ast.Selection
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "created":
 			out.Values[i] = ec._TicketFields_created(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "failingTasks":
+			out.Values[i] = ec._TicketFields_failingTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
