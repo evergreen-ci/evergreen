@@ -765,6 +765,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
 		"project_id": projectID,
+		"revision":   opts.Revision,
 		"ticket":     "DEVPROD-26851",
 	}))
 	defer func() {
@@ -776,6 +777,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
 			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
 			"project_id": projectID,
+			"revision":   opts.Revision,
 			"ticket":     "DEVPROD-26851",
 		}))
 	}()
