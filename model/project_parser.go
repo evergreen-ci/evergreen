@@ -1118,11 +1118,13 @@ func readFromRemoteSource(readFrom string) bool {
 }
 
 type GetProjectOpts struct {
-	Ref                       *ProjectRef
-	PatchOpts                 *PatchOpts
-	LocalModules              map[string]string
-	RemotePath                string
-	Revision                  string
+	Ref          *ProjectRef
+	PatchOpts    *PatchOpts
+	LocalModules map[string]string
+	RemotePath   string
+	Revision     string
+	// ReadFileFrom determines where the file should be fetched from. If
+	// unspecified, the default is ReadFromGithub.
 	ReadFileFrom              string
 	Identifier                string
 	UnmarshalStrict           bool
