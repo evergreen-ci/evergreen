@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -824,11 +823,6 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 					modules[module.Name] = baseModule
 					continue
 				}
-				grip.Info(message.Fields{
-					"message": "using YAML ref for module (differs from base)",
-					"module":  module.Name,
-					"ref":     module.Ref,
-				})
 			}
 		}
 
