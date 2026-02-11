@@ -3277,7 +3277,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": pRef.Id,
 	}))
-	fileContents, err := thirdparty.GetGitHubFileContent(ctx, pRef.Owner, pRef.Repo, pRef.Branch, pRef.SpawnHostScriptPath, "", ghAppAuth, IsGitUsageForGitHubFileEnabled(ctx))
+	fileContents, err := thirdparty.GetGitHubFileContent(ctx, pRef.Owner, pRef.Repo, pRef.Branch, pRef.SpawnHostScriptPath, "", ghAppAuth, true)
 	if err != nil {
 		return "", errors.Wrapf(err, "fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
