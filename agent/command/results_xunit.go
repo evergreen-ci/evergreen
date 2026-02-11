@@ -255,11 +255,11 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 
 	succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", indexedLogs, logger.Task(),
 		func(item *indexedLog) error {
-			if err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log); err != nil {
-				return err
+			err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log)
+			if err == nil {
+				cumulative.tests[cumulative.logIdxToTestIdx[item.idx]].LineNum = 1
 			}
-			cumulative.tests[cumulative.logIdxToTestIdx[item.idx]].LineNum = 1
-			return nil
+			return err
 		},
 	)
 	if err != nil {
