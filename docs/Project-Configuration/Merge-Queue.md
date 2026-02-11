@@ -208,7 +208,11 @@ In GitHub, you can now add a new branch protection rule for the "evergreen/<vari
 
 **Q:** Can I reduce what variants are run in the merge queue based on what's being tested?
 
-**A:** Yes, by using [Build Variant Path Filtering](Project-Configuration-Files.md#build-variant-path-filtering).
+**A:** Yes, by using [Build Variant Path Filtering](Project-Configuration-Files.md#build-variant-path-filtering) 
+_(This is currently disabled, but will be rolled out by the end of 2/2026.)_
+Note that this will only run tasks that match the paths for the CURRENT merge group. For example, if the first patch in the merge queue
+modifies only the `src` directory, and the second patch modifies the `test` directory, the second patch will only run variants
+that match the `test` directory.
 
 **Q:** How can I turn off the merge queue to block users from merging?
 
