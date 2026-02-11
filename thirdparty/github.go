@@ -545,6 +545,7 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
+//
 // Callers should generally prefer GetGitHubFileContent when possible because it
 // reduces the number of GitHub API calls made.
 func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth *githubapp.GithubAppAuth) (*github.RepositoryContent, error) {
