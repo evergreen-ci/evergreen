@@ -23,6 +23,9 @@ const (
 	agentMonitorDeployJobName    = "agent-monitor-deploy"
 	agentMonitorPutRetries       = 25
 	maxAgentMonitorDeployJobTime = 10 * time.Minute
+
+	staticCurlNumRetries = 5
+	staticCurlMaxSecs    = 300
 )
 
 func init() {
@@ -233,16 +236,29 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 		"job":           j.ID(),
 	})
 
-	cmd, err := j.host.CurlCommand(j.env)
-	if err != nil {
-		return errors.Wrap(err, "creating command to curl agent monitor binary")
+	var cancel context.CancelFunc
+	var cmd string
+	var err error
+	if j.host.Provider == evergreen.ProviderNameStatic {
+		cmd, err = j.host.CurlCommandWithRetry(j.env, staticCurlNumRetries, staticCurlMaxSecs)
+		if err != nil {
+			return errors.Wrap(err, "creating command to curl agent monitor binary")
+		}
+		ctx, cancel = context.WithTimeout(ctx, evergreenStaticCurlTimeout)
+		defer cancel()
+	} else {
+		cmd, err = j.host.CurlCommand(j.env)
+		if err != nil {
+			return errors.Wrap(err, "creating command to curl agent monitor binary")
+		}
+		ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
+		defer cancel()
 	}
+
 	opts := &options.Create{
 		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
 	}
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
-	defer cancel()
+
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
