@@ -5665,7 +5665,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, toTerminate)
 		},
-		"IncludesUserDataHostsThatHaveRunTasksBeforeButHaveNotCommunicatedRecently": func(t *testing.T) {
+		"IgnoresUserDataHostsThatHaveRunTasksBeforeButHaveNotCommunicatedRecently": func(t *testing.T) {
 			h := &Host{
 				Id:          "id",
 				Status:      evergreen.HostStarting,
@@ -5683,8 +5683,7 @@ func TestFindHostsToTerminate(t *testing.T) {
 			require.NoError(t, h.Insert(t.Context()))
 			toTerminate, err := FindHostsToTerminate(t.Context())
 			require.NoError(t, err)
-			require.Len(t, toTerminate, 1)
-			assert.Equal(t, h.Id, toTerminate[0].Id)
+			require.Empty(t, toTerminate)
 		},
 		"IncludesLinuxHostsThatExceedProvisioningTimeout": func(t *testing.T) {
 			h := &Host{
