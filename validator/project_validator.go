@@ -2367,15 +2367,13 @@ func checkTasks(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// checkTaskUsage returns a notice for each task that is defined but unused by any (un-disabled) variant.
+// checkTaskUsage returns a notice for each task that is defined but unused by any variant.
 // TODO: upgrade to a warning in DEVPROD-8154
 func checkTaskUsage(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	seen := map[string]bool{}
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
-		if !utility.FromBoolPtr(bvtu.Disable) {
-			seen[bvtu.Name] = true
-		}
+		seen[bvtu.Name] = true
 	}
 
 	for _, pt := range project.Tasks {
