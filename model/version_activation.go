@@ -12,6 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	runEveryMainlineCommitLimit = 20
+)
+
 func DoProjectActivation(ctx context.Context, projectRef *ProjectRef, ts time.Time) (bool, error) {
 	if projectRef.RunEveryMainlineCommit {
 		return activateEveryRecentMainlineCommitForProject(ctx, projectRef, ts)
@@ -42,7 +46,8 @@ func activateMostRecentNonIgnoredCommitForProject(ctx context.Context, projectRe
 }
 
 // activateEveryRecentMainlineCommitForProject activates all unactivated non-ignored versions
-// up to the limit specified in projectRef.RunEveryMainlineCommitLimit or up to the last activated version.
+// up to the limit specified, runEveryMainlineCommitLimit or up to the last activated version,
+// whichever is less.
 func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef *ProjectRef, ts time.Time) (bool, error) {
 	lastActivatedVersion, err := VersionFindOne(ctx, VersionByMostRecentActivated(projectRef.Id, ts))
 	if err != nil {
@@ -53,13 +58,13 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 	if lastActivatedVersion == nil {
 		// If there is no previous activated versions, this may be a new project or a project's first activation.
 		// In that case, activate previous unactivated non-ignored versions rather than since last activated.
-		activateVersions, err = VersionFind(ctx, VersionsAllUnactivatedNonIgnored(projectRef.Id, ts, projectRef.RunEveryMainlineCommitLimit))
+		activateVersions, err = VersionFind(ctx, VersionsAllUnactivatedNonIgnored(projectRef.Id, ts, runEveryMainlineCommitLimit))
 		if err != nil {
 			return false, errors.Wrapf(err, "finding all unactivated non-ignored versions")
 		}
 	} else {
 		// If there is a last activated version, activate only versions since that one.
-		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber, projectRef.RunEveryMainlineCommitLimit))
+		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber, runEveryMainlineCommitLimit))
 		if err != nil {
 			return false, errors.Wrapf(err, "finding unactivated versions since last activated version '%s'", lastActivatedVersion.Id)
 		}
