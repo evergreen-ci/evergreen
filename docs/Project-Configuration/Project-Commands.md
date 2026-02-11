@@ -11,6 +11,7 @@ Project Commands are the fundamental units of functionality in an Evergreen task
   timeout_secs: 10 ## optional
   retry_on_failure: true ## optional
   failure_metadata_tags: ["tag0", "tag1"] ## optional
+  variants: ["ubuntu1604", "rhel70"] ## optional
   params:
     script: echo "my script"
 ```
@@ -27,6 +28,8 @@ Explanation:
   automatic restart will process after the command has failed and the task has completed its subsequent post task commands.
 - `failure_metadata_tags`: an optional set of tags to attribute to the command if it fails. If these are set and the
   command fails, the tags will appear in the task details returned from the REST API.
+- `variants`: an optional list of build variants to run this command configuration on. If it is empty, it will run on all defined
+  variants.
 - `params`: values for the pre defined set of parameters the command can take. Available parameters vary per command.
 
 ## archive.targz_extract
