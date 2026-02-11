@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -763,7 +762,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 
 	dirs, err := setupParallelGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
 	grip.Warning(message.WrapError(err, message.Fields{
-		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
+		"message":    "could not set up git include directories for includes, will fall back to using GitHub API to retrieve include files",
 		"project_id": projectID,
 		"revision":   opts.Revision,
 		"ticket":     "DEVPROD-26851",
@@ -1196,21 +1195,14 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}))
 		useGit := IsGitUsageForGitHubFileEnabled(ctx)
 		if opts.IsIncludedFile && opts.Worktree == "" {
-			// TODO (DEVPROD-26851): remove this condition once we have
-			// sufficient confidence that worktrees are set up properly for
-			// included files.
-			grip.Warning(message.Fields{
-				"message":            "including file but worktree is not set, will not use git",
-				"project_id":         opts.Ref.Id,
-				"project_identifier": opts.Ref.Identifier,
-				"owner":              opts.Ref.Owner,
-				"repo":               opts.Ref.Repo,
-				"revision":           opts.Revision,
-				"file_name":          opts.RemotePath,
-				"read_file_from":     opts.ReadFileFrom,
-				"stack":              string(debug.Stack()),
-				"ticket":             "DEVPROD-26851",
-			})
+			// Include files that have a git worktree available should try to
+			// use that because it's an optimization to reduce GitHub API calls
+			// (includes use a lot of GitHub API calls). However, if it doesn't
+			// have a git worktree, this should avoid using git entirely because
+			// without a worktree, retrieving every include file without a
+			// pre-created worktree is very slow.
+			// This can still retrieve the file using the GitHub API even though
+			// git is not an option.
 			useGit = false
 		}
 		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
@@ -1318,20 +1310,14 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 	}))
 	useGit := IsGitUsageForGitHubFileEnabled(ctx)
 	if opts.IsIncludedFile && opts.Worktree == "" {
-		// TODO (DEVPROD-26851): remove this condition once we have sufficient
-		// confidence that worktrees are set up properly for included files.
-		grip.Warning(message.Fields{
-			"message":            "including file but worktree is not set, will not use git",
-			"project_id":         opts.Ref.Id,
-			"project_identifier": opts.Ref.Identifier,
-			"owner":              opts.Ref.Owner,
-			"repo":               opts.Ref.Repo,
-			"revision":           opts.Revision,
-			"file_name":          opts.RemotePath,
-			"read_file_from":     opts.ReadFileFrom,
-			"stack":              string(debug.Stack()),
-			"ticket":             "DEVPROD-26851",
-		})
+		// Include files that have a git worktree available should try to
+		// use that because it's an optimization to reduce GitHub API calls
+		// (includes use a lot of GitHub API calls). However, if it doesn't
+		// have a git worktree, this should avoid using git entirely because
+		// without a worktree, retrieving every include file without a
+		// pre-created worktree is very slow.
+		// This can still retrieve the file using the GitHub API even though
+		// git is not an option.
 		useGit = false
 	}
 	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
