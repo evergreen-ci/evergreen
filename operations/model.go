@@ -135,6 +135,9 @@ type ClientSettings struct {
 	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
 	User                       string                      `json:"user" yaml:"user,omitempty"`
+	SpawnHostID                string                      `json:"spawn_host_id" yaml:"spawn_host_id,omitempty"`
+	TaskID                     string                      `json:"task_id" yaml:"task_id,omitempty"`
+	ProjectID                  string                      `json:"project_id" yaml:"project_id,omitempty"`
 	UncommittedChanges         bool                        `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI             bool                        `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
 	DoNotUseOAuth              bool                        `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
@@ -202,9 +205,15 @@ func (s *ClientSettings) Write(fn string) error {
 	return errors.Wrapf(os.WriteFile(fn, yamlData, 0644), "writing file '%s'", fn)
 }
 
-// setupRestCommunicator returns the rest communicator and prints any available info messages if set.
+// SetupRestCommunicator returns the rest communicator and prints any available info messages if set.
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 // We want to avoid printing messages if output is requested in a specific format or silenced.
+// This is the exported version for use outside the operations package.
+func (s *ClientSettings) SetupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
+	return s.setupRestCommunicator(ctx, printMessages, opts...)
+}
+
+// setupRestCommunicator is the internal implementation.
 func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
 	// The version of urfave/cli does not pass a context.Context through to commands.
 	// This makes embedding the mock client difficult, so we use a package-level variable.
@@ -224,14 +233,6 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	c.SetAPIUser(s.User)
 	c.SetAPIKey(s.APIKey)
-	if !options.skipCheckingMinimumCLIVersion {
-		if err = s.checkCLIVersion(ctx, c); err != nil {
-			return nil, err
-		}
-	}
-	if printMessages {
-		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
-	}
 
 	useOAuth, reason := s.shouldUseOAuth(ctx, c)
 	if useOAuth {
@@ -249,6 +250,16 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		c.SetAPIServerHost(s.getApiServerHost(true))
 	} else if reason != "" && printMessages {
 		grip.Info(reason)
+	}
+
+	// Check CLI version AFTER authentication is set up
+	if !options.skipCheckingMinimumCLIVersion {
+		if err = s.checkCLIVersion(ctx, c); err != nil {
+			return nil, err
+		}
+	}
+	if printMessages {
+		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
 
 	return c, nil
@@ -400,7 +411,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	// We set up the rest communicator to check the CLI version and set the OAuth token if needed.
 	// The logic/route for the OAuth token is imbedded in the rest communicator
 	// so it's simpler to just create a whole rest communicator here.
-	restComm, err := s.setupRestCommunicator(context.Background(), false)
+	restComm, err := s.SetupRestCommunicator(context.Background(), false)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "setting up REST communicator")
 	}

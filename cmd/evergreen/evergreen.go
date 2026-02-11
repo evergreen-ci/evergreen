@@ -46,10 +46,8 @@ func main() {
 	var app *cli.App
 
 	if strings.Contains(execName, "evergreen-local") {
-		// Running as evergreen-local - use debugger CLI
 		app = evergreenlocal.BuildDebugger()
 	} else {
-		// Running as evergreen - use main CLI
 		app = buildApp()
 		defer recoverFromPanic()
 	}

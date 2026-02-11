@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -112,7 +113,10 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		// SIGKILL issue will persist even if a valid agent is downloaded to
 		// replace it. Removing the binary before downloading it is the only
 		// known workaround to ensure that MacOS can run the client.
-		cmds = append(cmds, fmt.Sprintf("rm -f %s", h.Distro.BinaryName()))
+		cmds = append(cmds,
+			fmt.Sprintf("rm -f %s", h.Distro.BinaryName()),
+			"rm -f evergreen-local", // Also remove the symlink
+		)
 	}
 	cmds = append(cmds,
 		// Download the agent from S3. Include -f to return an error code from curl if the HTTP request
@@ -120,6 +124,13 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		fmt.Sprintf("curl -fLO %s%s", h.Distro.S3ClientURL(env), curlArgs),
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
 	)
+
+	// Create evergreen-local symlink for debugger CLI (Windows uses .exe extension).
+	if h.Distro.IsWindows() {
+		cmds = append(cmds, fmt.Sprintf("cp %s evergreen-local.exe", h.Distro.BinaryName()))
+	} else {
+		cmds = append(cmds, fmt.Sprintf("ln -sf %s evergreen-local", h.Distro.BinaryName()))
+	}
 
 	return cmds, nil
 }
@@ -1101,7 +1112,7 @@ func (h *Host) SpawnHostSetupCommands(ctx context.Context, settings *evergreen.S
 // directory, puts both the evergreen yaml and the client into it, and attempts
 // to add the directory to the path.
 func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
-	return strings.Join([]string{
+	cmds := []string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
 		// We have to do this because on most of the distro (but not all of
 		// them), the evergreen config file is already baked into the AMI and
@@ -1113,9 +1124,21 @@ func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
+	}
+
+	// Create evergreen-local symlink in cli_bin directory for debugger CLI.
+	if h.Distro.IsWindows() {
+		cmds = append(cmds, fmt.Sprintf("cp %s %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName()), filepath.Join(h.spawnHostConfigDir(), "evergreen-local.exe")))
+	} else {
+		cmds = append(cmds, fmt.Sprintf("ln -sf %s %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName()), filepath.Join(h.spawnHostConfigDir(), "evergreen-local")))
+	}
+
+	cmds = append(cmds,
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
 		fmt.Sprintf("(%s || true)", h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), ".profile"), filepath.Join(h.Distro.HomeDir(), ".bash_profile"))),
-	}, " && ")
+	)
+
+	return strings.Join(cmds, " && ")
 }
 
 // AgentBinary returns the path to the evergreen agent binary.
@@ -1147,6 +1170,9 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		APIKey        string `yaml:"api_key,omitempty"`
 		APIServerHost string `yaml:"api_server_host"`
 		UIServerHost  string `yaml:"ui_server_host"`
+		SpawnHostID   string `yaml:"spawn_host_id,omitempty"`
+		TaskID        string `yaml:"task_id,omitempty"`
+		ProjectID     string `yaml:"project_id,omitempty"`
 		OAuth         struct {
 			Issuer          string `yaml:"issuer"`
 			ClientID        string `yaml:"client_id"`
@@ -1155,6 +1181,23 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		} `yaml:"oauth,omitempty"`
 	}{
 		User: owner.Id,
+	}
+
+	// Only populate the spawn host ID for user-created spawn hosts
+	if h.UserHost {
+		conf.SpawnHostID = h.Id
+
+		// If this host was spawned by a task, include task and project info
+		if h.ProvisionOptions.TaskId != "" {
+			provisionedTask, err := task.FindByIdExecution(ctx, h.ProvisionOptions.TaskId, nil)
+			if err != nil {
+				return nil, errors.Wrapf(err, "getting task '%s' for spawn host config", h.ProvisionOptions.TaskId)
+			}
+			if provisionedTask != nil {
+				conf.TaskID = provisionedTask.Id
+				conf.ProjectID = provisionedTask.Project
+			}
+		}
 	}
 	if settings != nil {
 		if !settings.ServiceFlags.JWTTokenForCLIDisabled {

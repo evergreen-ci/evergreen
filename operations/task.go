@@ -85,7 +85,7 @@ func taskLogs(flags []cli.Flag) cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			restClient, err := conf.setupRestCommunicator(ctx, false)
+			restClient, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -163,7 +163,7 @@ func testLogs(flags []cli.Flag) cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			restClient, err := conf.setupRestCommunicator(ctx, false)
+			restClient, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

@@ -38,7 +38,7 @@ func (s *CliHttpTestSuite) TestV2Client() {
 
 	settings, err := NewClientSettings(testFileName)
 	s.Require().NoError(err)
-	client, err := settings.setupRestCommunicator(ctx, true)
+	client, err := settings.SetupRestCommunicator(ctx, true)
 	s.Require().NoError(err)
 	defer client.Close()
 	if s.NoError(err) {

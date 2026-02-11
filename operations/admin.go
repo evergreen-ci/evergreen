@@ -101,7 +101,7 @@ func adminSetBanner() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -132,7 +132,7 @@ func doViewSettings() cli.ActionFunc {
 		if err != nil {
 			return errors.Wrap(err, "loading configuration")
 		}
-		client, err := conf.setupRestCommunicator(ctx, false)
+		client, err := conf.SetupRestCommunicator(ctx, false)
 		if err != nil {
 			return errors.Wrap(err, "setting up REST communicator")
 		}
@@ -184,7 +184,7 @@ func updateSettings() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -234,7 +234,7 @@ func listEvents() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -274,7 +274,7 @@ func revert() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -427,7 +427,7 @@ func getServiceUsers() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -481,7 +481,7 @@ func updateServiceUser() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -516,7 +516,7 @@ func deleteServiceUser() cli.Command {
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			client, err := conf.setupRestCommunicator(ctx, false)
+			client, err := conf.SetupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
