@@ -765,6 +765,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
 		"project_id": projectID,
+		"revision":   opts.Revision,
 		"ticket":     "DEVPROD-26851",
 	}))
 	defer func() {
@@ -776,6 +777,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
 			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
 			"project_id": projectID,
+			"revision":   opts.Revision,
 			"ticket":     "DEVPROD-26851",
 		}))
 	}()
@@ -1108,18 +1110,21 @@ const (
 	ReadFromPatchDiff = "patch_diff"
 )
 
-// readFromRemoteSource returns true if the readFrom option requires
-// retrieving a file from a remote source (i.e. GitHub).
+// readFromRemoteSource returns true if the readFrom option requires retrieving
+// a file from a remote source (i.e. GitHub). If ReadFileFrom is empty, the
+// default behavior is that it reads from a remote source.
 func readFromRemoteSource(readFrom string) bool {
-	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
+	return utility.StringSliceContains([]string{"", ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
 }
 
 type GetProjectOpts struct {
-	Ref                       *ProjectRef
-	PatchOpts                 *PatchOpts
-	LocalModules              map[string]string
-	RemotePath                string
-	Revision                  string
+	Ref          *ProjectRef
+	PatchOpts    *PatchOpts
+	LocalModules map[string]string
+	RemotePath   string
+	Revision     string
+	// ReadFileFrom determines where the file should be fetched from. If
+	// unspecified, the default is ReadFromGithub.
 	ReadFileFrom              string
 	Identifier                string
 	UnmarshalStrict           bool
@@ -1152,6 +1157,9 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
+// retrieveFile retrieves a file from its source location. If no
+// opts.ReadFileFrom is specified, it will default to retrieving the file from
+// GitHub.
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
