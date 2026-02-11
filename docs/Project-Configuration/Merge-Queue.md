@@ -113,7 +113,7 @@ about merge queue behavior. All pull requests must pass the branch protection
 rules before they can be added to the merge queue. This setting is only about
 the behavior once they're in the merge queue.
 
-The temporary branch gets deleted only after the the PR is merged, or if the PR
+The temporary branch gets deleted only after the PR is merged, or if the PR
 fails the check or is removed from the queue.
 
 ## Merge Queue Settings
@@ -235,7 +235,7 @@ via GitHub if needed.
 
 **A:** There is a setting called "Status check timeout" in the branch protection rules
 or rulesets. This setting is the maximum time for a required status check to
-report succcess or failed. This is _not_ the same as the makespan of an
+report success or failed. This is _not_ the same as the makespan of an
 Evergreen version, for two reasons:
 
 1. Makespan does not start until the version starts running, but there is time
@@ -243,6 +243,17 @@ Evergreen version, for two reasons:
    Evergreen is under load, it might not schedule the version for some time.
 2. The status checks might be configured to listen for variant statuses, not
    version statuses.
+
+**Q:** How can I make the merge queue work better for flaky tasks?
+
+**A:** In your branch protection rules or rulesets, under
+"[Managing a merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue#managing-a-merge-queue)",
+set "Only merge non-failing pull requests" to **No**. When this setting is disabled,
+if one PR in a merge group fails but another succeeds, GitHub will still merge the
+successful group. This is useful when you have flaky tasks that occasionally fail
+but don't indicate a real problem with the code. Note that this setting only affects
+behavior within the merge queue (i.e. all PRs must still pass branch protection rules
+before they can be added to the queue).
 
 ## Additional Resources
 

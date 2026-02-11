@@ -246,6 +246,8 @@ type Task struct {
 	PredictedTaskCost cost.Cost `bson:"predicted_cost,omitempty" json:"predicted_cost,omitempty"`
 	// TaskCost is the actual cost of the task based on runtime and distro cost rates
 	TaskCost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
+	// S3Usage tracks S3 API usage for cost calculation
+	S3Usage S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -2398,6 +2400,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				StatusKey:             detail.Status,
 				TimeTakenKey:          t.TimeTaken,
 				TaskCostKey:           t.TaskCost,
+				S3UsageKey:            t.S3Usage,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
@@ -4044,7 +4047,21 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		[]bson.M{
 			{"$set": bson.M{
 				DependsOnKey: bson.M{
-					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
+					"$concatArrays": []any{
+						"$" + DependsOnKey,
+						// Add dependencies to this task, but avoid adding a
+						// dependency if it's the task's own ID since that would
+						// create a self-dependency cycle.
+						bson.M{
+							"$filter": bson.M{
+								"input": newDependencies,
+								"as":    "dep",
+								"cond": bson.M{
+									"$ne": []any{"$$dep." + DependencyTaskIdKey, "$" + IdKey},
+								},
+							},
+						},
+					},
 				},
 			}},
 			addDisplayStatusCache,

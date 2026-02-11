@@ -218,6 +218,16 @@ type GithubMergeGroup struct {
 	// together, so there are as many commits as there are PRs in the merge
 	// group. This is only the title of the first commit in the merge group.
 	HeadCommit string `bson:"head_commit"`
+
+	// RemovedFromQueueAt is set when GitHub sends a "destroyed" MergeGroupEvent,
+	// indicating the patch is no longer in the merge queue. This is independent
+	// of the patch's test status - a patch may still be running tests but has
+	// already been removed from the queue.
+	RemovedFromQueueAt time.Time `bson:"removed_from_queue_at,omitempty"`
+	// RemovalReason indicates why the patch was removed from the queue.
+	// Possible values: "merged" (successfully merged), "invalidated" (tests failed),
+	// or "dequeued" (manually removed by user).
+	RemovalReason string `bson:"removal_reason,omitempty"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
@@ -1455,26 +1465,36 @@ func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 }
 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
-// This function will retry up to 5 times, regardless of error response (unless
-// error is the result of hitting an api limit)
-func GetPullRequestMergeBase(ctx context.Context, owner, repo, baseLabel, headLabel string, prNum int) (string, error) {
-	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseLabel, headLabel)
+func GetPullRequestMergeBase(ctx context.Context, pr *github.PullRequest) (string, error) {
+	owner := pr.GetBase().GetRepo().GetOwner().GetLogin()
+	repo := pr.GetBase().GetRepo().GetName()
+	baseSHA := pr.GetBase().GetSHA()
+	headSHA := pr.GetHead().GetSHA()
+	prNum := pr.GetNumber()
+
+	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
 	if err == nil {
 		return mergeBase, nil
 	}
 	grip.Error(message.WrapError(err, message.Fields{
-		"message": "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
-		"owner":   owner,
-		"repo":    repo,
-		"head":    headLabel,
-		"pr_num":  prNum,
-		"base":    baseLabel,
+		"message":    "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
+		"owner":      owner,
+		"repo":       repo,
+		"head":       headSHA,
+		"head_label": pr.GetHead().GetLabel(),
+		"pr_num":     prNum,
+		"base":       baseSHA,
+		"base_label": pr.GetBase().GetLabel(),
 	}))
-	// If GetGithubMergeBaseRevision fails, fallback to the secondary way of determining a PR
-	// merge base via API. A known case where we expect GetGithubMergeBaseRevision to fail is when
-	// trying to find the merge base of a PR based on a private fork that our 10gen GitHub app is not
-	// installed on.
-	caller := "GetPullRequestMergeBase"
+
+	return getPullRequestFallback(ctx, owner, repo, prNum)
+}
+
+// getPullRequestFallback is a secondary way of determining the merge base of a PR via API. A known case where
+// we expect GetGithubMergeBaseRevision to fail is when trying to find the merge base of a PR based on a private fork
+// that our GitHub app is not installed on.
+func getPullRequestFallback(ctx context.Context, owner, repo string, prNum int) (string, error) {
+	caller := "getPullRequestFallback"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),

@@ -38,6 +38,7 @@ const (
 	githubActionAutoBaseChange  = "automatic_base_change_succeeded"
 	githubActionChecksRequested = "checks_requested"
 	githubActionRerequested     = "rerequested"
+	githubActionDestroyed       = "destroyed"
 
 	// pull request comments
 	retryComment            = "evergreen retry"
@@ -194,11 +195,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"msg_id":    gh.msgID,
 				"event":     gh.eventType,
 				"action":    action,
-				"repo":      *event.PullRequest.Base.Repo.FullName,
-				"ref":       *event.PullRequest.Base.Ref,
-				"pr_number": *event.PullRequest.Number,
-				"hash":      *event.PullRequest.Head.SHA,
-				"user":      *event.Sender.Login,
+				"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+				"ref":       event.GetPullRequest().GetBase().GetRef(),
+				"pr_number": event.GetPullRequest().GetNumber(),
+				"hash":      event.GetPullRequest().GetHead().GetSHA(),
+				"user":      event.GetSender().GetLogin(),
 				"message":   "PR accepted, attempting to queue",
 			})
 			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
@@ -206,10 +207,10 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
 					"event":     gh.eventType,
-					"repo":      *event.PullRequest.Base.Repo.FullName,
-					"ref":       *event.PullRequest.Base.Ref,
-					"pr_number": *event.PullRequest.Number,
-					"user":      *event.Sender.Login,
+					"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+					"ref":       event.GetPullRequest().GetBase().GetRef(),
+					"pr_number": event.GetPullRequest().GetNumber(),
+					"user":      event.GetSender().GetLogin(),
 					"message":   "can't add intent",
 				}))
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
@@ -219,9 +220,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"source":    "GitHub hook",
 				"msg_id":    gh.msgID,
 				"event":     gh.eventType,
-				"repo":      *event.PullRequest.Base.Repo.FullName,
-				"pr_number": *event.PullRequest.Number,
-				"user":      *event.Sender.Login,
+				"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+				"pr_number": event.GetPullRequest().GetNumber(),
+				"user":      event.GetSender().GetLogin(),
 				"action":    action,
 				"message":   "pull request closed; aborting patch",
 			})
@@ -231,7 +232,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"source":  "GitHub hook",
 					"msg_id":  gh.msgID,
 					"event":   gh.eventType,
-					"action":  *event.Action,
+					"action":  event.GetAction(),
 					"message": "failed to abort patches",
 				}))
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "aborting patches"))
@@ -280,6 +281,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 		if event.GetAction() == githubActionChecksRequested {
 			return gh.handleMergeGroupChecksRequested(ctx, event)
+		}
+		if event.GetAction() == githubActionDestroyed {
+			return gh.handleMergeGroupDestroyed(ctx, event)
 		}
 
 	case *github.CheckRunEvent:
@@ -514,6 +518,61 @@ func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github
 	return nil
 }
 
+// handleMergeGroupDestroyed processes a "destroyed" MergeGroupEvent.
+func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *github.MergeGroupEvent) gimlet.Responder {
+	org := event.GetOrg().GetLogin()
+	repo := event.GetRepo().GetName()
+	headSHA := event.GetMergeGroup().GetHeadSHA()
+	reason := event.GetReason()
+
+	grip.Info(message.Fields{
+		"source":   "GitHub hook",
+		"msg_id":   gh.msgID,
+		"event":    gh.eventType,
+		"org":      org,
+		"repo":     repo,
+		"head_sha": headSHA,
+		"reason":   reason,
+		"message":  "merge group destroyed",
+	})
+
+	count, err := patch.MarkMergeQueuePatchesRemovedFromQueue(ctx, org, repo, headSHA, reason)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      org,
+			"repo":     repo,
+			"head_sha": headSHA,
+			"reason":   reason,
+			"message":  "error marking merge queue patches as removed from queue",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "marking patches as removed from queue"))
+	}
+
+	logFields := message.Fields{
+		"source":   "GitHub hook",
+		"msg_id":   gh.msgID,
+		"event":    gh.eventType,
+		"org":      org,
+		"repo":     repo,
+		"head_sha": headSHA,
+		"reason":   reason,
+	}
+
+	if count > 0 {
+		logFields["patches_updated"] = count
+		logFields["message"] = "successfully processed merge group destroyed event"
+	} else {
+		logFields["message"] = "no patches updated when marking merge group as removed"
+	}
+
+	grip.Info(logFields)
+
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
 // handleComment parses a given comment and takes the relevant action, if it's an Evergreen-tracked comment.
 func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueCommentEvent) error {
 	if !event.Issue.IsPullRequest() {
@@ -589,9 +648,9 @@ func (gh *githubHookApi) getCommentLogWithMessage(event *github.IssueCommentEven
 		"source":    "GitHub hook",
 		"msg_id":    gh.msgID,
 		"event":     gh.eventType,
-		"repo":      *event.Repo.FullName,
-		"pr_number": *event.Issue.Number,
-		"user":      *event.Sender.Login,
+		"repo":      event.GetRepo().GetFullName(),
+		"pr_number": event.GetIssue().GetNumber(),
+		"user":      event.GetSender().GetLogin(),
 		"message":   msg,
 	}
 }
@@ -939,7 +998,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return nil
 	}
 
-	mergeBase, err := thirdparty.GetPullRequestMergeBase(ctx, baseOwnerRepo[0], baseOwnerRepo[1], pr.Base.GetLabel(), pr.Head.GetLabel(), pr.GetNumber())
+	mergeBase, err := thirdparty.GetPullRequestMergeBase(ctx, pr)
 	if err != nil {
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}

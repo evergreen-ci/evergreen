@@ -52,6 +52,7 @@ type TicketFields struct {
 	Updated      string             `json:"updated"`
 	Status       *JiraStatus        `json:"status"`
 	AssignedTeam []*JiraCustomField `json:"customfield_12751"`
+	FailingTasks []string           `json:"customfield_12950"`
 }
 
 // JiraCreateTicketResponse contains the results of a JIRA create ticket API call.

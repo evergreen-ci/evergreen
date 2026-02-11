@@ -393,6 +393,13 @@ func TestExpandS3PutParams(t *testing.T) {
 func TestSignedUrlVisibility(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	tempDir := t.TempDir()
+	file1 := filepath.Join(tempDir, "file1")
+	file2 := filepath.Join(tempDir, "file2")
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+
 	for _, vis := range []string{"signed", "private"} {
 		s := s3put{
 			AwsKey:        "key",
@@ -407,10 +414,33 @@ func TestSignedUrlVisibility(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 
-		localFiles := []string{"file1", "file2"}
+		conf := &internal.TaskConfig{
+			Task: task.Task{Id: "task_id"},
+		}
+
 		remoteFile := "remote file"
 
-		require.NoError(t, s.attachFiles(ctx, comm, localFiles, remoteFile))
+		file1Info, err := os.Stat(file1)
+		require.NoError(t, err)
+		file2Info, err := os.Stat(file2)
+		require.NoError(t, err)
+
+		uploadedFiles := []task.FileMetrics{
+			{
+				LocalPath:   file1,
+				RemotePath:  remoteFile,
+				FileSize:    file1Info.Size(),
+				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
+			},
+			{
+				LocalPath:   file2,
+				RemotePath:  remoteFile,
+				FileSize:    file2Info.Size(),
+				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
+			},
+		}
+
+		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
 
 		attachedFiles := comm.AttachedFiles
 		if v, found := attachedFiles[""]; found {
@@ -432,6 +462,13 @@ func TestSignedUrlVisibility(t *testing.T) {
 func TestContentTypeSaved(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	tempDir := t.TempDir()
+	file1 := filepath.Join(tempDir, "file1")
+	file2 := filepath.Join(tempDir, "file2")
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+
 	s := s3put{
 		AwsKey:        "key",
 		AwsSecret:     "secret",
@@ -452,10 +489,29 @@ func TestContentTypeSaved(t *testing.T) {
 	}
 	s.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	localFiles := []string{"file1", "file2"}
 	remoteFile := "remote file"
 
-	require.NoError(t, s.attachFiles(ctx, comm, localFiles, remoteFile))
+	file1Info, err := os.Stat(file1)
+	require.NoError(t, err)
+	file2Info, err := os.Stat(file2)
+	require.NoError(t, err)
+
+	uploadedFiles := []task.FileMetrics{
+		{
+			LocalPath:   file1,
+			RemotePath:  remoteFile,
+			FileSize:    file1Info.Size(),
+			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
+		},
+		{
+			LocalPath:   file2,
+			RemotePath:  remoteFile,
+			FileSize:    file2Info.Size(),
+			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
+		},
+	}
+
+	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
 
 	attachedFiles := comm.AttachedFiles
 	files, ok := attachedFiles[conf.Task.Id]

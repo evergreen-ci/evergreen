@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -764,6 +765,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
 		"project_id": projectID,
+		"revision":   opts.Revision,
 		"ticket":     "DEVPROD-26851",
 	}))
 	defer func() {
@@ -775,6 +777,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
 			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
 			"project_id": projectID,
+			"revision":   opts.Revision,
 			"ticket":     "DEVPROD-26851",
 		}))
 	}()
@@ -1052,6 +1055,31 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		}
 	}
 
+	dirsAsStringMaps := struct {
+		ClonesForOwnerRepo    map[string]string   `json:"clones_for_owner_repo"`
+		WorktreesForOwnerRepo map[string][]string `json:"worktrees_for_owner_repo"`
+	}{
+		ClonesForOwnerRepo:    make(map[string]string),
+		WorktreesForOwnerRepo: make(map[string][]string),
+	}
+	for ownerRepo, cloneDir := range dirs.clonesForOwnerRepo {
+		dirsAsStringMaps.ClonesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = cloneDir
+	}
+	for ownerRepo, worktreeDirs := range dirs.worktreesForOwnerRepo {
+		dirsAsStringMaps.WorktreesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = worktreeDirs
+	}
+
+	grip.Info(message.Fields{
+		"message":            "set up git worktrees for parallel includes",
+		"owner":              opts.Ref.Owner,
+		"repo":               opts.Ref.Repo,
+		"project_id":         opts.Ref.Id,
+		"project_identifier": opts.Ref.Identifier,
+		"revision":           opts.Revision,
+		"errors":             catcher.Resolve(),
+		"git_include_dirs":   dirsAsStringMaps,
+	})
+
 	return dirs, catcher.Resolve()
 }
 
@@ -1082,18 +1110,21 @@ const (
 	ReadFromPatchDiff = "patch_diff"
 )
 
-// readFromRemoteSource returns true if the readFrom option requires
-// retrieving a file from a remote source (i.e. GitHub).
+// readFromRemoteSource returns true if the readFrom option requires retrieving
+// a file from a remote source (i.e. GitHub). If ReadFileFrom is empty, the
+// default behavior is that it reads from a remote source.
 func readFromRemoteSource(readFrom string) bool {
-	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
+	return utility.StringSliceContains([]string{"", ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
 }
 
 type GetProjectOpts struct {
-	Ref                       *ProjectRef
-	PatchOpts                 *PatchOpts
-	LocalModules              map[string]string
-	RemotePath                string
-	Revision                  string
+	Ref          *ProjectRef
+	PatchOpts    *PatchOpts
+	LocalModules map[string]string
+	RemotePath   string
+	Revision     string
+	// ReadFileFrom determines where the file should be fetched from. If
+	// unspecified, the default is ReadFromGithub.
 	ReadFileFrom              string
 	Identifier                string
 	UnmarshalStrict           bool
@@ -1126,6 +1157,9 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
+// retrieveFile retrieves a file from its source location. If no
+// opts.ReadFileFrom is specified, it will default to retrieving the file from
+// GitHub.
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
@@ -1166,12 +1200,16 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			// sufficient confidence that worktrees are set up properly for
 			// included files.
 			grip.Warning(message.Fields{
-				"message":   "including file but worktree is not set, will not use git",
-				"owner":     opts.Ref.Owner,
-				"repo":      opts.Ref.Repo,
-				"revision":  opts.Revision,
-				"file_name": opts.RemotePath,
-				"ticket":    "DEVPROD-26851",
+				"message":            "including file but worktree is not set, will not use git",
+				"project_id":         opts.Ref.Id,
+				"project_identifier": opts.Ref.Identifier,
+				"owner":              opts.Ref.Owner,
+				"repo":               opts.Ref.Repo,
+				"revision":           opts.Revision,
+				"file_name":          opts.RemotePath,
+				"read_file_from":     opts.ReadFileFrom,
+				"stack":              string(debug.Stack()),
+				"ticket":             "DEVPROD-26851",
 			})
 			useGit = false
 		}
@@ -1283,12 +1321,16 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		// TODO (DEVPROD-26851): remove this condition once we have sufficient
 		// confidence that worktrees are set up properly for included files.
 		grip.Warning(message.Fields{
-			"message":   "including file but worktree is not set, will not use git",
-			"owner":     opts.Ref.Owner,
-			"repo":      opts.Ref.Repo,
-			"revision":  opts.Revision,
-			"file_name": opts.RemotePath,
-			"ticket":    "DEVPROD-26851",
+			"message":            "including file but worktree is not set, will not use git",
+			"project_id":         opts.Ref.Id,
+			"project_identifier": opts.Ref.Identifier,
+			"owner":              opts.Ref.Owner,
+			"repo":               opts.Ref.Repo,
+			"revision":           opts.Revision,
+			"file_name":          opts.RemotePath,
+			"read_file_from":     opts.ReadFileFrom,
+			"stack":              string(debug.Stack()),
+			"ticket":             "DEVPROD-26851",
 		})
 		useGit = false
 	}

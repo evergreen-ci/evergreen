@@ -356,8 +356,10 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 	}
 	logger.Execution().Infof("Attaching file '%s'.", displayName)
 	file := artifact.File{
-		Name: displayName,
-		Link: fileLink,
+		Name:    displayName,
+		Link:    fileLink,
+		Bucket:  request.S3DestinationBucket,
+		FileKey: remotePath,
 	}
 	files := []*artifact.File{&file}
 	if err := comm.AttachFiles(ctx, td, files); err != nil {
