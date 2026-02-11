@@ -646,7 +646,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 
 	p, err = FindOneId(t.Context(), patches[1].Id.Hex())
 	assert.NoError(t, err)
-	assert.Equal(t, originalTime, p.GithubMergeData.RemovedFromQueueAt)
+	assert.Equal(t, originalTime, p.GithubMergeData.RemovedFromQueueAt.UTC())
 	assert.Equal(t, "original reason", p.GithubMergeData.RemovalReason)
 
 	p, err = FindOneId(t.Context(), patches[2].Id.Hex())
