@@ -82,7 +82,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24073)
+	s.Len(s.prBody, 32977)
 	s.pushBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
 	s.Len(s.pushBody, 7378)
@@ -115,7 +115,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	doc := &model.ProjectRef{
 		Owner:            "evergreen-ci",
 		Repo:             "evergreen",
-		Branch:           "105bbb4b34e7da59c42cb93d92954710b1f101ee",
+		Branch:           "main",
 		Enabled:          true,
 		BatchTime:        10,
 		Id:               "ident0",
@@ -129,14 +129,13 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.h.event = event
 	s.h.msgID = "1"
 
-	ctx := context.Background()
-	resp := s.h.Run(ctx)
+	resp := s.h.Run(s.T().Context())
 	s.Equal(http.StatusOK, resp.Status())
 	count, err := db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(1, count)
 
-	resp = s.h.Run(ctx)
+	resp = s.h.Run(s.T().Context())
 	s.NotEqual(http.StatusOK, resp.Status())
 	count, err = db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)

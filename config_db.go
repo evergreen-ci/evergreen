@@ -98,6 +98,7 @@ var (
 	s3LifecycleSyncDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
 	useGitForGitHubFilesDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "UseGitForGitHubFilesDisabled")
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
+	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
@@ -129,6 +130,9 @@ var (
 	// GraphiteConfig keys
 	graphiteCIOptimizationTokenKey = bsonutil.MustHaveTag(GraphiteConfig{}, "CIOptimizationToken")
 	graphiteServerURLKey           = bsonutil.MustHaveTag(GraphiteConfig{}, "ServerURL")
+
+	// DebugSpawnHostsConfig keys
+	setupScriptKey = bsonutil.MustHaveTag(DebugSpawnHostsConfig{}, "SetupScript")
 )
 
 func byId(id string) bson.M {

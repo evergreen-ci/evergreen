@@ -72,6 +72,7 @@ type APIAdminSettings struct {
 	Cedar                   *APICedarConfig               `json:"cedar,omitempty"`
 	ConfigDir               *string                       `json:"configdir,omitempty"`
 	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
+	DebugSpawnHosts         *APIDebugSpawnHostsConfig     `json:"debug_spawn_hosts,omitempty"`
 	DomainName              *string                       `json:"domain_name,omitempty"`
 	Expansions              map[string]string             `json:"expansions,omitempty"`
 	Cost                    *APICostConfig                `json:"cost,omitempty"`
@@ -204,6 +205,12 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting spawn host config to API model")
 		}
 		as.Spawnhost = &spawnHostConfig
+		debugSpawnHostsConfig := APIDebugSpawnHostsConfig{}
+		err = debugSpawnHostsConfig.BuildFromService(v.DebugSpawnHosts)
+		if err != nil {
+			return errors.Wrap(err, "converting debug spawn hosts config to API model")
+		}
+		as.DebugSpawnHosts = &debugSpawnHostsConfig
 		slackConfig := APISlackConfig{}
 		err = slackConfig.BuildFromService(v.Slack)
 		if err != nil {
@@ -2275,6 +2282,7 @@ type APIServiceFlags struct {
 	S3LifecycleSyncDisabled            bool `json:"s3_lifecycle_sync_disabled"`
 	UseGitForGitHubFilesDisabled       bool `json:"use_git_for_github_files_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
+	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2732,6 +2740,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.DebugSpawnHostDisabled = v.DebugSpawnHostDisabled
 		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
 		as.UseGitForGitHubFilesDisabled = v.UseGitForGitHubFilesDisabled
+		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
@@ -2782,6 +2791,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		S3LifecycleSyncDisabled:            as.S3LifecycleSyncDisabled,
 		UseGitForGitHubFilesDisabled:       as.UseGitForGitHubFilesDisabled,
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
+		PSLoggingDisabled:                  as.PSLoggingDisabled,
 	}, nil
 }
 
@@ -3028,6 +3038,27 @@ func (c *APISpawnHostConfig) ToService() (any, error) {
 		config.SpawnHostsPerUser = *c.SpawnHostsPerUser
 	}
 
+	return config, nil
+}
+
+type APIDebugSpawnHostsConfig struct {
+	SetupScript *string `json:"setup_script"`
+}
+
+func (c *APIDebugSpawnHostsConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.DebugSpawnHostsConfig:
+		c.SetupScript = utility.ToStringPtr(v.SetupScript)
+	default:
+		return errors.Errorf("programmatic error: expected debug spawn hosts config but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APIDebugSpawnHostsConfig) ToService() (any, error) {
+	config := evergreen.DebugSpawnHostsConfig{
+		SetupScript: utility.FromStringPtr(c.SetupScript),
+	}
 	return config, nil
 }
 

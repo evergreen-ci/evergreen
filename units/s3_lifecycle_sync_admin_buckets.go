@@ -96,7 +96,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 			"job_id":  j.ID(),
 		})
 
-		rules, err := client.GetBucketLifecycleConfiguration(ctx, bucketInfo.Name, bucketInfo.Region, bucketInfo.RoleARN)
+		rules, err := client.GetBucketLifecycleConfiguration(ctx, bucketInfo.Name, bucketInfo.Region, bucketInfo.RoleARN, bucketInfo.ExternalID)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to get lifecycle configuration for admin bucket",

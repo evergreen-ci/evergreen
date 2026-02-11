@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -88,6 +89,7 @@ type ParserProject struct {
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
+	Ps                 *string                    `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	Owner              *string                    `yaml:"owner,omitempty" bson:"owner,omitempty"`
 	Repo               *string                    `yaml:"repo,omitempty" bson:"repo,omitempty"`
 	RemotePath         *string                    `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
@@ -156,6 +158,7 @@ type parserTask struct {
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	Ps                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
 }
 
 func (pp *ParserProject) Insert(ctx context.Context) error {
@@ -445,6 +448,8 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// PS is the command to run for process diagnostics.
+	PS *string `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -656,7 +661,9 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
 		IsIncludedFile:            true,
-		Worktree:                  dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx),
+	}
+	if projectOpts.Ref != nil {
+		localOpts.Worktree = dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx)
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -758,6 +765,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
 		"project_id": projectID,
+		"revision":   opts.Revision,
 		"ticket":     "DEVPROD-26851",
 	}))
 	defer func() {
@@ -769,6 +777,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
 			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
 			"project_id": projectID,
+			"revision":   opts.Revision,
 			"ticket":     "DEVPROD-26851",
 		}))
 	}()
@@ -901,7 +910,8 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		return nil, nil
 	}
 	if opts.Ref == nil {
-		return nil, errors.New("project ref cannot be nil when including files from remote sources")
+		// Ref could be nil when the CLI is loading the project for validation.
+		return nil, nil
 	}
 
 	ctx, span := tracer.Start(ctx, "setupParallelGitIncludeDirs", trace.WithAttributes(
@@ -1045,6 +1055,31 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		}
 	}
 
+	dirsAsStringMaps := struct {
+		ClonesForOwnerRepo    map[string]string   `json:"clones_for_owner_repo"`
+		WorktreesForOwnerRepo map[string][]string `json:"worktrees_for_owner_repo"`
+	}{
+		ClonesForOwnerRepo:    make(map[string]string),
+		WorktreesForOwnerRepo: make(map[string][]string),
+	}
+	for ownerRepo, cloneDir := range dirs.clonesForOwnerRepo {
+		dirsAsStringMaps.ClonesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = cloneDir
+	}
+	for ownerRepo, worktreeDirs := range dirs.worktreesForOwnerRepo {
+		dirsAsStringMaps.WorktreesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = worktreeDirs
+	}
+
+	grip.Info(message.Fields{
+		"message":            "set up git worktrees for parallel includes",
+		"owner":              opts.Ref.Owner,
+		"repo":               opts.Ref.Repo,
+		"project_id":         opts.Ref.Id,
+		"project_identifier": opts.Ref.Identifier,
+		"revision":           opts.Revision,
+		"errors":             catcher.Resolve(),
+		"git_include_dirs":   dirsAsStringMaps,
+	})
+
 	return dirs, catcher.Resolve()
 }
 
@@ -1075,18 +1110,21 @@ const (
 	ReadFromPatchDiff = "patch_diff"
 )
 
-// readFromRemoteSource returns true if the readFrom option requires
-// retrieving a file from a remote source (i.e. GitHub).
+// readFromRemoteSource returns true if the readFrom option requires retrieving
+// a file from a remote source (i.e. GitHub). If ReadFileFrom is empty, the
+// default behavior is that it reads from a remote source.
 func readFromRemoteSource(readFrom string) bool {
-	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
+	return utility.StringSliceContains([]string{"", ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
 }
 
 type GetProjectOpts struct {
-	Ref                       *ProjectRef
-	PatchOpts                 *PatchOpts
-	LocalModules              map[string]string
-	RemotePath                string
-	Revision                  string
+	Ref          *ProjectRef
+	PatchOpts    *PatchOpts
+	LocalModules map[string]string
+	RemotePath   string
+	Revision     string
+	// ReadFileFrom determines where the file should be fetched from. If
+	// unspecified, the default is ReadFromGithub.
 	ReadFileFrom              string
 	Identifier                string
 	UnmarshalStrict           bool
@@ -1119,6 +1157,9 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
+// retrieveFile retrieves a file from its source location. If no
+// opts.ReadFileFrom is specified, it will default to retrieving the file from
+// GitHub.
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
@@ -1159,12 +1200,16 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			// sufficient confidence that worktrees are set up properly for
 			// included files.
 			grip.Warning(message.Fields{
-				"message":   "including file but worktree is not set, will not use git",
-				"owner":     opts.Ref.Owner,
-				"repo":      opts.Ref.Repo,
-				"revision":  opts.Revision,
-				"file_name": opts.RemotePath,
-				"ticket":    "DEVPROD-26851",
+				"message":            "including file but worktree is not set, will not use git",
+				"project_id":         opts.Ref.Id,
+				"project_identifier": opts.Ref.Identifier,
+				"owner":              opts.Ref.Owner,
+				"repo":               opts.Ref.Repo,
+				"revision":           opts.Revision,
+				"file_name":          opts.RemotePath,
+				"read_file_from":     opts.ReadFileFrom,
+				"stack":              string(debug.Stack()),
+				"ticket":             "DEVPROD-26851",
 			})
 			useGit = false
 		}
@@ -1276,12 +1321,16 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		// TODO (DEVPROD-26851): remove this condition once we have sufficient
 		// confidence that worktrees are set up properly for included files.
 		grip.Warning(message.Fields{
-			"message":   "including file but worktree is not set, will not use git",
-			"owner":     opts.Ref.Owner,
-			"repo":      opts.Ref.Repo,
-			"revision":  opts.Revision,
-			"file_name": opts.RemotePath,
-			"ticket":    "DEVPROD-26851",
+			"message":            "including file but worktree is not set, will not use git",
+			"project_id":         opts.Ref.Id,
+			"project_identifier": opts.Ref.Identifier,
+			"owner":              opts.Ref.Owner,
+			"repo":               opts.Ref.Repo,
+			"revision":           opts.Revision,
+			"file_name":          opts.RemotePath,
+			"read_file_from":     opts.ReadFileFrom,
+			"stack":              string(debug.Stack()),
+			"ticket":             "DEVPROD-26851",
 		})
 		useGit = false
 	}
@@ -1406,6 +1455,7 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
+		PS:                 utility.FromStringPtr(pp.Ps),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),
@@ -1512,6 +1562,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			GitTagOnly:      pt.GitTagOnly,
 			Stepback:        pt.Stepback,
 			MustHaveResults: pt.MustHaveResults,
+			PS:              pt.Ps,
 		}
 		if strings.Contains(strings.TrimSpace(pt.Name), " ") {
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
@@ -1841,6 +1892,7 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CronBatchTime:  bvt.CronBatchTime,
 		BatchTime:      bvt.BatchTime,
 		Activate:       bvt.Activate,
+		PS:             bvt.PS,
 		CreateCheckRun: bvt.CreateCheckRun,
 	}
 	res.AllowedRequesters = bvt.AllowedRequesters
@@ -1874,6 +1926,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.RunOn) == 0 {
 		res.RunOn = pt.RunOn
+	}
+	if res.PS == nil {
+		res.PS = pt.Ps
 	}
 
 	// Build variant level settings are lower priority than project task level

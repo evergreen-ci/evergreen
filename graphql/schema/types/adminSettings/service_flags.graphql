@@ -37,6 +37,7 @@ input ServiceFlagsInput {
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
   s3LifecycleSyncDisabled: Boolean
+  psLoggingDisabled: Boolean
   useMergeQueuePathFilteringDisabled: Boolean
 }
 
@@ -79,6 +80,7 @@ type ServiceFlags {
   webhookNotificationsDisabled: Boolean
   githubStatusAPIDisabled: Boolean
   s3LifecycleSyncDisabled: Boolean
+  psLoggingDisabled: Boolean
   useMergeQueuePathFilteringDisabled: Boolean
 }
 

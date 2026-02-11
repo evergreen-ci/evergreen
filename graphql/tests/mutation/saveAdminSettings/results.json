@@ -457,6 +457,9 @@
               "financeFormula": 0.01,
               "savingsPlanDiscount": 0.01,
               "onDemandDiscount": 0.01
+            },
+            "debugSpawnHosts": {
+              "setupScript": "echo setup"
             }
           }
         }

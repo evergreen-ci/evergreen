@@ -44,6 +44,9 @@ func (sc *StatsCollector) expandCommands(exp util.Expansions) {
 			sc.logger.System().Warning(errors.Wrapf(err, "expanding stats command '%s'", cmd))
 			continue
 		}
+		if strings.TrimSpace(expanded) == "" {
+			continue
+		}
 		expandedCmds = append(expandedCmds, expanded)
 	}
 	sc.Cmds = expandedCmds
