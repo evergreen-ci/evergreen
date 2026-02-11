@@ -600,3 +600,66 @@ func TestConsolidatePatchesForUser(t *testing.T) {
 	require.NotNil(t, usr)
 	assert.Equal(t, 9, usr.PatchNumber)
 }
+
+func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+
+	originalTime := time.Now().Add(-time.Hour).UTC().Round(time.Millisecond)
+	patches := []Patch{
+		{
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:     "mongodb",
+				Repo:    "mongo",
+				HeadSHA: "abc123",
+			},
+		},
+		{
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:                "mongodb",
+				Repo:               "mongo",
+				HeadSHA:            "abc123",
+				RemovedFromQueueAt: originalTime,
+				RemovalReason:      "original reason",
+			},
+		},
+		{
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:     "other-org",
+				Repo:    "mongo",
+				HeadSHA: "abc123",
+			},
+		},
+	}
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, patches[0], patches[1], patches[2]))
+
+	count, err := MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "abc123", "merge failed")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count)
+
+	p, err := FindOneId(t.Context(), patches[0].Id.Hex())
+	assert.NoError(t, err)
+	assert.False(t, p.GithubMergeData.RemovedFromQueueAt.IsZero())
+	assert.Equal(t, "merge failed", p.GithubMergeData.RemovalReason)
+
+	p, err = FindOneId(t.Context(), patches[1].Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, originalTime, p.GithubMergeData.RemovedFromQueueAt)
+	assert.Equal(t, "original reason", p.GithubMergeData.RemovalReason)
+
+	p, err = FindOneId(t.Context(), patches[2].Id.Hex())
+	assert.NoError(t, err)
+	assert.True(t, p.GithubMergeData.RemovedFromQueueAt.IsZero())
+
+	count, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "different-sha", "reason")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, count)
+
+	_, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "", "reason")
+	assert.Error(t, err)
+
+	_, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "abc123", "")
+	assert.Error(t, err)
+}

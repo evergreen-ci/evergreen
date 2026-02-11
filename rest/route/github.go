@@ -565,7 +565,7 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 		logFields["patches_updated"] = count
 		logFields["message"] = "successfully processed merge group destroyed event"
 	} else {
-		logFields["message"] = "no patches updated when marking merge queue as removed"
+		logFields["message"] = "no patches updated when marking merge group as removed"
 	}
 
 	grip.Info(logFields)
