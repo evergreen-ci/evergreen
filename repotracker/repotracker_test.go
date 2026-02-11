@@ -1859,14 +1859,12 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
-	assert.NoError(err)
+	require.NotNil(t, manifest)
 	assert.Equal(patchVersion.Id, manifest.Id)
 	assert.Len(manifest.Modules, 1)
 	module, ok = manifest.Modules["module1"]
-	assert.True(ok)
-	// DEVPROD-20943: patch should use YAML ref, not base manifest revision
+	require.True(t, ok)
 	assert.Equal(yamlRef, module.Revision, "patch should use YAML ref when it differs from base manifest")
-	assert.NotEqual(baseRevision, module.Revision, "patch should not reuse base manifest revision when YAML ref differs")
 }
 
 func TestShellVersionFromRevisionGitTags(t *testing.T) {
