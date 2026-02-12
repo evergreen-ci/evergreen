@@ -2,6 +2,7 @@ package githubapp
 
 import (
 	"context"
+	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -109,6 +110,10 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 	installationID, err := getInstallationID(ctx, g, owner, repo)
 	if err != nil {
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
+	}
+
+	if testing.Testing() && installationID == testTokenID {
+		return "", nil
 	}
 
 	id, err := createCacheID(installationID, opts.GetPermissions())

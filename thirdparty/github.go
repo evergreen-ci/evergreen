@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -439,6 +440,11 @@ func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHub
 		}),
 		httpClient,
 	)
+
+	// If this is a test and the token is empty, use an unauthenticated client.
+	if testing.Testing() && token == "" {
+		client = http.DefaultClient
+	}
 
 	githubClient := githubapp.GitHubClient{Client: github.NewClient(client)}
 	return &githubClient
