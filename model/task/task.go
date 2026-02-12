@@ -3834,7 +3834,8 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	var jqlClause string
 	for _, testResult := range t.LocalTestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
-			fileParts := eitherSlash.Split(testResult.TestName, -1)
+			testName := testResult.GetDisplayTestName()
+			fileParts := eitherSlash.Split(testName, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
