@@ -359,16 +359,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, BuildTasksAndVariantsError)
 	}
 
-	ignoredVariants := j.filterOutIgnoredVariants(patchDoc, patchedProject)
+	ignoredVariants := j.filterOutIgnoredVariants(ctx, patchDoc, patchedProject)
 	// If all variants were filtered out, send success messages and don't create the patch.
 	if len(patchDoc.VariantsTasks) == 0 && len(ignoredVariants) > 0 {
 		j.sendGitHubSuccessMessages(ctx, patchDoc, pref)
 		return nil
-	}
-
-	// If some variants were filtered out, send success messages for those variants.
-	if len(ignoredVariants) > 0 {
-		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsMergeQueuePatch()) &&
@@ -434,6 +429,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if patchDoc.IsMergeQueuePatch() {
 		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub merge queue subscriptions")
+	}
+	// If some variants were filtered out, send success messages for those variants.
+	// Send this after creating subscriptions so the success messages aren't overwritten.
+	if len(ignoredVariants) > 0 {
+		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
 	}
 
 	if catcher.HasErrors() {
@@ -1129,6 +1129,39 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		patchDoc.Triggers = patch.TriggerInfo{Aliases: projectRef.GithubMQTriggerAliases}
 	}
 
+	// Get changed files to use for variant filtering.
+	if err = j.getChangedFilesForGithubMerge(ctx, patchDoc); err != nil {
+		return errors.Wrap(err, "getting changed files")
+	}
+
+	return nil
+}
+
+func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {
+	summaries, err := thirdparty.GetChangedFilesBetweenCommits(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.Githash, patchDoc.GithubMergeData.HeadSHA)
+	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"operation": "getChangedFilesForGithubMerge", // TODO: remove
+			"patch_id":  patchDoc.Id.Hex(),
+			"org":       patchDoc.GithubMergeData.Org,
+			"repo":      patchDoc.GithubMergeData.Repo,
+			"base":      patchDoc.Githash,
+			"head":      patchDoc.GithubMergeData.HeadSHA,
+		}))
+		return errors.Wrapf(err, "getting changed files for merge queue patch '%s'", patchDoc.Id.Hex())
+	}
+	grip.Info(message.Fields{
+		"operation": "getChangedFilesForGithubMerge", // TODO: remove
+		"patch_id":  patchDoc.Id.Hex(),
+		"files":     summaries,
+	})
+	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+		ModuleName: "",
+		Githash:    patchDoc.Githash,
+		PatchSet: patch.PatchSet{
+			Summary: summaries,
+		},
+	})
 	return nil
 }
 
@@ -1399,13 +1432,27 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessageForIgnoredVariants(ctx co
 	for _, variant := range ignoredVariants {
 		// Create a context that includes the variant name
 		variantContext := fmt.Sprintf("%s/%s", thirdparty.GithubStatusDefaultContext, variant)
-		update := NewGithubStatusUpdateJobWithSuccessMessage(
-			variantContext,
-			patchDoc.GithubPatchData.BaseOwner,
-			patchDoc.GithubPatchData.BaseRepo,
-			patchDoc.GithubPatchData.HeadHash,
-			ignoredFilesForVariant,
-		)
+		var update amboy.Job
+		if j.IntentType == patch.GithubIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				variantContext,
+				patchDoc.GithubPatchData.BaseOwner,
+				patchDoc.GithubPatchData.BaseRepo,
+				patchDoc.GithubPatchData.HeadHash,
+				ignoredFilesForVariant,
+			)
+		} else if j.IntentType == patch.GithubMergeIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				variantContext,
+				patchDoc.GithubMergeData.Org,
+				patchDoc.GithubMergeData.Repo,
+				patchDoc.GithubMergeData.HeadSHA,
+				ignoredFilesForVariant,
+			)
+		} else {
+			j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
+			return
+		}
 		update.Run(ctx)
 		j.AddError(update.Error())
 	}
@@ -1416,13 +1463,27 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessageForIgnoredVariants(ctx co
 func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef) {
 	rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
 	for _, rule := range rules {
-		update := NewGithubStatusUpdateJobWithSuccessMessage(
-			rule,
-			patchDoc.GithubPatchData.BaseOwner,
-			patchDoc.GithubPatchData.BaseRepo,
-			patchDoc.GithubPatchData.HeadHash,
-			ignoredFiles,
-		)
+		var update amboy.Job
+		if j.IntentType == patch.GithubIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				rule,
+				patchDoc.GithubPatchData.BaseOwner,
+				patchDoc.GithubPatchData.BaseRepo,
+				patchDoc.GithubPatchData.HeadHash,
+				ignoredFiles,
+			)
+		} else if j.IntentType == patch.GithubMergeIntentType {
+			update = NewGithubStatusUpdateJobWithSuccessMessage(
+				rule,
+				patchDoc.GithubMergeData.Org,
+				patchDoc.GithubMergeData.Repo,
+				patchDoc.GithubMergeData.HeadSHA,
+				ignoredFiles,
+			)
+		} else {
+			j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
+			return
+		}
 		update.Run(ctx)
 		j.AddError(update.Error())
 	}
@@ -1463,26 +1524,16 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 // filterOutIgnoredVariants checks which variants should be ignored based on their path patterns
 // and the changed files in the patch. It removes ignored variants from all relevant patch fields
 // and returns the list of ignored variant names.
-func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, patchedProject *model.Project) []string {
+func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project) []string {
 	ignoredVariants := []string{}
-
-	// Only apply variant filtering for GitHub PR patches
-	if !patchDoc.IsGithubPRPatch() {
-		return ignoredVariants
-	}
-
-	changedFiles := patchDoc.FilesChanged()
-	if len(changedFiles) == 0 {
-		// The changed files might be missing if either the patch has no changes
-		// or the changes are too large to load from GitHub. If the changed
-		// files can't be retrieved, be on the conservative side and don't
-		// filter out any variants.
+	if j.skipFilteringIgnoredVariants(ctx, patchDoc) {
 		return ignoredVariants
 	}
 
 	filteredVariantsTasks := []patch.VariantTasks{}
 	filteredBuildVariants := []string{}
 
+	changedFiles := patchDoc.FilesChanged()
 	// Check each variant in VariantsTasks to see if it should be ignored
 	for _, vt := range patchDoc.VariantsTasks {
 		bv := patchedProject.FindBuildVariant(vt.Variant)
@@ -1527,4 +1578,44 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(patchDoc *patch.Patch, p
 	patchDoc.Tasks = filteredTasks
 
 	return ignoredVariants
+}
+
+// skipFilteringIgnoredVariants verifies that the patch should apply filtering, i.e. there are changed files,
+// this is a PR or merge queue patch, and path filtering for the merge queue is enabled.
+func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context, patchDoc *patch.Patch) bool {
+	if !patchDoc.IsGithubPRPatch() && !patchDoc.IsMergeQueuePatch() {
+		return true
+	}
+	if patchDoc.IsMergeQueuePatch() {
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"message":  "failed to get service flags",
+				"job":      j.ID(),
+				"patch_id": patchDoc.Id.Hex(),
+			}))
+			return true
+		}
+		if flags.UseMergeQueuePathFilteringDisabled {
+			grip.Info(message.Fields{
+				"message":  "merge queue path filtering is disabled",
+				"patch_id": patchDoc.Id.Hex(),
+				"job":      j.ID(),
+			})
+			return true
+		}
+	}
+	if len(patchDoc.FilesChanged()) == 0 {
+		grip.Info(message.Fields{
+			"message":     "patch has no changed files, skip path filtering",
+			"patch_id":    patchDoc.Id.Hex(),
+			"intent_type": j.IntentType,
+		})
+		// The changed files might be missing if either the patch has no changes
+		// or the changes are too large to load from GitHub. If the changed
+		// files can't be retrieved, be on the conservative side and don't
+		// filter out any variants.
+		return true
+	}
+	return false
 }
