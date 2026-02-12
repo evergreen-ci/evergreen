@@ -4288,15 +4288,17 @@ func TestFindNoAvailableParent(t *testing.T) {
 		Id: "task1",
 		DurationPrediction: util.CachedDurationValue{
 			Value: durationOne,
-		}, BuildVariant: "bv1",
-		StartTime:       time.Now(),
+		},
+		BuildVariant: "bv1",
+		StartTime:    time.Now(),
 	}
 	task2 := task.Task{
 		Id: "task2",
 		DurationPrediction: util.CachedDurationValue{
 			Value: durationTwo,
-		}, BuildVariant: "bv1",
-		StartTime:       time.Now(),
+		},
+		BuildVariant: "bv1",
+		StartTime:    time.Now(),
 	}
 	assert.NoError(d.Insert(ctx))
 	assert.NoError(host1.Insert(ctx))
