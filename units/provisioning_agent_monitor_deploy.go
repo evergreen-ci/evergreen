@@ -24,8 +24,8 @@ const (
 	agentMonitorPutRetries       = 25
 	maxAgentMonitorDeployJobTime = 10 * time.Minute
 
-	staticCurlNumRetries = 5
-	staticCurlMaxSecs    = 300
+	staticHostCurlNumRetries = 5
+	staticHostCurlMaxSecs    = 300
 )
 
 func init() {
@@ -240,7 +240,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 	var cmd string
 	var err error
 	if j.host.Provider == evergreen.ProviderNameStatic {
-		cmd, err = j.host.CurlCommandWithRetry(j.env, staticCurlNumRetries, staticCurlMaxSecs)
+		cmd, err = j.host.CurlCommandWithRetry(j.env, staticHostCurlNumRetries, staticHostCurlMaxSecs)
 		if err != nil {
 			return errors.Wrap(err, "creating command to curl agent monitor binary")
 		}
@@ -251,7 +251,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "creating command to curl agent monitor binary")
 		}
-		ctx, cancel = context.WithTimeout(ctx, evergreenHostCurlTimeout)
+		ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
 		defer cancel()
 	}
 

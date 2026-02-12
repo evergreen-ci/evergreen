@@ -235,7 +235,7 @@ const (
 	// The app server stops an attempt to curl the evergreen binary after a minute.
 	// Static hosts may be forced to quarantine if a timeout is hit too early so
 	// we set a longer timeout for them.
-	evergreenHostCurlTimeout       = 61 * time.Second
+	evergreenCurlTimeout           = 61 * time.Second
 	evergreenHostStaticCurlTimeout = 5 * time.Minute
 	// sshTimeout defines the timeout for starting the agent.
 	startAgentTimeout = 25 * time.Second
@@ -244,7 +244,7 @@ const (
 // Prepare the remote machine to run a task.
 func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 	// copy over the correct agent binary to the remote host
-	curlCtx, cancel := context.WithTimeout(ctx, evergreenHostCurlTimeout)
+	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
 	defer cancel()
 	curlCmd, err := j.host.CurlCommand(j.env)
 	if err != nil {
