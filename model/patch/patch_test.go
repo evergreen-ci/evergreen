@@ -37,6 +37,97 @@ func TestConfigChanged(t *testing.T) {
 	assert.False(p.ConfigChanged(remoteConfigPath))
 }
 
+func TestShouldPatchFileWithDiff(t *testing.T) {
+	remoteConfigPath := "config/evergreen.yml"
+
+	for name, tc := range map[string]struct {
+		patch                   *Patch
+		shouldPatchFileWithDiff bool
+	}{
+		"RegularPatchWithConfigChanged": {
+			patch: &Patch{
+				Patches: []ModulePatch{{
+					PatchSet: PatchSet{
+						Summary: []thirdparty.Summary{{
+							Name:      remoteConfigPath,
+							Additions: 3,
+							Deletions: 3,
+						}},
+					},
+				}},
+			},
+			shouldPatchFileWithDiff: true,
+		},
+		"RegularPatchWithConfigNotChanged": {
+			patch: &Patch{
+				Patches: []ModulePatch{{
+					PatchSet: PatchSet{
+						Summary: []thirdparty.Summary{{
+							Name:      "other/file.yml",
+							Additions: 3,
+							Deletions: 3,
+						}},
+					},
+				}},
+			},
+			shouldPatchFileWithDiff: false,
+		},
+		"GitHubPRPatchWithConfigChanged": {
+			patch: &Patch{
+				GithubPatchData: thirdparty.GithubPatch{
+					HeadOwner: "owner",
+				},
+				Patches: []ModulePatch{{
+					PatchSet: PatchSet{
+						Summary: []thirdparty.Summary{{
+							Name:      remoteConfigPath,
+							Additions: 3,
+							Deletions: 3,
+						}},
+					},
+				}},
+			},
+			shouldPatchFileWithDiff: false,
+		},
+		"MergeQueuePatchWithConfigChangedViaAlias": {
+			patch: &Patch{
+				Alias: evergreen.CommitQueueAlias,
+				Patches: []ModulePatch{{
+					PatchSet: PatchSet{
+						Summary: []thirdparty.Summary{{
+							Name:      remoteConfigPath,
+							Additions: 3,
+							Deletions: 3,
+						}},
+					},
+				}},
+			},
+			shouldPatchFileWithDiff: false,
+		},
+		"MergeQueuePatchWithConfigChangedViaHeadSHA": {
+			patch: &Patch{
+				GithubMergeData: thirdparty.GithubMergeGroup{
+					HeadSHA: "abc123",
+				},
+				Patches: []ModulePatch{{
+					PatchSet: PatchSet{
+						Summary: []thirdparty.Summary{{
+							Name:      remoteConfigPath,
+							Additions: 3,
+							Deletions: 3,
+						}},
+					},
+				}},
+			},
+			shouldPatchFileWithDiff: false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.shouldPatchFileWithDiff, tc.patch.ShouldPatchFileWithDiff(remoteConfigPath))
+		})
+	}
+}
+
 type patchSuite struct {
 	suite.Suite
 	testConfig *evergreen.Settings
