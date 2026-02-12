@@ -12,27 +12,98 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, error) {
+const (
+	runEveryMainlineCommitLimit = 20
+)
+
+func DoProjectActivation(ctx context.Context, projectRef *ProjectRef, ts time.Time) ([]string, error) {
+	if projectRef.RunEveryMainlineCommit {
+		return activateEveryRecentMainlineCommitForProject(ctx, projectRef, ts)
+	}
+	return activateMostRecentNonIgnoredCommitForProject(ctx, projectRef, ts)
+}
+
+func activateMostRecentNonIgnoredCommitForProject(ctx context.Context, projectRef *ProjectRef, ts time.Time) ([]string, error) {
 	// fetch the most recent, non-ignored version (before the given time) to activate
-	activateVersion, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(id, ts))
+	activateVersion, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(projectRef.Id, ts))
 	if err != nil {
-		return false, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	if activateVersion == nil {
 		grip.Info(message.Fields{
 			"message":   "no version to activate for repository",
-			"project":   id,
+			"project":   projectRef.Id,
 			"operation": "project-activation",
 		})
-		return false, nil
+		return nil, nil
 	}
 	activated, err := ActivateElapsedBuildsAndTasks(ctx, activateVersion)
 	if err != nil {
-		return false, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	return activated, nil
+	if activated {
+		return []string{activateVersion.Id}, nil
+	}
+	return nil, nil
+}
 
+// activateEveryRecentMainlineCommitForProject activates all unactivated non-ignored versions
+// up to the limit specified, runEveryMainlineCommitLimit or up to the last activated version,
+// whichever is less.
+func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef *ProjectRef, ts time.Time) ([]string, error) {
+	lastActivatedVersion, err := VersionFindOne(ctx, VersionByMostRecentActivated(projectRef.Id, ts))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding most recently activated version")
+	}
+
+	var activateVersions []Version
+	if lastActivatedVersion == nil {
+		// If there is no previous activated versions, this may be a new project or a project's first activation.
+		// In that case, activate previous unactivated non-ignored versions rather than since last activated.
+		activateVersions, err = VersionFind(ctx, VersionsAllUnactivatedNonIgnored(projectRef.Id, ts, runEveryMainlineCommitLimit))
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding all unactivated non-ignored versions")
+		}
+	} else {
+		// If there is a last activated version, activate only versions since that one.
+		activateVersions, err = VersionFind(ctx, VersionsUnactivatedSinceLastActivated(projectRef.Id, ts, lastActivatedVersion.RevisionOrderNumber, runEveryMainlineCommitLimit))
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding unactivated versions since last activated version '%s'", lastActivatedVersion.Id)
+		}
+	}
+
+	if len(activateVersions) == 0 {
+		grip.Info(message.Fields{
+			"message":   "no versions to activate for repository",
+			"project":   projectRef.Id,
+			"operation": "project-activation-every-commit",
+		})
+		return nil, nil
+	}
+
+	// Activate all eligible versions.
+	activatedVersions := []string{}
+	for _, version := range activateVersions {
+		activated, err := ActivateElapsedBuildsAndTasks(ctx, &version)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":              "error activating version",
+				"project":              projectRef.Id,
+				"version":              version.Id,
+				"revision":             version.Revision,
+				"operation":            "project-activation-every-commit",
+				"total_versions_found": len(activateVersions),
+			}))
+			// Continue with other versions even if one fails.
+			continue
+		}
+		if activated {
+			activatedVersions = append(activatedVersions, version.Id)
+		}
+	}
+
+	return activatedVersions, nil
 }
 
 // ActivateElapsedBuildsAndTasks activates any builds/tasks if their BatchTimes have elapsed.
