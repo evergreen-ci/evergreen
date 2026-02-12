@@ -61,11 +61,11 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 	return nil
 }
 
-func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts time.Time) (bool, error) {
+func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts time.Time) ([]string, error) {
 	if !project.Enabled {
-		return false, errors.Errorf("project disabled: %s", project.Id)
+		return nil, errors.Errorf("project disabled: %s", project.Id)
 	}
-	ok, err := model.DoProjectActivation(ctx, &project, ts)
+	versions, err := model.DoProjectActivation(ctx, &project, ts)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
@@ -76,10 +76,10 @@ func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts 
 			"timestamp_used":     ts,
 		}))
 
-		return false, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	return ok, nil
+	return versions, nil
 }
 
 // CheckGithubAPIResources returns true when the github API is ready,

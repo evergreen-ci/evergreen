@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -91,7 +92,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationWithBuffer() {
 	// Test activation
 	activated, err := DoProjectActivation(s.ctx, projectRef, now.Add(-CronActiveRange))
 	require.NoError(err)
-	require.True(activated)
+	require.Len(activated, 1)
+	assert.Equal(t, "version-2", activated[0])
 
 	// Verify that we got the correct version (version-2)
 	// This version should be selected because it's the most recent one outside the 5-minute buffer
@@ -168,7 +170,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationSkipsIgnoredBuildVariant
 	// Test activation
 	activated, err := DoProjectActivation(s.ctx, projectRef, now.Add(-CronActiveRange))
 	require.NoError(err)
-	require.True(activated)
+	require.Len(activated, 1)
+	assert.Equal(t, "version-with-ignored-variants", activated[0])
 
 	// Verify the version was processed
 	updatedVersion, err := VersionFindOneId(s.ctx, version.Id)
@@ -309,7 +312,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationMultipleUnactivatedCommi
 	// Test activation - should activate all unactivated commits since the last activated one
 	activated, err := DoProjectActivation(s.ctx, projectRef, now)
 	require.NoError(err)
-	require.True(activated)
+	require.Len(activated, 1)
+	assert.Equal(t, "version-2", activated[0])
 
 	// Verify all unactivated versions were activated
 	for _, originalVersion := range unactivatedVersions {
@@ -416,7 +420,10 @@ func (s *VersionActivationSuite) TestDoProjectActivationNewProject() {
 	// This ensures new projects don't miss any commits
 	activated, err := DoProjectActivation(s.ctx, projectRef, now)
 	require.NoError(err)
-	require.True(activated)
+	require.Len(activated, 3)
+	assert.Contains(t, activated, "version-1")
+	assert.Contains(t, activated, "version-2")
+	assert.Contains(t, activated, "version-3")
 
 	// Verify ALL versions were activated (critical for new projects)
 	for _, originalVersion := range versions {
@@ -470,7 +477,8 @@ func (s *VersionActivationSuite) TestDoProjectActivationSingleCommitBehaviorPres
 	// Test activation - should work exactly as before
 	activated, err := DoProjectActivation(s.ctx, projectRef, now)
 	require.NoError(err)
-	require.True(activated)
+	require.Len(activated, 1)
+	assert.Equal(t, "single-version", activated[0])
 
 	// Verify version was activated
 	updatedVersion, err := VersionFindOneId(s.ctx, "single-version")
@@ -555,5 +563,5 @@ func (s *VersionActivationSuite) TestDoProjectActivationNoVersionsToActivate() {
 	// Test activation with no versions
 	activated, err := DoProjectActivation(s.ctx, projectRef, now)
 	require.NoError(err)
-	require.False(activated)
+	require.Len(activated, 0)
 }
