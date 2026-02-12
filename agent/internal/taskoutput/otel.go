@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"runtime"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -18,7 +17,6 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/sdk/trace"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -61,39 +59,26 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 		}
 	}(o.traceClient, ctx)
 
-	// Process files and upload batches in parallel using a worker pool.
-	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(runtime.GOMAXPROCS(0))
-
+	catcher := grip.NewBasicCatcher()
 	for _, fileName := range files {
-		g.Go(func() error {
-			if err := gCtx.Err(); err != nil {
-				return errors.Wrap(err, "context canceled before processing file")
-			}
+		resourceSpans, err := unmarshalTraces(fileName)
+		if err != nil {
+			catcher.Wrapf(err, "unmarshalling trace file '%s'", fileName)
+			continue
+		}
 
-			resourceSpans, err := unmarshalTraces(fileName)
-			if err != nil {
-				return errors.Wrapf(err, "unmarshalling trace file '%s'", fileName)
+		spanBatches := batchSpans(resourceSpans, trace.DefaultMaxExportBatchSize)
+		for _, batch := range spanBatches {
+			if err = o.traceClient.UploadTraces(ctx, batch); err != nil {
+				catcher.Wrapf(err, "uploading traces for '%s'", fileName)
+				continue
 			}
+		}
 
-			spanBatches := batchSpans(resourceSpans, trace.DefaultMaxExportBatchSize)
-			for _, batch := range spanBatches {
-				if err := gCtx.Err(); err != nil {
-					return errors.Wrap(err, "context canceled while uploading traces")
-				}
-				if err := o.traceClient.UploadTraces(gCtx, batch); err != nil {
-					return errors.Wrapf(err, "uploading traces for '%s'", fileName)
-				}
-			}
-
-			if err := os.Remove(fileName); err != nil {
-				return errors.Wrapf(err, "removing trace file '%s'", fileName)
-			}
-			return nil
-		})
+		catcher.Wrapf(os.Remove(fileName), "removing trace file '%s'", fileName)
 	}
 
-	return g.Wait()
+	return catcher.Resolve()
 }
 
 // newOtelTraceDirectoryHandler returns a new otel trace directory handler for the

@@ -72,6 +72,10 @@ func TestNotificationEmailCommand(t *testing.T) {
 		expectErr string
 		expected  *restmodel.APIEmail
 	}{
+		"FailsWithMissingBodyFile": {
+			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", "nonexistent.txt"},
+			expectErr: "reading email body from file",
+		},
 		"FailsWithMissingRecipients": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--body", "Test body"},
 			expectErr: "--recipients",
@@ -82,7 +86,23 @@ func TestNotificationEmailCommand(t *testing.T) {
 		},
 		"FailsWithMissingBody": {
 			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com"},
-			expectErr: "body",
+			expectErr: "body | bodyFile",
+		},
+		"FailsWithEmptyFileBody": {
+			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", emptyTestFile},
+			expectErr: "the given body file has no content",
+		},
+		"FailsWithInlineBodyAndBodyFile": {
+			args:      []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--body", "Inline Email Body", "--bodyFile", emptyTestFile},
+			expectErr: "only one of (body | bodyFile) can be set",
+		},
+		"SucceedsWithValidBodyFile": {
+			args: []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--bodyFile", testFile},
+			expected: &restmodel.APIEmail{
+				Subject:    utility.ToStringPtr("Test Subject"),
+				Recipients: []string{"test@example.com"},
+				Body:       utility.ToStringPtr("Test Email Body"),
+			},
 		},
 		"SucceedsWithInlineBody": {
 			args: []string{"notify", "email", "--subject", "Test Subject", "--recipients", "test@example.com", "--body", "Inline Email Body"},

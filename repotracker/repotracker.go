@@ -186,7 +186,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		}
 	}
 
-	versions, err := model.DoProjectActivation(ctx, projectRef, time.Now())
+	ok, err := model.DoProjectActivation(ctx, projectRef.Id, time.Now())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
@@ -197,13 +197,12 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		}))
 		return errors.WithStack(err)
 	}
-	if len(versions) > 0 {
+	if ok {
 		grip.Debug(message.Fields{
-			"message":            "activated recent commit(s) for project",
+			"message":            "activated recent commit for project",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
 			"runner":             RunnerName,
-			"activated_versions": versions,
 		})
 	}
 

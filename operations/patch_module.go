@@ -108,21 +108,62 @@ func PatchSetModule() cli.Command {
 	}
 }
 
+// shouldIncludeModule prompts the user to decide whether to include a module in the patch.
+// It displays a diff summary of the module changes and asks for confirmation. When the user
+// confirms, both the module's code changes and configuration files will be included.
+// Returns true if the user confirmed, false otherwise.
+func shouldIncludeModule(params *patchParams, args cli.Args, conf *ClientSettings,
+	p *patch.Patch, module *model.Module, modulePath string) (bool, error) {
+	// If skipping confirmation, always include the module.
+	if params.SkipConfirm {
+		return true, nil
+	}
+
+	preserveCommits := params.PreserveCommits || conf.PreserveCommits
+	keepGoing, err := confirmUncommittedChanges(modulePath, preserveCommits, params.Uncommitted || conf.UncommittedChanges)
+	if err != nil {
+		return false, errors.Wrap(err, "confirming uncommitted changes")
+	}
+	if !keepGoing {
+		return false, nil
+	}
+
+	ref := params.Ref
+	if params.Uncommitted || conf.UncommittedChanges || params.IncludeModules {
+		ref = ""
+	}
+
+	// Load git data to show diff summary.
+	diffData, err := loadGitData(modulePath, "", module.Branch, ref, "", preserveCommits, args...)
+	if err != nil {
+		return false, err
+	}
+	if err = validatePatchSize(diffData, params.Large); err != nil {
+		return false, err
+	}
+
+	grip.Infof("Using branch '%s' for module '%s'.", module.Branch, module.Name)
+	if diffData.patchSummary != "" {
+		grip.Info(diffData.patchSummary)
+	}
+	if len(diffData.fullPatch) > 0 {
+		if !confirm("This is a summary of the module patch to be submitted. Include this module's changes (both code and configuration)?", true) {
+			return false, nil
+		}
+	} else {
+		if !confirm("Patch submission for the module is empty. Continue?", true) {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
 func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	p *patch.Patch, module *model.Module, modulePath string) error {
 	patchId := p.Id.Hex()
 
 	preserveCommits := params.PreserveCommits || conf.PreserveCommits
-	if !params.SkipConfirm {
-		keepGoing, err := confirmUncommittedChanges(modulePath, preserveCommits, params.Uncommitted || conf.UncommittedChanges)
-		if err != nil {
-			return errors.Wrap(err, "confirming uncommitted changes")
-		}
-		if !keepGoing {
-			return errors.New("patch aborted")
-		}
-	}
-
 	ref := params.Ref
 	if params.Uncommitted || conf.UncommittedChanges || params.IncludeModules {
 		ref = ""
@@ -137,21 +178,6 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 		return err
 	}
 
-	if !params.SkipConfirm {
-		grip.Infof("Using branch '%s' for module '%s'.", module.Branch, module.Name)
-		if diffData.patchSummary != "" {
-			grip.Info(diffData.patchSummary)
-		}
-		if len(diffData.fullPatch) > 0 {
-			if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {
-				return nil
-			}
-		} else {
-			if !confirm("Patch submission for the module is empty. Continue?", true) {
-				return nil
-			}
-		}
-	}
 	moduleParams := UpdatePatchModuleParams{
 		patchID: patchId,
 		module:  module.Name,

@@ -409,10 +409,9 @@ func getRequesterFromAlias(alias string) string {
 
 func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
-		Ref:          &pRef,
-		Revision:     pRef.Branch,
-		RemotePath:   file,
-		ReadFileFrom: model.ReadFromGithub,
+		Ref:        &pRef,
+		Revision:   pRef.Branch,
+		RemotePath: file,
 	}
 	return model.GetProjectFromFile(ctx, opts)
 }

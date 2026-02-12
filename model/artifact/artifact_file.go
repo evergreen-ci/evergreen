@@ -68,10 +68,6 @@ type File struct {
 	FileKey string `json:"filekey,omitempty" bson:"filekey,omitempty"`
 	// ContentType is the content type of the file.
 	ContentType string `json:"content_type" bson:"content_type"`
-	// FileSize is the size of the file in bytes.
-	FileSize int64 `json:"file_size,omitempty" bson:"file_size,omitempty"`
-	// PutRequests is the number of S3 PUT requests made to upload this file.
-	PutRequests int `json:"put_requests,omitempty" bson:"put_requests,omitempty"`
 }
 
 func (f *File) validate() error {

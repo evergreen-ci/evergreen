@@ -9,6 +9,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const (
+	// S3PutRequestCost is the cost per S3 PUT request ($0.000005).
+	S3PutRequestCost = 0.000005
+)
+
 // CostConfig represents the admin config section for finance-related settings.
 type CostConfig struct {
 	// FinanceFormula determines the weighting/percentage of the two parts of total cost: savingsPlanComponent and onDemandComponent.

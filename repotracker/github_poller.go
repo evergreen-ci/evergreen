@@ -59,10 +59,9 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, 
 	// find the project configuration file for the given repository revision
 	projectRef := gRepoPoller.ProjectRef
 	opts := model.GetProjectOpts{
-		Ref:          projectRef,
-		RemotePath:   projectRef.RemotePath,
-		Revision:     projectFileRevision,
-		ReadFileFrom: model.ReadFromGithub,
+		Ref:        projectRef,
+		RemotePath: projectRef.RemotePath,
+		Revision:   projectFileRevision,
 	}
 	return model.GetProjectFromFile(ctx, opts)
 }
