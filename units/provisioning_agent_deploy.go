@@ -233,10 +233,10 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 
 const (
 	// The app server stops an attempt to curl the evergreen binary after a minute.
-	// Static hosts may be forced to quarantine if a timeout is hit too early so
-	// we set a longer timeout for them.
-	evergreenCurlTimeout           = 61 * time.Second
-	evergreenHostStaticCurlTimeout = 5 * time.Minute
+	evergreenCurlTimeout = 61 * time.Second
+	// Static hosts need a higher timeout due to higher download times which could
+	// cause the hosts to be quarantined.
+	evergreenStaticHostCurlTimeout = 5 * time.Minute
 	// sshTimeout defines the timeout for starting the agent.
 	startAgentTimeout = 25 * time.Second
 )

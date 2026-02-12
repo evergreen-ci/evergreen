@@ -244,7 +244,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "creating command to curl agent monitor binary")
 		}
-		ctx, cancel = context.WithTimeout(ctx, evergreenHostStaticCurlTimeout)
+		ctx, cancel = context.WithTimeout(ctx, evergreenStaticHostCurlTimeout)
 		defer cancel()
 	} else {
 		cmd, err = j.host.CurlCommand(j.env)
