@@ -751,7 +751,8 @@ be scheduled if a file in a specified path is changed. The tasks must still be m
 manual selection, alias, etc.
 
 _Merge queue behavior_: Build variant path filtering is supported for the merge queue. If testing multiple PRs
-in one merge queue patch, we will consider the full set of changed files to determine what tasks to run.
+in one merge queue patch, we will consider the full set of changed files to determine what tasks to run, but will
+not consider the changed files from other PRs in the merge group (i.e. paths changed in PRs that are ahead in the queue are not included).
 For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
 _Mainline behavior_: Cron, batchtime, and activate true/false will still take precedent over path filtering,
