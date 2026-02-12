@@ -543,6 +543,27 @@ func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]s
 	return res, nil
 }
 
+// FindMergeQueuePatchesByProject returns all active merge queue patches for a project
+func FindMergeQueuePatchesByProject(ctx context.Context, projectID string) ([]Patch, error) {
+	timeThreshold := time.Now().Add(-24 * time.Hour)
+
+	query := bson.M{
+		ProjectKey: projectID,
+		AliasKey:   evergreen.CommitQueueAlias,
+		StatusKey: bson.M{
+			"$nin": []string{evergreen.VersionFailed, evergreen.VersionSucceeded},
+		},
+		CreateTimeKey: bson.M{
+			"$gte": timeThreshold,
+		},
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
+			"$exists": false,
+		},
+	}
+
+	return Find(ctx, db.Query(query))
+}
+
 // MarkMergeQueuePatchesRemovedFromQueue updates patches matching the given HeadSHA to mark them
 // as removed from the GitHub merge queue. Returns the number of patches updated.
 func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) (int, error) {
