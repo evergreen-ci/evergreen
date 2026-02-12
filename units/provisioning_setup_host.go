@@ -553,7 +553,7 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, env evergreen.Environ
 		return errors.Wrap(err, "creating script to set up spawn host")
 	}
 
-	curlCtx, cancel := context.WithTimeout(ctx, evergreenCurlTimeout)
+	curlCtx, cancel := context.WithTimeout(ctx, evergreenHostCurlTimeout)
 	defer cancel()
 	curlCmd, err := j.host.CurlCommand(env)
 	if err != nil {
