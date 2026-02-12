@@ -322,11 +322,13 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 
 	event.LogHostAgentMonitorDeployed(ctx, j.host.Id)
 	grip.Info(message.Fields{
-		"message":  "agent monitor deployed",
-		"host_id":  j.host.Id,
-		"host_tag": j.host.Tag,
-		"distro":   j.host.Distro.Id,
-		"provider": j.host.Provider,
+		"message":     "agent monitor deployed",
+		"host_id":     j.host.Id,
+		"host_tag":    j.host.Tag,
+		"distro":      j.host.Distro.Id,
+		"provider":    j.host.Provider,
+		"is_fresh_host":  j.host.LastTask == "",
+		"attempt_num": j.RetryInfo().CurrentAttempt,
 	})
 
 	return nil
