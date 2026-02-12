@@ -1,0 +1,9 @@
+tasks:
+  - name: not-commited
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "This task is not meant to be committed."
+
