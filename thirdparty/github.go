@@ -738,7 +738,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, owner, repo, baseRevision, 
 	defer span.End()
 	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, currentCommitHash, caller)
 	if err != nil {
-		return "", errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", baseRevision, currentCommitHash)
+		return "", errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", baseRevision, currentCommitHash)
 	}
 	return *compare.MergeBaseCommit.SHA, nil
 }
@@ -755,7 +755,7 @@ func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase
 	defer span.End()
 	compare, err := getCommitComparison(ctx, owner, repo, mergeBase, oldestAllowedMergeBase, caller)
 	if err != nil {
-		return false, errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
+		return false, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
 	}
 	status := compare.GetStatus()
 
@@ -1694,6 +1694,23 @@ func getPullRequestFileSummaries(ctx context.Context, ghClient *githubapp.GitHub
 	}
 
 	return getPatchSummariesFromCommitFiles(files), nil
+}
+
+// GetChangedFilesBetweenCommits gets the summary list of the changed files between the given commits
+func GetChangedFilesBetweenCommits(ctx context.Context, owner, repo, base, head string) ([]Summary, error) {
+	caller := "GetChangedFilesBetweenCommits"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+	commits, err := getCommitComparison(ctx, owner, repo, base, head, caller)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", base, head)
+	}
+
+	return getPatchSummariesFromCommitFiles(commits.Files), nil
 }
 
 func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
