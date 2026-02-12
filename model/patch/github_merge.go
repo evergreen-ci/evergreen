@@ -2,6 +2,7 @@ package patch
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -65,8 +67,53 @@ type githubMergeIntent struct {
 	Repo string `bson:"repo"`
 }
 
+// ExtractBaseBranchFromHeadRef extracts the base branch from a merge queue head ref.
+func ExtractBaseBranchFromHeadRef(headRef string) string {
+	split := strings.Split(headRef, "/")
+	if len(split) < 5 {
+		return ""
+	}
+
+	baseBranchSlice := []string{}
+	for i := 3; i < len(split)-1; i++ {
+		baseBranchSlice = append(baseBranchSlice, split[i])
+	}
+	return strings.Join(baseBranchSlice, "/")
+}
+
+// ExtractPRNumberFromHeadRef extracts the PR number from a merge queue head ref.
+func ExtractPRNumberFromHeadRef(headRef string) string {
+	split := strings.Split(headRef, "/")
+	if len(split) == 0 {
+		return ""
+	}
+	lastElement := split[len(split)-1]
+
+	if !strings.HasPrefix(lastElement, "pr-") {
+		return ""
+	}
+
+	prPart := strings.TrimPrefix(lastElement, "pr-")
+	parts := strings.Split(prPart, "-")
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return parts[0]
+}
+
+// BuildGithubPRURL constructs a GitHub PR URL from org, repo, and headRef.
+// Returns empty string if the PR number cannot be extracted from headRef.
+func BuildGithubPRURL(org, repo, headRef string) string {
+	prNumber := ExtractPRNumberFromHeadRef(headRef)
+	if prNumber == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://github.com/%s/%s/pull/%s", org, repo, prNumber)
+}
+
 // NewGithubIntent creates an Intent from a google/go-github MergeGroup.
-func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeGroupEvent) (Intent, error) {
+func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller string, mg *github.MergeGroupEvent) (Intent, error) {
 	catcher := grip.NewBasicCatcher()
 	if msgDeliveryID == "" {
 		catcher.Add(errors.New("message ID cannot be empty"))
@@ -97,6 +144,21 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
 	}
+
+	baseBranch := ExtractBaseBranchFromHeadRef(mg.GetMergeGroup().GetHeadRef())
+	githubPRURL := BuildGithubPRURL(mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadRef())
+
+	ctx, span := tracer.Start(ctx, MergeQueueIntentCreatedSpan,
+		trace.WithAttributes(
+			BuildMergeQueueSpanAttributes(
+				mg.GetOrg().GetLogin(),
+				mg.GetRepo().GetName(),
+				baseBranch,
+				mg.GetMergeGroup().GetHeadSHA(),
+				githubPRURL,
+				&MergeQueueSpanAttributesOpts{MsgID: msgDeliveryID},
+			)...))
+	defer span.End()
 
 	grip.Info(message.Fields{
 		"message":    "creating new merge intent for GitHub merge queue",
@@ -195,16 +257,9 @@ func (g *githubMergeIntent) GetCalledBy() string {
 func (g *githubMergeIntent) NewPatch() *Patch {
 	// merge_group.head_ref looks like this:
 	// refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
+	baseBranch := ExtractBaseBranchFromHeadRef(g.HeadRef)
+
 	split := strings.Split(g.HeadRef, "/")
-
-	// handle cases where base branch has a slash in it
-	baseBranchSlice := []string{}
-	for i := 3; i < len(split)-1; i++ {
-		baseBranchSlice = append(baseBranchSlice, split[i])
-	}
-	baseBranch := strings.Join(baseBranchSlice, "/")
-
-	// produce a branch name like gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
 	ghReadOnlyQueue := split[2]
 	lastElement := split[len(split)-1]
 	headBranch := strings.Join([]string{ghReadOnlyQueue, baseBranch, lastElement}, "/")

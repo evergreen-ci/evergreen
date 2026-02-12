@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1765,7 +1766,182 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			}
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
+
+			if err := emitMergeQueueCompletionMetrics(ctx, rootPatch, taskVersion, psu.patchFamilyFinishedCollectiveStatus); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":           "error emitting merge queue completion metrics",
+					"version_id":        taskVersion.Id,
+					"patch_id":          rootPatch.Id.Hex(),
+					"collective_status": psu.patchFamilyFinishedCollectiveStatus,
+				}))
+			}
 		}
+	}
+
+	return nil
+}
+
+type mergeQueueTaskMetrics struct {
+	variantMap        map[string]bool
+	hasRunningTasks   bool
+	failedCount       int
+	hasTestFailure    bool
+	hasInfraFailure   bool
+	hasSetupFailure   bool
+	hasTimeoutFailure bool
+	slowestTask       *task.Task
+	slowestDuration   time.Duration
+}
+
+// gatherMergeQueueTaskMetrics analyzes tasks and collects metrics for merge queue completion.
+func gatherMergeQueueTaskMetrics(tasks []task.Task) mergeQueueTaskMetrics {
+	metrics := mergeQueueTaskMetrics{
+		variantMap: make(map[string]bool),
+	}
+
+	for i := range tasks {
+		t := &tasks[i]
+		metrics.variantMap[t.BuildVariant] = true
+
+		if t.Status == evergreen.TaskStarted || t.Status == evergreen.TaskDispatched {
+			metrics.hasRunningTasks = true
+		}
+
+		if evergreen.IsFailedTaskStatus(t.Status) || t.Aborted {
+			metrics.failedCount++
+
+			if t.Details.TimedOut {
+				metrics.hasTimeoutFailure = true
+			}
+			if t.Details.Type == evergreen.CommandTypeSystem {
+				metrics.hasInfraFailure = true
+			} else if t.Details.Type == evergreen.CommandTypeSetup {
+				metrics.hasSetupFailure = true
+			} else {
+				metrics.hasTestFailure = true
+			}
+		}
+
+		if t.FinishTime.After(t.StartTime) {
+			duration := t.FinishTime.Sub(t.StartTime)
+			if metrics.slowestTask == nil || duration > metrics.slowestDuration {
+				metrics.slowestTask = t
+				metrics.slowestDuration = duration
+			}
+		}
+	}
+
+	return metrics
+}
+
+// emitMergeQueueCompletionMetrics emits OpenTelemetry metrics for merge queue version completion.
+func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Version, collectiveStatus string) error {
+	if p.Alias != evergreen.CommitQueueAlias || v.Requester != evergreen.GithubMergeRequester {
+		return nil
+	}
+
+	githubPRURL := patch.BuildGithubPRURL(p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.HeadBranch)
+
+	ctx, span := tracer.Start(ctx, patch.MergeQueueVersionCompletedSpan,
+		trace.WithAttributes(
+			patch.BuildMergeQueueSpanAttributes(
+				p.GithubMergeData.Org,
+				p.GithubMergeData.Repo,
+				p.GithubMergeData.BaseBranch,
+				p.GithubMergeData.HeadSHA,
+				githubPRURL,
+				&patch.MergeQueueSpanAttributesOpts{
+					PatchID:   p.Id.Hex(),
+					ProjectID: p.Project,
+				},
+			)...))
+	defer span.End()
+
+	if !p.FinishTime.IsZero() && !p.CreateTime.IsZero() {
+		timeInQueue := p.FinishTime.Sub(p.CreateTime).Milliseconds()
+		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
+	}
+
+	// Collect all version IDs for the patch family (parent + all children).
+	versionIDs, err := patch.GetFinalizedChildPatchIdsForPatch(ctx, p.Id.Hex())
+	if err != nil {
+		return errors.Wrap(err, "getting child patches for merge queue metrics")
+	}
+	versionIDs = append([]string{p.Version}, versionIDs...)
+
+	// Find the earliest task start time across all versions in the patch family.
+	var firstTaskStartTime time.Time
+	for _, versionID := range versionIDs {
+		startTime, err := task.GetFirstTaskStartTimeForVersion(ctx, versionID)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "error getting first task start time for merge queue version",
+				"version_id": versionID,
+				"patch_id":   p.Id.Hex(),
+			}))
+			continue
+		}
+		if !startTime.IsZero() && (firstTaskStartTime.IsZero() || startTime.Before(firstTaskStartTime)) {
+			firstTaskStartTime = startTime
+		}
+	}
+	if !firstTaskStartTime.IsZero() && !p.CreateTime.IsZero() {
+		timeToFirstTask := firstTaskStartTime.Sub(p.CreateTime).Milliseconds()
+		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeToFirstTaskMs, timeToFirstTask))
+	}
+
+	tasks, err := task.FindAll(ctx, db.Query(task.ByVersions(versionIDs)))
+	if err != nil {
+		return errors.Wrap(err, "querying tasks for merge queue version")
+	}
+
+	// Determine status: if GitHub sent an explicit removal reason (via destroyed webhook), use that;
+	// otherwise infer status from the collective status of the patch family (parent patch + all child patches)
+	var mergeQueueStatus string
+	if !p.GithubMergeData.RemovedFromQueueAt.IsZero() && p.GithubMergeData.RemovalReason != "" {
+		mergeQueueStatus = thirdparty.GetMergeQueueStatusFromReason(p.GithubMergeData.RemovalReason)
+		span.SetAttributes(attribute.String(patch.MergeQueueAttrRemovalReason, p.GithubMergeData.RemovalReason))
+	} else {
+		if collectiveStatus == evergreen.VersionSucceeded {
+			mergeQueueStatus = thirdparty.MergeQueueStatusSuccess
+		} else {
+			mergeQueueStatus = thirdparty.MergeQueueStatusFailed
+		}
+	}
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrStatus, mergeQueueStatus))
+
+	totalCount := len(tasks)
+	metrics := gatherMergeQueueTaskMetrics(tasks)
+
+	if mergeQueueStatus == thirdparty.MergeQueueStatusFailed {
+		span.SetAttributes(
+			attribute.Bool(patch.MergeQueueAttrHasTestFailure, metrics.hasTestFailure),
+			attribute.Bool(patch.MergeQueueAttrHasInfraFailure, metrics.hasInfraFailure),
+			attribute.Bool(patch.MergeQueueAttrHasSetupFailure, metrics.hasSetupFailure),
+			attribute.Bool(patch.MergeQueueAttrHasTimeoutFailure, metrics.hasTimeoutFailure),
+			attribute.Int64(patch.MergeQueueAttrFailedTaskCount, int64(metrics.failedCount)),
+		)
+	}
+	span.SetAttributes(
+		attribute.Int64(patch.MergeQueueAttrTotalTaskCount, int64(totalCount)),
+		attribute.Bool(patch.MergeQueueAttrHasRunningTasks, metrics.hasRunningTasks),
+	)
+
+	variants := make([]string, 0, len(metrics.variantMap))
+	for variant := range metrics.variantMap {
+		variants = append(variants, variant)
+	}
+	sort.Strings(variants)
+	variantsStr := strings.Join(variants, ",")
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrVariants, variantsStr))
+
+	if metrics.slowestTask != nil {
+		span.SetAttributes(
+			attribute.String(patch.MergeQueueAttrSlowestTaskID, metrics.slowestTask.Id),
+			attribute.String(patch.MergeQueueAttrSlowestTaskName, metrics.slowestTask.DisplayName),
+			attribute.Int64(patch.MergeQueueAttrSlowestTaskDurationMs, metrics.slowestDuration.Milliseconds()),
+			attribute.String(patch.MergeQueueAttrSlowestVariant, metrics.slowestTask.BuildVariant),
+		)
 	}
 
 	return nil

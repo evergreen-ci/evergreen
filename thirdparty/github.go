@@ -230,6 +230,30 @@ type GithubMergeGroup struct {
 	RemovalReason string `bson:"removal_reason,omitempty"`
 }
 
+const (
+	// GitHub merge queue removal reasons
+	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
+	MergeQueueReasonMerged      = "merged"      // Successfully merged
+	MergeQueueReasonDequeued    = "dequeued"    // Manually removed
+
+	// Merge queue status values for metrics
+	MergeQueueStatusSuccess = "success" // Successfully completed/merged
+	MergeQueueStatusFailed  = "failed"  // Failed status checks
+	MergeQueueStatusRemoved = "removed" // Other removal reasons
+)
+
+// GetMergeQueueStatusFromReason maps a GitHub merge queue removal reason to a status value for metrics.
+func GetMergeQueueStatusFromReason(reason string) string {
+	switch reason {
+	case MergeQueueReasonInvalidated:
+		return MergeQueueStatusFailed
+	case MergeQueueReasonMerged:
+		return MergeQueueStatusSuccess
+	default:
+		return MergeQueueStatusRemoved
+	}
+}
+
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
 // all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {
