@@ -543,7 +543,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			terminationCatcher := grip.NewBasicCatcher()
 
 			for _, h := range debugHosts {
-				job := units.NewSpawnHostTerminationJob(&h, userId, ts)
+				job := units.NewSpawnHostTerminationJobWithSource(&h, userId, ts, evergreen.ModifySpawnHostProjectSettings)
 				if err := amboy.EnqueueUniqueJob(ctx, queue, job); err != nil {
 					terminationCatcher.Wrapf(err, "enqueueing termination job for debug host '%s'", h.Id)
 				}
