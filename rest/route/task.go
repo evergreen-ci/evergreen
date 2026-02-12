@@ -122,6 +122,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 		IncludeArtifacts:         true,
+		IncludePatchInfo:         true,
 		LogURL:                   tgh.url,
 		ParsleyLogURL:            tgh.parsleyURL,
 	})
@@ -288,7 +289,7 @@ func (h *updateArtifactURLHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiTask := &model.APITask{}
-	if err := apiTask.BuildFromService(ctx, taskForResponse, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true}); err != nil {
+	if err := apiTask.BuildFromService(ctx, taskForResponse, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true, IncludePatchInfo: true}); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "building API task model after artifact update"))
 	}
 	return gimlet.NewJSONResponse(apiTask)
@@ -409,6 +410,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 	err = taskModel.BuildFromService(ctx, refreshedTask, &model.APITaskArgs{
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
+		IncludePatchInfo:         true,
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tep.task.Id))

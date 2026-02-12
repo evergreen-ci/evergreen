@@ -131,6 +131,10 @@ type APITask struct {
 	ResetWhenFinished    bool            `json:"reset_when_finished"`
 	HasAnnotations       bool            `json:"has_annotations"`
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
+	//Possible values are true, false, nil. nil signifies no value was not set in the task configuration
+	Patchable *bool `json:"patchable"`
+	//Possible values are true, false, nil. nil signifies no value was not set in the task configuration
+	PatchOnly *bool `json:"patch_only"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -288,6 +292,7 @@ func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Tas
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
+			IncludePatchInfo:         true,
 			LogURL:                   logURL,
 			ParsleyLogURL:            parsleyURL,
 		}); err != nil {
@@ -441,6 +446,7 @@ type APITaskArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeAMI               bool
 	IncludeArtifacts         bool
+	IncludePatchInfo         bool
 	LogURL                   string
 	ParsleyLogURL            string
 }
@@ -491,6 +497,9 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 	if args.IncludeProjectIdentifier {
 		at.GetProjectIdentifier(ctx)
 	}
+	if args.IncludePatchInfo {
+		at.GetPatchInfo(ctx, t)
+	}
 
 	return nil
 }
@@ -524,6 +533,38 @@ func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 			at.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
+}
+
+// GetPatchInfo returns if tasks were tagged as patchable / patch_only
+func (at *APITask) GetPatchInfo(ctx context.Context, t *task.Task) {
+	if at.Patchable != nil && at.PatchOnly != nil {
+		return
+	}
+
+	project, err := model.FindProjectFromVersionID(ctx, t.Version)
+	if err != nil {
+		grip.Error(errors.Wrapf(err, "finding project for version '%s' when fetching patch info", t.Version))
+		return
+	}
+	if project == nil {
+		grip.Error(errors.Errorf("project not found for version '%s' when fetching patch info", t.Version))
+		return
+	}
+
+	bv, err := project.BuildVariants.Get(t.BuildVariant)
+	if err != nil {
+		grip.Error(errors.Wrapf(err, "finding build variant '%s' when fetching patch info", t.BuildVariant))
+		return
+	}
+
+	bvt, err := bv.Get(t.DisplayName)
+	if err != nil {
+		grip.Error(errors.Wrapf(err, "finding task '%s' in build variant '%s' when fetching patch info", t.DisplayName, t.BuildVariant))
+		return
+	}
+
+	at.Patchable = bvt.Patchable
+	at.PatchOnly = bvt.PatchOnly
 }
 
 // ToService returns a service layer task using the data from the APITask.
