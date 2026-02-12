@@ -327,7 +327,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 		"host_tag":    j.host.Tag,
 		"distro":      j.host.Distro.Id,
 		"provider":    j.host.Provider,
-		"fresh_host":  j.host.LastTask == "",
+		"is_fresh_host":  j.host.LastTask == "",
 		"attempt_num": j.RetryInfo().CurrentAttempt,
 	})
 
