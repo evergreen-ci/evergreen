@@ -535,7 +535,8 @@ func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 	}
 }
 
-// GetPatchInfo returns if tasks were tagged as patchable / patch_only
+// GetPatchInfo returns if tasks were tagged as patchable / patch_only based on YAML configurations
+// Fetches values via: task.Version → ParserProject → BuildVariant → Task.
 func (at *APITask) GetPatchInfo(ctx context.Context, t *task.Task) {
 	if at.Patchable != nil && at.PatchOnly != nil {
 		return
