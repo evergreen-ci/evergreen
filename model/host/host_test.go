@@ -4289,14 +4289,14 @@ func TestFindNoAvailableParent(t *testing.T) {
 		DurationPrediction: util.CachedDurationValue{
 			Value: durationOne,
 		}, BuildVariant: "bv1",
-		StartTime: time.Now(),
+		StartTime:       time.Now(),
 	}
 	task2 := task.Task{
 		Id: "task2",
 		DurationPrediction: util.CachedDurationValue{
 			Value: durationTwo,
 		}, BuildVariant: "bv1",
-		StartTime: time.Now(),
+		StartTime:       time.Now(),
 	}
 	assert.NoError(d.Insert(ctx))
 	assert.NoError(host1.Insert(ctx))
@@ -7263,4 +7263,175 @@ func TestMarkShouldNotExpire(t *testing.T) {
 			tCase(ctx, t, &Host{Id: "host_id"})
 		})
 	}
+}
+
+func TestFindDebugHostsForProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(Collection, task.Collection))
+
+	// Test empty projectId validation
+	found, err := FindDebugHostsForProject(ctx, "")
+	assert.Error(t, err)
+	assert.Nil(t, found)
+	assert.Contains(t, err.Error(), "projectId cannot be empty")
+
+	// Create tasks for different projects
+	task1 := &task.Task{
+		Id:      "task_project1_1",
+		Project: "project1",
+	}
+	require.NoError(t, task1.Insert(ctx))
+
+	task2 := &task.Task{
+		Id:      "task_project1_2",
+		Project: "project1",
+	}
+	require.NoError(t, task2.Insert(ctx))
+
+	task3 := &task.Task{
+		Id:      "task_project2",
+		Project: "project2",
+	}
+	require.NoError(t, task3.Insert(ctx))
+
+	// Create hosts with various configurations
+	hosts := []*Host{
+		// Host 1: Debug host for project1, running - SHOULD BE FOUND
+		{
+			Id:       "debug_project1_running",
+			Status:   evergreen.HostRunning,
+			UserHost: true,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "task_project1_1",
+			},
+		},
+		// Host 2: Debug host for project1, stopped - SHOULD BE FOUND
+		{
+			Id:       "debug_project1_stopped",
+			Status:   evergreen.HostStopped,
+			UserHost: true,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "task_project1_2",
+			},
+		},
+		// Host 3: Debug host for project1, stopping - SHOULD BE FOUND
+		{
+			Id:       "debug_project1_stopping",
+			Status:   evergreen.HostStopping,
+			UserHost: true,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "task_project1_1",
+			},
+		},
+		// Host 4: Debug host for project2 - should NOT be found
+		{
+			Id:       "debug_project2",
+			Status:   evergreen.HostRunning,
+			UserHost: true,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "task_project2",
+			},
+		},
+		// Host 5: Non-debug host for project1 - should NOT be found
+		{
+			Id:       "non_debug_project1",
+			Status:   evergreen.HostRunning,
+			UserHost: true,
+			IsDebug:  false,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "task_project1_1",
+			},
+		},
+		// Host 6: Debug host but not a user host - should NOT be found
+		{
+			Id:       "debug_not_user_host",
+			Status:   evergreen.HostRunning,
+			UserHost: false,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "task_project1_1",
+			},
+		},
+		// Host 7: Debug host for project1 but terminated - should NOT be found
+		{
+			Id:       "debug_project1_terminated",
+			Status:   evergreen.HostTerminated,
+			UserHost: true,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "task_project1_1",
+			},
+		},
+		// Host 8: Debug host with no provision options - should NOT be found
+		{
+			Id:               "debug_no_provision",
+			Status:           evergreen.HostRunning,
+			UserHost:         true,
+			IsDebug:          true,
+			ProvisionOptions: nil,
+		},
+		// Host 9: Debug host with empty task ID - should NOT be found
+		{
+			Id:       "debug_empty_task",
+			Status:   evergreen.HostRunning,
+			UserHost: true,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "",
+			},
+		},
+		// Host 10: Debug host for project1 with non-existent task - should NOT be found (logged as warning)
+		{
+			Id:       "debug_project1_invalid_task",
+			Status:   evergreen.HostRunning,
+			UserHost: true,
+			IsDebug:  true,
+			ProvisionOptions: &ProvisionOptions{
+				TaskId: "nonexistent_task",
+			},
+		},
+	}
+
+	for i := range hosts {
+		require.NoError(t, hosts[i].Insert(ctx))
+	}
+
+	// Test finding debug hosts for project1
+	found, err = FindDebugHostsForProject(ctx, "project1")
+	require.NoError(t, err)
+	require.Len(t, found, 3, "should find exactly 3 debug hosts for project1")
+
+	// Verify the correct hosts were found
+	foundIds := make(map[string]bool)
+	for _, h := range found {
+		foundIds[h.Id] = true
+	}
+
+	assert.True(t, foundIds["debug_project1_running"], "should find running debug host")
+	assert.True(t, foundIds["debug_project1_stopped"], "should find stopped debug host")
+	assert.True(t, foundIds["debug_project1_stopping"], "should find stopping debug host")
+	assert.False(t, foundIds["debug_project2"], "should not find debug host for different project")
+	assert.False(t, foundIds["non_debug_project1"], "should not find non-debug host")
+	assert.False(t, foundIds["debug_not_user_host"], "should not find non-user debug host")
+	assert.False(t, foundIds["debug_project1_terminated"], "should not find terminated host")
+	assert.False(t, foundIds["debug_no_provision"], "should not find host with no provision options")
+	assert.False(t, foundIds["debug_empty_task"], "should not find host with empty task ID")
+	assert.False(t, foundIds["debug_project1_invalid_task"], "should not find host with invalid task")
+
+	// Test finding debug hosts for project2
+	found, err = FindDebugHostsForProject(ctx, "project2")
+	require.NoError(t, err)
+	require.Len(t, found, 1, "should find exactly 1 debug host for project2")
+	assert.Equal(t, "debug_project2", found[0].Id)
+
+	// Test finding debug hosts for non-existent project
+	found, err = FindDebugHostsForProject(ctx, "nonexistent_project")
+	require.NoError(t, err)
+	assert.Len(t, found, 0, "should find no debug hosts for non-existent project")
 }

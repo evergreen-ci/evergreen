@@ -2742,6 +2742,62 @@ func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int, s
 	return hosts, nil
 }
 
+// FindDebugHostsForProject finds all debug hosts associated with a project that are eligible for termination.
+func FindDebugHostsForProject(ctx context.Context, projectId string) ([]Host, error) {
+	if projectId == "" {
+		return nil, errors.New("projectId cannot be empty")
+	}
+
+	taskIdKey := bsonutil.GetDottedKeyName(ProvisionOptionsKey, ProvisionOptionsTaskIdKey)
+	query := bson.M{
+		IsDebugKey:  true,
+		UserHostKey: true,
+		StatusKey:   bson.M{"$in": evergreen.StoppableHostStatuses},
+		taskIdKey:   bson.M{"$exists": true, "$ne": ""},
+	}
+
+	hosts, err := Find(ctx, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding debug hosts")
+	}
+
+	// Filter hosts by project in application code.
+	// The nil check is necessary because MongoDB may return hosts where the struct field is nil
+	// even if the database field exists.
+	var debugHostsForProject []Host
+	for _, h := range hosts {
+		if h.ProvisionOptions == nil || h.ProvisionOptions.TaskId == "" {
+			continue
+		}
+
+		// Look up the task to get its project
+		t, err := task.FindOneId(ctx, h.ProvisionOptions.TaskId)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "problem finding task for debug host",
+				"host_id": h.Id,
+				"task_id": h.ProvisionOptions.TaskId,
+			}))
+			continue
+		}
+		if t == nil {
+			grip.Warning(message.Fields{
+				"message": "task not found for debug host",
+				"host_id": h.Id,
+				"task_id": h.ProvisionOptions.TaskId,
+			})
+			continue
+		}
+
+		// Check if task belongs to the target project
+		if t.Project == projectId {
+			debugHostsForProject = append(debugHostsForProject, h)
+		}
+	}
+
+	return debugHostsForProject, nil
+}
+
 // FindHostsSpawnedByBuild finds hosts spawned by the `createhost` command scoped to a given build.
 func FindHostsSpawnedByBuild(ctx context.Context, buildID string) ([]Host, error) {
 	buildIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey)

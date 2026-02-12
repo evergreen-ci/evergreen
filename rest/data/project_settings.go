@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -523,6 +524,48 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}))
 		}
 	}
+
+	// If we just disabled debug spawn hosts, terminate all existing debug hosts for the project.
+	if modifiedProjectRef &&
+		section == model.ProjectPageGeneralSection &&
+		utility.FromBoolTPtr(mergedSection.DebugSpawnHostsDisabled) &&
+		!utility.FromBoolTPtr(mergedBeforeRef.DebugSpawnHostsDisabled) {
+
+		debugHosts, err := host.FindDebugHostsForProject(ctx, projectId)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "problem finding debug hosts to terminate after disabling debug spawn hosts",
+				"project": projectId,
+			}))
+		} else if len(debugHosts) > 0 {
+			queue := evergreen.GetEnvironment().RemoteQueue()
+			ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+			terminationCatcher := grip.NewBasicCatcher()
+
+			for _, h := range debugHosts {
+				job := units.NewSpawnHostTerminationJob(&h, userId, ts)
+				if err := amboy.EnqueueUniqueJob(ctx, queue, job); err != nil {
+					terminationCatcher.Wrapf(err, "enqueueing termination job for debug host '%s'", h.Id)
+				}
+			}
+
+			if terminationCatcher.HasErrors() {
+				grip.Warning(message.WrapError(terminationCatcher.Resolve(), message.Fields{
+					"message":    "problem enqueueing debug host termination jobs after disabling debug spawn hosts",
+					"project":    projectId,
+					"num_hosts":  len(debugHosts),
+					"num_errors": terminationCatcher.Len(),
+				}))
+			} else {
+				grip.Info(message.Fields{
+					"message":   "enqueued debug host termination jobs after disabling debug spawn hosts",
+					"project":   projectId,
+					"num_hosts": len(debugHosts),
+				})
+			}
+		}
+	}
+
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
 }
 
