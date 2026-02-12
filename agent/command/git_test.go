@@ -839,9 +839,8 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifestWithExpansion() {
 	conf := s.taskConfig2
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
-	conf.BuildVariant.Modules = []string{"${sample_expansion_name}"}
+	conf.BuildVariant.Modules = []string{"sample"}
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
-	conf.Expansions.Put("sample_expansion_name", "sample")
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEmpty(task.Commands)
