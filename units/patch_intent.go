@@ -366,11 +366,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return nil
 	}
 
-	// If some variants were filtered out, send success messages for those variants.
-	if len(ignoredVariants) > 0 {
-		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
-	}
-
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsMergeQueuePatch()) &&
 		len(patchDoc.VariantsTasks) == 0 {
 		j.gitHubError = NoTasksOrVariants
@@ -434,6 +429,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if patchDoc.IsMergeQueuePatch() {
 		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub merge queue subscriptions")
+	}
+	// If some variants were filtered out, send success messages for those variants.
+	// Send this after creating subscriptions so the success messages aren't overwritten.
+	if len(ignoredVariants) > 0 {
+		j.sendGitHubSuccessMessageForIgnoredVariants(ctx, patchDoc, ignoredVariants)
 	}
 
 	if catcher.HasErrors() {
