@@ -530,7 +530,7 @@ type PluginCommandConf struct {
 	Command string `yaml:"command,omitempty" bson:"command,omitempty"`
 
 	// Variants is used to enumerate the particular sets of buildvariants to run
-	// this command configuration on. If it is empty, it is run on all defined
+	// this command configuration on. If it is empty, it will run on all defined
 	// variants.
 	Variants []string `yaml:"variants,omitempty" bson:"variants,omitempty"`
 
