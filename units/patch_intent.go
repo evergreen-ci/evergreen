@@ -1140,21 +1140,8 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context, patchDoc *patch.Patch) error {
 	summaries, err := thirdparty.GetChangedFilesBetweenCommits(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.Githash, patchDoc.GithubMergeData.HeadSHA)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"operation": "getChangedFilesForGithubMerge", // TODO: remove
-			"patch_id":  patchDoc.Id.Hex(),
-			"org":       patchDoc.GithubMergeData.Org,
-			"repo":      patchDoc.GithubMergeData.Repo,
-			"base":      patchDoc.Githash,
-			"head":      patchDoc.GithubMergeData.HeadSHA,
-		}))
 		return errors.Wrapf(err, "getting changed files for merge queue patch '%s'", patchDoc.Id.Hex())
 	}
-	grip.Info(message.Fields{
-		"operation": "getChangedFilesForGithubMerge", // TODO: remove
-		"patch_id":  patchDoc.Id.Hex(),
-		"files":     summaries,
-	})
 	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 		ModuleName: "",
 		Githash:    patchDoc.Githash,

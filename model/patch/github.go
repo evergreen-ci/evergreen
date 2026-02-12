@@ -124,7 +124,7 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 		return nil, errors.New("unique msg ID cannot be empty")
 	}
 	if len(strings.Split(pr.Base.Repo.GetFullName(), "/")) != 2 {
-		return nil, errors.New("base repo name is invalid (expected [owner]/[repo])")
+		return nil, errors.New("base repo name is invalid (shouldPatchFileWithDiff [owner]/[repo])")
 	}
 	if pr.Base.GetRef() == "" {
 		return nil, errors.New("base ref is empty")
@@ -133,7 +133,7 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 		return nil, errors.New("head ref is empty")
 	}
 	if len(strings.Split(pr.Head.Repo.GetFullName(), "/")) != 2 {
-		return nil, errors.New("head repo name is invalid (expected [owner]/[repo])")
+		return nil, errors.New("head repo name is invalid (shouldPatchFileWithDiff [owner]/[repo])")
 	}
 	if pr.GetNumber() == 0 {
 		return nil, errors.New("PR number must not be 0")

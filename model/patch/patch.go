@@ -714,9 +714,9 @@ func (p *Patch) IsParent() bool {
 }
 
 // ShouldPatchFileWithDiff returns true if the patch should read with diff
-// (i.e. is not a PR patch) and the config has changed.
+// (i.e. is not a GitHub patch) and the config has changed.
 func (p *Patch) ShouldPatchFileWithDiff(path string) bool {
-	return !p.IsGithubPRPatch() && p.ConfigChanged(path)
+	return !p.IsGithubPRPatch() && !p.IsMergeQueuePatch() && p.ConfigChanged(path)
 }
 
 func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
