@@ -95,7 +95,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 				"operation":            "project-activation-every-commit",
 				"total_versions_found": len(activateVersions),
 			}))
-			// Continue with other versions even if one fails
+			// Continue with other versions even if one fails.
 			continue
 		}
 		if activated {
