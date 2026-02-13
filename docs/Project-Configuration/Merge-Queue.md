@@ -27,7 +27,7 @@ required by your GitHub branch protection rules.
 
 ### Turn on Evergreen's merge queue integration
 
-1. From <https://spruce.mongodb.com/>, from the More drop down, select Project Settings.
+1. From <https://spruce.corp.mongodb.com/>, from the More drop down, select Project Settings.
 2. Select your project from the project dropdown.
 3. From the GitHub section, set the Merge Queue to Enabled.
 4. Add variant and task tags or regexes for the variants and tasks you wish to run when a pull request is added to the queue.
@@ -229,7 +229,7 @@ section of a repo, and limit the user to "GitHub Merge Queue[bot]", e.g.,
 <https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D>. On
 the Evergreen side, you can click on More -> Project Patches, and look for
 patches prepended "GitHub Merge Queue:", e.g.,
-<https://spruce.mongodb.com/project/mongodb-mongo-master/patches>. There is not
+<https://spruce.corp.mongodb.com/project/mongodb-mongo-master/patches>. There is not
 a way, however, to map directly from a GitHub PR to its patches.
 
 **Q:** Why can't I activate, deactivate, or restart tasks in my running merge queue version?
