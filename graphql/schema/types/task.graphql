@@ -87,6 +87,7 @@ type Task {
   displayStatus: String!
   displayTask: Task
   distroId: String!
+  errors: [String!]
   estimatedStart: Duration
   execution: Int!
   executionTasks: [String!]

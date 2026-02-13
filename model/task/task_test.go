@@ -5479,7 +5479,7 @@ func TestTaskCostIsZero(t *testing.T) {
 	assert.False(t, nonZeroBoth.IsZero())
 }
 
-func TestMarkIfDistroNotFound(t *testing.T) {
+func TestHasValidDistro(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
@@ -5493,9 +5493,7 @@ func TestMarkIfDistroNotFound(t *testing.T) {
 			Id:       "task-with-valid-distro",
 			DistroId: validDistro.Id,
 		}
-		task.MarkIfDistroNotFound(ctx)
-		assert.Empty(t, task.Details.Description)
-		assert.Empty(t, task.Details.Type)
+		assert.Equal(t, true, task.HasValidDistro(ctx))
 	})
 
 	t.Run("TaskWithInvalidPrimaryDistroButValidSecondaryDistro", func(t *testing.T) {
@@ -5504,9 +5502,7 @@ func TestMarkIfDistroNotFound(t *testing.T) {
 			DistroId:         "nonexistent-distro",
 			SecondaryDistros: []string{"nonexistent-distro-2", validDistro.Id},
 		}
-		task.MarkIfDistroNotFound(ctx)
-		assert.Empty(t, task.Details.Description)
-		assert.Empty(t, task.Details.Type)
+		assert.Equal(t, true, task.HasValidDistro(ctx))
 	})
 
 	t.Run("TaskWithNoValidDistros", func(t *testing.T) {
@@ -5515,8 +5511,6 @@ func TestMarkIfDistroNotFound(t *testing.T) {
 			DistroId:         "nonexistent-distro",
 			SecondaryDistros: []string{"nonexistent-distro-2", "nonexistent-distro-3"},
 		}
-		task.MarkIfDistroNotFound(ctx)
-		assert.Equal(t, evergreen.TaskDescriptionDistroNotFound, task.Details.Description)
-		assert.Equal(t, evergreen.CommandTypeSystem, task.Details.Type)
+		assert.Equal(t, false, task.HasValidDistro(ctx))
 	})
 }

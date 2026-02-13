@@ -2449,9 +2449,6 @@ func (t *Task) determineDisplayStatus() string {
 		if t.Details.TimedOut {
 			return evergreen.TaskSystemTimedOut
 		}
-		if t.Details.Description == evergreen.TaskDescriptionDistroNotFound {
-			return evergreen.TaskCantRun
-		}
 		return evergreen.TaskSystemFailed
 	}
 	if t.Details.TimedOut {
@@ -4505,24 +4502,17 @@ func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 	return false
 }
 
-// MarkIfDistroNotFound sets the task's details to indicate that it cannot be run.
-func (t *Task) MarkIfDistroNotFound(ctx context.Context) {
-	hasValidDistro := false
-
+// HasValidDistro determines if the task has a valid distro.
+func (t *Task) HasValidDistro(ctx context.Context) bool {
 	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
 	if err == nil {
-		hasValidDistro = true
+		return true
 	}
 	for _, secondaryDistro := range t.SecondaryDistros {
 		_, err = distro.FindApplicableDistroIDs(ctx, secondaryDistro)
 		if err == nil {
-			hasValidDistro = true
-			break
+			return true
 		}
 	}
-
-	if !hasValidDistro {
-		t.Details.Type = evergreen.CommandTypeSystem
-		t.Details.Description = evergreen.TaskDescriptionDistroNotFound
-	}
+	return false
 }

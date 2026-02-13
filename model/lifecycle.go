@@ -1217,7 +1217,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		}
 		t.DistroId = distroID
 		t.SecondaryDistros = secondaryDistros
-		t.MarkIfDistroNotFound(ctx)
 	}
 
 	if stepbackInfo != nil {

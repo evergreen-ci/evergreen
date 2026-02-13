@@ -262,15 +262,6 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
-							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionDistroNotFound}},
-						},
-					},
-					"then": evergreen.TaskCantRun,
-				},
-				{
-					"case": bson.M{
-						"$and": []bson.M{
-							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
 							{"$eq": []any{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
 						},
 					},

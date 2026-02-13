@@ -107,10 +107,6 @@ const (
 	// only used in the UI.
 	TaskKnownIssue = "known-issue"
 
-	// TaskCantRun indicates that the task cannot run, for example due to
-	// the distro not existing. This is a display status, so it's only used in the UI.
-	TaskCantRun = "cant-run"
-
 	// TaskStatusPending is a special state that's used for one specific return
 	// value. Generally do not use this status as it is neither a meaningful
 	// status in the UI nor in the back end.
@@ -149,9 +145,6 @@ const (
 	// TaskDescriptionAborted indicates that the reason a task failed is specifically
 	// because it was manually aborted.
 	TaskDescriptionAborted = "aborted"
-	// TaskDescriptionDistroNotFound indicates that the reason a task cannot run
-	// is because the specified distro does not exist.
-	TaskDescriptionDistroNotFound = "distro not found"
 
 	// Task Statuses that are only used by the UI, event log  and tests
 	// (these may be used in old tasks as actual task statuses rather than just
@@ -365,6 +358,7 @@ const (
 	KeyTooLargeToIndexError         = "key too large to index"
 	InvalidDivideInputError         = "$divide only supports numeric types"
 	FetchingTaskDataUnfinishedError = "fetching task data not finished"
+	DistroNotFoundForTaskError      = "distro not found"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
