@@ -522,7 +522,6 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":           "could not retrieve GitHub file using git, falling back to using GitHub API to retrieve it",
-			"ticket":            "DEVPROD-26143",
 			"owner":             owner,
 			"repo":              repo,
 			"ref":               ref,
