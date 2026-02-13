@@ -224,7 +224,6 @@
             },
             "ui": {
               "url": "http://localhost:9090",
-              "helpUrl": "",
               "uiv2Url": "http://localhost:3000",
               "parsleyUrl": "http://localhost:4173",
               "httpListenAddr": ":9090",
