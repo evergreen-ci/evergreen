@@ -1375,7 +1375,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				return nil, errors.Wrap(err, "getting email sender")
 			}
 
-			subject, body := unauthorizedGitTagEmail(tag.Tag, tag.Pusher, fmt.Sprintf("https://spruce.mongodb.com/project/%s/settings/github-commitqueue", pRef.Identifier))
+			subject, body := unauthorizedGitTagEmail(tag.Tag, tag.Pusher, fmt.Sprintf("https://spruce.corp.mongodb.com/project/%s/settings/github-commitqueue", pRef.Identifier))
 			email := message.Email{
 				Recipients:        []string{userDoc.EmailAddress},
 				PlainTextContents: false,
