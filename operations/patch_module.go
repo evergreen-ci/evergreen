@@ -60,7 +60,7 @@ func PatchSetModule() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			comm, err := conf.SetupRestCommunicator(ctx, false)
+			comm, err := conf.setupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

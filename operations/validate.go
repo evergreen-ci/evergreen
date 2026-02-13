@@ -129,7 +129,7 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool
 		projectYaml = bytes.Join(projectBytes, []byte("\n"))
 	}
 
-	client, err := conf.SetupRestCommunicator(ctx, false)
+	client, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}

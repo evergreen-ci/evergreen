@@ -129,7 +129,7 @@ func hostCreate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -340,7 +340,7 @@ func hostModify() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -483,7 +483,7 @@ func hostConfigure() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.SetupRestCommunicator(ctx, !quiet)
+			client, err := conf.setupRestCommunicator(ctx, !quiet)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -602,7 +602,7 @@ func hostStop() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -651,7 +651,7 @@ func hostStart() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -724,7 +724,7 @@ Examples:
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -796,7 +796,7 @@ func hostAttach() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "getting REST communicator")
 			}
@@ -846,7 +846,7 @@ func hostDetach() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "getting REST communicator")
 			}
@@ -924,7 +924,7 @@ func hostModifyVolume() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "getting REST communicator")
 			}
@@ -958,7 +958,7 @@ func hostListVolume() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "getting REST communicator")
 			}
@@ -1047,7 +1047,7 @@ func hostCreateVolume() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "getting REST communicator")
 			}
@@ -1099,7 +1099,7 @@ func hostDeleteVolume() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "getting REST communicator")
 			}
@@ -1161,7 +1161,7 @@ func hostList() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, !showJSON)
+			client, err := conf.setupRestCommunicator(ctx, !showJSON)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -1252,7 +1252,7 @@ func hostTerminate() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -1351,7 +1351,7 @@ func hostRunCommand() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -1681,7 +1681,7 @@ func hostFindBy() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "getting REST communicator")
 			}
@@ -1746,7 +1746,7 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 	if err != nil {
 		return "", "", errors.Wrap(err, "loading configuration")
 	}
-	client, err := conf.SetupRestCommunicator(ctx, true)
+	client, err := conf.setupRestCommunicator(ctx, true)
 	if err != nil {
 		return "", "", errors.Wrap(err, "setting up REST communicator")
 	}

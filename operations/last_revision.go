@@ -197,7 +197,7 @@ func LastRevision() cli.Command {
 				defer cancel()
 			}
 
-			client, err := conf.SetupRestCommunicator(ctx, !jsonOutput)
+			client, err := conf.setupRestCommunicator(ctx, !jsonOutput)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

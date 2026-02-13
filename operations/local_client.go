@@ -152,7 +152,7 @@ func checkDebugSpawnHostEnabled(c *cli.Context) error {
 		return errors.New("could not find spawn host ID in configuration; this command must be run from a spawn host")
 	}
 
-	restClient, err := conf.SetupRestCommunicator(ctx, false)
+	restClient, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")
 	}

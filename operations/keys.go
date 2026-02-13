@@ -66,7 +66,7 @@ func keysAdd() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -108,7 +108,7 @@ func keysList() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.SetupRestCommunicator(ctx, false)
+			client, err := conf.setupRestCommunicator(ctx, false)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -159,7 +159,7 @@ func keysDelete() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}

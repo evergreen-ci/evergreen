@@ -18,7 +18,7 @@ func SendPanicReport(ctx context.Context, report *model.PanicReport) error {
 		return fmt.Errorf("could not load config file '%s': %v", report.ConfigFilePath, err)
 	}
 
-	comm, err := conf.SetupRestCommunicator(ctx, false)
+	comm, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return fmt.Errorf("could not set up REST communicator: %v", err)
 	}

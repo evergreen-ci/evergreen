@@ -165,7 +165,7 @@ func TestCLIFetchSource(t *testing.T) {
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
-		comm, err := client.SetupRestCommunicator(ctx, true)
+		comm, err := client.setupRestCommunicator(ctx, true)
 		require.NoError(t, err)
 		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()

@@ -205,15 +205,9 @@ func (s *ClientSettings) Write(fn string) error {
 	return errors.Wrapf(os.WriteFile(fn, yamlData, 0644), "writing file '%s'", fn)
 }
 
-// SetupRestCommunicator returns the rest communicator and prints any available info messages if set.
+// setupRestCommunicator returns the rest communicator and prints any available info messages if set.
 // Callers are responsible for calling (Communicator).Close() when finished with the client.
 // We want to avoid printing messages if output is requested in a specific format or silenced.
-// This is the exported version for use outside the operations package.
-func (s *ClientSettings) SetupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
-	return s.setupRestCommunicator(ctx, printMessages, opts...)
-}
-
-// setupRestCommunicator is the internal implementation.
 func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessages bool, opts ...restCommunicatorOption) (client.Communicator, error) {
 	// The version of urfave/cli does not pass a context.Context through to commands.
 	// This makes embedding the mock client difficult, so we use a package-level variable.
@@ -411,7 +405,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	// We set up the rest communicator to check the CLI version and set the OAuth token if needed.
 	// The logic/route for the OAuth token is imbedded in the rest communicator
 	// so it's simpler to just create a whole rest communicator here.
-	restComm, err := s.SetupRestCommunicator(context.Background(), false)
+	restComm, err := s.setupRestCommunicator(context.Background(), false)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "setting up REST communicator")
 	}

@@ -113,9 +113,7 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		// SIGKILL issue will persist even if a valid agent is downloaded to
 		// replace it. Removing the binary before downloading it is the only
 		// known workaround to ensure that MacOS can run the client.
-		cmds = append(cmds,
-			fmt.Sprintf("rm -f %s", h.Distro.BinaryName()),
-		)
+		cmds = append(cmds, fmt.Sprintf("rm -f %s", h.Distro.BinaryName()))
 	}
 	cmds = append(cmds,
 		// Download the agent from S3. Include -f to return an error code from curl if the HTTP request
@@ -1104,7 +1102,7 @@ func (h *Host) SpawnHostSetupCommands(ctx context.Context, settings *evergreen.S
 // directory, puts both the evergreen yaml and the client into it, and attempts
 // to add the directory to the path.
 func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
-	cmds := []string{
+	return strings.Join([]string{
 		fmt.Sprintf("mkdir -m 777 -p %s", h.spawnHostConfigDir()),
 		// We have to do this because on most of the distro (but not all of
 		// them), the evergreen config file is already baked into the AMI and
@@ -1116,14 +1114,9 @@ func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
-	}
-
-	cmds = append(cmds,
 		fmt.Sprintf("(echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.profile || true; echo '\nexport PATH=\"${PATH}:%s\"\n' >> %s/.bash_profile || true)", h.spawnHostConfigDir(), h.Distro.HomeDir(), h.spawnHostConfigDir(), h.Distro.HomeDir()),
 		fmt.Sprintf("(%s || true)", h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), ".profile"), filepath.Join(h.Distro.HomeDir(), ".bash_profile"))),
-	)
-
-	return strings.Join(cmds, " && ")
+	}, " && ")
 }
 
 // AgentBinary returns the path to the evergreen agent binary.

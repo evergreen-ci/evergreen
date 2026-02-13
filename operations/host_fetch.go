@@ -32,7 +32,7 @@ func hostFetch() cli.Command {
 
 			// Setting up the REST communicator enforces that
 			// the user is authenticated before running the fetch script.
-			client, err := conf.SetupRestCommunicator(ctx, true)
+			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
