@@ -37,13 +37,9 @@ func makeSpawnHostTerminationJob() *spawnHostTerminationJob {
 	return j
 }
 
-// NewSpawnHostTerminationJob returns a job to terminate a spawn host.
-func NewSpawnHostTerminationJob(h *host.Host, user, ts string) amboy.Job {
-	return NewSpawnHostTerminationJobWithSource(h, user, ts, evergreen.ModifySpawnHostManual)
-}
-
-// NewSpawnHostTerminationJobWithSource returns a job to terminate a spawn host with a custom source.
-func NewSpawnHostTerminationJobWithSource(h *host.Host, user, ts string, source evergreen.ModifySpawnHostSource) amboy.Job {
+// NewSpawnHostTerminationJob returns a job to terminate a spawn host
+// with the given source indicating why it is being terminated.
+func NewSpawnHostTerminationJob(h *host.Host, user, ts string, source evergreen.ModifySpawnHostSource) amboy.Job {
 	j := makeSpawnHostTerminationJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s", spawnHostTerminationJobName, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, h.Id)})

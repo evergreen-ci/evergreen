@@ -175,7 +175,7 @@ func TerminateSpawnHost(ctx context.Context, env evergreen.Environment, u *user.
 	}
 
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
-	terminateJob := units.NewSpawnHostTerminationJob(h, u.Id, ts)
+	terminateJob := units.NewSpawnHostTerminationJob(h, u.Id, ts, evergreen.ModifySpawnHostManual)
 	if err := units.EnqueueSpawnHostModificationJob(ctx, env, terminateJob); err != nil {
 		if amboy.IsDuplicateJobScopeError(err) {
 			err = errHostStatusChangeConflict

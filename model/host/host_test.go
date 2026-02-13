@@ -7268,18 +7268,15 @@ func TestMarkShouldNotExpire(t *testing.T) {
 }
 
 func TestFindDebugHostsForProject(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
-	assert.NoError(t, db.ClearCollections(Collection, task.Collection))
+	require.NoError(t, db.ClearCollections(Collection, task.Collection))
 
-	// Test empty projectId validation
-	found, err := FindDebugHostsForProject(ctx, "")
-	assert.Error(t, err)
+	// Test empty project ID validation.
+	found, err := FindTerminatableDebugHostsForProject(ctx, "")
+	assert.ErrorContains(t, err, "project ID cannot be empty")
 	assert.Nil(t, found)
-	assert.Contains(t, err.Error(), "projectId cannot be empty")
 
-	// Create tasks for different projects
 	task1 := &task.Task{
 		Id:      "task_project1_1",
 		Project: "project1",
@@ -7298,7 +7295,6 @@ func TestFindDebugHostsForProject(t *testing.T) {
 	}
 	require.NoError(t, task3.Insert(ctx))
 
-	// Create hosts with various configurations
 	hosts := []*Host{
 		// Host 1: Debug host for project1, running - SHOULD BE FOUND
 		{
@@ -7404,12 +7400,12 @@ func TestFindDebugHostsForProject(t *testing.T) {
 		require.NoError(t, hosts[i].Insert(ctx))
 	}
 
-	// Test finding debug hosts for project1
-	found, err = FindDebugHostsForProject(ctx, "project1")
+	// Test finding debug hosts for project1.
+	found, err = FindTerminatableDebugHostsForProject(ctx, "project1")
 	require.NoError(t, err)
 	require.Len(t, found, 3, "should find exactly 3 debug hosts for project1")
 
-	// Verify the correct hosts were found
+	// Verify the correct hosts were found.
 	foundIds := make(map[string]bool)
 	for _, h := range found {
 		foundIds[h.Id] = true
@@ -7426,14 +7422,14 @@ func TestFindDebugHostsForProject(t *testing.T) {
 	assert.False(t, foundIds["debug_empty_task"], "should not find host with empty task ID")
 	assert.False(t, foundIds["debug_project1_invalid_task"], "should not find host with invalid task")
 
-	// Test finding debug hosts for project2
-	found, err = FindDebugHostsForProject(ctx, "project2")
+	// Test finding debug hosts for project2.
+	found, err = FindTerminatableDebugHostsForProject(ctx, "project2")
 	require.NoError(t, err)
 	require.Len(t, found, 1, "should find exactly 1 debug host for project2")
 	assert.Equal(t, "debug_project2", found[0].Id)
 
-	// Test finding debug hosts for non-existent project
-	found, err = FindDebugHostsForProject(ctx, "nonexistent_project")
+	// Test finding debug hosts for non-existent project.
+	found, err = FindTerminatableDebugHostsForProject(ctx, "nonexistent_project")
 	require.NoError(t, err)
 	assert.Len(t, found, 0, "should find no debug hosts for non-existent project")
 }

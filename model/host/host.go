@@ -2742,10 +2742,10 @@ func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int, s
 	return hosts, nil
 }
 
-// FindDebugHostsForProject finds all debug hosts associated with a project that are eligible for termination.
-func FindDebugHostsForProject(ctx context.Context, projectId string) ([]Host, error) {
+// FindTerminatableDebugHostsForProject finds all debug hosts associated with a project that are eligible for termination.
+func FindTerminatableDebugHostsForProject(ctx context.Context, projectId string) ([]Host, error) {
 	if projectId == "" {
-		return nil, errors.New("projectId cannot be empty")
+		return nil, errors.New("project ID cannot be empty")
 	}
 
 	taskIdKey := bsonutil.GetDottedKeyName(ProvisionOptionsKey, ProvisionOptionsTaskIdKey)
@@ -2789,7 +2789,7 @@ func FindDebugHostsForProject(ctx context.Context, projectId string) ([]Host, er
 			continue
 		}
 
-		// Check if task belongs to the target project
+		// Check if task belongs to the target project.
 		if t.Project == projectId {
 			debugHostsForProject = append(debugHostsForProject, h)
 		}
