@@ -1,0 +1,9 @@
+{
+  task(taskId: "not_generated_task") {
+    id
+    generator {
+      id
+      displayName
+    }
+  }
+}
