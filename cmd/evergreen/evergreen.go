@@ -6,14 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen"
-	evergreenlocal "github.com/evergreen-ci/evergreen/cmd/evergreen-local"
 	"github.com/evergreen-ci/evergreen/operations"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -38,19 +36,8 @@ func main() {
 	// in buildApp(), is all that's necessary for bootstrapping the
 	// environment.
 
-	// Detect which CLI to use based on the executable name.
-	// This allows a single binary to serve both CLIs via symlinks.
-	// If invoked as "evergreen-local" (or with that in the name),
-	// use the debugger CLI. Otherwise, use the main evergreen CLI.
-	execName := filepath.Base(os.Args[0])
-	var app *cli.App
-
-	if strings.Contains(execName, "evergreen-local") {
-		app = evergreenlocal.BuildDebugger()
-	} else {
-		app = buildApp()
-		defer recoverFromPanic()
-	}
+	app := buildApp()
+	defer recoverFromPanic()
 
 	grip.EmergencyFatal(app.Run(args))
 }
@@ -71,6 +58,7 @@ func buildApp() *cli.App {
 		operations.Service(),
 		operations.Agent(),
 		operations.Admin(),
+		operations.Debug(),
 		operations.Host(),
 		operations.Volume(),
 		operations.Notification(),

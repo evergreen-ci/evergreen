@@ -115,7 +115,6 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		// known workaround to ensure that MacOS can run the client.
 		cmds = append(cmds,
 			fmt.Sprintf("rm -f %s", h.Distro.BinaryName()),
-			"rm -f evergreen-local", // Also remove the symlink
 		)
 	}
 	cmds = append(cmds,
@@ -124,13 +123,6 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		fmt.Sprintf("curl -fLO %s%s", h.Distro.S3ClientURL(env), curlArgs),
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
 	)
-
-	// Create evergreen-local symlink for debugger CLI (Windows uses .exe extension).
-	if h.Distro.IsWindows() {
-		cmds = append(cmds, fmt.Sprintf("cp %s evergreen-local.exe", h.Distro.BinaryName()))
-	} else {
-		cmds = append(cmds, fmt.Sprintf("ln -sf %s evergreen-local", h.Distro.BinaryName()))
-	}
 
 	return cmds, nil
 }
@@ -1124,13 +1116,6 @@ func (h *Host) spawnHostSetupConfigDirCommands(conf []byte) string {
 		fmt.Sprintf("echo \"%s\" > %s", conf, h.spawnHostConfigFile()),
 		fmt.Sprintf("chmod +x %s", filepath.Join(h.AgentBinary())),
 		fmt.Sprintf("cp %s %s", h.AgentBinary(), h.spawnHostConfigDir()),
-	}
-
-	// Create evergreen-local symlink in cli_bin directory for debugger CLI.
-	if h.Distro.IsWindows() {
-		cmds = append(cmds, fmt.Sprintf("cp %s %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName()), filepath.Join(h.spawnHostConfigDir(), "evergreen-local.exe")))
-	} else {
-		cmds = append(cmds, fmt.Sprintf("ln -sf %s %s", filepath.Join(h.spawnHostConfigDir(), h.Distro.BinaryName()), filepath.Join(h.spawnHostConfigDir(), "evergreen-local")))
 	}
 
 	cmds = append(cmds,
