@@ -463,7 +463,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		Ui: evergreen.UIConfig{
 			Url:                "url",
-			HelpUrl:            "helpurl",
 			HttpListenAddr:     "addr",
 			Secret:             "secret",
 			DefaultProject:     "mci",

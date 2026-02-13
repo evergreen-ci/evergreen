@@ -2220,7 +2220,6 @@ type ComplexityRoot struct {
 		CsrfKey                   func(childComplexity int) int
 		DefaultProject            func(childComplexity int) int
 		FileStreamingContentTypes func(childComplexity int) int
-		HelpUrl                   func(childComplexity int) int
 		HttpListenAddr            func(childComplexity int) int
 		LoginDomain               func(childComplexity int) int
 		ParsleyUrl                func(childComplexity int) int
@@ -11996,12 +11995,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UIConfig.FileStreamingContentTypes(childComplexity), true
-	case "UIConfig.helpUrl":
-		if e.complexity.UIConfig.HelpUrl == nil {
-			break
-		}
-
-		return e.complexity.UIConfig.HelpUrl(childComplexity), true
 	case "UIConfig.httpListenAddr":
 		if e.complexity.UIConfig.HttpListenAddr == nil {
 			break
@@ -20265,8 +20258,6 @@ func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, fie
 				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 			case "url":
 				return ec.fieldContext_UIConfig_url(ctx, field)
-			case "helpUrl":
-				return ec.fieldContext_UIConfig_helpUrl(ctx, field)
 			case "uiv2Url":
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
@@ -60729,8 +60720,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 			case "url":
 				return ec.fieldContext_UIConfig_url(ctx, field)
-			case "helpUrl":
-				return ec.fieldContext_UIConfig_helpUrl(ctx, field)
 			case "uiv2Url":
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
@@ -69226,35 +69215,6 @@ func (ec *executionContext) _UIConfig_url(ctx context.Context, field graphql.Col
 }
 
 func (ec *executionContext) fieldContext_UIConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UIConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UIConfig_helpUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UIConfig_helpUrl,
-		func(ctx context.Context) (any, error) {
-			return obj.HelpUrl, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UIConfig_helpUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UIConfig",
 		Field:      field,
@@ -87180,7 +87140,7 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"url", "helpUrl", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
+	fieldsInOrder := [...]string{"url", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87194,13 +87154,6 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 				return it, err
 			}
 			it.Url = data
-		case "helpUrl":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("helpUrl"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HelpUrl = data
 		case "uiv2Url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uiv2Url"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -105905,8 +105858,6 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "url":
 			out.Values[i] = ec._UIConfig_url(ctx, field, obj)
-		case "helpUrl":
-			out.Values[i] = ec._UIConfig_helpUrl(ctx, field, obj)
 		case "uiv2Url":
 			out.Values[i] = ec._UIConfig_uiv2Url(ctx, field, obj)
 		case "parsleyUrl":
