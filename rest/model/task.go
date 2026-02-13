@@ -131,9 +131,9 @@ type APITask struct {
 	ResetWhenFinished    bool            `json:"reset_when_finished"`
 	HasAnnotations       bool            `json:"has_annotations"`
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
-	//Possible values are true, false, nil. nil signifies no value was not set in the task configuration
+	// Whether this task can run in patches (from YAML configuration). Nil if not explicitly set.
 	Patchable *bool `json:"patchable"`
-	//Possible values are true, false, nil. nil signifies no value was not set in the task configuration
+	// Whether this task can only run in patches, not mainline (from YAML configuration). Nil if not explicitly set.
 	PatchOnly *bool `json:"patch_only"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
@@ -535,8 +535,8 @@ func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 	}
 }
 
-// GetPatchInfo returns if tasks were tagged as patchable / patch_only based on YAML configurations
-// Fetches values via: task.Version → ParserProject → BuildVariant → Task.
+// GetPatchInfo populates the Patchable and PatchOnly fields from the YAML configuration.
+// Values are sourced from the build variant task definition (which may inherit from the build variant).
 func (at *APITask) GetPatchInfo(ctx context.Context, t *task.Task) {
 	if at.Patchable != nil && at.PatchOnly != nil {
 		return
