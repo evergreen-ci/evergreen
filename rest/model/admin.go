@@ -2280,7 +2280,6 @@ type APIServiceFlags struct {
 	LegacyUIAdminPageDisabled          bool `json:"legacy_ui_admin_page_disabled"`
 	DebugSpawnHostDisabled             bool `json:"debug_spawn_host_disabled"`
 	S3LifecycleSyncDisabled            bool `json:"s3_lifecycle_sync_disabled"`
-	UseGitForGitHubFilesDisabled       bool `json:"use_git_for_github_files_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 
@@ -2739,7 +2738,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.LegacyUIAdminPageDisabled = v.LegacyUIAdminPageDisabled
 		as.DebugSpawnHostDisabled = v.DebugSpawnHostDisabled
 		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
-		as.UseGitForGitHubFilesDisabled = v.UseGitForGitHubFilesDisabled
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 	default:
@@ -2789,7 +2787,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		LegacyUIAdminPageDisabled:          as.LegacyUIAdminPageDisabled,
 		DebugSpawnHostDisabled:             as.DebugSpawnHostDisabled,
 		S3LifecycleSyncDisabled:            as.S3LifecycleSyncDisabled,
-		UseGitForGitHubFilesDisabled:       as.UseGitForGitHubFilesDisabled,
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 	}, nil

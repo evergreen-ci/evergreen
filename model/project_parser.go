@@ -901,13 +901,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 	if !readFromRemoteSource(opts.ReadFileFrom) {
 		return nil, nil
 	}
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
-	}
-	if flags.UseGitForGitHubFilesDisabled {
-		return nil, nil
-	}
 	if opts.Ref == nil {
 		// Ref could be nil when the CLI is loading the project for validation.
 		return nil, nil
@@ -1193,7 +1186,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		useGit := IsGitUsageForGitHubFileEnabled(ctx)
+		useGit := true
 		if opts.IsIncludedFile && opts.Worktree == "" {
 			// Include files that have a git worktree available should try to
 			// use that because it's an optimization to reduce GitHub API calls
@@ -1308,7 +1301,7 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
-	useGit := IsGitUsageForGitHubFileEnabled(ctx)
+	useGit := true
 	if opts.IsIncludedFile && opts.Worktree == "" {
 		// Include files that have a git worktree available should try to
 		// use that because it's an optimization to reduce GitHub API calls
@@ -1331,20 +1324,6 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		}
 	}
 	return projectFileBytes, nil
-}
-
-// IsGitUsageForGitHubFileEnabled returns whether the experimental feature to
-// use git to retrieve files from GitHub is enabled. If the feature flag can't
-// be retrieved, it defaults to false (i.e. git usage is disabled).
-func IsGitUsageForGitHubFileEnabled(ctx context.Context) bool {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "could not get service flags, falling back to assuming that using git is disabled",
-		}))
-		return false
-	}
-	return !flags.UseGitForGitHubFilesDisabled
 }
 
 // fetchProjectFilesTimeout is the maximum timeout to fetch project
