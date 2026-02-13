@@ -1533,7 +1533,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	return task, nil
 }
 
-// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
+// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unschedulable threshold (e.g. one week) from
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
@@ -2448,6 +2448,9 @@ func (t *Task) determineDisplayStatus() string {
 		}
 		if t.Details.TimedOut {
 			return evergreen.TaskSystemTimedOut
+		}
+		if t.Details.Description == evergreen.TaskDescriptionDistroNotFound {
+			return evergreen.TaskCantRun
 		}
 		return evergreen.TaskSystemFailed
 	}
@@ -4499,4 +4502,26 @@ func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 		return true
 	}
 	return false
+}
+
+// MarkIfDistroNotFound sets the task's details to indicate that it cannot be run.
+func (t *Task) MarkIfDistroNotFound(ctx context.Context) {
+	hasValidDistro := false
+
+	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
+	if err == nil {
+		hasValidDistro = true
+	}
+	for _, secondaryDistro := range t.SecondaryDistros {
+		_, err = distro.FindApplicableDistroIDs(ctx, secondaryDistro)
+		if err == nil {
+			hasValidDistro = true
+			break
+		}
+	}
+
+	if !hasValidDistro {
+		t.Details.Type = evergreen.CommandTypeSystem
+		t.Details.Description = evergreen.TaskDescriptionDistroNotFound
+	}
 }
