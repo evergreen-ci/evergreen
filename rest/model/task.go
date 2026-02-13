@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -544,23 +545,38 @@ func (at *APITask) GetPatchInfo(ctx context.Context, t *task.Task) {
 
 	project, err := model.FindProjectFromVersionID(ctx, t.Version)
 	if err != nil {
-		grip.Error(errors.Wrapf(err, "finding project for version '%s' when fetching patch info", t.Version))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error fetching patch info - finding project",
+			"version": t.Version,
+		}))
 		return
 	}
 	if project == nil {
-		grip.Error(errors.Errorf("project not found for version '%s' when fetching patch info", t.Version))
+		grip.Error(message.Fields{
+			"message": "error fetching patch info - project not found",
+			"version": t.Version,
+		})
 		return
 	}
 
 	bv, err := project.BuildVariants.Get(t.BuildVariant)
 	if err != nil {
-		grip.Error(errors.Wrapf(err, "finding build variant '%s' when fetching patch info", t.BuildVariant))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error fetching patch info - finding build variant",
+			"build_variant": t.BuildVariant,
+			"version":       t.Version,
+		}))
 		return
 	}
 
 	bvt, err := bv.Get(t.DisplayName)
 	if err != nil {
-		grip.Error(errors.Wrapf(err, "finding task '%s' in build variant '%s' when fetching patch info", t.DisplayName, t.BuildVariant))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error fetching patch info - finding task in build variant",
+			"task":          t.DisplayName,
+			"build_variant": t.BuildVariant,
+			"version":       t.Version,
+		}))
 		return
 	}
 

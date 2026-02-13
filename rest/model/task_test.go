@@ -274,7 +274,7 @@ func TestTaskBuildFromService(t *testing.T) {
 
 				So(apiTask.HasAnnotations, ShouldEqual, tc.at.HasAnnotations)
 
-				// Backward Compatibility check for patchable and pactchOnly
+				// Backward compatibility check for patchable and pactchOnly
 				So(apiTask.Patchable, ShouldBeNil)
 				So(apiTask.PatchOnly, ShouldBeNil)
 			}
