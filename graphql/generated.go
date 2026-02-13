@@ -1784,7 +1784,6 @@ type ComplexityRoot struct {
 		TaskLoggingDisabled                func(childComplexity int) int
 		TaskReliabilityDisabled            func(childComplexity int) int
 		UnrecognizedPodCleanupDisabled     func(childComplexity int) int
-		UseGitForGitHubFilesDisabled       func(childComplexity int) int
 		UseMergeQueuePathFilteringDisabled func(childComplexity int) int
 		WebhookNotificationsDisabled       func(childComplexity int) int
 	}
@@ -10172,12 +10171,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.UnrecognizedPodCleanupDisabled(childComplexity), true
-	case "ServiceFlags.useGitForGitHubFilesDisabled":
-		if e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled(childComplexity), true
 	case "ServiceFlags.useMergeQueuePathFilteringDisabled":
 		if e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled == nil {
 			break
@@ -19809,8 +19802,6 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_degradedModeDisabled(ctx, field)
 			case "elasticIPsDisabled":
 				return ec.fieldContext_ServiceFlags_elasticIPsDisabled(ctx, field)
-			case "useGitForGitHubFilesDisabled":
-				return ec.fieldContext_ServiceFlags_useGitForGitHubFilesDisabled(ctx, field)
 			case "releaseModeDisabled":
 				return ec.fieldContext_ServiceFlags_releaseModeDisabled(ctx, field)
 			case "eventProcessingDisabled":
@@ -58910,35 +58901,6 @@ func (ec *executionContext) fieldContext_ServiceFlags_elasticIPsDisabled(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _ServiceFlags_useGitForGitHubFilesDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_useGitForGitHubFilesDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.UseGitForGitHubFilesDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_useGitForGitHubFilesDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ServiceFlags_releaseModeDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -84991,7 +84953,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85201,13 +85163,6 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.ElasticIPsDisabled = data
-		case "useGitForGitHubFilesDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useGitForGitHubFilesDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UseGitForGitHubFilesDisabled = data
 		case "releaseModeDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("releaseModeDisabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -101531,8 +101486,6 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_degradedModeDisabled(ctx, field, obj)
 		case "elasticIPsDisabled":
 			out.Values[i] = ec._ServiceFlags_elasticIPsDisabled(ctx, field, obj)
-		case "useGitForGitHubFilesDisabled":
-			out.Values[i] = ec._ServiceFlags_useGitForGitHubFilesDisabled(ctx, field, obj)
 		case "releaseModeDisabled":
 			out.Values[i] = ec._ServiceFlags_releaseModeDisabled(ctx, field, obj)
 		case "eventProcessingDisabled":

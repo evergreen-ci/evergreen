@@ -96,7 +96,6 @@ var (
 	legacyUIAdminPageDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "LegacyUIAdminPageDisabled")
 	debugSpawnHostDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "DebugSpawnHostDisabled")
 	s3LifecycleSyncDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
-	useGitForGitHubFilesDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "UseGitForGitHubFilesDisabled")
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 
