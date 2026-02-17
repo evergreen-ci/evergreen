@@ -2770,7 +2770,6 @@ func FindTerminatableDebugHostsForProject(ctx context.Context, projectId string)
 			continue
 		}
 
-		// Look up the task to get its project
 		t, err := task.FindOneId(ctx, h.ProvisionOptions.TaskId)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
