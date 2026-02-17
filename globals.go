@@ -482,6 +482,9 @@ const (
 	// ModifySpawnHostManual means the spawn host is being modified by the
 	// automatic sleep schedule.
 	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
+	// ModifySpawnHostProjectSettings means the spawn host is being terminated
+	// because the project settings changed to disable debug hosts.
+	ModifySpawnHostProjectSettings ModifySpawnHostSource = "project_settings"
 )
 
 // Common OTEL constants and attribute keys
