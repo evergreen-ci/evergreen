@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -212,6 +213,10 @@ func Agent() cli.Command {
 			}
 			agt.SetDefaultLogger(sender)
 			agt.SetHomeDirectory()
+
+			grip.Warning(message.WrapError(agentutil.SetNice(agentutil.MinNice), message.Fields{
+				"message": "could not set nice on agent process, proceeding with default nice",
+			}))
 
 			err = agt.Start(ctx)
 			if err != nil {
