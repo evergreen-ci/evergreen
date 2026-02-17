@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -55,6 +56,8 @@ type taskContext struct {
 	oomTracker    jasper.OOMTracker
 	traceID       string
 	diskDevices   []string
+	// s3Usage tracks S3 API usage accumulated during task execution
+	s3Usage s3usage.S3Usage
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup
