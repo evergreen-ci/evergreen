@@ -1,5 +1,5 @@
 mutation {
-  setServiceFlags(flags: [{ name: "task_dispatch_disabled", enabled: true }]) {
+  setServiceFlags(updatedFlags: [{ name: "task_dispatch_disabled", enabled: true }]) {
     name
     enabled
   }

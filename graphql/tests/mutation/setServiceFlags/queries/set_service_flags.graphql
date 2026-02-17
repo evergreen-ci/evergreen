@@ -1,5 +1,5 @@
 mutation {
-  setServiceFlags(flags: [{ name: "scheduler_disabled", enabled: true }]) {
+  setServiceFlags(updatedFlags: [{ name: "scheduler_disabled", enabled: true }]) {
     name
     enabled
   }
