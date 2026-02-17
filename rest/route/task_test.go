@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -716,94 +715,4 @@ func TestParseS3URL(t *testing.T) {
 			assert.Equal(t, tc.expectedKey, key)
 		})
 	}
-}
-
-func TestTaskGetHandlerPatchInfo(t *testing.T) {
-	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection))
-	require.NoError(t, db.CreateCollections(serviceModel.ParserProjectCollection))
-
-	version := &serviceModel.Version{
-		Id:         "test_version",
-		Identifier: "test_project",
-	}
-	require.NoError(t, version.Insert(ctx))
-
-	projectYAML := `
-tasks:
-  - name: my_task
-buildvariants:
-  - name: my_variant
-    tasks:
-      - name: my_task
-        patchable: false
-`
-	parserProject := &serviceModel.ParserProject{}
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(projectYAML), parserProject))
-	parserProject.Id = version.Id
-	require.NoError(t, parserProject.Insert(ctx))
-
-	testTask := task.Task{
-		Id:           "test_task",
-		Version:      version.Id,
-		BuildVariant: "my_variant",
-		DisplayName:  "my_task",
-		Status:       evergreen.TaskSucceeded,
-	}
-	require.NoError(t, testTask.Insert(ctx))
-
-	handler := taskGetHandler{taskID: testTask.Id}
-	resp := handler.Run(ctx)
-
-	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	apiTask := resp.Data().(*model.APITask)
-	require.NotNil(t, apiTask.Patchable)
-	assert.False(t, *apiTask.Patchable)
-}
-
-func TestTaskGetHandlerPatchInfoVariantLevel(t *testing.T) {
-	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection))
-	require.NoError(t, db.CreateCollections(serviceModel.ParserProjectCollection))
-
-	version := &serviceModel.Version{
-		Id:         "test_version_variant",
-		Identifier: "test_project",
-	}
-	require.NoError(t, version.Insert(ctx))
-
-	projectYAML := `
-tasks:
-  - name: my_task
-buildvariants:
-  - name: my_variant
-    patch_only: true
-    tasks:
-      - name: my_task
-`
-	parserProject := &serviceModel.ParserProject{}
-	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(projectYAML), parserProject))
-	parserProject.Id = version.Id
-	require.NoError(t, parserProject.Insert(ctx))
-
-	testTask := task.Task{
-		Id:           "test_task_variant",
-		Version:      version.Id,
-		BuildVariant: "my_variant",
-		DisplayName:  "my_task",
-		Status:       evergreen.TaskSucceeded,
-	}
-	require.NoError(t, testTask.Insert(ctx))
-
-	handler := taskGetHandler{taskID: testTask.Id}
-	resp := handler.Run(ctx)
-
-	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	apiTask := resp.Data().(*model.APITask)
-	require.NotNil(t, apiTask.PatchOnly)
-	assert.True(t, *apiTask.PatchOnly)
 }
