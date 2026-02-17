@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -1686,6 +1687,10 @@ type ComplexityRoot struct {
 		UploadCostDiscount func(childComplexity int) int
 	}
 
+	S3Usage struct {
+		UserFiles func(childComplexity int) int
+	}
+
 	SESConfig struct {
 		SenderAddress func(childComplexity int) int
 	}
@@ -1969,6 +1974,7 @@ type ComplexityRoot struct {
 		Requester               func(childComplexity int) int
 		ResetWhenFinished       func(childComplexity int) int
 		Revision                func(childComplexity int) int
+		S3Usage                 func(childComplexity int) int
 		ScheduledTime           func(childComplexity int) int
 		SpawnHostLink           func(childComplexity int) int
 		StartTime               func(childComplexity int) int
@@ -2275,6 +2281,13 @@ type ComplexityRoot struct {
 		OauthIssuer      func(childComplexity int) int
 		UIServerHost     func(childComplexity int) int
 		User             func(childComplexity int) int
+	}
+
+	UserFilesMetrics struct {
+		FileCount   func(childComplexity int) int
+		PutCost     func(childComplexity int) int
+		PutRequests func(childComplexity int) int
+		UploadBytes func(childComplexity int) int
 	}
 
 	UserServiceFlags struct {
@@ -9744,6 +9757,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.S3UploadCostConfig.UploadCostDiscount(childComplexity), true
 
+	case "S3Usage.userFiles":
+		if e.complexity.S3Usage.UserFiles == nil {
+			break
+		}
+
+		return e.complexity.S3Usage.UserFiles(childComplexity), true
+
 	case "SESConfig.senderAddress":
 		if e.complexity.SESConfig.SenderAddress == nil {
 			break
@@ -10977,6 +10997,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.Revision(childComplexity), true
+	case "Task.s3Usage":
+		if e.complexity.Task.S3Usage == nil {
+			break
+		}
+
+		return e.complexity.Task.S3Usage(childComplexity), true
 	case "Task.scheduledTime":
 		if e.complexity.Task.ScheduledTime == nil {
 			break
@@ -12228,6 +12254,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserConfig.User(childComplexity), true
+
+	case "UserFilesMetrics.fileCount":
+		if e.complexity.UserFilesMetrics.FileCount == nil {
+			break
+		}
+
+		return e.complexity.UserFilesMetrics.FileCount(childComplexity), true
+	case "UserFilesMetrics.putCost":
+		if e.complexity.UserFilesMetrics.PutCost == nil {
+			break
+		}
+
+		return e.complexity.UserFilesMetrics.PutCost(childComplexity), true
+	case "UserFilesMetrics.putRequests":
+		if e.complexity.UserFilesMetrics.PutRequests == nil {
+			break
+		}
+
+		return e.complexity.UserFilesMetrics.PutRequests(childComplexity), true
+	case "UserFilesMetrics.uploadBytes":
+		if e.complexity.UserFilesMetrics.UploadBytes == nil {
+			break
+		}
+
+		return e.complexity.UserFilesMetrics.UploadBytes(childComplexity), true
 
 	case "UserServiceFlags.debugSpawnHostDisabled":
 		if e.complexity.UserServiceFlags.DebugSpawnHostDisabled == nil {
@@ -20494,6 +20545,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -29427,6 +29480,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -32904,6 +32959,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -35618,6 +35675,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39510,6 +39569,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39713,6 +39774,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -39916,6 +39979,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -40119,6 +40184,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -40322,6 +40389,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -40525,6 +40594,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -40728,6 +40799,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -41909,6 +41982,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -46632,6 +46707,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -47069,6 +47146,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -53180,6 +53259,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -53383,6 +53464,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -56999,6 +57082,45 @@ func (ec *executionContext) fieldContext_S3UploadCostConfig_uploadCostDiscount(_
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3Usage_userFiles(ctx context.Context, field graphql.CollectedField, obj *s3usage.S3Usage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3Usage_userFiles,
+		func(ctx context.Context) (any, error) {
+			return obj.UserFiles, nil
+		},
+		nil,
+		ec.marshalOUserFilesMetrics2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐUserFilesMetrics,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3Usage_userFiles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3Usage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "putRequests":
+				return ec.fieldContext_UserFilesMetrics_putRequests(ctx, field)
+			case "uploadBytes":
+				return ec.fieldContext_UserFilesMetrics_uploadBytes(ctx, field)
+			case "fileCount":
+				return ec.fieldContext_UserFilesMetrics_fileCount(ctx, field)
+			case "putCost":
+				return ec.fieldContext_UserFilesMetrics_putCost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserFilesMetrics", field.Name)
 		},
 	}
 	return fc, nil
@@ -61765,6 +61887,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -62572,6 +62696,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -62879,6 +63005,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -63279,6 +63407,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -64403,6 +64533,39 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_s3Usage(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_s3Usage,
+		func(ctx context.Context) (any, error) {
+			return obj.S3Usage, nil
+		},
+		nil,
+		ec.marshalOS3Usage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐS3Usage,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_s3Usage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "userFiles":
+				return ec.fieldContext_S3Usage_userFiles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type S3Usage", field.Name)
 		},
 	}
 	return fc, nil
@@ -65962,6 +66125,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -69988,6 +70153,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -70791,6 +70958,122 @@ func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFilesMetrics_putRequests(ctx context.Context, field graphql.CollectedField, obj *s3usage.UserFilesMetrics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserFilesMetrics_putRequests,
+		func(ctx context.Context) (any, error) {
+			return obj.PutRequests, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserFilesMetrics_putRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFilesMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFilesMetrics_uploadBytes(ctx context.Context, field graphql.CollectedField, obj *s3usage.UserFilesMetrics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserFilesMetrics_uploadBytes,
+		func(ctx context.Context) (any, error) {
+			return obj.UploadBytes, nil
+		},
+		nil,
+		ec.marshalOInt2int64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserFilesMetrics_uploadBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFilesMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFilesMetrics_fileCount(ctx context.Context, field graphql.CollectedField, obj *s3usage.UserFilesMetrics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserFilesMetrics_fileCount,
+		func(ctx context.Context) (any, error) {
+			return obj.FileCount, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserFilesMetrics_fileCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFilesMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFilesMetrics_putCost(ctx context.Context, field graphql.CollectedField, obj *s3usage.UserFilesMetrics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserFilesMetrics_putCost,
+		func(ctx context.Context) (any, error) {
+			return obj.PutCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserFilesMetrics_putCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFilesMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -73260,6 +73543,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_taskCost(ctx, field)
 			case "predictedTaskCost":
 				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "s3Usage":
+				return ec.fieldContext_Task_s3Usage(ctx, field)
 			case "taskOwnerTeam":
 				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
@@ -101215,6 +101500,42 @@ func (ec *executionContext) _S3UploadCostConfig(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var s3UsageImplementors = []string{"S3Usage"}
+
+func (ec *executionContext) _S3Usage(ctx context.Context, sel ast.SelectionSet, obj *s3usage.S3Usage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, s3UsageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("S3Usage")
+		case "userFiles":
+			out.Values[i] = ec._S3Usage_userFiles(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var sESConfigImplementors = []string{"SESConfig"}
 
 func (ec *executionContext) _SESConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISESConfig) graphql.Marshaler {
@@ -103892,6 +104213,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskCost(ctx, field, obj)
 		case "predictedTaskCost":
 			out.Values[i] = ec._Task_predictedTaskCost(ctx, field, obj)
+		case "s3Usage":
+			out.Values[i] = ec._Task_s3Usage(ctx, field, obj)
 		case "taskOwnerTeam":
 			field := field
 
@@ -106291,6 +106614,48 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var userFilesMetricsImplementors = []string{"UserFilesMetrics"}
+
+func (ec *executionContext) _UserFilesMetrics(ctx context.Context, sel ast.SelectionSet, obj *s3usage.UserFilesMetrics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userFilesMetricsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserFilesMetrics")
+		case "putRequests":
+			out.Values[i] = ec._UserFilesMetrics_putRequests(ctx, field, obj)
+		case "uploadBytes":
+			out.Values[i] = ec._UserFilesMetrics_uploadBytes(ctx, field, obj)
+		case "fileCount":
+			out.Values[i] = ec._UserFilesMetrics_fileCount(ctx, field, obj)
+		case "putCost":
+			out.Values[i] = ec._UserFilesMetrics_putCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -117788,6 +118153,13 @@ func (ec *executionContext) unmarshalOS3UploadCostConfigInput2githubᚗcomᚋeve
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOS3Usage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐS3Usage(ctx context.Context, sel ast.SelectionSet, v *s3usage.S3Usage) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._S3Usage(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, sel ast.SelectionSet, v model.APISESConfig) graphql.Marshaler {
 	return ec._SESConfig(ctx, sel, &v)
 }
@@ -118674,6 +119046,10 @@ func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._UserConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOUserFilesMetrics2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐUserFilesMetrics(ctx context.Context, sel ast.SelectionSet, v s3usage.UserFilesMetrics) graphql.Marshaler {
+	return ec._UserFilesMetrics(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {

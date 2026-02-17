@@ -3,7 +3,9 @@ package s3usage
 import (
 	"os"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // S3Usage tracks S3 API usage for cost calculation.
@@ -16,9 +18,10 @@ type S3Usage struct {
 
 // UserFilesMetrics tracks artifact upload metrics.
 type UserFilesMetrics struct {
-	PutRequests int   `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
-	UploadBytes int64 `bson:"upload_bytes,omitempty" json:"upload_bytes,omitempty"`
-	FileCount   int   `bson:"file_count,omitempty" json:"file_count,omitempty"`
+	PutRequests int     `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
+	UploadBytes int64   `bson:"upload_bytes,omitempty" json:"upload_bytes,omitempty"`
+	FileCount   int     `bson:"file_count,omitempty" json:"file_count,omitempty"`
+	PutCost     float64 `bson:"put_cost,omitempty" json:"put_cost,omitempty"`
 }
 
 // FileMetrics contains metrics for a single uploaded file.
@@ -33,7 +36,8 @@ type S3BucketType string
 type S3UploadMethod string
 
 const (
-	S3PartSize = 5 * 1024 * 1024 // 5 MB in bytes - S3 multipart upload threshold
+	S3PutRequestCost = 0.000005
+	S3PartSize       = 5 * 1024 * 1024 // 5 MB in bytes - S3 multipart upload threshold
 
 	S3BucketTypeSmall S3BucketType = "small"
 	S3BucketTypeLarge S3BucketType = "large"
@@ -120,6 +124,36 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 	}
 }
 
+// CalculateS3PutCostWithConfig calculates the S3 PUT request cost.
+// Returns 0 if cost cannot be calculated due to missing or invalid config.
+func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
+	if putRequests <= 0 {
+		grip.Warning(message.Fields{
+			"message":      "no put requests to calculate cost",
+			"put_requests": putRequests,
+		})
+		return 0.0
+	}
+
+	if costConfig == nil {
+		grip.Warning(message.Fields{
+			"message": "cost config is not available to calculate S3 PUT cost",
+		})
+		return 0.0
+	}
+
+	discount := costConfig.S3Cost.Upload.UploadCostDiscount
+	if discount < 0.0 || discount > 1.0 {
+		grip.Warning(message.Fields{
+			"message":  "invalid S3 upload cost discount",
+			"discount": discount,
+		})
+		return 0.0
+	}
+
+	return float64(putRequests) * S3PutRequestCost * (1 - discount)
+}
+
 // IncrementUserFiles increments the user file upload metrics (artifacts from s3.put commands).
 func (s *S3Usage) IncrementUserFiles(putRequests int, uploadBytes int64, fileCount int) {
 	s.UserFiles.PutRequests += putRequests
@@ -139,5 +173,5 @@ func (s *S3Usage) IsZero() bool {
 		return true
 	}
 	return s.UserFiles.PutRequests == 0 && s.UserFiles.UploadBytes == 0 && s.UserFiles.FileCount == 0 &&
-		s.NumPutRequests == 0
+		s.UserFiles.PutCost == 0 && s.NumPutRequests == 0
 }

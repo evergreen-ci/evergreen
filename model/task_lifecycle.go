@@ -817,18 +817,14 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	if !t.S3Usage.IsZero() {
-		var s3Attrs []attribute.KeyValue
-		if t.S3Usage.UserFiles.PutRequests > 0 {
-			s3Attrs = append(s3Attrs,
-				attribute.Int(evergreen.TaskS3UserFilePutRequestsOtelAttribute, t.S3Usage.UserFiles.PutRequests),
-				attribute.Int64(evergreen.TaskS3UserFileUploadBytesOtelAttribute, t.S3Usage.UserFiles.UploadBytes),
-				attribute.Int(evergreen.TaskS3UserFileCountOtelAttribute, t.S3Usage.UserFiles.FileCount),
-			)
+		s3Attrs := []attribute.KeyValue{
+			attribute.Int(evergreen.S3PutCostTotalPutRequestsOtelAttribute, t.S3Usage.UserFiles.PutRequests),
+			attribute.Int64(evergreen.S3PutCostTotalUploadBytesOtelAttribute, t.S3Usage.UserFiles.UploadBytes),
+			attribute.Int(evergreen.S3PutCostTotalFileCountOtelAttribute, t.S3Usage.UserFiles.FileCount),
+			attribute.Float64(evergreen.S3PutCostTotalPutCostOtelAttribute, t.S3Usage.UserFiles.PutCost),
 		}
-		if len(s3Attrs) > 0 {
-			ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
-			span.SetAttributes(s3Attrs...)
-		}
+		ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
+		span.SetAttributes(s3Attrs...)
 	}
 
 	// If the error is from marking the task as finished, we want to

@@ -809,6 +809,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
   S3UploadCostConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
+  S3Usage:
+    model: github.com/evergreen-ci/evergreen/model/s3usage.S3Usage
   SchedulerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
   SchedulerConfigInput:
@@ -1012,6 +1014,8 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  UserFilesMetrics:
+    model: github.com/evergreen-ci/evergreen/model/s3usage.UserFilesMetrics
   UserServiceFlags:
     model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:

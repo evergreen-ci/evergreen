@@ -2389,6 +2389,12 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	t.Details = *detail
 	if detail.S3Usage != nil {
 		t.S3Usage = *detail.S3Usage
+
+		costConfig := &evergreen.CostConfig{}
+		if err := costConfig.Get(ctx); err != nil {
+			costConfig = nil
+		}
+		t.S3Usage.UserFiles.PutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
 	}
 	t.ContainerAllocated = false
 	t.ContainerAllocatedTime = time.Time{}
