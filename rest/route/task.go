@@ -122,7 +122,6 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 		IncludeArtifacts:         true,
-		IncludePatchInfo:         true,
 		LogURL:                   tgh.url,
 		ParsleyLogURL:            tgh.parsleyURL,
 	})
