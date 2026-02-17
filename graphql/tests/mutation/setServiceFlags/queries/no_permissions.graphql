@@ -1,0 +1,6 @@
+mutation {
+  setServiceFlags(flags: [{ name: "task_dispatch_disabled", enabled: true }]) {
+    name
+    enabled
+  }
+}

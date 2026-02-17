@@ -16,6 +16,9 @@ resolver:
 models:
   AdminSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+    fields:
+      serviceFlagsList:
+        resolver: true
   AdminSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   AmboyConfig:

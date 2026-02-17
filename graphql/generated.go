@@ -210,6 +210,7 @@ type ComplexityRoot struct {
 		Sage                    func(childComplexity int) int
 		Scheduler               func(childComplexity int) int
 		ServiceFlags            func(childComplexity int) int
+		ServiceFlagsList        func(childComplexity int) int
 		ShutdownWaitSeconds     func(childComplexity int) int
 		SingleTaskDistro        func(childComplexity int) int
 		Slack                   func(childComplexity int) int
@@ -1095,6 +1096,7 @@ type ComplexityRoot struct {
 		SetCursorAPIKey               func(childComplexity int, apiKey string) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
 		SetPatchVisibility            func(childComplexity int, patchIds []string, hidden bool) int
+		SetServiceFlags               func(childComplexity int, flags []*ServiceFlagInput) int
 		SetTaskPriorities             func(childComplexity int, taskPriorities []*TaskPriority) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SetVersionPriority            func(childComplexity int, versionID string, priority int) int
@@ -1744,6 +1746,11 @@ type ComplexityRoot struct {
 	Selector struct {
 		Data func(childComplexity int) int
 		Type func(childComplexity int) int
+	}
+
+	ServiceFlag struct {
+		Enabled func(childComplexity int) int
+		Name    func(childComplexity int) int
 	}
 
 	ServiceFlags struct {
@@ -2445,6 +2452,8 @@ type ComplexityRoot struct {
 
 type AdminSettingsResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error)
+
+	ServiceFlagsList(ctx context.Context, obj *model.APIAdminSettings) ([]*ServiceFlag, error)
 }
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
@@ -2500,6 +2509,7 @@ type MutationResolver interface {
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	SaveAdminSettings(ctx context.Context, adminSettings model.APIAdminSettings) (*model.APIAdminSettings, error)
+	SetServiceFlags(ctx context.Context, flags []*ServiceFlagInput) ([]*ServiceFlag, error)
 	RestartAdminTasks(ctx context.Context, opts model1.RestartOptions) (*RestartAdminTasksPayload, error)
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts model.CopyDistroOpts) (*NewDistroPayload, error)
@@ -3356,6 +3366,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.ServiceFlags(childComplexity), true
+	case "AdminSettings.serviceFlagsList":
+		if e.complexity.AdminSettings.ServiceFlagsList == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.ServiceFlagsList(childComplexity), true
 	case "AdminSettings.shutdownWaitSeconds":
 		if e.complexity.AdminSettings.ShutdownWaitSeconds == nil {
 			break
@@ -7020,6 +7036,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetPatchVisibility(childComplexity, args["patchIds"].([]string), args["hidden"].(bool)), true
+	case "Mutation.setServiceFlags":
+		if e.complexity.Mutation.SetServiceFlags == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setServiceFlags_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetServiceFlags(childComplexity, args["flags"].([]*ServiceFlagInput)), true
 	case "Mutation.setTaskPriorities":
 		if e.complexity.Mutation.SetTaskPriorities == nil {
 			break
@@ -9950,6 +9977,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Selector.Type(childComplexity), true
+
+	case "ServiceFlag.enabled":
+		if e.complexity.ServiceFlag.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlag.Enabled(childComplexity), true
+	case "ServiceFlag.name":
+		if e.complexity.ServiceFlag.Name == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlag.Name(childComplexity), true
 
 	case "ServiceFlags.agentStartDisabled":
 		if e.complexity.ServiceFlags.AgentStartDisabled == nil {
@@ -13081,6 +13121,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSchedulerConfigInput,
 		ec.unmarshalInputSecretsManagerConfigInput,
 		ec.unmarshalInputSelectorInput,
+		ec.unmarshalInputServiceFlagInput,
 		ec.unmarshalInputServiceFlagsInput,
 		ec.unmarshalInputSetLastRevisionInput,
 		ec.unmarshalInputSingleTaskDistroConfigInput,
@@ -14967,6 +15008,17 @@ func (ec *executionContext) field_Mutation_setPatchVisibility_argsPatchIds(
 		var zeroVal []string
 		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
 	}
+}
+
+func (ec *executionContext) field_Mutation_setServiceFlags_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "flags", ec.unmarshalNServiceFlagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagInputᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["flags"] = arg0
+	return args, nil
 }
 
 func (ec *executionContext) field_Mutation_setTaskPriorities_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -19826,6 +19878,41 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_serviceFlagsList(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_serviceFlagsList,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.AdminSettings().ServiceFlagsList(ctx, obj)
+		},
+		nil,
+		ec.marshalNServiceFlag2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_serviceFlagsList(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ServiceFlag_name(ctx, field)
+			case "enabled":
+				return ec.fieldContext_ServiceFlag_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ServiceFlag", field.Name)
 		},
 	}
 	return fc, nil
@@ -37015,6 +37102,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_scheduler(ctx, field)
 			case "serviceFlags":
 				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
+			case "serviceFlagsList":
+				return ec.fieldContext_AdminSettings_serviceFlagsList(ctx, field)
 			case "shutdownWaitSeconds":
 				return ec.fieldContext_AdminSettings_shutdownWaitSeconds(ctx, field)
 			case "singleTaskDistro":
@@ -37053,6 +37142,66 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_saveAdminSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setServiceFlags(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_setServiceFlags,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SetServiceFlags(ctx, fc.Args["flags"].([]*ServiceFlagInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal []*ServiceFlag
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNServiceFlag2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setServiceFlags(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ServiceFlag_name(ctx, field)
+			case "enabled":
+				return ec.fieldContext_ServiceFlag_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ServiceFlag", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setServiceFlags_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -51279,6 +51428,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_scheduler(ctx, field)
 			case "serviceFlags":
 				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
+			case "serviceFlagsList":
+				return ec.fieldContext_AdminSettings_serviceFlagsList(ctx, field)
 			case "shutdownWaitSeconds":
 				return ec.fieldContext_AdminSettings_shutdownWaitSeconds(ctx, field)
 			case "singleTaskDistro":
@@ -58087,6 +58238,64 @@ func (ec *executionContext) fieldContext_Selector_type(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlag_name(ctx context.Context, field graphql.CollectedField, obj *ServiceFlag) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlag_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlag_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlag_enabled(ctx context.Context, field graphql.CollectedField, obj *ServiceFlag) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlag_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlag_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlag",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -85150,6 +85359,40 @@ func (ec *executionContext) unmarshalInputSelectorInput(ctx context.Context, obj
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputServiceFlagInput(ctx context.Context, obj any) (ServiceFlagInput, error) {
+	var it ServiceFlagInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context, obj any) (model.APIServiceFlags, error) {
 	var it model.APIServiceFlags
 	asMap := map[string]any{}
@@ -88599,6 +88842,42 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_scheduler(ctx, field, obj)
 		case "serviceFlags":
 			out.Values[i] = ec._AdminSettings_serviceFlags(ctx, field, obj)
+		case "serviceFlagsList":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AdminSettings_serviceFlagsList(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "shutdownWaitSeconds":
 			out.Values[i] = ec._AdminSettings_shutdownWaitSeconds(ctx, field, obj)
 		case "singleTaskDistro":
@@ -95039,6 +95318,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "saveAdminSettings":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveAdminSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setServiceFlags":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setServiceFlags(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -101588,6 +101874,50 @@ func (ec *executionContext) _Selector(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "type":
 			out.Values[i] = ec._Selector_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var serviceFlagImplementors = []string{"ServiceFlag"}
+
+func (ec *executionContext) _ServiceFlag(ctx context.Context, sel ast.SelectionSet, obj *ServiceFlag) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, serviceFlagImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ServiceFlag")
+		case "name":
+			out.Values[i] = ec._ServiceFlag_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._ServiceFlag_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -113123,6 +113453,80 @@ func (ec *executionContext) unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreen�
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalNServiceFlag2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagᚄ(ctx context.Context, sel ast.SelectionSet, v []*ServiceFlag) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNServiceFlag2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlag(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNServiceFlag2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlag(ctx context.Context, sel ast.SelectionSet, v *ServiceFlag) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ServiceFlag(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNServiceFlagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagInputᚄ(ctx context.Context, v any) ([]*ServiceFlagInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ServiceFlagInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNServiceFlagInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNServiceFlagInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagInput(ctx context.Context, v any) (*ServiceFlagInput, error) {
+	res, err := ec.unmarshalInputServiceFlagInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSetCursorAPIKeyPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSetCursorAPIKeyPayload(ctx context.Context, sel ast.SelectionSet, v SetCursorAPIKeyPayload) graphql.Marshaler {

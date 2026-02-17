@@ -24,6 +24,20 @@ func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *restModel.
 	return &theme, nil
 }
 
+// ServiceFlagsList is the resolver for the serviceFlagsList field.
+func (r *adminSettingsResolver) ServiceFlagsList(ctx context.Context, obj *restModel.APIAdminSettings) ([]*ServiceFlag, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service flags: %s", err.Error()))
+	}
+	entries := flags.ToSlice()
+	items := make([]*ServiceFlag, 0, len(entries))
+	for _, e := range entries {
+		items = append(items, &ServiceFlag{Name: e.Name, Enabled: e.Enabled})
+	}
+	return items, nil
+}
+
 // SecretFields is the resolver for the secretFields field.
 func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *restModel.APIAdminSettings) ([]string, error) {
 	redactedFieldsAsSlice := []string{}

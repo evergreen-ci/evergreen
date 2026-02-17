@@ -1,0 +1,8 @@
+query ServiceFlagsList {
+  adminSettings {
+    serviceFlagsList {
+      name
+      enabled
+    }
+  }
+}
