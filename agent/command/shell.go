@@ -232,7 +232,22 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		}
 	}
 
+	// The agent runs with a lower nice than the default because it needs
+	// resource prioritization.
+	// Momentarily set the nice back to the default nice to ensure the process
+	// that's about to be created and all of its children processes use the
+	// default nice.
+	if niceErr := agentutil.SetNice(agentutil.DefaultNice); err != nil {
+		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+	}
 	err = cmd.Run(ctx)
+	// Once the child processes has started, reset the agent's nice back to the
+	// lower nice value to ensure that the agent will be prioritized for
+	// resources.
+	if niceErr := agentutil.SetNice(agentutil.MinNice); err != nil {
+		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.MaxNice, niceErr.Error())
+	}
+
 	if !c.Background && err != nil {
 		if exitCode, _ := cmd.Wait(ctx); exitCode != 0 {
 			err = errors.Errorf("exit code %d", exitCode)
