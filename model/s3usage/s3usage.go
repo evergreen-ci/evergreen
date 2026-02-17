@@ -10,7 +10,7 @@ import (
 type S3Usage struct {
 	UserFiles UserFilesMetrics `bson:"user_files,omitempty" json:"user_files,omitempty"`
 	// NumPutRequests tracks log upload requests (maintained for backward compatibility).
-	// Will be migrated to nested structure in future ticket.
+	// Will be migrated to nested structure in as part of DEVPROD-25593.
 	NumPutRequests int `bson:"num_put_requests,omitempty" json:"num_put_requests,omitempty"`
 }
 
