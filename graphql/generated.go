@@ -1096,7 +1096,7 @@ type ComplexityRoot struct {
 		SetCursorAPIKey               func(childComplexity int, apiKey string) int
 		SetLastRevision               func(childComplexity int, opts SetLastRevisionInput) int
 		SetPatchVisibility            func(childComplexity int, patchIds []string, hidden bool) int
-		SetServiceFlags               func(childComplexity int, flags []*ServiceFlagInput) int
+		SetServiceFlags               func(childComplexity int, updatedFlags []*ServiceFlagInput) int
 		SetTaskPriorities             func(childComplexity int, taskPriorities []*TaskPriority) int
 		SetTaskPriority               func(childComplexity int, taskID string, priority int) int
 		SetVersionPriority            func(childComplexity int, versionID string, priority int) int
@@ -2509,7 +2509,7 @@ type MutationResolver interface {
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
 	SaveAdminSettings(ctx context.Context, adminSettings model.APIAdminSettings) (*model.APIAdminSettings, error)
-	SetServiceFlags(ctx context.Context, flags []*ServiceFlagInput) ([]*ServiceFlag, error)
+	SetServiceFlags(ctx context.Context, updatedFlags []*ServiceFlagInput) ([]*ServiceFlag, error)
 	RestartAdminTasks(ctx context.Context, opts model1.RestartOptions) (*RestartAdminTasksPayload, error)
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts model.CopyDistroOpts) (*NewDistroPayload, error)
@@ -7046,7 +7046,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetServiceFlags(childComplexity, args["flags"].([]*ServiceFlagInput)), true
+		return e.complexity.Mutation.SetServiceFlags(childComplexity, args["updatedFlags"].([]*ServiceFlagInput)), true
 	case "Mutation.setTaskPriorities":
 		if e.complexity.Mutation.SetTaskPriorities == nil {
 			break
@@ -15013,11 +15013,11 @@ func (ec *executionContext) field_Mutation_setPatchVisibility_argsPatchIds(
 func (ec *executionContext) field_Mutation_setServiceFlags_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "flags", ec.unmarshalNServiceFlagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagInputᚄ)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "updatedFlags", ec.unmarshalNServiceFlagInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐServiceFlagInputᚄ)
 	if err != nil {
 		return nil, err
 	}
-	args["flags"] = arg0
+	args["updatedFlags"] = arg0
 	return args, nil
 }
 
@@ -37156,7 +37156,7 @@ func (ec *executionContext) _Mutation_setServiceFlags(ctx context.Context, field
 		ec.fieldContext_Mutation_setServiceFlags,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().SetServiceFlags(ctx, fc.Args["flags"].([]*ServiceFlagInput))
+			return ec.resolvers.Mutation().SetServiceFlags(ctx, fc.Args["updatedFlags"].([]*ServiceFlagInput))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next

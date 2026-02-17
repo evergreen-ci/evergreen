@@ -183,14 +183,13 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 }
 
 // SetServiceFlags is the resolver for the setServiceFlags field.
-// It accepts a list of {name, enabled} pairs and applies them all at once, then
-// returns the full updated list of service flags.
-func (r *mutationResolver) SetServiceFlags(ctx context.Context, flags []*ServiceFlagInput) ([]*ServiceFlag, error) {
+func (r *mutationResolver) SetServiceFlags(ctx context.Context, updatedFlags []*ServiceFlagInput) ([]*ServiceFlag, error) {
 	currentFlags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service flags: %s", err.Error()))
 	}
-	for _, flag := range flags {
+	oldFlags := *currentFlags
+	for _, flag := range updatedFlags {
 		if flag == nil {
 			continue
 		}
@@ -200,6 +199,9 @@ func (r *mutationResolver) SetServiceFlags(ctx context.Context, flags []*Service
 	}
 	if err = evergreen.SetServiceFlags(ctx, *currentFlags); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting service flags: %s", err.Error()))
+	}
+	if err = event.LogAdminEvent(ctx, currentFlags.SectionId(), &oldFlags, currentFlags, mustHaveUser(ctx).Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging service flag changes: %s", err.Error()))
 	}
 	entries := currentFlags.ToSlice()
 	result := make([]*ServiceFlag, 0, len(entries))
