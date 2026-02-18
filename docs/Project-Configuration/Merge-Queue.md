@@ -291,7 +291,7 @@ These metrics include standard attribution fields (`project_id`, `org`, `repo`, 
 
 **Queue depth over time:**
 
-```
+```text
 WHERE evergreen.merge_queue.depth `exists`
 VISUALIZE MAX(evergreen.merge_queue.depth)
 GROUP BY evergreen.merge_queue.project_id
@@ -299,7 +299,7 @@ GROUP BY evergreen.merge_queue.project_id
 
 **Times queue depth exceeded 10:**
 
-```
+```text
 WHERE evergreen.merge_queue.depth > 10
 COUNT
 TIMEFRAME: Last 30 days
@@ -309,7 +309,7 @@ This shows how many 5-minute samples had depth > 10 in the last month.
 
 **Oldest patch age (P95):**
 
-```
+```text
 WHERE evergreen.merge_queue.oldest_patch_age_ms `exists`
 VISUALIZE P95(evergreen.merge_queue.oldest_patch_age_ms)
 GROUP BY evergreen.merge_queue.project_id
