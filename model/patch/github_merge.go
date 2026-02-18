@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -117,16 +118,16 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 	baseBranch := extractBaseBranchFromHeadRef(mg.GetMergeGroup().GetHeadRef())
 	githubPRURL := thirdparty.BuildGithubPRURL(mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadRef())
 
+	baseAttrs := BuildMergeQueueSpanAttributes(
+		mg.GetOrg().GetLogin(),
+		mg.GetRepo().GetName(),
+		baseBranch,
+		mg.GetMergeGroup().GetHeadSHA(),
+		githubPRURL,
+	)
+	baseAttrs = append(baseAttrs, attribute.String(MergeQueueAttrMsgID, msgDeliveryID))
 	ctx, span := tracer.Start(ctx, MergeQueueIntentCreatedSpan,
-		trace.WithAttributes(
-			BuildMergeQueueSpanAttributes(
-				mg.GetOrg().GetLogin(),
-				mg.GetRepo().GetName(),
-				baseBranch,
-				mg.GetMergeGroup().GetHeadSHA(),
-				githubPRURL,
-				&MergeQueueSpanAttributesOpts{MsgID: msgDeliveryID},
-			)...))
+		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 
 	grip.Info(message.Fields{

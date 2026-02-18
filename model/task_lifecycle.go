@@ -1783,7 +1783,7 @@ type mergeQueueTaskMetrics struct {
 	hasRunningTasks   bool
 	failedCount       int
 	hasTestFailure    bool
-	hasInfraFailure   bool
+	hasSystemFailure  bool
 	hasSetupFailure   bool
 	hasTimeoutFailure bool
 	slowestTask       *task.Task
@@ -1815,7 +1815,7 @@ func gatherMergeQueueTaskMetrics(tasks []task.Task) mergeQueueTaskMetrics {
 				displayStatus := t.GetDisplayStatus()
 				switch displayStatus {
 				case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
-					metrics.hasInfraFailure = true
+					metrics.hasSystemFailure = true
 				case evergreen.TaskSetupFailed:
 					metrics.hasSetupFailure = true
 				default:
@@ -1849,19 +1849,19 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		return errors.Wrap(err, "finding project ref for merge queue metrics")
 	}
 
-	ctx, span := tracer.Start(ctx, patch.MergeQueueVersionCompletedSpan,
-		trace.WithAttributes(
-			patch.BuildMergeQueueSpanAttributes(
-				p.GithubMergeData.Org,
-				p.GithubMergeData.Repo,
-				p.GithubMergeData.BaseBranch,
-				p.GithubMergeData.HeadSHA,
-				githubPRURL,
-				&patch.MergeQueueSpanAttributesOpts{
-					PatchID:           p.Id.Hex(),
-					ProjectIdentifier: projectRef.Identifier,
-				},
-			)...))
+	baseAttrs := patch.BuildMergeQueueSpanAttributes(
+		p.GithubMergeData.Org,
+		p.GithubMergeData.Repo,
+		p.GithubMergeData.BaseBranch,
+		p.GithubMergeData.HeadSHA,
+		githubPRURL,
+	)
+	baseAttrs = append(baseAttrs,
+		attribute.String(patch.MergeQueueAttrPatchID, p.Id.Hex()),
+		attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier),
+	)
+	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchCompletedSpan,
+		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 
 	if !p.FinishTime.IsZero() && !p.CreateTime.IsZero() {
@@ -1923,7 +1923,7 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	if mergeQueueStatus == thirdparty.MergeQueueStatusFailed {
 		span.SetAttributes(
 			attribute.Bool(patch.MergeQueueAttrHasTestFailure, metrics.hasTestFailure),
-			attribute.Bool(patch.MergeQueueAttrHasInfraFailure, metrics.hasInfraFailure),
+			attribute.Bool(patch.MergeQueueAttrHasSystemFailure, metrics.hasSystemFailure),
 			attribute.Bool(patch.MergeQueueAttrHasSetupFailure, metrics.hasSetupFailure),
 			attribute.Bool(patch.MergeQueueAttrHasTimeoutFailure, metrics.hasTimeoutFailure),
 			attribute.Int64(patch.MergeQueueAttrFailedTaskCount, int64(metrics.failedCount)),

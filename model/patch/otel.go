@@ -16,7 +16,7 @@ var tracer = otel.GetTracerProvider().Tracer(packageName)
 const (
 	MergeQueueIntentCreatedSpan    = "merge_queue.intent_created"
 	MergeQueuePatchProcessingSpan  = "merge_queue.patch_processing"
-	MergeQueueVersionCompletedSpan = "merge_queue.version_completed"
+	MergeQueuePatchCompletedSpan   = "merge_queue.patch_completed"
 )
 
 // OpenTelemetry attribute keys for merge queue metrics.
@@ -35,7 +35,7 @@ const (
 	MergeQueueAttrStatus                = "evergreen.merge_queue.status"
 	MergeQueueAttrRemovalReason         = "evergreen.merge_queue.removal_reason"
 	MergeQueueAttrHasTestFailure        = "evergreen.merge_queue.has_test_failure"
-	MergeQueueAttrHasInfraFailure       = "evergreen.merge_queue.has_infra_failure"
+	MergeQueueAttrHasSystemFailure      = "evergreen.merge_queue.has_system_failure"
 	MergeQueueAttrHasSetupFailure       = "evergreen.merge_queue.has_setup_failure"
 	MergeQueueAttrHasTimeoutFailure     = "evergreen.merge_queue.has_timeout_failure"
 	MergeQueueAttrFailedTaskCount       = "evergreen.merge_queue.failed_task_count"
@@ -48,16 +48,9 @@ const (
 	MergeQueueAttrSlowestTaskVariant    = "evergreen.merge_queue.slowest_variant"
 )
 
-// MergeQueueSpanAttributesOpts contains optional attributes for merge queue spans.
-type MergeQueueSpanAttributesOpts struct {
-	PatchID           string
-	ProjectIdentifier string
-	MsgID             string
-}
-
 // BuildMergeQueueSpanAttributes creates a slice of common trace attributes for merge queue operations.
-func BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubPRURL string, opts *MergeQueueSpanAttributesOpts) []attribute.KeyValue {
-	attrs := []attribute.KeyValue{
+func BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubPRURL string) []attribute.KeyValue {
+	return []attribute.KeyValue{
 		attribute.String(MergeQueueAttrOrg, org),
 		attribute.String(MergeQueueAttrRepo, repo),
 		attribute.String(MergeQueueAttrQueueName, baseBranch),
@@ -65,18 +58,4 @@ func BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubPRURL s
 		attribute.String(MergeQueueAttrHeadSHA, headSHA),
 		attribute.String(MergeQueueAttrGithubPRURL, githubPRURL),
 	}
-
-	if opts != nil {
-		if opts.PatchID != "" {
-			attrs = append(attrs, attribute.String(MergeQueueAttrPatchID, opts.PatchID))
-		}
-		if opts.ProjectIdentifier != "" {
-			attrs = append(attrs, attribute.String(MergeQueueAttrProjectID, opts.ProjectIdentifier))
-		}
-		if opts.MsgID != "" {
-			attrs = append(attrs, attribute.String(MergeQueueAttrMsgID, opts.MsgID))
-		}
-	}
-
-	return attrs
 }
