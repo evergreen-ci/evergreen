@@ -713,9 +713,9 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		}
 	}
 	if !inMemoryLoggerExists {
-		logger, loggerErr := jasper.NewInMemoryLogger(OutputBufferSize)
+		logger, err := jasper.NewInMemoryLogger(OutputBufferSize)
 		if err != nil {
-			return nil, errors.Wrap(loggerErr, "creating new in-memory logger")
+			return nil, errors.Wrap(err, "creating new in-memory logger")
 		}
 		opts.Output.Loggers = append(opts.Output.Loggers, logger)
 	}
