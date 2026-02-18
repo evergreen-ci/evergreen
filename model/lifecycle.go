@@ -1185,8 +1185,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		CachedProjectStorageMethod: creationInfo.Version.ProjectStorageMethod,
 	}
 
-	t.DisplayStatusCache = t.DetermineDisplayStatus()
-
 	if err := t.SetGenerateTasksEstimations(ctx); err != nil {
 		return nil, errors.Wrap(err, "setting generate tasks estimations")
 	}
@@ -1237,6 +1235,8 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 
 		tg.InjectInfo(t)
 	}
+
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	return t, nil
 }

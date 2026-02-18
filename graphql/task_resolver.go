@@ -332,6 +332,19 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	return apiTask, nil
 }
 
+// Errors is the resolver for the errors field.
+func (r *taskResolver) Errors(ctx context.Context, obj *restModel.APITask) ([]string, error) {
+	errors := []string{}
+	t, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service", utility.FromStringPtr(obj.Id)))
+	}
+	if !t.HasValidDistro(ctx) {
+		errors = append(errors, evergreen.DistroNotFoundForTaskError)
+	}
+	return errors, nil
+}
+
 // EstimatedStart is the resolver for the estimatedStart field.
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	t, err := obj.ToService()

@@ -5478,3 +5478,39 @@ func TestTaskCostIsZero(t *testing.T) {
 	nonZeroBoth := cost.Cost{OnDemandEC2Cost: 0.1, AdjustedEC2Cost: 0.2}
 	assert.False(t, nonZeroBoth.IsZero())
 }
+
+func TestHasValidDistro(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
+
+	validDistro := distro.Distro{
+		Id: "valid-distro",
+	}
+	require.NoError(t, validDistro.Insert(ctx))
+
+	t.Run("TaskWithValidPrimaryDistro", func(t *testing.T) {
+		task := &Task{
+			Id:       "task-with-valid-distro",
+			DistroId: validDistro.Id,
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithInvalidPrimaryDistroButValidSecondaryDistro", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-secondary",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{"nonexistent-distro-2", validDistro.Id},
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithNoValidDistros", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-no-valid-distro",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{"nonexistent-distro-2", "nonexistent-distro-3"},
+		}
+		assert.Equal(t, false, task.HasValidDistro(ctx))
+	})
+}
