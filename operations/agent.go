@@ -214,7 +214,7 @@ func Agent() cli.Command {
 			agt.SetDefaultLogger(sender)
 			agt.SetHomeDirectory()
 
-			grip.Warning(message.WrapError(agentutil.SetNice(agentutil.MinNice), message.Fields{
+			grip.Warning(message.WrapError(agentutil.SetNice(agentutil.AgentNice), message.Fields{
 				"message": "could not set nice on agent process, proceeding with default nice",
 			}))
 

@@ -440,8 +440,8 @@ func runCmdWithDefaultNice(ctx context.Context, cmd *jasper.Command, logger clie
 	// Once the child processes has started, reset the agent's nice back to the
 	// lower nice value to ensure that the agent will be prioritized for
 	// resources.
-	if niceErr := agentutil.SetNice(agentutil.MinNice); niceErr != nil {
-		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.MaxNice, niceErr.Error())
+	if niceErr := agentutil.SetNice(agentutil.AgentNice); niceErr != nil {
+		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
 	}
 
 	return err

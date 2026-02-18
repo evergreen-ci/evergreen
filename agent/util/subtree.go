@@ -16,12 +16,16 @@ const (
 var ErrPSTimeout = errors.New("ps timeout")
 
 const (
-	// MinNice is the minimum nice value (i.e. highest priority).
-	MinNice = -20
+	// minNice is the minimum nice value (i.e. highest priority).
+	minNice = -20
+	// AgentNice is a nice value that the agent runs at by default. This makes
+	// the process more important than those running at the default but is not
+	// as critical as other basic system operations.
+	AgentNice = -10
 	// DefaultNice is the default nice value.
 	DefaultNice = 0
-	// MaxNice is the maximum nice value (i.e. lowest priority).
-	MaxNice = 19
+	// maxNice is the maximum nice value (i.e. lowest priority).
+	maxNice = 19
 )
 
 // SetNice sets the nice on the current process. This determines its relative
@@ -32,8 +36,8 @@ func SetNice(nice int) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
-	if nice < MinNice || nice > MaxNice {
-		return errors.Errorf("nice must be between %d and %d", MinNice, MaxNice)
+	if nice < minNice || nice > maxNice {
+		return errors.Errorf("nice must be between %d and %d", minNice, maxNice)
 	}
 	// 0 refers to the current process.
 	return syscall.Setpriority(syscall.PRIO_PROCESS, 0, nice)
