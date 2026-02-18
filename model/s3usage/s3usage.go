@@ -18,10 +18,9 @@ type S3Usage struct {
 
 // UserFilesMetrics tracks artifact upload metrics.
 type UserFilesMetrics struct {
-	PutRequests int     `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
-	UploadBytes int64   `bson:"upload_bytes,omitempty" json:"upload_bytes,omitempty"`
-	FileCount   int     `bson:"file_count,omitempty" json:"file_count,omitempty"`
-	PutCost     float64 `bson:"put_cost,omitempty" json:"put_cost,omitempty"`
+	PutRequests int   `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
+	UploadBytes int64 `bson:"upload_bytes,omitempty" json:"upload_bytes,omitempty"`
+	FileCount   int   `bson:"file_count,omitempty" json:"file_count,omitempty"`
 }
 
 // FileMetrics contains metrics for a single uploaded file.
@@ -173,5 +172,5 @@ func (s *S3Usage) IsZero() bool {
 		return true
 	}
 	return s.UserFiles.PutRequests == 0 && s.UserFiles.UploadBytes == 0 && s.UserFiles.FileCount == 0 &&
-		s.UserFiles.PutCost == 0 && s.NumPutRequests == 0
+		s.NumPutRequests == 0
 }

@@ -5511,7 +5511,6 @@ func TestUpdateTaskCost(t *testing.T) {
 
 		require.NoError(t, task.UpdateTaskCost(ctx))
 		assert.True(t, task.TaskCost.S3ArtifactPutCost > 0)
-		assert.Equal(t, task.S3Usage.UserFiles.PutCost, task.TaskCost.S3ArtifactPutCost)
 	})
 
 	t.Run("CalculatesEC2AndS3CostTogether", func(t *testing.T) {
@@ -5545,7 +5544,6 @@ func TestUpdateTaskCost(t *testing.T) {
 		assert.True(t, task.TaskCost.OnDemandEC2Cost > 0)
 		assert.True(t, task.TaskCost.AdjustedEC2Cost > 0)
 		assert.True(t, task.TaskCost.S3ArtifactPutCost > 0)
-		assert.Equal(t, task.S3Usage.UserFiles.PutCost, task.TaskCost.S3ArtifactPutCost)
 	})
 
 	t.Run("SkipsUpdateWhenNoCostsCalculated", func(t *testing.T) {

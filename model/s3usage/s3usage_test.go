@@ -27,9 +27,6 @@ func TestS3Usage(t *testing.T) {
 		s3Usage.NumPutRequests = 5
 		assert.False(t, s3Usage.IsZero())
 
-		s3Usage = S3Usage{}
-		s3Usage.UserFiles.PutCost = 0.005
-		assert.False(t, s3Usage.IsZero())
 	})
 
 	t.Run("IncrementUserFiles", func(t *testing.T) {

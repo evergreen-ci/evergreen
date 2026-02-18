@@ -4357,21 +4357,8 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		return nil
 	}
 
-	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
-	if err == nil {
-		runtimeSeconds := t.TimeTaken.Seconds()
-		t.TaskCost = CalculateTaskCost(runtimeSeconds, costData, financeConfig)
-	}
-
-	if t.S3Usage.UserFiles.PutRequests > 0 {
-		costConfig := &evergreen.CostConfig{}
-		if err := costConfig.Get(ctx); err != nil {
-			costConfig = nil
-		}
-		putCost := s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
-		t.S3Usage.UserFiles.PutCost = putCost
-		t.TaskCost.S3ArtifactPutCost = putCost
-	}
+	t.calculateRuntimeCost(ctx)
+	t.calculateS3ArtifactCost(ctx)
 
 	if t.TaskCost.IsZero() {
 		return nil
@@ -4382,6 +4369,27 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 			TaskCostKey: t.TaskCost,
 		},
 	})
+}
+
+// calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
+func (t *Task) calculateRuntimeCost(ctx context.Context) {
+	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
+	if err != nil {
+		return
+	}
+	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
+}
+
+// calculateS3ArtifactCost sets the S3 artifact PUT cost on TaskCost based on the task's S3 usage.
+func (t *Task) calculateS3ArtifactCost(ctx context.Context) {
+	if t.S3Usage.UserFiles.PutRequests <= 0 {
+		return
+	}
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		costConfig = nil
+	}
+	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
 }
 
 type CostPredictionResult struct {
