@@ -2353,7 +2353,11 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 
-	// Calculate task cost now that we have the actual runtime
+	if detail.S3Usage != nil {
+		t.S3Usage = *detail.S3Usage
+	}
+
+	// Calculate all task costs (EC2 + S3) now that we have the actual runtime
 	if err := t.UpdateTaskCost(ctx); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":   "failed to calculate task cost",
@@ -2387,15 +2391,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
-	if detail.S3Usage != nil {
-		t.S3Usage = *detail.S3Usage
-
-		costConfig := &evergreen.CostConfig{}
-		if err := costConfig.Get(ctx); err != nil {
-			costConfig = nil
-		}
-		t.S3Usage.UserFiles.PutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
-	}
 	t.ContainerAllocated = false
 	t.ContainerAllocatedTime = time.Time{}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
@@ -4364,12 +4359,24 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 	}
 
 	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
-		return nil
+	if err == nil {
+		runtimeSeconds := t.TimeTaken.Seconds()
+		t.TaskCost = CalculateTaskCost(runtimeSeconds, costData, financeConfig)
 	}
 
-	runtimeSeconds := t.TimeTaken.Seconds()
-	t.TaskCost = CalculateTaskCost(runtimeSeconds, costData, financeConfig)
+	if t.S3Usage.UserFiles.PutRequests > 0 {
+		costConfig := &evergreen.CostConfig{}
+		if err := costConfig.Get(ctx); err != nil {
+			costConfig = nil
+		}
+		putCost := s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
+		t.S3Usage.UserFiles.PutCost = putCost
+		t.TaskCost.S3ArtifactPutCost = putCost
+	}
+
+	if t.TaskCost.IsZero() {
+		return nil
+	}
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{
 		"$set": bson.M{

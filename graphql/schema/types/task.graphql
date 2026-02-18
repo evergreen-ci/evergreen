@@ -135,7 +135,6 @@ type Task {
   taskLogs: TaskLogs!
   taskCost: Cost
   predictedTaskCost: Cost
-  s3Usage: S3Usage
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   testSelectionEnabled: Boolean!
@@ -299,23 +298,7 @@ Cost represents the cost breakdown for a task or version.
 type Cost {
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
-}
-
-"""
-S3Usage represents S3 API usage metrics for a task.
-"""
-type S3Usage {
-  userFiles: UserFilesMetrics
-}
-
-"""
-UserFilesMetrics contains artifact upload metrics.
-"""
-type UserFilesMetrics {
-  putRequests: Int
-  uploadBytes: Int
-  fileCount: Int
-  putCost: Float
+  s3ArtifactPutCost: Float
 }
 
 input QuarantineTestInput {
