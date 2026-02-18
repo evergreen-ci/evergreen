@@ -20,6 +20,7 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
@@ -489,6 +490,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 	tc.taskConfig = taskConfig
+	// Wire up S3Usage pointer so commands can increment runtime S3 usage
+	tc.taskConfig.S3Usage = &tc.s3Usage
 
 	if err := a.startLogging(agentCtx, tc); err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
@@ -618,6 +621,9 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task")
 	}
+
+	// Reset S3Usage for this execution to avoid accumulating from previous restarts
+	opts.task.S3Usage = s3usage.S3Usage{}
 
 	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
@@ -1192,6 +1198,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
+		if !tc.s3Usage.IsZero() {
+			tc.logger.Task().Infof("S3 artifact upload summary: files=%d, PUT_requests=%d, bytes=%d",
+				tc.s3Usage.UserFiles.FileCount, tc.s3Usage.UserFiles.PutRequests, tc.s3Usage.UserFiles.UploadBytes)
+		}
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
 		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
@@ -1393,6 +1403,9 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
+	}
+	if !tc.s3Usage.IsZero() {
+		detail.S3Usage = &tc.s3Usage
 	}
 	return detail
 }

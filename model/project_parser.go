@@ -761,22 +761,38 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 
 	dirs, err := setupParallelGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
-	grip.Warning(message.WrapError(err, message.Fields{
-		"message":    "could not set up git include directories for includes, will fall back to using GitHub API",
-		"project_id": projectID,
-		"ticket":     "DEVPROD-26851",
-	}))
+	if err != nil {
+		msg := message.Fields{
+			"message":    "could not set up git include directories for includes, will fall back to using GitHub API to retrieve include files",
+			"project_id": projectID,
+			"revision":   opts.Revision,
+		}
+		if opts.Ref != nil {
+			msg["project_identifier"] = opts.Ref.Identifier
+			msg["owner"] = opts.Ref.Owner
+			msg["repo"] = opts.Ref.Repo
+		}
+		grip.Warning(message.WrapError(err, msg))
+	}
 	defer func() {
 		// This is a best-effort attempt to clean up the temporary git
 		// directories after includes are processed. However, if it errors, it's
 		// not really an issue because the git directories don't use much disk
 		// space and app servers are not long-lived enough for a few leftover
 		// files to cause issues.
-		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
-			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
-			"project_id": projectID,
-			"ticket":     "DEVPROD-26851",
-		}))
+		if err := dirs.cleanup(); err != nil {
+			msg := message.Fields{
+				"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
+				"project_id": projectID,
+				"revision":   opts.Revision,
+			}
+			if opts.Ref != nil {
+				msg["project_identifier"] = opts.Ref.Identifier
+				msg["owner"] = opts.Ref.Owner
+				msg["repo"] = opts.Ref.Repo
+			}
+			grip.Warning(message.WrapError(err, msg))
+		}
 	}()
 
 	wg := sync.WaitGroup{}
@@ -884,7 +900,7 @@ func (d *gitIncludeDirs) cleanup() error {
 	}
 	catcher := grip.NewBasicCatcher()
 	for ownerRepo, dir := range d.clonesForOwnerRepo {
-		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory for '%s/%s'", ownerRepo.owner, ownerRepo.repo)
+		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory '%s' for '%s/%s'", dir, ownerRepo.owner, ownerRepo.repo)
 	}
 	return catcher.Resolve()
 }
@@ -897,13 +913,6 @@ func (d *gitIncludeDirs) cleanup() error {
 // included file is expensive and slow.
 func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
 	if !readFromRemoteSource(opts.ReadFileFrom) {
-		return nil, nil
-	}
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
-	}
-	if flags.UseGitForGitHubFilesDisabled {
 		return nil, nil
 	}
 	if opts.Ref == nil {
@@ -934,7 +943,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			"message":            "could not clean up git clone directory after failing to set up git directories",
 			"project_id":         opts.Ref.Id,
 			"project_identifier": opts.Ref.Identifier,
-			"ticket":             "DEVPROD-26143",
 		}))
 		// Once dirs has been cleaned up, it's no longer valid to use it, so do
 		// not return it in the result.
@@ -993,9 +1001,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if _, ok := dirs.clonesForOwnerRepo[ownerRepo]; ok {
 			// When including files, there should not be any duplicate repos
 			// defined in the modules, and the modules should not use the exact
-			// same repo/branch as the project itself. If this is hit, it would
-			// be a sign that some project is relying on DEVPROD-27062 and this
-			// logic would potentially have to account for that edge case.
+			// same repo/branch as the project itself.
 			grip.Warning(message.Fields{
 				"message":            "trying to make multiple git clones of the same repo, skipping duplicate repo",
 				"project_id":         opts.Ref.Id,
@@ -1004,7 +1010,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 				"repo":               repoName,
 				"revision":           revision,
 				"module":             modName,
-				"ticket":             "DEVPROD-26851",
 			})
 			continue
 		}
@@ -1082,18 +1087,21 @@ const (
 	ReadFromPatchDiff = "patch_diff"
 )
 
-// readFromRemoteSource returns true if the readFrom option requires
-// retrieving a file from a remote source (i.e. GitHub).
+// readFromRemoteSource returns true if the readFrom option requires retrieving
+// a file from a remote source (i.e. GitHub). If ReadFileFrom is empty, the
+// default behavior is that it reads from a remote source.
 func readFromRemoteSource(readFrom string) bool {
-	return utility.StringSliceContains([]string{ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
+	return utility.StringSliceContains([]string{"", ReadFromGithub, ReadFromPatch, ReadFromPatchDiff}, readFrom)
 }
 
 type GetProjectOpts struct {
-	Ref                       *ProjectRef
-	PatchOpts                 *PatchOpts
-	LocalModules              map[string]string
-	RemotePath                string
-	Revision                  string
+	Ref          *ProjectRef
+	PatchOpts    *PatchOpts
+	LocalModules map[string]string
+	RemotePath   string
+	Revision     string
+	// ReadFileFrom determines where the file should be fetched from. If
+	// unspecified, the default is ReadFromGithub.
 	ReadFileFrom              string
 	Identifier                string
 	UnmarshalStrict           bool
@@ -1126,6 +1134,9 @@ func (opts *GetProjectOpts) UpdateReadFileFrom(path string) {
 	}
 }
 
+// retrieveFile retrieves a file from its source location. If no
+// opts.ReadFileFrom is specified, it will default to retrieving the file from
+// GitHub.
 func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	if opts.RemotePath == "" && opts.Ref != nil {
 		opts.RemotePath = opts.Ref.RemotePath
@@ -1160,19 +1171,16 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		useGit := IsGitUsageForGitHubFileEnabled(ctx)
+		useGit := true
 		if opts.IsIncludedFile && opts.Worktree == "" {
-			// TODO (DEVPROD-26851): remove this condition once we have
-			// sufficient confidence that worktrees are set up properly for
-			// included files.
-			grip.Warning(message.Fields{
-				"message":   "including file but worktree is not set, will not use git",
-				"owner":     opts.Ref.Owner,
-				"repo":      opts.Ref.Repo,
-				"revision":  opts.Revision,
-				"file_name": opts.RemotePath,
-				"ticket":    "DEVPROD-26851",
-			})
+			// Include files that have a git worktree available should try to
+			// use that because it's an optimization to reduce GitHub API calls
+			// (includes use a lot of GitHub API calls). However, if it doesn't
+			// have a git worktree, this should avoid using git entirely because
+			// without a worktree, retrieving every include file without a
+			// pre-created worktree is very slow.
+			// This can still retrieve the file using the GitHub API even though
+			// git is not an option.
 			useGit = false
 		}
 		fileContents, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
@@ -1278,18 +1286,16 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
-	useGit := IsGitUsageForGitHubFileEnabled(ctx)
+	useGit := true
 	if opts.IsIncludedFile && opts.Worktree == "" {
-		// TODO (DEVPROD-26851): remove this condition once we have sufficient
-		// confidence that worktrees are set up properly for included files.
-		grip.Warning(message.Fields{
-			"message":   "including file but worktree is not set, will not use git",
-			"owner":     opts.Ref.Owner,
-			"repo":      opts.Ref.Repo,
-			"revision":  opts.Revision,
-			"file_name": opts.RemotePath,
-			"ticket":    "DEVPROD-26851",
-		})
+		// Include files that have a git worktree available should try to
+		// use that because it's an optimization to reduce GitHub API calls
+		// (includes use a lot of GitHub API calls). However, if it doesn't
+		// have a git worktree, this should avoid using git entirely because
+		// without a worktree, retrieving every include file without a
+		// pre-created worktree is very slow.
+		// This can still retrieve the file using the GitHub API even though
+		// git is not an option.
 		useGit = false
 	}
 	projectFileBytes, err := thirdparty.GetGitHubFileContent(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.Revision, opts.RemotePath, opts.Worktree, ghAppAuth, useGit)
@@ -1303,20 +1309,6 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		}
 	}
 	return projectFileBytes, nil
-}
-
-// IsGitUsageForGitHubFileEnabled returns whether the experimental feature to
-// use git to retrieve files from GitHub is enabled. If the feature flag can't
-// be retrieved, it defaults to false (i.e. git usage is disabled).
-func IsGitUsageForGitHubFileEnabled(ctx context.Context) bool {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "could not get service flags, falling back to assuming that using git is disabled",
-		}))
-		return false
-	}
-	return !flags.UseGitForGitHubFilesDisabled
 }
 
 // fetchProjectFilesTimeout is the maximum timeout to fetch project

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -393,6 +394,13 @@ func TestExpandS3PutParams(t *testing.T) {
 func TestSignedUrlVisibility(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	tempDir := t.TempDir()
+	file1 := filepath.Join(tempDir, "file1")
+	file2 := filepath.Join(tempDir, "file2")
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+
 	for _, vis := range []string{"signed", "private"} {
 		s := s3put{
 			AwsKey:        "key",
@@ -407,10 +415,33 @@ func TestSignedUrlVisibility(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 
-		localFiles := []string{"file1", "file2"}
+		conf := &internal.TaskConfig{
+			Task: task.Task{Id: "task_id"},
+		}
+
 		remoteFile := "remote file"
 
-		require.NoError(t, s.attachFiles(ctx, comm, localFiles, remoteFile))
+		file1Info, err := os.Stat(file1)
+		require.NoError(t, err)
+		file2Info, err := os.Stat(file2)
+		require.NoError(t, err)
+
+		uploadedFiles := []s3usage.FileMetrics{
+			{
+				LocalPath:     file1,
+				RemotePath:    remoteFile,
+				FileSizeBytes: file1Info.Size(),
+				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+			},
+			{
+				LocalPath:     file2,
+				RemotePath:    remoteFile,
+				FileSizeBytes: file2Info.Size(),
+				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+			},
+		}
+
+		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
 
 		attachedFiles := comm.AttachedFiles
 		if v, found := attachedFiles[""]; found {
@@ -432,6 +463,13 @@ func TestSignedUrlVisibility(t *testing.T) {
 func TestContentTypeSaved(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	tempDir := t.TempDir()
+	file1 := filepath.Join(tempDir, "file1")
+	file2 := filepath.Join(tempDir, "file2")
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+
 	s := s3put{
 		AwsKey:        "key",
 		AwsSecret:     "secret",
@@ -452,10 +490,29 @@ func TestContentTypeSaved(t *testing.T) {
 	}
 	s.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	localFiles := []string{"file1", "file2"}
 	remoteFile := "remote file"
 
-	require.NoError(t, s.attachFiles(ctx, comm, localFiles, remoteFile))
+	file1Info, err := os.Stat(file1)
+	require.NoError(t, err)
+	file2Info, err := os.Stat(file2)
+	require.NoError(t, err)
+
+	uploadedFiles := []s3usage.FileMetrics{
+		{
+			LocalPath:     file1,
+			RemotePath:    remoteFile,
+			FileSizeBytes: file1Info.Size(),
+			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+		},
+		{
+			LocalPath:     file2,
+			RemotePath:    remoteFile,
+			FileSizeBytes: file2Info.Size(),
+			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+		},
+	}
+
+	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
 
 	attachedFiles := comm.AttachedFiles
 	files, ok := attachedFiles[conf.Task.Id]
@@ -514,6 +571,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				Project:      model.Project{},
 				WorkDir:      dir,
 				BuildVariant: model.BuildVariant{},
+				S3Usage:      &s3usage.S3Usage{},
 			}
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
@@ -575,6 +633,7 @@ func TestFileUploadNaming(t *testing.T) {
 		Project:      model.Project{},
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -655,6 +714,7 @@ func TestPreservePath(t *testing.T) {
 		Project:      model.Project{},
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -745,6 +805,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 			},
 		},
 		WorkDir: temproot,
+		S3Usage: &s3usage.S3Usage{},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

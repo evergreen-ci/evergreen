@@ -7,7 +7,7 @@ metadata:
   tags:
     - ci
   links:
-    - url: https://spruce.mongodb.com
+    - url: https://spruce.corp.mongodb.com
       title: Evergreen UI
       icon: dashboard
     - url: https://docs.devprod.prod.corp.mongodb.com/evergreen

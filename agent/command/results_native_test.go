@@ -7,8 +7,11 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	"github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -17,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -150,4 +154,63 @@ func TestAttachRawResults(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestAttachResultsExecute(t *testing.T) {
+	cwd := testutil.GetDirectoryOfFile()
+	comm := client.NewMock("url")
+	conf := &internal.TaskConfig{
+		Task: task.Task{
+			Id:             "id",
+			Secret:         "secret",
+			Project:        "project",
+			Version:        "version",
+			BuildVariant:   "build_variant",
+			DisplayName:    "task_name",
+			Execution:      5,
+			Requester:      evergreen.GithubPRRequester,
+			TaskOutputInfo: agentutil.InitializeTaskOutput(t),
+		},
+		DisplayTaskInfo: &apimodels.DisplayTaskInfo{},
+		WorkDir:         cwd,
+		NewExpansions:   &util.DynamicExpansions{},
+	}
+	conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceEvergreen
+
+	for tName, tCase := range map[string]func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer){
+		"ExecuteWithRawLogs": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			cmd := &attachResults{
+				FileLoc: filepath.Join(cwd, "testdata", "attach", "plugin_attach_results_raw.json"),
+			}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			require.NoError(t, logger.Close())
+			// The raw results file has 3 tests, all passing.
+			assert.Equal(t, 3, comm.TestResultStats.TotalCount)
+			assert.Equal(t, 0, comm.TestResultStats.FailedCount)
+		},
+		"ExecuteWithNoLogs": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			cmd := &attachResults{
+				FileLoc: filepath.Join(cwd, "testdata", "attach", "plugin_attach_results.json"),
+			}
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+			require.NoError(t, logger.Close())
+			// The results file has 154 tests, all passing.
+			assert.Equal(t, 154, comm.TestResultStats.TotalCount)
+			assert.Equal(t, 0, comm.TestResultStats.FailedCount)
+		},
+		"ExecuteWithInvalidPath": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			cmd := &attachResults{
+				FileLoc: filepath.Join(cwd, "testdata", "attach", "nonexistent.json"),
+			}
+			assert.ErrorContains(t, cmd.Execute(t.Context(), comm, logger, conf), "opening report file")
+			assert.NoError(t, logger.Close())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			logger, err := comm.GetLoggerProducer(t.Context(), &conf.Task, nil)
+			require.NoError(t, err)
+
+			tCase(t, conf, logger)
+		})
+	}
 }

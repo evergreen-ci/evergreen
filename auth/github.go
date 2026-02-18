@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -129,6 +130,12 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 		redirect := r.FormValue("redirect")
 		if redirect == "" {
 			redirect = "/"
+		} else {
+			normalized := strings.ReplaceAll(redirect, "\\", "/")
+			u, err := url.Parse(normalized)
+			if err != nil || u.Scheme != "" || u.Hostname() != "" || !strings.HasPrefix(u.Path, "/") {
+				redirect = "/"
+			}
 		}
 		// create the state from the timestamp and Salt and check against the one GitHub sent back
 		timestamp := githubState[:len(time.Now().String())]

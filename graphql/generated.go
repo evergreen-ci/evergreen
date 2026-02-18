@@ -1784,7 +1784,6 @@ type ComplexityRoot struct {
 		TaskLoggingDisabled                func(childComplexity int) int
 		TaskReliabilityDisabled            func(childComplexity int) int
 		UnrecognizedPodCleanupDisabled     func(childComplexity int) int
-		UseGitForGitHubFilesDisabled       func(childComplexity int) int
 		UseMergeQueuePathFilteringDisabled func(childComplexity int) int
 		WebhookNotificationsDisabled       func(childComplexity int) int
 	}
@@ -1948,6 +1947,7 @@ type ComplexityRoot struct {
 		GenerateTask            func(childComplexity int) int
 		GeneratedBy             func(childComplexity int) int
 		GeneratedByName         func(childComplexity int) int
+		Generator               func(childComplexity int) int
 		HasTestResults          func(childComplexity int) int
 		HostId                  func(childComplexity int) int
 		Id                      func(childComplexity int) int
@@ -2177,6 +2177,7 @@ type ComplexityRoot struct {
 		AssignedTeam        func(childComplexity int) int
 		AssigneeDisplayName func(childComplexity int) int
 		Created             func(childComplexity int) int
+		FailingTasks        func(childComplexity int) int
 		ResolutionName      func(childComplexity int) int
 		Status              func(childComplexity int) int
 		Summary             func(childComplexity int) int
@@ -2219,7 +2220,6 @@ type ComplexityRoot struct {
 		CsrfKey                   func(childComplexity int) int
 		DefaultProject            func(childComplexity int) int
 		FileStreamingContentTypes func(childComplexity int) int
-		HelpUrl                   func(childComplexity int) int
 		HttpListenAddr            func(childComplexity int) int
 		LoginDomain               func(childComplexity int) int
 		ParsleyUrl                func(childComplexity int) int
@@ -2724,6 +2724,8 @@ type TaskResolver interface {
 	Files(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	GeneratedByName(ctx context.Context, obj *model.APITask) (*string, error)
+
+	Generator(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
 	ImageID(ctx context.Context, obj *model.APITask) (string, error)
 
@@ -10171,12 +10173,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.UnrecognizedPodCleanupDisabled(childComplexity), true
-	case "ServiceFlags.useGitForGitHubFilesDisabled":
-		if e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.UseGitForGitHubFilesDisabled(childComplexity), true
 	case "ServiceFlags.useMergeQueuePathFilteringDisabled":
 		if e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled == nil {
 			break
@@ -10849,6 +10845,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.GeneratedByName(childComplexity), true
+	case "Task.generator":
+		if e.complexity.Task.Generator == nil {
+			break
+		}
+
+		return e.complexity.Task.Generator(childComplexity), true
 	case "Task.hasTestResults":
 		if e.complexity.Task.HasTestResults == nil {
 			break
@@ -11820,6 +11822,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TicketFields.Created(childComplexity), true
+	case "TicketFields.failingTasks":
+		if e.complexity.TicketFields.FailingTasks == nil {
+			break
+		}
+
+		return e.complexity.TicketFields.FailingTasks(childComplexity), true
 	case "TicketFields.resolutionName":
 		if e.complexity.TicketFields.ResolutionName == nil {
 			break
@@ -11987,12 +11995,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UIConfig.FileStreamingContentTypes(childComplexity), true
-	case "UIConfig.helpUrl":
-		if e.complexity.UIConfig.HelpUrl == nil {
-			break
-		}
-
-		return e.complexity.UIConfig.HelpUrl(childComplexity), true
 	case "UIConfig.httpListenAddr":
 		if e.complexity.UIConfig.HttpListenAddr == nil {
 			break
@@ -19802,8 +19804,6 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_degradedModeDisabled(ctx, field)
 			case "elasticIPsDisabled":
 				return ec.fieldContext_ServiceFlags_elasticIPsDisabled(ctx, field)
-			case "useGitForGitHubFilesDisabled":
-				return ec.fieldContext_ServiceFlags_useGitForGitHubFilesDisabled(ctx, field)
 			case "releaseModeDisabled":
 				return ec.fieldContext_ServiceFlags_releaseModeDisabled(ctx, field)
 			case "eventProcessingDisabled":
@@ -20258,8 +20258,6 @@ func (ec *executionContext) fieldContext_AdminSettings_ui(_ context.Context, fie
 				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 			case "url":
 				return ec.fieldContext_UIConfig_url(ctx, field)
-			case "helpUrl":
-				return ec.fieldContext_UIConfig_helpUrl(ctx, field)
 			case "uiv2Url":
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
@@ -20434,6 +20432,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -29365,6 +29365,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -32840,6 +32842,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -34664,6 +34668,8 @@ func (ec *executionContext) fieldContext_JiraTicket_fields(_ context.Context, fi
 				return ec.fieldContext_TicketFields_assigneeDisplayName(ctx, field)
 			case "created":
 				return ec.fieldContext_TicketFields_created(ctx, field)
+			case "failingTasks":
+				return ec.fieldContext_TicketFields_failingTasks(ctx, field)
 			case "resolutionName":
 				return ec.fieldContext_TicketFields_resolutionName(ctx, field)
 			case "status":
@@ -35550,6 +35556,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -39440,6 +39448,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -39641,6 +39651,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -39842,6 +39854,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -40043,6 +40057,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -40244,6 +40260,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -40445,6 +40463,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -40646,6 +40666,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -41825,6 +41847,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -46546,6 +46570,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -46981,6 +47007,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -53090,6 +53118,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -53291,6 +53321,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -58901,35 +58933,6 @@ func (ec *executionContext) fieldContext_ServiceFlags_elasticIPsDisabled(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _ServiceFlags_useGitForGitHubFilesDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_useGitForGitHubFilesDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.UseGitForGitHubFilesDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_useGitForGitHubFilesDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ServiceFlags_releaseModeDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -60717,8 +60720,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 			case "url":
 				return ec.fieldContext_UIConfig_url(ctx, field)
-			case "helpUrl":
-				return ec.fieldContext_UIConfig_helpUrl(ctx, field)
 			case "uiv2Url":
 				return ec.fieldContext_UIConfig_uiv2Url(ctx, field)
 			case "parsleyUrl":
@@ -61702,6 +61703,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -62507,6 +62510,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -62812,6 +62817,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -63095,6 +63102,197 @@ func (ec *executionContext) fieldContext_Task_generateTask(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_generator(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_generator,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().Generator(ctx, obj)
+		},
+		nil,
+		ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "containerAllocatedTime":
+				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "testSelectionEnabled":
+				return ec.fieldContext_Task_testSelectionEnabled(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
 	}
 	return fc, nil
@@ -65702,6 +65900,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -68306,6 +68506,35 @@ func (ec *executionContext) fieldContext_TicketFields_created(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _TicketFields_failingTasks(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TicketFields_failingTasks,
+		func(ctx context.Context) (any, error) {
+			return obj.FailingTasks, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TicketFields_failingTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TicketFields",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TicketFields_resolutionName(ctx context.Context, field graphql.CollectedField, obj *thirdparty.TicketFields) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -68986,35 +69215,6 @@ func (ec *executionContext) _UIConfig_url(ctx context.Context, field graphql.Col
 }
 
 func (ec *executionContext) fieldContext_UIConfig_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UIConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UIConfig_helpUrl(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UIConfig_helpUrl,
-		func(ctx context.Context) (any, error) {
-			return obj.HelpUrl, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UIConfig_helpUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UIConfig",
 		Field:      field,
@@ -69726,6 +69926,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -72996,6 +73198,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_generatedByName(ctx, field)
 			case "generateTask":
 				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
 			case "hasTestResults":
 				return ec.fieldContext_Task_hasTestResults(ctx, field)
 			case "hostId":
@@ -84953,7 +85157,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "useGitForGitHubFilesDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "podInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "podAllocatorDisabled", "unrecognizedPodCleanupDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85163,13 +85367,6 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.ElasticIPsDisabled = data
-		case "useGitForGitHubFilesDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useGitForGitHubFilesDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UseGitForGitHubFilesDisabled = data
 		case "releaseModeDisabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("releaseModeDisabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -86943,7 +87140,7 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"url", "helpUrl", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
+	fieldsInOrder := [...]string{"url", "uiv2Url", "parsleyUrl", "httpListenAddr", "secret", "defaultProject", "corsOrigins", "fileStreamingContentTypes", "loginDomain", "userVoice", "csrfKey", "cacheTemplates", "stagingEnvironment", "betaFeatures"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86957,13 +87154,6 @@ func (ec *executionContext) unmarshalInputUIConfigInput(ctx context.Context, obj
 				return it, err
 			}
 			it.Url = data
-		case "helpUrl":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("helpUrl"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HelpUrl = data
 		case "uiv2Url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uiv2Url"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -101493,8 +101683,6 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_degradedModeDisabled(ctx, field, obj)
 		case "elasticIPsDisabled":
 			out.Values[i] = ec._ServiceFlags_elasticIPsDisabled(ctx, field, obj)
-		case "useGitForGitHubFilesDisabled":
-			out.Values[i] = ec._ServiceFlags_useGitForGitHubFilesDisabled(ctx, field, obj)
 		case "releaseModeDisabled":
 			out.Values[i] = ec._ServiceFlags_releaseModeDisabled(ctx, field, obj)
 		case "eventProcessingDisabled":
@@ -103231,6 +103419,39 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "generateTask":
 			out.Values[i] = ec._Task_generateTask(ctx, field, obj)
+		case "generator":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_generator(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "hasTestResults":
 			out.Values[i] = ec._Task_hasTestResults(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -105343,6 +105564,8 @@ func (ec *executionContext) _TicketFields(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "failingTasks":
+			out.Values[i] = ec._TicketFields_failingTasks(ctx, field, obj)
 		case "resolutionName":
 			field := field
 
@@ -105635,8 +105858,6 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "url":
 			out.Values[i] = ec._UIConfig_url(ctx, field, obj)
-		case "helpUrl":
-			out.Values[i] = ec._UIConfig_helpUrl(ctx, field, obj)
 		case "uiv2Url":
 			out.Values[i] = ec._UIConfig_uiv2Url(ctx, field, obj)
 		case "parsleyUrl":

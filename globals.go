@@ -482,6 +482,9 @@ const (
 	// ModifySpawnHostManual means the spawn host is being modified by the
 	// automatic sleep schedule.
 	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
+	// ModifySpawnHostProjectSettings means the spawn host is being terminated
+	// because the project settings changed to disable debug hosts.
+	ModifySpawnHostProjectSettings ModifySpawnHostSource = "project_settings"
 )
 
 // Common OTEL constants and attribute keys
@@ -501,6 +504,11 @@ const (
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
+
+	// S3 usage otel attributes
+	TaskS3UserFilePutRequestsOtelAttribute = "evergreen.task.s3_user_file_put_requests"
+	TaskS3UserFileUploadBytesOtelAttribute = "evergreen.task.s3_user_file_upload_bytes"
+	TaskS3UserFileCountOtelAttribute       = "evergreen.task.s3_user_file_count"
 
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"

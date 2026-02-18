@@ -7,14 +7,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mitchellh/mapstructure"
@@ -239,48 +238,33 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 	}
 
 	// Upload test logs in parallel using a worker pool.
-	type logWork struct {
+	type indexedLog struct {
 		idx int
 		log *testlog.TestLog
 	}
-	work := make(chan logWork, len(cumulative.logs))
+	indexedLogs := make([]indexedLog, len(cumulative.logs))
 	for i, log := range cumulative.logs {
-		work <- logWork{idx: i, log: log}
+		indexedLogs[i] = indexedLog{idx: i, log: log}
 	}
-	close(work)
 
-	var succeeded int64
-	var wg sync.WaitGroup
 	opts := redactor.RedactionOptions{
 		Expansions:         conf.NewExpansions,
 		Redacted:           conf.Redacted,
 		InternalRedactions: conf.InternalRedactions,
 	}
 
-	numWorkers := runtime.GOMAXPROCS(0)
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for item := range work {
-				if err := ctx.Err(); err != nil {
-					logger.Task().Warning(errors.Wrap(err, "context canceled while sending test logs"))
-					return
-				}
-				if err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log); err != nil {
-					logger.Task().Error(errors.Wrap(err, "sending test log"))
-					continue
-				}
-				atomic.AddInt64(&succeeded, 1)
+	succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", indexedLogs, logger.Task(),
+		func(item *indexedLog) error {
+			err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log)
+			if err == nil {
 				cumulative.tests[cumulative.logIdxToTestIdx[item.idx]].LineNum = 1
-
-				// Yield to allow other goroutines to run and prevent starvation
-				// in intense log uploading workflows.
-				runtime.Gosched()
 			}
-		}()
+			return err
+		},
+	)
+	if err != nil {
+		return err
 	}
-	wg.Wait()
 
 	logger.Task().Infof("Posting test logs succeeded for %d of %d logs.", succeeded, len(cumulative.logs))
 	if len(cumulative.tests) > 0 {

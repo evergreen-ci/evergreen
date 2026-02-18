@@ -133,12 +133,12 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	//	@securitydefinitions.apikey	Api-User
 	//	@in							header
 	//	@name						Api-User
-	//	@description				the `user` field from https://spruce.mongodb.com/preferences/cli
+	//	@description				the `user` field from https://spruce.corp.mongodb.com/preferences/cli
 	//
 	//	@securitydefinitions.apikey	Api-Key
 	//	@in							header
 	//	@name						Api-Key
-	//	@description				the `api-key` field from https://spruce.mongodb.com/preferences/cli
+	//	@description				the `api-key` field from https://spruce.corp.mongodb.com/preferences/cli
 	apiRestV2 := gimlet.NewApp()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{

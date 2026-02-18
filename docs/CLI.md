@@ -4,7 +4,7 @@
 
 ## Downloading the Command Line Tool
 
-Go to your [evergreen user settings page](https://spruce.mongodb.com/preferences) and follow the steps there.
+Go to your [evergreen user settings page](https://spruce.corp.mongodb.com/preferences) and follow the steps there.
 Copy and paste the text in the configuration panel on the settings page into a file in your _home directory_ called `.evergreen.yml`, which will contain the information needed for the client to access the server.
 
 On macOS, the evergreen binary is currently not notarized. To allow running it, go to System Preferences, then Security and Privacy. You should be able to make an exception for it in the "General" tab.

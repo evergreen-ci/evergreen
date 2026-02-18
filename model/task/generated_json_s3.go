@@ -80,6 +80,7 @@ func (s *generatedJSONS3Storage) Insert(ctx context.Context, t *Task, files Gene
 
 	for idx, file := range files {
 		r := bytes.NewBufferString(file)
+
 		if err := s.bucket.Put(ctx, s.bucket.Join(t.Id, fmt.Sprint(idx)), r); err != nil {
 			return errors.Wrapf(err, "inserting generated JSON file #%d for task '%s'", idx, t.Id)
 		}

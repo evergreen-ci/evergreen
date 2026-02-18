@@ -27,7 +27,7 @@ required by your GitHub branch protection rules.
 
 ### Turn on Evergreen's merge queue integration
 
-1. From <https://spruce.mongodb.com/>, from the More drop down, select Project Settings.
+1. From <https://spruce.corp.mongodb.com/>, from the More drop down, select Project Settings.
 2. Select your project from the project dropdown.
 3. From the GitHub section, set the Merge Queue to Enabled.
 4. Add variant and task tags or regexes for the variants and tasks you wish to run when a pull request is added to the queue.
@@ -113,7 +113,7 @@ about merge queue behavior. All pull requests must pass the branch protection
 rules before they can be added to the merge queue. This setting is only about
 the behavior once they're in the merge queue.
 
-The temporary branch gets deleted only after the the PR is merged, or if the PR
+The temporary branch gets deleted only after the PR is merged, or if the PR
 fails the check or is removed from the queue.
 
 ## Merge Queue Settings
@@ -206,6 +206,14 @@ the merge queue). Ensure you've saved the page.
 
 In GitHub, you can now add a new branch protection rule for the "evergreen/<variant_name>" status check.
 
+**Q:** Can I reduce what variants are run in the merge queue based on what's being tested?
+
+**A:** Yes, by using [Build Variant Path Filtering](Project-Configuration-Files.md#build-variant-path-filtering)
+_(This is currently disabled, but will be rolled out by the end of 2/2026.)_
+Note that this will only run tasks that match the paths for the CURRENT merge group. For example, if the first patch in the merge queue
+modifies only the `src` directory, and the second patch modifies the `test` directory, the second patch will only run variants
+that match the `test` directory.
+
 **Q:** How can I turn off the merge queue to block users from merging?
 
 **A:** Check the "Lock branch" setting in the branch protection rules. There are
@@ -221,7 +229,7 @@ section of a repo, and limit the user to "GitHub Merge Queue[bot]", e.g.,
 <https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D>. On
 the Evergreen side, you can click on More -> Project Patches, and look for
 patches prepended "GitHub Merge Queue:", e.g.,
-<https://spruce.mongodb.com/project/mongodb-mongo-master/patches>. There is not
+<https://spruce.corp.mongodb.com/project/mongodb-mongo-master/patches>. There is not
 a way, however, to map directly from a GitHub PR to its patches.
 
 **Q:** Why can't I activate, deactivate, or restart tasks in my running merge queue version?
@@ -235,7 +243,7 @@ via GitHub if needed.
 
 **A:** There is a setting called "Status check timeout" in the branch protection rules
 or rulesets. This setting is the maximum time for a required status check to
-report succcess or failed. This is _not_ the same as the makespan of an
+report success or failed. This is _not_ the same as the makespan of an
 Evergreen version, for two reasons:
 
 1. Makespan does not start until the version starts running, but there is time
@@ -243,6 +251,17 @@ Evergreen version, for two reasons:
    Evergreen is under load, it might not schedule the version for some time.
 2. The status checks might be configured to listen for variant statuses, not
    version statuses.
+
+**Q:** How can I make the merge queue work better for flaky tasks?
+
+**A:** In your branch protection rules or rulesets, under
+"[Managing a merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue#managing-a-merge-queue)",
+set "Only merge non-failing pull requests" to **No**. When this setting is disabled,
+if one PR in a merge group fails but another succeeds, GitHub will still merge the
+successful group. This is useful when you have flaky tasks that occasionally fail
+but don't indicate a real problem with the code. Note that this setting only affects
+behavior within the merge queue (i.e. all PRs must still pass branch protection rules
+before they can be added to the queue).
 
 ## Additional Resources
 

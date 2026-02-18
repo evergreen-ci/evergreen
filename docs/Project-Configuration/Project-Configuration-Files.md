@@ -712,6 +712,8 @@ You can control when tasks and build variants run based on which files have chan
 For mainline version, we will not automatically run tasks if they are filtered out, and we will not create PR patches/tasks if filtered out, but instead send a successful status for all required
 checks as well as the base `evergreen` check.
 
+For merge queue filtering, take a look at build variant path filtering.
+
 #### Project-Level File Ignoring
 
 Some commits to your repository don't need to be tested. The obvious
@@ -733,29 +735,35 @@ ignore:
   - "!testdata/sample.txt" ## EXCEPT for changes to this txt file that's part of a test suite
 ```
 
-In the above example, a commit that only changes `README.md` would not
+In the above example, a commit that only changes `README.md` would ~~not~~
 be automatically scheduled, since `*.md` is ignored. A commit that
 changes both `README.md` and `important_file.cpp` _would_ schedule
 tasks, since only some of the commit's changed files are ignored.
 
+**Ignore is currently not considered for merge queue patches.**
+
 ##### Build Variant Path Filtering
 
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
-changed. This is the opposite of ignoring - it defines what files the variant cares about and prevents tasks
+changed. This is the opposite of ignoring -- it defines what files the variant cares about and prevents tasks
 from running if a specified file has not changed. However, this does _not_ mean that the variant will automatically
 be scheduled if a file in a specified path is changed. The tasks must still be manually selected to run through
 manual selection, alias, etc.
 
-**Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
-the path filter would have matched it.
+_Merge queue behavior_: Build variant path filtering is supported for the merge queue. If testing multiple PRs
+in one merge queue patch, we will consider the full set of changed files to determine what tasks to run, but will
+not consider the changed files from other PRs in the merge group (i.e. paths changed in PRs that are ahead in the queue are not included).
+For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
-Cron, batchtime, and activate true/false will still take precedent over path filtering,
+_Mainline behavior_: Cron, batchtime, and activate true/false will still take precedent over path filtering,
 as those settings are meant to ensure consistent testing, rather than relevant changes.
+
+_Interaction with ignore_: Because ignored files take precedent over build variant path filtering, if a file is ignored,
+it will not run the variant even if the path filter would have matched it (except in the merge queue, where include is not currently supported).
 
 Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
-be scheduled manually, and their tasks will still be scheduled on
-failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
+be scheduled manually, and their tasks will still be scheduled on failure stepback.
 
 ```yaml
 buildvariants:
@@ -1740,6 +1748,7 @@ For that same reason, teardown groups also cannot run the [manually set task sta
 #### The following constraints apply to single host task groups
 
 - If tasks in a single host task groups have dependencies on another task outside the group, only the first task in the task group should list those dependencies. If a task in the group other than the first one have dependencies outside of the group, the task can be blocked waiting for external dependencies to complete and result in the host being terminated for idleness.
+- Tasks in a task group will depend on all previous tasks in the group, but not later tasks in the group.
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the
@@ -1802,7 +1811,9 @@ parameters are available:
 - `omit_generated_tasks` - boolean (default: false). If true and the
   dependency is a generator task (i.e. it generates tasks via the
   [`generate.tasks`](Project-Commands#generatetasks) command), then generated tasks will not be included
-  as dependencies.
+  as dependencies. By default, this is false, which means adding a generator
+  task as a dependency will also add dependencies on all of their generated
+  tasks.
 
 So, for example:
 

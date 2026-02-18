@@ -218,6 +218,16 @@ type GithubMergeGroup struct {
 	// together, so there are as many commits as there are PRs in the merge
 	// group. This is only the title of the first commit in the merge group.
 	HeadCommit string `bson:"head_commit"`
+
+	// RemovedFromQueueAt is set when GitHub sends a "destroyed" MergeGroupEvent,
+	// indicating the patch is no longer in the merge queue. This is independent
+	// of the patch's test status - a patch may still be running tests but has
+	// already been removed from the queue.
+	RemovedFromQueueAt time.Time `bson:"removed_from_queue_at,omitempty"`
+	// RemovalReason indicates why the patch was removed from the queue.
+	// Possible values: "merged" (successfully merged), "invalidated" (tests failed),
+	// or "dequeued" (manually removed by user).
+	RemovalReason string `bson:"removal_reason,omitempty"`
 }
 
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
@@ -493,19 +503,25 @@ func parseGithubErrorResponse(resp *github.Response) error {
 
 // GetGitHubFileContent returns the contents of a file within a GitHub
 // repository. If useGit is specified, it will attempt to retrieve the file
-// using git first to compare with the GitHub API file.
+// using git first. If that fails, it will fall back to retrieving it from the
+// GitHub API.
 //
-// Since git is experimental, this function will always return the resulting
-// file from the GitHub API, regardless of whether useGit is true or false.
-// Setting useGit to true will be slower since it retrieves the file twice.
+// Caller should prefer to call this instead of GetGithubFile because if the
+// file can be retrieved with git, it reduces the amount of GitHub API calls.
 func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
-	var gitFile []byte
-	var gitErr error
 	if useGit {
-		gitFile, gitErr = GetGitHubFileFromGit(ctx, owner, repo, ref, path, worktree)
-		grip.Warning(message.WrapError(gitErr, message.Fields{
-			"message":           "could not retrieve GitHub file using git",
-			"ticket":            "DEVPROD-26143",
+		gitFile, err := GetGitHubFileFromGit(ctx, owner, repo, ref, path, worktree)
+		if err == nil {
+			return gitFile, nil
+		}
+		if IsFileNotFound(err) {
+			// If the file doesn't exist, don't fall back to the GitHub API
+			// since it'll have the same issue.
+			return nil, err
+		}
+
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":           "could not retrieve GitHub file using git, falling back to using GitHub API to retrieve it",
 			"owner":             owner,
 			"repo":              repo,
 			"ref":               ref,
@@ -518,39 +534,19 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 	if err != nil {
 		return nil, err
 	}
-	grip.WarningWhen(gitErr != nil && err == nil, message.Fields{
-		"message": "GitHub file content could not be retrieved via git but succeeded with GitHub API",
-		"ticket":  "DEVPROD-26143",
-		"owner":   owner,
-		"repo":    repo,
-		"ref":     ref,
-		"path":    path,
-	})
 	ghFileContent, err := base64.StdEncoding.DecodeString(*ghFile.Content)
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding GitHub file content")
 	}
 
-	if useGit && gitErr == nil && !bytes.Equal(gitFile, ghFileContent) {
-		// Compare whether the file content retrieved via git matches the
-		// content retrieved via the GitHub API. Since git is experimental, it's
-		// not trusted to return the correct data currently.
-		grip.Warning(message.Fields{
-			"message": "GitHub file content retrieved via git does not exactly match the content retrieved via GitHub API",
-			"ticket":  "DEVPROD-26143",
-			"owner":   owner,
-			"repo":    repo,
-			"ref":     ref,
-			"path":    path,
-		})
-	}
-
-	// Always return the GitHub API file since git is experimental.
 	return ghFileContent, nil
 }
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content. Ref should be the commit hash or branch (defaults to master).
+//
+// Callers should generally prefer GetGitHubFileContent when possible because it
+// reduces the number of GitHub API calls made.
 func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth *githubapp.GithubAppAuth) (*github.RepositoryContent, error) {
 	if path == "" {
 		return nil, errors.New("remote repository path cannot be empty")
@@ -741,7 +737,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, owner, repo, baseRevision, 
 	defer span.End()
 	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, currentCommitHash, caller)
 	if err != nil {
-		return "", errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", baseRevision, currentCommitHash)
+		return "", errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", baseRevision, currentCommitHash)
 	}
 	return *compare.MergeBaseCommit.SHA, nil
 }
@@ -758,7 +754,7 @@ func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase
 	defer span.End()
 	compare, err := getCommitComparison(ctx, owner, repo, mergeBase, oldestAllowedMergeBase, caller)
 	if err != nil {
-		return false, errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
+		return false, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
 	}
 	status := compare.GetStatus()
 
@@ -1455,26 +1451,36 @@ func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 }
 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
-// This function will retry up to 5 times, regardless of error response (unless
-// error is the result of hitting an api limit)
-func GetPullRequestMergeBase(ctx context.Context, owner, repo, baseLabel, headLabel string, prNum int) (string, error) {
-	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseLabel, headLabel)
+func GetPullRequestMergeBase(ctx context.Context, pr *github.PullRequest) (string, error) {
+	owner := pr.GetBase().GetRepo().GetOwner().GetLogin()
+	repo := pr.GetBase().GetRepo().GetName()
+	baseSHA := pr.GetBase().GetSHA()
+	headSHA := pr.GetHead().GetSHA()
+	prNum := pr.GetNumber()
+
+	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
 	if err == nil {
 		return mergeBase, nil
 	}
 	grip.Error(message.WrapError(err, message.Fields{
-		"message": "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
-		"owner":   owner,
-		"repo":    repo,
-		"head":    headLabel,
-		"pr_num":  prNum,
-		"base":    baseLabel,
+		"message":    "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
+		"owner":      owner,
+		"repo":       repo,
+		"head":       headSHA,
+		"head_label": pr.GetHead().GetLabel(),
+		"pr_num":     prNum,
+		"base":       baseSHA,
+		"base_label": pr.GetBase().GetLabel(),
 	}))
-	// If GetGithubMergeBaseRevision fails, fallback to the secondary way of determining a PR
-	// merge base via API. A known case where we expect GetGithubMergeBaseRevision to fail is when
-	// trying to find the merge base of a PR based on a private fork that our 10gen GitHub app is not
-	// installed on.
-	caller := "GetPullRequestMergeBase"
+
+	return getPullRequestFallback(ctx, owner, repo, prNum)
+}
+
+// getPullRequestFallback is a secondary way of determining the merge base of a PR via API. A known case where
+// we expect GetGithubMergeBaseRevision to fail is when trying to find the merge base of a PR based on a private fork
+// that our GitHub app is not installed on.
+func getPullRequestFallback(ctx context.Context, owner, repo string, prNum int) (string, error) {
+	caller := "getPullRequestFallback"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -1687,6 +1693,23 @@ func getPullRequestFileSummaries(ctx context.Context, ghClient *githubapp.GitHub
 	}
 
 	return getPatchSummariesFromCommitFiles(files), nil
+}
+
+// GetChangedFilesBetweenCommits gets the summary list of the changed files between the given commits
+func GetChangedFilesBetweenCommits(ctx context.Context, owner, repo, base, head string) ([]Summary, error) {
+	caller := "GetChangedFilesBetweenCommits"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+	commits, err := getCommitComparison(ctx, owner, repo, base, head, caller)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", base, head)
+	}
+
+	return getPatchSummariesFromCommitFiles(commits.Files), nil
 }
 
 func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {

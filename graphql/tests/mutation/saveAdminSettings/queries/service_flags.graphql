@@ -36,7 +36,6 @@ mutation {
         taskLoggingDisabled: true
         taskReliabilityDisabled: true
         unrecognizedPodCleanupDisabled: true
-        useGitForGitHubFilesDisabled: true
         useMergeQueuePathFilteringDisabled: true
         webhookNotificationsDisabled: true
       }
@@ -77,7 +76,6 @@ mutation {
       taskLoggingDisabled
       taskReliabilityDisabled
       unrecognizedPodCleanupDisabled
-      useGitForGitHubFilesDisabled
       useMergeQueuePathFilteringDisabled
       webhookNotificationsDisabled
     }
