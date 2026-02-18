@@ -861,6 +861,8 @@ buildvariants:
       - "*.sh"
       - "*.diff"
       - "*.patch"
+      - "go.mod"
+      - "go.sum"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large

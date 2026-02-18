@@ -35,8 +35,8 @@ func main() {
 	// its objects/structures. This, plus the basic configuration
 	// in buildApp(), is all that's necessary for bootstrapping the
 	// environment.
-	app := buildApp()
 
+	app := buildApp()
 	defer recoverFromPanic()
 
 	grip.EmergencyFatal(app.Run(args))
@@ -58,6 +58,7 @@ func buildApp() *cli.App {
 		operations.Service(),
 		operations.Agent(),
 		operations.Admin(),
+		operations.Debug(),
 		operations.Host(),
 		operations.Volume(),
 		operations.Notification(),

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -98,6 +99,8 @@ type APITask struct {
 	TaskCost *cost.Cost `json:"task_cost,omitempty"`
 	// Predicted cost breakdown based on historical task costs
 	PredictedTaskCost *cost.Cost `json:"predicted_task_cost,omitempty"`
+	// S3 API usage metrics for this task
+	S3Usage *s3usage.S3Usage `json:"s3_usage,omitempty"`
 	// Number of milliseconds expected for this task to execute
 	ExpectedDuration APIDuration `json:"expected_duration_ms"`
 	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
@@ -399,6 +402,11 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.PredictedTaskCost = &predictedCost
 	}
 
+	if !t.S3Usage.IsZero() {
+		s3Usage := t.S3Usage
+		at.S3Usage = &s3Usage
+	}
+
 	if t.ParentPatchID != "" {
 		at.Version = utility.ToStringPtr(t.ParentPatchID)
 		if t.ParentPatchNumber != 0 {
@@ -618,6 +626,10 @@ func (at *APITask) ToService() (*task.Task, error) {
 
 	if at.TaskCost != nil {
 		st.TaskCost = *at.TaskCost
+	}
+
+	if at.S3Usage != nil {
+		st.S3Usage = *at.S3Usage
 	}
 
 	catcher := grip.NewBasicCatcher()
