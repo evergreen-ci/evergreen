@@ -407,21 +407,7 @@ func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, lo
 		logger.Execution().Info("Executing command in silent mode.")
 	}
 
-	// The agent runs with a lower nice than the default because it needs
-	// resource prioritization.
-	// Momentarily set the nice back to the default nice to ensure the process
-	// that's about to be created and all of its children processes use the
-	// default nice.
-	if niceErr := agentutil.SetNice(agentutil.DefaultNice); err != nil {
-		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
-	}
-	err := cmd.Run(ctx)
-	// Once the child processes has started, reset the agent's nice back to the
-	// lower nice value to ensure that the agent will be prioritized for
-	// resources.
-	if niceErr := agentutil.SetNice(agentutil.MinNice); err != nil {
-		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.MaxNice, niceErr.Error())
-	}
+	err := runCmdWithDefaultNice(ctx, cmd, logger)
 
 	if !c.Background && err != nil {
 		if exitCode, _ := cmd.Wait(ctx); exitCode != 0 {
@@ -432,6 +418,30 @@ func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, lo
 	if c.ContinueOnError && err != nil {
 		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
+	}
+
+	return err
+}
+
+// runCmdWithDefaultNice runs the given Jasper command with the default nice.
+// The agent runs with lower nice than the default so it receives resource
+// prioritization, but the process itself needs to run with default nice.
+func runCmdWithDefaultNice(ctx context.Context, cmd *jasper.Command, logger client.LoggerProducer) error {
+	// This momentarily sets the nice back to the default nice to ensure the
+	// process that's about to be created and all of its children processes use
+	// the default nice. The agent will have no special nice until it's reset
+	// but that should be a brief window.
+	if niceErr := agentutil.SetNice(agentutil.DefaultNice); niceErr != nil {
+		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+	}
+
+	err := cmd.Run(ctx)
+
+	// Once the child processes has started, reset the agent's nice back to the
+	// lower nice value to ensure that the agent will be prioritized for
+	// resources.
+	if niceErr := agentutil.SetNice(agentutil.MinNice); niceErr != nil {
+		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.MaxNice, niceErr.Error())
 	}
 
 	return err

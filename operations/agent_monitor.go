@@ -368,7 +368,16 @@ func (m *monitor) allowAgentNice(ctx context.Context) error {
 		return nil
 	}
 
-	return m.jasperClient.CreateCommand(ctx).Add([]string{"sudo", "setcap", "cap_sys_nice=+ep", m.clientPath}).Run(ctx)
+	return m.jasperClient.CreateCommand(ctx).Add([]string{
+		"sudo",
+		"setcap",
+		// Set the cap_sys_nice setting. cap_sys_nice gives the agent's client
+		// the ability to set negative nice values (i.e. higher resource
+		// priority).
+		// "p" means permitted (i.e. allow the program to set its nice).
+		// "e" means effective (i.e. the permission is active immediately).
+		"cap_sys_nice=+ep",
+		m.clientPath}).Run(ctx)
 }
 
 // createAgentProcess attempts to start an agent subprocess.
@@ -512,6 +521,10 @@ func (m *monitor) run(ctx context.Context) {
 				return true, err
 			}
 
+			// This is only a warning because it's a best-effort attempt to give
+			// the agent the ability to set its nice. Controlling nice gives the
+			// agent a mechanism to tune resource prioritization, but it's not a
+			// guarantee and is not required for the agent to run.
 			grip.Warning(errors.Wrap(m.allowAgentNice(ctx), "allowing agent to set nice"))
 
 			grip.Info(message.Fields{
