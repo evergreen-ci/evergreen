@@ -67,7 +67,7 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 	})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(j.getRetriesForHost(h)), //
+		MaxAttempts: utility.ToIntPtr(j.getRetriesForHost(h)),
 		WaitUntil:   utility.ToTimeDurationPtr(15 * time.Second),
 	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", agentMonitorDeployJobName, j.HostID, id))
