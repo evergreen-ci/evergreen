@@ -2,7 +2,6 @@ package patch
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -67,8 +66,9 @@ type githubMergeIntent struct {
 	Repo string `bson:"repo"`
 }
 
-// ExtractBaseBranchFromHeadRef extracts the base branch from a merge queue head ref.
-func ExtractBaseBranchFromHeadRef(headRef string) string {
+// extractBaseBranchFromHeadRef extracts the base branch from a merge queue head ref.
+// A well-formed headRef should follow the format: refs/heads/gh-readonly-queue/<base-branch>/pr-<number>-<sha>.
+func extractBaseBranchFromHeadRef(headRef string) string {
 	split := strings.Split(headRef, "/")
 	if len(split) < 5 {
 		return ""
@@ -79,37 +79,6 @@ func ExtractBaseBranchFromHeadRef(headRef string) string {
 		baseBranchSlice = append(baseBranchSlice, split[i])
 	}
 	return strings.Join(baseBranchSlice, "/")
-}
-
-// ExtractPRNumberFromHeadRef extracts the PR number from a merge queue head ref.
-func ExtractPRNumberFromHeadRef(headRef string) string {
-	split := strings.Split(headRef, "/")
-	if len(split) == 0 {
-		return ""
-	}
-	lastElement := split[len(split)-1]
-
-	if !strings.HasPrefix(lastElement, "pr-") {
-		return ""
-	}
-
-	prPart := strings.TrimPrefix(lastElement, "pr-")
-	parts := strings.Split(prPart, "-")
-	if len(parts) == 0 {
-		return ""
-	}
-
-	return parts[0]
-}
-
-// BuildGithubPRURL constructs a GitHub PR URL from org, repo, and headRef.
-// Returns empty string if the PR number cannot be extracted from headRef.
-func BuildGithubPRURL(org, repo, headRef string) string {
-	prNumber := ExtractPRNumberFromHeadRef(headRef)
-	if prNumber == "" {
-		return ""
-	}
-	return fmt.Sprintf("https://github.com/%s/%s/pull/%s", org, repo, prNumber)
 }
 
 // NewGithubIntent creates an Intent from a google/go-github MergeGroup.
@@ -145,8 +114,8 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 		return nil, catcher.Resolve()
 	}
 
-	baseBranch := ExtractBaseBranchFromHeadRef(mg.GetMergeGroup().GetHeadRef())
-	githubPRURL := BuildGithubPRURL(mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadRef())
+	baseBranch := extractBaseBranchFromHeadRef(mg.GetMergeGroup().GetHeadRef())
+	githubPRURL := thirdparty.BuildGithubPRURL(mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadRef())
 
 	ctx, span := tracer.Start(ctx, MergeQueueIntentCreatedSpan,
 		trace.WithAttributes(
@@ -257,7 +226,7 @@ func (g *githubMergeIntent) GetCalledBy() string {
 func (g *githubMergeIntent) NewPatch() *Patch {
 	// merge_group.head_ref looks like this:
 	// refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056
-	baseBranch := ExtractBaseBranchFromHeadRef(g.HeadRef)
+	baseBranch := extractBaseBranchFromHeadRef(g.HeadRef)
 
 	split := strings.Split(g.HeadRef, "/")
 	ghReadOnlyQueue := split[2]

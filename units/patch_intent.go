@@ -1106,7 +1106,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		}))
 	}()
 
-	githubPRURL := patch.BuildGithubPRURL(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadBranch)
+	githubPRURL := thirdparty.BuildGithubPRURL(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadBranch)
 
 	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchProcessingSpan,
 		trace.WithAttributes(
@@ -1133,7 +1133,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
 
-	span.SetAttributes(attribute.String(patch.MergeQueueAttrProjectID, projectRef.Id))
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier))
 
 	j.user, err = findEvergreenUserForGithubMergeGroup(ctx)
 	if err != nil {

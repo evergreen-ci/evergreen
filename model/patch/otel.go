@@ -45,14 +45,14 @@ const (
 	MergeQueueAttrSlowestTaskID         = "evergreen.merge_queue.slowest_task_id"
 	MergeQueueAttrSlowestTaskName       = "evergreen.merge_queue.slowest_task_name"
 	MergeQueueAttrSlowestTaskDurationMs = "evergreen.merge_queue.slowest_task_duration_ms"
-	MergeQueueAttrSlowestVariant        = "evergreen.merge_queue.slowest_variant"
+	MergeQueueAttrSlowestTaskVariant    = "evergreen.merge_queue.slowest_variant"
 )
 
 // MergeQueueSpanAttributesOpts contains optional attributes for merge queue spans.
 type MergeQueueSpanAttributesOpts struct {
-	PatchID   string
-	ProjectID string
-	MsgID     string
+	PatchID           string
+	ProjectIdentifier string
+	MsgID             string
 }
 
 // BuildMergeQueueSpanAttributes creates a slice of common trace attributes for merge queue operations.
@@ -70,8 +70,8 @@ func BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubPRURL s
 		if opts.PatchID != "" {
 			attrs = append(attrs, attribute.String(MergeQueueAttrPatchID, opts.PatchID))
 		}
-		if opts.ProjectID != "" {
-			attrs = append(attrs, attribute.String(MergeQueueAttrProjectID, opts.ProjectID))
+		if opts.ProjectIdentifier != "" {
+			attrs = append(attrs, attribute.String(MergeQueueAttrProjectID, opts.ProjectIdentifier))
 		}
 		if opts.MsgID != "" {
 			attrs = append(attrs, attribute.String(MergeQueueAttrMsgID, opts.MsgID))

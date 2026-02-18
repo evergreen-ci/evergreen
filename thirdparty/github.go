@@ -254,6 +254,37 @@ func GetMergeQueueStatusFromReason(reason string) string {
 	}
 }
 
+// extractPRNumberFromHeadRef extracts the PR number from a merge queue head ref.
+func extractPRNumberFromHeadRef(headRef string) string {
+	split := strings.Split(headRef, "/")
+	if len(split) == 0 {
+		return ""
+	}
+	lastElement := split[len(split)-1]
+
+	if !strings.HasPrefix(lastElement, "pr-") {
+		return ""
+	}
+
+	prPart := strings.TrimPrefix(lastElement, "pr-")
+	parts := strings.Split(prPart, "-")
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return parts[0]
+}
+
+// BuildGithubPRURL constructs a GitHub PR URL from org, repo, and headRef.
+// Returns empty string if the PR number cannot be extracted from headRef.
+func BuildGithubPRURL(org, repo, headRef string) string {
+	prNumber := extractPRNumberFromHeadRef(headRef)
+	if prNumber == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://github.com/%s/%s/pull/%s", org, repo, prNumber)
+}
+
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
 // all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {

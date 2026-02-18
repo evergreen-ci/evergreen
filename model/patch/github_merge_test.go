@@ -144,51 +144,6 @@ func TestGithubMergeIntent(t *testing.T) {
 	}
 }
 
-func TestExtractPRNumberFromHeadRef(t *testing.T) {
-	for tName, tCase := range map[string]struct {
-		input    string
-		expected string
-	}{
-		"ValidHeadRef": {
-			input:    "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
-			expected: "515",
-		},
-		"ValidHeadRefWithMultipleDashesInSHA": {
-			input:    "refs/heads/gh-readonly-queue/main/pr-123-abc-def",
-			expected: "123",
-		},
-		"ValidHeadBranch": {
-			input:    "gh-readonly-queue/main/pr-789-xyz",
-			expected: "789",
-		},
-		"NoPrefix": {
-			input:    "main/pr-456-abc",
-			expected: "456",
-		},
-		"EmptyString": {
-			input:    "",
-			expected: "",
-		},
-		"NoPRPrefix": {
-			input:    "refs/heads/gh-readonly-queue/main/123-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
-			expected: "",
-		},
-		"OnlyPRPrefix": {
-			input:    "pr-",
-			expected: "",
-		},
-		"InvalidFormat": {
-			input:    "some-random-string",
-			expected: "",
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			result := ExtractPRNumberFromHeadRef(tCase.input)
-			assert.Equal(t, tCase.expected, result)
-		})
-	}
-}
-
 func TestExtractBaseBranchFromHeadRef(t *testing.T) {
 	for tName, tCase := range map[string]struct {
 		input    string
@@ -224,7 +179,7 @@ func TestExtractBaseBranchFromHeadRef(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			result := ExtractBaseBranchFromHeadRef(tCase.input)
+			result := extractBaseBranchFromHeadRef(tCase.input)
 			assert.Equal(t, tCase.expected, result)
 		})
 	}
