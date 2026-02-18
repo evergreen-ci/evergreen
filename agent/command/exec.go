@@ -429,8 +429,9 @@ func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, lo
 func runCmdWithDefaultNice(ctx context.Context, cmd *jasper.Command, logger client.LoggerProducer) error {
 	// This momentarily sets the nice back to the default nice to ensure the
 	// process that's about to be created and all of its children processes use
-	// the default nice. The agent will have no special nice until it's reset
-	// but that should be a brief window.
+	// the default nice (child processes inherit the nice of the parent
+	// process). The agent will have no special nice until it's reset but that
+	// should be a brief window.
 	if niceErr := agentutil.SetNice(agentutil.DefaultNice); niceErr != nil {
 		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
 	}
