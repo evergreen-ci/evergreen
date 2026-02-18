@@ -499,7 +499,14 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		at.GetProjectIdentifier(ctx)
 	}
 	if args.IncludePatchInfo {
-		at.GetPatchInfo(ctx, t)
+		if err := at.GetPatchInfo(ctx, t); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":       "could not fetch patch info",
+				"task":          t.DisplayName,
+				"build_variant": t.BuildVariant,
+				"version":       t.Version,
+			}))
+		}
 	}
 
 	return nil
@@ -538,50 +545,27 @@ func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 
 // GetPatchInfo populates the Patchable and PatchOnly fields from the YAML configuration.
 // Values are sourced from the build variant task definition (which may inherit from the build variant).
-func (at *APITask) GetPatchInfo(ctx context.Context, t *task.Task) {
+func (at *APITask) GetPatchInfo(ctx context.Context, t *task.Task) error {
 	if at.Patchable != nil && at.PatchOnly != nil {
-		return
+		return nil
 	}
 
 	project, err := model.FindProjectFromVersionID(ctx, t.Version)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "error fetching patch info - finding project",
-			"version": t.Version,
-		}))
-		return
+		return errors.Wrap(err, "finding project")
 	}
 	if project == nil {
-		grip.Warning(message.Fields{
-			"message": "error fetching patch info - project not found",
-			"version": t.Version,
-		})
-		return
+		return errors.Errorf("project not found for version '%s'", t.Version)
 	}
 
-	bv, err := project.BuildVariants.Get(t.BuildVariant)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":       "error fetching patch info - finding build variant",
-			"build_variant": t.BuildVariant,
-			"version":       t.Version,
-		}))
-		return
-	}
-
-	bvt, err := bv.Get(t.DisplayName)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":       "error fetching patch info - finding task in build variant",
-			"task":          t.DisplayName,
-			"build_variant": t.BuildVariant,
-			"version":       t.Version,
-		}))
-		return
+	bvt := project.FindTaskForVariant(t.DisplayName, t.BuildVariant)
+	if bvt == nil {
+		return nil
 	}
 
 	at.Patchable = bvt.Patchable
 	at.PatchOnly = bvt.PatchOnly
+	return nil
 }
 
 // ToService returns a service layer task using the data from the APITask.
