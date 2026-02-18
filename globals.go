@@ -499,10 +499,16 @@ const (
 	TaskGroupOtelAttribute          = "evergreen.task.task_group"
 	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
 
-	// S3 usage otel attributes
-	TaskS3UserFilePutRequestsOtelAttribute = "evergreen.task.s3_user_file_put_requests"
-	TaskS3UserFileUploadBytesOtelAttribute = "evergreen.task.s3_user_file_upload_bytes"
-	TaskS3UserFileCountOtelAttribute       = "evergreen.task.s3_user_file_count"
+	// S3 PUT cost otel attributes — task-level aggregates
+	S3PutCostTotalPutRequestsOtelAttribute = "evergreen.task.s3_put_cost.total_put_requests"
+	S3PutCostTotalUploadBytesOtelAttribute = "evergreen.task.s3_put_cost.total_upload_bytes"
+	S3PutCostTotalFileCountOtelAttribute   = "evergreen.task.s3_put_cost.total_file_count"
+	S3PutCostTotalPutCostOtelAttribute     = "evergreen.task.s3_put_cost.total_put_cost"
+
+	// S3 PUT cost otel attributes — per file cost statistics
+	S3PutCostAvgFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.avg_file_put_cost"
+	S3PutCostMaxFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.max_file_put_cost"
+	S3PutCostMinFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.min_file_put_cost"
 
 	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
