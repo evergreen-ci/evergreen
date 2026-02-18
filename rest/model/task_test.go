@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -44,7 +45,8 @@ func TestTaskBuildFromService(t *testing.T) {
 					Revision:                    utility.ToStringPtr("testRevision"),
 					ProjectId:                   utility.ToStringPtr("testProject"),
 					Priority:                    100,
-					TaskCost:                    &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
+					TaskCost:                    &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25, S3ArtifactPutCost: 0.00005},
+					S3Usage:                     &s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 10, UploadBytes: 5000, FileCount: 3}},
 					Execution:                   2,
 					Activated:                   true,
 					ActivatedBy:                 utility.ToStringPtr("testActivator"),
@@ -103,6 +105,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					Execution:                   2,
 					Priority:                    100,
 					TaskCost:                    cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
+					S3Usage:                     s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 10, UploadBytes: 5000, FileCount: 3}},
 					Activated:                   true,
 					ActivatedBy:                 "testActivator",
 					ContainerAllocated:          true,
@@ -273,6 +276,15 @@ func TestTaskBuildFromService(t *testing.T) {
 				}
 
 				So(apiTask.HasAnnotations, ShouldEqual, tc.at.HasAnnotations)
+
+				if tc.at.S3Usage == nil {
+					So(apiTask.S3Usage, ShouldBeNil)
+				} else {
+					So(apiTask.S3Usage, ShouldNotBeNil)
+					So(apiTask.S3Usage.UserFiles.PutRequests, ShouldEqual, tc.at.S3Usage.UserFiles.PutRequests)
+					So(apiTask.S3Usage.UserFiles.UploadBytes, ShouldEqual, tc.at.S3Usage.UserFiles.UploadBytes)
+					So(apiTask.S3Usage.UserFiles.FileCount, ShouldEqual, tc.at.S3Usage.UserFiles.FileCount)
+				}
 			}
 		})
 	})
