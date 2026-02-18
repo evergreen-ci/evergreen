@@ -385,9 +385,8 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.TimeTaken = NewAPIDuration(time.Since(t.StartTime))
 	}
 
-	taskCost := t.TaskCost
-	taskCost.S3ArtifactPutCost = t.S3Usage.UserFiles.PutCost
-	if !taskCost.IsZero() {
+	if !t.TaskCost.IsZero() {
+		taskCost := t.TaskCost
 		at.TaskCost = &taskCost
 	}
 
