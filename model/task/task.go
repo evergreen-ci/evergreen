@@ -2353,20 +2353,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 
-	if detail.S3Usage != nil {
-		t.S3Usage = *detail.S3Usage
-	}
-
-	// Calculate all task costs (EC2 + S3) now that we have the actual runtime
-	if err := t.UpdateTaskCost(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":   "failed to calculate task cost",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-		}))
-		// Don't fail the task finishing if cost calculation fails
-	}
-
 	grip.Debug(message.Fields{
 		"message":   "marking task finished",
 		"task_id":   t.Id,
@@ -2385,6 +2371,19 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		detail = &apimodels.TaskEndDetail{
 			Status: evergreen.TaskFailed,
 		}
+	}
+
+	if detail.S3Usage != nil {
+		t.S3Usage = *detail.S3Usage
+	}
+
+	// Calculate all task costs (EC2 + S3) now that we have the actual runtime
+	if err := t.UpdateTaskCost(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":   "failed to calculate task cost",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+		}))
 	}
 
 	// record that the task has finished, in memory and in the db
