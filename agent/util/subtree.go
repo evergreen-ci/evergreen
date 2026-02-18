@@ -29,7 +29,7 @@ const (
 )
 
 // SetNice sets the nice on the current process. This determines its relative
-// scheduling priority for host resources.
+// scheduling priority for host CPU.
 // This is only available if the current process has sufficient permissions to
 // set the nice.
 func SetNice(nice int) error {

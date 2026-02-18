@@ -424,7 +424,7 @@ func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, lo
 }
 
 // runCmdWithDefaultNice runs the given Jasper command with the default nice.
-// The agent runs with lower nice than the default so it receives resource
+// The agent runs with lower nice than the default so it receives CPU
 // prioritization, but the process itself needs to run with default nice.
 func runCmdWithDefaultNice(ctx context.Context, cmd *jasper.Command, logger client.LoggerProducer) error {
 	// This momentarily sets the nice back to the default nice to ensure the
@@ -439,8 +439,7 @@ func runCmdWithDefaultNice(ctx context.Context, cmd *jasper.Command, logger clie
 	err := cmd.Run(ctx)
 
 	// Once the child processes has started, reset the agent's nice back to the
-	// lower nice value to ensure that the agent will be prioritized for
-	// resources.
+	// lower nice value to ensure that the agent will have higher CPU priority.
 	if niceErr := agentutil.SetNice(agentutil.AgentNice); niceErr != nil {
 		logger.System().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
 	}

@@ -361,7 +361,7 @@ func (m *monitor) setupJasperConnection(ctx context.Context, retry utility.Retry
 }
 
 // allowAgentNice ensures that the Evergreen client used by the agent is able to
-// set its nice value, which is a way to control process-level resource
+// set its nice value, which is a way to control process-level CPU
 // prioritization. Only applies to Linux.
 func (m *monitor) allowAgentNice(ctx context.Context) error {
 	if runtime.GOOS != "linux" {
@@ -372,8 +372,7 @@ func (m *monitor) allowAgentNice(ctx context.Context) error {
 		"sudo",
 		"setcap",
 		// Set the cap_sys_nice setting. cap_sys_nice gives the agent's client
-		// the ability to set negative nice values (i.e. higher resource
-		// priority).
+		// the ability to set negative nice values (i.e. higher CPU priority).
 		// "p" means permitted (i.e. allow the program to set its nice).
 		// "e" means effective (i.e. the permission is active immediately).
 		"cap_sys_nice=+ep",
@@ -523,7 +522,7 @@ func (m *monitor) run(ctx context.Context) {
 
 			// This is only a warning because it's a best-effort attempt to give
 			// the agent the ability to set its nice. Controlling nice gives the
-			// agent a mechanism to tune resource prioritization, but it's not a
+			// agent a mechanism to tune CPU prioritization, but it's not a
 			// guarantee and is not required for the agent to run.
 			grip.Warning(errors.Wrap(m.allowAgentNice(ctx), "allowing agent to set nice"))
 
