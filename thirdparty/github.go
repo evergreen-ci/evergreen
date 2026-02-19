@@ -275,9 +275,10 @@ func extractPRNumberFromHeadRef(headRef string) string {
 	return parts[0]
 }
 
-// BuildGithubPRURL constructs a GitHub PR URL from org, repo, and headRef.
+// BuildGithubHeadPRURL constructs the GitHub PR URL for the HEAD PR from a merge queue head ref.
+// For merge queue entries, this returns the HEAD PR URL, not all PRs in the merge group.
 // Returns empty string if the PR number cannot be extracted from headRef.
-func BuildGithubPRURL(org, repo, headRef string) string {
+func BuildGithubHeadPRURL(org, repo, headRef string) string {
 	prNumber := extractPRNumberFromHeadRef(headRef)
 	if prNumber == "" {
 		return ""

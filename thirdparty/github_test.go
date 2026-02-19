@@ -607,7 +607,7 @@ func TestExtractPRNumberFromHeadRef(t *testing.T) {
 	}
 }
 
-func TestBuildGithubPRURL(t *testing.T) {
+func TestBuildGithubHeadPRURL(t *testing.T) {
 	for tName, tCase := range map[string]struct {
 		org      string
 		repo     string
@@ -646,7 +646,7 @@ func TestBuildGithubPRURL(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			result := BuildGithubPRURL(tCase.org, tCase.repo, tCase.headRef)
+			result := BuildGithubHeadPRURL(tCase.org, tCase.repo, tCase.headRef)
 			assert.Equal(t, tCase.expected, result)
 		})
 	}

@@ -1106,14 +1106,14 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		}))
 	}()
 
-	githubPRURL := thirdparty.BuildGithubPRURL(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadBranch)
+	githubHeadPRURL := thirdparty.BuildGithubHeadPRURL(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadBranch)
 
 	baseAttrs := patch.BuildMergeQueueSpanAttributes(
 		patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo,
 		patchDoc.GithubMergeData.BaseBranch,
 		patchDoc.GithubMergeData.HeadSHA,
-		githubPRURL,
+		githubHeadPRURL,
 	)
 	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, patchDoc.Id.Hex()))
 	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchProcessingSpan,

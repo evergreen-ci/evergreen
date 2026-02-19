@@ -14,9 +14,9 @@ var tracer = otel.GetTracerProvider().Tracer(packageName)
 
 // OpenTelemetry span names for merge queue lifecycle events.
 const (
-	MergeQueueIntentCreatedSpan    = "merge_queue.intent_created"
-	MergeQueuePatchProcessingSpan  = "merge_queue.patch_processing"
-	MergeQueuePatchCompletedSpan   = "merge_queue.patch_completed"
+	MergeQueueIntentCreatedSpan   = "merge_queue.intent_created"
+	MergeQueuePatchProcessingSpan = "merge_queue.patch_processing"
+	MergeQueuePatchCompletedSpan  = "merge_queue.patch_completed"
 )
 
 // OpenTelemetry attribute keys for merge queue metrics.
@@ -28,7 +28,7 @@ const (
 	MergeQueueAttrHeadSHA               = "evergreen.merge_queue.head_sha"
 	MergeQueueAttrPatchID               = "evergreen.merge_queue.patch_id"
 	MergeQueueAttrProjectID             = "evergreen.merge_queue.project_id"
-	MergeQueueAttrGithubPRURL           = "evergreen.merge_queue.github_pr_url"
+	MergeQueueAttrGithubHeadPRURL       = "evergreen.merge_queue.github_head_pr_url"
 	MergeQueueAttrMsgID                 = "evergreen.merge_queue.msg_id"
 	MergeQueueAttrTimeInQueueMs         = "evergreen.merge_queue.time_in_queue_ms"
 	MergeQueueAttrTimeToFirstTaskMs     = "evergreen.merge_queue.time_to_first_task_ms"
@@ -45,17 +45,17 @@ const (
 	MergeQueueAttrSlowestTaskID         = "evergreen.merge_queue.slowest_task_id"
 	MergeQueueAttrSlowestTaskName       = "evergreen.merge_queue.slowest_task_name"
 	MergeQueueAttrSlowestTaskDurationMs = "evergreen.merge_queue.slowest_task_duration_ms"
-	MergeQueueAttrSlowestTaskVariant    = "evergreen.merge_queue.slowest_variant"
+	MergeQueueAttrSlowestTaskVariant    = "evergreen.merge_queue.slowest_task_variant"
 )
 
 // BuildMergeQueueSpanAttributes creates a slice of common trace attributes for merge queue operations.
-func BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubPRURL string) []attribute.KeyValue {
+func BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubHeadPRURL string) []attribute.KeyValue {
 	return []attribute.KeyValue{
 		attribute.String(MergeQueueAttrOrg, org),
 		attribute.String(MergeQueueAttrRepo, repo),
 		attribute.String(MergeQueueAttrQueueName, baseBranch),
 		attribute.String(MergeQueueAttrBaseBranch, baseBranch),
 		attribute.String(MergeQueueAttrHeadSHA, headSHA),
-		attribute.String(MergeQueueAttrGithubPRURL, githubPRURL),
+		attribute.String(MergeQueueAttrGithubHeadPRURL, githubHeadPRURL),
 	}
 }

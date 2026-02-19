@@ -270,7 +270,7 @@ Merge queue lifecycle events can be monitored in Honeycomb.
 
 Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 
-- `merge_queue.intent_created` - When a PR is added to the GitHub merge queue
+- `merge_queue.intent_created` - When a merge queue patch is created
 - `merge_queue.patch_processing` - When patch processing begins
 - `merge_queue.patch_completed` - When a merge queue version completes. Status is determined from removal reason if the patch was removed from the queue by GitHub, otherwise from the final version status.
 
@@ -307,14 +307,14 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `evergreen.merge_queue.variants` - A comma-separated list of build variants
 - `evergreen.merge_queue.slowest_task_id` - The ID of the slowest task
 - `evergreen.merge_queue.slowest_task_name` - The name of the slowest task
-- `evergreen.merge_queue.slowest_variant` - The variant of the slowest task
+- `evergreen.merge_queue.slowest_task_variant` - The variant of the slowest task
 
 **Debugging Attributes:**
 
 - `evergreen.merge_queue.patch_id` - The Evergreen patch ID
 - `evergreen.merge_queue.head_sha` - The SHA of the merge queue head
 - `evergreen.merge_queue.msg_id` - The GitHub webhook message ID (available in intent_created spans)
-- `evergreen.merge_queue.github_pr_url` - The GitHub PR URL for the HEAD PR of the merge queue entry. When concurrency is enabled (the default), a merge queue entry may contain multiple PRs tested together, but this URL only points to the HEAD PR of that merge group.
+- `evergreen.merge_queue.github_head_pr_url` - The GitHub PR URL for the HEAD PR of the merge queue entry. When concurrency is enabled (the default), a merge queue entry may contain multiple PRs tested together, but this URL only points to the HEAD PR of that merge group.
 
 ### Sample Honeycomb Queries
 

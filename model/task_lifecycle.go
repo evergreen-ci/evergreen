@@ -1842,7 +1842,7 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		return nil
 	}
 
-	githubPRURL := thirdparty.BuildGithubPRURL(p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.HeadBranch)
+	githubHeadPRURL := thirdparty.BuildGithubHeadPRURL(p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.HeadBranch)
 
 	projectRef, err := FindBranchProjectRef(ctx, p.Project)
 	if err != nil {
@@ -1854,7 +1854,7 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		p.GithubMergeData.Repo,
 		p.GithubMergeData.BaseBranch,
 		p.GithubMergeData.HeadSHA,
-		githubPRURL,
+		githubHeadPRURL,
 	)
 	baseAttrs = append(baseAttrs,
 		attribute.String(patch.MergeQueueAttrPatchID, p.Id.Hex()),

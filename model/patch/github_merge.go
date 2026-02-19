@@ -116,14 +116,14 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 	}
 
 	baseBranch := extractBaseBranchFromHeadRef(mg.GetMergeGroup().GetHeadRef())
-	githubPRURL := thirdparty.BuildGithubPRURL(mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadRef())
+	githubHeadPRURL := thirdparty.BuildGithubHeadPRURL(mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadRef())
 
 	baseAttrs := BuildMergeQueueSpanAttributes(
 		mg.GetOrg().GetLogin(),
 		mg.GetRepo().GetName(),
 		baseBranch,
 		mg.GetMergeGroup().GetHeadSHA(),
-		githubPRURL,
+		githubHeadPRURL,
 	)
 	baseAttrs = append(baseAttrs, attribute.String(MergeQueueAttrMsgID, msgDeliveryID))
 	ctx, span := tracer.Start(ctx, MergeQueueIntentCreatedSpan,
