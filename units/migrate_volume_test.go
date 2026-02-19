@@ -241,7 +241,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.EventCollection, distro.Collection, dispatcher.Collection))
+			assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.EventCollection, distro.Collection))
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 			tctx = testutil.TestSpan(tctx, t)
