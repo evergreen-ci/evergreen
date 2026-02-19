@@ -1,0 +1,8 @@
+{
+  "admin": [
+    {
+      "_id": "service_flags",
+      "task_dispatch_disabled": true
+    }
+  ]
+}
