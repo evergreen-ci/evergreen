@@ -161,7 +161,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	}
 	if so.IsDebug && settings.DebugSpawnHosts.SetupScript != "" {
 		if so.ProvisionOptions.SetupScript != "" {
-			so.ProvisionOptions.SetupScript = settings.DebugSpawnHosts.SetupScript + "\n" + so.ProvisionOptions.SetupScript
+			so.ProvisionOptions.SetupScript = fmt.Sprintf("%s\n%s", so.ProvisionOptions.SetupScript, so.ProvisionOptions.SetupScript)
 		} else {
 			so.ProvisionOptions.SetupScript = settings.DebugSpawnHosts.SetupScript
 		}
