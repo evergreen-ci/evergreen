@@ -2444,7 +2444,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 
 	// Filter on task name if it exists
 	nonEmptyTaskNames := utility.FilterSlice(opts.TaskNames, func(s string) bool { return s != "" })
-	if len(nonEmptyTaskNames) > 0 {
+	hasTaskNameFilter := len(nonEmptyTaskNames) > 0
+	if hasTaskNameFilter {
 		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
@@ -2458,14 +2459,31 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	if !opts.IncludeExecutionTasks {
-		pipeline = append(pipeline, bson.M{
+		// When filtering by task name, include execution tasks that match the filter
+		// in addition to display tasks and tasks that aren't part of a display task.
+		// This allows users to find execution tasks by name even when they're grouped
+		// under a display task.
+		executionTaskFilter := bson.M{
 			"$match": bson.M{
 				"$or": []bson.M{
 					{DisplayTaskIdKey: ""},
 					{DisplayOnlyKey: true},
 				},
 			},
-		})
+		}
+		if hasTaskNameFilter {
+			// If there's a task name filter, also include execution tasks that match the filter
+			executionTaskFilter = bson.M{
+				"$match": bson.M{
+					"$or": []bson.M{
+						{DisplayTaskIdKey: ""},
+						{DisplayOnlyKey: true},
+						{DisplayNameKey: bson.M{"$regex": strings.Join(nonEmptyTaskNames, "|"), "$options": "i"}},
+					},
+				},
+			}
+		}
+		pipeline = append(pipeline, executionTaskFilter)
 	}
 	// Filter on Build Variants matching on display name or variant name if it exists
 	nonEmptyVariants := utility.FilterSlice(opts.Variants, func(s string) bool { return s != "" })
