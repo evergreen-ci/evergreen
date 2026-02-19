@@ -807,3 +807,52 @@ buildvariants:
 	require.NotNil(t, apiTask.PatchOnly)
 	assert.True(t, *apiTask.PatchOnly)
 }
+
+func TestTaskGetHandlerPatchInfoTaskGroup(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection))
+	require.NoError(t, db.CreateCollections(serviceModel.ParserProjectCollection))
+
+	version := &serviceModel.Version{
+		Id:         "test_version_tg",
+		Identifier: "test_project",
+	}
+	require.NoError(t, version.Insert(ctx))
+
+	projectYAML := `
+tasks:
+  - name: task_in_group
+    patchable: false
+task_groups:
+  - name: my_task_group
+    tasks:
+      - task_in_group
+buildvariants:
+  - name: my_variant
+    tasks:
+      - name: my_task_group
+`
+	parserProject := &serviceModel.ParserProject{}
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(projectYAML), parserProject))
+	parserProject.Id = version.Id
+	require.NoError(t, parserProject.Insert(ctx))
+
+	testTask := task.Task{
+		Id:           "test_task_tg",
+		Version:      version.Id,
+		BuildVariant: "my_variant",
+		DisplayName:  "task_in_group",
+		Status:       evergreen.TaskSucceeded,
+	}
+	require.NoError(t, testTask.Insert(ctx))
+
+	handler := taskGetHandler{taskID: testTask.Id}
+	resp := handler.Run(ctx)
+
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+
+	apiTask := resp.Data().(*model.APITask)
+	require.NotNil(t, apiTask.Patchable)
+	assert.False(t, *apiTask.Patchable)
+}
