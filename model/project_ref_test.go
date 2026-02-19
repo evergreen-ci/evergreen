@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
@@ -24,7 +23,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
-	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
