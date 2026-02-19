@@ -69,7 +69,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 				assert.NoError(t, err, "file should still exist on non-MacOS platforms")
 			}
 		},
-		"SetsAgentNice": func(ctx context.Context, t *testing.T, m *monitor) {
+		"AllowsAgentToSetNice": func(ctx context.Context, t *testing.T, m *monitor) {
 			if runtime.GOOS != "linux" {
 				t.Skip("nice only applies to Linux")
 			}

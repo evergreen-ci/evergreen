@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -259,26 +258,16 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 		ictx = ctx
 	}
 
-	// This momentarily sets the nice back to the default nice to ensure the
-	// process that's about to be created and all of its children processes use
-	// the default nice (child processes inherit the nice of the parent
-	// process). The agent will have no special nice until it's reset but that
-	// should be a brief window.
-	// kim: TODO: figure out why lower agent nice is not appearing in the ps
-	// output, even though its priority value is changing after SetNice.
-	logger.Execution().Info("kim: starting cmd, resetting nice")
+	// This momentarily sets the nice for this thread back to the default nice
+	// to ensure the process that's about to be created and all of its children
+	// processes use the default nice (child processes inherit the nice of the
+	// parent process). This thread will have no special nice until it's reset
+	// but that should be a brief window.
+	// Passing 0 as the PID refers to the current thread.
 	if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
 		logger.Execution().Warningf("Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
 	}
-	// kim: TODO: remove
-	priority, err := syscall.Getpriority(syscall.PRIO_PROCESS, 0)
-	if err != nil {
-		logger.Execution().Errorf("kim: could not get agent priority: %s", err.Error())
-	} else {
-		logger.Execution().Debugf("kim: Agent priority is currently %d.", priority)
-	}
 
-	// kim: TODO: move nice setting here.
 	proc, err := jpm.CreateProcess(ictx, opts)
 	if err != nil {
 		if cancel != nil {
@@ -288,24 +277,12 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 		return proc, errors.WithStack(err)
 	}
 
-	logger.Execution().Info("kim: finished cmd, setting nice lower")
 	// Once the child processes has started, reset the agent's nice back to the
-	// lower nice value to ensure that the agent will have higher CPU priority.
+	// lower nice value to ensure that this agent thread will have its original
+	// CPU priority.
 	if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
 		logger.Execution().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
 	}
-	// kim: TODO: remove
-	priority, err = syscall.Getpriority(syscall.PRIO_PROCESS, 0)
-	if err != nil {
-		logger.Execution().Errorf("kim: could not get agent priority: %s", err.Error())
-	} else {
-		logger.Execution().Debugf("kim: Agent priority is currently %d.", priority)
-	}
-
-	// kim: NOTE: may have to lower agent nice here instead of in
-	// runCmdWithDefaultNice to ensure that the process has started but
-	// the foreground waiting has not started yet (when handing control
-	// back to jasper.Command).
 
 	if cancel != nil {
 		grip.Warning(message.WrapError(proc.RegisterTrigger(ctx, func(info jasper.ProcessInfo) {
