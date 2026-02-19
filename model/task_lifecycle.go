@@ -760,7 +760,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	t.Details = detailsCopy
-
 	if utility.IsZeroTime(t.StartTime) {
 		grip.Warning(message.Fields{
 			"message":      "task is missing start time",
@@ -790,17 +789,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, costAttrs)
 		span.SetAttributes(costAttrs...)
-	}
-
-	if !t.S3Usage.IsZero() {
-		s3Attrs := []attribute.KeyValue{
-			attribute.Int(evergreen.S3PutCostTotalPutRequestsOtelAttribute, t.S3Usage.UserFiles.PutRequests),
-			attribute.Int64(evergreen.S3PutCostTotalUploadBytesOtelAttribute, t.S3Usage.UserFiles.UploadBytes),
-			attribute.Int(evergreen.S3PutCostTotalFileCountOtelAttribute, t.S3Usage.UserFiles.FileCount),
-			attribute.Float64(evergreen.S3PutCostTotalPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
-		}
-		ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
-		span.SetAttributes(s3Attrs...)
 	}
 
 	// If the error is from marking the task as finished, we want to

@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -426,18 +425,18 @@ func TestSignedUrlVisibility(t *testing.T) {
 		file2Info, err := os.Stat(file2)
 		require.NoError(t, err)
 
-		uploadedFiles := []s3usage.FileMetrics{
+		uploadedFiles := []task.FileMetrics{
 			{
-				LocalPath:     file1,
-				RemotePath:    remoteFile,
-				FileSizeBytes: file1Info.Size(),
-				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+				LocalPath:   file1,
+				RemotePath:  remoteFile,
+				FileSize:    file1Info.Size(),
+				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
 			},
 			{
-				LocalPath:     file2,
-				RemotePath:    remoteFile,
-				FileSizeBytes: file2Info.Size(),
-				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+				LocalPath:   file2,
+				RemotePath:  remoteFile,
+				FileSize:    file2Info.Size(),
+				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
 			},
 		}
 
@@ -497,18 +496,18 @@ func TestContentTypeSaved(t *testing.T) {
 	file2Info, err := os.Stat(file2)
 	require.NoError(t, err)
 
-	uploadedFiles := []s3usage.FileMetrics{
+	uploadedFiles := []task.FileMetrics{
 		{
-			LocalPath:     file1,
-			RemotePath:    remoteFile,
-			FileSizeBytes: file1Info.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+			LocalPath:   file1,
+			RemotePath:  remoteFile,
+			FileSize:    file1Info.Size(),
+			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
 		},
 		{
-			LocalPath:     file2,
-			RemotePath:    remoteFile,
-			FileSizeBytes: file2Info.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+			LocalPath:   file2,
+			RemotePath:  remoteFile,
+			FileSize:    file2Info.Size(),
+			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
 		},
 	}
 
@@ -571,7 +570,6 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				Project:      model.Project{},
 				WorkDir:      dir,
 				BuildVariant: model.BuildVariant{},
-				S3Usage:      &s3usage.S3Usage{},
 			}
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
@@ -633,7 +631,6 @@ func TestFileUploadNaming(t *testing.T) {
 		Project:      model.Project{},
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
-		S3Usage:      &s3usage.S3Usage{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -714,7 +711,6 @@ func TestPreservePath(t *testing.T) {
 		Project:      model.Project{},
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
-		S3Usage:      &s3usage.S3Usage{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -805,7 +801,6 @@ func TestS3PutSkipExisting(t *testing.T) {
 			},
 		},
 		WorkDir: temproot,
-		S3Usage: &s3usage.S3Usage{},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
