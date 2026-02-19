@@ -285,6 +285,9 @@ func TestTaskBuildFromService(t *testing.T) {
 					So(apiTask.S3Usage.UserFiles.UploadBytes, ShouldEqual, tc.at.S3Usage.UserFiles.UploadBytes)
 					So(apiTask.S3Usage.UserFiles.FileCount, ShouldEqual, tc.at.S3Usage.UserFiles.FileCount)
 				}
+
+				So(apiTask.Patchable, ShouldBeNil)
+				So(apiTask.PatchOnly, ShouldBeNil)
 			}
 		})
 	})
