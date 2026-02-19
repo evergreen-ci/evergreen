@@ -516,6 +516,10 @@ const (
 	S3PutCostMaxFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.max_file_put_cost"
 	S3PutCostMinFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.min_file_put_cost"
 
+	// S3 log upload otel attributes
+	TaskS3LogUploadPutRequestsOtelAttribute = "evergreen.task.s3_put_cost.log_upload_put_requests"
+	TaskS3LogUploadBytesOtelAttribute       = "evergreen.task.s3_put_cost.log_upload_bytes"
+
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"

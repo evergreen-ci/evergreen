@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -93,8 +94,8 @@ func NewTaskLogSender(ctx context.Context, task *Task, senderOpts EvergreenSende
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
-	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
-		ctx = log.WithS3Usage(ctx, &task.S3Usage)
+	senderOpts.S3Usage = &task.S3Usage
+	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) (int64, error) {
 		return svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines)
 	}
 
@@ -123,8 +124,17 @@ func AppendTaskLogs(ctx context.Context, task *Task, logType TaskLogType, lines 
 		return errors.Wrap(err, "getting log service")
 	}
 
-	ctx = log.WithS3Usage(ctx, &task.S3Usage)
-	return svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines)
+	uploadBytes, err := svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines)
+	if err != nil {
+		return err
+	}
+
+	if uploadBytes > 0 {
+		putRequests := s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeSmall, s3usage.S3UploadMethodPut, uploadBytes)
+		task.S3Usage.IncrementLogFiles(putRequests, uploadBytes)
+	}
+
+	return nil
 }
 
 // getTaskLogs returns task logs belonging to the specified task run.
