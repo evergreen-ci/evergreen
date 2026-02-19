@@ -98,6 +98,36 @@ func (c *communicatorImpl) GetSpawnHost(ctx context.Context, hostId string) (*mo
 	return &spawnHostResp, nil
 }
 
+// GetProject fetches project settings by project ID from the REST API.
+func (c *communicatorImpl) GetProject(ctx context.Context, projectID string) (*model.APIProjectRef, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("projects/%s", projectID),
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get project '%s'", projectID)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting project '%s'", projectID)
+	}
+
+	projectResp := model.APIProjectRef{}
+	if err = utility.ReadJSON(resp.Body, &projectResp); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+	return &projectResp, nil
+}
+
 // ModifySpawnHost will start a job that updates the specified user-spawned host
 // with the modifications passed as a parameter.
 func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {

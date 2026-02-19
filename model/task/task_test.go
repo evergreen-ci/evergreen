@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -5465,6 +5466,7 @@ func TestCalculateTaskCost(t *testing.T) {
 	expectedAdjusted := CalculateAdjustedTaskCost(runtimeSeconds, distroCost, financeConfig)
 	assert.Equal(t, expectedOnDemand, taskCost.OnDemandEC2Cost)
 	assert.Equal(t, expectedAdjusted, taskCost.AdjustedEC2Cost)
+	assert.Equal(t, float64(0), taskCost.S3ArtifactPutCost)
 	assert.False(t, taskCost.IsZero())
 }
 
@@ -5477,4 +5479,82 @@ func TestTaskCostIsZero(t *testing.T) {
 	assert.False(t, nonZeroAdjusted.IsZero())
 	nonZeroBoth := cost.Cost{OnDemandEC2Cost: 0.1, AdjustedEC2Cost: 0.2}
 	assert.False(t, nonZeroBoth.IsZero())
+	nonZeroS3 := cost.Cost{S3ArtifactPutCost: 0.00005}
+	assert.False(t, nonZeroS3.IsZero())
+}
+
+func TestUpdateTaskCost(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t.Run("SkipsUpdateWhenTimeTakenIsZero", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		task := Task{
+			Id:        "no_time",
+			TimeTaken: 0,
+			S3Usage:   s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 10}},
+		}
+		require.NoError(t, task.Insert(ctx))
+
+		require.NoError(t, task.UpdateTaskCost(ctx))
+		assert.True(t, task.TaskCost.IsZero())
+	})
+
+	t.Run("CalculatesS3CostWhenPutRequestsExist", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		task := Task{
+			Id:        "s3_cost",
+			TimeTaken: time.Hour,
+			S3Usage:   s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 1000}},
+		}
+		require.NoError(t, task.Insert(ctx))
+
+		require.NoError(t, task.UpdateTaskCost(ctx))
+		assert.True(t, task.TaskCost.S3ArtifactPutCost > 0)
+	})
+
+	t.Run("CalculatesEC2AndS3CostTogether", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
+
+		costConfig := evergreen.CostConfig{
+			FinanceFormula:      0.6,
+			SavingsPlanDiscount: 0.5,
+			OnDemandDiscount:    0.04,
+		}
+		require.NoError(t, costConfig.Set(ctx))
+
+		d := distro.Distro{
+			Id: "test_distro",
+			CostData: distro.CostData{
+				OnDemandRate:    0.20,
+				SavingsPlanRate: 0.10,
+			},
+		}
+		require.NoError(t, d.Insert(ctx))
+
+		task := Task{
+			Id:        "both_costs",
+			DistroId:  "test_distro",
+			TimeTaken: time.Hour,
+			S3Usage:   s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 1000}},
+		}
+		require.NoError(t, task.Insert(ctx))
+
+		require.NoError(t, task.UpdateTaskCost(ctx))
+		assert.True(t, task.TaskCost.OnDemandEC2Cost > 0)
+		assert.True(t, task.TaskCost.AdjustedEC2Cost > 0)
+		assert.True(t, task.TaskCost.S3ArtifactPutCost > 0)
+	})
+
+	t.Run("SkipsUpdateWhenNoCostsCalculated", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		task := Task{
+			Id:        "no_cost",
+			TimeTaken: time.Hour,
+		}
+		require.NoError(t, task.Insert(ctx))
+
+		require.NoError(t, task.UpdateTaskCost(ctx))
+		assert.True(t, task.TaskCost.IsZero())
+	})
 }

@@ -874,7 +874,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	}
 
 	// Only allow debug spawn host if the host is being spawned by a task.
-	if utility.FromBoolPtr(spawnHostInput.IsDebug) && !utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
+	if utility.FromBoolPtr(spawnHostInput.IsDebug) && t == nil {
 		return nil, InputValidationError.Send(ctx, "Debug spawn hosts can only be spawned by a task.")
 	}
 	options.IsDebug = utility.FromBoolPtr(spawnHostInput.IsDebug)
