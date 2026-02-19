@@ -127,10 +127,8 @@
       "cache_stats_job_disabled": false,
       "agent_start_disabled": false,
       "host_init_disabled": false,
-      "pod_init_disabled": false,
       "cache_stats_endpoint_disabled": false,
       "host_allocator_disabled": false,
-      "pod_allocator_disabled": false,
       "task_reliability_disabled": false,
       "background_reauth_disabled": false,
       "background_cleanup_disabled": false,
@@ -148,12 +146,6 @@
       "ses": { "sender_address": "evg-sender@email.com" },
       "buffer_target_per_interval": 0,
       "buffer_interval_seconds": 0
-    },
-    {
-      "_id": "pod_lifecycle",
-      "max_parallel_pod_requests": 0,
-      "max_pod_definition_cleanup_rate": 0,
-      "max_secret_cleanup_rate": 0
     },
     {
       "_id": "hostinit",

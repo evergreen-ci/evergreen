@@ -11,13 +11,11 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -3155,7 +3153,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3174,7 +3172,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble,
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble,
 				ValidationErrors{})
 		})
 		Convey("an error should be thrown if a task references a distro has a warning", func() {
@@ -3191,7 +3189,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55' with the following admin-defined warning(s): 55 is not the best number")
@@ -3211,7 +3209,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55-alias' with the following admin-defined warning: and this is not the best alias")
@@ -3226,7 +3224,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3247,7 +3245,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3262,7 +3260,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3276,10 +3274,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			containerNameMap := map[string]bool{
-				"rhel55": true,
-			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 2)
 			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
@@ -3295,10 +3290,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			containerNameMap := map[string]bool{
-				"c1": true,
-			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
@@ -3314,7 +3306,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -3327,7 +3319,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3351,7 +3343,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3365,7 +3357,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3398,7 +3390,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("warning should be thrown if single task distro is used"+
@@ -3422,7 +3414,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "project not specified, skipping single task distro validation")
@@ -3454,7 +3446,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "task 'allowedSingleTask' in buildvariant 'bv' runs on a single task distro 'singleTaskDistro' and cannot use the generate tasks")
@@ -3480,7 +3472,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldResemble, ValidationErrors{})
 		})
 
@@ -3504,7 +3496,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "display task 'displayTask' in buildvariant 'bv' references a non-existent execution task 'nonExistentTask'")
@@ -6205,7 +6197,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, []string{}, evergreen.ProjectTasksPair{}, nil)
+			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{}, []string{}, evergreen.ProjectTasksPair{}, nil)
 			if testCase.expectErr {
 				assert.Equal(t, testCase.expectedErrMsg, errs[0].Message)
 			} else {

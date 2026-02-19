@@ -82,12 +82,6 @@
       "buffer_interval_seconds": 30
     },
     {
-      "_id": "pod_lifecycle",
-      "max_parallel_pod_requests": 100,
-      "max_pod_definition_cleanup_rate": 0,
-      "max_secret_cleanup_rate": 0
-    },
-    {
       "_id": "hostinit",
       "cloud_batch_size": 100,
       "host_throttle": 32,

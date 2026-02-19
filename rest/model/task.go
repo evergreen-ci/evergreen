@@ -60,9 +60,7 @@ type APITask struct {
 	// Identifier of the build that this task is part of
 	BuildId *string `json:"build_id"`
 	// Identifier of the distro that this task runs on
-	DistroId      *string             `json:"distro_id"`
-	Container     *string             `json:"container"`
-	ContainerOpts APIContainerOptions `json:"container_options"`
+	DistroId *string `json:"distro_id"`
 	// Name of the buildvariant that this task runs on
 	BuildVariant            *string `json:"build_variant"`
 	BuildVariantDisplayName *string `json:"build_variant_display_name"`
@@ -339,7 +337,6 @@ func (at *APITask) buildTask(t *task.Task) error {
 		ContainerAllocationAttempts: t.ContainerAllocationAttempts,
 		BuildId:                     utility.ToStringPtr(t.BuildId),
 		DistroId:                    utility.ToStringPtr(t.DistroId),
-		Container:                   utility.ToStringPtr(t.Container),
 		BuildVariant:                utility.ToStringPtr(t.BuildVariant),
 		BuildVariantDisplayName:     utility.ToStringPtr(t.BuildVariantDisplayName),
 		DisplayName:                 utility.ToStringPtr(t.DisplayName),
@@ -373,8 +370,6 @@ func (at *APITask) buildTask(t *task.Task) error {
 		HasAnnotations:       t.HasAnnotations,
 		TestSelectionEnabled: t.TestSelectionEnabled,
 	}
-
-	at.ContainerOpts.BuildFromService(t.ContainerOpts)
 
 	if t.BaseTask.Id != "" {
 		at.BaseTask = APIBaseTaskInfo{
@@ -588,8 +583,6 @@ func (at *APITask) ToService() (*task.Task, error) {
 		ContainerAllocationAttempts: at.ContainerAllocationAttempts,
 		BuildId:                     utility.FromStringPtr(at.BuildId),
 		DistroId:                    utility.FromStringPtr(at.DistroId),
-		Container:                   utility.FromStringPtr(at.Container),
-		ContainerOpts:               at.ContainerOpts.ToService(),
 		BuildVariant:                utility.FromStringPtr(at.BuildVariant),
 		BuildVariantDisplayName:     utility.FromStringPtr(at.BuildVariantDisplayName),
 		DisplayName:                 utility.FromStringPtr(at.DisplayName),

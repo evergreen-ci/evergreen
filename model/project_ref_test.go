@@ -3593,40 +3593,6 @@ func TestSetRepotrackerError(t *testing.T) {
 	})
 }
 
-func TestSetContainerSecrets(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(ProjectRefCollection))
-	}()
-	pRef := ProjectRef{
-		Id:               "id",
-		Identifier:       "identifier",
-		ContainerSecrets: []ContainerSecret{{Name: "secret"}},
-	}
-	require.NoError(t, pRef.Insert(t.Context()))
-	t.Run("OverwritesContainerSecrets", func(t *testing.T) {
-		secrets := []ContainerSecret{{
-			Name:         "new_secret",
-			Type:         ContainerSecretPodSecret,
-			ExternalName: "external_name",
-			ExternalID:   "external_id",
-		}}
-		require.NoError(t, pRef.SetContainerSecrets(t.Context(), secrets))
-		dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Identifier)
-		require.NoError(t, err)
-		require.NotZero(t, dbProjRef)
-		require.NotZero(t, dbProjRef.ContainerSecrets)
-		assert.Equal(t, secrets, dbProjRef.ContainerSecrets)
-	})
-	t.Run("ClearsContainerSecrets", func(t *testing.T) {
-		require.NoError(t, pRef.SetContainerSecrets(t.Context(), nil))
-		dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Identifier)
-		require.NoError(t, err)
-		require.NotZero(t, dbProjRef)
-		assert.Empty(t, dbProjRef.RepotrackerError)
-	})
-}
-
 func TestGetActivationTimeForVariant(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection))

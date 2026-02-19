@@ -9,8 +9,8 @@ packages += model-commitqueue model-cache model-githubapp model-hoststat model-c
 packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
 packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil model-testresult-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
-lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint thirdparty-clients-fws
-testOnlyPackages := service-graphql smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
+lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-agentmonitor smoke-internal-endpoint thirdparty-clients-fws
+testOnlyPackages := service-graphql smoke-internal-host smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
 orgName := evergreen-ci
 orgPath := github.com/$(orgName)
 projectPath := $(orgPath)/$(name)
@@ -154,7 +154,6 @@ set-smoke-vars:$(buildDir)/.load-smoke-data $(buildDir)/set-project-var $(buildD
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET_ACCESS_KEY)
 	@$(buildDir)/set-project-var -dbName mci_smoke -key aws_token -value $(AWS_SESSION_TOKEN)
 	@$(buildDir)/set-var -dbName=mci_smoke -collection=hosts -id=localhost -key=agent_revision -value=$(agentVersion)
-	@$(buildDir)/set-var -dbName=mci_smoke -collection=pods -id=localhost -key=agent_version -value=$(agentVersion)
 
 # set-smoke-git-config is necessary for the smoke test to submit a manual patch because the patch command uses git
 # metadata.

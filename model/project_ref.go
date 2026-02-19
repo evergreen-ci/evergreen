@@ -3241,22 +3241,6 @@ func (t *TriggerDefinition) Validate(ctx context.Context, downstreamProject stri
 	return nil
 }
 
-// Validate that essential ContainerSystem fields are properly defined and no data contradictions exist.
-func (c ContainerSystem) Validate() error {
-	catcher := grip.NewSimpleCatcher()
-	if c.OperatingSystem != "" {
-		catcher.Add(c.OperatingSystem.Validate())
-	}
-	if c.CPUArchitecture != "" {
-		catcher.Add(c.CPUArchitecture.Validate())
-	}
-	if c.OperatingSystem == evergreen.WindowsOS {
-		catcher.Add(c.WindowsVersion.Validate())
-	}
-	catcher.NewWhen(c.OperatingSystem == evergreen.LinuxOS && c.WindowsVersion != "", "cannot specify windows version when OS is linux")
-	return catcher.Resolve()
-}
-
 var validTriggerStatuses = []string{"", AllStatuses, evergreen.VersionSucceeded, evergreen.VersionFailed}
 
 func ValidateTriggerDefinition(ctx context.Context, definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {

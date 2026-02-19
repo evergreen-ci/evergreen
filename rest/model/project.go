@@ -884,14 +884,6 @@ func (p *APIProjectRef) BuildFromService(ctx context.Context, projectRef model.P
 	workstationConfig.BuildFromService(projectRef.WorkstationConfig)
 	p.WorkstationConfig = workstationConfig
 
-	for idx, secret := range projectRef.ContainerSecrets {
-		var apiSecret APIContainerSecret
-		if err := apiSecret.BuildFromService(secret); err != nil {
-			return errors.Wrapf(err, "converting container secret at index %d to service model", idx)
-		}
-		p.ContainerSecrets = append(p.ContainerSecrets, apiSecret)
-	}
-
 	return nil
 }
 

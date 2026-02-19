@@ -54,8 +54,6 @@
               "jwtTokenForCLIDisabled": true,
               "largeParserProjectsDisabled": true,
               "monitorDisabled": true,
-              "podAllocatorDisabled": true,
-              "podInitDisabled": true,
               "releaseModeDisabled": true,
               "repotrackerDisabled": true,
               "schedulerDisabled": true,
@@ -66,7 +64,6 @@
               "taskDispatchDisabled": true,
               "taskLoggingDisabled": true,
               "taskReliabilityDisabled": true,
-              "unrecognizedPodCleanupDisabled": true,
               "useMergeQueuePathFilteringDisabled": true,
               "webhookNotificationsDisabled": true
             }
@@ -108,11 +105,6 @@
               "maxConcurrentRequests": 1,
               "maxRepoRevisionsToSearch": 1,
               "numNewRepoRevisionsToFetch": 1
-            },
-            "podLifecycle": {
-              "maxParallelPodRequests": 1,
-              "maxPodDefinitionCleanupRate": 1,
-              "maxSecretCleanupRate": 1
             },
             "scheduler": {
               "acceptableHostIdleTimeSeconds": 1,

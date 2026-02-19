@@ -139,9 +139,6 @@ const (
 	// TaskDescriptionResultsFailed indicates that a task failed because the
 	// test results contained a failure.
 	TaskDescriptionResultsFailed = "test results contained failing test"
-	// TaskDescriptionContainerUnallocatable indicates that the reason a
-	// container task failed is because it cannot be allocated a container.
-	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"
 	// TaskDescriptionAborted indicates that the reason a task failed is specifically
 	// because it was manually aborted.
 	TaskDescriptionAborted = "aborted"

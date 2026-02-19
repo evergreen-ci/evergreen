@@ -390,18 +390,6 @@ type Permissions struct {
 	UserID               string              `json:"userId"`
 }
 
-type PodLifecycleConfig struct {
-	MaxParallelPodRequests      *int `json:"maxParallelPodRequests,omitempty"`
-	MaxPodDefinitionCleanupRate *int `json:"maxPodDefinitionCleanupRate,omitempty"`
-	MaxSecretCleanupRate        *int `json:"maxSecretCleanupRate,omitempty"`
-}
-
-type PodLifecycleConfigInput struct {
-	MaxParallelPodRequests      int `json:"maxParallelPodRequests"`
-	MaxPodDefinitionCleanupRate int `json:"maxPodDefinitionCleanupRate"`
-	MaxSecretCleanupRate        int `json:"maxSecretCleanupRate"`
-}
-
 type ProjectBuildVariant struct {
 	DisplayName string   `json:"displayName"`
 	Name        string   `json:"name"`

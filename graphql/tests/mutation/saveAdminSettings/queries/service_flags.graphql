@@ -23,8 +23,6 @@ mutation {
         jwtTokenForCLIDisabled: true
         largeParserProjectsDisabled: true
         monitorDisabled: true
-        podAllocatorDisabled: true
-        podInitDisabled: true
         releaseModeDisabled: true
         repotrackerDisabled: true
         schedulerDisabled: true
@@ -63,8 +61,6 @@ mutation {
       jwtTokenForCLIDisabled
       largeParserProjectsDisabled
       monitorDisabled
-      podAllocatorDisabled
-      podInitDisabled
       releaseModeDisabled
       repotrackerDisabled
       schedulerDisabled
@@ -75,7 +71,6 @@ mutation {
       taskDispatchDisabled
       taskLoggingDisabled
       taskReliabilityDisabled
-      unrecognizedPodCleanupDisabled
       useMergeQueuePathFilteringDisabled
       webhookNotificationsDisabled
     }

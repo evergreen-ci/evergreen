@@ -55,7 +55,6 @@ func TestTaskBuildFromService(t *testing.T) {
 					BuildId:                     utility.ToStringPtr("testBuildId"),
 					DistroId:                    utility.ToStringPtr("testDistroId"),
 					HostId:                      utility.ToStringPtr("host"),
-					PodID:                       utility.ToStringPtr("pod"),
 					Container:                   utility.ToStringPtr("container"),
 					ContainerOpts: APIContainerOptions{
 						CPU:        2048,
@@ -256,7 +255,6 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(utility.FromStringPtr(apiTask.ParsleyLogs.AllLogLink), ShouldEqual, utility.FromStringPtr(tc.at.ParsleyLogs.AllLogLink))
 
 				So(utility.FromStringPtr(apiTask.HostId), ShouldEqual, utility.FromStringPtr(tc.at.HostId))
-				So(utility.FromStringPtr(apiTask.PodID), ShouldEqual, utility.FromStringPtr(tc.at.PodID))
 
 				So(utility.FromStringPtr(apiTask.Container), ShouldEqual, utility.FromStringPtr(tc.at.Container))
 				So(apiTask.ContainerOpts.CPU, ShouldEqual, tc.at.ContainerOpts.CPU)

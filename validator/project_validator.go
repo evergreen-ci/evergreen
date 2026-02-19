@@ -148,7 +148,6 @@ var projectErrorValidators = []projectValidator{
 var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigAliases,
 	validateProjectConfigPlugins,
-	validateProjectConfigContainers,
 }
 
 // Functions used to validate the project configuration file for warnings and
@@ -182,7 +181,6 @@ var projectAliasWarningValidators = []projectAliasValidator{
 // info such as admin settings and project settings.
 var projectSettingsValidators = []projectSettingsValidator{
 	validateVersionControl,
-	validateContainers,
 	validateProjectLimits,
 	validateIncludeLimits,
 	validateTimeoutLimits,
@@ -883,7 +881,7 @@ func matchTaskToAllowlist(allowlist []string, taskName string) (bool, []Validati
 // ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
 // and returns any relevant distro validation info.
 // distroWarnings are considered validation notices.
-func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs, distroAliases, singleTaskDistroIDs []string, singleTaskDistroAllowlist evergreen.ProjectTasksPair, distroWarnings map[string]string) ValidationErrors {
+func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases, singleTaskDistroIDs []string, singleTaskDistroAllowlist evergreen.ProjectTasksPair, distroWarnings map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
@@ -918,20 +916,10 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			runOnHasDistro := false
 			runOnHasContainer := false
 			for _, name := range task.RunOn {
-				if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) && !containerNameMap[name] {
+				if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) {
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a nonexistent distro or container named '%s'",
-								task.Name, buildVariant.Name, name),
-							Level: Warning,
-						},
-					)
-				} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
-					errs = append(errs,
-						ValidationError{
-							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
-								"references a container name overlapping with an existing distro '%s', the container "+
-								"configuration will override the distro",
 								task.Name, buildVariant.Name, name),
 							Level: Warning,
 						},
@@ -982,9 +970,6 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				if utility.StringSliceContains(distroIDs, name) {
 					runOnHasDistro = true
 				}
-				if containerNameMap[name] {
-					runOnHasContainer = true
-				}
 			}
 			errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, task.RunOn)...)
 		}
@@ -1004,20 +989,10 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 		runOnHasDistro := false
 		runOnHasContainer := false
 		for _, name := range buildVariant.RunOn {
-			if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) && !containerNameMap[name] {
+			if !utility.StringSliceContains(distroIDs, name) && !utility.StringSliceContains(distroAliases, name) {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' references a nonexistent distro or container named '%s'",
-							buildVariant.Name, name),
-						Level: Warning,
-					},
-				)
-			} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' "+
-							"references a container name overlapping with an existing distro '%s', the container "+
-							"configuration will override the distro",
 							buildVariant.Name, name),
 						Level: Warning,
 					},
@@ -1067,9 +1042,6 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			}
 			if utility.StringSliceContains(distroIDs, name) {
 				runOnHasDistro = true
-			}
-			if containerNameMap[name] {
-				runOnHasContainer = true
 			}
 		}
 		errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, buildVariant.RunOn)...)
@@ -1133,14 +1105,7 @@ func validateReferentialIntegrity(ctx context.Context, settings *evergreen.Setti
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
-	containerNameMap := map[string]bool{}
-	for _, container := range p.Containers {
-		if containerNameMap[container.Name] {
-			validationErrs = append(validationErrs, ValidationError{Message: fmt.Sprintf("container '%s' is defined multiple times", container.Name)})
-		}
-		containerNameMap[container.Name] = true
-	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(p, containerNameMap, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)...)
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(p, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)...)
 	return validationErrs
 }
 

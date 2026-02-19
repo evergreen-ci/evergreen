@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -130,9 +129,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		warningCatcher.Add(err)
 	}
 
-	existingContainerSecrets := projectRef.ContainerSecrets
-	projectRef.ContainerSecrets = nil
-
 	_, err = model.SetTracksPushEvents(ctx, projectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -148,13 +144,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
-		}
-	}
-
-	if err = tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef); err != nil {
-		return false, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "copying container secrets for project '%s'", projectRef.Identifier).Error(),
 		}
 	}
 

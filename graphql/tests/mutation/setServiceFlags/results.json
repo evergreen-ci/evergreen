@@ -24,7 +24,6 @@
           "setServiceFlags": [
             { "name": "task_dispatch_disabled", "enabled": true },
             { "name": "host_init_disabled", "enabled": false },
-            { "name": "pod_init_disabled", "enabled": false },
             { "name": "large_parser_projects_disabled", "enabled": false },
             { "name": "monitor_disabled", "enabled": false },
             { "name": "alerts_disabled", "enabled": false },

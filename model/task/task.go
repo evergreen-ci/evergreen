@@ -520,12 +520,6 @@ func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
-// IsDispatchable returns true if the task should make progress towards
-// dispatching to run.
-func (t *Task) IsDispatchable() bool {
-	return t.IsHostDispatchable() || t.ShouldAllocateContainer() || t.IsContainerDispatchable()
-}
-
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
@@ -1035,100 +1029,6 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) err
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
-
-	return nil
-}
-
-// maxContainerAllocationAttempts is the maximum number of times a container
-// task is allowed to try to allocate a container for a single execution.
-const maxContainerAllocationAttempts = 5
-
-// MarkAsContainerAllocated marks a container task as allocated a container.
-// This will fail if the task is not in a state where it needs a container to be
-// allocated to it.
-func (t *Task) MarkAsContainerAllocated(ctx context.Context, env evergreen.Environment) error {
-	if t.ContainerAllocated {
-		return errors.New("cannot allocate a container task if it's currently allocated")
-	}
-	if t.RemainingContainerAllocationAttempts() == 0 {
-		return errors.Errorf("task execution has hit the max allowed allocation attempts (%d)", maxContainerAllocationAttempts)
-	}
-	q := needsContainerAllocation()
-	q[IdKey] = t.Id
-	q[ContainerAllocationAttemptsKey] = bson.M{"$lt": maxContainerAllocationAttempts}
-
-	allocatedAt := time.Now()
-	update, err := env.DB().Collection(Collection).UpdateOne(ctx, q, bson.M{
-		"$set": bson.M{
-			ContainerAllocatedKey:     true,
-			ContainerAllocatedTimeKey: allocatedAt,
-		},
-		"$inc": bson.M{
-			ContainerAllocationAttemptsKey: 1,
-		},
-	})
-	if err != nil {
-		return err
-	}
-	if update.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.ContainerAllocated = true
-	t.ContainerAllocatedTime = allocatedAt
-
-	return nil
-}
-
-func containerDeallocatedUpdate() bson.M {
-	return bson.M{
-		"$set": bson.M{
-			ContainerAllocatedKey: false,
-		},
-		"$unset": bson.M{
-			ContainerAllocatedTimeKey: 1,
-		},
-	}
-}
-
-// MarkAsContainerDeallocated marks a container task that was allocated as no
-// longer allocated a container.
-func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
-	if !t.ContainerAllocated {
-		return errors.New("cannot deallocate a container task if it's not currently allocated")
-	}
-
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
-		IdKey:                 t.Id,
-		ExecutionPlatformKey:  ExecutionPlatformContainer,
-		ContainerAllocatedKey: true,
-	}, containerDeallocatedUpdate())
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
-
-	return nil
-}
-
-// MarkTasksAsContainerDeallocated marks multiple container tasks as no longer
-// allocated containers.
-func MarkTasksAsContainerDeallocated(ctx context.Context, taskIDs []string) error {
-	if len(taskIDs) == 0 {
-		return nil
-	}
-
-	if _, err := UpdateAll(ctx, bson.M{
-		IdKey:                bson.M{"$in": taskIDs},
-		ExecutionPlatformKey: ExecutionPlatformContainer,
-	}, containerDeallocatedUpdate()); err != nil {
-		return errors.Wrap(err, "updating tasks")
-	}
 
 	return nil
 }

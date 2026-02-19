@@ -10,9 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -451,16 +449,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.newProjectRef.Replace(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
-
-	// Under the hood, this is updating the container secrets in the DB project
-	// ref, but this function's copy of the in-memory project ref won't reflect
-	// those changes. We log an error here instead of returning, so that this
-	// doesn't prevent the rest of the operations.
-	grip.Error(message.WrapError(data.UpsertContainerSecrets(ctx, vault, allContainerSecrets), message.Fields{
-		"message":            "problem upserting container secrets",
-		"project_id":         h.newProjectRef.Id,
-		"project_identifier": h.newProjectRef.Identifier,
-	}))
 
 	if err = data.UpdateProjectVars(ctx, h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))

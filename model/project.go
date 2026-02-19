@@ -57,7 +57,6 @@ type Project struct {
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	Containers         []Container                `yaml:"containers,omitempty" bson:"containers"`
 	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`

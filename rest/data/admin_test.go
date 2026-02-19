@@ -173,9 +173,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ReleaseMode.TargetTimeSecondsOverride, settingsFromConnector.ReleaseMode.TargetTimeSecondsOverride)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
-	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
-	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
-	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
@@ -428,14 +425,12 @@ func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
 
 	settings := &evergreen.Settings{
 		ServiceFlags: evergreen.ServiceFlags{
-			HostInitDisabled:               true,
-			RepotrackerDisabled:            true,
-			TaskDispatchDisabled:           false,
-			PodInitDisabled:                true,
-			CloudCleanupDisabled:           false,
-			StaticAPIKeysDisabled:          true,
-			JWTTokenForCLIDisabled:         false,
-			UnrecognizedPodCleanupDisabled: true,
+			HostInitDisabled:       true,
+			RepotrackerDisabled:    true,
+			TaskDispatchDisabled:   false,
+			CloudCleanupDisabled:   false,
+			StaticAPIKeysDisabled:  true,
+			JWTTokenForCLIDisabled: false,
 		},
 	}
 	s.NoError(evergreen.UpdateConfig(ctx, settings))
