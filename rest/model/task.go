@@ -508,11 +508,10 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 	}
 	if args.IncludePatchInfo {
 		if err := at.GetPatchInfo(ctx, t); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message":       "could not fetch patch info",
-				"task":          t.DisplayName,
-				"build_variant": t.BuildVariant,
-				"version":       t.Version,
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not fetch patch info",
+				"task_id": t.Id,
+				"version": t.Version,
 			}))
 		}
 	}
