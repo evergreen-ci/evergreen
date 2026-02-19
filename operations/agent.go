@@ -216,10 +216,7 @@ func Agent() cli.Command {
 			agt.SetDefaultLogger(sender)
 			agt.SetHomeDirectory()
 
-			// grip.Warning(message.WrapError(agentutil.SetNice(os.Getpid(), agentutil.AgentNice), message.Fields{
-			//     "message": "could not set nice on agent process, proceeding with default nice",
-			// }))
-			grip.Warning(message.WrapError(setAgentNiceAllThreads(), message.Fields{
+			grip.Warning(message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
 				"message": "could not set nice on agent process and all of its threads, some threads may proceed with default nice",
 			}))
 
@@ -241,28 +238,29 @@ func Agent() cli.Command {
 	}
 }
 
-// setAgentNiceAllThreads overwrites the default nice for the agent to use a
-// lower nice.
-func setAgentNiceAllThreads() error {
+// setNiceAllThreads sets the nice for all currently-running threads in this
+// process.
+func setNiceAllThreads(nice int) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
 
 	catcher := grip.NewBasicCatcher()
 
-	// We want to ensure all threads in the agent use the same nice. This is
-	// trickier than it sounds.
+	// We want to ensure all threads use the same nice so they get CPU priority.
+	// This is not as straightforward as it sounds.
+	//
 	// Threads inherit the nice of their parent process/thread. The Go runtime
-	// pre-initializes several threads, which all start with the default nice.
-	// The issue with pre-initialization is that by the time the main thread
-	// begins running (i.e. this thread), those other threads won't inherit the
-	// nice from the main thread because they already exist. Because of that,
-	// the main thread has to update both itself and all other existing threads
-	// in the process to ensure that they use the same nice; otherwise, some
-	// goroutines (which run on other threads) will end up with the default
-	// nice.
-	// This reads all thread IDs from /proc/self/task and set the nice on each
-	// of them.
+	// pre-initializes several threads, so by the time the main thread begins
+	// running (i.e. this thread), those other threads won't inherit the nice
+	// from the main thread because they already exist. Because of that, the
+	// main thread has to update both itself and all other existing threads in
+	// the process to ensure that they all use the same nice; otherwise, a
+	// goroutine that's assigned to on one of the other thread will end up with
+	// the default nice.
+	//
+	// This sets the nice on all threads by reading all thread IDs for this
+	// process and setting the nice on each one.
 	entries, err := os.ReadDir("/proc/self/task")
 	if err != nil {
 		catcher.Wrap(err, "reading thread IDs for this process")
@@ -275,7 +273,7 @@ func setAgentNiceAllThreads() error {
 			continue
 		}
 
-		catcher.Wrapf(agentutil.SetNice(tid, agentutil.AgentNice), "setting agent nice on thread '%s'", tid)
+		catcher.Wrapf(agentutil.SetNice(tid, nice), "setting agent nice on thread '%s'", tid)
 	}
 
 	return nil

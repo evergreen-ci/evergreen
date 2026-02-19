@@ -431,7 +431,6 @@ func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, lo
 	}
 
 	err := cmd.Run(ctx)
-
 	if !c.Background && err != nil {
 		if exitCode, _ := cmd.Wait(ctx); exitCode != 0 {
 			err = errors.Errorf("process encountered problem: exit code %d", exitCode)
