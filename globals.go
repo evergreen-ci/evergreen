@@ -519,6 +519,7 @@ const (
 	// S3 log upload otel attributes
 	TaskS3LogUploadPutRequestsOtelAttribute = "evergreen.task.s3_put_cost.log_upload_put_requests"
 	TaskS3LogUploadBytesOtelAttribute       = "evergreen.task.s3_put_cost.log_upload_bytes"
+	TaskS3LogUploadPutCostOtelAttribute     = "evergreen.task.s3_put_cost.log_upload_put_cost"
 
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
