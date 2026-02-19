@@ -999,10 +999,6 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 		msg["dependencies_met_time"] = t.DependenciesMetTime
 	}
 
-	if !t.ContainerAllocatedTime.IsZero() {
-		msg["container_allocated_time"] = t.ContainerAllocatedTime
-	}
-
 	grip.Info(msg)
 	return nil
 }

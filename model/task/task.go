@@ -77,16 +77,14 @@ type Task struct {
 	// FinishTime - the time the task was completed on the remote host.
 	// ActivatedTime - the time the task was marked as available to be scheduled, automatically or by a developer.
 	// DependenciesMet - for tasks that have dependencies, the time all dependencies are met.
-	// ContainerAllocated - for tasks that run on containers, the time the container was allocated.
-	CreateTime             time.Time `bson:"create_time" json:"create_time"`
-	IngestTime             time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime           time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime          time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime              time.Time `bson:"start_time" json:"start_time"`
-	FinishTime             time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime          time.Time `bson:"activated_time" json:"activated_time"`
-	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
-	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
+	CreateTime          time.Time `bson:"create_time" json:"create_time"`
+	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime           time.Time `bson:"start_time" json:"start_time"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 
 	Version string `bson:"version" json:"version,omitempty"`
 	// Project is the project id of the task.
@@ -114,24 +112,11 @@ type Task struct {
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
 
-	// ContainerAllocated indicates whether this task has been allocated a
-	// container to run it. It only applies to tasks running in containers.
-	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
-	// ContainerAllocationAttempts is the number of times this task has
-	// been allocated a container to run it (for a single execution).
-	ContainerAllocationAttempts int `bson:"container_allocation_attempts" json:"container_allocation_attempts"`
-
-	BuildId  string `bson:"build_id" json:"build_id"`
-	DistroId string `bson:"distro" json:"distro"`
-	// Container is the name of the container configuration for running a
-	// container task.
-	Container string `bson:"container,omitempty" json:"container,omitempty"`
-	// ContainerOpts contains the options to configure the container that will
-	// run the task.
-	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options"`
-	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
-	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
-	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
+	BuildId                 string       `bson:"build_id" json:"build_id"`
+	DistroId                string       `bson:"distro" json:"distro"`
+	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
+	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
+	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
 	// UnattainableDependency caches the contents of DependsOn for more
 	// efficient querying. It is true if any of its dependencies is unattainable
 	// and is false if all of its dependencies are attainable.
@@ -408,26 +393,6 @@ const (
 	// ExecutionPlatformContainer indicates that the task runs in a container.
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
-
-// ContainerOptions represent options to create the container to run a task.
-type ContainerOptions struct {
-	CPU        int    `bson:"cpu,omitempty" json:"cpu"`
-	MemoryMB   int    `bson:"memory_mb,omitempty" json:"memory_mb"`
-	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir"`
-	Image      string `bson:"image,omitempty" json:"image"`
-	// RepoCredsName is the name of the project container secret containing the
-	// repository credentials.
-	RepoCredsName  string                   `bson:"repo_creds_name,omitempty" json:"repo_creds_name"`
-	OS             evergreen.ContainerOS    `bson:"os,omitempty" json:"os"`
-	Arch           evergreen.ContainerArch  `bson:"arch,omitempty" json:"arch"`
-	WindowsVersion evergreen.WindowsVersion `bson:"windows_version,omitempty" json:"windows_version"`
-}
-
-// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
-// zero value for BSON marshalling.
-func (o ContainerOptions) IsZero() bool {
-	return o == ContainerOptions{}
-}
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
 func (t *Task) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
@@ -2170,8 +2135,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		ctx,
@@ -2187,12 +2150,8 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				S3UsageKey:            t.S3Usage,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
-				ContainerAllocatedKey: false,
 				DisplayStatusCacheKey: t.DisplayStatusCache,
 				TaskOutputInfoKey:     t.TaskOutputInfo,
-			},
-			"$unset": bson.M{
-				ContainerAllocatedTimeKey: 1,
 			},
 		})
 }
@@ -2387,7 +2346,6 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
-		t.ContainerAllocationAttempts = 0
 		t.NumNextTaskDispatches = 0
 		t.CanReset = false
 		t.IsAutomaticRestart = false
@@ -2399,20 +2357,19 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 	}
 
 	setFields := bson.M{
-		ActivatedKey:                   true,
-		ActivatedTimeKey:               now,
-		ActivatedByKey:                 caller,
-		SecretKey:                      newSecret,
-		StatusKey:                      evergreen.TaskUndispatched,
-		DispatchTimeKey:                utility.ZeroTime,
-		StartTimeKey:                   utility.ZeroTime,
-		ScheduledTimeKey:               utility.ZeroTime,
-		FinishTimeKey:                  utility.ZeroTime,
-		DependenciesMetTimeKey:         utility.ZeroTime,
-		TimeTakenKey:                   0,
-		LastHeartbeatKey:               utility.ZeroTime,
-		ContainerAllocationAttemptsKey: 0,
-		NumNextTaskDispatchesKey:       0,
+		ActivatedKey:             true,
+		ActivatedTimeKey:         now,
+		ActivatedByKey:           caller,
+		SecretKey:                newSecret,
+		StatusKey:                evergreen.TaskUndispatched,
+		DispatchTimeKey:          utility.ZeroTime,
+		StartTimeKey:             utility.ZeroTime,
+		ScheduledTimeKey:         utility.ZeroTime,
+		FinishTimeKey:            utility.ZeroTime,
+		DependenciesMetTimeKey:   utility.ZeroTime,
+		TimeTakenKey:             0,
+		LastHeartbeatKey:         utility.ZeroTime,
+		NumNextTaskDispatchesKey: 0,
 	}
 
 	if prediction != nil {
@@ -2853,7 +2810,6 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Display Status: %v\n", t.DisplayStatusCache)
 	taskStruct += fmt.Sprintf("Host: %v\n", t.HostId)
 	taskStruct += fmt.Sprintf("ScheduledTime: %v\n", t.ScheduledTime)
-	taskStruct += fmt.Sprintf("ContainerAllocatedTime: %v\n", t.ContainerAllocatedTime)
 	taskStruct += fmt.Sprintf("DispatchTime: %v\n", t.DispatchTime)
 	taskStruct += fmt.Sprintf("StartTime: %v\n", t.StartTime)
 	taskStruct += fmt.Sprintf("FinishTime: %v\n", t.FinishTime)

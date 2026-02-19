@@ -32,7 +32,6 @@ const (
 	TaskActivated              = "TASK_ACTIVATED"
 	TaskDeactivated            = "TASK_DEACTIVATED"
 	TaskAbortRequest           = "TASK_ABORT_REQUEST"
-	ContainerAllocated         = "CONTAINER_ALLOCATED"
 	TaskPriorityChanged        = "TASK_PRIORITY_CHANGED"
 	TaskJiraAlertCreated       = "TASK_JIRA_ALERT_CREATED"
 	TaskDependenciesOverridden = "TASK_DEPENDENCIES_OVERRIDDEN"

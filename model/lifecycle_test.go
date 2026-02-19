@@ -1351,38 +1351,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
+			build, _, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(build.Tasks), ShouldEqual, 4)
-
-			bvContainerOpts := task.ContainerOptions{
-				CPU:           container1.Resources.CPU,
-				MemoryMB:      container1.Resources.MemoryMB,
-				WorkingDir:    container1.WorkingDir,
-				Image:         container1.Image,
-				OS:            container1.System.OperatingSystem,
-				Arch:          container1.System.CPUArchitecture,
-				RepoCredsName: container1.Credential,
-			}
-			taskContainerOpts := task.ContainerOptions{
-				CPU:        256,
-				MemoryMB:   128,
-				WorkingDir: container2.WorkingDir,
-				Image:      container2.Image,
-				OS:         container2.System.OperatingSystem,
-				Arch:       container2.System.CPUArchitecture,
-			}
-			for _, tsk := range tasks[:3] {
-				So(tsk.ExecutionPlatform, ShouldEqual, task.ExecutionPlatformContainer)
-				if tsk.Id != "taskE" {
-					So(tsk.Container, ShouldEqual, container1.Name)
-					So(tsk.ContainerOpts, ShouldResemble, bvContainerOpts)
-				} else {
-					So(tsk.Container, ShouldEqual, container2.Name)
-					So(tsk.ContainerOpts, ShouldResemble, taskContainerOpts)
-				}
-			}
 		})
 
 		Convey("the build should contain task caches that correspond exactly"+

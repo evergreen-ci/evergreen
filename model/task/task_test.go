@@ -1069,12 +1069,10 @@ func TestEndingTask(t *testing.T) {
 		Convey("a task that is allocated a container should be deallocated", func() {
 			now := time.Now()
 			task := &Task{
-				Id:                     "taskId",
-				Status:                 evergreen.TaskStarted,
-				StartTime:              now.Add(-5 * time.Minute),
-				ExecutionPlatform:      ExecutionPlatformContainer,
-				ContainerAllocated:     true,
-				ContainerAllocatedTime: time.Now(),
+				Id:                "taskId",
+				Status:            evergreen.TaskStarted,
+				StartTime:         now.Add(-5 * time.Minute),
+				ExecutionPlatform: ExecutionPlatformContainer,
 			}
 			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
@@ -1085,8 +1083,6 @@ func TestEndingTask(t *testing.T) {
 			task, err := FindOne(ctx, db.Query(ById(task.Id)))
 			So(err, ShouldBeNil)
 			So(task.Status, ShouldEqual, evergreen.TaskFailed)
-			So(task.ContainerAllocated, ShouldBeFalse)
-			So(task.ContainerAllocatedTime, ShouldBeZeroValue)
 		})
 	})
 }
@@ -2407,16 +2403,6 @@ func TestIsDispatchable(t *testing.T) {
 		},
 		"ReturnsTrueForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
 			tsk.ExecutionPlatform = ""
-			assert.True(t, tsk.IsHostDispatchable())
-		},
-		"ReturnsTrueForContainerTaskWithoutContainerAllocated": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
-			tsk.ContainerAllocated = false
-			assert.True(t, tsk.IsHostDispatchable())
-		},
-		"ReturnsTrueForContainerTaskWithContainerAllocated": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
-			tsk.ContainerAllocated = true
 			assert.True(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {

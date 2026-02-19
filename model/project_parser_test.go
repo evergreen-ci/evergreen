@@ -2192,11 +2192,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 				Name: "my_module",
 			},
 		},
-		Containers: []Container{
-			{
-				Name: "container1",
-			},
-		},
 		Functions: map[string]*YAMLCommandSet{
 			"func1": {
 				SingleCommand: &PluginCommandConf{
@@ -2238,11 +2233,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 				Name: "add_my_module",
 			},
 		},
-		Containers: []Container{
-			{
-				Name: "container2",
-			},
-		},
 		Functions: map[string]*YAMLCommandSet{
 			"add_func1": {
 				SingleCommand: &PluginCommandConf{
@@ -2268,7 +2258,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 	assert.Len(t, main.Parameters, 2)
 	assert.Len(t, main.Modules, 2)
 	assert.Len(t, main.Functions, 4)
-	assert.Len(t, main.Containers, 2)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {
@@ -2293,11 +2282,6 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 		Modules: []Module{
 			{
 				Name: "my_module",
-			},
-		},
-		Containers: []Container{
-			{
-				Name: "my_container",
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
@@ -2339,11 +2323,6 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 		Modules: []Module{
 			{
 				Name: "my_module",
-			},
-		},
-		Containers: []Container{
-			{
-				Name: "my_container",
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{

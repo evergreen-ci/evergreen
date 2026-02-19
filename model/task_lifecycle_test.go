@@ -4785,8 +4785,6 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotZero(t, dbTask, "should have created a new task execution")
 			assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
 			assert.True(t, dbTask.Activated)
-			assert.False(t, dbTask.ContainerAllocated)
-			assert.Zero(t, dbTask.ContainerAllocatedTime)
 
 			dbBuild, err := build.FindOneId(t.Context(), tsk.BuildId)
 			require.NoError(t, err)
@@ -4819,8 +4817,6 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionAborted, dbTask.Details.Description)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-			assert.False(t, dbTask.ContainerAllocated)
-			assert.Zero(t, dbTask.ContainerAllocatedTime)
 
 			dependencyTask, err := task.FindOneId(ctx, "dependencyTask")
 			require.NotNil(t, dependencyTask)
@@ -4936,19 +4932,17 @@ func TestResetStaleTask(t *testing.T) {
 			}
 			require.NoError(t, host.Insert(ctx))
 			tsk := task.Task{
-				Id:                     "task_id",
-				Execution:              0,
-				ExecutionPlatform:      task.ExecutionPlatformHost,
-				ContainerAllocated:     true,
-				ContainerAllocatedTime: time.Now(),
-				Status:                 evergreen.TaskStarted,
-				Activated:              true,
-				ActivatedTime:          time.Now(),
-				LastHeartbeat:          time.Now().Add(-30 * time.Hour),
-				BuildId:                build.Id,
-				Version:                version.Id,
-				Project:                projectRef.Identifier,
-				HostId:                 host.Id,
+				Id:                "task_id",
+				Execution:         0,
+				ExecutionPlatform: task.ExecutionPlatformHost,
+				Status:            evergreen.TaskStarted,
+				Activated:         true,
+				ActivatedTime:     time.Now(),
+				LastHeartbeat:     time.Now().Add(-30 * time.Hour),
+				BuildId:           build.Id,
+				Version:           version.Id,
+				Project:           projectRef.Identifier,
+				HostId:            host.Id,
 			}
 			depTask := task.Task{
 				Id:            "dependencyTask",

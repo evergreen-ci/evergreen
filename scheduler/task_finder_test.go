@@ -128,15 +128,6 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	s.Len(runnableTasks, 4)
 }
 
-func (s *TaskFinderSuite) TestContainerTasksAreExcluded() {
-	s.tasks[3].ExecutionPlatform = task.ExecutionPlatformContainer
-	s.insertTasks()
-
-	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
-	s.Require().NoError(err)
-	s.Len(runnableTasks, 4)
-}
-
 func (s *TaskFinderSuite) TestFilterTasksWhenValidProjectsSet() {
 	// Validate our assumption that we find 5 tasks in the default case
 	s.insertTasks()

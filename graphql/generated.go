@@ -1839,7 +1839,6 @@ type ComplexityRoot struct {
 		CanSchedule             func(childComplexity int) int
 		CanSetPriority          func(childComplexity int) int
 		CanUnschedule           func(childComplexity int) int
-		ContainerAllocatedTime  func(childComplexity int) int
 		CreateTime              func(childComplexity int) int
 		DependsOn               func(childComplexity int) int
 		Details                 func(childComplexity int) int
@@ -10268,12 +10267,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.CanUnschedule(childComplexity), true
-	case "Task.containerAllocatedTime":
-		if e.complexity.Task.ContainerAllocatedTime == nil {
-			break
-		}
-
-		return e.complexity.Task.ContainerAllocatedTime(childComplexity), true
 	case "Task.createTime":
 		if e.complexity.Task.CreateTime == nil {
 			break
@@ -19661,8 +19654,6 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -27988,8 +27979,6 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -31459,8 +31448,6 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -34171,8 +34158,6 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -38111,8 +38096,6 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -38312,8 +38295,6 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -38513,8 +38494,6 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -38714,8 +38693,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -38915,8 +38892,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -39116,8 +39091,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -39317,8 +39290,6 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -40492,8 +40463,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -50548,8 +50517,6 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -50749,8 +50716,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -59019,8 +58984,6 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -59488,35 +59451,6 @@ func (ec *executionContext) fieldContext_Task_canUnschedule(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_containerAllocatedTime(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Task_containerAllocatedTime,
-		func(ctx context.Context) (any, error) {
-			return obj.ContainerAllocatedTime, nil
-		},
-		nil,
-		ec.marshalOTime2ᚖtimeᚐTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Task_containerAllocatedTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Task_createTime(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -59824,8 +59758,6 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -60129,8 +60061,6 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -60527,8 +60457,6 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -62962,8 +62890,6 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -66986,8 +66912,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -70256,8 +70180,6 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
-			case "containerAllocatedTime":
-				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Task_createTime(ctx, field)
 			case "dependsOn":
@@ -99216,8 +99138,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "containerAllocatedTime":
-			out.Values[i] = ec._Task_containerAllocatedTime(ctx, field, obj)
 		case "createTime":
 			out.Values[i] = ec._Task_createTime(ctx, field, obj)
 		case "dependsOn":
