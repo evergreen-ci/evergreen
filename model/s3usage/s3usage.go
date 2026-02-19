@@ -3,9 +3,7 @@ package s3usage
 import (
 	"os"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 )
 
 // S3Usage tracks S3 API usage for cost calculation.
@@ -35,8 +33,7 @@ type S3BucketType string
 type S3UploadMethod string
 
 const (
-	S3PutRequestCost = 0.000005
-	S3PartSize       = 5 * 1024 * 1024 // 5 MB in bytes - S3 multipart upload threshold
+	S3PartSize = 5 * 1024 * 1024 // 5 MB in bytes - S3 multipart upload threshold
 
 	S3BucketTypeSmall S3BucketType = "small"
 	S3BucketTypeLarge S3BucketType = "large"
@@ -121,36 +118,6 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 	default:
 		return 0
 	}
-}
-
-// CalculateS3PutCostWithConfig calculates the S3 PUT request cost.
-// Returns 0 if cost cannot be calculated due to missing or invalid config.
-func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
-	if putRequests <= 0 {
-		grip.Warning(message.Fields{
-			"message":      "no put requests to calculate cost",
-			"put_requests": putRequests,
-		})
-		return 0.0
-	}
-
-	if costConfig == nil {
-		grip.Warning(message.Fields{
-			"message": "cost config is not available to calculate S3 PUT cost",
-		})
-		return 0.0
-	}
-
-	discount := costConfig.S3Cost.Upload.UploadCostDiscount
-	if discount < 0.0 || discount > 1.0 {
-		grip.Warning(message.Fields{
-			"message":  "invalid S3 upload cost discount",
-			"discount": discount,
-		})
-		return 0.0
-	}
-
-	return float64(putRequests) * S3PutRequestCost * (1 - discount)
 }
 
 // IncrementUserFiles increments the user file upload metrics (artifacts from s3.put commands).
