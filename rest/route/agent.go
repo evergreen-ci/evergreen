@@ -1181,7 +1181,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(msg)
 }
 
-func logTaskStartMessage(h *host.Host, p *pod.Pod, t *task.Task) {
+func logTaskStartMessage(h *host.Host, t *task.Task) {
 	msg := message.Fields{
 		"stat":                   "task-start-stats",
 		"task_id":                t.Id,

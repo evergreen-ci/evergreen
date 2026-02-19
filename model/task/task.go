@@ -157,10 +157,6 @@ type Task struct {
 	// The host the task was run on. This value is only set for host tasks.
 	HostId string `bson:"host_id,omitempty" json:"host_id"`
 
-	// PodID is the pod that was assigned to run the task. This value is only
-	// set for container tasks.
-	PodID string `bson:"pod_id,omitempty" json:"pod_id"`
-
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
 	ExecutionPlatform ExecutionPlatform `bson:"execution_platform,omitempty" json:"execution_platform,omitempty"`
@@ -546,78 +542,9 @@ func (t *Task) IsStuckTask() bool {
 	return t.NumNextTaskDispatches >= evergreen.MaxTaskDispatchAttempts
 }
 
-// IsContainerTask returns true if it's a task that runs on containers.
-func (t *Task) IsContainerTask() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer
-}
-
 // IsRestartFailedOnly returns true if the task should only restart failed tests.
 func (t *Task) IsRestartFailedOnly() bool {
 	return t.ResetFailedWhenFinished && !t.ResetWhenFinished
-}
-
-// ShouldAllocateContainer indicates whether a task should be allocated a
-// container or not.
-func (t *Task) ShouldAllocateContainer() bool {
-	if t.ContainerAllocated {
-		return false
-	}
-	if t.RemainingContainerAllocationAttempts() == 0 {
-		return false
-	}
-
-	return t.isContainerScheduled()
-}
-
-// RemainingContainerAllocationAttempts returns the number of times this task
-// execution is allowed to try allocating a container.
-func (t *Task) RemainingContainerAllocationAttempts() int {
-	return maxContainerAllocationAttempts - t.ContainerAllocationAttempts
-}
-
-// IsContainerDispatchable returns true if the task should run in a container
-// and can be dispatched.
-func (t *Task) IsContainerDispatchable() bool {
-	if !t.ContainerAllocated {
-		return false
-	}
-	return t.isContainerScheduled()
-}
-
-// isContainerTaskScheduled returns whether the task is in a state where it
-// should eventually dispatch to run on a container and is logically equivalent
-// to ScheduledContainerTasksQuery. This encompasses two potential states:
-//  1. A container is not yet allocated to the task but it's ready to be
-//     allocated one. Note that this is a subset of all container tasks that
-//     could eventually run (i.e. evergreen.TaskWillRun from
-//     (Task).GetDisplayStatus), because a container task is not scheduled until
-//     all of its dependencies have been met.
-//  2. The container is allocated but the agent has not picked up the task yet.
-func (t *Task) isContainerScheduled() bool {
-	if !t.IsContainerTask() {
-		return false
-	}
-	if t.Status != evergreen.TaskUndispatched {
-		return false
-	}
-	if !t.Activated {
-		return false
-	}
-	if t.Priority <= evergreen.DisabledTaskPriority {
-		return false
-	}
-	if !t.OverrideDependencies {
-		for _, dep := range t.DependsOn {
-			if dep.Unattainable {
-				return false
-			}
-			if !dep.Finished {
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -983,50 +910,6 @@ func (t *Task) cacheExpectedDuration(ctx context.Context) error {
 			},
 		},
 	)
-}
-
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
-	dispatchedAt := time.Now()
-
-	query := ScheduledContainerTasksQuery()
-	query[IdKey] = t.Id
-	query[StatusKey] = evergreen.TaskUndispatched
-	query[ContainerAllocatedKey] = true
-	set := bson.M{
-		StatusKey:        evergreen.TaskDispatched,
-		DispatchTimeKey:  dispatchedAt,
-		LastHeartbeatKey: dispatchedAt,
-		PodIDKey:         podID,
-		AgentVersionKey:  agentVersion,
-	}
-	output, ok := t.initializeTaskOutputInfo(env)
-	if ok {
-		set[TaskOutputInfoKey] = output
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, []bson.M{
-		{
-			"$set": set,
-		},
-		addDisplayStatusCache,
-	})
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.Status = evergreen.TaskDispatched
-	t.DispatchTime = dispatchedAt
-	t.LastHeartbeat = dispatchedAt
-	t.PodID = podID
-	t.AgentVersion = agentVersion
-	t.TaskOutputInfo = output
-	t.DisplayStatusCache = t.DetermineDisplayStatus()
-
-	return nil
 }
 
 // MarkAsHostDispatched marks that the task has been dispatched onto a
@@ -1620,8 +1503,6 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
 		event.LogHostTaskFinished(ctx, t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
-	case ExecutionPlatformContainer:
-		event.LogContainerTaskFinished(ctx, t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
 	default:
 		event.LogTaskFinished(ctx, t.Id, t.Execution, evergreen.TaskSystemFailed)
 	}

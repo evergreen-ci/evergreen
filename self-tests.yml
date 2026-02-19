@@ -583,15 +583,6 @@ tasks:
     name: test-model-patch
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-pod
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-definition
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-dispatcher
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-taskstats
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

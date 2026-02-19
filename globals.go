@@ -242,10 +242,6 @@ const (
 	// automatically restarted via the retry_on_failure command flag.
 	AutoRestartActivator = "automatic_restart"
 
-	// StaleContainerTaskMonitor is the special name representing the unit
-	// responsible for monitoring container tasks that have not dispatched but
-	// have waiting for a long time since their activation.
-	StaleContainerTaskMonitor = "stale-container-task-monitor"
 	// UnderwaterTaskUnscheduler is the caller associated with unscheduling
 	// and disabling tasks older than the task.UnschedulableThreshold from
 	// their distro queue.
@@ -587,8 +583,6 @@ const (
 	TaskSecretHeader    = "Task-Secret"
 	HostHeader          = "Host-Id"
 	HostSecretHeader    = "Host-Secret"
-	PodHeader           = "Pod-Id"
-	PodSecretHeader     = "Pod-Secret"
 	ContentTypeHeader   = "Content-Type"
 	ContentTypeValue    = "application/json"
 	ContentLengthHeader = "Content-Length"

@@ -630,16 +630,6 @@ models:
     enum_values:
       TUNABLE:
         value: github.com/evergreen-ci/evergreen.PlannerVersionTunable
-  Pod:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPod
-  PodEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventLogEntry
-  PodEventLogData:
-    model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventData
-  PodLifecycleConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPodLifecycleConfig
-  PodLifecycleConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPodLifecycleConfig
   PreconditionScript:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   PreconditionScriptInput:

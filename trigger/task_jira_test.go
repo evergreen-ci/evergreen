@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -295,7 +294,6 @@ func TestJiraDescription(t *testing.T) {
 				So(d, ShouldContainSubstring, versionMessage)
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
 				So(d, ShouldContainSubstring, "08 Jan 19 11:56 UTC")
-				So(d, ShouldNotContainSubstring, "Pod")
 			})
 			Convey("with links to the task, host, project, logs", func() {
 				So(d, ShouldContainSubstring, url.PathEscape(taskId))

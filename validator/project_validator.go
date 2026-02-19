@@ -436,29 +436,6 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateContainers(ctx context.Context, _ *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return ValidationErrors{
-			ValidationError{
-				Message: errors.Wrap(err, "getting evergreen settings").Error(),
-				Level:   Error,
-			},
-		}
-	}
-	errs := ValidationErrors{}
-	err = model.ValidateContainers(ctx, settings.Providers.AWS.Pod.ECS, ref, project.Containers)
-	if err != nil {
-		errs = append(errs,
-			ValidationError{
-				Message: errors.Wrap(err, "error validating containers").Error(),
-				Level:   Error,
-			},
-		)
-	}
-	return errs
-}
-
 // validateDependencyGraph returns a non-nil ValidationErrors if the dependency graph contains cycles.
 func validateDependencyGraph(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
@@ -741,15 +718,6 @@ func validateProjectConfigContainers(ctx context.Context, pc *model.ProjectConfi
 				Message: "container size name cannot be empty",
 				Level:   Error,
 			})
-		}
-
-		if err := size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS); err != nil {
-			errs = append(errs,
-				ValidationError{
-					Message: errors.Wrap(err, "error validating container resources").Error(),
-					Level:   Error,
-				},
-			)
 		}
 	}
 	return errs

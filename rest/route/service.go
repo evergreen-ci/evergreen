@@ -153,7 +153,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireValidSNSPayload).RouteHandler(makeEC2SNS(env, opts.APIQueue))
-	app.AddRoute("/hooks/aws/ecs").Version(2).Post().Wrap(requireValidSNSPayload).RouteHandler(makeECSSNS(env, opts.APIQueue))
 
 	app.AddRoute("/host/filter").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHostFilter())
 	app.AddRoute("/host/start_processes").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStartProcesses(env))

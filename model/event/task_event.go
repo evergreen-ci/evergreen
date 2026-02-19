@@ -119,12 +119,6 @@ func LogHostTaskDispatched(ctx context.Context, taskId string, execution int, ho
 	logTaskEvent(ctx, taskId, TaskDispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-// LogContainerTaskDispatched logs an event for a container task being
-// dispatched to a pod.
-func LogContainerTaskDispatched(ctx context.Context, taskID string, execution int, podID string) {
-	logTaskEvent(ctx, taskID, TaskDispatched, TaskEventData{Execution: execution, PodID: podID})
-}
-
 // LogHostTaskUndispatched logs an event for a host being marked undispatched.
 func LogHostTaskUndispatched(ctx context.Context, taskId string, execution int, hostId string) {
 	logTaskEvent(ctx, taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
@@ -146,16 +140,6 @@ func LogHostTaskFinished(ctx context.Context, taskId string, execution int, host
 	LogTaskFinished(ctx, taskId, execution, status)
 	if hostId != "" {
 		LogHostEvent(ctx, hostId, EventHostTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
-	}
-}
-
-// LogContainerTaskFinished logs an event for a container task being marked
-// finished. If it was assigned to run on a pod, it logs an additional pod event
-// indicating that its assigned task has finished.
-func LogContainerTaskFinished(ctx context.Context, taskID string, execution int, podID, status string) {
-	LogTaskFinished(ctx, taskID, execution, status)
-	if podID != "" {
-		LogPodEvent(ctx, podID, EventPodFinishedTask, PodData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
 	}
 }
 
@@ -233,12 +217,6 @@ func LogManyTaskAbortRequests(ctx context.Context, taskIds []string, userId stri
 func LogManyTaskPriority(ctx context.Context, taskIds []string, userId string, priority int64) {
 	logManyTaskEvents(ctx, taskIds, TaskPriorityChanged,
 		TaskEventData{UserId: userId, Priority: priority})
-}
-
-// LogTaskContainerAllocated updates the DB with a container allocated event.
-func LogTaskContainerAllocated(ctx context.Context, taskId string, execution int, containerAllocatedTime time.Time) {
-	logTaskEvent(ctx, taskId, ContainerAllocated,
-		TaskEventData{Execution: execution, Timestamp: containerAllocatedTime})
 }
 
 // LogTaskDependenciesOverridden updates the DB with a task dependencies overridden event.

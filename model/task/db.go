@@ -705,58 +705,6 @@ func schedulableHostTasksQuery() bson.M {
 	return q
 }
 
-// FindNeedsContainerAllocation returns all container tasks that are waiting for
-// a container to be allocated to them sorted by activation time.
-func FindNeedsContainerAllocation(ctx context.Context) ([]Task, error) {
-	return FindAll(ctx, db.Query(needsContainerAllocation()).Sort([]string{ActivatedTimeKey}))
-}
-
-// needsContainerAllocation returns the query that filters for a task that
-// currently needs a container to be allocated to run it.
-func needsContainerAllocation() bson.M {
-	q := ScheduledContainerTasksQuery()
-	q[ContainerAllocatedKey] = false
-	return q
-}
-
-// ScheduledContainerTasksQuery returns a query indicating if the container is
-// in a state where it is scheduled to run and is logically equivalent to
-// (Task).isContainerScheduled. This encompasses two potential states:
-//  1. A container is not yet allocated to the task but it's ready to be
-//     allocated one. Note that this is a subset of all tasks that could
-//     eventually run (i.e. evergreen.TaskWillRun from (Task).GetDisplayStatus),
-//     because a container task is not scheduled until all of its dependencies
-//     have been met.
-//  2. The container is allocated but the agent has not picked up the task yet.
-func ScheduledContainerTasksQuery() bson.M {
-	query := UndispatchedContainerTasksQuery()
-	query["$or"] = []bson.M{
-		{
-			DependsOnKey: bson.M{"$size": 0},
-		},
-		{
-			// Containers can only be allocated for tasks whose dependencies
-			// are all met. All dependencies are met if they're all finished
-			// running and are still attainable (i.e. the dependency's
-			// required status matched the task's actual ending status).
-			bsonutil.GetDottedKeyName(DependsOnKey, DependencyFinishedKey):     true,
-			bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
-		},
-		{OverrideDependenciesKey: true},
-	}
-	return query
-}
-
-// UndispatchedContainerTasksQuery returns a query retrieving all undispatched container tasks.
-func UndispatchedContainerTasksQuery() bson.M {
-	return bson.M{
-		StatusKey:            evergreen.TaskUndispatched,
-		ActivatedKey:         true,
-		ExecutionPlatformKey: ExecutionPlatformContainer,
-		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
-	}
-}
-
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all mainline commit tasks
 // associated with a given project and commit hash. Filtering by task status, task name, and
 // buildvariant name are optionally available.

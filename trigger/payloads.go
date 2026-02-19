@@ -487,7 +487,3 @@ func versionLink(i versionLinkInput) string {
 func hostLink(uiBase, hostID string) string {
 	return fmt.Sprintf("%s/host/%s", uiBase, hostID)
 }
-
-func podLink(uiBase, podID string) string {
-	return fmt.Sprintf("%s/pod/%s", uiBase, podID)
-}

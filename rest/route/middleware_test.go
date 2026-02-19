@@ -318,106 +318,13 @@ func TestHostAuthMiddleware(t *testing.T) {
 	}
 }
 
-func TestPodAuthMiddleware(t *testing.T) {
-	m := NewPodAuthMiddleware()
-	for testName, testCase := range map[string]func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder){
-		"Succeeds": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
-			s, err := p.GetSecret()
-			require.NoError(t, err)
-			r := &http.Request{
-				Header: http.Header{
-					evergreen.PodHeader:       []string{p.ID},
-					evergreen.PodSecretHeader: []string{s.Value},
-				},
-			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-			assert.Equal(t, http.StatusOK, rw.Code)
-		},
-		"FailsWithoutSecret": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
-			r := &http.Request{
-				Header: http.Header{
-					evergreen.PodHeader: []string{p.ID},
-				},
-			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-			assert.NotEqual(t, http.StatusOK, rw.Code)
-		},
-		"FailsWithInvalidSecret": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
-			r := &http.Request{
-				Header: http.Header{
-					evergreen.PodHeader:       []string{p.ID},
-					evergreen.PodSecretHeader: []string{"foo"},
-				},
-			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-			assert.NotEqual(t, http.StatusOK, rw.Code)
-		},
-		"FailsWithoutPodID": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
-			s, err := p.GetSecret()
-			require.NoError(t, err)
-			r := &http.Request{
-				Header: http.Header{
-					evergreen.PodSecretHeader: []string{s.Value},
-				},
-			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-			assert.NotEqual(t, http.StatusOK, rw.Code)
-		},
-		"FailsWithInvalidPodID": func(t *testing.T, p *pod.Pod, rw *httptest.ResponseRecorder) {
-			s, err := p.GetSecret()
-			require.NoError(t, err)
-			r := &http.Request{
-				Header: http.Header{
-					evergreen.PodHeader:       []string{"foo"},
-					evergreen.PodSecretHeader: []string{s.Value},
-				},
-			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-			assert.NotEqual(t, http.StatusOK, rw.Code)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.Clear(pod.Collection))
-			defer func() {
-				assert.NoError(t, db.Clear(pod.Collection))
-			}()
-			p := &pod.Pod{
-				ID: "id",
-				TaskContainerCreationOpts: pod.TaskContainerCreationOptions{
-					EnvSecrets: map[string]pod.Secret{
-						pod.PodSecretEnvVar: {
-							ExternalID: "external_id",
-							Value:      "value",
-						},
-					},
-				},
-			}
-			require.NoError(t, p.Insert(t.Context()))
-
-			testCase(t, p, httptest.NewRecorder())
-		})
-	}
-}
-
 func TestPodOrHostAuthMiddleware(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	m := NewPodOrHostAuthMiddleWare()
-	for testName, testCase := range map[string]func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder){
-		"SucceedsWithPod": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
-			s, err := p.GetSecret()
-			require.NoError(t, err)
-			r := &http.Request{
-				Header: http.Header{
-					evergreen.PodHeader:       []string{p.ID},
-					evergreen.PodSecretHeader: []string{s.Value},
-				},
-			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-			assert.Equal(t, http.StatusOK, rw.Code)
-		},
-		"SucceedsWithHost": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+	for testName, testCase := range map[string]func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder){
+		"SucceedsWithHost": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.HostHeader:       []string{h.Id},
@@ -427,7 +334,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.Equal(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithPodAndHostHeaders": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithPodAndHostHeaders": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			s, err := p.GetSecret()
 			require.NoError(t, err)
 			r := &http.Request{
@@ -441,14 +348,14 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithNoHeaders": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithNoHeaders": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{},
 			}
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithoutPodSecret": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithoutPodSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader: []string{p.ID},
@@ -457,7 +364,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithoutHostSecret": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithoutHostSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.HostHeader: []string{h.Id},
@@ -466,7 +373,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithInvalidPodSecret": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithInvalidPodSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.PodHeader:       []string{p.ID},
@@ -476,7 +383,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithInvalidHostSecret": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithInvalidHostSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.HostHeader:       []string{h.Id},
@@ -486,7 +393,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithoutPodID": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithoutPodID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			s, err := p.GetSecret()
 			require.NoError(t, err)
 			r := &http.Request{
@@ -497,7 +404,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithoutHostID": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithoutHostID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.HostSecretHeader: []string{h.Secret},
@@ -506,7 +413,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithInvalidPodID": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithInvalidPodID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			s, err := p.GetSecret()
 			require.NoError(t, err)
 			r := &http.Request{
@@ -518,7 +425,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		"FailsWithInvalidHostID": func(t *testing.T, p *pod.Pod, h *host.Host, rw *httptest.ResponseRecorder) {
+		"FailsWithInvalidHostID": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
 			r := &http.Request{
 				Header: http.Header{
 					evergreen.HostHeader:       []string{"foo"},

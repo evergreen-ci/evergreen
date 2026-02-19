@@ -17,7 +17,6 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
 	"go.opentelemetry.io/contrib/detectors/aws/ec2/v2"
-	"go.opentelemetry.io/contrib/detectors/aws/ecs"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -566,12 +565,10 @@ func hostResource(ctx context.Context) *resource.Resource {
 }
 
 // addEnvironmentAttributes adds attributes to the resource about the environment itself. When running in EC2
-// this includes information like the instance id and when running in ECS this includes information like the
-// container name. This will noop if not running in EC2/ECS.
+// this includes information like the instance id. This will noop if not running in EC2.
 func addEnvironmentAttributes(ctx context.Context, r *resource.Resource) (*resource.Resource, error) {
 	for name, detector := range map[string]resource.Detector{
 		"ec2": ec2.NewResourceDetector(),
-		"ecs": ecs.NewResourceDetector(),
 	} {
 		detectedResource, err := detector.Detect(ctx)
 		if err != nil {

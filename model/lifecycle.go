@@ -1200,26 +1200,13 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		t.MustHaveResults = utility.FromBoolPtr(projectTask.MustHaveResults)
 	}
 
-	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, creationInfo.BuildVariant.RunOn, creationInfo.Project.Containers)
-	if t.IsContainerTask() {
-		var err error
-		t.Container, err = getContainerFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
-		if err != nil {
-			return nil, err
-		}
-		opts, err := getContainerOptions(creationInfo, t.Container)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting container options")
-		}
-		t.ContainerOpts = *opts
-	} else {
-		distroID, secondaryDistros, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
-		if err != nil {
-			return nil, err
-		}
-		t.DistroId = distroID
-		t.SecondaryDistros = secondaryDistros
+	t.ExecutionPlatform = task.ExecutionPlatformHost
+	distroID, secondaryDistros, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
+	if err != nil {
+		return nil, err
 	}
+	t.DistroId = distroID
+	t.SecondaryDistros = secondaryDistros
 
 	if stepbackInfo != nil {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
@@ -1308,80 +1295,6 @@ func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVari
 		return distroID, secondaryDistros, nil
 	}
 	return "", nil, errors.Errorf("task '%s' is not runnable as there is no distro specified", id)
-}
-
-func shouldRunOnContainer(taskRunOn, buildVariantRunOn []string, containers []Container) task.ExecutionPlatform {
-	containerNameMap := map[string]bool{}
-	for _, container := range containers {
-		containerNameMap[container.Name] = true
-	}
-	var runOn []string
-	if len(taskRunOn) > 0 {
-		runOn = taskRunOn
-	} else {
-		runOn = buildVariantRunOn
-	}
-	for _, r := range runOn {
-		if containerNameMap[r] {
-			return task.ExecutionPlatformContainer
-		}
-	}
-	return task.ExecutionPlatformHost
-}
-
-func getContainerFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant) (string, error) {
-	var container string
-
-	if len(buildVarTask.RunOn) > 0 {
-		container = buildVarTask.RunOn[0]
-	} else if len(buildVariant.RunOn) > 0 {
-		container = buildVariant.RunOn[0]
-	} else {
-		return "", errors.Errorf("task '%s' on buildvariant '%s' is not runnable as there is no container specified", id, buildVariant.Name)
-	}
-	return container, nil
-}
-
-// getContainerOptions resolves the task's container configuration based on the
-// task's container name and the container definitions available to the project.
-func getContainerOptions(creationInfo TaskCreationInfo, container string) (*task.ContainerOptions, error) {
-	for _, c := range creationInfo.Project.Containers {
-		if c.Name != container {
-			continue
-		}
-
-		opts := task.ContainerOptions{
-			WorkingDir:     c.WorkingDir,
-			Image:          c.Image,
-			RepoCredsName:  c.Credential,
-			OS:             c.System.OperatingSystem,
-			Arch:           c.System.CPUArchitecture,
-			WindowsVersion: c.System.WindowsVersion,
-		}
-
-		if c.Resources != nil {
-			opts.CPU = c.Resources.CPU
-			opts.MemoryMB = c.Resources.MemoryMB
-			return &opts, nil
-		}
-
-		var containerSize *ContainerResources
-		for _, size := range creationInfo.ProjectRef.ContainerSizeDefinitions {
-			if size.Name == c.Size {
-				containerSize = &size
-				break
-			}
-		}
-		if containerSize == nil {
-			return nil, errors.Errorf("container size '%s' not found", c.Size)
-		}
-
-		opts.CPU = containerSize.CPU
-		opts.MemoryMB = containerSize.MemoryMB
-		return &opts, nil
-	}
-
-	return nil, errors.Errorf("definition for container '%s' not found", container)
 }
 
 func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName string, execTasks []string, createTime time.Time, displayTaskActivated bool) (*task.Task, error) {

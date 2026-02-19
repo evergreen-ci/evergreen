@@ -61,16 +61,6 @@ func Agent() cli.Command {
 				EnvVar: evergreen.HostSecretEnvVar,
 			},
 			cli.StringFlag{
-				Name:   podIDFlagName,
-				Usage:  "the ID of the pod that the agent is running on (applies only to pod mode)",
-				EnvVar: "POD_ID",
-			},
-			cli.StringFlag{
-				Name:   podSecretFlagName,
-				Usage:  "the secret for the pod that the agent is running on (applies only to pod mode)",
-				EnvVar: "POD_SECRET",
-			},
-			cli.StringFlag{
 				Name:  agentAPIServerURLFlagName,
 				Usage: "URL of the API server",
 			},
