@@ -118,7 +118,6 @@ type ServiceFlagEntry struct {
 
 // ToSlice returns all service flags as an ordered slice in struct declaration order.
 // This allows new flags to be discovered dynamically without modifying any additional code.
-// Unlike ToMap, the order is stable and matches the order fields appear in the struct.
 func (c *ServiceFlags) ToSlice() []ServiceFlagEntry {
 	v := reflect.ValueOf(*c)
 	t := v.Type()
@@ -133,16 +132,6 @@ func (c *ServiceFlags) ToSlice() []ServiceFlagEntry {
 			continue
 		}
 		result = append(result, ServiceFlagEntry{Name: jsonTag, Enabled: v.Field(i).Bool()})
-	}
-	return result
-}
-
-// ToMap returns a map of JSON tag name to bool value for all fields in ServiceFlags.
-func (c *ServiceFlags) ToMap() map[string]bool {
-	entries := c.ToSlice()
-	result := make(map[string]bool, len(entries))
-	for _, e := range entries {
-		result[e.Name] = e.Enabled
 	}
 	return result
 }

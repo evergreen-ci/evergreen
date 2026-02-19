@@ -184,6 +184,7 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 
 // SetServiceFlags is the resolver for the setServiceFlags field.
 func (r *mutationResolver) SetServiceFlags(ctx context.Context, updatedFlags []*ServiceFlagInput) ([]*ServiceFlag, error) {
+	usr := mustHaveUser(ctx)
 	currentFlags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service flags: %s", err.Error()))
@@ -200,7 +201,7 @@ func (r *mutationResolver) SetServiceFlags(ctx context.Context, updatedFlags []*
 	if err = evergreen.SetServiceFlags(ctx, *currentFlags); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting service flags: %s", err.Error()))
 	}
-	if err = event.LogAdminEvent(ctx, currentFlags.SectionId(), &oldFlags, currentFlags, mustHaveUser(ctx).Username()); err != nil {
+	if err = event.LogAdminEvent(ctx, currentFlags.SectionId(), &oldFlags, currentFlags, usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging service flag changes: %s", err.Error()))
 	}
 	entries := currentFlags.ToSlice()
