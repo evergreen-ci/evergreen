@@ -28,11 +28,11 @@ const (
 	maxNice = 19
 )
 
-// SetNice sets the nice on the current process. This determines its relative
-// scheduling priority for host CPU.
+// SetNice sets the nice for the process given by PID. This determines its
+// relative scheduling priority for host CPU.
 // This is only available if the current process has sufficient permissions to
 // set the nice.
-func SetNice(nice int) error {
+func SetNice(pid, nice int) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
@@ -40,5 +40,5 @@ func SetNice(nice int) error {
 		return errors.Errorf("nice must be between %d and %d", minNice, maxNice)
 	}
 	// 0 refers to the current process.
-	return syscall.Setpriority(syscall.PRIO_PROCESS, 0, nice)
+	return syscall.Setpriority(syscall.PRIO_PROCESS, pid, nice)
 }
