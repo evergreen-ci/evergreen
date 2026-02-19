@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -1475,6 +1476,76 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.True(detail.TimedOut)
 		s.Equal(evergreen.TaskSucceeded, detail.Status)
 		s.Empty(detail.Description)
+	})
+	s.T().Run("ReportsUserFileS3Usage", func(t *testing.T) {
+		s.tc.s3Usage = s3usage.S3Usage{}
+		defer func() { s.tc.s3Usage = s3usage.S3Usage{} }()
+
+		s.tc.s3Usage.IncrementUserFiles(5, 1024, 2)
+
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+		assert.NotNil(t, detail.S3Usage)
+		assert.Equal(t, 5, detail.S3Usage.UserFiles.PutRequests)
+		assert.Equal(t, int64(1024), detail.S3Usage.UserFiles.UploadBytes)
+		assert.Equal(t, 2, detail.S3Usage.UserFiles.FileCount)
+	})
+	s.T().Run("NoS3UsageWhenEmpty", func(t *testing.T) {
+		s.tc.s3Usage = s3usage.S3Usage{}
+		s.tc.taskConfig.Task.S3Usage = s3usage.S3Usage{}
+		defer func() {
+			s.tc.s3Usage = s3usage.S3Usage{}
+			s.tc.taskConfig.Task.S3Usage = s3usage.S3Usage{}
+		}()
+
+		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+		assert.Nil(t, detail.S3Usage)
+	})
+}
+
+func (s *AgentSuite) TestFinishTaskMergesLogS3Usage() {
+	s.T().Run("MergesLogAndUserFileMetrics", func(t *testing.T) {
+		s.tc.s3Usage = s3usage.S3Usage{}
+		s.tc.taskConfig.Task.S3Usage = s3usage.S3Usage{}
+		defer func() {
+			s.tc.s3Usage = s3usage.S3Usage{}
+			s.tc.taskConfig.Task.S3Usage = s3usage.S3Usage{}
+		}()
+
+		s.tc.s3Usage.IncrementUserFiles(5, 1024, 2)
+		s.tc.taskConfig.Task.S3Usage.IncrementLogFiles(10, 2048)
+
+		// Simulate what finishTask does after the final flush.
+		s.tc.s3Usage.IncrementLogFiles(
+			s.tc.taskConfig.Task.S3Usage.LogFiles.PutRequests,
+			s.tc.taskConfig.Task.S3Usage.LogFiles.UploadBytes,
+		)
+
+		assert.Equal(t, 5, s.tc.s3Usage.UserFiles.PutRequests)
+		assert.Equal(t, int64(1024), s.tc.s3Usage.UserFiles.UploadBytes)
+		assert.Equal(t, 2, s.tc.s3Usage.UserFiles.FileCount)
+		assert.Equal(t, 10, s.tc.s3Usage.LogFiles.PutRequests)
+		assert.Equal(t, int64(2048), s.tc.s3Usage.LogFiles.UploadBytes)
+		assert.False(t, s.tc.s3Usage.IsZero())
+	})
+	s.T().Run("LogOnlyMetricsAreReported", func(t *testing.T) {
+		s.tc.s3Usage = s3usage.S3Usage{}
+		s.tc.taskConfig.Task.S3Usage = s3usage.S3Usage{}
+		defer func() {
+			s.tc.s3Usage = s3usage.S3Usage{}
+			s.tc.taskConfig.Task.S3Usage = s3usage.S3Usage{}
+		}()
+
+		s.tc.taskConfig.Task.S3Usage.IncrementLogFiles(3, 512)
+
+		s.tc.s3Usage.IncrementLogFiles(
+			s.tc.taskConfig.Task.S3Usage.LogFiles.PutRequests,
+			s.tc.taskConfig.Task.S3Usage.LogFiles.UploadBytes,
+		)
+
+		assert.Equal(t, 3, s.tc.s3Usage.LogFiles.PutRequests)
+		assert.Equal(t, int64(512), s.tc.s3Usage.LogFiles.UploadBytes)
+		assert.Equal(t, 0, s.tc.s3Usage.UserFiles.PutRequests)
+		assert.False(t, s.tc.s3Usage.IsZero())
 	})
 }
 

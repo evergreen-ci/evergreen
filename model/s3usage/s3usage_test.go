@@ -24,7 +24,11 @@ func TestS3Usage(t *testing.T) {
 		assert.False(t, s3Usage.IsZero())
 
 		s3Usage = S3Usage{}
-		s3Usage.NumPutRequests = 5
+		s3Usage.LogFiles.PutRequests = 5
+		assert.False(t, s3Usage.IsZero())
+
+		s3Usage = S3Usage{}
+		s3Usage.LogFiles.UploadBytes = 100
 		assert.False(t, s3Usage.IsZero())
 
 	})
@@ -46,15 +50,18 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 5, s3Usage.UserFiles.FileCount)
 	})
 
-	t.Run("IncrementPutRequests", func(t *testing.T) {
+	t.Run("IncrementLogFiles", func(t *testing.T) {
 		s3Usage := S3Usage{}
-		assert.Equal(t, 0, s3Usage.NumPutRequests)
+		assert.Equal(t, 0, s3Usage.LogFiles.PutRequests)
+		assert.Equal(t, int64(0), s3Usage.LogFiles.UploadBytes)
 
-		s3Usage.IncrementPutRequests(5)
-		assert.Equal(t, 5, s3Usage.NumPutRequests)
+		s3Usage.IncrementLogFiles(5, 1024)
+		assert.Equal(t, 5, s3Usage.LogFiles.PutRequests)
+		assert.Equal(t, int64(1024), s3Usage.LogFiles.UploadBytes)
 
-		s3Usage.IncrementPutRequests(10)
-		assert.Equal(t, 15, s3Usage.NumPutRequests)
+		s3Usage.IncrementLogFiles(10, 2048)
+		assert.Equal(t, 15, s3Usage.LogFiles.PutRequests)
+		assert.Equal(t, int64(3072), s3Usage.LogFiles.UploadBytes)
 	})
 
 	t.Run("NilReceiverIsZero", func(t *testing.T) {

@@ -823,6 +823,13 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			attribute.Int(evergreen.S3PutCostTotalFileCountOtelAttribute, t.S3Usage.UserFiles.FileCount),
 			attribute.Float64(evergreen.S3PutCostTotalPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
 		}
+		if t.S3Usage.LogFiles.PutRequests > 0 {
+			s3Attrs = append(s3Attrs,
+				attribute.Int(evergreen.TaskS3LogUploadPutRequestsOtelAttribute, t.S3Usage.LogFiles.PutRequests),
+				attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.LogFiles.UploadBytes),
+				attribute.Float64(evergreen.TaskS3LogUploadPutCostOtelAttribute, t.TaskCost.S3LogUploadPutCost),
+			)
+		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
 		span.SetAttributes(s3Attrs...)
 	}

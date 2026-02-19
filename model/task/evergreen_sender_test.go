@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -269,6 +270,52 @@ func TestFlush(t *testing.T) {
 		assert.Equal(t, ts, mock.service.lines[0].Timestamp)
 		assert.Equal(t, "some message", mock.service.lines[0].Data)
 	})
+	t.Run("TracksS3Usage", func(t *testing.T) {
+		s3Usage := &s3usage.S3Usage{}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		sender := &evergreenSender{
+			ctx:    ctx,
+			cancel: cancel,
+			opts: EvergreenSenderOptions{
+				Local:         &mockSender{Base: send.NewBase("test")},
+				MaxBufferSize: 4096,
+				S3Usage:       s3Usage,
+				Parse:         defaultLogLineParser,
+				appendLines: func(ctx context.Context, lines []log.LogLine) (int64, error) {
+					return 1024, nil
+				},
+			},
+			Base: send.NewBase("test"),
+		}
+
+		sender.buffer = []log.LogLine{{Priority: level.Info, Timestamp: time.Now().UnixNano(), Data: "test"}}
+		sender.bufferSize = 4
+
+		require.NoError(t, sender.Flush(ctx))
+		assert.Empty(t, sender.buffer)
+		assert.Equal(t, 1, s3Usage.LogFiles.PutRequests)
+		assert.Equal(t, int64(1024), s3Usage.LogFiles.UploadBytes)
+
+		sender.buffer = []log.LogLine{{Priority: level.Info, Timestamp: time.Now().UnixNano(), Data: "more"}}
+		sender.bufferSize = 4
+
+		require.NoError(t, sender.Flush(ctx))
+		assert.Equal(t, 2, s3Usage.LogFiles.PutRequests)
+		assert.Equal(t, int64(2048), s3Usage.LogFiles.UploadBytes)
+	})
+	t.Run("SkipsS3UsageWhenNil", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+
+		m := message.ConvertToComposer(level.Info, "no tracking")
+		mock.sender.Send(m)
+		require.NotEmpty(t, mock.sender.buffer)
+
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Empty(t, mock.sender.buffer)
+		assert.Nil(t, mock.sender.opts.S3Usage)
+	})
 }
 
 func TestClose(t *testing.T) {
@@ -346,7 +393,7 @@ func newSenderTestMock(ctx context.Context) *senderTestMock {
 				Parse: func(rawLine string) (log.LogLine, error) {
 					return log.LogLine{Data: rawLine}, nil
 				},
-				appendLines: func(ctx context.Context, lines []log.LogLine) error {
+				appendLines: func(ctx context.Context, lines []log.LogLine) (int64, error) {
 					return svc.Append(ctx, lines)
 				},
 			},
@@ -375,11 +422,11 @@ type mockLogService struct {
 	hasWriteErr bool
 }
 
-func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) error {
+func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) (int64, error) {
 	if s.hasWriteErr {
-		return errors.New("write error")
+		return 0, errors.New("write error")
 	}
 	s.lines = append(s.lines, lines...)
 
-	return nil
+	return 0, nil
 }

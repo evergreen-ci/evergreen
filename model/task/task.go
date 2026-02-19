@@ -4359,6 +4359,7 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 
 	t.calculateRuntimeCost(ctx)
 	t.calculateS3ArtifactCost(ctx)
+	t.calculateS3LogUploadCost(ctx)
 
 	if t.TaskCost.IsZero() {
 		return nil
@@ -4390,6 +4391,18 @@ func (t *Task) calculateS3ArtifactCost(ctx context.Context) {
 		costConfig = nil
 	}
 	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
+}
+
+// calculateS3LogUploadCost sets the S3 log upload PUT cost on TaskCost based on the task's log upload usage.
+func (t *Task) calculateS3LogUploadCost(ctx context.Context) {
+	if t.S3Usage.LogFiles.PutRequests <= 0 {
+		return
+	}
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		costConfig = nil
+	}
+	t.TaskCost.S3LogUploadPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.LogFiles.PutRequests, costConfig)
 }
 
 type CostPredictionResult struct {
