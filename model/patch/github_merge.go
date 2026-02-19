@@ -126,7 +126,7 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 		githubHeadPRURL,
 	)
 	baseAttrs = append(baseAttrs, attribute.String(MergeQueueAttrMsgID, msgDeliveryID))
-	ctx, span := tracer.Start(ctx, MergeQueueIntentCreatedSpan,
+	_, span := tracer.Start(ctx, MergeQueueIntentCreatedSpan,
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 

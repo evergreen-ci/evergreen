@@ -320,7 +320,7 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 
 **Average time in queue:**
 
-```
+```text
 WHERE evergreen.merge_queue.status `exists`
 VISUALIZE P50(evergreen.merge_queue.time_in_queue_ms),
          P95(evergreen.merge_queue.time_in_queue_ms)
@@ -329,7 +329,7 @@ GROUP BY evergreen.merge_queue.project_id
 
 **Failure type breakdown:**
 
-```
+```text
 WHERE evergreen.merge_queue.status = "failed"
 VISUALIZE COUNT
 GROUP BY evergreen.merge_queue.has_test_failure,
@@ -340,7 +340,7 @@ GROUP BY evergreen.merge_queue.has_test_failure,
 
 **Time to first task (P95):**
 
-```
+```text
 WHERE evergreen.merge_queue.time_to_first_task_ms `exists`
 VISUALIZE P95(evergreen.merge_queue.time_to_first_task_ms)
 GROUP BY evergreen.merge_queue.project_id
@@ -348,7 +348,7 @@ GROUP BY evergreen.merge_queue.project_id
 
 **Removal reason breakdown:**
 
-```
+```text
 WHERE evergreen.merge_queue.removal_reason `exists`
 VISUALIZE COUNT
 GROUP BY evergreen.merge_queue.status, evergreen.merge_queue.removal_reason
