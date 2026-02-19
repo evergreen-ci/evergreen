@@ -232,7 +232,8 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		}
 	}
 
-	err = cmd.Run(ctx)
+	err = runCmdWithDefaultNice(ctx, cmd, logger)
+
 	if !c.Background && err != nil {
 		if exitCode, _ := cmd.Wait(ctx); exitCode != 0 {
 			err = errors.Errorf("exit code %d", exitCode)
