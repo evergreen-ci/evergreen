@@ -73,7 +73,6 @@ var (
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	ExecutionPlatformKey           = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                      = bsonutil.MustHaveTag(Task{}, "HostId")
-	PodIDKey                       = bsonutil.MustHaveTag(Task{}, "PodID")
 	AgentVersionKey                = bsonutil.MustHaveTag(Task{}, "AgentVersion")
 	ExecutionKey                   = bsonutil.MustHaveTag(Task{}, "Execution")
 	LatestParentExecutionKey       = bsonutil.MustHaveTag(Task{}, "LatestParentExecution")

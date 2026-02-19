@@ -122,7 +122,6 @@ func TestTaskBuildFromService(t *testing.T) {
 						Arch:       evergreen.ArchAMD64,
 					},
 					HostId:       "host",
-					PodID:        "pod",
 					BuildVariant: "testBuildVariant",
 					DependsOn: []task.Dependency{
 						{

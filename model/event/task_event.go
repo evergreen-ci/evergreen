@@ -42,7 +42,6 @@ const (
 type TaskEventData struct {
 	Execution int    `bson:"execution" json:"execution"`
 	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
-	PodID     string `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
 	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    string `bson:"s,omitempty" json:"status,omitempty"`
 	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`

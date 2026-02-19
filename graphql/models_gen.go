@@ -390,11 +390,16 @@ type Permissions struct {
 	UserID               string              `json:"userId"`
 }
 
-// PodEvents is the return value for the events query.
-// It contains the event log entries for a pod.
-type PodEvents struct {
-	Count           int                          `json:"count"`
-	EventLogEntries []*model.PodAPIEventLogEntry `json:"eventLogEntries"`
+type PodLifecycleConfig struct {
+	MaxParallelPodRequests      *int `json:"maxParallelPodRequests,omitempty"`
+	MaxPodDefinitionCleanupRate *int `json:"maxPodDefinitionCleanupRate,omitempty"`
+	MaxSecretCleanupRate        *int `json:"maxSecretCleanupRate,omitempty"`
+}
+
+type PodLifecycleConfigInput struct {
+	MaxParallelPodRequests      int `json:"maxParallelPodRequests"`
+	MaxPodDefinitionCleanupRate int `json:"maxPodDefinitionCleanupRate"`
+	MaxSecretCleanupRate        int `json:"maxSecretCleanupRate"`
 }
 
 type ProjectBuildVariant struct {

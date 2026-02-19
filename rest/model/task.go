@@ -72,7 +72,6 @@ type APITask struct {
 	DisplayName *string `json:"display_name"`
 	// The ID of the host this task ran or is running on
 	HostId *string `json:"host_id"`
-	PodID  *string `json:"pod_id,omitempty"`
 	// The number of the execution of this particular task
 	Execution int `json:"execution"`
 	// For mainline commits, represents the position in the commit history of
@@ -345,7 +344,6 @@ func (at *APITask) buildTask(t *task.Task) error {
 		BuildVariantDisplayName:     utility.ToStringPtr(t.BuildVariantDisplayName),
 		DisplayName:                 utility.ToStringPtr(t.DisplayName),
 		HostId:                      utility.ToStringPtr(t.HostId),
-		PodID:                       utility.ToStringPtr(t.PodID),
 		Tags:                        utility.ToStringPtrSlice(t.Tags),
 		Execution:                   t.Execution,
 		Order:                       t.RevisionOrderNumber,
@@ -596,7 +594,6 @@ func (at *APITask) ToService() (*task.Task, error) {
 		BuildVariantDisplayName:     utility.FromStringPtr(at.BuildVariantDisplayName),
 		DisplayName:                 utility.FromStringPtr(at.DisplayName),
 		HostId:                      utility.FromStringPtr(at.HostId),
-		PodID:                       utility.FromStringPtr(at.PodID),
 		Execution:                   at.Execution,
 		RevisionOrderNumber:         at.Order,
 		Status:                      utility.FromStringPtr(at.Status),

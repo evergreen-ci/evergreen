@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -32,7 +31,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 	mp := cloud.GetMockProvider()
 	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, pod.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
 		mp.Reset()
 	}()
 
@@ -48,12 +47,6 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, restartedTask)
 		assert.Equal(t, evergreen.TaskUndispatched, restartedTask.Status)
-	}
-	checkPodRunningTaskCleared := func(t *testing.T, podID string) {
-		foundPod, err := pod.FindOneByID(t.Context(), podID)
-		require.NoError(t, err)
-		require.NotZero(t, foundPod)
-		assert.Zero(t, foundPod.TaskRuntimeInfo)
 	}
 
 	const hostID = "host_id"
@@ -137,58 +130,6 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			depsMet, err := dbOtherTask.DependenciesMet(ctx, map[string]task.Task{})
 			require.NoError(t, err)
 			assert.False(t, depsMet, "single host task group task should depend on first task succeeding")
-		},
-		"RestartsStaleContainerTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
-			j.task.ExecutionPlatform = task.ExecutionPlatformContainer
-			j.task.HostId = ""
-			p := pod.Pod{
-				ID:     "pod_id",
-				Status: pod.StatusRunning,
-			}
-
-			j.task.PodID = p.ID
-			j.task.ContainerAllocated = true
-			require.NoError(t, j.task.Insert(t.Context()))
-			require.NoError(t, v.Insert(t.Context()))
-			require.NoError(t, p.Insert(t.Context()))
-
-			j.Run(ctx)
-			require.NoError(t, j.Error())
-
-			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
-		},
-		"RestartsStaleContainerTaskAndChecksForUnhealthyPod": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
-			p := pod.Pod{
-				ID:     "pod_id",
-				Status: pod.StatusDecommissioned,
-				TaskRuntimeInfo: pod.TaskRuntimeInfo{
-					RunningTaskID:        j.task.Id,
-					RunningTaskExecution: j.task.Execution,
-				},
-			}
-			j.task.ExecutionPlatform = task.ExecutionPlatformContainer
-			j.task.HostId = ""
-			j.task.ContainerAllocated = true
-			j.task.PodID = p.ID
-
-			require.NoError(t, v.Insert(t.Context()))
-			require.NoError(t, p.Insert(t.Context()))
-			require.NoError(t, j.task.Insert(t.Context()))
-
-			j.Run(ctx)
-			require.NoError(t, j.Error())
-
-			var foundHealthCheckJob bool
-			for info := range j.env.RemoteQueue().JobInfo(ctx) {
-				if info.Type.Name == podHealthCheckJobName {
-					foundHealthCheckJob = true
-					break
-				}
-			}
-			assert.True(t, foundHealthCheckJob, "should have enqueued a pod health check job")
-
-			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
-			checkPodRunningTaskCleared(t, p.ID)
 		},
 		"RestartsParentDisplayTaskForStaleHostExecutionTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
 			const displayTaskID = "display_task"
@@ -278,7 +219,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, pod.Collection, host.Collection, event.EventCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, model.VersionCollection, model.ParserProjectCollection, model.ProjectRefCollection, host.Collection, event.EventCollection))
 			mp.Reset()
 
 			const taskID = "task_id"

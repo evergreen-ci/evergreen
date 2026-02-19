@@ -1,61 +1,13 @@
 package container
 
 import (
-	"context"
-	"fmt"
 	"os"
-	"syscall"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/smoke/internal"
-	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
-
-// TestSmokeContainerTask runs the smoke test for a container task.
-// TODO (PM-2617) Add task groups to the container task smoke test once they are
-// supported
-// TODO (EVG-17658): this test is highly fragile and has a chance of breaking if
-// you change any of the container task YAML setup (e.g. change any
-// container-related configuration in project.yml). If you change the container
-// task setup, you will likely also have to change the smoke testdata. EVG-17658
-// should address the issues with the smoke test.
-func TestSmokeContainerTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	params := getSmokeTestParamsFromEnv(t)
-	grip.Info(message.Fields{
-		"message": "got smoke test parameters",
-		"params":  fmt.Sprintf("%#v", params),
-	})
-
-	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
-	defer func() {
-		if appServerCmd != nil {
-			grip.Error(errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
-		}
-	}()
-
-	agentCmd := internal.StartAgent(ctx, t, params.APIParams, globals.PodMode, params.execModeID, params.execModeSecret)
-	defer func() {
-		if agentCmd != nil {
-			grip.Error(errors.Wrap(agentCmd.Signal(ctx, syscall.SIGTERM), "stopping agent after test completion"))
-		}
-	}()
-
-	client := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(client)
-
-	internal.WaitForEvergreen(t, params.AppServerURL, client)
-
-	internal.CheckTaskStatusAndLogs(ctx, t, params.APIParams, client, globals.PodMode, []string{params.taskID})
-}
 
 type smokeTestParams struct {
 	internal.APIParams

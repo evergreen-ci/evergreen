@@ -436,25 +436,6 @@ type ParameterInfo struct {
 	Description     string `yaml:"description" bson:"description"`
 }
 
-// Container holds all properties that are configurable when defining a container
-// for tasks and build variants to run on in a project YAML file.
-type Container struct {
-	Name       string              `yaml:"name" bson:"name"`
-	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string              `yaml:"image" bson:"image" plugin:"expand"`
-	Size       string              `yaml:"size,omitempty" bson:"size"`
-	Credential string              `yaml:"credential,omitempty" bson:"credential"`
-	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
-	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
-}
-
-// ContainerSystem specifies the architecture and OS for the running container to use.
-type ContainerSystem struct {
-	CPUArchitecture evergreen.ContainerArch  `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
-	OperatingSystem evergreen.ContainerOS    `yaml:"operating_system,omitempty" bson:"operating_system"`
-	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
-}
-
 // Module specifies the git details of another git project to be included within a
 // given version at runtime. Module fields include the expand plugin tag because they
 // need to support project ref variable expansions.

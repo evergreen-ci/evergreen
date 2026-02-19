@@ -149,11 +149,6 @@ func smokeStartEvergreen() cli.Command {
 				switch mode {
 				case string(globals.HostMode):
 					envVars = makeHostAuthEnvVars(execModeID, execModeSecret)
-				case string(globals.PodMode):
-					envVars = []string{
-						fmt.Sprintf("POD_ID=%s", execModeID),
-						fmt.Sprintf("POD_SECRET=%s", execModeSecret),
-					}
 				}
 
 				err := smokeRunBinary(exit, "agent",

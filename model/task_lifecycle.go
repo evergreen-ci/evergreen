@@ -829,7 +829,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"status":             status,
 		"operation":          "MarkEnd",
 		"host_id":            t.HostId,
-		"pod_id":             t.PodID,
 		"execution_platform": t.ExecutionPlatform,
 	})
 	origin := evergreen.APIServerTaskActivator

@@ -1064,18 +1064,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		pref := &ProjectRef{
 			Id:         "projectId",
 			Identifier: "projectName",
-			ContainerSizeDefinitions: []ContainerResources{
-				{
-					Name:     "small",
-					CPU:      256,
-					MemoryMB: 128,
-				},
-				{
-					Name:     "large",
-					CPU:      512,
-					MemoryMB: 256,
-				},
-			},
 		}
 		So(pref.Insert(t.Context()), ShouldBeNil)
 
@@ -1083,31 +1071,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			Variant: ".*"}
 		So(alias.Upsert(t.Context()), ShouldBeNil)
 		mustHaveResults := true
-		container1 := Container{
-			Name:       "container1",
-			WorkingDir: "/data",
-			Image:      "ubuntu",
-			Resources: &ContainerResources{
-				MemoryMB: 1024,
-				CPU:      512,
-			},
-			System: ContainerSystem{
-				OperatingSystem: evergreen.LinuxOS,
-				CPUArchitecture: evergreen.ArchARM64,
-			},
-			Credential: "repo_creds",
-		}
-		container2 := Container{
-			Name:       "container2",
-			WorkingDir: "/dir",
-			Image:      "windows",
-			Size:       "small",
-			System: ContainerSystem{
-				OperatingSystem: evergreen.WindowsOS,
-				CPUArchitecture: evergreen.ArchAMD64,
-				WindowsVersion:  evergreen.Windows2019,
-			},
-		}
 		parserProject := &ParserProject{
 			Identifier: utility.ToStringPtr("projectId"),
 			TaskGroups: []parserTaskGroup{
@@ -1168,7 +1131,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					Name: "singleHostTaskGroup3",
 				},
 			},
-			Containers:    []Container{container1, container2},
 			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3, buildVar4, buildVar5},
 		}
 

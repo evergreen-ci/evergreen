@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
@@ -413,11 +411,7 @@ func TestCreateProject(t *testing.T) {
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
-
-		cocoaMock.ResetGlobalSecretCache()
 	}()
-
-	smClient := &cocoaMock.SecretsManagerClient{}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
@@ -428,17 +422,6 @@ func TestCreateProject(t *testing.T) {
 			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
-			require.Len(t, dbProjRef.ContainerSecrets, 1, "should create pod secret for new project")
-			assert.NotZero(t, dbProjRef.ContainerSecrets[0].Name)
-			assert.Equal(t, model.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
-			assert.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalName)
-			assert.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalID)
-
-			getValOut, err := smClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-				SecretId: utility.ToStringPtr(dbProjRef.ContainerSecrets[0].ExternalID),
-			})
-			require.NoError(t, err, "new pod secret should be stored")
-			assert.NotZero(t, utility.FromStringPtr(getValOut.SecretString))
 		},
 		"FailsWithAlreadyExistingID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
 			require.NoError(t, pRef.Insert(t.Context()))
@@ -508,8 +491,6 @@ func TestCreateProject(t *testing.T) {
 			defer tcancel()
 
 			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
-
-			cocoaMock.ResetGlobalSecretCache()
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))

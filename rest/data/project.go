@@ -168,38 +168,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	return true, warningCatcher.Resolve()
 }
 
-func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
-	smClient, err := cloud.MakeSecretsManagerClient(ctx, settings)
-	if err != nil {
-		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
-	}
-
-	vault, err := cloud.MakeSecretsManagerVault(smClient)
-	if err != nil {
-		return errors.Wrap(err, "setting up Secrets Manager vault to store newly-created project's container secrets")
-	}
-
-	secrets, err := getCopiedContainerSecrets(ctx, settings, vault, pRef.Id, existingSecrets)
-	if err != nil {
-		return errors.Wrapf(err, "copying existing container secrets")
-	}
-	if err := pRef.SetContainerSecrets(ctx, secrets); err != nil {
-		return errors.Wrap(err, "setting container secrets")
-	}
-
-	// Under the hood, this is updating the container secrets in the DB project
-	// ref, but this function's copy of the in-memory project ref won't reflect
-	// those changes. We log an error here instead of returning, so that this
-	// doesn't prevent the rest of the operations.
-	grip.Error(message.WrapError(UpsertContainerSecrets(ctx, vault, secrets), message.Fields{
-		"message":            "problem upserting container secrets",
-		"project_id":         pRef.Id,
-		"project_identifier": pRef.Identifier,
-	}))
-
-	return nil
-}
-
 // projectIDRegexp includes all the allowed characters in a project
 // ID/identifier (i.e. those that do not require percent encoding for URLs).
 // These are listed in RFC-3986:

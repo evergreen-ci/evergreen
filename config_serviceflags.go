@@ -13,7 +13,6 @@ import (
 type ServiceFlags struct {
 	TaskDispatchDisabled               bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `bson:"host_init_disabled" json:"host_init_disabled"`
-	PodInitDisabled                    bool `bson:"pod_init_disabled" json:"pod_init_disabled"`
 	LargeParserProjectsDisabled        bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
 	MonitorDisabled                    bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	AlertsDisabled                     bool `bson:"alerts_disabled" json:"alerts_disabled"`
@@ -29,8 +28,6 @@ type ServiceFlags struct {
 	CacheStatsEndpointDisabled         bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled            bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
 	HostAllocatorDisabled              bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
-	PodAllocatorDisabled               bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
-	UnrecognizedPodCleanupDisabled     bool `bson:"unrecognized_pod_cleanup_disabled" json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled           bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	CloudCleanupDisabled               bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled              bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
@@ -66,7 +63,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 		"$set": bson.M{
 			taskDispatchKey:                       c.TaskDispatchDisabled,
 			hostInitKey:                           c.HostInitDisabled,
-			podInitDisabledKey:                    c.PodInitDisabled,
 			largeParserProjectsDisabledKey:        c.LargeParserProjectsDisabled,
 			monitorKey:                            c.MonitorDisabled,
 			alertsKey:                             c.AlertsDisabled,
@@ -88,10 +84,8 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			cacheStatsEndpointDisabledKey:         c.CacheStatsEndpointDisabled,
 			taskReliabilityDisabledKey:            c.TaskReliabilityDisabled,
 			hostAllocatorDisabledKey:              c.HostAllocatorDisabled,
-			podAllocatorDisabledKey:               c.PodAllocatorDisabled,
 			backgroundReauthDisabledKey:           c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:               c.CloudCleanupDisabled,
-			unrecognizedPodCleanupDisabledKey:     c.UnrecognizedPodCleanupDisabled,
 			sleepScheduleDisabledKey:              c.SleepScheduleDisabled,
 			staticAPIKeysDisabledKey:              c.StaticAPIKeysDisabled,
 			JWTTokenForCLIDisabledKey:             c.JWTTokenForCLIDisabled,

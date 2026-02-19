@@ -710,19 +710,6 @@ func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgNam
 	return false, nil
 }
 
-func validateProjectConfigContainers(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
-	errs := ValidationErrors{}
-	for _, size := range pc.ContainerSizeDefinitions {
-		if size.Name == "" {
-			errs = append(errs, ValidationError{
-				Message: "container size name cannot be empty",
-				Level:   Error,
-			})
-		}
-	}
-	return errs
-}
-
 func validateProjectConfigPlugins(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
 	annotationSettings := pc.TaskAnnotationSettings

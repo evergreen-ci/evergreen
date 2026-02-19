@@ -487,7 +487,6 @@ var (
 	projectRefTaskAnnotationSettingsKey             = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
 	projectRefPerfEnabledKey                        = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
-	projectRefContainerSizeDefinitionsKey           = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
 	projectRefExternalLinksKey                      = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
 	projectRefBannerKey                             = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
 	projectRefParsleyFiltersKey                     = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")

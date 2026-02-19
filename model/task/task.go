@@ -1513,7 +1513,6 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 		"execution":          t.Execution,
 		"status":             t.Status,
 		"host_id":            t.HostId,
-		"pod_id":             t.PodID,
 		"description":        description,
 		"execution_platform": t.ExecutionPlatform,
 	})
@@ -2470,7 +2469,6 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.ActivatedBy = caller
 		t.Secret = newSecret
 		t.HostId = ""
-		t.PodID = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2534,7 +2532,6 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				ResetFailedWhenFinishedKey,
 				AgentVersionKey,
 				HostIdKey,
-				PodIDKey,
 				HostCreateDetailsKey,
 				OverrideDependenciesKey,
 				CanResetKey,

@@ -112,7 +112,6 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		"task":               j.task.Id,
 		"execution_platform": j.task.ExecutionPlatform,
 		"host_id":            j.task.HostId,
-		"pod_id":             j.task.PodID,
 	}
 
 	// If the task has heartbeat since this job was queued, let it run.

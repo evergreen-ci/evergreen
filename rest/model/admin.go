@@ -1999,30 +1999,27 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled           bool `json:"task_dispatch_disabled"`
-	HostInitDisabled               bool `json:"host_init_disabled"`
-	PodInitDisabled                bool `json:"pod_init_disabled"`
-	LargeParserProjectsDisabled    bool `json:"large_parser_projects_disabled"`
-	MonitorDisabled                bool `json:"monitor_disabled"`
-	AlertsDisabled                 bool `json:"alerts_disabled"`
-	AgentStartDisabled             bool `json:"agent_start_disabled"`
-	RepotrackerDisabled            bool `json:"repotracker_disabled"`
-	SchedulerDisabled              bool `json:"scheduler_disabled"`
-	CheckBlockedTasksDisabled      bool `json:"check_blocked_tasks_disabled"`
-	GithubPRTestingDisabled        bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled             bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled        bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled            bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled          bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled     bool `json:"cache_stats_endpoint_disabled"`
-	TaskReliabilityDisabled        bool `json:"task_reliability_disabled"`
-	HostAllocatorDisabled          bool `json:"host_allocator_disabled"`
-	PodAllocatorDisabled           bool `json:"pod_allocator_disabled"`
-	UnrecognizedPodCleanupDisabled bool `json:"unrecognized_pod_cleanup_disabled"`
-	BackgroundReauthDisabled       bool `json:"background_reauth_disabled"`
-	CloudCleanupDisabled           bool `json:"cloud_cleanup_disabled"`
-	SleepScheduleDisabled          bool `json:"sleep_schedule_disabled"`
-	StaticAPIKeysDisabled          bool `json:"static_api_keys_disabled"`
+	TaskDispatchDisabled        bool `json:"task_dispatch_disabled"`
+	HostInitDisabled            bool `json:"host_init_disabled"`
+	LargeParserProjectsDisabled bool `json:"large_parser_projects_disabled"`
+	MonitorDisabled             bool `json:"monitor_disabled"`
+	AlertsDisabled              bool `json:"alerts_disabled"`
+	AgentStartDisabled          bool `json:"agent_start_disabled"`
+	RepotrackerDisabled         bool `json:"repotracker_disabled"`
+	SchedulerDisabled           bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled   bool `json:"check_blocked_tasks_disabled"`
+	GithubPRTestingDisabled     bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled          bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled     bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled         bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled       bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled  bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled     bool `json:"task_reliability_disabled"`
+	HostAllocatorDisabled       bool `json:"host_allocator_disabled"`
+	BackgroundReauthDisabled    bool `json:"background_reauth_disabled"`
+	CloudCleanupDisabled        bool `json:"cloud_cleanup_disabled"`
+	SleepScheduleDisabled       bool `json:"sleep_schedule_disabled"`
+	StaticAPIKeysDisabled       bool `json:"static_api_keys_disabled"`
 	// JWTTokenForCLIDisabled disables the use of OAuth tokens for the CLI.
 	JWTTokenForCLIDisabled             bool `json:"jwt_token_for_cli_disabled"`
 	SystemFailedTaskRestartDisabled    bool `json:"system_failed_task_restart_disabled"`
@@ -2451,7 +2448,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
-		as.PodInitDisabled = v.PodInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2473,8 +2469,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
-		as.PodAllocatorDisabled = v.PodAllocatorDisabled
-		as.UnrecognizedPodCleanupDisabled = v.UnrecognizedPodCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
@@ -2500,7 +2494,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 	return evergreen.ServiceFlags{
 		TaskDispatchDisabled:               as.TaskDispatchDisabled,
 		HostInitDisabled:                   as.HostInitDisabled,
-		PodInitDisabled:                    as.PodInitDisabled,
 		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
 		MonitorDisabled:                    as.MonitorDisabled,
 		AlertsDisabled:                     as.AlertsDisabled,
@@ -2522,8 +2515,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CacheStatsEndpointDisabled:         as.CacheStatsEndpointDisabled,
 		TaskReliabilityDisabled:            as.TaskReliabilityDisabled,
 		HostAllocatorDisabled:              as.HostAllocatorDisabled,
-		PodAllocatorDisabled:               as.PodAllocatorDisabled,
-		UnrecognizedPodCleanupDisabled:     as.UnrecognizedPodCleanupDisabled,
 		BackgroundReauthDisabled:           as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:               as.CloudCleanupDisabled,
 		SleepScheduleDisabled:              as.SleepScheduleDisabled,
