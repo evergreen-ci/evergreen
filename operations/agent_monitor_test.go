@@ -73,7 +73,6 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			if runtime.GOOS != "linux" {
 				t.Skip("nice only applies to Linux")
 			}
-			// kim: TODO: add basic test if possible
 			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, agentMonitorDefaultRetryOptions()))
 			fileInfo, err := os.Stat(m.clientPath)
 			require.NoError(t, err)
