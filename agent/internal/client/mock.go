@@ -571,6 +571,10 @@ func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
 	return nil
 }
 
+func (c *Mock) MarkMergeQueueGitRefNotFound(ctx context.Context, td TaskData) error {
+	return nil
+}
+
 type mockSender struct {
 	appendLine func(log.LogLine) error
 	lastErr    error

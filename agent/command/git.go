@@ -356,9 +356,9 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) error {
 	attempt := 0
-	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
+	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
 		gitCommands, err := c.buildSourceCloneCommand(conf, opts)
 		if err != nil {
@@ -395,7 +395,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 	})
 }
 
-func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, isSource bool, opts cloneOpts, fetch func(cloneOpts) error) error {
+func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, isSource bool, opts cloneOpts, fetch func(cloneOpts) error) error {
 	const (
 		fetchRetryMinDelay = time.Second
 		fetchRetryMaxDelay = 10 * time.Second
@@ -424,6 +424,9 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 					logger.Task().Warning("git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
 				}
 				if strings.Contains(err.Error(), githubMergeQueueInvalidRefError) {
+					if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
+						logger.Task().Warningf("Failed to mark git ref not found: %s", markErr)
+					}
 					return false, errors.Wrap(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
 				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
@@ -541,7 +544,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	attempt := 0
-	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
+	return c.retryFetch(ctx, logger, comm, conf, false, opts, func(opts cloneOpts) error {
 		attempt++
 		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 			attribute.String(cloneModuleAttribute, module.Name),
@@ -593,7 +596,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	defer cancel()
 
 	// Clone the project.
-	if err := c.fetchSource(ctx, logger, conf, opts); err != nil {
+	if err := c.fetchSource(ctx, logger, comm, conf, opts); err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
 

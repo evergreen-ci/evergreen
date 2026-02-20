@@ -1886,6 +1886,9 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	}
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrStatus, mergeQueueStatus))
 
+	span.SetAttributes(attribute.Bool(patch.MergeQueueAttrGitRefNotFound, p.GithubMergeData.GitRefNotFound))
+	span.SetAttributes(attribute.Bool(patch.MergeQueueAttrInvalidatedByUpstream, p.GithubMergeData.InvalidatedByUpstream))
+
 	totalCount := len(tasks)
 	metrics := gatherMergeQueueTaskMetrics(tasks)
 

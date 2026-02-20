@@ -150,6 +150,35 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 	return model.SetVersionActivation(ctx, patchId, activated, user)
 }
 
+// SetMergeQueueGitRefNotFound marks a merge queue patch's GitRefNotFound field.
+func SetMergeQueueGitRefNotFound(ctx context.Context, versionId string) error {
+	p, err := patch.FindOne(ctx, patch.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrap(err, "finding patch by version")
+	}
+	if p == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch for version '%s' not found", versionId),
+		}
+	}
+
+	if !p.IsMergeQueuePatch() {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "patch is not a merge queue patch",
+		}
+	}
+
+	update := mgobson.M{
+		"$set": mgobson.M{
+			"github_merge_data.git_ref_not_found": true,
+		},
+	}
+
+	return patch.UpdateOne(ctx, patch.ById(p.Id), update)
+}
+
 // FindPatchesByUser finds patches for the input user as ordered by creation time
 func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	patches, err := patch.Find(ctx, patch.ByUserPaginated(user, ts, limit))
