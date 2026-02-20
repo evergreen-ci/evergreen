@@ -114,6 +114,7 @@ func (j *mergeQueueMetricsJob) emitMetricsForProject(ctx context.Context, projec
 				"repo":        key.repo,
 				"base_branch": key.baseBranch,
 			}))
+			j.AddError(err)
 			continue
 		}
 	}
