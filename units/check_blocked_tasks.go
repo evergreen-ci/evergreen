@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
@@ -56,8 +55,6 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	var tasksToCheck []task.Task
 	if j.DistroId != "" {
 		tasksToCheck = j.getDistroTasksToCheck(ctx)
-	} else {
-		tasksToCheck = j.getContainerTasksToCheck(ctx)
 	}
 	dependencyCache := map[string]task.Task{}
 	for _, t := range tasksToCheck {
@@ -102,17 +99,6 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck(ctx context.Context) []task
 	tasksToCheck, err := task.Find(ctx, task.PotentiallyBlockedTasksByIds(taskIds))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting tasks to check in distro '%s'", j.DistroId))
-		return nil
-	}
-	return tasksToCheck
-}
-
-func (j *checkBlockedTasksJob) getContainerTasksToCheck(ctx context.Context) []task.Task {
-	query := task.UndispatchedContainerTasksQuery()
-	query[task.ContainerAllocatedKey] = false
-	tasksToCheck, err := task.FindAll(ctx, db.Query(query))
-	if err != nil {
-		j.AddError(errors.Wrap(err, "getting container tasks to check"))
 		return nil
 	}
 	return tasksToCheck

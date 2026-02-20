@@ -62,18 +62,6 @@ type HostInitConfig {
   maxTotalDynamicHosts: Int
 }
 
-input PodLifecycleConfigInput {
-  maxParallelPodRequests: Int!
-  maxPodDefinitionCleanupRate: Int!
-  maxSecretCleanupRate: Int!
-}
-
-type PodLifecycleConfig {
-  maxParallelPodRequests: Int
-  maxPodDefinitionCleanupRate: Int
-  maxSecretCleanupRate: Int
-}
-
 input SchedulerConfigInput {
   taskFinder: FinderVersion!
   hostAllocator: HostAllocatorVersion!

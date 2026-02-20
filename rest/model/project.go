@@ -356,103 +356,9 @@ type APIWorkstationConfig struct {
 	GitClone *bool `bson:"git_clone" json:"git_clone"`
 }
 
-type APIContainerSecret struct {
-	// Name of the container secret.
-	Name *string `json:"name"`
-	// External name of the container secrets. Cannot be modified by users.
-	ExternalName *string `json:"external_name"`
-	// External identifier for the container secret. Cannot be modified by
-	// users.
-	ExternalID *string `json:"external_id"`
-	// Type of container secret.
-	Type *string `json:"type"`
-	// Container secret value to set.
-	Value *string `json:"value"`
-	// ShouldRotate indicates that the user requested the pod secret to be
-	// rotated to a new value. This only applies to the project's pod secret.
-	ShouldRotate *bool `json:"should_rotate"`
-	// RepoCreds, if set, are the new repository credentials to store. This only
-	// applies to repository credentials.
-	RepoCreds *APIRepositoryCredentials `json:"repo_creds"`
-}
-
 type APIRepositoryCredentials struct {
 	Username *string `json:"username"`
 	Password *string `json:"password"`
-}
-
-func (cr *APIContainerSecret) BuildFromService(h model.ContainerSecret) error {
-	if h.Type == model.ContainerSecretRepoCreds && h.Value != "" {
-		// If the plaintext secret value is available and this secret is a repo
-		// cred, the value is the repo creds encoded as JSON, so convert it back
-		// to its structured form for the REST API.
-		var apiRepoCreds APIRepositoryCredentials
-		if err := json.Unmarshal([]byte(h.Value), &apiRepoCreds); err != nil {
-			return errors.Wrap(err, "unmarshalling repository credentials")
-		}
-		cr.RepoCreds = &apiRepoCreds
-	}
-	if h.Value != "" {
-		cr.Value = utility.ToStringPtr(h.Value)
-	}
-	cr.Name = utility.ToStringPtr(h.Name)
-	cr.ExternalID = utility.ToStringPtr(h.ExternalID)
-	cr.Type = utility.ToStringPtr(string(h.Type))
-	return nil
-}
-
-func (cr *APIContainerSecret) ToService() (*model.ContainerSecret, error) {
-	secret := model.ContainerSecret{
-		Name:       utility.FromStringPtr(cr.Name),
-		ExternalID: utility.FromStringPtr(cr.ExternalID),
-		Type:       model.ContainerSecretType(utility.FromStringPtr(cr.Type)),
-		Value:      utility.FromStringPtr(cr.Value),
-	}
-	if utility.FromBoolPtr(cr.ShouldRotate) {
-		if secret.Type == model.ContainerSecretPodSecret {
-			// The user has requested to rotate the pod secret to a new value.
-			secret.Value = utility.RandomString()
-		} else {
-			return nil, errors.Errorf("can only rotate the value for the pod secret, not for container secret '%s' of type '%s'", secret.Name, secret.Type)
-		}
-	}
-	if cr.RepoCreds != nil {
-		if secret.Type == model.ContainerSecretRepoCreds {
-			// If this is a repo cred and the credentials must be stored, the value
-			// to store must be encoded as JSON.
-			b, err := json.Marshal(cr.RepoCreds)
-			if err != nil {
-				return nil, errors.Wrap(err, "marshalling repository credentials as JSON")
-			}
-			secret.Value = string(b)
-		} else {
-			return nil, errors.Errorf("can only set credentials for repo creds, not for container secret '%s' of type '%s'", secret.Name, secret.Type)
-		}
-	}
-	return &secret, nil
-}
-
-type APIContainerResources struct {
-	// Name for container resource definition.
-	Name *string `bson:"name" json:"name"`
-	// Memory (in MB) for the container.
-	MemoryMB *int `bson:"memory_mb" json:"memory_mb"`
-	// CPU (1024 CPU = 1 vCPU) for the container.
-	CPU *int `bson:"cpu" json:"cpu"`
-}
-
-func (cr *APIContainerResources) BuildFromService(h model.ContainerResources) {
-	cr.Name = utility.ToStringPtr(h.Name)
-	cr.MemoryMB = utility.ToIntPtr(h.MemoryMB)
-	cr.CPU = utility.ToIntPtr(h.CPU)
-}
-
-func (cr *APIContainerResources) ToService() model.ContainerResources {
-	return model.ContainerResources{
-		Name:     utility.FromStringPtr(cr.Name),
-		MemoryMB: utility.FromIntPtr(cr.MemoryMB),
-		CPU:      utility.FromIntPtr(cr.CPU),
-	}
 }
 
 type APIWorkstationSetupCommand struct {
@@ -699,12 +605,6 @@ type APIProjectRef struct {
 	DeleteSubscriptions []*string `json:"delete_subscriptions,omitempty"`
 	// List of periodic build definitions.
 	PeriodicBuilds []APIPeriodicBuildDefinition `json:"periodic_builds,omitempty"`
-	// List of container size definitions
-	ContainerSizeDefinitions []APIContainerResources `json:"container_size_definitions"`
-	// List of container secrets.
-	ContainerSecrets []APIContainerSecret `json:"container_secrets,omitempty"`
-	// Names of container secrets to be deleted.
-	DeleteContainerSecrets []string `json:"delete_container_secrets,omitempty"`
 	// List of external links in the version metadata.
 	ExternalLinks []APIExternalLink `json:"external_links"`
 	// Options for banner to display for the project.
@@ -831,23 +731,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		}
 		projectRef.GitHubDynamicTokenPermissionGroups = permissionGroups
 	}
-
-	for _, size := range p.ContainerSizeDefinitions {
-		projectRef.ContainerSizeDefinitions = append(projectRef.ContainerSizeDefinitions, size.ToService())
-	}
-
-	for idx, secret := range p.ContainerSecrets {
-		if utility.StringSliceContains(p.DeleteContainerSecrets, utility.FromStringPtr(secret.Name)) {
-			continue
-		}
-
-		apiContainerSecret, err := secret.ToService()
-		if err != nil {
-			return nil, errors.Wrapf(err, "converting container secret at index %d to service model", idx)
-		}
-		projectRef.ContainerSecrets = append(projectRef.ContainerSecrets, *apiContainerSecret)
-	}
-
 	return &projectRef, nil
 }
 
@@ -963,12 +846,6 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 		p.PatchTriggerAliases = patchTriggers
 	}
 
-	for _, size := range projectRef.ContainerSizeDefinitions {
-		var apiSize APIContainerResources
-		apiSize.BuildFromService(size)
-		p.ContainerSizeDefinitions = append(p.ContainerSizeDefinitions, apiSize)
-	}
-
 	// copy external links
 	if projectRef.ExternalLinks != nil {
 		externalLinks := []APIExternalLink{}
@@ -1006,14 +883,6 @@ func (p *APIProjectRef) BuildFromService(ctx context.Context, projectRef model.P
 	workstationConfig := APIWorkstationConfig{}
 	workstationConfig.BuildFromService(projectRef.WorkstationConfig)
 	p.WorkstationConfig = workstationConfig
-
-	for idx, secret := range projectRef.ContainerSecrets {
-		var apiSecret APIContainerSecret
-		if err := apiSecret.BuildFromService(secret); err != nil {
-			return errors.Wrapf(err, "converting container secret at index %d to service model", idx)
-		}
-		p.ContainerSecrets = append(p.ContainerSecrets, apiSecret)
-	}
 
 	return nil
 }

@@ -450,9 +450,6 @@ tasks:
     name: test-smoke-internal-host
     tags: ["smoke"]
   - <<: *run-smoke-test
-    name: test-smoke-internal-container
-    tags: ["smoke"]
-  - <<: *run-smoke-test
     name: test-smoke-internal-endpoint
     tags: ["smoke"]
     # The endpoint smoke test needs to check that the Evergreen CLI can be downloaded.
@@ -581,15 +578,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-patch
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-definition
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-dispatcher
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-taskstats
@@ -1019,13 +1007,3 @@ buildvariants:
         execution_tasks:
           - ".build-unsigned"
 
-containers:
-  - name: evg-container
-    working_dir: /
-    image: ${container_image}
-    resources:
-      cpu: 4096
-      memory_mb: 8192
-    system:
-      cpu_architecture: x86_64
-      operating_system: linux

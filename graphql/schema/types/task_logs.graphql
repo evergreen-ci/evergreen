@@ -25,7 +25,6 @@ type TaskEventLogEntry {
 
 type TaskEventLogData {
   hostId: String
-  podId: String
   jiraIssue: String
   jiraLink: String
   priority: Int

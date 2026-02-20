@@ -390,13 +390,6 @@ type Permissions struct {
 	UserID               string              `json:"userId"`
 }
 
-// PodEvents is the return value for the events query.
-// It contains the event log entries for a pod.
-type PodEvents struct {
-	Count           int                          `json:"count"`
-	EventLogEntries []*model.PodAPIEventLogEntry `json:"eventLogEntries"`
-}
-
 type ProjectBuildVariant struct {
 	DisplayName string   `json:"displayName"`
 	Name        string   `json:"name"`

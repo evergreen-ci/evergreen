@@ -56,8 +56,6 @@ github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.3 h1:iFAc3pUrWHrVzeWesFsdMit
 github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.3/go.mod h1:WEsxUgfGPWPlFv6MzEqAOZnQubdUHIR7RWSxs1P3/5c=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.279.1 h1:hnNVFVOYrzJjkqI+mxc1M4ztgcVw986n0t0TCPlnDPY=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.279.1/go.mod h1:Uy+C+Sc58jozdoL1McQr8bDsEvNFx+/nBY+vpO1HVUY=
-github.com/aws/aws-sdk-go-v2/service/ecs v1.70.1 h1:3USGpUZbK84ZuMh5vdFj/I5W+N4DrarfASdrjVBETvc=
-github.com/aws/aws-sdk-go-v2/service/ecs v1.70.1/go.mod h1:pMlGFDpHoLTJOIZHGdJOAWmi+xeIlQXuFTuQxs1epYE=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 h1:0ryTNEdJbzUCEWkVXEXoqlXV72J5keC1GvILMOuD00E=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4/go.mod h1:HQ4qwNZh32C3CBeO6iJLQlgtMzqeG17ziAA/3KDJFow=
 github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.8 h1:Z5EiPIzXKewUQK0QTMkutjiaPVeVYXX7KIqhXu/0fXs=
@@ -68,8 +66,6 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17 h1:RuNSMooz
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17/go.mod h1:F2xxQ9TZz5gDWsclCtPQscGpP0VUOc8RqgFM3vDENmU=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.17 h1:bGeHBsGZx0Dvu/eJC0Lh9adJa3M1xREcndxLNZlve2U=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.17/go.mod h1:dcW24lbU0CzHusTE8LLHhRLI42ejmINN8Lcr22bwh/g=
-github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.31.6 h1:gd7YMnFZQGdy4lERF9ffz9kbc6K/IPhCu5CrJDJr8XY=
-github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.31.6/go.mod h1:lnTv81am9e2C2SjX3VKyUrKEzDADD9lKST9ou96UBoY=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.62.1 h1:1jIdwWOulae7bBLIgB36OZ0DINACb1wxM6wdGlx4eHE=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.62.1/go.mod h1:tE2zGlMIlxWv+7Otap7ctRp3qeKqtnja7DZguj3Vu/Y=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.95.1 h1:C2dUPSnEpy4voWFIq3JNd8gN0Y5vYGDo44eUE58a/p8=
@@ -102,8 +98,6 @@ github.com/blang/semver v3.5.1+incompatible h1:cQNTCjp13qL8KC3Nbxr/y2Bqb63oX6wdn
 github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/bradleyfalzon/ghinstallation/v2 v2.17.0 h1:SmbUK/GxpAspRjSQbB6ARvH+ArzlNzTtHydNyXUQ6zg=
 github.com/bradleyfalzon/ghinstallation/v2 v2.17.0/go.mod h1:vuD/xvJT9Y+ZVZRv4HQ42cMyPFIYqpc7AbB4Gvt/DlY=
-github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20221221133751-67e37ae746cd h1:C0dfBzAdNMqxokqWUysk2KTJSMmqvh9cNW1opdy5+0Q=
-github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20221221133751-67e37ae746cd/go.mod h1:CeKhh8xSs3WZAc50xABMxu+FlfAAd5PNumo7NfOv7EE=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
 github.com/cenkalti/backoff/v5 v5.0.3/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
@@ -167,8 +161,6 @@ github.com/evergreen-ci/bond v0.0.0-20251209195750-b541586174f7 h1:Ex5a9llpYhm8t
 github.com/evergreen-ci/bond v0.0.0-20251209195750-b541586174f7/go.mod h1:dwKtHZQ8bJSIDzC1ukv3/BqWyILbs2XqTMaJAx8ZLGA=
 github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2 h1:bBwDxfZES3z3l2Socek1XBKYaTZIZ549PcaBZkw5UH4=
 github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2/go.mod h1:YLBfKY+Y1yFapi7AZUR0tfJ8H+pbzF1CO94ixHDaUOM=
-github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92 h1:aF+fi3o9nwFXkDsZcoeOUsoBE2Xtn1w3cYA4hY7jq9E=
-github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92/go.mod h1:MmdhYDf5mfyAC++GfyGxWH5PiOOdB8yBtXo9/CMsDEQ=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f h1:UCLTMndEQDi/BfiYa/MIv6okh7CLmz250oA03FLLA+w=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f/go.mod h1:FnyqGuSg33gR9wNbt2qo9wPaNUfP85+a8+UTVyx/gdg=
 github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d h1:D/ua80GfelpLtry9J8+q/K1MWb7m0V0QiXhOm0kCdj8=
@@ -490,8 +482,6 @@ go.opentelemetry.io/contrib v1.36.0 h1:ZeE8MRl6bAmxcjZeznBfqTe6syNvMKdxdBMzv6fDV
 go.opentelemetry.io/contrib v1.36.0/go.mod h1:V0PijCkYR5XurE5ytnNJuqWMXPW60jJTPXOiKj6nvhI=
 go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.1.0 h1:9sg2tu8Dq/1tHrSY3cufxgAieYDdc7AG0pZQaJlEC64=
 go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.1.0/go.mod h1:lRGEOsvOr/C8dKqE55UZnpytR5iXeQGCUfamC8PcFFY=
-go.opentelemetry.io/contrib/detectors/aws/ecs v1.39.0 h1:I6jkJNbtMM0dv9swuYfHxInc43eShqhviEyWfeCKiio=
-go.opentelemetry.io/contrib/detectors/aws/ecs v1.39.0/go.mod h1:aQQwEcBsBVr238j++5VWDKWI3r3ZRlbZCgDFoTBFvuY=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.64.0 h1:QgV8q9s6fz+RVY8jEdkFsXvnQaqhal2oRjY5uC+DpHk=
 go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.64.0/go.mod h1:LgtjWWXo7OpbSMkXnTlT2jrGtdI6Fmipn8UJCIgbqzg=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.64.0 h1:vwZaYp+EEiPUQD1rYKPT0vLfGD7XMv2WypO/59ySpwM=

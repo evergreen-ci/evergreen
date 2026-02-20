@@ -36,7 +36,7 @@ Artifact retention rates depend on which bucket they are stored in. Different pr
 
 - **MongoDB:** Expire after **365 days** based on `create_time`.
 
-#### Hosts/Pods
+#### Hosts
 
 - **MongoDB:** Expire after **365 days** based on `termination_time` if applicable.
 

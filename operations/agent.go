@@ -37,8 +37,6 @@ func Agent() cli.Command {
 		statusPortFlagName                 = "status_port"
 		cleanupFlagName                    = "cleanup"
 		modeFlagName                       = "mode"
-		podIDFlagName                      = "pod_id"
-		podSecretFlagName                  = "pod_secret"
 		versionFlagName                    = "version"
 		sendTaskLogsToGlobalSenderFlagName = "global_task_logs"
 	)
@@ -59,16 +57,6 @@ func Agent() cli.Command {
 				Name:   agentHostSecretFlagName,
 				Usage:  "secret for the current host (applies only to host mode)",
 				EnvVar: evergreen.HostSecretEnvVar,
-			},
-			cli.StringFlag{
-				Name:   podIDFlagName,
-				Usage:  "the ID of the pod that the agent is running on (applies only to pod mode)",
-				EnvVar: "POD_ID",
-			},
-			cli.StringFlag{
-				Name:   podSecretFlagName,
-				Usage:  "the secret for the pod that the agent is running on (applies only to pod mode)",
-				EnvVar: "POD_SECRET",
 			},
 			cli.StringFlag{
 				Name:  agentAPIServerURLFlagName,
@@ -103,7 +91,7 @@ func Agent() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  modeFlagName,
-				Usage: "the mode that the agent should run in (host, pod)",
+				Usage: "the mode that the agent should run in (host)",
 				Value: "host",
 			},
 			cli.BoolFlag{
@@ -133,9 +121,6 @@ func Agent() cli.Command {
 				case string(globals.HostMode):
 					catcher.Add(requireStringFlag(agentHostIDFlagName)(c))
 					catcher.Add(requireStringFlag(agentHostSecretFlagName)(c))
-				case string(globals.PodMode):
-					catcher.Add(requireStringFlag(podIDFlagName)(c))
-					catcher.Add(requireStringFlag(podSecretFlagName)(c))
 				default:
 					return errors.Errorf("invalid mode '%s'", mode)
 				}
@@ -155,8 +140,6 @@ func Agent() cli.Command {
 			opts := agent.Options{
 				HostID:                     c.String(agentHostIDFlagName),
 				HostSecret:                 c.String(agentHostSecretFlagName),
-				PodID:                      c.String(podIDFlagName),
-				PodSecret:                  c.String(podSecretFlagName),
 				Mode:                       globals.Mode(c.String(modeFlagName)),
 				StatusPort:                 c.Int(statusPortFlagName),
 				LogPrefix:                  c.String(logPrefixFlagName),

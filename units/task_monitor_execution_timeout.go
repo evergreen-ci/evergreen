@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/pod"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -112,7 +112,6 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		"task":               j.task.Id,
 		"execution_platform": j.task.ExecutionPlatform,
 		"host_id":            j.task.HostId,
-		"pod_id":             j.task.PodID,
 	}
 
 	// If the task has heartbeat since this job was queued, let it run.
@@ -143,31 +142,6 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 // cleanUpTimedOutTask cleans up a single stale task that has exceeded the task
 // heartbeat timeout.
 func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
-	if j.task.IsContainerTask() {
-		if j.task.PodID != "" {
-			foundPod, err := pod.FindOneByID(ctx, j.task.PodID)
-			if err != nil {
-				return errors.Wrapf(err, "finding pod '%s' for task '%s'", j.task.PodID, j.task.Id)
-			}
-			if foundPod == nil {
-				return errors.Errorf("pod '%s' not found for task '%s'", j.task.PodID, j.task.Id)
-			}
-			if err = foundPod.ClearRunningTask(ctx); err != nil {
-				return errors.Wrapf(err, "clearing running task from pod '%s'", foundPod.ID)
-			}
-			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewPodHealthCheckJob(j.task.PodID, utility.RoundPartOfHour(0))); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "could not enqueue job to check pod health after stale task timeout",
-					"task":    j.task.Id,
-					"pod":     j.task.PodID,
-					"job":     j.ID(),
-				}))
-			}
-		}
-
-		return errors.Wrapf(model.FixStaleTask(ctx, j.env.Settings(), j.task), "resetting stale task '%s'", j.task.Id)
-	}
-
 	host, err := host.FindOne(ctx, host.ById(j.task.HostId))
 	if err != nil {
 		return errors.Wrapf(err, "finding host '%s' for task '%s'", j.task.HostId, j.task.Id)

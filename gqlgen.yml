@@ -89,10 +89,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
   AWSConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSConfig
-  AWSPodConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
-  AWSPodConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
   AWSVPCConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSVPCConfig
   AWSVPCConfigInput:
@@ -171,10 +167,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
   ContainerPoolsConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
-  ContainerResources:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
-  ContainerResourcesInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
   CopyDistroInput:
     model: github.com/evergreen-ci/evergreen/rest/model.CopyDistroOpts
   CopyProjectInput:
@@ -218,41 +210,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
   EC2KeyInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEC2Key
-  ECSConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIECSConfig
-  ECSConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIECSConfig
-  ECSCapacityProvider:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIECSCapacityProvider
-  ECSCapacityProviderInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIECSCapacityProvider
-  ECSClusterConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIECSClusterConfig
-  ECSClusterConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIECSClusterConfig
-  ECSArchitecture:
-    model: github.com/99designs/gqlgen/graphql.String
-    enum_values:
-      ECS_ARCH_AMD64:
-        value: github.com/evergreen-ci/evergreen.ECSArchAMD64
-      ECS_ARCH_ARM64:
-        value: github.com/evergreen-ci/evergreen.ECSArchARM64
-  ECSOperatingSystem:
-    model: github.com/99designs/gqlgen/graphql.String
-    enum_values:
-      ECSOSLinux:
-        value: github.com/evergreen-ci/evergreen.ECSOSLinux
-      ECSOSWindows:
-        value: github.com/evergreen-ci/evergreen.ECSOSWindows
-  ECSWindowsVersion:
-    model: github.com/99designs/gqlgen/graphql.String
-    enum_values:
-      ECS_WINDOWS_SERVER_2016:
-        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2016
-      ECS_WINDOWS_SERVER_2019:
-        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2019
-      ECS_WINDOWS_SERVER_2022:
-        value: github.com/evergreen-ci/evergreen.ECSWindowsServer2022
   EnvVar:
     model: github.com/evergreen-ci/evergreen/rest/model.APIEnvVar
   EnvVarInput:
@@ -630,16 +587,6 @@ models:
     enum_values:
       TUNABLE:
         value: github.com/evergreen-ci/evergreen.PlannerVersionTunable
-  Pod:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPod
-  PodEventLogEntry:
-    model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventLogEntry
-  PodEventLogData:
-    model: github.com/evergreen-ci/evergreen/rest/model.PodAPIEventData
-  PodLifecycleConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPodLifecycleConfig
-  PodLifecycleConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPodLifecycleConfig
   PreconditionScript:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPreconditionScript
   PreconditionScriptInput:
@@ -822,10 +769,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISESConfig
   SearchReturnInfo:
     model: github.com/evergreen-ci/evergreen/thirdparty.SearchReturnInfo
-  SecretsManagerConfig:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISecretsManagerConfig
-  SecretsManagerConfigInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APISecretsManagerConfig
   Selector:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:

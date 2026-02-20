@@ -13,7 +13,6 @@ input ServiceFlagInput {
 input ServiceFlagsInput {
   taskDispatchDisabled: Boolean
   hostInitDisabled: Boolean
-  podInitDisabled: Boolean
   largeParserProjectsDisabled: Boolean
   monitorDisabled: Boolean
   alertsDisabled: Boolean
@@ -29,8 +28,6 @@ input ServiceFlagsInput {
   cacheStatsEndpointDisabled: Boolean
   taskReliabilityDisabled: Boolean
   hostAllocatorDisabled: Boolean
-  podAllocatorDisabled: Boolean
-  unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
   debugSpawnHostDisabled: Boolean
@@ -55,7 +52,6 @@ input ServiceFlagsInput {
 type ServiceFlags {
   taskDispatchDisabled: Boolean
   hostInitDisabled: Boolean
-  podInitDisabled: Boolean
   largeParserProjectsDisabled: Boolean
   monitorDisabled: Boolean
   alertsDisabled: Boolean
@@ -71,8 +67,6 @@ type ServiceFlags {
   cacheStatsEndpointDisabled: Boolean
   taskReliabilityDisabled: Boolean
   hostAllocatorDisabled: Boolean
-  podAllocatorDisabled: Boolean
-  unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
   debugSpawnHostDisabled: Boolean

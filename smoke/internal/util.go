@@ -272,9 +272,6 @@ func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode global
 			require.Contains(t, page, teardownTaskLog, "teardown task should run for every task in the task group")
 		}
 
-	} else if mode == globals.PodMode {
-		const containerTaskLog = "container task"
-		assert.Contains(t, page, containerTaskLog, "should have found expected container task log")
 	}
 }
 

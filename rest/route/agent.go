@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -319,10 +318,9 @@ func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request
 		return errors.New("missing task ID")
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
-	podID := r.Header.Get(evergreen.PodHeader)
 	userKey := r.Header.Get(evergreen.APIKeyHeader)
-	if h.hostID == "" && podID == "" && userKey == "" {
-		return errors.New("missing both host and pod ID")
+	if h.hostID == "" && userKey == "" {
+		return errors.New("missing host ID")
 	}
 	return nil
 }
@@ -1013,7 +1011,6 @@ type startTaskHandler struct {
 	env           evergreen.Environment
 	taskID        string
 	hostID        string
-	podID         string
 	taskStartInfo apimodels.TaskStartRequest
 }
 
@@ -1037,9 +1034,8 @@ func (h *startTaskHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrapf(err, "reading task start request for %s", h.taskID)
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
-	h.podID = r.Header.Get(evergreen.PodHeader)
-	if h.hostID == "" && h.podID == "" {
-		return errors.New("missing both host and pod ID")
+	if h.hostID == "" {
+		return errors.New("missing host ID")
 	}
 	return nil
 }
@@ -1087,7 +1083,6 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var msg string
 	var foundHost *host.Host
-	var foundPod *pod.Pod
 	if h.hostID != "" {
 		foundHost, err = host.FindOneByTaskIdAndExecution(ctx, t.Id, t.Execution)
 		if err != nil {
@@ -1118,29 +1113,12 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 			grip.Info(foundHost.TaskStartMessage())
 		}
-	} else {
-		foundPod, err = pod.FindOneByID(ctx, h.podID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod running task %s", t.Id))
-		}
-		if foundPod == nil {
-			message := fmt.Sprintf("no pod found running task %s", t.Id)
-			if t.PodID != "" {
-				message = fmt.Sprintf("no pod found running task %s but task is said to be running on %s",
-					t.Id, t.PodID)
-			}
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    message,
-			})
-		}
-		msg = fmt.Sprintf("task '%s' started on pod '%s'", t.Id, h.podID)
 	}
-	logTaskStartMessage(foundHost, foundPod, t)
+	logTaskStartMessage(foundHost, t)
 	return gimlet.NewJSONResponse(msg)
 }
 
-func logTaskStartMessage(h *host.Host, p *pod.Pod, t *task.Task) {
+func logTaskStartMessage(h *host.Host, t *task.Task) {
 	msg := message.Fields{
 		"stat":                   "task-start-stats",
 		"task_id":                t.Id,
@@ -1185,9 +1163,6 @@ func logTaskStartMessage(h *host.Host, p *pod.Pod, t *task.Task) {
 				msg["host_provision_time"] = h.TotalIdleTime.Seconds()
 			}
 		}
-	} else if p != nil {
-		msg["pod_id"] = p.ID
-		msg["pod_provision_time"] = time.Since(p.TimeInfo.Starting).Seconds()
 	}
 	grip.Info(msg)
 }

@@ -60,7 +60,6 @@ var (
 	// degraded mode flags
 	taskDispatchKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                           = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
-	podInitDisabledKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "PodInitDisabled")
 	largeParserProjectsDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "LargeParserProjectsDisabled")
 	monitorKey                            = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	alertsKey                             = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
@@ -82,10 +81,8 @@ var (
 	cacheStatsEndpointDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsEndpointDisabled")
 	taskReliabilityDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "TaskReliabilityDisabled")
 	hostAllocatorDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
-	podAllocatorDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "PodAllocatorDisabled")
 	backgroundReauthDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 	cloudCleanupDisabledKey               = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
-	unrecognizedPodCleanupDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 	sleepScheduleDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "SleepScheduleDisabled")
 	staticAPIKeysDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "StaticAPIKeysDisabled")
 	JWTTokenForCLIDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "JWTTokenForCLIDisabled")

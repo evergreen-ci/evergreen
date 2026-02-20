@@ -88,7 +88,6 @@ input AdminSettingsInput {
   parameterStore: ParameterStoreConfigInput
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
-  podLifecycle: PodLifecycleConfigInput
   pprofPort: String
   projectCreation: ProjectCreationConfigInput
   providers: CloudProviderConfigInput
@@ -146,7 +145,6 @@ type AdminSettings {
   parameterStore: ParameterStoreConfig
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
-  podLifecycle: PodLifecycleConfig
   pprofPort: String
   projectCreation: ProjectCreationConfig
   providers: CloudProviderConfig

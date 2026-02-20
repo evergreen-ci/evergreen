@@ -57,7 +57,6 @@ type Project struct {
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	Containers         []Container                `yaml:"containers,omitempty" bson:"containers"`
 	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
@@ -434,25 +433,6 @@ type CheckRun struct {
 type ParameterInfo struct {
 	patch.Parameter `yaml:",inline" bson:",inline"`
 	Description     string `yaml:"description" bson:"description"`
-}
-
-// Container holds all properties that are configurable when defining a container
-// for tasks and build variants to run on in a project YAML file.
-type Container struct {
-	Name       string              `yaml:"name" bson:"name"`
-	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string              `yaml:"image" bson:"image" plugin:"expand"`
-	Size       string              `yaml:"size,omitempty" bson:"size"`
-	Credential string              `yaml:"credential,omitempty" bson:"credential"`
-	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
-	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
-}
-
-// ContainerSystem specifies the architecture and OS for the running container to use.
-type ContainerSystem struct {
-	CPUArchitecture evergreen.ContainerArch  `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
-	OperatingSystem evergreen.ContainerOS    `yaml:"operating_system,omitempty" bson:"operating_system"`
-	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
 // Module specifies the git details of another git project to be included within a

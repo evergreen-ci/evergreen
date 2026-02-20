@@ -79,12 +79,7 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 
 	// Don't clobber allowed images if it doesn't exist in the override
 	// A longer-term fix will be in DEVPROD-745
-	allowedImages := testSettings.Providers.AWS.Pod.ECS.AllowedImages
 	testSettings.Providers = integrationSettings.Providers
-	if len(integrationSettings.Providers.AWS.Pod.ECS.AllowedImages) == 0 {
-		testSettings.Providers.AWS.Pod.ECS.AllowedImages = allowedImages
-	}
-
 	testSettings.Plugins = integrationSettings.Plugins
 	testSettings.Jira = integrationSettings.Jira
 	testSettings.RuntimeEnvironments = integrationSettings.RuntimeEnvironments
