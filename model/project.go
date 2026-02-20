@@ -1151,23 +1151,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 		}
 		if v.IsChild() {
 			expansions.Put("parent_patch_id", v.ParentPatchID)
-			parentPatch, err := patch.FindOneId(ctx, v.ParentPatchID)
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding parent version '%s'", v.ParentPatchID)
-			}
-			var parentRef *ProjectRef
-			if parentPatch != nil {
-				parentRef, err = FindBranchProjectRef(ctx, parentPatch.Project)
-				if err != nil {
-					return nil, errors.Wrap(err, "finding project ref")
-				}
-			}
-
-			if parentRef != nil {
-				expansions.Put("parent_github_org", parentRef.Owner)
-				expansions.Put("parent_github_repo", parentRef.Repo)
-				expansions.Put("parent_github_branch", parentRef.Branch)
-			}
+			expansions.Put("parent_project_module", p.Triggers.ParentAsModule)
 		}
 	} else {
 		expansions.Put("is_patch", "")

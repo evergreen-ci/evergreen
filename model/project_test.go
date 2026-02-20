@@ -621,6 +621,9 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	require.NoError(childVersion.Insert(t.Context()))
 	childPatch := &patch.Patch{
 		Version: childVersion.Id,
+		Triggers: patch.TriggerInfo{
+			ParentAsModule: "parentModule",
+		},
 	}
 	require.NoError(childPatch.Insert(t.Context()))
 
@@ -639,9 +642,7 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	require.NoError(err)
 
 	assert.Equal(childVersion.ParentPatchID, expansions.Get("parent_patch_id"))
-	assert.Equal(parentRef.Owner, expansions.Get("parent_github_org"))
-	assert.Equal(parentRef.Repo, expansions.Get("parent_github_repo"))
-	assert.Equal(parentRef.Branch, expansions.Get("parent_github_branch"))
+	assert.Equal(childPatch.Triggers.ParentAsModule, expansions.Get("parent_project_module"))
 }
 
 type projectSuite struct {
