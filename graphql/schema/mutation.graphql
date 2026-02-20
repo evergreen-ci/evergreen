@@ -37,6 +37,7 @@ type Mutation {
 
   # config
   saveAdminSettings(adminSettings: AdminSettingsInput!): AdminSettings! @requireAdmin
+  setServiceFlags(updatedFlags: [ServiceFlagInput!]!): [ServiceFlag!]! @requireAdmin
   restartAdminTasks(opts: RestartAdminTasksOptions!): RestartAdminTasksPayload! @requireAdmin
 
   # distros

@@ -273,6 +273,9 @@ func TestTaskBuildFromService(t *testing.T) {
 				}
 
 				So(apiTask.HasAnnotations, ShouldEqual, tc.at.HasAnnotations)
+
+				So(apiTask.Patchable, ShouldBeNil)
+				So(apiTask.PatchOnly, ShouldBeNil)
 			}
 		})
 	})

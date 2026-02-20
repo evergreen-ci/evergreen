@@ -257,7 +257,6 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file, worktree 
 				"repo":    repo,
 				"ref":     ref,
 				"file":    file,
-				"ticket":  "DEVPROD-26143",
 			}))
 		}()
 	} else {
@@ -323,9 +322,8 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Warning(message.WrapError(err, message.Fields{
 			"message":          "minimal git clone failed",
-			"ticket":           "DEVPROD-26143",
 			"owner":            owner,
 			"repo":             repo,
 			"revision":         revision,
@@ -372,9 +370,8 @@ func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
 		if ctx.Err() != nil {
 			return errors.Wrapf(ctx.Err(), "creating git worktree '%s'", worktreeDir)
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Warning(message.WrapError(err, message.Fields{
 			"message":          "git worktree add failed",
-			"ticket":           "DEVPROD-26143",
 			"worktree_dir":     worktreeDir,
 			"stdout":           stdout.String(),
 			"stderr":           stderr.String(),
@@ -430,9 +427,8 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 			// the file doesn't exist in the repo at the given revision.
 			return nil, FileNotFoundError{filepath: fileName}
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Warning(message.WrapError(err, message.Fields{
 			"message":          "git restore failed",
-			"ticket":           "DEVPROD-26143",
 			"owner":            owner,
 			"repo":             repo,
 			"revision":         revision,

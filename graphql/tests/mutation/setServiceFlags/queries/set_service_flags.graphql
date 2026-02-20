@@ -1,0 +1,6 @@
+mutation {
+  setServiceFlags(updatedFlags: [{ name: "scheduler_disabled", enabled: true }]) {
+    name
+    enabled
+  }
+}

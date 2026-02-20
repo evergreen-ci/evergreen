@@ -19,6 +19,8 @@ IGNORED_PACKAGES=(
     "rardecode"     # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
     "archiver/v3"   # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
     "csrf"          # DEVPROD-25429 CSRF vulnerability tracking
+    "otel/sdk"      # DEVPROD-28491 OTel SDK vulnerability tracking
+    "filippo.io/edwards25519"  # DEVPROD-28491 Edwards25519 vulnerability tracking
 )
 
 # Validate that each ignored package has a tracking ticket
