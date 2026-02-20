@@ -39,8 +39,6 @@
             { "name": "cache_stats_endpoint_disabled", "enabled": false },
             { "name": "task_reliability_disabled", "enabled": false },
             { "name": "host_allocator_disabled", "enabled": false },
-            { "name": "pod_allocator_disabled", "enabled": false },
-            { "name": "unrecognized_pod_cleanup_disabled", "enabled": false },
             { "name": "background_reauth_disabled", "enabled": false },
             { "name": "cloud_cleanup_disabled", "enabled": false },
             { "name": "sleep_schedule_disabled", "enabled": false },

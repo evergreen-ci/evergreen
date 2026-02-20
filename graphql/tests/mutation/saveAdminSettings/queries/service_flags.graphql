@@ -33,7 +33,6 @@ mutation {
         taskDispatchDisabled: true
         taskLoggingDisabled: true
         taskReliabilityDisabled: true
-        unrecognizedPodCleanupDisabled: true
         useMergeQueuePathFilteringDisabled: true
         webhookNotificationsDisabled: true
       }

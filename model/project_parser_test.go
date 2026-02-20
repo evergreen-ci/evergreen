@@ -2351,7 +2351,6 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "module 'my_module' has been declared already")
 	assert.Contains(t, err.Error(), "function 'func1' has been declared already")
 	assert.Contains(t, err.Error(), "function 'func2' has been declared already")
-	assert.Contains(t, err.Error(), "container 'my_container' has been declared already")
 }
 
 func TestMergeUnordered(t *testing.T) {

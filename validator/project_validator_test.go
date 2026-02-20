@@ -3264,37 +3264,6 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
-		Convey("an error should be thrown if a referenced distro for a "+
-			"buildvariant has the same name as an existing container", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name:  "enterprise",
-						RunOn: []string{"rhel55"},
-					},
-				},
-			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 2)
-			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
-			So(errs[1].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
-		})
-
-		Convey("an error should be thrown if a buildvariant references a mix of distros and containers to run on", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name:  "enterprise",
-						RunOn: []string{"rhel55", "c1"},
-					},
-				},
-			}
-			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
-		})
 
 		Convey("no error should be thrown if a referenced distro ID for a "+
 			"buildvariant does exist", func() {

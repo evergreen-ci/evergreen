@@ -133,7 +133,6 @@
       "background_reauth_disabled": false,
       "background_cleanup_disabled": false,
       "cloud_cleanup_disabled": false,
-      "unrecognized_pod_cleanup_disabled": false,
       "sleep_schedule_disabled": false,
       "static_api_keys_disabled": false,
       "jwt_token_for_cli_disabled": false,

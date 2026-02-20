@@ -1353,7 +1353,6 @@ func TestCopyProject(t *testing.T) {
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
-		const secretName = "secret_stored_name"
 		pRef := model.ProjectRef{
 			Id:         "myId",
 			Owner:      "evergreen-ci",
