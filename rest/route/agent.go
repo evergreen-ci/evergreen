@@ -322,7 +322,7 @@ func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
 	podID := r.Header.Get(evergreen.PodHeader)
-	userKey := r.Header.Get(evergreen.APIKeyHeader)
+	userKey := r.Header.Get(evergreen.AuthorizationHeader)
 	if h.hostID == "" && podID == "" && userKey == "" {
 		return errors.New("missing both host and pod ID")
 	}

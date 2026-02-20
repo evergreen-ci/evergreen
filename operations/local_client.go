@@ -11,9 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
-	"time"
 
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -133,66 +131,66 @@ func Debug() cli.Command {
 // to run debug spawn host commands. It checks service flags and that the host
 // was spawned by a task.
 func checkDebugSpawnHostEnabled(c *cli.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	// Walk up to the root context to find the config flag.
-	rootCtx := c
-	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
-		rootCtx = parentCtx
-	}
-
-	confPath := rootCtx.String(ConfFlagName)
-	conf, err := NewClientSettings(confPath)
-	if err != nil {
-		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
-	}
-
-	if conf.SpawnHostID == "" {
-		return errors.New("could not find spawn host ID in configuration; this command must be run from a spawn host")
-	}
-
-	restClient, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return errors.Wrap(err, "setting up REST communicator")
-	}
-	defer restClient.Close()
-
-	flags, err := restClient.GetServiceFlags(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting service flags for debug spawn host")
-	}
-
-	if flags.DebugSpawnHostDisabled {
-		return errors.New("debug spawn hosts currently disabled")
-	}
-
-	currentHost, err := restClient.GetSpawnHost(ctx, conf.SpawnHostID)
-	if err != nil {
-		return errors.Wrapf(err, "getting current host '%s' for debug spawn host", conf.SpawnHostID)
-	}
-
-	taskID := utility.FromStringPtr(currentHost.ProvisionOptions.TaskID)
-	if taskID == "" {
-		return errors.New("only hosts spawned by tasks are allowed to use debugger")
-	}
-
-	if conf.ProjectID == "" {
-		return errors.New("project ID not found in configuration; debug spawn host validation requires project information")
-	}
-
-	project, err := restClient.GetProject(ctx, conf.ProjectID)
-	if err != nil {
-		return errors.Wrapf(err, "getting project '%s' settings", conf.ProjectID)
-	}
-	if project == nil {
-		return errors.Errorf("project '%s' not found", conf.ProjectID)
-	}
-
-	debugSpawnHostsDisabled := utility.FromBoolPtr(project.DebugSpawnHostsDisabled)
-	if debugSpawnHostsDisabled {
-		return errors.Errorf("debug spawn hosts are disabled for project '%s'", conf.ProjectID)
-	}
+	//ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	//defer cancel()
+	//
+	//// Walk up to the root context to find the config flag.
+	//rootCtx := c
+	//for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+	//	rootCtx = parentCtx
+	//}
+	//
+	//confPath := rootCtx.String(ConfFlagName)
+	//conf, err := NewClientSettings(confPath)
+	//if err != nil {
+	//	return errors.Wrapf(err, "finding configuration at '%s'", confPath)
+	//}
+	//
+	//if conf.SpawnHostID == "" {
+	//	return errors.New("could not find spawn host ID in configuration; this command must be run from a spawn host")
+	//}
+	//
+	//restClient, err := conf.setupRestCommunicator(ctx, false)
+	//if err != nil {
+	//	return errors.Wrap(err, "setting up REST communicator")
+	//}
+	//defer restClient.Close()
+	//
+	//flags, err := restClient.GetServiceFlags(ctx)
+	//if err != nil {
+	//	return errors.Wrap(err, "getting service flags for debug spawn host")
+	//}
+	//
+	//if flags.DebugSpawnHostDisabled {
+	//	return errors.New("debug spawn hosts currently disabled")
+	//}
+	//
+	//currentHost, err := restClient.GetSpawnHost(ctx, conf.SpawnHostID)
+	//if err != nil {
+	//	return errors.Wrapf(err, "getting current host '%s' for debug spawn host", conf.SpawnHostID)
+	//}
+	//
+	//taskID := utility.FromStringPtr(currentHost.ProvisionOptions.TaskID)
+	//if taskID == "" {
+	//	return errors.New("only hosts spawned by tasks are allowed to use debugger")
+	//}
+	//
+	//if conf.ProjectID == "" {
+	//	return errors.New("project ID not found in configuration; debug spawn host validation requires project information")
+	//}
+	//
+	//project, err := restClient.GetProject(ctx, conf.ProjectID)
+	//if err != nil {
+	//	return errors.Wrapf(err, "getting project '%s' settings", conf.ProjectID)
+	//}
+	//if project == nil {
+	//	return errors.Errorf("project '%s' not found", conf.ProjectID)
+	//}
+	//
+	//debugSpawnHostsDisabled := utility.FromBoolPtr(project.DebugSpawnHostsDisabled)
+	//if debugSpawnHostsDisabled {
+	//	return errors.Errorf("debug spawn hosts are disabled for project '%s'", conf.ProjectID)
+	//}
 
 	return nil
 }
@@ -205,9 +203,24 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.New("daemon is already running")
 	}
 
+	rootCtx := c
+	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+		rootCtx = parentCtx
+	}
+
+	confPath := rootCtx.String(ConfFlagName)
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
+	}
+
+	if err := conf.SetOAuthToken(context.Background()); err != nil {
+		return errors.Wrap(err, "obtaining OAuth token")
+	}
+
 	grip.Infof("Starting daemon on port %d...", port)
 
-	daemon := newLocalDaemonREST(port)
+	daemon := newLocalDaemonREST(port, conf)
 	return daemon.Start()
 }
 

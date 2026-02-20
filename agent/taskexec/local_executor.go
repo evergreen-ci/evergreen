@@ -83,8 +83,7 @@ type LocalExecutorOptions struct {
 	Expansions map[string]string
 	ServerURL  string
 	TaskID     string
-	APIUser    string
-	APIKey     string
+	OAuthToken string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -99,7 +98,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		expansions.Put(k, v)
 	}
 
-	comm := client.NewDebugCommunicator(opts.ServerURL, opts.APIUser, opts.APIKey)
+	comm := client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken)
 	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{
