@@ -3329,3 +3329,20 @@ func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant
 
 	return results, nil
 }
+
+// CountRunningTasksForVersions returns the number of running or dispatched tasks for the given versions.
+func CountRunningTasksForVersions(ctx context.Context, versionIDs []string) (int, error) {
+	if len(versionIDs) == 0 {
+		return 0, nil
+	}
+
+	count, err := Count(ctx, db.Query(bson.M{
+		VersionKey: bson.M{"$in": versionIDs},
+		StatusKey:  bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+	}))
+	if err != nil {
+		return 0, errors.Wrap(err, "counting running tasks")
+	}
+
+	return count, nil
+}

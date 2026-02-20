@@ -268,6 +268,58 @@ before they can be added to the queue).
 For more information on GitHub's merge queue feature and how to customize its
 settings, refer to the [official GitHub documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue).
 
+## Monitoring Queue Depth and Capacity
+
+Evergreen samples merge queue depth metrics every 5 minutes and emits them to Honeycomb as `merge_queue.depth_sample` spans. These metrics help you monitor queue backlogs, capacity, and identify stuck patches.
+
+### Depth Metrics
+
+- `evergreen.merge_queue.depth` - Total patches in queue (sampled every 5 minutes)
+  - **Note:** Because items in the merge queue are grouped together, the merge queue depth may not match the number of items you see in the queue. For example, there may be 10 items in the queue but only 4 patches and a depth of 4 because of how they are grouped together.
+- `evergreen.merge_queue.pending_count` - Patches not yet started
+- `evergreen.merge_queue.running_count` - Patches currently running
+- `evergreen.merge_queue.running_tasks_count` - Count of running tasks across all patches in queue
+- `evergreen.merge_queue.has_running_tasks` - Whether any queue patches have running tasks
+- `evergreen.merge_queue.oldest_patch_age_ms` - Age of oldest pending patch
+- `evergreen.merge_queue.top_of_queue_patch_id` - Patch ID at the top of the queue
+- `evergreen.merge_queue.top_of_queue_status` - Status of the patch at the top of the queue
+- `evergreen.merge_queue.top_of_queue_sha` - SHA of the patch at the top of the queue
+
+These metrics include standard attribution fields (`project_id`, `org`, `repo`, `queue_name`, `base_branch`) for filtering and grouping.
+
+### Example Queries
+
+**Queue depth over time:**
+
+```text
+WHERE evergreen.merge_queue.depth `exists`
+VISUALIZE MAX(evergreen.merge_queue.depth)
+GROUP BY evergreen.merge_queue.project_id
+```
+
+**Times queue depth exceeded 10:**
+
+```text
+WHERE evergreen.merge_queue.depth > 10
+COUNT
+TIMEFRAME: Last 30 days
+```
+
+This shows how many 5-minute samples had depth > 10 in the last month.
+
+**Oldest patch age (P95):**
+
+```text
+WHERE evergreen.merge_queue.oldest_patch_age_ms `exists`
+VISUALIZE P95(evergreen.merge_queue.oldest_patch_age_ms)
+GROUP BY evergreen.merge_queue.project_id
+```
+
+**Example alerts:**
+
+- **High queue depth:** Alert when depth > 10 for > 15 minutes
+- **Stuck patches:** Alert when oldest patch age > 60 minutes and running_tasks_count = 0
+
 ## For Evergreen Developers
 
 To troubleshoot why a merge group version is not being created, find the `event
