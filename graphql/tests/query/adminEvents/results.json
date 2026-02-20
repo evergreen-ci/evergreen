@@ -21,7 +21,7 @@
       "result": {
         "data": {
           "adminEvents": {
-            "count": 3,
+            "count": 2,
             "eventLogEntries": [
               {
                 "after": {
