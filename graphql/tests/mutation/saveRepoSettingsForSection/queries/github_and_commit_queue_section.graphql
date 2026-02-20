@@ -2,7 +2,11 @@ mutation {
   saveRepoSettingsForSection(
     repoSettings: {
       repoId: "sandbox_repo_id"
-      projectRef: { id: "sandbox_repo_id", commitQueue: { enabled: true } }
+      projectRef: {
+        id: "sandbox_repo_id"
+        commitQueue: { enabled: true }
+        runEveryMainlineCommit: true
+      }
       aliases: [
         {
           id: "5ffe393097b1d3759dd3c1aa"
@@ -22,6 +26,7 @@ mutation {
       commitQueue {
         enabled
       }
+      runEveryMainlineCommit
     }
     vars {
       ## should be unchanged

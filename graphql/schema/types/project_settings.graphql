@@ -75,6 +75,7 @@ input ProjectInput {
   repo: String
   repotrackerDisabled: Boolean
   restricted: Boolean
+  runEveryMainlineCommit: Boolean
   spawnHostScriptPath: String
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
