@@ -78,6 +78,7 @@ var (
 	githubMergeGroupOrgKey                = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "Org")
 	githubMergeGroupRepoKey               = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "Repo")
 	githubMergeGroupHeadSHAKey            = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
+	githubMergeGroupHeadCommitDateKey     = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadCommitDate")
 	githubMergeGroupRemovedFromQueueAtKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovedFromQueueAt")
 	githubMergeGroupRemovalReasonKey      = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovalReason")
 )
