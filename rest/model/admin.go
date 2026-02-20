@@ -3001,10 +3001,33 @@ func (a *APIAWSAccountRoleMapping) ToService() evergreen.AWSAccountRoleMapping {
 }
 
 type APICostConfig struct {
-	FinanceFormula      *float64         `json:"finance_formula"`
-	SavingsPlanDiscount *float64         `json:"savings_plan_discount"`
-	OnDemandDiscount    *float64         `json:"on_demand_discount"`
-	S3Cost              *APIS3CostConfig `json:"s3_cost"`
+	FinanceFormula      *float64          `json:"finance_formula"`
+	SavingsPlanDiscount *float64          `json:"savings_plan_discount"`
+	OnDemandDiscount    *float64          `json:"on_demand_discount"`
+	S3Cost              *APIS3CostConfig  `json:"s3_cost"`
+	EBSCost             *APIEBSCostConfig `json:"ebs_cost"`
+}
+
+type APIEBSCostConfig struct {
+	EBSDiscount *float64 `json:"ebs_discount"`
+}
+
+func (a *APIEBSCostConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case *evergreen.EBSCostConfig:
+		a.EBSDiscount = utility.ToFloat64Ptr(v.EBSDiscount)
+	case evergreen.EBSCostConfig:
+		a.EBSDiscount = utility.ToFloat64Ptr(v.EBSDiscount)
+	default:
+		return errors.Errorf("incorrect type %T", v)
+	}
+	return nil
+}
+
+func (a *APIEBSCostConfig) ToService() (any, error) {
+	return evergreen.EBSCostConfig{
+		EBSDiscount: utility.FromFloat64Ptr(a.EBSDiscount),
+	}, nil
 }
 
 func (a *APICostConfig) BuildFromService(h any) error {
@@ -3017,6 +3040,10 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.S3Cost.BuildFromService(v.S3Cost); err != nil {
 			return errors.Wrap(err, "building S3 cost config")
 		}
+		a.EBSCost = &APIEBSCostConfig{}
+		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
+			return errors.Wrap(err, "building EBS cost config")
+		}
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
@@ -3024,6 +3051,10 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		a.S3Cost = &APIS3CostConfig{}
 		if err := a.S3Cost.BuildFromService(v.S3Cost); err != nil {
 			return errors.Wrap(err, "building S3 cost config")
+		}
+		a.EBSCost = &APIEBSCostConfig{}
+		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
+			return errors.Wrap(err, "building EBS cost config")
 		}
 	default:
 		return errors.Errorf("incorrect type %T", v)
@@ -3040,11 +3071,20 @@ func (a *APICostConfig) ToService() (any, error) {
 		}
 		s3Cost = s3CostInterface.(evergreen.S3CostConfig)
 	}
+	ebsCost := evergreen.EBSCostConfig{}
+	if a.EBSCost != nil {
+		ebsCostInterface, err := a.EBSCost.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting EBS cost config")
+		}
+		ebsCost = ebsCostInterface.(evergreen.EBSCostConfig)
+	}
 	return evergreen.CostConfig{
 		FinanceFormula:      utility.FromFloat64Ptr(a.FinanceFormula),
 		SavingsPlanDiscount: utility.FromFloat64Ptr(a.SavingsPlanDiscount),
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
 		S3Cost:              s3Cost,
+		EBSCost:             ebsCost,
 	}, nil
 }
 

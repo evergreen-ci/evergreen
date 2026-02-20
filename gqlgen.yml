@@ -179,6 +179,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
   CostConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APICostConfig
+  EBSCostConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEBSCostConfig
+  EBSCostConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIEBSCostConfig
   CostData:
     model: github.com/evergreen-ci/evergreen/rest/model.APICostData
   CostDataInput:

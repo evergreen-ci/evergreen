@@ -402,6 +402,7 @@ type ComplexityRoot struct {
 	}
 
 	CostConfig struct {
+		EBSCost             func(childComplexity int) int
 		FinanceFormula      func(childComplexity int) int
 		OnDemandDiscount    func(childComplexity int) int
 		S3Cost              func(childComplexity int) int
@@ -515,6 +516,10 @@ type ComplexityRoot struct {
 
 	DockerConfig struct {
 		APIVersion func(childComplexity int) int
+	}
+
+	EBSCostConfig struct {
+		EBSDiscount func(childComplexity int) int
 	}
 
 	EC2Key struct {
@@ -3992,6 +3997,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Cost.S3LogPutCost(childComplexity), true
 
+	case "CostConfig.ebsCost":
+		if e.complexity.CostConfig.EBSCost == nil {
+			break
+		}
+
+		return e.complexity.CostConfig.EBSCost(childComplexity), true
 	case "CostConfig.financeFormula":
 		if e.complexity.CostConfig.FinanceFormula == nil {
 			break
@@ -4432,6 +4443,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DockerConfig.APIVersion(childComplexity), true
+
+	case "EBSCostConfig.ebsDiscount":
+		if e.complexity.EBSCostConfig.EBSDiscount == nil {
+			break
+		}
+
+		return e.complexity.EBSCostConfig.EBSDiscount(childComplexity), true
 
 	case "EC2Key.key":
 		if e.complexity.EC2Key.Key == nil {
@@ -12496,6 +12514,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDistroInput,
 		ec.unmarshalInputDistroPermissionsOptions,
 		ec.unmarshalInputDockerConfigInput,
+		ec.unmarshalInputEBSCostConfigInput,
 		ec.unmarshalInputEC2KeyInput,
 		ec.unmarshalInputEditSpawnHostInput,
 		ec.unmarshalInputEnvVarInput,
@@ -17973,6 +17992,8 @@ func (ec *executionContext) fieldContext_AdminSettings_cost(_ context.Context, f
 				return ec.fieldContext_CostConfig_onDemandDiscount(ctx, field)
 			case "s3Cost":
 				return ec.fieldContext_CostConfig_s3Cost(ctx, field)
+			case "ebsCost":
+				return ec.fieldContext_CostConfig_ebsCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostConfig", field.Name)
 		},
@@ -23600,6 +23621,39 @@ func (ec *executionContext) fieldContext_CostConfig_s3Cost(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _CostConfig_ebsCost(ctx context.Context, field graphql.CollectedField, obj *model.APICostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostConfig_ebsCost,
+		func(ctx context.Context) (any, error) {
+			return obj.EBSCost, nil
+		},
+		nil,
+		ec.marshalOEBSCostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEBSCostConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostConfig_ebsCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ebsDiscount":
+				return ec.fieldContext_EBSCostConfig_ebsDiscount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EBSCostConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CostData_onDemandRate(ctx context.Context, field graphql.CollectedField, obj *model.APICostData) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25646,6 +25700,35 @@ func (ec *executionContext) fieldContext_DockerConfig_apiVersion(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EBSCostConfig_ebsDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIEBSCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EBSCostConfig_ebsDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.EBSDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_EBSCostConfig_ebsDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EBSCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -76541,7 +76624,7 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost"}
+	fieldsInOrder := [...]string{"financeFormula", "savingsPlanDiscount", "onDemandDiscount", "s3Cost", "ebsCost"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76576,6 +76659,13 @@ func (ec *executionContext) unmarshalInputCostConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.S3Cost = data
+		case "ebsCost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ebsCost"))
+			data, err := ec.unmarshalOEBSCostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEBSCostConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EBSCost = data
 		}
 	}
 
@@ -77456,6 +77546,33 @@ func (ec *executionContext) unmarshalInputDockerConfigInput(ctx context.Context,
 				return it, err
 			}
 			it.APIVersion = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputEBSCostConfigInput(ctx context.Context, obj any) (model.APIEBSCostConfig, error) {
+	var it model.APIEBSCostConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"ebsDiscount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "ebsDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ebsDiscount"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EBSDiscount = data
 		}
 	}
 
@@ -87407,6 +87524,8 @@ func (ec *executionContext) _CostConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._CostConfig_onDemandDiscount(ctx, field, obj)
 		case "s3Cost":
 			out.Values[i] = ec._CostConfig_s3Cost(ctx, field, obj)
+		case "ebsCost":
+			out.Values[i] = ec._CostConfig_ebsCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -88235,6 +88354,42 @@ func (ec *executionContext) _DockerConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("DockerConfig")
 		case "apiVersion":
 			out.Values[i] = ec._DockerConfig_apiVersion(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var eBSCostConfigImplementors = []string{"EBSCostConfig"}
+
+func (ec *executionContext) _EBSCostConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIEBSCostConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, eBSCostConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EBSCostConfig")
+		case "ebsDiscount":
+			out.Values[i] = ec._EBSCostConfig_ebsDiscount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -112078,6 +112233,21 @@ func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	_ = ctx
 	res := model.MarshalAPIDuration(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOEBSCostConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEBSCostConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIEBSCostConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._EBSCostConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOEBSCostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEBSCostConfig(ctx context.Context, v any) (*model.APIEBSCostConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputEBSCostConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOEditSpawnHostInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐEditSpawnHostInput(ctx context.Context, v any) (*EditSpawnHostInput, error) {
