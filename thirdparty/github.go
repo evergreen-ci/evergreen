@@ -230,6 +230,62 @@ type GithubMergeGroup struct {
 	RemovalReason string `bson:"removal_reason,omitempty"`
 }
 
+const (
+	// GitHub merge queue removal reasons
+	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
+	MergeQueueReasonMerged      = "merged"      // Successfully merged
+	MergeQueueReasonDequeued    = "dequeued"    // Manually removed
+
+	// Merge queue status values for metrics
+	MergeQueueStatusSuccess = "success" // Successfully completed/merged
+	MergeQueueStatusFailed  = "failed"  // Failed status checks
+	MergeQueueStatusRemoved = "removed" // Other removal reasons
+)
+
+// GetMergeQueueStatusFromReason maps a GitHub merge queue removal reason to a status value for metrics.
+func GetMergeQueueStatusFromReason(reason string) string {
+	switch reason {
+	case MergeQueueReasonInvalidated:
+		return MergeQueueStatusFailed
+	case MergeQueueReasonMerged:
+		return MergeQueueStatusSuccess
+	default:
+		return MergeQueueStatusRemoved
+	}
+}
+
+// extractPRNumberFromHeadRef extracts the PR number from a merge queue head ref.
+func extractPRNumberFromHeadRef(headRef string) string {
+	split := strings.Split(headRef, "/")
+	if len(split) == 0 {
+		return ""
+	}
+	lastElement := split[len(split)-1]
+
+	if !strings.HasPrefix(lastElement, "pr-") {
+		return ""
+	}
+
+	prPart := strings.TrimPrefix(lastElement, "pr-")
+	parts := strings.Split(prPart, "-")
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return parts[0]
+}
+
+// BuildGithubHeadPRURL constructs the GitHub PR URL for the HEAD PR from a merge queue head ref.
+// For merge queue entries, this returns the HEAD PR URL, not all PRs in the merge group.
+// Returns empty string if the PR number cannot be extracted from headRef.
+func BuildGithubHeadPRURL(org, repo, headRef string) string {
+	prNumber := extractPRNumberFromHeadRef(headRef)
+	if prNumber == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://github.com/%s/%s/pull/%s", org, repo, prNumber)
+}
+
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
 // all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {

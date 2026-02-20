@@ -379,7 +379,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 		Org:        &org,
 		Repo:       &repo,
 	}
-	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
+	intent, err := patch.NewGithubMergeIntent(s.ctx, "id", "auto", &mge)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1149,7 +1149,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 		Org:        &org,
 		Repo:       &repo,
 	}
-	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
+	intent, err := patch.NewGithubMergeIntent(s.ctx, "id", "auto", &mge)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
