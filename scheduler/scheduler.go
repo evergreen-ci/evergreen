@@ -55,7 +55,7 @@ const RunnerName = "scheduler"
 // GetDistroQueueInfo returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
 func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration, distroDurationOverThreshold time.Duration
-	var distroCountDurationOverThreshold, distroCountWaitOverThreshold, numTasksDepsMet int
+	var distroCountDurationOverThreshold, distroCountWaitOverThreshold, numTasksDepsMet, numMergeQueueTasks int
 	var isSecondaryQueue bool
 	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
 	depCache := make(map[string]task.Task, len(tasks))
@@ -98,6 +98,10 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 		dependenciesMet := checkDependenciesMet(ctx, &task, depCache)
 		if dependenciesMet {
 			numTasksDepsMet++
+			if evergreen.IsGithubMergeQueueRequester(task.Requester) {
+				numMergeQueueTasks++
+				info.CountMergeQueueTasks++
+			}
 		}
 		if !opts.IncludesDependencies || dependenciesMet {
 			task.ExpectedDuration = duration
@@ -143,6 +147,7 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 		LengthWithDependenciesMet:  numTasksDepsMet,
 		ExpectedDuration:           distroExpectedDuration,
 		MaxDurationThreshold:       maxDurationThreshold,
+		CountMergeQueueTasks:       numMergeQueueTasks,
 		CountDurationOverThreshold: distroCountDurationOverThreshold,
 		DurationOverThreshold:      distroDurationOverThreshold,
 		CountWaitOverThreshold:     distroCountWaitOverThreshold,

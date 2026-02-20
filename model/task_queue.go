@@ -38,6 +38,8 @@ type TaskGroupInfo struct {
 	// CountWaitOverThreshold represents the number of tasks in the group that have been waiting for over the distro queue's MaxDurationThreshold
 	// since their dependencies were met
 	CountWaitOverThreshold int `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
+	// CountMergeQueueTasks represents the number of merge queue tasks that are in the queue.
+	CountMergeQueueTasks int `bson:"count_merge_tasks" json:"count_merge_tasks"`
 	// DurationOverThreshold represents the sum of the expected durations of tasks in the group
 	// that have their dependencies met and are expected to take over the distro queue's MaxDurationThreshold
 	DurationOverThreshold time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
@@ -48,6 +50,8 @@ type DistroQueueInfo struct {
 	Length int `bson:"length" json:"length"`
 	// LengthWithDependenciesMet represents the number of tasks waiting in the queue with their dependencies met
 	LengthWithDependenciesMet int `bson:"length_with_dependencies_met" json:"length_with_dependencies_met"`
+	// CountMergeQueueTasks represents the number of merge queue tasks that are in the queue.
+	CountMergeQueueTasks int `bson:"count_merge_tasks" json:"count_merge_tasks"`
 	// ExpectedDuration represents the sum of the expected runtime of all tasks waiting in the queue with their dependencies met
 	ExpectedDuration time.Duration `bson:"expected_duration" json:"expected_duration"`
 	// MaxDurationThreshold is the target length of time the host allocator aims to complete dependency-fulfilled tasks in the queue
@@ -287,6 +291,7 @@ func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 		PlanCreatedAt:              distroQueueInfo.PlanCreatedAt,
 		CountDurationOverThreshold: 0,
 		CountWaitOverThreshold:     0,
+		CountMergeQueueTasks:       0,
 		TaskGroupInfos:             []TaskGroupInfo{},
 		SecondaryQueue:             distroQueueInfo.SecondaryQueue,
 	}
