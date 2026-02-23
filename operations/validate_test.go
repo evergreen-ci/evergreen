@@ -195,6 +195,121 @@ func TestValidateFile(t *testing.T) {
 	}
 }
 
+func TestLoadProjectYAML(t *testing.T) {
+	sampleYAML, err := os.ReadFile("testdata/sample.yml")
+	require.NoError(t, err)
+
+	writeProjectFile := func(t *testing.T) string {
+		f := filepath.Join(t.TempDir(), "project.yml")
+		require.NoError(t, os.WriteFile(f, sampleYAML, 0644))
+		return f
+	}
+
+	for testName, testCase := range map[string]struct {
+		setupPath  func(t *testing.T) string
+		expectErr string
+	}{
+		"SucceedsWithValidFile": {
+			setupPath: writeProjectFile,
+		},
+		"FailsWithNonexistentFile": {
+			setupPath: func(t *testing.T) string {
+				return "/nonexistent/file.yml"
+			},
+			expectErr: "reading file",
+		},
+		"ReturnsErrorWhenLocalValidationFails": {
+			setupPath: func(t *testing.T) string {
+				f := filepath.Join(t.TempDir(), "invalid.yml")
+				require.NoError(t, os.WriteFile(f, []byte("invalid: [yaml: bad"), 0644))
+				return f
+			},
+			expectErr: "invalid configuration",
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			path := testCase.setupPath(t)
+			projectYaml, err := loadProjectYAML(path, false, false, nil, "")
+
+			if testCase.expectErr != "" {
+				assert.ErrorContains(t, err, testCase.expectErr)
+				assert.Nil(t, projectYaml)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.NotEmpty(t, projectYaml)
+		})
+	}
+}
+
+func TestValidateProjectRemotely(t *testing.T) {
+	projectYaml := []byte("tasks: []\nbuildvariants: []")
+
+	for testName, testCase := range map[string]struct {
+		projectYaml     []byte
+		validateResult  validator.ValidationErrors
+		validateErr     error
+		quiet           bool
+		errorOnWarnings bool
+		expectErr       string
+	}{
+		"SucceedsWithNoErrors": {
+			projectYaml: projectYaml,
+		},
+		"ReturnsErrorWhenClientValidateFails": {
+			projectYaml: projectYaml,
+			validateErr: errors.New("client error"),
+			expectErr:   "validating project",
+		},
+		"ReturnsErrorWhenValidationHasErrors": {
+			projectYaml: projectYaml,
+			validateResult: validator.ValidationErrors{
+				{Level: validator.Error, Message: "something is wrong"},
+			},
+			expectErr: "invalid configuration",
+		},
+		"SucceedsWithWarningsWhenErrorOnWarningsIsDisabled": {
+			projectYaml: projectYaml,
+			validateResult: validator.ValidationErrors{
+				{Level: validator.Warning, Message: "a warning"},
+			},
+		},
+		"ReturnsErrorWithWarningsWhenErrorOnWarningsIsEnabled": {
+			projectYaml: projectYaml,
+			quiet:       true,
+			validateResult: validator.ValidationErrors{
+				{Level: validator.Warning, Message: "a warning"},
+			},
+			errorOnWarnings: true,
+			expectErr:       "invalid configuration",
+		},
+		"SucceedsWithNoticesOnly": {
+			projectYaml: projectYaml,
+			validateResult: validator.ValidationErrors{
+				{Level: validator.Notice, Message: "a notice"},
+			},
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			mockClient = &client.Mock{
+				ValidateResult: testCase.validateResult,
+				ValidateErr:    testCase.validateErr,
+			}
+
+			path := filepath.Join(t.TempDir(), "project.yml")
+			err := validateProjectRemotely(&ClientSettings{}, testCase.projectYaml, path, testCase.quiet, testCase.errorOnWarnings, "")
+
+			if testCase.expectErr != "" {
+				assert.ErrorContains(t, err, testCase.expectErr)
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestLoadProjectIntoWithValidation(t *testing.T) {
 	sampleYAML, err := os.ReadFile("testdata/sample.yml")
 	require.NoError(t, err)
