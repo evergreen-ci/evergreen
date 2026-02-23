@@ -701,7 +701,9 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		return tc, shouldExit, errors.Wrap(err, "setting up task")
 	}
 
-	defer a.killProcs(ctx, tc, false, "task is finished")
+	defer func() {
+		_ = a.killProcs(ctx, tc, false, "task is finished")
+	}()
 
 	grip.Info(message.Fields{
 		"message": "running task",
@@ -1021,7 +1023,9 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 	defer span.End()
 
 	_ = a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
-	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
+	defer func() {
+		_ = a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
+	}()
 
 	post, err := tc.getPost()
 	if err != nil {
@@ -1046,7 +1050,9 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runTeardownGroupCommands.
-	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
+	defer func() {
+		_ = a.killProcs(ctx, tc, true, "teardown group commands are finished")
+	}()
 
 	defer func() {
 		if tc.logger != nil {
@@ -1515,6 +1521,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		}
 		logger.Info("Cleaned up Docker artifacts.")
 	}
+
 	return catcher.Resolve()
 }
 
