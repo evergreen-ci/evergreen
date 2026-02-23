@@ -368,3 +368,8 @@ func (we *WindowsError) InnerError() error {
 func (we *WindowsError) Error() string {
 	return fmt.Sprintf("gowin32: %s failed: %v", we.functionName, we.innerError)
 }
+
+// SetNice is a no-op in Windows (Linux-only).
+func SetNice(int, int) error {
+	return nil
+}

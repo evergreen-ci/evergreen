@@ -2,6 +2,8 @@ package evergreen
 
 import (
 	"context"
+	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -107,3 +109,44 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 }
 
 func (c *ServiceFlags) ValidateAndDefault() error { return nil }
+
+// ServiceFlagEntry holds the name and enabled state of a single service flag.
+type ServiceFlagEntry struct {
+	Name    string
+	Enabled bool
+}
+
+// ToSlice returns all service flags as an ordered slice in struct declaration order.
+// This allows new flags to be discovered dynamically without modifying any additional code.
+func (c *ServiceFlags) ToSlice() []ServiceFlagEntry {
+	v := reflect.ValueOf(*c)
+	t := v.Type()
+	result := make([]ServiceFlagEntry, 0, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.Type.Kind() != reflect.Bool {
+			continue
+		}
+		jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+		result = append(result, ServiceFlagEntry{Name: jsonTag, Enabled: v.Field(i).Bool()})
+	}
+	return result
+}
+
+// SetByName sets the service flag with the given JSON tag name to the given value.
+// Returns an error if no field with that name exists.
+func (c *ServiceFlags) SetByName(name string, value bool) error {
+	v := reflect.ValueOf(c).Elem()
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		jsonTag := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		if jsonTag == name {
+			v.Field(i).SetBool(value)
+			return nil
+		}
+	}
+	return errors.Errorf("unknown service flag '%s'", name)
+}

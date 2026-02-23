@@ -298,7 +298,6 @@ Cost represents the cost breakdown for a task or version.
 type Cost {
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
-  s3ArtifactPutCost: Float
 }
 
 input QuarantineTestInput {

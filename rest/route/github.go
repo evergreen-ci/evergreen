@@ -508,7 +508,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
 func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github.MergeGroupEvent) error {
-	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
+	intent, err := patch.NewGithubMergeIntent(ctx, gh.msgID, patch.AutomatedCaller, mg)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")
 	}
