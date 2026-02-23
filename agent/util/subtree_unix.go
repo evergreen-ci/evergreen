@@ -261,6 +261,7 @@ const (
 // set the nice.
 func SetNice(pid, nice int) error {
 	if runtime.GOOS != "linux" {
+		// No-op for MacOS.
 		return nil
 	}
 	if nice < minNice || nice > maxNice {
