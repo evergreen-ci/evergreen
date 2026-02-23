@@ -180,7 +180,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		numHostsForOverdueTasks = taskGroupInfo.CountWaitOverThreshold
 	}
 	numNewHosts = calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationThreshold,
-		expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, taskGroupInfo.CountMergeQueueTasks, roundDown)
+		expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, taskGroupInfo.CountDepFilledMergeQueueTasks, roundDown)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > taskGroupInfo.Count {

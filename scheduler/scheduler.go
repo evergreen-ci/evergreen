@@ -100,7 +100,7 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 			numTasksDepsMet++
 			if evergreen.IsGithubMergeQueueRequester(task.Requester) {
 				numMergeQueueTasks++
-				info.CountMergeQueueTasks++
+				info.CountDepFilledMergeQueueTasks++
 			}
 		}
 		if !opts.IncludesDependencies || dependenciesMet {
@@ -143,16 +143,16 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:                     len(tasks),
-		LengthWithDependenciesMet:  numTasksDepsMet,
-		ExpectedDuration:           distroExpectedDuration,
-		MaxDurationThreshold:       maxDurationThreshold,
-		CountMergeQueueTasks:       numMergeQueueTasks,
-		CountDurationOverThreshold: distroCountDurationOverThreshold,
-		DurationOverThreshold:      distroDurationOverThreshold,
-		CountWaitOverThreshold:     distroCountWaitOverThreshold,
-		TaskGroupInfos:             taskGroupInfos,
-		SecondaryQueue:             isSecondaryQueue,
+		Length:                        len(tasks),
+		LengthWithDependenciesMet:     numTasksDepsMet,
+		ExpectedDuration:              distroExpectedDuration,
+		MaxDurationThreshold:          maxDurationThreshold,
+		CountDepFilledMergeQueueTasks: numMergeQueueTasks,
+		CountDurationOverThreshold:    distroCountDurationOverThreshold,
+		DurationOverThreshold:         distroDurationOverThreshold,
+		CountWaitOverThreshold:        distroCountWaitOverThreshold,
+		TaskGroupInfos:                taskGroupInfos,
+		SecondaryQueue:                isSecondaryQueue,
 	}
 
 	return distroQueueInfo
