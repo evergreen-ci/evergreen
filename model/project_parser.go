@@ -761,24 +761,38 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 
 	dirs, err := setupParallelGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
-	grip.Warning(message.WrapError(err, message.Fields{
-		"message":    "could not set up git include directories for includes, will fall back to using GitHub API to retrieve include files",
-		"project_id": projectID,
-		"revision":   opts.Revision,
-		"ticket":     "DEVPROD-26851",
-	}))
+	if err != nil {
+		msg := message.Fields{
+			"message":    "could not set up git include directories for includes, will fall back to using GitHub API to retrieve include files",
+			"project_id": projectID,
+			"revision":   opts.Revision,
+		}
+		if opts.Ref != nil {
+			msg["project_identifier"] = opts.Ref.Identifier
+			msg["owner"] = opts.Ref.Owner
+			msg["repo"] = opts.Ref.Repo
+		}
+		grip.Warning(message.WrapError(err, msg))
+	}
 	defer func() {
 		// This is a best-effort attempt to clean up the temporary git
 		// directories after includes are processed. However, if it errors, it's
 		// not really an issue because the git directories don't use much disk
 		// space and app servers are not long-lived enough for a few leftover
 		// files to cause issues.
-		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
-			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
-			"project_id": projectID,
-			"revision":   opts.Revision,
-			"ticket":     "DEVPROD-26851",
-		}))
+		if err := dirs.cleanup(); err != nil {
+			msg := message.Fields{
+				"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
+				"project_id": projectID,
+				"revision":   opts.Revision,
+			}
+			if opts.Ref != nil {
+				msg["project_identifier"] = opts.Ref.Identifier
+				msg["owner"] = opts.Ref.Owner
+				msg["repo"] = opts.Ref.Repo
+			}
+			grip.Warning(message.WrapError(err, msg))
+		}
 	}()
 
 	wg := sync.WaitGroup{}
@@ -886,7 +900,7 @@ func (d *gitIncludeDirs) cleanup() error {
 	}
 	catcher := grip.NewBasicCatcher()
 	for ownerRepo, dir := range d.clonesForOwnerRepo {
-		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory for '%s/%s'", ownerRepo.owner, ownerRepo.repo)
+		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory '%s' for '%s/%s'", dir, ownerRepo.owner, ownerRepo.repo)
 	}
 	return catcher.Resolve()
 }
@@ -929,7 +943,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			"message":            "could not clean up git clone directory after failing to set up git directories",
 			"project_id":         opts.Ref.Id,
 			"project_identifier": opts.Ref.Identifier,
-			"ticket":             "DEVPROD-26143",
 		}))
 		// Once dirs has been cleaned up, it's no longer valid to use it, so do
 		// not return it in the result.
@@ -988,9 +1001,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if _, ok := dirs.clonesForOwnerRepo[ownerRepo]; ok {
 			// When including files, there should not be any duplicate repos
 			// defined in the modules, and the modules should not use the exact
-			// same repo/branch as the project itself. If this is hit, it would
-			// be a sign that some project is relying on DEVPROD-27062 and this
-			// logic would potentially have to account for that edge case.
+			// same repo/branch as the project itself.
 			grip.Warning(message.Fields{
 				"message":            "trying to make multiple git clones of the same repo, skipping duplicate repo",
 				"project_id":         opts.Ref.Id,
@@ -999,7 +1010,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 				"repo":               repoName,
 				"revision":           revision,
 				"module":             modName,
-				"ticket":             "DEVPROD-26851",
 			})
 			continue
 		}
@@ -1046,31 +1056,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			catcher.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerRepo.owner, out.ownerRepo.repo)
 		}
 	}
-
-	dirsAsStringMaps := struct {
-		ClonesForOwnerRepo    map[string]string   `json:"clones_for_owner_repo"`
-		WorktreesForOwnerRepo map[string][]string `json:"worktrees_for_owner_repo"`
-	}{
-		ClonesForOwnerRepo:    make(map[string]string),
-		WorktreesForOwnerRepo: make(map[string][]string),
-	}
-	for ownerRepo, cloneDir := range dirs.clonesForOwnerRepo {
-		dirsAsStringMaps.ClonesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = cloneDir
-	}
-	for ownerRepo, worktreeDirs := range dirs.worktreesForOwnerRepo {
-		dirsAsStringMaps.WorktreesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = worktreeDirs
-	}
-
-	grip.Info(message.Fields{
-		"message":            "set up git worktrees for parallel includes",
-		"owner":              opts.Ref.Owner,
-		"repo":               opts.Ref.Repo,
-		"project_id":         opts.Ref.Id,
-		"project_identifier": opts.Ref.Identifier,
-		"revision":           opts.Revision,
-		"errors":             catcher.Resolve(),
-		"git_include_dirs":   dirsAsStringMaps,
-	})
 
 	return dirs, catcher.Resolve()
 }

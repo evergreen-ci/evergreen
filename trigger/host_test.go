@@ -72,7 +72,7 @@ func (s *hostSuite) SetupTest() {
 
 	s.uiConfig = &evergreen.UIConfig{
 		Url:     "https://evergreen.mongodb.com",
-		UIv2Url: "https://spruce.mongodb.com",
+		UIv2Url: "https://spruce.corp.mongodb.com",
 	}
 	s.NoError(s.uiConfig.Set(s.ctx))
 

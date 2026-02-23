@@ -9,7 +9,6 @@ mutation {
       disabledGQLQueries: ["query1", "query2", "query3", "query4"]
       ui: {
         url: "http://localhost:600"
-        helpUrl: "https://help.example.com"
         uiv2Url: "http://localhost:3000"
         parsleyUrl: "http://localhost:4173"
         httpListenAddr: ":3000"
@@ -33,7 +32,6 @@ mutation {
     }
     ui {
       url
-      helpUrl
       uiv2Url
       parsleyUrl
       httpListenAddr

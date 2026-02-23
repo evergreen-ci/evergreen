@@ -8,7 +8,7 @@ If you are having trouble connecting to a spawn host:
 
 - Make sure you are connected to the MongoDB network or VPN.
 - Verify the host is in the "RUNNING" state and the DNS host name for the spawn host is correct. Note that if you pause and then start the host, it will get a new DNS name.
-- Verify you are using the correct user. This can be found on the [My Hosts](https://spruce.mongodb.com/spawn/host) page under the Spawn Host detail drop down.
+- Verify you are using the correct user. This can be found on the [My Hosts](https://spruce.corp.mongodb.com/spawn/host) page under the Spawn Host detail drop down.
 - Verify you are using the correct ssh key used when creating the Spawn Host. Use the -i argument to specify the location of your local private ssh key to use.
 - Newer versions of macOS do not by default support older SSH algorithms. Please add these lines to the `Host *` stanza of your ~/.ssh/config:
 
@@ -64,7 +64,7 @@ Alternatively, you can use the Evergreen CLI's [fetch command](../CLI#fetch) to 
 
 Artifacts are placed in /data/mci.
 
-If your project has [a project setup script defined at the admin level](../Project-Configuration/Project-And-Distro-Settings.md#spawn-host-script-path), you can also check "Use project-specific setup script defined at ..." before creating the spawn host to run that script when the host starts up. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.mongodb.com/host/<host_id>`.
+If your project has [a project setup script defined at the admin level](../Project-Configuration/Project-And-Distro-Settings.md#spawn-host-script-path), you can also check "Use project-specific setup script defined at ..." before creating the spawn host to run that script when the host starts up. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.corp.mongodb.com/host/<host_id>`.
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
 
@@ -107,7 +107,7 @@ Note that stopping the host during off hours means **shutting down the host**, n
 unexpirable host to use something other than the default settings, your options are:**
 
 1. [Set an uptime schedule](#uptime-schedule) (Recommended for most users): Set an uptime schedule for each of your existing
-   unexpirable hosts on by [pressing the "edit" button on the spawn host page](https://spruce.mongodb.com/spawn/host).
+   unexpirable hosts on by [pressing the "edit" button on the spawn host page](https://spruce.corp.mongodb.com/spawn/host).
 2. [Permanently exempt your host](#permanent-exemption): If you have a reason that your host cannot use the sleep
    schedule, you can request a permanent exemption for your host.
 
@@ -115,7 +115,7 @@ unexpirable host to use something other than the default settings, your options 
 
 This is the feature described [above](#unexpirable-host-uptime-schedules) to set times of the week when you want your
 host to be on or off. You can set a recurring uptime schedule on your host from [the
-UI](https://spruce.mongodb.com/spawn/host) by pressing the "edit" button your host.
+UI](https://spruce.corp.mongodb.com/spawn/host) by pressing the "edit" button your host.
 
 In the Spruce UI, you can pick an uptime schedule for your host when creating the unexpirable host or editing an existing
 unexpirable host:

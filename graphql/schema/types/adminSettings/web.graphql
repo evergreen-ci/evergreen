@@ -12,7 +12,6 @@ type APIConfig {
 
 input UIConfigInput {
   url: String!
-  helpUrl: String!
   uiv2Url: String!
   parsleyUrl: String!
   httpListenAddr: String!
@@ -31,7 +30,6 @@ input UIConfigInput {
 type UIConfig {
   betaFeatures: BetaFeatures!
   url: String
-  helpUrl: String
   uiv2Url: String
   parsleyUrl: String
   httpListenAddr: String
