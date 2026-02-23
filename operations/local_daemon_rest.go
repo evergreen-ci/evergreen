@@ -231,7 +231,7 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 		response["error"] = err.Error()
 	}
 
-	json.NewEncoder(w).Encode(response)
+	grip.Error(json.NewEncoder(w).Encode(response))
 }
 
 // handleRunAll runs all remaining steps
