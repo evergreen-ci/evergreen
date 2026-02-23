@@ -11,9 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -97,6 +99,8 @@ type APITask struct {
 	TaskCost *cost.Cost `json:"task_cost,omitempty"`
 	// Predicted cost breakdown based on historical task costs
 	PredictedTaskCost *cost.Cost `json:"predicted_task_cost,omitempty"`
+	// S3 API usage metrics for this task
+	S3Usage *s3usage.S3Usage `json:"s3_usage,omitempty"`
 	// Number of milliseconds expected for this task to execute
 	ExpectedDuration APIDuration `json:"expected_duration_ms"`
 	EstimatedStart   APIDuration `json:"est_wait_to_start_ms"`
@@ -131,6 +135,10 @@ type APITask struct {
 	ResetWhenFinished    bool            `json:"reset_when_finished"`
 	HasAnnotations       bool            `json:"has_annotations"`
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
+	// Whether this task can run in patches (from YAML configuration). Nil if not explicitly set.
+	Patchable *bool `json:"patchable"`
+	// Whether this task can only run in patches, not mainline (from YAML configuration). Nil if not explicitly set.
+	PatchOnly *bool `json:"patch_only"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -288,6 +296,7 @@ func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Tas
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
+			IncludePatchInfo:         true,
 			LogURL:                   logURL,
 			ParsleyLogURL:            parsleyURL,
 		}); err != nil {
@@ -393,6 +402,11 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.PredictedTaskCost = &predictedCost
 	}
 
+	if !t.S3Usage.IsZero() {
+		s3Usage := t.S3Usage
+		at.S3Usage = &s3Usage
+	}
+
 	if t.ParentPatchID != "" {
 		at.Version = utility.ToStringPtr(t.ParentPatchID)
 		if t.ParentPatchNumber != 0 {
@@ -441,6 +455,7 @@ type APITaskArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeAMI               bool
 	IncludeArtifacts         bool
+	IncludePatchInfo         bool
 	LogURL                   string
 	ParsleyLogURL            string
 }
@@ -491,6 +506,15 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 	if args.IncludeProjectIdentifier {
 		at.GetProjectIdentifier(ctx)
 	}
+	if args.IncludePatchInfo {
+		if err := at.GetPatchInfo(ctx, t); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not fetch patch info",
+				"task_id": t.Id,
+				"version": t.Version,
+			}))
+		}
+	}
 
 	return nil
 }
@@ -524,6 +548,31 @@ func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 			at.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
 	}
+}
+
+// GetPatchInfo populates the Patchable and PatchOnly fields from the YAML configuration.
+// Values are sourced from the build variant task definition (which may inherit from the build variant).
+func (at *APITask) GetPatchInfo(ctx context.Context, t *task.Task) error {
+	if at.Patchable != nil && at.PatchOnly != nil {
+		return nil
+	}
+
+	project, err := model.FindProjectFromVersionID(ctx, t.Version)
+	if err != nil {
+		return errors.Wrap(err, "finding project")
+	}
+	if project == nil {
+		return errors.Errorf("project not found for version '%s'", t.Version)
+	}
+
+	bvt := project.FindTaskForVariant(t.DisplayName, t.BuildVariant)
+	if bvt == nil {
+		return nil
+	}
+
+	at.Patchable = bvt.Patchable
+	at.PatchOnly = bvt.PatchOnly
+	return nil
 }
 
 // ToService returns a service layer task using the data from the APITask.
@@ -576,6 +625,10 @@ func (at *APITask) ToService() (*task.Task, error) {
 
 	if at.TaskCost != nil {
 		st.TaskCost = *at.TaskCost
+	}
+
+	if at.S3Usage != nil {
+		st.S3Usage = *at.S3Usage
 	}
 
 	catcher := grip.NewBasicCatcher()

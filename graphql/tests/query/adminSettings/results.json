@@ -585,6 +585,57 @@
           }
         }
       }
+    },
+    {
+      "query_file": "service_flags_list.graphql",
+      "result": {
+        "data": {
+          "adminSettings": {
+            "serviceFlagsList": [
+              { "name": "task_dispatch_disabled", "enabled": false },
+              { "name": "host_init_disabled", "enabled": false },
+              { "name": "pod_init_disabled", "enabled": false },
+              { "name": "large_parser_projects_disabled", "enabled": false },
+              { "name": "monitor_disabled", "enabled": false },
+              { "name": "alerts_disabled", "enabled": false },
+              { "name": "agent_start_disabled", "enabled": false },
+              { "name": "repotracker_disabled", "enabled": false },
+              { "name": "scheduler_disabled", "enabled": false },
+              { "name": "check_blocked_tasks_disabled", "enabled": false },
+              { "name": "github_pr_testing_disabled", "enabled": false },
+              { "name": "cli_updates_disabled", "enabled": false },
+              { "name": "background_stats_disabled", "enabled": false },
+              { "name": "task_logging_disabled", "enabled": false },
+              { "name": "cache_stats_job_disabled", "enabled": false },
+              { "name": "cache_stats_endpoint_disabled", "enabled": false },
+              { "name": "task_reliability_disabled", "enabled": false },
+              { "name": "host_allocator_disabled", "enabled": false },
+              { "name": "pod_allocator_disabled", "enabled": false },
+              { "name": "unrecognized_pod_cleanup_disabled", "enabled": false },
+              { "name": "background_reauth_disabled", "enabled": false },
+              { "name": "cloud_cleanup_disabled", "enabled": false },
+              { "name": "sleep_schedule_disabled", "enabled": false },
+              { "name": "static_api_keys_disabled", "enabled": false },
+              { "name": "jwt_token_for_cli_disabled", "enabled": false },
+              { "name": "system_failed_task_restart_disabled", "enabled": false },
+              { "name": "cpu_degraded_mode_disabled", "enabled": false },
+              { "name": "elastic_ips_disabled", "enabled": false },
+              { "name": "release_mode_disabled", "enabled": false },
+              { "name": "legacy_ui_admin_page_disabled", "enabled": false },
+              { "name": "debug_spawn_host_disabled", "enabled": false },
+              { "name": "s3_lifecycle_sync_disabled", "enabled": false },
+              { "name": "use_merge_queue_path_filtering_disabled", "enabled": false },
+              { "name": "ps_logging_disabled", "enabled": false },
+              { "name": "event_processing_disabled", "enabled": false },
+              { "name": "jira_notifications_disabled", "enabled": false },
+              { "name": "slack_notifications_disabled", "enabled": false },
+              { "name": "email_notifications_disabled", "enabled": false },
+              { "name": "webhook_notifications_disabled", "enabled": false },
+              { "name": "github_status_api_disabled", "enabled": false }
+            ]
+          }
+        }
+      }
     }
   ]
 }

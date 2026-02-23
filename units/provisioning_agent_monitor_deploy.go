@@ -21,7 +21,6 @@ import (
 
 const (
 	agentMonitorDeployJobName    = "agent-monitor-deploy"
-	agentMonitorPutRetries       = 25
 	maxAgentMonitorDeployJobTime = 10 * time.Minute
 
 	staticHostCurlNumRetries = 5
@@ -68,12 +67,27 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 	})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(agentMonitorPutRetries),
+		MaxAttempts: utility.ToIntPtr(j.getRetriesForHost(h)),
 		WaitUntil:   utility.ToTimeDurationPtr(15 * time.Second),
 	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", agentMonitorDeployJobName, j.HostID, id))
 
 	return j
+}
+
+// getRetriesForHost returns the number of times to retry the agent monitor deploy job.
+// Should return a large number if the host is static, otherwise we shouldn't need as many retries
+// (and many retries may indicate we're in a bad state).
+func (j *agentMonitorDeployJob) getRetriesForHost(h host.Host) int {
+	const (
+		agentMonitorStaticHostRetries = 25
+		agentMonitorDefaultRetries    = 5
+	)
+
+	if h.Provider == evergreen.ProviderNameStatic {
+		return agentMonitorStaticHostRetries
+	}
+	return agentMonitorDefaultRetries
 }
 
 func (j *agentMonitorDeployJob) Run(ctx context.Context) {
@@ -148,7 +162,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			return
 		}
 
-		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); disableErr != nil {
+		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent monitor on host", j.RetryInfo().MaxAttempts)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "terminating poisoned host '%s'", j.host.Id))
 		}
 	}()

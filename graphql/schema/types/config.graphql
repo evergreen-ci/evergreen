@@ -155,6 +155,7 @@ type AdminSettings {
   runtimeEnvironments: RuntimeEnvironmentConfig
   scheduler: SchedulerConfig
   serviceFlags: ServiceFlags
+  serviceFlagsList: [ServiceFlag!]
   shutdownWaitSeconds: Int
   singleTaskDistro: SingleTaskDistroConfig
   slack: SlackConfig

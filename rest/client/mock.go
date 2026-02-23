@@ -73,6 +73,10 @@ func (*Mock) GetSpawnHost(ctx context.Context, hostID string) (*model.APIHost, e
 	return nil, errors.New("(*Mock) GetSpawnHost is not implemented")
 }
 
+func (*Mock) GetProject(ctx context.Context, projectID string) (*model.APIProjectRef, error) {
+	return nil, errors.New("(*Mock) GetProject is not implemented")
+}
+
 func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
 	return errors.New("(*Mock) ModifySpawnHost is not implemented")
 }
