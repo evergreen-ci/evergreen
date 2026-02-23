@@ -1192,17 +1192,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		span.End()
 	}
 
-	// kim: TODO: likely want to disable host here if it can't clean up
-	// processes/Docker.
 	if err := a.killProcs(ctx, tc, false, "task is ending"); err != nil {
 		// If the task is finished but the agent can't clean up all the
 		// processes/Docker artifacts, disable the host because the next task
 		// will start with lingering state from the prior task.
 		tc.logger.Execution().Criticalf("Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
 		if disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
-			// kim: TODO: on the server side, have a temporary special case to
-			// exclude this reason from disabling a host so we can figure out
-			// the impact of disabling first.
 			Reason: "could not clean up processes/Docker artifacts after task is finished",
 		}); disableErr != nil {
 			tc.logger.Execution().Criticalf("Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
