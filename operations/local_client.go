@@ -125,6 +125,12 @@ func Debug() cli.Command {
 				Usage:  "Run all remaining steps",
 				Action: runAllCmd,
 			},
+			{
+				Name:      "run-until",
+				Usage:     "Run until a specific step",
+				ArgsUsage: "<step_index>",
+				Action:    runUntilCmd,
+			},
 		},
 	}
 }
@@ -360,6 +366,36 @@ func runAllCmd(c *cli.Context) error {
 
 	grip.Info("Running all remaining steps...")
 	resp, err := postJSON(url+"/step/run-all", nil)
+	if err != nil {
+		return err
+	}
+
+	if resp["success"].(bool) {
+		grip.Infof("Execution complete (at step %v)\n", resp["current_step"])
+	} else {
+		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
+	}
+	return nil
+}
+
+// runUntilCmd runs until a specific step
+func runUntilCmd(c *cli.Context) error {
+	if c.NArg() < 1 {
+		return errors.New("step index required")
+	}
+
+	index, err := strconv.Atoi(c.Args().Get(0))
+	if err != nil {
+		return errors.New("invalid step index")
+	}
+
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Running until step %d...\n", index)
+	resp, err := postJSON(fmt.Sprintf("%s/step/run-until/%d", url, index), nil)
 	if err != nil {
 		return err
 	}

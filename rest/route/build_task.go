@@ -111,7 +111,6 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
 			IncludeProjectIdentifier: true,
-			IncludePatchInfo:         true,
 			LogURL:                   tbh.url,
 			ParsleyLogURL:            tbh.parsleyURL,
 		}); err != nil {

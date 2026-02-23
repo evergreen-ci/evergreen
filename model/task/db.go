@@ -3346,3 +3346,20 @@ func CountRunningTasksForVersions(ctx context.Context, versionIDs []string) (int
 
 	return count, nil
 }
+
+// GetFirstTaskStartTimeForVersion returns the start time of the first task to start for a version.
+func GetFirstTaskStartTimeForVersion(ctx context.Context, versionID string) (time.Time, error) {
+	filter := bson.M{
+		VersionKey: versionID,
+		// Exclude tasks that haven't started yet.
+		StartTimeKey: bson.M{"$ne": time.Time{}},
+	}
+	task, err := FindOne(ctx, db.Query(filter).WithFields(StartTimeKey).Sort([]string{StartTimeKey}).Limit(1))
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "querying for first started task")
+	}
+	if task == nil {
+		return time.Time{}, nil
+	}
+	return task.StartTime, nil
+}

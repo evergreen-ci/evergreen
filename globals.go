@@ -358,6 +358,7 @@ const (
 	KeyTooLargeToIndexError         = "key too large to index"
 	InvalidDivideInputError         = "$divide only supports numeric types"
 	FetchingTaskDataUnfinishedError = "fetching task data not finished"
+	DistroNotFoundForTaskError      = "distro not found"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -504,17 +505,6 @@ const (
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
-
-	// S3 PUT cost otel attributes — task-level aggregates
-	S3PutCostTotalPutRequestsOtelAttribute = "evergreen.task.s3_put_cost.total_put_requests"
-	S3PutCostTotalUploadBytesOtelAttribute = "evergreen.task.s3_put_cost.total_upload_bytes"
-	S3PutCostTotalFileCountOtelAttribute   = "evergreen.task.s3_put_cost.total_file_count"
-	S3PutCostTotalPutCostOtelAttribute     = "evergreen.task.s3_put_cost.total_put_cost"
-
-	// S3 PUT cost otel attributes — per file cost statistics
-	S3PutCostAvgFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.avg_file_put_cost"
-	S3PutCostMaxFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.max_file_put_cost"
-	S3PutCostMinFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.min_file_put_cost"
 
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
