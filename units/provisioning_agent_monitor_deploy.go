@@ -81,7 +81,7 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 func (j *agentMonitorDeployJob) getRetriesForHost(h host.Host) int {
 	const (
 		agentMonitorStaticHostRetries = 25
-		agentMonitorDefaultRetries    = 5
+		agentMonitorDefaultRetries    = 1
 	)
 
 	if h.Provider == evergreen.ProviderNameStatic {
