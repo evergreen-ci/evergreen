@@ -6,8 +6,10 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/utility"
@@ -238,4 +240,20 @@ func parsePs(psOutput string) []process {
 	}
 
 	return processes
+}
+
+// SetNice sets the nice for the process given by PID. This determines its
+// relative scheduling priority for host CPU.
+// This is only available if the current process has sufficient permissions to
+// set the nice.
+func SetNice(pid, nice int) error {
+	if runtime.GOOS != "linux" {
+		// No-op for MacOS.
+		return nil
+	}
+	if nice < minNice || nice > maxNice {
+		return errors.Errorf("nice must be between %d and %d", minNice, maxNice)
+	}
+	// 0 refers to the current process.
+	return syscall.Setpriority(syscall.PRIO_PROCESS, pid, nice)
 }

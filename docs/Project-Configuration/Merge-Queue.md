@@ -268,6 +268,117 @@ before they can be added to the queue).
 For more information on GitHub's merge queue feature and how to customize its
 settings, refer to the [official GitHub documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue).
 
+## Monitoring and Alerting
+
+### Available Metrics
+
+Merge queue lifecycle events can be monitored in Honeycomb.
+
+#### Lifecycle Events
+
+Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
+
+- `merge_queue.intent_created` - When a merge queue patch is created
+- `merge_queue.patch_processing` - When patch processing begins
+- `merge_queue.patch_completed` - When a merge queue version completes. Status is determined from removal reason if the patch was removed from the queue by GitHub, otherwise from the final version status.
+
+#### Key Attributes
+
+**Latency Metrics:**
+
+- `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to completion
+- `evergreen.merge_queue.time_to_first_task_ms` - The time from merge queue entry to first task start
+- `evergreen.merge_queue.slowest_task_duration_ms` - The duration of the slowest task in the patch
+
+**Health & Failure Metrics:**
+
+- `evergreen.merge_queue.status` - The outcome of the merge queue build, emitted in `merge_queue.patch_completed` spans when the version finishes. Determined from `removal_reason` if present (patch was removed from queue), otherwise from final version status. Values:
+  - `"success"` - Merged successfully (reason: "merged") or version succeeded
+  - `"failed"` - Failed status checks (reason: "invalidated") or version failed
+  - `"removed"` - Manually dequeued or other removal (reason: "dequeued")
+- `evergreen.merge_queue.removal_reason` - The reason GitHub removed the patch from the queue ("invalidated", "merged", or "dequeued"). Present in `merge_queue.patch_completed` spans when the patch was removed from the queue.
+- `evergreen.merge_queue.has_test_failure` - Whether the version contains any tasks that failed due to test failures
+- `evergreen.merge_queue.has_system_failure` - Whether the version contains any tasks that failed due to system failures
+- `evergreen.merge_queue.has_setup_failure` - Whether the version contains any tasks that failed due to setup failures
+- `evergreen.merge_queue.has_timeout_failure` - Whether the version contains any tasks that failed due to timeouts
+- `evergreen.merge_queue.failed_task_count` - The number of failed and aborted tasks
+- `evergreen.merge_queue.total_task_count` - The total number of tasks
+- `evergreen.merge_queue.has_running_tasks` - Whether tasks are currently running
+
+**Attribution Metrics:**
+
+- `evergreen.merge_queue.project_id` - The project identifier
+- `evergreen.merge_queue.org` - The GitHub organization
+- `evergreen.merge_queue.repo` - The GitHub repository
+- `evergreen.merge_queue.queue_name` - The name of the queue (same as base_branch)
+- `evergreen.merge_queue.base_branch` - The base branch for the merge queue (e.g., "main")
+- `evergreen.merge_queue.variants` - A comma-separated list of build variants
+- `evergreen.merge_queue.slowest_task_id` - The ID of the slowest task
+- `evergreen.merge_queue.slowest_task_name` - The name of the slowest task
+- `evergreen.merge_queue.slowest_task_variant` - The variant of the slowest task
+
+**Debugging Attributes:**
+
+- `evergreen.merge_queue.patch_id` - The Evergreen patch ID
+- `evergreen.merge_queue.head_sha` - The SHA of the merge queue head
+- `evergreen.merge_queue.msg_id` - The GitHub webhook message ID (available in intent_created spans)
+- `evergreen.merge_queue.github_head_pr_url` - The GitHub PR URL for the HEAD PR of the merge queue entry. When concurrency is enabled (the default), a merge queue entry may contain multiple PRs tested together, but this URL only points to the HEAD PR of that merge group.
+
+### Sample Honeycomb Queries
+
+**Average time in queue:**
+
+```text
+WHERE evergreen.merge_queue.status `exists`
+VISUALIZE P50(evergreen.merge_queue.time_in_queue_ms),
+         P95(evergreen.merge_queue.time_in_queue_ms)
+GROUP BY evergreen.merge_queue.project_id
+```
+
+**Failure type breakdown:**
+
+```text
+WHERE evergreen.merge_queue.status = "failed"
+VISUALIZE COUNT
+GROUP BY evergreen.merge_queue.has_test_failure,
+         evergreen.merge_queue.has_system_failure,
+         evergreen.merge_queue.has_setup_failure,
+         evergreen.merge_queue.has_timeout_failure
+```
+
+**Time to first task (P95):**
+
+```text
+WHERE evergreen.merge_queue.time_to_first_task_ms `exists`
+VISUALIZE P95(evergreen.merge_queue.time_to_first_task_ms)
+GROUP BY evergreen.merge_queue.project_id
+```
+
+**Removal reason breakdown:**
+
+```text
+WHERE evergreen.merge_queue.removal_reason `exists`
+VISUALIZE COUNT
+GROUP BY evergreen.merge_queue.status, evergreen.merge_queue.removal_reason
+```
+
+### Setting Up Alerts
+
+You can create Honeycomb Triggers to alert on merge queue issues:
+
+1. In Honeycomb, navigate to Triggers → Create Trigger
+2. Build your query (e.g., `WHERE evergreen.merge_queue.time_in_queue_ms > 3600000 COUNT`)
+3. Set threshold
+4. Configure notification channels (e.g. Slack, Email)
+5. Set evaluation frequency (e.g., every 5 minutes)
+
+**Example alerts:**
+
+- **Slow processing:** Alert when P95 time in queue > 60 minutes
+- **High failure rate:** Alert when failure rate > 20% over the last hour
+
+For detailed Honeycomb trigger setup instructions, see the [Honeycomb documentation](https://docs.honeycomb.io/working-with-your-data/triggers/).
+
 ## For Evergreen Developers
 
 To troubleshoot why a merge group version is not being created, find the `event

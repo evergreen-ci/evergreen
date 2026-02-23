@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +68,37 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			} else {
 				assert.NoError(t, err, "file should still exist on non-MacOS platforms")
 			}
+		},
+		"AllowsAgentToSetNice": func(ctx context.Context, t *testing.T, m *monitor) {
+			if runtime.GOOS != "linux" {
+				t.Skip("nice only applies to Linux")
+			}
+			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, agentMonitorDefaultRetryOptions()))
+			fileInfo, err := os.Stat(m.clientPath)
+			require.NoError(t, err)
+			assert.NotZero(t, fileInfo.Size())
+
+			require.NoError(t, m.allowAgentNice(ctx))
+
+			getcapCmd := exec.CommandContext(ctx, "getcap", m.clientPath)
+			var stdout, stderr strings.Builder
+			getcapCmd.Stdout = &stdout
+			getcapCmd.Stderr = &stderr
+			err = getcapCmd.Run()
+			require.NoError(t, err, "stderr:", stderr)
+
+			// getcap can return slightly different strings, so look for any of
+			// them that indicates the file has the ability to set nice.
+			expectedOutputs := []string{"cap_sys_nice+ep", "cap_sys_nice=ep"}
+			stdoutStr := stdout.String()
+			var hasExpectedOutput bool
+			for _, validOutput := range expectedOutputs {
+				if strings.Contains(stdoutStr, validOutput) {
+					hasExpectedOutput = true
+					break
+				}
+			}
+			assert.True(t, hasExpectedOutput, "getcap should return output saying the file at the path has the capability to set its nice")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
