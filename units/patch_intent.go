@@ -27,6 +27,8 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -1104,6 +1106,20 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		}))
 	}()
 
+	githubHeadPRURL := thirdparty.BuildGithubHeadPRURL(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.HeadBranch)
+
+	baseAttrs := patch.BuildMergeQueueSpanAttributes(
+		patchDoc.GithubMergeData.Org,
+		patchDoc.GithubMergeData.Repo,
+		patchDoc.GithubMergeData.BaseBranch,
+		patchDoc.GithubMergeData.HeadSHA,
+		githubHeadPRURL,
+	)
+	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, patchDoc.Id.Hex()))
+	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchProcessingSpan,
+		trace.WithAttributes(baseAttrs...))
+	defer span.End()
+
 	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx, patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
@@ -1116,6 +1132,8 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
+
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier))
 
 	j.user, err = findEvergreenUserForGithubMergeGroup(ctx)
 	if err != nil {

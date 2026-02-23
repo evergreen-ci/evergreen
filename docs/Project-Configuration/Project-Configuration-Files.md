@@ -979,9 +979,7 @@ inter-project dependency:
 The following expansions are available if a task was created with a [patch trigger alias](Project-and-Distro-Settings#patch-trigger-aliases):
 
 - `${parent_patch_id}` is the ID of the parent patch for this task
-- `${parent_github_org}` is the Github org for the parent patch
-- `${parent_github_repo}` is the Github repo for the parent patch
-- `${parent_github_branch}` is the branch tracked by the parent patch
+- `{parent_project_module}` is the name of the parent module in the downstream project (i.e. defined on the upstream project's Child Patch Trigger Alias as "module")
 
 The following expansions are available if a task has modules, where `<module_name>` represents the name defined in the project yaml for a
 given module:
