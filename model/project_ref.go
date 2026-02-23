@@ -3785,3 +3785,13 @@ func FindProjectAndRepoRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectR
 
 	return append(pRefs, repoRefsAsProjectRefs...), nil
 }
+
+// FindProjectRefsWithMergeQueueEnabled returns all enabled project refs with merge queue enabled.
+func FindProjectRefsWithMergeQueueEnabled(ctx context.Context) ([]ProjectRef, error) {
+	return findProjectRefsQ(
+		ctx,
+		bson.M{
+			ProjectRefEnabledKey: true,
+			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey): true,
+		}, true)
+}

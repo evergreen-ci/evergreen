@@ -182,6 +182,36 @@ func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings 
 	return updatedAdminSettings, nil
 }
 
+// SetServiceFlags is the resolver for the setServiceFlags field.
+func (r *mutationResolver) SetServiceFlags(ctx context.Context, updatedFlags []*ServiceFlagInput) ([]*ServiceFlag, error) {
+	usr := mustHaveUser(ctx)
+	currentFlags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service flags: %s", err.Error()))
+	}
+	oldFlags := *currentFlags
+	for _, flag := range updatedFlags {
+		if flag == nil {
+			continue
+		}
+		if err = currentFlags.SetByName(flag.Name, flag.Enabled); err != nil {
+			return nil, InputValidationError.Send(ctx, err.Error())
+		}
+	}
+	if err = evergreen.SetServiceFlags(ctx, *currentFlags); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting service flags: %s", err.Error()))
+	}
+	if err = event.LogAdminEvent(ctx, currentFlags.SectionId(), &oldFlags, currentFlags, usr.Username()); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging service flag changes: %s", err.Error()))
+	}
+	entries := currentFlags.ToSlice()
+	result := make([]*ServiceFlag, 0, len(entries))
+	for _, e := range entries {
+		result = append(result, &ServiceFlag{Name: e.Name, Enabled: e.Enabled})
+	}
+	return result, nil
+}
+
 // RestartAdminTasks is the resolver for the restartAdminTasks field.
 func (r *mutationResolver) RestartAdminTasks(ctx context.Context, opts model.RestartOptions) (*RestartAdminTasksPayload, error) {
 	env := evergreen.GetEnvironment()

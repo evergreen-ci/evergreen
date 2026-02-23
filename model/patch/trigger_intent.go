@@ -71,6 +71,7 @@ func (t *TriggerIntent) NewPatch() *Patch {
 			ParentPatch:        t.ParentID,
 			ParentProjectID:    t.ParentProjectID,
 			DownstreamRevision: t.DownstreamRevision,
+			ParentAsModule:     t.ParentAsModule,
 		},
 		Status:  evergreen.VersionCreated,
 		Project: t.ProjectID,

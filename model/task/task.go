@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
-	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -248,7 +247,7 @@ type Task struct {
 	// TaskCost is the actual cost of the task based on runtime and distro cost rates
 	TaskCost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
 	// S3Usage tracks S3 API usage for cost calculation
-	S3Usage s3usage.S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
+	S3Usage S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -2387,9 +2386,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
-	if detail.S3Usage != nil {
-		t.S3Usage = *detail.S3Usage
-	}
 	t.ContainerAllocated = false
 	t.ContainerAllocatedTime = time.Time{}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()

@@ -505,11 +505,6 @@ const (
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
 
-	// S3 usage otel attributes
-	TaskS3UserFilePutRequestsOtelAttribute = "evergreen.task.s3_user_file_put_requests"
-	TaskS3UserFileUploadBytesOtelAttribute = "evergreen.task.s3_user_file_upload_bytes"
-	TaskS3UserFileCountOtelAttribute       = "evergreen.task.s3_user_file_count"
-
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
