@@ -191,6 +191,29 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	return nil
 }
 
+// RunUntil executes steps up until the given input index.
+func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
+	if len(e.commandBlocks) == 0 {
+		return nil
+	}
+	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
+	if untilIndex >= maxIndex {
+		e.logger.Warningf("Running until index %d out of range, falling back to %d", untilIndex, maxIndex)
+		untilIndex = maxIndex
+	}
+
+	for e.debugState.CurrentStepIndex <= untilIndex {
+		if err := e.StepNext(ctx); err != nil {
+			e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+			return err
+		}
+		if e.debugState.CurrentStepIndex > untilIndex {
+			break
+		}
+	}
+	return nil
+}
+
 // StepNext executes the current step and advances to the next
 func (e *LocalExecutor) StepNext(ctx context.Context) error {
 	if !e.debugState.HasMoreSteps() {

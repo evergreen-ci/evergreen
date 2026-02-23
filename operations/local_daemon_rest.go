@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
@@ -48,6 +49,7 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
 	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
+	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -197,6 +199,39 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	}
 
 	return nil
+}
+
+// handleRunUntil runs until a specific step
+func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	index, err := strconv.Atoi(vars["index"])
+	if err != nil {
+		http.Error(w, "invalid step index", http.StatusBadRequest)
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	err = d.executor.RunUntil(ctx, index)
+	state := d.executor.GetDebugState()
+
+	response := map[string]interface{}{
+		"success":      err == nil,
+		"current_step": state.CurrentStepIndex,
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+	}
+
+	grip.Error(json.NewEncoder(w).Encode(response))
 }
 
 // handleRunAll runs all remaining steps
