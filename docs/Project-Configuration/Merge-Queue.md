@@ -272,17 +272,30 @@ settings, refer to the [official GitHub documentation](https://docs.github.com/e
 
 ### Available Metrics
 
-Merge queue lifecycle events can be monitored in Honeycomb.
+#### Queue Depth Metrics (Sampled Every 5 Minutes)
 
-#### Lifecycle Events
+Evergreen samples merge queue depth metrics every 5 minutes and emits them to Honeycomb as `merge_queue.depth_sample` spans. These metrics help you monitor queue backlogs, capacity, and identify stuck patches.
+
+- `evergreen.merge_queue.depth` - Total patches in queue (sampled every 5 minutes)
+  - **Note:** Because items in the merge queue are grouped together, the merge queue depth may not match the number of items you see in the queue. For example, there may be 10 items in the queue but only 4 patches and a depth of 4 because of how they are grouped together.
+- `evergreen.merge_queue.pending_count` - Patches not yet started
+- `evergreen.merge_queue.running_count` - Patches currently running
+- `evergreen.merge_queue.running_tasks_count` - Count of running tasks across all patches in queue
+- `evergreen.merge_queue.has_running_tasks` - Whether any queue patches have running tasks
+- `evergreen.merge_queue.oldest_patch_age_ms` - Age of oldest pending patch
+- `evergreen.merge_queue.top_of_queue_patch_id` - Patch ID at the top of the queue
+- `evergreen.merge_queue.top_of_queue_status` - Status of the patch at the top of the queue
+- `evergreen.merge_queue.top_of_queue_sha` - SHA of the patch at the top of the queue
+
+These metrics include standard attribution fields (`project_id`, `org`, `repo`, `queue_name`, `base_branch`) for filtering and grouping.
+
+#### Lifecycle Event Metrics
 
 Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 
 - `merge_queue.intent_created` - When a merge queue patch is created
 - `merge_queue.patch_processing` - When patch processing begins
 - `merge_queue.patch_completed` - When a merge queue version completes. Status is determined from removal reason if the patch was removed from the queue by GitHub, otherwise from the final version status.
-
-#### Key Attributes
 
 **Latency Metrics:**
 
@@ -324,7 +337,37 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `evergreen.merge_queue.msg_id` - The GitHub webhook message ID (available in intent_created spans)
 - `evergreen.merge_queue.github_head_pr_url` - The GitHub PR URL for the HEAD PR of the merge queue entry. When concurrency is enabled (the default), a merge queue entry may contain multiple PRs tested together, but this URL only points to the HEAD PR of that merge group.
 
-### Sample Honeycomb Queries
+### Example Honeycomb Queries
+
+#### Queue Depth Analysis
+
+**Queue depth over time:**
+
+```text
+WHERE evergreen.merge_queue.depth `exists`
+VISUALIZE MAX(evergreen.merge_queue.depth)
+GROUP BY evergreen.merge_queue.project_id
+```
+
+**Times queue depth exceeded 10:**
+
+```text
+WHERE evergreen.merge_queue.depth > 10
+COUNT
+TIMEFRAME: Last 30 days
+```
+
+This shows how many 5-minute samples had depth > 10 in the last month.
+
+**Oldest patch age (P95):**
+
+```text
+WHERE evergreen.merge_queue.oldest_patch_age_ms `exists`
+VISUALIZE P95(evergreen.merge_queue.oldest_patch_age_ms)
+GROUP BY evergreen.merge_queue.project_id
+```
+
+#### Lifecycle Analysis
 
 **Average time in queue:**
 
@@ -374,6 +417,8 @@ You can create Honeycomb Triggers to alert on merge queue issues:
 
 **Example alerts:**
 
+- **High queue depth:** Alert when depth > 10 for > 15 minutes
+- **Stuck patches:** Alert when oldest patch age > 60 minutes and running_tasks_count = 0
 - **Slow processing:** Alert when P95 time in queue > 60 minutes
 - **High failure rate:** Alert when failure rate > 20% over the last hour
 

@@ -19,14 +19,15 @@
       }
     },
     {
-      "query_file": "commit_queue_section.graphql",
+      "query_file": "github_and_commit_queue_section.graphql",
       "result": {
         "data": {
           "saveRepoSettingsForSection": {
             "projectRef": {
               "commitQueue": {
                 "enabled": true
-              }
+              },
+              "runEveryMainlineCommit": true
             },
             "vars": {
               "vars": { "hello": "" },

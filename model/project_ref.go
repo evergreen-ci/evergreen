@@ -483,6 +483,7 @@ var (
 	projectRefGithubMQTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubMQTriggerAliases")
 	projectRefPeriodicBuildsKey                     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefOldestAllowedMergeBaseKey             = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
+	projectRefRunEveryMainlineCommitKey             = bsonutil.MustHaveTag(ProjectRef{}, "RunEveryMainlineCommit")
 	projectRefWorkstationConfigKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey             = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
@@ -2272,6 +2273,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
+					projectRefRunEveryMainlineCommitKey: p.RunEveryMainlineCommit,
 				},
 			})
 	case ProjectPageNotificationsSection:
