@@ -739,7 +739,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 func (s *GitGetProjectSuite) TestWikiModuleUsesBranchNotSetModule() {
 	// Wiki modules always use branch/ref from config and ignore set-module githash
 	// due to GitHub API limitations for wikis.
-	const patchGithash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+	const patchGithash = "7b817a1908f7505cb9c05ac5601d4692793e1c0a"
 	conf := s.taskConfig8
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
@@ -774,7 +774,7 @@ func (s *GitGetProjectSuite) TestWikiModuleUsesBranchNotSetModule() {
 	err = cmd.Run()
 	s.NoError(err)
 	ref := strings.Trim(out.String(), "\n")
-	// Wiki module must use branch (main), not the set-module githash
+
 	s.NotEqual(patchGithash, ref)
 	s.NoError(logger.Close())
 	s.Equal("hello/wiki", conf.ModulePaths["wiki"])
