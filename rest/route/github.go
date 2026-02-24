@@ -379,9 +379,26 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 		latestExecutionForTask = taskToRestart
 	}
 
+	// Get the project's GitHub app auth for check run operations.
+	// If this fails or the project doesn't have a GitHub app configured,
+	// the check run functions will fall back to using the internal app.
+	var ghAppAuth *githubapp.GithubAppAuth
+	pRef, pRefErr := model.FindMergedProjectRef(ctx, taskToRestart.Project, "", false)
+	if pRefErr != nil {
+		grip.Warning(message.WrapError(pRefErr, message.Fields{
+			"source":     "GitHub hook",
+			"msg_id":     gh.msgID,
+			"event":      gh.eventType,
+			"message":    "error finding project ref for check run, will fall back to using Evergreen-internal app",
+			"project_id": taskToRestart.Project,
+		}))
+	} else if pRef != nil {
+		ghAppAuth, _ = pRef.GetGitHubAppAuthForAPI(ctx)
+	}
+
 	// Check run status should stay the same while task is being re-run.
 	latestExecutionForTask.Status = taskToRestart.Status
-	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.Api.URL, checkRun.GetID(), latestExecutionForTask, output)
+	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.Api.URL, checkRun.GetID(), latestExecutionForTask, output, ghAppAuth)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",

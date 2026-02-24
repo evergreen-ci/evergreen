@@ -1654,9 +1654,29 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	// Get the project's GitHub app auth for check run operations.
+	// If this fails or the project doesn't have a GitHub app configured,
+	// the check run functions will fall back to using the internal app.
+	var ghAppAuth *githubapp.GithubAppAuth
+	pRef, err := model.FindMergedProjectRef(ctx, t.Project, "", false)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":    "error finding project ref for check run, will fall back to using Evergreen-internal app",
+			"project_id": t.Project,
+		}))
+	} else if pRef != nil {
+		ghAppAuth, err = pRef.GetGitHubAppAuthForAPI(ctx)
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":    "error getting GitHub app auth for check run, will fall back to using Evergreen-internal app",
+				"project_id": t.Project,
+			}))
+		}
+	}
+
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {
-		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput)
+		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput, ghAppAuth)
 		if err != nil {
 			errorMessage := fmt.Sprintf("updating checkRun for task: '%s'", t.Id)
 			grip.Error(message.Fields{
@@ -1670,7 +1690,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(fmt.Sprintf("Successfully updated check run for  '%v'", t.Id))
 	}
 
-	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().Api.URL, t, h.checkRunOutput)
+	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().Api.URL, t, h.checkRunOutput, ghAppAuth)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("creating checkRun for task: '%s'", t.Id)
