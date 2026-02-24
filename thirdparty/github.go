@@ -668,7 +668,6 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 		}
 
 		grip.Warning(message.WrapError(err, message.Fields{
-			"ticket":     "DEVPROD-25210",
 			"message":    "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
 			"caller":     caller,
 			"owner":      owner,
@@ -2055,13 +2054,6 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 	}
 
 	var checkRun *github.CheckRun
-	grip.Debug(message.Fields{
-		"message":               "creating check run",
-		"ticket":                "DEVPROD-25210",
-		"owner":                 owner,
-		"repo":                  repo,
-		"using_github_app_auth": ghAppAuth != nil,
-	})
 	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
 		var resp *github.Response
 		var opErr error
@@ -2112,14 +2104,6 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 	}
 
 	var checkRun *github.CheckRun
-	grip.Debug(message.Fields{
-		"message":               "updating check run",
-		"ticket":                "DEVPROD-25210",
-		"owner":                 owner,
-		"repo":                  repo,
-		"check_run_id":          checkRunID,
-		"using_github_app_auth": ghAppAuth != nil,
-	})
 	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
 		var resp *github.Response
 		var opErr error
