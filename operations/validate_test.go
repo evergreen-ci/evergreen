@@ -206,7 +206,7 @@ func TestLoadProjectYAML(t *testing.T) {
 	}
 
 	for testName, testCase := range map[string]struct {
-		setupPath  func(t *testing.T) string
+		setupPath func(t *testing.T) string
 		expectErr string
 	}{
 		"SucceedsWithValidFile": {
