@@ -302,6 +302,7 @@ func TestLoadProjectIntoWithValidation(t *testing.T) {
 	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
 
+	errLevel := validator.Error
 	for testName, testCase := range map[string]struct {
 		data            []byte
 		errorOnWarnings bool
@@ -314,7 +315,7 @@ func TestLoadProjectIntoWithValidation(t *testing.T) {
 		},
 		"ReturnsErrorForInvalidYAML": {
 			data:           []byte("invalid: [yaml: bad"),
-			expectErrLevel: &[]validator.ValidationErrorLevel{validator.Error}[0],
+			expectErrLevel: &errLevel,
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
