@@ -740,7 +740,7 @@ func (s *GitGetProjectSuite) TestWikiModule() {
 	// Wiki modules always use branch/ref from config and ignore set-module githash
 	// due to GitHub API limitations for wikis.
 	const patchGithash = "7b817a1908f7505cb9c05ac5601d4692793e1c0a"
-	const yamlRef = "6b5d91c98c479f9774e3f18334eb2ec964e2d011"
+	const yamlRef = "82d5fbf5d7c920d4e8fe7a5805752ae167454584"
 	conf := s.taskConfig8
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
