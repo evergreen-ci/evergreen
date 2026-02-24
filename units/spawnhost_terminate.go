@@ -37,15 +37,16 @@ func makeSpawnHostTerminationJob() *spawnHostTerminationJob {
 	return j
 }
 
-// NewSpawnHostTerminationJob returns a job to terminate a spawn host.
-func NewSpawnHostTerminationJob(h *host.Host, user, ts string) amboy.Job {
+// NewSpawnHostTerminationJob returns a job to terminate a spawn host
+// with the given source indicating why it is being terminated.
+func NewSpawnHostTerminationJob(h *host.Host, user, ts string, source evergreen.ModifySpawnHostSource) amboy.Job {
 	j := makeSpawnHostTerminationJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s", spawnHostTerminationJobName, h.Id, ts))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, h.Id)})
 	j.SetEnqueueAllScopes(true)
 	j.CloudHostModification.HostID = h.Id
 	j.CloudHostModification.UserID = user
-	j.CloudHostModification.Source = evergreen.ModifySpawnHostManual
+	j.CloudHostModification.Source = source
 	return j
 }
 
@@ -53,7 +54,11 @@ func (j *spawnHostTerminationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	terminateCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
-		if err := mgr.TerminateInstance(ctx, h, user, "user requested spawn host termination"); err != nil {
+		reason := "user requested spawn host termination"
+		if j.CloudHostModification.Source == evergreen.ModifySpawnHostProjectSettings {
+			reason = "project disabled debug spawn hosts"
+		}
+		if err := mgr.TerminateInstance(ctx, h, user, reason); err != nil {
 			return err
 		}
 

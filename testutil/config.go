@@ -416,7 +416,6 @@ func MockConfig() *evergreen.Settings {
 			ReleaseModeDisabled:             true,
 			LegacyUIAdminPageDisabled:       true,
 			DebugSpawnHostDisabled:          true,
-			UseGitForGitHubFilesDisabled:    true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{
@@ -464,7 +463,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		Ui: evergreen.UIConfig{
 			Url:                "url",
-			HelpUrl:            "helpurl",
 			HttpListenAddr:     "addr",
 			Secret:             "secret",
 			DefaultProject:     "mci",

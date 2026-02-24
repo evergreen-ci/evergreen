@@ -219,40 +219,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
-			var cancel context.CancelFunc
-			var ictx context.Context
-			if c.Background {
-				ictx, cancel = context.WithCancel(context.Background())
-			} else {
-				ictx = lctx
-			}
-
-			proc, err := c.JasperManager().CreateProcess(ictx, opts)
-			if err != nil {
-				if cancel != nil {
-					cancel()
-				}
-
-				return proc, errors.WithStack(err)
-			}
-
-			if cancel != nil {
-				grip.Warning(message.WrapError(proc.RegisterTrigger(lctx, func(info jasper.ProcessInfo) {
-					cancel()
-				}), "registering canceller for process"))
-			}
-
-			pid := proc.Info(ctx).PID
-
-			agentutil.TrackProcess(conf.Task.Id, pid, logger.System())
-
-			if c.Background {
-				logger.Execution().Debugf("Running process in the background with pid %d.", pid)
-			} else {
-				logger.Execution().Infof("Started process with pid %d.", pid)
-			}
-
-			return proc, nil
+			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger)
 		})
 
 	if !c.IgnoreStandardOutput {
@@ -278,6 +245,62 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 	}
 
 	return cmd
+}
+
+// runJasperProcess starts a Jasper process. This does not wait for the process
+// to exit.
+func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, opts *options.Create, taskID string, logger client.LoggerProducer) (jasper.Process, error) {
+	var cancel context.CancelFunc
+	var ictx context.Context
+	if background {
+		ictx, cancel = context.WithCancel(context.Background())
+	} else {
+		ictx = ctx
+	}
+
+	// This momentarily sets the nice for this thread back to the default nice
+	// to ensure the process that's about to be created and all of its children
+	// processes use the default nice (child processes inherit the nice of the
+	// parent process). This thread will have no special nice until it's reset
+	// but that should be a brief window.
+	// Passing 0 as the PID refers to the current thread.
+	if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
+		logger.Execution().Warningf("Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+	}
+
+	proc, err := jpm.CreateProcess(ictx, opts)
+	if err != nil {
+		if cancel != nil {
+			cancel()
+		}
+
+		return proc, errors.WithStack(err)
+	}
+
+	// Once the child processes has started, reset the agent's nice back to the
+	// lower nice value to ensure that this agent thread will have its original
+	// CPU priority.
+	if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
+		logger.Execution().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
+	}
+
+	if cancel != nil {
+		grip.Warning(message.WrapError(proc.RegisterTrigger(ctx, func(info jasper.ProcessInfo) {
+			cancel()
+		}), "registering canceller for process"))
+	}
+
+	pid := proc.Info(ctx).PID
+
+	agentutil.TrackProcess(taskID, pid, logger.System())
+
+	if background {
+		logger.Execution().Debugf("Running process in the background with PID %d.", pid)
+	} else {
+		logger.Execution().Infof("Started process with PID %d.", pid)
+	}
+
+	return proc, nil
 }
 
 // getExecutablePath returns the path to the command executable to run.

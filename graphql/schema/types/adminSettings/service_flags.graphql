@@ -1,3 +1,15 @@
+# ServiceFlag represents a single service flag as a name/enabled pair for dynamic discovery.
+type ServiceFlag {
+  name: String!
+  enabled: Boolean!
+}
+
+# ServiceFlagInput is the input type for toggling a single service flag by name.
+input ServiceFlagInput {
+  name: String!
+  enabled: Boolean!
+}
+
 input ServiceFlagsInput {
   taskDispatchDisabled: Boolean
   hostInitDisabled: Boolean
@@ -28,7 +40,6 @@ input ServiceFlagsInput {
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
-  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean
@@ -71,7 +82,6 @@ type ServiceFlags {
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
-  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean

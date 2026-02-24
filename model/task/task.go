@@ -1533,7 +1533,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	return task, nil
 }
 
-// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
+// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unschedulable threshold (e.g. one week) from
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
@@ -3834,7 +3834,8 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	var jqlClause string
 	for _, testResult := range t.LocalTestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
-			fileParts := eitherSlash.Split(testResult.TestName, -1)
+			testName := testResult.GetDisplayTestName()
+			fileParts := eitherSlash.Split(testName, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
@@ -4497,6 +4498,21 @@ func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *
 func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 	if settings != nil && slices.Contains(settings.Buckets.LongRetentionProjects, t.Project) {
 		return true
+	}
+	return false
+}
+
+// HasValidDistro determines if the task has a valid distro.
+func (t *Task) HasValidDistro(ctx context.Context) bool {
+	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
+	if err == nil {
+		return true
+	}
+	for _, secondaryDistro := range t.SecondaryDistros {
+		_, err = distro.FindApplicableDistroIDs(ctx, secondaryDistro)
+		if err == nil {
+			return true
+		}
 	}
 	return false
 }

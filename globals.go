@@ -358,6 +358,7 @@ const (
 	KeyTooLargeToIndexError         = "key too large to index"
 	InvalidDivideInputError         = "$divide only supports numeric types"
 	FetchingTaskDataUnfinishedError = "fetching task data not finished"
+	DistroNotFoundForTaskError      = "distro not found"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -482,6 +483,9 @@ const (
 	// ModifySpawnHostManual means the spawn host is being modified by the
 	// automatic sleep schedule.
 	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
+	// ModifySpawnHostProjectSettings means the spawn host is being terminated
+	// because the project settings changed to disable debug hosts.
+	ModifySpawnHostProjectSettings ModifySpawnHostSource = "project_settings"
 )
 
 // Common OTEL constants and attribute keys

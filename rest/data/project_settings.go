@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -523,7 +524,59 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}))
 		}
 	}
+
+	debugSpawnHostsJustDisabled := modifiedProjectRef &&
+		section == model.ProjectPageGeneralSection &&
+		utility.FromBoolTPtr(mergedSection.DebugSpawnHostsDisabled) &&
+		!utility.FromBoolTPtr(mergedBeforeRef.DebugSpawnHostsDisabled)
+
+	if debugSpawnHostsJustDisabled {
+		terminateDebugHostsForProject(ctx, projectId, userId)
+	}
+
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
+}
+
+// terminateDebugHostsForProject finds all running debug hosts for the given
+// project and enqueues termination jobs for each one.
+func terminateDebugHostsForProject(ctx context.Context, projectId, userId string) {
+	debugHosts, err := host.FindTerminatableDebugHostsForProject(ctx, projectId)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem finding debug hosts to terminate after disabling debug spawn hosts setting",
+			"project": projectId,
+		}))
+		return
+	}
+	if len(debugHosts) == 0 {
+		return
+	}
+
+	queue := evergreen.GetEnvironment().RemoteQueue()
+	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
+	catcher := grip.NewBasicCatcher()
+
+	for _, h := range debugHosts {
+		terminationJob := units.NewSpawnHostTerminationJob(&h, userId, ts, evergreen.ModifySpawnHostProjectSettings)
+		if err := amboy.EnqueueUniqueJob(ctx, queue, terminationJob); err != nil {
+			catcher.Wrapf(err, "enqueueing termination job for debug host '%s'", h.Id)
+		}
+	}
+
+	if catcher.HasErrors() {
+		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			"message":    "problem enqueueing debug host termination jobs after disabling debug spawn hosts setting",
+			"project":    projectId,
+			"num_hosts":  len(debugHosts),
+			"num_errors": catcher.Len(),
+		}))
+	} else {
+		grip.Info(message.Fields{
+			"message":   "enqueued debug host termination jobs after disabling debug spawn hosts setting",
+			"project":   projectId,
+			"num_hosts": len(debugHosts),
+		})
+	}
 }
 
 // getUnredactedSubscriptions parses the new subscriptions for any values that are redacted and if they are redacted,

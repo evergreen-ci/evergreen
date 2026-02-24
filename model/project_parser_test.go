@@ -3177,16 +3177,6 @@ func TestSetupParallelGitIncludeDirs(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
 
-	flags, err := evergreen.GetServiceFlags(t.Context())
-	require.NoError(t, err)
-	originalEnableGitIncludes := flags.UseGitForGitHubFilesDisabled
-	flags.UseGitForGitHubFilesDisabled = false
-	defer func() {
-		flags.UseGitForGitHubFilesDisabled = originalEnableGitIncludes
-		assert.NoError(t, evergreen.SetServiceFlags(t.Context(), *flags))
-	}()
-	require.NoError(t, evergreen.SetServiceFlags(t.Context(), *flags))
-
 	for tName, tCase := range map[string]func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts){
 		"SucceedsWithGitRestoredIncludeFilesFromRepoAndModules": func(t *testing.T, modules ModuleList, includes []parserInclude, opts *GetProjectOpts) {
 			numWorkers := len(includes)

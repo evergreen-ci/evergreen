@@ -21,8 +21,10 @@ import (
 
 const (
 	agentMonitorDeployJobName    = "agent-monitor-deploy"
-	agentMonitorPutRetries       = 25
 	maxAgentMonitorDeployJobTime = 10 * time.Minute
+
+	staticHostCurlNumRetries = 5
+	staticHostCurlMaxSecs    = 300
 )
 
 func init() {
@@ -65,12 +67,27 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 	})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
-		MaxAttempts: utility.ToIntPtr(agentMonitorPutRetries),
+		MaxAttempts: utility.ToIntPtr(j.getRetriesForHost(h)),
 		WaitUntil:   utility.ToTimeDurationPtr(15 * time.Second),
 	})
 	j.SetID(fmt.Sprintf("%s.%s.%s", agentMonitorDeployJobName, j.HostID, id))
 
 	return j
+}
+
+// getRetriesForHost returns the number of times to retry the agent monitor deploy job.
+// Should return a large number if the host is static, otherwise we shouldn't need as many retries
+// (and many retries may indicate we're in a bad state).
+func (j *agentMonitorDeployJob) getRetriesForHost(h host.Host) int {
+	const (
+		agentMonitorStaticHostRetries = 25
+		agentMonitorDefaultRetries    = 1
+	)
+
+	if h.Provider == evergreen.ProviderNameStatic {
+		return agentMonitorStaticHostRetries
+	}
+	return agentMonitorDefaultRetries
 }
 
 func (j *agentMonitorDeployJob) Run(ctx context.Context) {
@@ -145,7 +162,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			return
 		}
 
-		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); disableErr != nil {
+		if disableErr := HandlePoisonedHost(ctx, j.env, j.host, fmt.Sprintf("failed %d times to put agent monitor on host", j.RetryInfo().MaxAttempts)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "terminating poisoned host '%s'", j.host.Id))
 		}
 	}()
@@ -233,16 +250,29 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 		"job":           j.ID(),
 	})
 
-	cmd, err := j.host.CurlCommand(j.env)
-	if err != nil {
-		return errors.Wrap(err, "creating command to curl agent monitor binary")
+	var cancel context.CancelFunc
+	var cmd string
+	var err error
+	if j.host.Provider == evergreen.ProviderNameStatic {
+		cmd, err = j.host.CurlCommandWithRetry(j.env, staticHostCurlNumRetries, staticHostCurlMaxSecs)
+		if err != nil {
+			return errors.Wrap(err, "creating command to curl agent monitor binary")
+		}
+		ctx, cancel = context.WithTimeout(ctx, evergreenStaticHostCurlTimeout)
+		defer cancel()
+	} else {
+		cmd, err = j.host.CurlCommand(j.env)
+		if err != nil {
+			return errors.Wrap(err, "creating command to curl agent monitor binary")
+		}
+		ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
+		defer cancel()
 	}
+
 	opts := &options.Create{
 		Args: []string{j.host.Distro.ShellBinary(), "-l", "-c", cmd},
 	}
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, evergreenCurlTimeout)
-	defer cancel()
+
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -322,11 +352,13 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 
 	event.LogHostAgentMonitorDeployed(ctx, j.host.Id)
 	grip.Info(message.Fields{
-		"message":  "agent monitor deployed",
-		"host_id":  j.host.Id,
-		"host_tag": j.host.Tag,
-		"distro":   j.host.Distro.Id,
-		"provider": j.host.Provider,
+		"message":       "agent monitor deployed",
+		"host_id":       j.host.Id,
+		"host_tag":      j.host.Tag,
+		"distro":        j.host.Distro.Id,
+		"provider":      j.host.Provider,
+		"is_fresh_host": j.host.LastTask == "",
+		"attempt_num":   j.RetryInfo().CurrentAttempt,
 	})
 
 	return nil

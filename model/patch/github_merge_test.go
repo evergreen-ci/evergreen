@@ -17,46 +17,46 @@ func TestGithubMergeIntent(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, mge *github.MergeGroupEvent){
 		"EmptyMessageDeliveryIDErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
-			intent, err := NewGithubMergeIntent("", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
 		"EmptyCallerErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
-			intent, err := NewGithubMergeIntent("abc123", "", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
 		"MissingHeadRefErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
 			mge.MergeGroup.HeadRef = nil
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
 		"MissingHeadSHAErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
 			mge.MergeGroup.HeadSHA = nil
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
 		"MissingOrgErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
 			mge.Org.Login = nil
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
 		"MissingRepoErrors": func(t *testing.T, mge *github.MergeGroupEvent) {
 			mge.Repo.Name = nil
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.Nil(t, intent)
 			assert.Error(t, err)
 		},
 		"CorrectArgsSucceed": func(t *testing.T, mge *github.MergeGroupEvent) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 		},
 		"RoundTrip": func(t *testing.T, mge *github.MergeGroupEvent) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 			assert.NoError(t, intent.Insert(t.Context()))
@@ -67,7 +67,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Equal(t, intent, &intents[0])
 		},
 		"SetProcessed": func(t *testing.T, mge *github.MergeGroupEvent) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.False(t, intent.IsProcessed())
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
@@ -80,7 +80,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.True(t, intents[0].IsProcessed())
 		},
 		"Accessors": func(t *testing.T, mge *github.MergeGroupEvent) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 			assert.Equal(t, GithubMergeIntentType, intent.GetType())
@@ -97,7 +97,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Equal(t, evergreen.CommitQueueAlias, intent.GetAlias())
 		},
 		"NewPatch": func(t *testing.T, mge *github.MergeGroupEvent) {
-			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 			assert.NoError(t, intent.Insert(t.Context()))
@@ -140,6 +140,47 @@ func TestGithubMergeIntent(t *testing.T) {
 				Repo:       &repo,
 			}
 			tCase(t, &mge)
+		})
+	}
+}
+
+func TestExtractBaseBranchFromHeadRef(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		input    string
+		expected string
+	}{
+		"ValidHeadRef": {
+			input:    "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
+			expected: "main",
+		},
+		"ValidHeadRefWithSlashesInBaseBranch": {
+			input:    "refs/heads/gh-readonly-queue/feature/branch-name/pr-123-abc",
+			expected: "feature/branch-name",
+		},
+		"ValidHeadRefWithMultipleSlashes": {
+			input:    "refs/heads/gh-readonly-queue/hotfix/urgent/fix/pr-456-def",
+			expected: "hotfix/urgent/fix",
+		},
+		"EmptyString": {
+			input:    "",
+			expected: "",
+		},
+		"TooFewElements": {
+			input:    "refs/heads/main",
+			expected: "",
+		},
+		"MinimumValidFormat": {
+			input:    "refs/heads/gh-readonly-queue/main/pr-123",
+			expected: "main",
+		},
+		"InvalidFormat": {
+			input:    "some-random-string",
+			expected: "",
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			result := extractBaseBranchFromHeadRef(tCase.input)
+			assert.Equal(t, tCase.expected, result)
 		})
 	}
 }

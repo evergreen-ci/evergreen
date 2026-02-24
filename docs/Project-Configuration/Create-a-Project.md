@@ -14,7 +14,7 @@ To have access to create a project you must be either a super user or the admin 
 
 ### Steps to Request
 
-If you do not see the `New Project` button on the [project settings page](https://spruce.mongodb.com/project/YourProject/settings/general):
+If you do not see the `New Project` button on the [project settings page](https://spruce.corp.mongodb.com/project/YourProject/settings/general):
 
 1. Do you want to copy an existing project? If so, then you should ask an admin of that project to follow the steps under "For Project Admins". Note that the Evergreen team will not copy an existing project for you, but if you need help figuring out who the admins are you can ask in #ask-devprod-evergreen.
 2. To request a new project, file a Jira ticket in the DEVPROD project with the following information:
@@ -27,7 +27,7 @@ If you do not see the `New Project` button on the [project settings page](https:
 
 ![create_project_modal.png](../images/create_project_modal.png)
 
-1. Visit the projects page in the UI <https://spruce.mongodb.com/projects/>.
+1. Visit the projects page in the UI <https://spruce.corp.mongodb.com/projects/>.
 2. Click New Project. If you want to copy the current project, click Duplicate Current Project. Otherwise, click Create New Project.
 3. Enter the project name, repo org ("Owner"), and repo name ("Repo"). Note that only creating projects that track MongoDB owned organizations is supported. If the organization you need is not in the GitHub Organization drop-down, reach out to the Evergreen team to see if it can be supported. Forks are not supported by Evergreen.
 4. **If you want to use the performance plugin, you need to check this box now.** In this case also, the identifier cannot be modified, so please choose carefully.

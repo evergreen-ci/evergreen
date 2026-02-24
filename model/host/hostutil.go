@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -1147,6 +1148,9 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		APIKey        string `yaml:"api_key,omitempty"`
 		APIServerHost string `yaml:"api_server_host"`
 		UIServerHost  string `yaml:"ui_server_host"`
+		SpawnHostID   string `yaml:"spawn_host_id,omitempty"`
+		TaskID        string `yaml:"task_id,omitempty"`
+		ProjectID     string `yaml:"project_id,omitempty"`
 		OAuth         struct {
 			Issuer          string `yaml:"issuer"`
 			ClientID        string `yaml:"client_id"`
@@ -1155,6 +1159,23 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		} `yaml:"oauth,omitempty"`
 	}{
 		User: owner.Id,
+	}
+
+	// Only populate the spawn host ID for user-created spawn hosts
+	if h.UserHost {
+		conf.SpawnHostID = h.Id
+
+		// If this host was spawned by a task, include task and project info
+		if h.ProvisionOptions.TaskId != "" {
+			provisionedTask, err := task.FindByIdExecution(ctx, h.ProvisionOptions.TaskId, nil)
+			if err != nil {
+				return nil, errors.Wrapf(err, "getting task '%s' for spawn host config", h.ProvisionOptions.TaskId)
+			}
+			if provisionedTask != nil {
+				conf.TaskID = provisionedTask.Id
+				conf.ProjectID = provisionedTask.Project
+			}
+		}
 	}
 	if settings != nil {
 		if !settings.ServiceFlags.JWTTokenForCLIDisabled {

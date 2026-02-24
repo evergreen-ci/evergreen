@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -173,41 +172,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 				opts.StandardInput = strings.NewReader(c.Script)
 			}
 
-			var cancel context.CancelFunc
-			var ictx context.Context
-			if c.Background {
-				ictx, cancel = context.WithCancel(context.Background())
-			} else {
-				ictx = lctx
-			}
-
-			var proc jasper.Process
-			proc, err = c.JasperManager().CreateProcess(ictx, opts)
-			if err != nil {
-				if cancel != nil {
-					cancel()
-				}
-
-				return proc, errors.WithStack(err)
-			}
-
-			if cancel != nil {
-				grip.Warning(message.WrapError(proc.RegisterTrigger(lctx, func(info jasper.ProcessInfo) {
-					cancel()
-				}), "registering cancellation for process"))
-			}
-
-			pid := proc.Info(ctx).PID
-
-			agentutil.TrackProcess(conf.Task.Id, pid, logger.System())
-
-			if c.Background {
-				logger.Execution().Debugf("Running process with PID %d in the background.", pid)
-			} else {
-				logger.Execution().Infof("Running process with PID %d.", pid)
-			}
-
-			return proc, nil
+			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger)
 		})
 
 	if !c.IgnoreStandardOutput {
