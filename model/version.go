@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -841,6 +842,20 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
+	}
+
+	// Wiki's are limited in the GitHub API and we cannot query any
+	// information about them. Wiki modules are treated as a special case
+	// where Evergreen does not attempt any of our module features, but
+	// instead just clones the wiki and the specified branch and ref.
+	if strings.HasSuffix(repo, ".wiki") {
+		return &manifest.Module{
+			Branch:   module.Branch,
+			Revision: module.Ref,
+			Repo:     repo,
+			Owner:    owner,
+			URL:      "",
+		}, nil
 	}
 
 	if module.Ref == "" {

@@ -1137,7 +1137,7 @@ func TestManifestLoad(t *testing.T) {
 
 				module := manifest.Modules[moduleName]
 				assert.Equal(t, "mongodb", module.Owner)
-				assert.Equal(t, "mongo", module.Repo)
+				assert.Equal(t, "mongo.wiki", module.Repo)
 				assert.Equal(t, "master", module.Branch)
 			},
 		},
