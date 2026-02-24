@@ -119,50 +119,36 @@ func TestValidateFile(t *testing.T) {
 	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
 
-	writeProjectFile := func(t *testing.T) string {
-		f := filepath.Join(t.TempDir(), "project.yml")
-		require.NoError(t, os.WriteFile(f, sampleYAML, 0644))
-		return f
-	}
-
 	for testName, testCase := range map[string]struct {
-		setupPath       func(t *testing.T) string
-		validateResult  validator.ValidationErrors
-		validateErr     error
-		quiet           bool
-		errorOnWarnings bool
-		expectErr       string
+		useNonexistentPath bool
+		validateResult     validator.ValidationErrors
+		validateErr        error
+		quiet              bool
+		errorOnWarnings    bool
+		expectErr          string
 	}{
-		"SucceedsWithValidFileAndNoErrors": {
-			setupPath: writeProjectFile,
-		},
+		"SucceedsWithValidFileAndNoErrors": {},
 		"FailsWithNonexistentFile": {
-			setupPath: func(t *testing.T) string {
-				return filepath.Join("nonexistent", "file.yml")
-			},
-			expectErr: "reading file",
+			useNonexistentPath: true,
+			expectErr:          "reading file",
 		},
 		"ReturnsErrorWhenValidationHasErrors": {
-			setupPath: writeProjectFile,
 			validateResult: validator.ValidationErrors{
 				{Level: validator.Error, Message: "something is wrong"},
 			},
 			expectErr: "invalid configuration",
 		},
 		"ReturnsErrorWhenClientValidateFails": {
-			setupPath:   writeProjectFile,
 			validateErr: errors.New("client error"),
 			expectErr:   "validating project",
 		},
 		"SucceedsWithWarningsWhenErrorOnWarningsIsDisabled": {
-			setupPath: writeProjectFile,
 			validateResult: validator.ValidationErrors{
 				{Level: validator.Warning, Message: "a warning"},
 			},
 		},
 		"ReturnsErrorWithWarningsWhenErrorOnWarningsIsEnabled": {
-			setupPath: writeProjectFile,
-			quiet:     true,
+			quiet: true,
 			validateResult: validator.ValidationErrors{
 				{Level: validator.Warning, Message: "a warning"},
 			},
@@ -170,7 +156,6 @@ func TestValidateFile(t *testing.T) {
 			expectErr:       "invalid configuration",
 		},
 		"SucceedsWithNoticesOnly": {
-			setupPath: writeProjectFile,
 			validateResult: validator.ValidationErrors{
 				{Level: validator.Notice, Message: "a notice"},
 			},
@@ -182,7 +167,13 @@ func TestValidateFile(t *testing.T) {
 				ValidateErr:    testCase.validateErr,
 			}
 
-			path := testCase.setupPath(t)
+			var path string
+			if testCase.useNonexistentPath {
+				path = filepath.Join("nonexistent", "file.yml")
+			} else {
+				path = filepath.Join(t.TempDir(), "project.yml")
+				require.NoError(t, os.WriteFile(path, sampleYAML, 0644))
+			}
 			err := validateFile(&ClientSettings{}, path, testCase.quiet, testCase.errorOnWarnings, nil, "")
 
 			if testCase.expectErr != "" {
@@ -199,36 +190,33 @@ func TestLoadProjectYAML(t *testing.T) {
 	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
 
-	writeProjectFile := func(t *testing.T) string {
-		f := filepath.Join(t.TempDir(), "project.yml")
-		require.NoError(t, os.WriteFile(f, sampleYAML, 0644))
-		return f
-	}
-
 	for testName, testCase := range map[string]struct {
-		setupPath func(t *testing.T) string
-		expectErr string
+		useNonexistentPath bool
+		fileContent        []byte
+		expectErr          string
 	}{
-		"SucceedsWithValidFile": {
-			setupPath: writeProjectFile,
-		},
+		"SucceedsWithValidFile": {},
 		"FailsWithNonexistentFile": {
-			setupPath: func(t *testing.T) string {
-				return filepath.Join("nonexistent", "file.yml")
-			},
-			expectErr: "reading file",
+			useNonexistentPath: true,
+			expectErr:          "reading file",
 		},
 		"ReturnsErrorWhenLocalValidationFails": {
-			setupPath: func(t *testing.T) string {
-				f := filepath.Join(t.TempDir(), "invalid.yml")
-				require.NoError(t, os.WriteFile(f, []byte("invalid: [yaml: bad"), 0644))
-				return f
-			},
-			expectErr: "invalid configuration",
+			fileContent: []byte("invalid: [yaml: bad"),
+			expectErr:   "invalid configuration",
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			path := testCase.setupPath(t)
+			var path string
+			if testCase.useNonexistentPath {
+				path = filepath.Join("nonexistent", "file.yml")
+			} else {
+				content := sampleYAML
+				if testCase.fileContent != nil {
+					content = testCase.fileContent
+				}
+				path = filepath.Join(t.TempDir(), "project.yml")
+				require.NoError(t, os.WriteFile(path, content, 0644))
+			}
 			projectYaml, err := loadProjectYAML(path, false, false, nil, "")
 
 			if testCase.expectErr != "" {
