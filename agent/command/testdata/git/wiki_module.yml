@@ -14,6 +14,11 @@ modules:
     repo: mongo.wiki
     branch: master
     prefix: ${prefixpath}/wiki
+  - name: wiki-ref
+    owner: mongodb
+    repo: mongo.wiki
+    ref: 6b5d91c98c479f9774e3f18334eb2ec964e2d011
+    prefix: ${prefixpath}/wiki-ref
 
 buildvariants:
   - name: linux-64

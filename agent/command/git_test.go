@@ -87,7 +87,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 	env := testutil.NewEnvironment(s.ctx, s.T())
 	settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(s.T(), settings)
+	// testutil.ConfigureIntegrationTest(s.T(), settings)
 	s.settings = settings
 }
 
@@ -736,10 +736,11 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
-func (s *GitGetProjectSuite) TestWikiModuleUsesBranchNotSetModule() {
+func (s *GitGetProjectSuite) TestWikiModule() {
 	// Wiki modules always use branch/ref from config and ignore set-module githash
 	// due to GitHub API limitations for wikis.
 	const patchGithash = "7b817a1908f7505cb9c05ac5601d4692793e1c0a"
+	const yamlRef = "6b5d91c98c479f9774e3f18334eb2ec964e2d011"
 	conf := s.taskConfig8
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
@@ -774,10 +775,21 @@ func (s *GitGetProjectSuite) TestWikiModuleUsesBranchNotSetModule() {
 	err = cmd.Run()
 	s.NoError(err)
 	ref := strings.Trim(out.String(), "\n")
-
 	s.NotEqual(patchGithash, ref)
+	s.NotEqual(yamlRef, ref)
 	s.NoError(logger.Close())
 	s.Equal("hello/wiki", conf.ModulePaths["wiki"])
+
+	cmd = exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = filepath.Join(conf.WorkDir, "src", "hello", "wiki-ref", "wiki-ref")
+	out = bytes.Buffer{}
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref = strings.Trim(out.String(), "\n")
+	s.Equal(yamlRef, ref)
+	s.NoError(logger.Close())
+	s.Equal("hello/wiki-ref", conf.ModulePaths["wiki-ref"])
 }
 
 func (s *GitGetProjectSuite) TestMultipleModules() {
