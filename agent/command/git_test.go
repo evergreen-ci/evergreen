@@ -87,7 +87,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 	env := testutil.NewEnvironment(s.ctx, s.T())
 	settings := env.Settings()
 
-	// testutil.ConfigureIntegrationTest(s.T(), settings)
+	testutil.ConfigureIntegrationTest(s.T(), settings)
 	s.settings = settings
 }
 
@@ -172,7 +172,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig8.Expansions.Put("prefixpath", "hello")
 	s.taskConfig8.NewExpansions = agentutil.NewDynamicExpansions(s.taskConfig8.Expansions)
-	s.taskConfig8.BuildVariant.Modules = []string{"wiki"}
+	s.taskConfig8.BuildVariant.Modules = []string{"wiki", "wiki-ref"}
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 	s.comm.CreateInstallationTokenFail = false
