@@ -457,21 +457,34 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	moduleBase := filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 
+	var revision string
+
+	// If the module is a wiki, then always use the provided branch or ref as the revision.
+	// Wiki modules do not support Evergreen's advance module options due to limitations on the
+	// GitHub API for wikis.
+	if strings.HasSuffix(module.Repo, ".wiki") {
+		revision = module.Branch
+		if revision == "" {
+			revision = module.Ref
+		}
+	}
+
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
 	// We ignore set-module changes for commit queue and GitHub merge queue, since we should verify HEAD before merging.
 	var modulePatch *patch.ModulePatch
-	var revision string
-	if p != nil {
-		modulePatch := p.FindModule(moduleName)
-		if modulePatch != nil {
-			if conf.Task.Requester == evergreen.GithubMergeRequester {
-				revision = module.Branch
-				c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
-			} else {
-				revision = modulePatch.Githash
-				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
+	if revision == "" {
+		if p != nil {
+			modulePatch := p.FindModule(moduleName)
+			if modulePatch != nil {
+				if conf.Task.Requester == evergreen.GithubMergeRequester {
+					revision = module.Branch
+					c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
+				} else {
+					revision = modulePatch.Githash
+					if revision != "" {
+						c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
+					}
 				}
 			}
 		}

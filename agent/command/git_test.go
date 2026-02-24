@@ -57,6 +57,8 @@ type GitGetProjectSuite struct {
 	taskConfig6 *internal.TaskConfig     // GitHub merge queue
 	modelData7  *modelutil.TestModelData // Multiple modules (parallelized)
 	taskConfig7 *internal.TaskConfig     // Multiple modules (parallelized)
+	modelData8  *modelutil.TestModelData // Wiki module (uses branch/ref, ignores set-module)
+	taskConfig8 *internal.TaskConfig     // Wiki module
 
 	comm   *client.Mock
 	jasper jasper.Manager
@@ -98,6 +100,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
 	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
+	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "wiki_module.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -162,6 +165,14 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig7.Expansions.Put("prefixpath", "hello")
 	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.taskConfig7.BuildVariant.Modules = []string{"sample-1", "sample-2"}
+
+	s.modelData8, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath5, modelutil.NoPatch)
+	s.Require().NoError(err)
+	s.taskConfig8, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData8)
+	s.Require().NoError(err)
+	s.taskConfig8.Expansions.Put("prefixpath", "hello")
+	s.taskConfig8.NewExpansions = agentutil.NewDynamicExpansions(s.taskConfig8.Expansions)
+	s.taskConfig8.BuildVariant.Modules = []string{"wiki"}
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 	s.comm.CreateInstallationTokenFail = false
@@ -723,6 +734,52 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	}
 	s.True(foundMsg)
 	s.Equal("hello/module", conf.ModulePaths["sample"])
+}
+
+func (s *GitGetProjectSuite) TestWikiModuleUsesBranchNotSetModule() {
+	// Wiki modules always use branch/ref from config and ignore set-module githash
+	// due to GitHub API limitations for wikis.
+	const patchGithash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+	conf := s.taskConfig8
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+	s.modelData8.Task.Requester = evergreen.PatchVersionRequester
+	s.taskConfig8.Task.Requester = evergreen.PatchVersionRequester
+	s.comm.GetTaskPatchResponse = &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "wiki",
+				Githash:    patchGithash,
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEmpty(task.Commands)
+		for _, command := range task.Commands {
+			var pluginCmds []Command
+			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = filepath.Join(conf.WorkDir, "src", "hello", "wiki", "wiki")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref := strings.Trim(out.String(), "\n")
+	// Wiki module must use branch (main), not the set-module githash
+	s.NotEqual(patchGithash, ref)
+	s.NoError(logger.Close())
+	s.Equal("hello/wiki", conf.ModulePaths["wiki"])
 }
 
 func (s *GitGetProjectSuite) TestMultipleModules() {
