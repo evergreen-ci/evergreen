@@ -132,7 +132,7 @@ func TestPostJSON(t *testing.T) {
 }
 
 func TestHandleHealth(t *testing.T) {
-	daemon := newLocalDaemonREST(9090, "", "")
+	daemon := newLocalDaemonREST(9090, &ClientSettings{})
 
 	req, err := http.NewRequest("GET", "/health", nil)
 	require.NoError(t, err)
@@ -187,7 +187,7 @@ buildvariants:
 	err = os.WriteFile(clientConfigPath, []byte(clientConfigContent), 0644)
 	require.NoError(t, err)
 
-	daemon := newLocalDaemonREST(9090, "mock_oauth_token", "http://localhost.com")
+	daemon := newLocalDaemonREST(9090, &ClientSettings{OAuth: OAuth{AccessToken: "mock_oauth_token"}, APIServerHost: "http://localhost.com"})
 
 	reqBody := map[string]string{"config_path": configPath}
 	jsonBody, err := json.Marshal(reqBody)
@@ -221,7 +221,7 @@ func TestWriteDaemonInfo(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Setenv(homeEnvVar, origHome)
 
-	daemon := newLocalDaemonREST(9090, "", "")
+	daemon := newLocalDaemonREST(9090, &ClientSettings{})
 	err = daemon.writeDaemonInfo()
 	require.NoError(t, err)
 
@@ -240,7 +240,7 @@ func TestWriteDaemonInfo(t *testing.T) {
 }
 
 func TestRouterSetup(t *testing.T) {
-	daemon := newLocalDaemonREST(9090, "", "")
+	daemon := newLocalDaemonREST(9090, &ClientSettings{})
 	router := mux.NewRouter()
 	router.HandleFunc("/health", daemon.handleHealth).Methods("GET")
 	router.HandleFunc("/config/load", daemon.handleLoadConfig).Methods("POST")
