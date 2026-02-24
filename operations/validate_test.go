@@ -62,7 +62,7 @@ func TestGetLocalModulesFromInput(t *testing.T) {
 }
 
 func TestValidateCommand(t *testing.T) {
-	sampleYAML, err := os.ReadFile("testdata/sample.yml")
+	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
@@ -83,7 +83,7 @@ func TestValidateCommand(t *testing.T) {
 			expectErr: "must specify the path",
 		},
 		"FailsWithNonexistentFile": {
-			args:      []string{"validate", "--path", "/nonexistent/file.yml"},
+			args:      []string{"validate", "--path", filepath.Join("nonexistent", "file.yml")},
 			expectErr: "does not exist",
 		},
 		"SucceedsWithValidFile": {
@@ -116,7 +116,7 @@ func TestValidateCommand(t *testing.T) {
 }
 
 func TestValidateFile(t *testing.T) {
-	sampleYAML, err := os.ReadFile("testdata/sample.yml")
+	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
 
 	writeProjectFile := func(t *testing.T) string {
@@ -138,7 +138,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		"FailsWithNonexistentFile": {
 			setupPath: func(t *testing.T) string {
-				return "/nonexistent/file.yml"
+				return filepath.Join("nonexistent", "file.yml")
 			},
 			expectErr: "reading file",
 		},
@@ -196,7 +196,7 @@ func TestValidateFile(t *testing.T) {
 }
 
 func TestLoadProjectYAML(t *testing.T) {
-	sampleYAML, err := os.ReadFile("testdata/sample.yml")
+	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
 
 	writeProjectFile := func(t *testing.T) string {
@@ -214,7 +214,7 @@ func TestLoadProjectYAML(t *testing.T) {
 		},
 		"FailsWithNonexistentFile": {
 			setupPath: func(t *testing.T) string {
-				return "/nonexistent/file.yml"
+				return filepath.Join("nonexistent", "file.yml")
 			},
 			expectErr: "reading file",
 		},
@@ -311,7 +311,7 @@ func TestValidateProjectRemotely(t *testing.T) {
 }
 
 func TestLoadProjectIntoWithValidation(t *testing.T) {
-	sampleYAML, err := os.ReadFile("testdata/sample.yml")
+	sampleYAML, err := os.ReadFile(filepath.Join("testdata", "sample.yml"))
 	require.NoError(t, err)
 
 	for testName, testCase := range map[string]struct {
