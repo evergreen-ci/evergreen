@@ -204,9 +204,13 @@ func TestParserFunctionality(t *testing.T) {
 		require.NoError(t, err)
 
 		parser := &goTestParser{}
-		err = parser.Parse(bytes.NewBuffer(logdata))
-		assert.Error(t, err)
-		assert.ErrorContains(t, err, "github.com/evergreen-ci/evergreen/model/host")
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
+
+		results := parser.Results()
+		require.Len(t, results, 4) // 3 passing tests + 1 build failure
+		buildFailed := results[3]
+		assert.Equal(t, "[build failed] github.com/evergreen-ci/evergreen/model/host", buildFailed.Name)
+		assert.Equal(t, FAIL, buildFailed.Status)
 	})
 	t.Run("LargeLogLine", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "large_line.log"))

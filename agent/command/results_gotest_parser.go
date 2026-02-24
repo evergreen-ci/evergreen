@@ -197,9 +197,13 @@ func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail
 func (vp *goTestParser) handleFailedBuild(line string) error {
 	path, err := pathNameFromLogLine(line)
 	if err != nil {
-		return errors.Wrapf(err, "parsing start line '%s'", line)
+		return errors.Wrapf(err, "parsing build failure line '%s'", line)
 	}
-	return errors.Errorf("go test failed for path '%s'", path)
+	t := vp.newTestResult("[build failed] " + path)
+	t.Status = FAIL
+	t.EndLine = len(vp.logs)
+	vp.order = append(vp.order, t)
+	return nil
 }
 
 // newTestResult populates a test result type with the given
