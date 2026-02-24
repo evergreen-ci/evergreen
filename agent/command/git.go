@@ -273,6 +273,11 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
+	// Wiki modules do not support Evergreen's advance module options due to limitations on the GitHub API for wikis.
+	if strings.HasSuffix(opts.repo, ".wiki") {
+		return gitCommands, nil
+	}
+
 	if isGitHubPRModulePatch(conf, modulePatch) {
 		branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
 		gitCommands = append(gitCommands,
