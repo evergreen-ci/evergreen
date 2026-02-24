@@ -120,7 +120,7 @@ func shouldIncludeModule(params *patchParams, args cli.Args, conf *ClientSetting
 	}
 
 	preserveCommits := params.PreserveCommits || conf.PreserveCommits
-	keepGoing, err := confirmUncommittedChanges(modulePath, preserveCommits, params.Uncommitted || conf.UncommittedChanges)
+	keepGoing, err := confirmUncommittedChanges(modulePath, preserveCommits, params.Uncommitted || conf.UncommittedChanges || params.IncludeModules)
 	if err != nil {
 		return false, errors.Wrap(err, "confirming uncommitted changes")
 	}
