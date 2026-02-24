@@ -153,10 +153,6 @@ type ProjectRef struct {
 	// This goes against Evergreen's optimization of only activating the latest commit in a series of mainline commits.
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
 	RunEveryMainlineCommit bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
-
-	// UseGitHubAppForAPI indicates whether to use the project's GitHub app for
-	// authenticated API requests to GitHub.
-	UseGitHubAppForAPI bool `bson:"use_github_app_for_api,omitempty" json:"use_github_app_for_api,omitempty" yaml:"use_github_app_for_api,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -235,11 +231,8 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 
 // GetGitHubAppAuthForAPI gets this project's GitHub app auth (if any) for
 // usage in the GitHub API if the project is configured to use its own GitHub
-// appf or GitHub API operations.
+// app for GitHub API operations.
 func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.GithubAppAuth, error) {
-	if !p.UseGitHubAppForAPI {
-		return nil, nil
-	}
 	appAuth, err := p.GetGitHubAppAuth(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting GitHub app auth")
@@ -554,7 +547,6 @@ var (
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 	projectRefTestSelectionKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TestSelection")
-	projectRefUseGitHubAppForAPIKey                 = bsonutil.MustHaveTag(ProjectRef{}, "UseGitHubAppForAPI")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -3748,42 +3740,6 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 // GetProjectAdminRole returns the project admin role ID for the given project.
 func GetProjectAdminRole(projectId string) string {
 	return fmt.Sprintf("admin_project_%s", projectId)
-}
-
-// FindProjectAndRepoRefsUsingGitHubAppForAPI returns all branch project refs
-// and repo refs that use GitHub app authentication for internal GitHub API
-// requests. This does not take into account whether a branch project ref
-// inherits settings from the repo ref, so if a repo ref has the GitHub app
-// enabled for internal API usage, this function will return that repo ref but
-// will not return the branch projects that inherit that setting.
-func FindProjectAndRepoRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectRef, error) {
-	pRefs := []ProjectRef{}
-	if err := db.FindAllQ(ctx,
-		ProjectRefCollection,
-		db.Query(bson.M{
-			projectRefUseGitHubAppForAPIKey: true,
-		}),
-		&pRefs,
-	); err != nil {
-		return nil, errors.Wrap(err, "finding project refs using GitHub app for API")
-	}
-
-	repoRefs := []RepoRef{}
-	if err := db.FindAllQ(ctx,
-		RepoRefCollection,
-		db.Query(bson.M{
-			projectRefUseGitHubAppForAPIKey: true,
-		}),
-		&repoRefs,
-	); err != nil {
-		return nil, errors.Wrap(err, "finding repo refs using GitHub app for API")
-	}
-	repoRefsAsProjectRefs := make([]ProjectRef, 0, len(repoRefs))
-	for _, repoRef := range repoRefs {
-		repoRefsAsProjectRefs = append(repoRefsAsProjectRefs, repoRef.ProjectRef)
-	}
-
-	return append(pRefs, repoRefsAsProjectRefs...), nil
 }
 
 // FindProjectRefsWithMergeQueueEnabled returns all enabled project refs with merge queue enabled.

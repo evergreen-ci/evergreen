@@ -2055,6 +2055,13 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 	}
 
 	var checkRun *github.CheckRun
+	grip.Debug(message.Fields{
+		"message":               "creating check run",
+		"ticket":                "DEVPROD-25210",
+		"owner":                 owner,
+		"repo":                  repo,
+		"using_github_app_auth": ghAppAuth != nil,
+	})
 	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
 		var resp *github.Response
 		var opErr error
