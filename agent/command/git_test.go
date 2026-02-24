@@ -753,8 +753,6 @@ func (s *GitGetProjectSuite) TestWikiModuleUsesBranchNotSetModule() {
 			},
 		},
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEmpty(task.Commands)
@@ -764,7 +762,7 @@ func (s *GitGetProjectSuite) TestWikiModuleUsesBranchNotSetModule() {
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
-			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
+			err = pluginCmds[0].Execute(s.ctx, s.comm, logger, conf)
 			s.NoError(err)
 		}
 	}
