@@ -1661,6 +1661,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	pRef, err := model.FindMergedProjectRef(ctx, t.Project, "", false)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
+			"operation":  "check run",
 			"message":    "error finding project ref for check run, will fall back to using Evergreen-internal app",
 			"project_id": t.Project,
 		}))
@@ -1668,6 +1669,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		ghAppAuth, err = pRef.GetGitHubAppAuthForAPI(ctx)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
+				"operation":  "check run",
 				"message":    "error getting GitHub app auth for check run, will fall back to using Evergreen-internal app",
 				"project_id": t.Project,
 			}))

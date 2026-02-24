@@ -229,9 +229,8 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 
 }
 
-// GetGitHubAppAuthForAPI gets this project's GitHub app auth (if any) for
-// usage in the GitHub API if the project is configured to use its own GitHub
-// app for GitHub API operations.
+// GetGitHubAppAuthForAPI gets this project's GitHub app authga for
+// usage in the GitHub API, if available.
 func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.GithubAppAuth, error) {
 	appAuth, err := p.GetGitHubAppAuth(ctx)
 	if err != nil {

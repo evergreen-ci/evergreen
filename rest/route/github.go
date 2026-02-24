@@ -387,6 +387,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	if pRefErr != nil {
 		grip.Warning(message.WrapError(pRefErr, message.Fields{
 			"source":     "GitHub hook",
+			"operation":  "check run",
 			"msg_id":     gh.msgID,
 			"event":      gh.eventType,
 			"message":    "error finding project ref for check run, will fall back to using Evergreen-internal app",
@@ -402,6 +403,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
+			"operation": "check run",
 			"msg_id":    gh.msgID,
 			"event":     gh.eventType,
 			"owner":     owner,
