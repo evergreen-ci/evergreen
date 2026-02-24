@@ -1217,7 +1217,6 @@ const (
 	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
 	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
 	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
 	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
 	ProjectSettingsSectionTestSelection        ProjectSettingsSection = "TEST_SELECTION"
 	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
@@ -1235,7 +1234,6 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionTriggers,
 	ProjectSettingsSectionPeriodicBuilds,
 	ProjectSettingsSectionPlugins,
-	ProjectSettingsSectionContainers,
 	ProjectSettingsSectionViewsAndFilters,
 	ProjectSettingsSectionTestSelection,
 	ProjectSettingsSectionGithubAndCommitQueue,
@@ -1245,7 +1243,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
 		return true
 	}
 	return false
