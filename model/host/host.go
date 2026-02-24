@@ -2367,7 +2367,7 @@ func buildConditionalProvisioningTimeoutQuery(now time.Time, timeoutCondition bs
 					// agent or 2. failed to prove the agent's
 					// liveliness by continuously pinging the app server
 					// with requests.
-					"$or": []bson.M{
+					"$and": []bson.M{
 						{RunningTaskKey: bson.M{"$exists": false}},
 						{LTCTaskKey: ""},
 					},

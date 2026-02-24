@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -39,24 +40,31 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 }
 
 // sendTestLogsAndResults sends the test logs and test results to backend
-// logging and results services.
+// logging and results services. Test logs are uploaded in parallel using a
+// worker pool for improved performance.
 func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, logs []testlog.TestLog, results []testresult.TestResult) error {
-	logger.Task().Info("Posting test logs...")
-	for _, log := range logs {
-		if err := ctx.Err(); err != nil {
-			return errors.Wrap(err, "canceled while sending test logs")
-		}
-
-		if err := taskoutput.AppendTestLog(ctx, &conf.Task, redactor.RedactionOptions{
-			Expansions:         conf.NewExpansions,
-			Redacted:           conf.Redacted,
-			InternalRedactions: conf.InternalRedactions,
-		}, &log); err != nil {
-			// Continue on error to let the other logs get posted.
-			logger.Task().Error(errors.Wrap(err, "sending test log"))
-		}
+	if len(logs) == 0 {
+		return sendTestResults(ctx, comm, logger, conf, results)
 	}
-	logger.Task().Info("Finished posting test logs.")
+
+	logger.Task().Info("Posting test logs...")
+
+	opts := redactor.RedactionOptions{
+		Expansions:         conf.NewExpansions,
+		Redacted:           conf.Redacted,
+		InternalRedactions: conf.InternalRedactions,
+	}
+
+	succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", logs, logger.Task(),
+		func(log *testlog.TestLog) error {
+			return taskoutput.AppendTestLog(ctx, &conf.Task, opts, log)
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	logger.Task().Infof("Finished posting test logs (%d of %d succeeded).", succeeded, len(logs))
 
 	return sendTestResults(ctx, comm, logger, conf, results)
 }

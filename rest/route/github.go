@@ -38,6 +38,7 @@ const (
 	githubActionAutoBaseChange  = "automatic_base_change_succeeded"
 	githubActionChecksRequested = "checks_requested"
 	githubActionRerequested     = "rerequested"
+	githubActionDestroyed       = "destroyed"
 
 	// pull request comments
 	retryComment            = "evergreen retry"
@@ -281,6 +282,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		if event.GetAction() == githubActionChecksRequested {
 			return gh.handleMergeGroupChecksRequested(ctx, event)
 		}
+		if event.GetAction() == githubActionDestroyed {
+			return gh.handleMergeGroupDestroyed(ctx, event)
+		}
 
 	case *github.CheckRunEvent:
 		if event.GetAction() == githubActionRerequested {
@@ -512,6 +516,61 @@ func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github
 		return errors.Wrap(err, "saving GitHub merge intent")
 	}
 	return nil
+}
+
+// handleMergeGroupDestroyed processes a "destroyed" MergeGroupEvent.
+func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *github.MergeGroupEvent) gimlet.Responder {
+	org := event.GetOrg().GetLogin()
+	repo := event.GetRepo().GetName()
+	headSHA := event.GetMergeGroup().GetHeadSHA()
+	reason := event.GetReason()
+
+	grip.Info(message.Fields{
+		"source":   "GitHub hook",
+		"msg_id":   gh.msgID,
+		"event":    gh.eventType,
+		"org":      org,
+		"repo":     repo,
+		"head_sha": headSHA,
+		"reason":   reason,
+		"message":  "merge group destroyed",
+	})
+
+	count, err := patch.MarkMergeQueuePatchesRemovedFromQueue(ctx, org, repo, headSHA, reason)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      org,
+			"repo":     repo,
+			"head_sha": headSHA,
+			"reason":   reason,
+			"message":  "error marking merge queue patches as removed from queue",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "marking patches as removed from queue"))
+	}
+
+	logFields := message.Fields{
+		"source":   "GitHub hook",
+		"msg_id":   gh.msgID,
+		"event":    gh.eventType,
+		"org":      org,
+		"repo":     repo,
+		"head_sha": headSHA,
+		"reason":   reason,
+	}
+
+	if count > 0 {
+		logFields["patches_updated"] = count
+		logFields["message"] = "successfully processed merge group destroyed event"
+	} else {
+		logFields["message"] = "no patches updated when marking merge group as removed"
+	}
+
+	grip.Info(logFields)
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // handleComment parses a given comment and takes the relevant action, if it's an Evergreen-tracked comment.

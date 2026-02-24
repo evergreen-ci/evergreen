@@ -133,10 +133,11 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 
 func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
-		Ref:        &ref,
-		RemotePath: file,
-		Revision:   ref.Branch,
-		Identifier: ref.Identifier,
+		Ref:          &ref,
+		RemotePath:   file,
+		Revision:     ref.Branch,
+		Identifier:   ref.Identifier,
+		ReadFileFrom: model.ReadFromGithub,
 	}
 	return model.GetProjectFromFile(ctx, opts)
 }

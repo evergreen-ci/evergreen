@@ -818,8 +818,11 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	for _, module := range moduleList {
 		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil {
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
-				modules[module.Name] = baseModule
-				continue
+				// Use base module revision unless the YAML explicitly specifies a different ref.
+				if module.Ref == "" || module.Ref == baseModule.Revision {
+					modules[module.Name] = baseModule
+					continue
+				}
 			}
 		}
 

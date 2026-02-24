@@ -288,6 +288,96 @@ func TestPlanner(t *testing.T) {
 					assert.EqualValues(t, 181, unit.sortingValueBreakdown(ctx).TotalValue)
 					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
+				t.Run("NumDependentsInGroupedUnit", func(t *testing.T) {
+					buildDebug := task.Task{
+						Id:            "build-debug",
+						NumDependents: 22,
+						Priority:      99,
+					}
+
+					unit := NewUnit(buildDebug)
+					unit.SetDistro(&distro.Distro{
+						PlannerSettings: distro.PlannerSettings{
+							Version: evergreen.PlannerVersionTunable,
+						},
+					})
+
+					for i := 0; i < 22; i++ {
+						unit.Add(task.Task{
+							Id:            fmt.Sprintf("test-task-%d", i),
+							NumDependents: 0,
+							Priority:      0,
+						})
+					}
+
+					info := unit.info(ctx)
+					breakdown := info.value()
+
+					assert.EqualValues(t, 22, info.MaxNumDependents)
+					assert.EqualValues(t, 22, breakdown.RankValueBreakdown.NumDependentsImpact)
+
+					assert.EqualValues(t, 99, info.MaxPriority)
+					assert.EqualValues(t, 100, breakdown.PriorityBreakdown.InitialPriorityImpact)
+
+					verifyRankBreakdown(t, breakdown)
+				})
+				t.Run("DependencyTaskScheduledFirst", func(t *testing.T) {
+					buildTask := task.Task{
+						Id:            "build-debug",
+						Version:       "v1",
+						NumDependents: 20,
+						Priority:      99,
+						ActivatedTime: time.Now().Add(-10 * time.Minute),
+					}
+
+					independentTask := task.Task{
+						Id:            "independent-test",
+						Version:       "v1",
+						NumDependents: 0,
+						Priority:      0,
+						ActivatedTime: time.Now().Add(-10 * time.Minute),
+					}
+
+					dependentTasks := []task.Task{}
+					for i := 0; i < 20; i++ {
+						dependentTasks = append(dependentTasks, task.Task{
+							Id:            fmt.Sprintf("test-kube-%d", i),
+							Version:       "v1",
+							NumDependents: 0,
+							Priority:      0,
+							DependsOn:     []task.Dependency{{TaskId: "build-debug"}},
+							ActivatedTime: time.Now().Add(-10 * time.Minute),
+						})
+					}
+
+					allTasks := append([]task.Task{buildTask, independentTask}, dependentTasks...)
+
+					d := &distro.Distro{
+						PlannerSettings: distro.PlannerSettings{
+							Version:       evergreen.PlannerVersionTunable,
+							GroupVersions: func() *bool { b := true; return &b }(),
+						},
+					}
+
+					plan := PrepareTasksForPlanning(ctx, d, allTasks)
+					sort.Stable(plan)
+					scheduledTasks := plan.Export(ctx)
+
+					buildIndex := -1
+					independentIndex := -1
+					for i, t := range scheduledTasks {
+						if t.Id == "build-debug" {
+							buildIndex = i
+						}
+						if t.Id == "independent-test" {
+							independentIndex = i
+						}
+					}
+
+					require.NotEqual(t, -1, buildIndex, "build-debug task not found in schedule")
+					require.NotEqual(t, -1, independentIndex, "independent task not found in schedule")
+					assert.Less(t, buildIndex, independentIndex, "build-debug should be scheduled before independent task")
+				})
 				t.Run("GenerateTask", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", GenerateTask: true})
 					unit.SetDistro(&distro.Distro{})

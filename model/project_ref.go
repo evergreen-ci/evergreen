@@ -154,9 +154,6 @@ type ProjectRef struct {
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
 	RunEveryMainlineCommit bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
 
-	// RunEveryMainlineCommitLimit indicates the maximum number of mainline commits to activate in a single activation run.
-	RunEveryMainlineCommitLimit int `bson:"run_every_mainline_commit_limit,omitempty" json:"run_every_mainline_commit_limit,omitempty" yaml:"run_every_mainline_commit_limit,omitempty"`
-
 	// UseGitHubAppForAPI indicates whether to use the project's GitHub app for
 	// authenticated API requests to GitHub.
 	UseGitHubAppForAPI bool `bson:"use_github_app_for_api,omitempty" json:"use_github_app_for_api,omitempty" yaml:"use_github_app_for_api,omitempty"`

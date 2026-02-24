@@ -82,7 +82,8 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 	}
 
 	count := 0
-	projectsActivated := []string{}
+	// Maps project ids -> activated version ids.
+	activations := map[string][]string{}
 	for _, ref := range projects {
 		if !ref.Enabled {
 			continue
@@ -90,20 +91,20 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 
 		// Do not use a version that is in the active cron range because those will be ignored when the one before
 		// it has an activate_at that is within the cron range.
-		ok, err := repotracker.ActivateBuildsForProject(ctx, ref, ts.Add(-model.CronActiveRange))
+		versionsActivated, err := repotracker.ActivateBuildsForProject(ctx, ref, ts.Add(-model.CronActiveRange))
 		j.AddError(errors.Wrapf(err, "activating builds for project '%s'", ref.Id))
-		if ok {
-			projectsActivated = append(projectsActivated, ref.Identifier)
+		if len(versionsActivated) > 0 {
+			activations[ref.Id] = versionsActivated
 		}
 		count++
 	}
 
 	grip.Info(message.Fields{
-		"message":            "version activation catch up report",
-		"projects":           len(projects),
-		"projects_activated": projectsActivated,
-		"active":             count,
-		"errors":             j.HasErrors(),
-		"timestamp_used":     ts,
+		"message":                       "version activation catch up report",
+		"projects":                      len(projects),
+		"project_to_versions_activated": activations,
+		"active":                        count,
+		"errors":                        j.HasErrors(),
+		"timestamp_used":                ts,
 	})
 }
