@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1035,6 +1036,149 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 			// Check that the task details were stored correctly
 			assert.Equal(t, tc.expectedTrace, updatedTask.Details.TraceID)
 			assert.Equal(t, tc.expectedDisk, updatedTask.Details.DiskDevices)
+		})
+	}
+}
+
+func TestManifestLoad(t *testing.T) {
+	taskID := "taskID"
+	versionID := "version_id"
+	projectID := "project_id"
+	projectName := "project_name"
+	revision := "5e4819db48fdbf84550d16cc648ad88612edee53"
+	branch := "zackary_bisect_2"
+	moduleName := "module_name"
+
+	url := fmt.Sprintf("/task/%s/manifest/load", taskID)
+
+	for tName, tCase := range map[string]struct {
+		taskID  string
+		modules []model.Module
+		run     func(t *testing.T, rh *manifestLoadHandler)
+	}{
+		"RunErrorsOnNilTask": {
+			taskID: "invalid_task_id",
+			run: func(t *testing.T, rh *manifestLoadHandler) {
+				resp := rh.Run(t.Context())
+				require.NotNil(t, resp)
+				assert.Equal(t, http.StatusNotFound, resp.Status(), resp.Data())
+			},
+		},
+		"RunSucceedsWithNoModules": {
+			run: func(t *testing.T, rh *manifestLoadHandler) {
+				resp := rh.Run(t.Context())
+				require.NotNil(t, resp)
+				assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+				manifest, ok := resp.Data().(*manifest.Manifest)
+				require.True(t, ok)
+				require.Nil(t, manifest)
+			},
+		},
+		"RunSucceedsWithModule": {
+			modules: []model.Module{
+				{
+					Name:   moduleName,
+					Owner:  "evergreen-ci",
+					Repo:   "evergreen",
+					Branch: "main",
+				},
+			},
+			run: func(t *testing.T, rh *manifestLoadHandler) {
+				resp := rh.Run(t.Context())
+				require.NotNil(t, resp)
+				assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+				manifest, ok := resp.Data().(*manifest.Manifest)
+				require.True(t, ok)
+				require.NotNil(t, manifest)
+
+				assert.Equal(t, versionID, manifest.Id)
+				assert.Equal(t, revision, manifest.Revision)
+				assert.Equal(t, projectName, manifest.ProjectName)
+				assert.Equal(t, branch, manifest.Branch)
+
+				require.Len(t, manifest.Modules, 1)
+				require.Contains(t, manifest.Modules, moduleName)
+
+				module := manifest.Modules[moduleName]
+				assert.Equal(t, "evergreen-ci", module.Owner)
+				assert.Equal(t, "evergreen", module.Repo)
+				assert.Equal(t, "main", module.Branch)
+				assert.Equal(t, "5ebb9f3083144c96de0c05794550feb9ec20b15a", module.Revision)
+				assert.Equal(t, "https://api.github.com/repos/evergreen-ci/evergreen/commits/5ebb9f3083144c96de0c05794550feb9ec20b15a", module.URL)
+			},
+		},
+		"RunSucceedsWithWikiModule": {
+			modules: []model.Module{
+				{
+					Name:   moduleName,
+					Owner:  "mongodb",
+					Repo:   "mongo.wiki",
+					Branch: "master",
+				},
+			},
+			run: func(t *testing.T, rh *manifestLoadHandler) {
+				resp := rh.Run(t.Context())
+				require.NotNil(t, resp)
+				assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+				manifest, ok := resp.Data().(*manifest.Manifest)
+				require.True(t, ok)
+				require.NotNil(t, manifest)
+
+				assert.Equal(t, versionID, manifest.Id)
+				assert.Equal(t, revision, manifest.Revision)
+				assert.Equal(t, projectName, manifest.ProjectName)
+				assert.Equal(t, branch, manifest.Branch)
+
+				require.Len(t, manifest.Modules, 1)
+				require.Contains(t, manifest.Modules, moduleName)
+
+				module := manifest.Modules[moduleName]
+				assert.Equal(t, "mongodb", module.Owner)
+				assert.Equal(t, "mongo.wiki", module.Repo)
+				assert.Equal(t, "master", module.Branch)
+			},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, manifest.Collection))
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(t.Context()))
+
+			rh, ok := makeManifestLoad(env.Settings()).(*manifestLoadHandler)
+			require.True(t, ok)
+
+			t1 := task.Task{Id: taskID, Project: projectID, Version: versionID}
+			require.NoError(t, t1.Insert(t.Context()))
+			v1 := model.Version{Id: versionID, Branch: projectID, Revision: revision, Identifier: projectName}
+			require.NoError(t, v1.Insert(t.Context()))
+			p1 := model.ProjectRef{Id: projectID, Owner: "evergreen-ci", Repo: "commit-queue-sandbox", Branch: branch}
+			require.NoError(t, p1.Insert(t.Context()))
+			pp1 := &model.ParserProject{Id: versionID, Modules: tCase.modules}
+			require.NoError(t, pp1.Insert(t.Context()))
+
+			if tCase.taskID == "" {
+				tCase.taskID = taskID
+			}
+
+			t.Run("Parse", func(t *testing.T) {
+				request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, bytes.NewReader([]byte("")))
+				require.NoError(t, err)
+				require.NotNil(t, request)
+
+				options := map[string]string{"task_id": tCase.taskID}
+				request = gimlet.SetURLVars(request, options)
+
+				require.NoError(t, rh.Parse(t.Context(), request))
+				assert.Equal(t, tCase.taskID, rh.taskID)
+			})
+
+			t.Run("Run", func(t *testing.T) {
+				tCase.run(t, rh)
+			})
 		})
 	}
 }

@@ -1431,6 +1431,9 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))
 		}
+		if errors.Is(err, evergreen.ErrNotFound) {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "storing new manifest"))
+		}
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "storing new manifest"))
 	}
 	return gimlet.NewJSONResponse(manifest)

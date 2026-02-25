@@ -1,0 +1,31 @@
+batch_time: 180
+
+tasks:
+  - name: testtask1
+    commands:
+      - command: git.get_project
+        params:
+          directory: src
+          token: ${github}
+
+modules:
+  - name: wiki
+    owner: mongodb
+    repo: mongo.wiki
+    branch: master
+    prefix: ${prefixpath}/wiki
+  - name: wiki-ref
+    owner: mongodb
+    repo: mongo.wiki
+    ref: 82d5fbf5d7c920d4e8fe7a5805752ae167454584
+    prefix: ${prefixpath}/wiki-ref
+
+buildvariants:
+  - name: linux-64
+    display_name: Linux 64-bit
+    modules:
+      - wiki
+    test_flags: --continue-on-failure
+    expansions:
+      blah: "blah"
+    push: true

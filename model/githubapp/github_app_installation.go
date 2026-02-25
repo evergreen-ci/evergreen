@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
@@ -27,10 +28,14 @@ const (
 	GitHubMaxRetries    = 3
 	GitHubRetryMinDelay = time.Second
 	GitHubRetryMaxDelay = 10 * time.Second
+
+	// testTokenID is the installation ID that is used in non-integration tests to indicate
+	// that the client should be a public GitHub client that does not require authentication.
+	testTokenID = -1
 )
 
 var (
-	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
+	gitHubAppNotInstalledError = errors.Wrapf(evergreen.ErrNotFound, "GitHub app")
 )
 
 // GitHubAppInstallation holds information about a GitHub app, notably its
@@ -57,6 +62,9 @@ func getInstallationID(ctx context.Context, authFields *GithubAppAuth, owner, re
 
 	installationID, err := getInstallationIDFromGitHub(ctx, authFields, owner, repo)
 	if err != nil {
+		if testing.Testing() {
+			return testTokenID, nil
+		}
 		return 0, errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
