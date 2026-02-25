@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -277,7 +278,37 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		taskConfig.BuildVariant.Modules = expandedModules
 	}
 
+	taskConfig.setTimeoutExpansions()
+
 	return taskConfig, nil
+}
+
+// setTimeoutExpansions populates the exec_timeout_secs and timeout_secs
+// expansions so that tasks can reference their effective timeout values.
+// The resolution order matches getExecTimeout and setCurrentIdleTimeout:
+//  1. Task-level setting from the project task definition
+//  2. Project-level setting
+//  3. Default timeout
+func (tc *TaskConfig) setTimeoutExpansions() {
+	if tc.Expansions == nil {
+		tc.Expansions = util.Expansions{}
+	}
+
+	execTimeout := int(globals.DefaultExecTimeout.Seconds())
+	if pt := tc.Project.FindProjectTask(tc.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs != "" {
+		if secs, err := strconv.Atoi(pt.ExecTimeoutSecs); err == nil && secs > 0 {
+			execTimeout = secs
+		}
+	} else if tc.Project.ExecTimeoutSecs > 0 {
+		execTimeout = tc.Project.ExecTimeoutSecs
+	}
+	tc.Expansions.Put("exec_timeout_secs", strconv.Itoa(execTimeout))
+
+	idleTimeout := int(globals.DefaultIdleTimeout.Seconds())
+	if tc.Project.TimeoutSecs > 0 {
+		idleTimeout = tc.Project.TimeoutSecs
+	}
+	tc.Expansions.Put("timeout_secs", strconv.Itoa(idleTimeout))
 }
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {

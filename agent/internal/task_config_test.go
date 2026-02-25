@@ -66,7 +66,8 @@ func TestNewTaskConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Empty(t, taskConfig.DynamicExpansions)
-	assert.Empty(t, taskConfig.Expansions)
+	assert.Equal(t, "21600", taskConfig.Expansions.Get("exec_timeout_secs"))
+	assert.Equal(t, "7200", taskConfig.Expansions.Get("timeout_secs"))
 	assert.ElementsMatch(t, []string{"aws_token", "my_pass_secret", "myPASSWORD", "mySecret", "git_token"}, taskConfig.Redacted)
 	assert.Equal(t, d, taskConfig.Distro)
 	assert.Equal(t, h, taskConfig.Host)
