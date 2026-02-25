@@ -214,6 +214,12 @@ Note that this will only run tasks that match the paths for the CURRENT merge gr
 modifies only the `src` directory, and the second patch modifies the `test` directory, the second patch will only run variants
 that match the `test` directory.
 
+**Q:** Can I disable path filtering for the merge queue while keeping it for PR patches?
+
+**A:** Yes, you can set `disable_merge_queue_path_filtering: true` at the [top level of your project YAML](Project-Configuration-Files.md#disabling-merge-queue-path-filtering).
+This will skip path filtering for merge queue versions while still applying it to PR patches.
+This is useful when you want selective testing for PRs but comprehensive testing before merging.
+
 **Q:** How can I turn off the merge queue to block users from merging?
 
 **A:** Check the "Lock branch" setting in the branch protection rules. There are
