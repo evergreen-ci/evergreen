@@ -318,9 +318,9 @@ func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request
 		return errors.New("missing task ID")
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
-	userKey := r.Header.Get(evergreen.APIKeyHeader)
+	userKey := r.Header.Get(evergreen.AuthorizationHeader)
 	if h.hostID == "" && userKey == "" {
-		return errors.New("missing host ID")
+		return errors.New("missing both host and pod ID")
 	}
 	return nil
 }
@@ -478,13 +478,13 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 	// If from debug session request, return minimal response
 	if isUserRequest {
 		redactedProjectRef := map[string]interface{}{
-			"repo":          p.Repo,
-			"branch":        p.Branch,
-			"owner":         p.Owner,
-			"id":            p.Id,
-			"repo_ref_id":   p.RepoRefId,
-			"identifier":    p.Identifier,
-			"testselection": p.TestSelection,
+			"repo_name":      p.Repo,
+			"branch_name":    p.Branch,
+			"owner_name":     p.Owner,
+			"id":             p.Id,
+			"repo_ref_id":    p.RepoRefId,
+			"identifier":     p.Identifier,
+			"test_selection": p.TestSelection,
 		}
 		return gimlet.NewJSONResponse(redactedProjectRef)
 	}
