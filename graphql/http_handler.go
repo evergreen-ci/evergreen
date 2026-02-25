@@ -9,7 +9,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -84,5 +83,5 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	})
 
 	// Wrap with dataloader middleware to batch database queries
-	return loaders.Middleware(srv).ServeHTTP
+	return Middleware(srv).ServeHTTP
 }

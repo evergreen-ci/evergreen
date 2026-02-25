@@ -1,4 +1,4 @@
-package loaders
+package graphql
 
 import (
 	"context"
