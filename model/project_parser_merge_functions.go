@@ -205,6 +205,12 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.TimeoutSecs = toMerge.TimeoutSecs
 	}
 
+	if pp.DisableMergeQueuePathFiltering != nil && toMerge.DisableMergeQueuePathFiltering != nil {
+		catcher.New("disable merge queue path filtering can only be defined in one YAML")
+	} else if toMerge.DisableMergeQueuePathFiltering != nil {
+		pp.DisableMergeQueuePathFiltering = toMerge.DisableMergeQueuePathFiltering
+	}
+
 	return catcher.Resolve()
 }
 

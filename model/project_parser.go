@@ -112,6 +112,9 @@ type ParserProject struct {
 	TimeoutSecs        *int                       `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
+	// DisableMergeQueuePathFiltering, if true, skips path filtering for merge queue versions.
+	DisableMergeQueuePathFiltering *bool `yaml:"disable_merge_queue_path_filtering,omitempty" bson:"disable_merge_queue_path_filtering,omitempty"`
+
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 } // End of ParserProject mergeable fields (this comment is used by the linter).
@@ -1399,28 +1402,29 @@ func capParserPriorities(p *ParserProject) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Stepback:           utility.FromBoolPtr(pp.Stepback),
-		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
-		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
-		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
-		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
-		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
-		PS:                 utility.FromStringPtr(pp.Ps),
-		Identifier:         utility.FromStringPtr(pp.Identifier),
-		DisplayName:        utility.FromStringPtr(pp.DisplayName),
-		CommandType:        utility.FromStringPtr(pp.CommandType),
-		Ignore:             pp.Ignore,
-		Parameters:         pp.Parameters,
-		Containers:         pp.Containers,
-		Pre:                pp.Pre,
-		Post:               pp.Post,
-		Timeout:            pp.Timeout,
-		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
-		Modules:            pp.Modules,
-		Functions:          pp.Functions,
-		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
-		TimeoutSecs:        utility.FromIntPtr(pp.TimeoutSecs),
-		NumIncludes:        len(pp.Include),
+		Stepback:                       utility.FromBoolPtr(pp.Stepback),
+		PreTimeoutSecs:                 utility.FromIntPtr(pp.PreTimeoutSecs),
+		PostTimeoutSecs:                utility.FromIntPtr(pp.PostTimeoutSecs),
+		PreErrorFailsTask:              utility.FromBoolPtr(pp.PreErrorFailsTask),
+		PostErrorFailsTask:             utility.FromBoolPtr(pp.PostErrorFailsTask),
+		OomTracker:                     utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
+		PS:                             utility.FromStringPtr(pp.Ps),
+		Identifier:                     utility.FromStringPtr(pp.Identifier),
+		DisplayName:                    utility.FromStringPtr(pp.DisplayName),
+		CommandType:                    utility.FromStringPtr(pp.CommandType),
+		Ignore:                         pp.Ignore,
+		Parameters:                     pp.Parameters,
+		Containers:                     pp.Containers,
+		Pre:                            pp.Pre,
+		Post:                           pp.Post,
+		Timeout:                        pp.Timeout,
+		CallbackTimeout:                utility.FromIntPtr(pp.CallbackTimeout),
+		Modules:                        pp.Modules,
+		Functions:                      pp.Functions,
+		ExecTimeoutSecs:                utility.FromIntPtr(pp.ExecTimeoutSecs),
+		TimeoutSecs:                    utility.FromIntPtr(pp.TimeoutSecs),
+		DisableMergeQueuePathFiltering: utility.FromBoolPtr(pp.DisableMergeQueuePathFiltering),
+		NumIncludes:                    len(pp.Include),
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
