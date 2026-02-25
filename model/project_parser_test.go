@@ -413,7 +413,7 @@ func TestTranslateTasks(t *testing.T) {
 			},
 		},
 		Tasks: []parserTask{
-			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: "15"},
 			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "a_task_with_no_special_configuration"},
@@ -2212,7 +2212,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 func TestMergeUnorderedUnique(t *testing.T) {
 	main := &ParserProject{
 		Tasks: []parserTask{
-			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: "15"},
 			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
 			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
 		},
@@ -2317,7 +2317,7 @@ func TestMergeUnorderedUnique(t *testing.T) {
 func TestMergeUnorderedUniqueFail(t *testing.T) {
 	main := &ParserProject{
 		Tasks: []parserTask{
-			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: "15"},
 		},
 		TaskGroups: []parserTaskGroup{
 			{
@@ -2363,7 +2363,7 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 
 	fail := &ParserProject{
 		Tasks: []parserTask{
-			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
+			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: "15"},
 		},
 		TaskGroups: []parserTaskGroup{
 			{

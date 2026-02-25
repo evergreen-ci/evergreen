@@ -729,7 +729,7 @@ type TaskGroup struct {
 type ProjectTask struct {
 	Name            string               `yaml:"name,omitempty" bson:"name"`
 	Priority        int64                `yaml:"priority,omitempty" bson:"priority"`
-	ExecTimeoutSecs int                  `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	ExecTimeoutSecs string               `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	DependsOn       []TaskUnitDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 	Commands        []PluginCommandConf  `yaml:"commands,omitempty" bson:"commands"`
 	Tags            []string             `yaml:"tags,omitempty" bson:"tags"`

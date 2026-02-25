@@ -1723,7 +1723,7 @@ func TestValidateTimeoutLimits(t *testing.T) {
 		Tasks: []model.ProjectTask{
 			{
 				Name:            "task",
-				ExecTimeoutSecs: 10,
+				ExecTimeoutSecs: "10",
 			},
 		},
 	}
@@ -5441,10 +5441,10 @@ func TestTVToTaskUnit(t *testing.T) {
 					{
 						Name:            "setup",
 						Priority:        10,
-						ExecTimeoutSecs: 10,
+						ExecTimeoutSecs: "10",
 					}, {
 						Name:            "compile",
-						ExecTimeoutSecs: 10,
+						ExecTimeoutSecs: "10",
 						DependsOn: []model.TaskUnitDependency{
 							{
 								Name:    "setup",
@@ -5536,10 +5536,10 @@ func TestTVToTaskUnit(t *testing.T) {
 					{
 						Name:            "setup",
 						Priority:        10,
-						ExecTimeoutSecs: 10,
+						ExecTimeoutSecs: "10",
 					}, {
 						Name:            "compile",
-						ExecTimeoutSecs: 10,
+						ExecTimeoutSecs: "10",
 						DependsOn: []model.TaskUnitDependency{
 							{
 								Name:    "setup",

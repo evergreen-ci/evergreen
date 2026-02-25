@@ -262,7 +262,7 @@ func TestPopulateBVT(t *testing.T) {
 			Tasks: []ProjectTask{
 				{
 					Name:            "task1",
-					ExecTimeoutSecs: 500,
+					ExecTimeoutSecs: "500",
 					Stepback:        utility.FalsePtr(),
 					DependsOn:       []TaskUnitDependency{{Name: "other"}},
 					Priority:        1000,

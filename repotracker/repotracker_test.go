@@ -892,7 +892,7 @@ func createTestProject(override1, override2 *int) *model.ParserProject {
 			"script": "echo hi",
 		},
 	}})
-	pp.Tasks[0].ExecTimeoutSecs = 3
+	pp.Tasks[0].ExecTimeoutSecs = "3"
 
 	return pp
 }

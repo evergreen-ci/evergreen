@@ -1156,9 +1156,18 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 	errs := ValidationErrors{}
 	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
 		for _, task := range project.Tasks {
-			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
+			if task.ExecTimeoutSecs == "" {
+				continue
+			}
+			timeoutSecs, err := strconv.Atoi(task.ExecTimeoutSecs)
+			if err != nil {
+				// Value contains expansion variables; skip static
+				// validation. Runtime enforcement still applies.
+				continue
+			}
+			if timeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
 				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
+					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, timeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
 					Level:   Error,
 				})
 			}
@@ -2351,7 +2360,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				},
 			)
 		}
-		if project.ExecTimeoutSecs == 0 && task.ExecTimeoutSecs == 0 && !execTimeoutWarningAdded {
+		if project.ExecTimeoutSecs == 0 && task.ExecTimeoutSecs == "" && !execTimeoutWarningAdded {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("no exec_timeout_secs defined at the top-level or on one or more tasks; "+

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -321,8 +322,11 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 		}
 		return time.Duration(dynamicTimeout) * time.Second
 	}
-	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs > 0 {
-		return time.Duration(pt.ExecTimeoutSecs) * time.Second
+	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs != "" {
+		expanded, _ := tc.taskConfig.Expansions.ExpandString(pt.ExecTimeoutSecs)
+		if secs, err := strconv.Atoi(expanded); err == nil && secs > 0 {
+			return time.Duration(secs) * time.Second
+		}
 	}
 	if tc.taskConfig.Project.ExecTimeoutSecs > 0 {
 		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second

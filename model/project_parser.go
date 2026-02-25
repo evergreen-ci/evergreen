@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -144,7 +145,7 @@ func (ptg *parserTaskGroup) tags() []string { return ptg.Tags }
 type parserTask struct {
 	Name              string                    `yaml:"name,omitempty" bson:"name,omitempty"`
 	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
-	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	ExecTimeoutSecs   intOrString                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	Commands          []PluginCommandConf       `yaml:"commands,omitempty" bson:"commands,omitempty"`
 	Tags              parserStringSlice         `yaml:"tags,omitempty" bson:"tags,omitempty"`
@@ -522,6 +523,44 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(any) error) error {
 		return err
 	}
 	*pss = slice
+	return nil
+}
+
+// intOrString is a YAML/BSON helper type that accepts both an integer or
+// string value. This allows fields to support both literal integers and
+// expansion strings like "${my_var}".
+type intOrString string
+
+// UnmarshalYAML allows the YAML parser to read both an integer or a string
+// into an intOrString field.
+func (ios *intOrString) UnmarshalYAML(unmarshal func(any) error) error {
+	var intVal int
+	if err := unmarshal(&intVal); err == nil {
+		*ios = intOrString(strconv.Itoa(intVal))
+		return nil
+	}
+	var strVal string
+	if err := unmarshal(&strVal); err != nil {
+		return err
+	}
+	*ios = intOrString(strVal)
+	return nil
+}
+
+// SetBSON allows reading both integer and string BSON values from MongoDB,
+// maintaining backward compatibility with existing documents that store the
+// value as an integer.
+func (ios *intOrString) SetBSON(raw mgobson.Raw) error {
+	var intVal int
+	if err := raw.Unmarshal(&intVal); err == nil {
+		*ios = intOrString(strconv.Itoa(intVal))
+		return nil
+	}
+	var strVal string
+	if err := raw.Unmarshal(&strVal); err != nil {
+		return err
+	}
+	*ios = intOrString(strVal)
 	return nil
 }
 
@@ -1501,7 +1540,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		t := ProjectTask{
 			Name:            pt.Name,
 			Priority:        pt.Priority,
-			ExecTimeoutSecs: pt.ExecTimeoutSecs,
+			ExecTimeoutSecs: string(pt.ExecTimeoutSecs),
 			Commands:        pt.Commands,
 			Tags:            pt.Tags,
 			RunOn:           pt.RunOn,
